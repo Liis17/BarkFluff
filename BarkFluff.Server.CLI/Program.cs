@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+using BarkFluff.Server.CLI.Data;
 using System.Security.Cryptography.X509Certificates;
 
 namespace BarkFluff.Server.CLI
@@ -16,7 +18,6 @@ namespace BarkFluff.Server.CLI
             var certPath = Path.Combine(Directory.GetCurrentDirectory(), settings.Certificate.Path);
             var cert = new X509Certificate2(certPath, settings.Certificate.Password);
 
-            // Настройка HTTPS с сертификатом
             builder.WebHost.ConfigureKestrel(options =>
             {
                 options.ListenAnyIP(settings.Port, listenOptions =>
@@ -25,9 +26,15 @@ namespace BarkFluff.Server.CLI
                 });
             });
 
+            builder.Services.AddDbContext<MessengerDbContext>(options =>
+                options.UseSqlServer(settings.ConnectionString));
+
+            builder.Services.AddControllers();
+
             var app = builder.Build();
 
             app.MapGet("/testping", () => Results.Ok("ok"));
+            app.MapControllers();
 
             app.Run();
         }
