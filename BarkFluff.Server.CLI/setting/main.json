@@ -1,0 +1,8 @@
+{
+  "Address": "https://localhost",
+  "Port": 5001,
+  "Certificate": {
+    "Path": "cert/mycert.pfx",
+    "Password": "1234"
+  }
+}
