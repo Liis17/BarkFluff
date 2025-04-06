@@ -12,6 +12,14 @@
     mc:Ignorable="d">
 
     <Grid Background="#212121">
+        <TextBlock
+            Margin="10"
+            HorizontalAlignment="Center"
+            FontFamily="AdwaitaSans"
+            FontSize="25"
+            FontWeight="Black"
+            Foreground="#FF828282"
+            Text="BarkFluff" />
         <StackPanel
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
