@@ -1,6 +1,9 @@
 ﻿using BarkFluff.Client.WPF.MessagerData;
 using BarkFluff.Client.WPF.Pages;
 
+using Grpc.Core;
+
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Text;
@@ -42,7 +45,12 @@ namespace BarkFluff.Client.WPF
         {
             MWindow = this;
             string filePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "GlobalParam.json");
-            
+
+            if (Debugger.IsAttached)
+            {
+                // Увеличиваем версию
+                IncrementVersion();
+            }
 
             if (!File.Exists(filePath))
             {
@@ -54,6 +62,33 @@ namespace BarkFluff.Client.WPF
                 MainFrame.Navigate(new PincodeSecure());
                 MainFrame.NavigationService.RemoveBackEntry();
             }
+        }
+
+        private void IncrementVersion()
+        {
+            var versionParts = AppVersion.Version.Split('.');
+            int buildNumber = int.Parse(versionParts[3]);
+            buildNumber++;
+            versionParts[3] = buildNumber.ToString();
+            AppVersion.Version = string.Join(".", versionParts);
+
+            // Сохраняем новую версию в файл
+            SaveVersionToFile();
+        }
+
+        private void SaveVersionToFile()
+        {
+            var versionFile = "K:\\source\\HavenProjects\\BarkFluff\\BarkFluff.Client.WPF\\AppVersion.cs";
+            var lines = System.IO.File.ReadAllLines(versionFile);
+            for (int i = 0; i < lines.Length; i++)
+            {
+                if (lines[i].Contains("public static string Version"))
+                {
+                    lines[i] = $"       public static string Version {{ get; set; }} = \"{AppVersion.Version}\";";
+                    break;
+                }
+            }
+            System.IO.File.WriteAllLines(versionFile, lines);
         }
 
         private void MainFrame_Loaded(object sender, RoutedEventArgs e)

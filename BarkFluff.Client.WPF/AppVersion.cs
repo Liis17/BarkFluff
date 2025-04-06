@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,7 +8,7 @@ namespace BarkFluff.Client.WPF
 {
     public class AppVersion
     {
-        public static string Version { get; } = "0.0.0.1";
-        public static string VersionName { get; } = "α";
+       public static string Version { get; set; } = "v0.0.0.2";
+        public static string VersionName { get; set; } = "α";
     }
 }
