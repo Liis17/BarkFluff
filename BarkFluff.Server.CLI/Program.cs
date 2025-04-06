@@ -11,7 +11,7 @@ namespace BarkFluff.Server.CLI
             var builder = WebApplication.CreateBuilder(args);
 
             builder.Configuration.SetBasePath(Directory.GetCurrentDirectory())
-                                 .AddJsonFile("setting/main.json", optional: false, reloadOnChange: true);
+                     .AddJsonFile("setting/main.json", optional: false, reloadOnChange: true);
 
             var settings = builder.Configuration.Get<MySettings>();
 
@@ -26,8 +26,12 @@ namespace BarkFluff.Server.CLI
                 });
             });
 
+            //builder.Services.AddDbContext<MessengerDbContext>(options =>
+            //    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
             builder.Services.AddDbContext<MessengerDbContext>(options =>
-                options.UseSqlServer(settings.ConnectionString));
+            options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
+            sqlOptions => sqlOptions.EnableRetryOnFailure(maxRetryCount: 5, maxRetryDelay: TimeSpan.FromSeconds(30), null)));
 
             builder.Services.AddControllers();
 

@@ -6,6 +6,6 @@
     "Password": "1234"
   },
   "ConnectionStrings": {
-    "DefaultConnection": "Server=localhost,1433;Database=MessengerDb;User Id=sa;Password=YourStrong@Passw0rd;"
+    "DefaultConnection": "Server=localhost,1433;Database=MessengerDb;User Id=sa;Password=YourStrong@Passw0rd;Encrypt=False;Connect Timeout=60;"
   }
 }
