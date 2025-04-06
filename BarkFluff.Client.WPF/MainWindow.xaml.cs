@@ -59,6 +59,11 @@ namespace BarkFluff.Client.WPF
         {
 
         }
+
+        private void Loaded_VersionText(object sender, RoutedEventArgs e)
+        {
+            VersionTextBlock.Text = AppVersion.VersionName + " " + AppVersion.Version;
+        }
         #endregion
 
         #region Window Events
@@ -100,12 +105,22 @@ namespace BarkFluff.Client.WPF
 
         public void PincodeSuccessful()
         {
-            MainFrame.Navigate(new Login());
-            MainFrame.NavigationService.RemoveBackEntry();
+            if (GParam.Socket == "")
+            {
+                MainFrame.Navigate(new ServerIP());
+                MainFrame.NavigationService.RemoveBackEntry();
+            }
+            else
+            {
+                MainFrame.Navigate(new Login());
+                MainFrame.NavigationService.RemoveBackEntry();
+            }
+            
         }
+
+
         #endregion
 
-
-
+        
     }
 }

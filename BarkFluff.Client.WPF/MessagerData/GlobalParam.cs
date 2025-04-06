@@ -53,7 +53,6 @@ namespace BarkFluff.Client.WPF.MessagerData
             // Получение ключа из PIN-кода
             var key = DeriveKeyFromPin(userPin, salt);
 
-            // Сериализация параметров
             var json = JsonSerializer.Serialize(param);
             var plainBytes = Encoding.UTF8.GetBytes(json);
 
@@ -112,7 +111,6 @@ namespace BarkFluff.Client.WPF.MessagerData
             {
                 var allBytes = File.ReadAllBytes(filePath);
 
-                // Извлекаем: [salt][IV][ciphertext]
                 var salt = new byte[SaltSize];
                 Array.Copy(allBytes, 0, salt, 0, SaltSize);
 
@@ -131,15 +129,13 @@ namespace BarkFluff.Client.WPF.MessagerData
                 using var decryptor = aes.CreateDecryptor();
                 var decryptedBytes = decryptor.TransformFinalBlock(encryptedBytes, 0, encryptedBytes.Length);
 
-                // Пробуем преобразовать расшифрованные байты в строку JSON, если ошибка - неправильный пароль
                 var json = Encoding.UTF8.GetString(decryptedBytes);
-                JsonSerializer.Deserialize<GlobalParam>(json); // Если расшифровка прошла успешно, это не выбросит исключение
+                JsonSerializer.Deserialize<GlobalParam>(json); 
 
-                return true; // Если пароли совпали и расшифровка удалась
+                return true; 
             }
             catch (Exception)
             {
-                // Если ошибка при расшифровке (например, неправильный пароль или поврежденный файл)
                 return false;
             }
         }

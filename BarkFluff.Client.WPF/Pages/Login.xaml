@@ -12,65 +12,20 @@
     mc:Ignorable="d">
 
     <Grid Background="#212121">
+        <TextBlock
+            Margin="10"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Top"
+            FontFamily="AdwaitaSans"
+            FontSize="25"
+            FontWeight="Black"
+            Foreground="#FF828282"
+            Text="BarkFluff" />
         <StackPanel
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             Orientation="Vertical">
-            <TextBlock
-                Margin="10"
-                HorizontalAlignment="Center"
-                FontFamily="AdwaitaSans"
-                FontSize="32"
-                FontWeight="Black"
-                Foreground="White"
-                Text="BarkFluff" />
-            <TextBlock
-                HorizontalAlignment="Center"
-                FontFamily="AdwaitaSans"
-                FontSize="20"
-                FontWeight="Bold"
-                Foreground="#FFBBBBBB"
-                Text="IP" />
-            <ui:TextBox
-                x:Name="ServerAddress"
-                HorizontalAlignment="Stretch"
-                FontFamily="AdwaitaSans"
-                FontWeight="Medium"
-                PlaceholderText="Введите IP адрес сервера"
-                TextAlignment="Justify" />
-            <TextBlock
-                x:Name="ErrorText"
-                MaxWidth="200"
-                HorizontalAlignment="Center"
-                FontFamily="AdwaitaSans"
-                FontSize="12"
-                FontWeight="Medium"
-                Foreground="#FFCC2525"
-                Text="Введите адрес сервера!"
-                TextWrapping="WrapWithOverflow" />
-            <ui:Button
-                Margin="0,5,0,5"
-                HorizontalAlignment="Stretch"
-                VerticalAlignment="Stretch"
-                Click="Button_Click">
-                <ui:Button.Content>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock
-                            Margin="0,0,5,0"
-                            VerticalAlignment="Center"
-                            FontFamily="AdwaitaSans"
-                            FontSize="12"
-                            FontWeight="Bold"
-                            Text="Продолжить" />
-                        <ui:SymbolIcon
-                            FontSize="20"
-                            Foreground="White"
-                            Symbol="ArrowRight12" />
-                    </StackPanel>
-
-                </ui:Button.Content>
-            </ui:Button>
+            <TextBlock Text="логин" />
         </StackPanel>
-
     </Grid>
 </Page>

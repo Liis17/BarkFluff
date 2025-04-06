@@ -10,7 +10,7 @@
     Width="1280"
     Height="720"
     mc:Ignorable="d">
-    <Grid>
+    <Grid Background="#212121">
         <ui:TitleBar
             HorizontalAlignment="Stretch"
             VerticalAlignment="Top"
@@ -20,5 +20,16 @@
             JournalOwnership="OwnsJournal"
             Loaded="MainFrame_Loaded"
             NavigationUIVisibility="Hidden" />
+        <TextBlock
+            x:Name="VersionTextBlock"
+            Margin="2"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Bottom"
+            FontFamily="AdwaitaSans"
+            FontSize="10"
+            FontWeight="Bold"
+            Foreground="#FF737373"
+            Loaded="Loaded_VersionText"
+            Text="version" />
     </Grid>
 </ui:FluentWindow>
