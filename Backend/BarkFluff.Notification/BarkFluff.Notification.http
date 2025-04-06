@@ -1,0 +1,6 @@
+@BarkFluff.Notification_HostAddress = http://localhost:5017
+
+GET {{BarkFluff.Notification_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
