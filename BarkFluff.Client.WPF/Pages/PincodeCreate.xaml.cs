@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -19,12 +20,12 @@ using System.Windows.Navigation;
 namespace BarkFluff.Client.WPF.Pages
 {
     /// <summary>
-    /// Логика взаимодействия для PincodeSecure.xaml
+    /// Логика взаимодействия для PincodeCreate.xaml
     /// </summary>
-    public partial class PincodeSecure : Page
+    public partial class PincodeCreate : Page
     {
         private char[] pinDigits = new char[4];
-        public PincodeSecure()
+        public PincodeCreate()
         {
             InitializeComponent();
         }
@@ -70,16 +71,7 @@ namespace BarkFluff.Client.WPF.Pages
                 string pin = new string(pinDigits);
                 if (pin.All(char.IsDigit))
                 {
-                    if (IsValid(pin))
-                    {
-                        Next();
-                    }
-                    else
-                    {
-                        MessageBox.Show("Неверный PIN-код", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                        ClearAll();
-                        GetBox(0).Focus();
-                    }
+                    Next();
                 }
             }
         }
@@ -120,43 +112,17 @@ namespace BarkFluff.Client.WPF.Pages
 
         private TextBox GetBox(int index) => (TextBox)PinContainer.Children[index];
         private int GetBoxIndex(TextBox box) => PinContainer.Children.IndexOf(box);
-
-        private void ClearAll()
-        {
-            for (int i = 0; i < 4; i++)
-            {
-                GetBox(i).Clear();
-                pinDigits[i] = '\0';
-            }
-        }
-
-        private bool IsValid(string pin)
-        {
-            string exePath = Assembly.GetExecutingAssembly().Location;
-            string exeDirectory = Path.GetDirectoryName(exePath);
-            string filePath = Path.Combine(exeDirectory, "GlobalParam.json");
-            if (File.Exists(filePath))
-            {
-                var a = GlobalParam.VerifyPassword(filePath, pin);
-                return a;
-            }
-            else
-            {
-                MessageBox.Show("Файл GlobalParam.json не найден", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                return false;
-            }
-            
-        }
         private void Next()
         {
+            MainWindow.GParam = new GlobalParam();
+            MainWindow.GParam.AppPass = new string(pinDigits);
             string exePath = Assembly.GetExecutingAssembly().Location;
             string exeDirectory = Path.GetDirectoryName(exePath);
             string filePath = Path.Combine(exeDirectory, "GlobalParam.json");
-            MainWindow.GParam = GlobalParam.Load(filePath, new string(pinDigits));
-            MainWindow.GParam.AppPass = new string(pinDigits);
-            MainWindow.GParam.AppPath = exeDirectory ?? string.Empty;
+            MainWindow.GParam.AppPath = exeDirectory;
+            GlobalParam.Save(MainWindow.GParam, filePath, MainWindow.GParam.AppPass);
 
-            MainWindow.MWindow.PincodeSuccessful();
+            MainWindow.MWindow.OpenPincodeSecure();
         }
     }
 }
