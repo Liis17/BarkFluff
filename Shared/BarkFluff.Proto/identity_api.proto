@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+option csharp_namespace = "BarkFluff.Proto.Identity";
+
+import "google/protobuf/timestamp.proto";
+
+package barkfluff.identity;
+
+service IdentityApi {
+  
+  rpc Auth(AuthRequest) returns(AuthResponse);
+  
+  rpc CreateToken(CreateTokenRequest) returns(CreateTokenResponse);
+  
+  rpc CreateAccount(CreateAccountRequest) returns(CreateAccountResponse);
+  
+  rpc ConfirmAccount(ConfirmAccountRequest) returns(ConfirmAccountResponse);
+  
+  rpc SetPassword(SetPasswordRequest) returns(SetPasswordResponse);
+}
+
+message SetPasswordRequest {
+  string password = 1;
+}
+
+message SetPasswordResponse { }
+
+message CreateAccountRequest {
+  string first_name = 1;
+  string last_name = 2;
+  string username = 3;
+  string email = 4;
+}
+
+message CreateAccountResponse { 
+  string code_id = 1;
+}
+
+message ConfirmAccountRequest {
+  string code_id = 1;
+  string code_value = 2;
+}
+
+message ConfirmAccountResponse {
+  Token refresh_token = 1;
+}
+
+
+message CreateTokenRequest {
+  string refresh_token = 1;
+}
+
+message CreateTokenResponse {
+  Token access_token = 2;
+}
+
+message AuthRequest {
+  oneof login {
+    string username = 1;
+    string email = 2;
+  }
+  string password = 3;
+}
+
+message AuthResponse {
+  Token access_token = 1;
+  Token refresh_token = 2;
+}
+
+message Token {
+  string value = 1;
+  google.protobuf.Timestamp expiration_date = 2;
+}

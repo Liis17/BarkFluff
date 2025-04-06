@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+option csharp_namespace = "BarkFluff.Proto.Users";
+
+import "google/protobuf/timestamp.proto";
+
+package barkfluff.users;
+
+service UsersApi {
+  
+}
+
+service UsersServerApi {
+  rpc FindByLogin(FindByLoginRequest) returns(FindByLoginResponse);
+
+  rpc CheckExistUsername(CheckExistUsernameRequest) returns(CheckExistResponse);
+  
+  rpc CheckExistEmail(CheckExistEmailRequest) returns(CheckExistResponse);
+}
+
+message CheckExistEmailRequest {
+  string email = 1;
+}
+
+message CheckExistUsernameRequest {
+  string username = 1;
+}
+
+message CheckExistResponse {
+  string exist = 1;
+}
+
+
+message FindByLoginRequest {
+  oneof login {
+    string username = 1;
+    string email = 2;
+  }
+}
+
+message FindByLoginResponse {
+  User user = 1;
+}
+
+message User{
+  int64 id = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string username = 4;
+  google.protobuf.Timestamp registration_date = 5;
+}
+

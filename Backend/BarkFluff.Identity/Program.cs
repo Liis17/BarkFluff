@@ -1,3 +1,8 @@
+using BarkFluff.GrpcServer;
+using BarkFluff.Identity.Host;
+using BarkFluff.Identity.Settings;
+using BarkFluff.Proto.Users;
+
 namespace BarkFluff.Identity;
 
 public class Program
@@ -6,26 +11,25 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        // Add services to the container.
+        builder.Services.AddGrpc();
+        builder.Services.AddGrpcReflection();
+        
+        builder.Services.AddGrpcClient<UsersServerApi.UsersServerApiClient>(o =>
+        {
+            o.Address = new Uri(builder.Configuration["UsersService"]);
+        });
+        
+        builder.Services.AddSettings<JwtSettings>(builder.Configuration, "JwtSettings");
 
-        builder.Services.AddControllers();
-        // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-        builder.Services.AddOpenApi();
 
         var app = builder.Build();
 
-        // Configure the HTTP request pipeline.
-        if (app.Environment.IsDevelopment())
+        app.UseRouting();
+        app.UseEndpoints(endpoints =>
         {
-            app.MapOpenApi();
-        }
-
-        app.UseHttpsRedirection();
-
-        app.UseAuthorization();
-
-
-        app.MapControllers();
+            endpoints.MapGrpcService<IdentityApiService>(); 
+            endpoints.MapGrpcReflectionService();
+        });
 
         app.Run();
     }
