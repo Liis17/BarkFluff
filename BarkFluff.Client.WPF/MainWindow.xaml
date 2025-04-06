@@ -15,6 +15,6 @@
             HorizontalAlignment="Stretch"
             VerticalAlignment="Top"
             Panel.ZIndex="999" />
-        <Frame x:Name="MainFrame" Loaded="MainFrame_Loaded" />
+        <ContentControl x:Name="MainFrame" Loaded="MainFrame_Loaded" />
     </Grid>
 </ui:FluentWindow>

@@ -70,7 +70,7 @@ namespace BarkFluff.Client.WPF.Pages
                         response.EnsureSuccessStatusCode();
 
                         string responseBody = await response.Content.ReadAsStringAsync();
-                        NextStep();
+                        NextStep(host, port);
                     }
                     catch (HttpRequestException ex)
                     {
@@ -87,10 +87,9 @@ namespace BarkFluff.Client.WPF.Pages
                 ErrorText.Text = $"Неизвестная ошибка: {ex.Message}";
             }
         }
-        private void NextStep()
+        private void NextStep(string host, string port)
         {
-            // Ваш код для следующего шага
-            ErrorText.Text = "Подключение успешно, выполняем следующий шаг";
+            MainWindow.MWindow.RegisterStep(host, port);
         }
     }
 }
