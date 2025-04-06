@@ -18,7 +18,7 @@ using System.Windows.Navigation;
 
 namespace BarkFluff.Client.WPF.Pages
 {
-    public partial class PincodeCreate : Page
+    public partial class PincodeCreate : UserControl
     {
         private char[] pinDigits = new char[4];
         public PincodeCreate()
@@ -112,6 +112,11 @@ namespace BarkFluff.Client.WPF.Pages
             GlobalParam.Save(MainWindow.GParam, filePath, MainWindow.GParam.AppPass);
 
             MainWindow.MWindow.OpenPincodeSecure();
+        }
+
+        private void FocusBoxZero(object sender, RoutedEventArgs e)
+        {
+            Box0.Focus();
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿<Page
+﻿<UserControl
     x:Class="BarkFluff.Client.WPF.Pages.Login"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -6,7 +6,6 @@
     xmlns:local="clr-namespace:BarkFluff.Client.WPF.Pages"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-    Title="Login"
     d:DesignHeight="720"
     d:DesignWidth="1280"
     mc:Ignorable="d">
@@ -71,7 +70,10 @@
                 KeyDown="TextBox_KeyDown"
                 PlaceholderText="Нажми для ввода пароля"
                 VerticalScrollBarVisibility="Auto" />
-            <ui:Button Click="LogIn" Margin="0,5,0,5" HorizontalAlignment="Stretch">
+            <ui:Button
+                Margin="0,5,0,5"
+                HorizontalAlignment="Stretch"
+                Click="LogIn">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock
                         Margin="0,0,5,0"
@@ -90,6 +92,35 @@
                         Symbol="ArrowRight12" />
                 </StackPanel>
             </ui:Button>
+            <TextBlock
+                HorizontalAlignment="Center"
+                FontFamily="AdwaitaSans"
+                FontSize="10"
+                FontWeight="Medium"
+                Foreground="#FFC3C3C3"
+                Text="или" />
+            <ui:Button
+                Margin="0,5,0,5"
+                HorizontalAlignment="Stretch"
+                Click="OpenNewProfilePage">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock
+                        Margin="0,0,5,0"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Center"
+                        FontFamily="AdwaitaSans"
+                        FontSize="12"
+                        FontWeight="Bold"
+                        Foreground="White"
+                        Text="Регистрация" />
+                    <ui:SymbolIcon
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch"
+                        FontSize="20"
+                        Foreground="White"
+                        Symbol="ArrowRight12" />
+                </StackPanel>
+            </ui:Button>
         </StackPanel>
     </Grid>
-</Page>
+</UserControl>

@@ -21,7 +21,7 @@ namespace BarkFluff.Client.WPF.Pages
     /// <summary>
     /// Логика взаимодействия для Login.xaml
     /// </summary>
-    public partial class ServerIP : Page
+    public partial class ServerIP : UserControl
     {
         public ServerIP()
         {

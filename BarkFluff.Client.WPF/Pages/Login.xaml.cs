@@ -15,10 +15,7 @@ using System.Windows.Shapes;
 
 namespace BarkFluff.Client.WPF.Pages
 {
-    /// <summary>
-    /// Логика взаимодействия для Login.xaml
-    /// </summary>
-    public partial class Login : Page
+    public partial class Login : UserControl
     {
         public Login()
         {
@@ -63,6 +60,11 @@ namespace BarkFluff.Client.WPF.Pages
             {
                 MessageBox.Show("Логин должен быть длиннее 3 символов, пароль — длиннее 8.");
             }
+        }
+
+        private void OpenNewProfilePage(object sender, RoutedEventArgs e)
+        {
+            MainWindow.MWindow.OpenNewProfilePage();
         }
     }
 }

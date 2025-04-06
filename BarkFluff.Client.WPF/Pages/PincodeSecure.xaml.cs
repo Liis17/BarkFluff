@@ -18,7 +18,7 @@ using System.Windows.Navigation;
 
 namespace BarkFluff.Client.WPF.Pages
 {
-    public partial class PincodeSecure : Page
+    public partial class PincodeSecure : UserControl
     {
         private char[] pinDigits = new char[4];
         public PincodeSecure()
@@ -159,6 +159,11 @@ namespace BarkFluff.Client.WPF.Pages
             }
             
             
+        }
+
+        private void FocusBoxZero(object sender, RoutedEventArgs e)
+        {
+            Box0.Focus();
         }
     }
 }

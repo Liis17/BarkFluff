@@ -16,11 +16,11 @@ using System.Windows.Shapes;
 namespace BarkFluff.Client.WPF.Pages
 {
     /// <summary>
-    /// Логика взаимодействия для Register.xaml
+    /// Логика взаимодействия для TestControl.xaml
     /// </summary>
-    public partial class Register : UserControl
+    public partial class TestControl : UserControl
     {
-        public Register()
+        public TestControl()
         {
             InitializeComponent();
         }

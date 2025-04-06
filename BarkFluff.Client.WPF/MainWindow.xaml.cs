@@ -54,13 +54,13 @@ namespace BarkFluff.Client.WPF
 
             if (!File.Exists(filePath))
             {
-                MainFrame.Navigate(new PincodeCreate());
-                MainFrame.NavigationService.RemoveBackEntry();
+                MainFrame.Children.Clear();
+                MainFrame.Children.Add(new PincodeCreate());
             }
             else
             {
-                MainFrame.Navigate(new PincodeSecure());
-                MainFrame.NavigationService.RemoveBackEntry();
+                MainFrame.Children.Clear();
+                MainFrame.Children.Add(new PincodeSecure());
             }
         }
 
@@ -126,8 +126,8 @@ namespace BarkFluff.Client.WPF
         #region Вход в приложение
         public void OpenPincodeSecure()
         {
-            MainFrame.Navigate(new PincodeSecure());
-            MainFrame.NavigationService.RemoveBackEntry();
+            MainFrame.Children.Clear();
+            MainFrame.Children.Add(new PincodeSecure());
         }
 
         public void RegisterStep(string host, string port)
@@ -135,21 +135,27 @@ namespace BarkFluff.Client.WPF
             GParam.Host = host;
             GParam.Port = port;
 
-            MainFrame.Navigate(new Register());
-            MainFrame.NavigationService.RemoveBackEntry();
+            MainFrame.Children.Clear();
+            MainFrame.Children.Add(new Login());
+        }
+
+        public void OpenNewProfilePage()
+        {
+            MainFrame.Children.Clear();
+            MainFrame.Children.Add(new Register());
         }
 
         public void PincodeSuccessful()
         {
             if (GParam.Socket == "")
             {
-                MainFrame.Navigate(new ServerIP());
-                MainFrame.NavigationService.RemoveBackEntry();
+                MainFrame.Children.Clear();
+                MainFrame.Children.Add(new ServerIP());
             }
             else
             {
-                MainFrame.Navigate(new Login());
-                MainFrame.NavigationService.RemoveBackEntry();
+                MainFrame.Children.Clear();
+                MainFrame.Children.Add(new Login());
             }
             
         }

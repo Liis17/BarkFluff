@@ -15,11 +15,7 @@
             HorizontalAlignment="Stretch"
             VerticalAlignment="Top"
             Panel.ZIndex="999" />
-        <Frame
-            x:Name="MainFrame"
-            JournalOwnership="OwnsJournal"
-            Loaded="MainFrame_Loaded"
-            NavigationUIVisibility="Hidden" />
+        <Grid x:Name="MainFrame" />
         <TextBlock
             x:Name="VersionTextBlock"
             Margin="2"

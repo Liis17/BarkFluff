@@ -1,4 +1,4 @@
-﻿<Page
+﻿<UserControl
     x:Class="BarkFluff.Client.WPF.Pages.CreateNewProfile"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -6,7 +6,6 @@
     xmlns:local="clr-namespace:BarkFluff.Client.WPF.Pages"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-    Title="CreateNewProfile"
     d:DesignHeight="720"
     d:DesignWidth="1280"
     mc:Ignorable="d">
@@ -22,4 +21,4 @@
             Text="BarkFluff" />
         <StackPanel Orientation="Vertical" />
     </Grid>
-</Page>
+</UserControl>
