@@ -18,9 +18,6 @@ using System.Windows.Navigation;
 
 namespace BarkFluff.Client.WPF.Pages
 {
-    /// <summary>
-    /// Логика взаимодействия для PincodeSecure.xaml
-    /// </summary>
     public partial class PincodeSecure : Page
     {
         private char[] pinDigits = new char[4];
@@ -56,14 +53,12 @@ namespace BarkFluff.Client.WPF.Pages
             currentBox.CaretIndex = 1;
             currentBox.TextChanged += PinBox_TextChanged;
 
-            // Переход на следующее поле
             if (index < 3)
             {
                 GetBox(index + 1).Focus();
             }
             else
             {
-                // Все поля заполнены
                 string pin = new string(pinDigits);
                 if (pin.All(char.IsDigit))
                 {
@@ -145,14 +140,25 @@ namespace BarkFluff.Client.WPF.Pages
         }
         private void Next()
         {
-            string exePath = Assembly.GetExecutingAssembly().Location;
-            string exeDirectory = Path.GetDirectoryName(exePath);
-            string filePath = Path.Combine(exeDirectory, "GlobalParam.json");
+            string exeDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            string filePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "GlobalParam.json");
             MainWindow.GParam = GlobalParam.Load(filePath, new string(pinDigits));
             MainWindow.GParam.AppPass = new string(pinDigits);
             MainWindow.GParam.AppPath = exeDirectory ?? string.Empty;
 
             MainWindow.MWindow.PincodeSuccessful();
+        }
+
+        private void RemoveSettings(object sender, RoutedEventArgs e)
+        {
+            string filePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "GlobalParam.json");
+            if (File.Exists(filePath))
+            {
+                File.Delete("GlobalParam.json");
+                Application.Current.Shutdown();
+            }
+            
+            
         }
     }
 }

@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -13,7 +15,6 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace BarkFluff.Client.WPF.Pages
 {
@@ -63,6 +64,17 @@ namespace BarkFluff.Client.WPF.Pages
                     client.Timeout = TimeSpan.FromSeconds(5);
                     // Используем HTTPS вместо HTTP
                     string url = $"https://{host}:{port}/testping";
+
+
+#if DEBUG
+                    // Временно игнорируем проверку наличия сервера (ТОЛЬКО ДЛЯ ТЕСТОВ!)
+                    string filePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "ignor.server");
+                    if (File.Exists(filePath))
+                    {
+                        NextStep(host, port);
+                    }
+                    return;
+#endif
 
                     try
                     {

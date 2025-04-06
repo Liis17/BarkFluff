@@ -40,10 +40,7 @@ namespace BarkFluff.Client.WPF
         private void Bootstrap()
         {
             MWindow = this;
-            //GParam = new GlobalParam();
-            string exePath = Assembly.GetExecutingAssembly().Location;
-            string exeDirectory = Path.GetDirectoryName(exePath);
-            string filePath = Path.Combine(exeDirectory, "GlobalParam.json");
+            string filePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "GlobalParam.json");
             
 
             if (!File.Exists(filePath))
@@ -67,8 +64,15 @@ namespace BarkFluff.Client.WPF
         #region Window Events
         private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
         {
-            string filePath = Path.Combine(GParam.AppPath, "GlobalParam.json");
-            GlobalParam.Save(GParam, filePath, GParam.AppPass);
+            try
+            {
+                string filePath = Path.Combine(GParam.AppPath, "GlobalParam.json");
+                GlobalParam.Save(GParam, filePath, GParam.AppPass);
+            }
+            catch
+            {
+                // ignored
+            }
         }
         private void MainWindow_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
@@ -96,7 +100,7 @@ namespace BarkFluff.Client.WPF
 
         public void PincodeSuccessful()
         {
-            MainFrame.Navigate(new Register());
+            MainFrame.Navigate(new Login());
             MainFrame.NavigationService.RemoveBackEntry();
         }
         #endregion

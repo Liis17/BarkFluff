@@ -1,5 +1,4 @@
 ﻿using BarkFluff.Client.WPF.MessagerData;
-
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -19,9 +18,6 @@ using System.Windows.Navigation;
 
 namespace BarkFluff.Client.WPF.Pages
 {
-    /// <summary>
-    /// Логика взаимодействия для PincodeCreate.xaml
-    /// </summary>
     public partial class PincodeCreate : Page
     {
         private char[] pinDigits = new char[4];
@@ -32,7 +28,6 @@ namespace BarkFluff.Client.WPF.Pages
 
         private void PinBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
-            // Разрешаем только цифры
             e.Handled = !e.Text.All(char.IsDigit);
         }
 
@@ -51,23 +46,19 @@ namespace BarkFluff.Client.WPF.Pages
             if (!char.IsDigit(input[0]))
                 return;
 
-            // Сохраняем введённую цифру
             pinDigits[index] = input[0];
 
-            // Показываем ●
             currentBox.TextChanged -= PinBox_TextChanged;
             currentBox.Text = "●";
             currentBox.CaretIndex = 1;
             currentBox.TextChanged += PinBox_TextChanged;
 
-            // Переход на следующее поле
             if (index < 3)
             {
                 GetBox(index + 1).Focus();
             }
             else
             {
-                // Все поля заполнены
                 string pin = new string(pinDigits);
                 if (pin.All(char.IsDigit))
                 {
@@ -98,7 +89,6 @@ namespace BarkFluff.Client.WPF.Pages
 
         private void PinBox_GotFocus(object sender, RoutedEventArgs e)
         {
-            // Фокус на первое пустое поле или последнее
             for (int i = 0; i < 4; i++)
             {
                 if (pinDigits[i] == '\0')
@@ -116,8 +106,7 @@ namespace BarkFluff.Client.WPF.Pages
         {
             MainWindow.GParam = new GlobalParam();
             MainWindow.GParam.AppPass = new string(pinDigits);
-            string exePath = Assembly.GetExecutingAssembly().Location;
-            string exeDirectory = Path.GetDirectoryName(exePath);
+            string exeDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             string filePath = Path.Combine(exeDirectory, "GlobalParam.json");
             MainWindow.GParam.AppPath = exeDirectory;
             GlobalParam.Save(MainWindow.GParam, filePath, MainWindow.GParam.AppPass);

@@ -89,7 +89,10 @@
                 FontWeight="Light"
                 Foreground="#FF9A9A9A"
                 Text="Проблемы со входом? Попробуйте сбросить приложение." />
-            <ui:Button Margin="0,5,0,10" HorizontalAlignment="Center">
+            <ui:Button
+                Margin="0,5,0,10"
+                HorizontalAlignment="Center"
+                Click="RemoveSettings">
                 <ui:Button.Content>
                     <StackPanel Orientation="Horizontal">
                         <TextBlock
