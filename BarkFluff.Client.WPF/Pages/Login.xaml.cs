@@ -30,7 +30,7 @@ namespace BarkFluff.Client.WPF.Pages
             if (e.Key == Key.Enter)
             {
                 string login = LoginEnter.Text;
-                string password = PasswordEnter.Text; // если PasswordBox, иначе PasswordEnter.Text
+                string password = PasswordEnter.Password; // если PasswordBox, иначе PasswordEnter.Text
 
                 if (login.Length > 3 && password.Length > 8)
                 {
@@ -47,8 +47,22 @@ namespace BarkFluff.Client.WPF.Pages
 
         private void ProcessLogin(string login, string password)
         {
-            // Твоя логика входа
             MessageBox.Show($"Вход: {login} / {password}");
+        }
+
+        private void LogIn(object sender, RoutedEventArgs e)
+        {
+            string login = LoginEnter.Text;
+            string password = PasswordEnter.Password;
+
+            if (login.Length > 3 && password.Length > 8)
+            {
+                ProcessLogin(login, password);
+            }
+            else
+            {
+                MessageBox.Show("Логин должен быть длиннее 3 символов, пароль — длиннее 8.");
+            }
         }
     }
 }

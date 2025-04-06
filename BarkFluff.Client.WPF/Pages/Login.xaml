@@ -66,11 +66,30 @@
                 FontWeight="Medium"
                 Foreground="#FFC3C3C3"
                 Text="Пароль" />
-            <ui:TextBox
+            <ui:PasswordBox
                 x:Name="PasswordEnter"
                 KeyDown="TextBox_KeyDown"
                 PlaceholderText="Нажми для ввода пароля"
                 VerticalScrollBarVisibility="Auto" />
+            <ui:Button Click="LogIn" Margin="0,5,0,5" HorizontalAlignment="Stretch">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock
+                        Margin="0,0,5,0"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Center"
+                        FontFamily="AdwaitaSans"
+                        FontSize="12"
+                        FontWeight="Bold"
+                        Foreground="White"
+                        Text="Войти" />
+                    <ui:SymbolIcon
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch"
+                        FontSize="20"
+                        Foreground="White"
+                        Symbol="ArrowRight12" />
+                </StackPanel>
+            </ui:Button>
         </StackPanel>
     </Grid>
 </Page>
