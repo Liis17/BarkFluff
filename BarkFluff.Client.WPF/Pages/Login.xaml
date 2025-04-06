@@ -22,10 +22,55 @@
             Foreground="#FF828282"
             Text="BarkFluff" />
         <StackPanel
+            MaxWidth="300"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             Orientation="Vertical">
-            <TextBlock Text="логин" />
+            <TextBlock
+                Margin="10"
+                HorizontalAlignment="Center"
+                FontFamily="AdwaitaSans"
+                FontSize="32"
+                FontWeight="Black"
+                Foreground="White"
+                Text="Авторизация" />
+            <StackPanel Orientation="Horizontal">
+                <TextBlock
+                    FontFamily="AdwaitaSans"
+                    FontSize="15"
+                    FontWeight="Medium"
+                    Foreground="#FFC3C3C3"
+                    Text="Username" />
+                <TextBlock
+                    FontFamily="AdwaitaSans"
+                    FontSize="15"
+                    FontWeight="Light"
+                    Foreground="#FFC3C3C3"
+                    Text=" или " />
+                <TextBlock
+                    FontFamily="AdwaitaSans"
+                    FontSize="15"
+                    FontWeight="Medium"
+                    Foreground="#FFC3C3C3"
+                    Text="email" />
+            </StackPanel>
+            <ui:TextBox
+                x:Name="LoginEnter"
+                KeyDown="TextBox_KeyDown"
+                PlaceholderText="Нажми для ввода username или email"
+                VerticalScrollBarVisibility="Auto" />
+            <TextBlock
+                Margin="0,10,0,0"
+                FontFamily="AdwaitaSans"
+                FontSize="15"
+                FontWeight="Medium"
+                Foreground="#FFC3C3C3"
+                Text="Пароль" />
+            <ui:TextBox
+                x:Name="PasswordEnter"
+                KeyDown="TextBox_KeyDown"
+                PlaceholderText="Нажми для ввода пароля"
+                VerticalScrollBarVisibility="Auto" />
         </StackPanel>
     </Grid>
 </Page>

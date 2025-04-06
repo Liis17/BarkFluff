@@ -36,6 +36,7 @@ namespace BarkFluff.Client.WPF
             ApplicationThemeManager.Apply(this);
             MouseDown += MainWindow_MouseDown;
             Closing += MainWindow_Closing;
+            WindowStartupLocation = WindowStartupLocation.CenterScreen;
         }
         private void Bootstrap()
         {

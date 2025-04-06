@@ -24,5 +24,31 @@ namespace BarkFluff.Client.WPF.Pages
         {
             InitializeComponent();
         }
+
+        private void TextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                string login = LoginEnter.Text;
+                string password = PasswordEnter.Text; // если PasswordBox, иначе PasswordEnter.Text
+
+                if (login.Length > 3 && password.Length > 8)
+                {
+                    e.Handled = true;
+                    ProcessLogin(login, password);
+                }
+                else
+                {
+                    // Можно подсветить поля или показать сообщение
+                    MessageBox.Show("Логин должен быть длиннее 3 символов, пароль — длиннее 8.");
+                }
+            }
+        }
+
+        private void ProcessLogin(string login, string password)
+        {
+            // Твоя логика входа
+            MessageBox.Show($"Вход: {login} / {password}");
+        }
     }
 }
