@@ -15,6 +15,10 @@
             HorizontalAlignment="Stretch"
             VerticalAlignment="Top"
             Panel.ZIndex="999" />
-        <ContentControl x:Name="MainFrame" Loaded="MainFrame_Loaded" />
+        <Frame
+            x:Name="MainFrame"
+            JournalOwnership="OwnsJournal"
+            Loaded="MainFrame_Loaded"
+            NavigationUIVisibility="Hidden" />
     </Grid>
 </ui:FluentWindow>

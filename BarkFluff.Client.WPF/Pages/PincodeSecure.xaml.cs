@@ -1,0 +1,155 @@
+﻿using BarkFluff.Client.WPF.MessagerData;
+
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Navigation;
+
+namespace BarkFluff.Client.WPF.Pages
+{
+    /// <summary>
+    /// Логика взаимодействия для PincodeSecure.xaml
+    /// </summary>
+    public partial class PincodeSecure : Page
+    {
+        private char[] pinDigits = new char[4];
+        public PincodeSecure()
+        {
+            InitializeComponent();
+        }
+
+        private void PinBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            // Разрешаем только цифры
+            e.Handled = !e.Text.All(char.IsDigit);
+        }
+
+        private void PinBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            TextBox currentBox = (TextBox)sender;
+            int index = GetBoxIndex(currentBox);
+
+            if (string.IsNullOrEmpty(currentBox.Text))
+            {
+                pinDigits[index] = '\0';
+                return;
+            }
+
+            string input = currentBox.Text;
+            if (!char.IsDigit(input[0]))
+                return;
+
+            // Сохраняем введённую цифру
+            pinDigits[index] = input[0];
+
+            // Показываем ●
+            currentBox.TextChanged -= PinBox_TextChanged;
+            currentBox.Text = "●";
+            currentBox.CaretIndex = 1;
+            currentBox.TextChanged += PinBox_TextChanged;
+
+            // Переход на следующее поле
+            if (index < 3)
+            {
+                GetBox(index + 1).Focus();
+            }
+            else
+            {
+                // Все поля заполнены
+                string pin = new string(pinDigits);
+                if (pin.All(char.IsDigit))
+                {
+                    if (IsValid(pin))
+                    {
+                        Next();
+                    }
+                    else
+                    {
+                        MessageBox.Show("Неверный PIN-код", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                        ClearAll();
+                        GetBox(0).Focus();
+                    }
+                }
+            }
+        }
+
+        private void PinBox_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            TextBox currentBox = (TextBox)sender;
+            int index = GetBoxIndex(currentBox);
+
+            if (e.Key == Key.Back)
+            {
+                e.Handled = true;
+                pinDigits[index] = '\0';
+                currentBox.Clear();
+
+                if (index > 0)
+                {
+                    GetBox(index - 1).Focus();
+                    GetBox(index - 1).Clear();
+                    pinDigits[index - 1] = '\0';
+                }
+            }
+        }
+
+        private void PinBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            // Фокус на первое пустое поле или последнее
+            for (int i = 0; i < 4; i++)
+            {
+                if (pinDigits[i] == '\0')
+                {
+                    GetBox(i).Focus();
+                    return;
+                }
+            }
+            GetBox(3).Focus();
+        }
+
+        private TextBox GetBox(int index) => (TextBox)PinContainer.Children[index];
+        private int GetBoxIndex(TextBox box) => PinContainer.Children.IndexOf(box);
+
+        private void ClearAll()
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                GetBox(i).Clear();
+                pinDigits[i] = '\0';
+            }
+        }
+
+        private bool IsValid(string pin)
+        {
+            string exePath = Assembly.GetExecutingAssembly().Location;
+            string exeDirectory = Path.GetDirectoryName(exePath);
+            string filePath = Path.Combine(exeDirectory, "GlobalParam.json");
+            if (File.Exists(filePath))
+            {
+                var a = GlobalParam.VerifyPassword(filePath, pin);
+                return a;
+            }
+            else
+            {
+                MessageBox.Show("Файл GlobalParam.json не найден", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
+            }
+            
+        }
+        private void Next()
+        {
+            MessageBox.Show("PIN принят", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+    }
+}

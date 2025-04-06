@@ -1,13 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
+using Windows.Security.Cryptography.DataProtection;
+
+using Windows.Security.Cryptography;
+using System.Security.Cryptography;
+using Windows.Security.Cryptography.Certificates;
 
 namespace BarkFluff.Client.WPF.MessagerData
 {
     public class GlobalParam
     {
+        #region Приложение 
         public string Host { get; set; } = string.Empty;
         public string Port { get; set; } = string.Empty;
         public string Socket
@@ -19,6 +27,120 @@ namespace BarkFluff.Client.WPF.MessagerData
                     return string.Empty;
                 }
                 return Host + ":" + Port;
+            }
+        }
+        public string AppPath { get; set; } = string.Empty;
+
+        #endregion
+        #region Пользователь
+        public string UserName { get; set; } = string.Empty;
+        public string UserPass { get; set; } = string.Empty;
+
+        #endregion
+        #region Сохранение/загрузка настроек
+        private const int SaltSize = 16; // 128 бит
+        private const int KeySize = 32;  // 256 бит
+        private const int Iterations = 100_000;
+
+        public string AppPass { get; set; } = string.Empty;
+        #endregion
+
+        public static void Save(GlobalParam param, string filePath, string userPin)
+        {
+            // Генерация соли
+            var salt = RandomNumberGenerator.GetBytes(SaltSize);
+
+            // Получение ключа из PIN-кода
+            var key = DeriveKeyFromPin(userPin, salt);
+
+            // Сериализация параметров
+            var json = JsonSerializer.Serialize(param);
+            var plainBytes = Encoding.UTF8.GetBytes(json);
+
+            // Шифрование
+            using var aes = Aes.Create();
+            aes.Key = key;
+            aes.GenerateIV();
+            var iv = aes.IV;
+
+            using var encryptor = aes.CreateEncryptor();
+            var encryptedBytes = encryptor.TransformFinalBlock(plainBytes, 0, plainBytes.Length);
+
+            // Сохраняем: [salt][IV][ciphertext]
+            using var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write);
+            fs.Write(salt, 0, salt.Length);
+            fs.Write(iv, 0, iv.Length);
+            fs.Write(encryptedBytes, 0, encryptedBytes.Length);
+        }
+
+        public static GlobalParam Load(string filePath, string userPin)
+        {
+            var allBytes = File.ReadAllBytes(filePath);
+
+            // Извлекаем: [salt][IV][ciphertext]
+            var salt = new byte[SaltSize];
+            Array.Copy(allBytes, 0, salt, 0, SaltSize);
+
+            var iv = new byte[16]; // IV для AES — 16 байт
+            Array.Copy(allBytes, SaltSize, iv, 0, iv.Length);
+
+            var encryptedBytes = new byte[allBytes.Length - SaltSize - iv.Length];
+            Array.Copy(allBytes, SaltSize + iv.Length, encryptedBytes, 0, encryptedBytes.Length);
+
+            var key = DeriveKeyFromPin(userPin, salt);
+
+            using var aes = Aes.Create();
+            aes.Key = key;
+            aes.IV = iv;
+
+            using var decryptor = aes.CreateDecryptor();
+            var decryptedBytes = decryptor.TransformFinalBlock(encryptedBytes, 0, encryptedBytes.Length);
+
+            var json = Encoding.UTF8.GetString(decryptedBytes);
+            return JsonSerializer.Deserialize<GlobalParam>(json);
+        }
+
+        private static byte[] DeriveKeyFromPin(string pin, byte[] salt)
+        {
+            using var rfc2898 = new Rfc2898DeriveBytes(pin, salt, Iterations, HashAlgorithmName.SHA256);
+            return rfc2898.GetBytes(KeySize);
+        }
+
+        public static bool VerifyPassword(string filePath, string userPin)
+        {
+            try
+            {
+                var allBytes = File.ReadAllBytes(filePath);
+
+                // Извлекаем: [salt][IV][ciphertext]
+                var salt = new byte[SaltSize];
+                Array.Copy(allBytes, 0, salt, 0, SaltSize);
+
+                var iv = new byte[16]; // IV для AES — 16 байт
+                Array.Copy(allBytes, SaltSize, iv, 0, iv.Length);
+
+                var encryptedBytes = new byte[allBytes.Length - SaltSize - iv.Length];
+                Array.Copy(allBytes, SaltSize + iv.Length, encryptedBytes, 0, encryptedBytes.Length);
+
+                var key = DeriveKeyFromPin(userPin, salt);
+
+                using var aes = Aes.Create();
+                aes.Key = key;
+                aes.IV = iv;
+
+                using var decryptor = aes.CreateDecryptor();
+                var decryptedBytes = decryptor.TransformFinalBlock(encryptedBytes, 0, encryptedBytes.Length);
+
+                // Пробуем преобразовать расшифрованные байты в строку JSON, если ошибка - неправильный пароль
+                var json = Encoding.UTF8.GetString(decryptedBytes);
+                JsonSerializer.Deserialize<GlobalParam>(json); // Если расшифровка прошла успешно, это не выбросит исключение
+
+                return true; // Если пароли совпали и расшифровка удалась
+            }
+            catch (Exception)
+            {
+                // Если ошибка при расшифровке (например, неправильный пароль или поврежденный файл)
+                return false;
             }
         }
     }
