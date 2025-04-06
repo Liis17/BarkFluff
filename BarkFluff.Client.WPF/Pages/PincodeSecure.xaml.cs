@@ -31,7 +31,6 @@ namespace BarkFluff.Client.WPF.Pages
 
         private void PinBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
-            // Разрешаем только цифры
             e.Handled = !e.Text.All(char.IsDigit);
         }
 
@@ -50,10 +49,8 @@ namespace BarkFluff.Client.WPF.Pages
             if (!char.IsDigit(input[0]))
                 return;
 
-            // Сохраняем введённую цифру
             pinDigits[index] = input[0];
 
-            // Показываем ●
             currentBox.TextChanged -= PinBox_TextChanged;
             currentBox.Text = "●";
             currentBox.CaretIndex = 1;
@@ -106,7 +103,6 @@ namespace BarkFluff.Client.WPF.Pages
 
         private void PinBox_GotFocus(object sender, RoutedEventArgs e)
         {
-            // Фокус на первое пустое поле или последнее
             for (int i = 0; i < 4; i++)
             {
                 if (pinDigits[i] == '\0')
