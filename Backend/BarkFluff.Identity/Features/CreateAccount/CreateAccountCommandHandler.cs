@@ -14,6 +14,7 @@ public class CreateAccountCommandHandler(BarkFluff.Proto.Users.UsersServerApi.Us
             throw new UsernameOrEmailIsEmptyException();
         }
 
+        
         return null;
     }
 }

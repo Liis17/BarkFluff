@@ -10,6 +10,7 @@ public static class ServiceCollectionExtensions
         where TSettings : class
     {
         services.Configure<TSettings>(configuration.GetSection(sectionName));
+        
         services.AddSingleton(provider => provider.GetRequiredService<IOptions<TSettings>>().Value);
         return services;
     }

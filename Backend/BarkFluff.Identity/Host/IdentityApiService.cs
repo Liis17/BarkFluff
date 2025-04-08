@@ -1,4 +1,5 @@
 using BarkFluff.Proto.Identity;
+using BarkFluff.Shared.Exceptions.Identity;
 using Grpc.Core;
 
 namespace BarkFluff.Identity.Host;
@@ -7,7 +8,8 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
 {
     public override Task<AuthResponse> Auth(AuthRequest request, ServerCallContext context)
     {
-        return null;
+
+        throw new EmailExistException();
         
         return base.Auth(request, context);
     }
