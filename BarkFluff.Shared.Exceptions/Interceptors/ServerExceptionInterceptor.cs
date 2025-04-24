@@ -25,7 +25,13 @@ public class ServerExceptionInterceptor : Interceptor
         }
         catch (Exception ex)
         {
-            throw new RpcException(new Status(StatusCode.Unknown, "Произошла неизвестная ошибка"), ex.Message);
+            var baseExcetion = new BaseGrpcException();
+            
+            var trailers = new Metadata
+            {
+                { "x-error-code", baseExcetion.ErrorCode }
+            };
+            throw new RpcException(new Status(StatusCode.Unknown, ex.Message), trailers);
         }
     }
 }

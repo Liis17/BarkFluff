@@ -16,14 +16,17 @@ service IdentityApi {
   
   rpc ConfirmAccount(ConfirmAccountRequest) returns(ConfirmAccountResponse);
   
-  rpc SetPassword(SetPasswordRequest) returns(SetPasswordResponse);
+  rpc GenerateTestToken(GenerateTestTokenRequest) returns(GenerateTestTokenResponse);
+
 }
 
-message SetPasswordRequest {
-  string password = 1;
+message GenerateTestTokenRequest {
+  int64 user_id = 1;
 }
 
-message SetPasswordResponse { }
+message GenerateTestTokenResponse {
+  string token = 1;
+}
 
 message CreateAccountRequest {
   string first_name = 1;

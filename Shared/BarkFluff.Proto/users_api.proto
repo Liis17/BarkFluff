@@ -7,7 +7,9 @@ import "google/protobuf/timestamp.proto";
 package barkfluff.users;
 
 service UsersApi {
+  rpc SetPassword(SetPasswordRequest) returns(SetPasswordResponse);
   
+  rpc GetUser(GetUserRequest) returns(GetUserResponse);
 }
 
 service UsersServerApi {
@@ -17,6 +19,44 @@ service UsersServerApi {
   rpc CheckExistUsername(CheckExistUsernameRequest) returns(CheckExistResponse);
   
   rpc CheckExistEmail(CheckExistEmailRequest) returns(CheckExistResponse);
+  
+  rpc AddDraftUser(AddDraftUserRequest) returns(AddDraftUserResponse);
+  
+  rpc ConfirmUser(ConfirmUserRequest) returns(ConfirmUserResponse);
+}
+
+message GetUserRequest {
+  int64 user_id = 1;
+}
+
+message GetUserResponse {
+  User user = 1;
+}
+
+message ConfirmUserRequest {
+  int64 user_id = 1;
+}
+
+message ConfirmUserResponse {
+  
+}
+
+
+message SetPasswordRequest {
+  string password = 1;
+}
+
+message SetPasswordResponse { }
+
+message AddDraftUserRequest {
+  string first_name = 1;
+  string last_name = 2;
+  string username = 3;
+  string email = 4;
+}
+
+message AddDraftUserResponse {
+  int64 user_id = 1;
 }
 
 message CheckExistEmailRequest {
@@ -28,7 +68,7 @@ message CheckExistUsernameRequest {
 }
 
 message CheckExistResponse {
-  string exist = 1;
+  bool exist = 1;
 }
 
 

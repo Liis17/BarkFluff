@@ -1,4 +1,4 @@
-Microsoft Visual Studio Solution File, Format Version 12.00
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.13.35913.81
 MinimumVisualStudioVersion = 10.0.40219.1
@@ -31,6 +31,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Shared.Identity", "Shared\BarkFluff.Shared.Identity\BarkFluff.Shared.Identity.csproj", "{E54B6364-8B84-4604-8262-68C674EA4CEE}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Shared.Exceptions", "BarkFluff.Shared.Exceptions\BarkFluff.Shared.Exceptions.csproj", "{6776F83E-E661-43A8-85A1-077750F5AC3B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Shared.Auth", "Shared\BarkFluff.Shared.Auth\BarkFluff.Shared.Auth.csproj", "{DEE15A10-7293-42F9-A17E-0E29301C7233}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -90,6 +92,10 @@ Global
 		{6776F83E-E661-43A8-85A1-077750F5AC3B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6776F83E-E661-43A8-85A1-077750F5AC3B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6776F83E-E661-43A8-85A1-077750F5AC3B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DEE15A10-7293-42F9-A17E-0E29301C7233}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DEE15A10-7293-42F9-A17E-0E29301C7233}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DEE15A10-7293-42F9-A17E-0E29301C7233}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DEE15A10-7293-42F9-A17E-0E29301C7233}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -109,5 +115,6 @@ Global
 		{84587740-95DD-4640-872E-FDCF1F26CCA0} = {7E5A1AA1-A416-4D7E-B885-FC81F6CEBF07}
 		{E54B6364-8B84-4604-8262-68C674EA4CEE} = {3282AE17-EFD0-495E-9958-FB40F68DA873}
 		{6776F83E-E661-43A8-85A1-077750F5AC3B} = {3282AE17-EFD0-495E-9958-FB40F68DA873}
+		{DEE15A10-7293-42F9-A17E-0E29301C7233} = {3282AE17-EFD0-495E-9958-FB40F68DA873}
 	EndGlobalSection
 EndGlobal

@@ -42,7 +42,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
         }
 
         var refreshTokenString = RefreshTokenGenerator.GenerateRefreshToken();
-        var refreshToken = await refreshTokensStorage.CreateNewRefreshToken(refreshTokenString, user.User.Id, request.DeviceName, ExpDaysRefreshToken);
+        await refreshTokensStorage.CreateNewRefreshToken(refreshTokenString, user.User.Id, request.DeviceName, ExpDaysRefreshToken);
 
         var accessTokenResponse = await mediator.Send(new CreateTokenCommand() { RefreshToken = refreshTokenString }, cancellationToken);
         
