@@ -8,4 +8,6 @@ public class IdentityContext : DbContext
     public IdentityContext(DbContextOptions<IdentityContext> options) : base(options) { }
     
     public DbSet<RefreshToken> RefreshTokens { get; set; }
+    
+    public DbSet<ConfirmationCode> ConfirmationCodes { get; set; }
 }

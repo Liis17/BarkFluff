@@ -16,12 +16,7 @@ public class UsersContext : DbContext
         modelBuilder.Entity<User>()
             .HasOne(u => u.Contact)
             .WithOne(p => p.User)
-            .HasForeignKey<UserContact>(p => p.UserId);
-        
-        
-        modelBuilder.Entity<User>()
-            .HasOne(u => u.Contact)
-            .WithOne(p => p.User)
+            .HasForeignKey<UserContact>(p => p.UserId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

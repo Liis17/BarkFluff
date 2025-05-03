@@ -1,5 +1,6 @@
 using BarkFluff.Proto.Identity;
 using BarkFluff.Identity.Features.Auth;
+using BarkFluff.Identity.Features.ConfirmAccount;
 using BarkFluff.Identity.Features.CreateAccount;
 using BarkFluff.Identity.Features.CreateToken;
 using BarkFluff.Identity.Services;
@@ -27,7 +28,8 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
         {
             Username = request.Username,
             Email = request.Email,
-            Password = request.Password
+            Password = request.Password,
+            DeviceName = "tst"
         };
 
         return await _mediator.Send(command);
@@ -54,6 +56,18 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
         };
 
         return await _mediator.Send(command);
+    }
+
+    public override Task<ConfirmAccountResponse> ConfirmAccount(ConfirmAccountRequest request, ServerCallContext context)
+    {
+        var command = new ConfirmAccountCommand
+        {
+            Code = request.CodeValue,
+            CodeId = request.CodeId,
+            DeviceName = "tst"
+        };
+        
+        return _mediator.Send(command);
     }
 
     public override async Task<GenerateTestTokenResponse> GenerateTestToken(GenerateTestTokenRequest request, ServerCallContext context)
