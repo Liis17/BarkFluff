@@ -1,3 +1,7 @@
+using BarkFluff.Beacon.Host;
+using BarkFluff.GrpcServer;
+using BarkFluff.GrpcServer.XAuth;
+
 namespace BarkFluff.Beacon;
 
 public class Program
@@ -5,27 +9,27 @@ public class Program
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
+        
+        builder.SetRunningAddress(builder.Configuration);
+        
+        builder.Services.AddGrpc(options =>
+        {
+            options.Interceptors.Add<ServerExceptionInterceptor>();
+        });
+        
+        builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
 
-        // Add services to the container.
-
-        builder.Services.AddControllers();
-        // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-        builder.Services.AddOpenApi();
-
+        builder.Services.AddGrpcReflection();
+        
+        builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
+      
         var app = builder.Build();
 
-        // Configure the HTTP request pipeline.
-        if (app.Environment.IsDevelopment())
-        {
-            app.MapOpenApi();
-        }
+        app.MapGrpcReflectionService();
 
-        app.UseHttpsRedirection();
+        app.UseRouting();
 
-        app.UseAuthorization();
-
-
-        app.MapControllers();
+        app.MapGrpcService<BeaconApiService>();
 
         app.Run();
     }

@@ -19,6 +19,7 @@ message GetServerInfoResponse {
   Service identity = 2;
   Service users = 3;
   Service notifications = 4;
+  Service beacon = 5;
 }
 
 
@@ -39,5 +40,5 @@ enum ServiceStatus {
 
 message ServiceEndpoint {
   string host = 1;
-  string port = 2;
+  int32 port = 2;
 }
