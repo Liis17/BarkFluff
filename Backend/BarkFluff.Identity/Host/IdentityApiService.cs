@@ -3,8 +3,11 @@ using BarkFluff.Identity.Features.Auth;
 using BarkFluff.Identity.Features.ConfirmAccount;
 using BarkFluff.Identity.Features.CreateAccount;
 using BarkFluff.Identity.Features.CreateToken;
+using BarkFluff.Identity.Features.GetActiveSessions;
+using BarkFluff.Identity.Features.RemoveActiveSession;
 using BarkFluff.Identity.Services;
 using BarkFluff.Shared.Exceptions.Identity;
+using BarkFluff.Shared.Identity;
 using Grpc.Core;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -29,7 +32,8 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
             Username = request.Username,
             Email = request.Email,
             Password = request.Password,
-            DeviceName = "tst"
+            DeviceName = context.RequestHeaders.FirstOrDefault(m => m.Key == "x-device-name")?.Value 
+                         ?? throw new XDeviceNameIsRequiredException()
         };
 
         return await _mediator.Send(command);
@@ -52,7 +56,7 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
             Username = request.Username,
             Email = request.Email,
             FirstName = request.FirstName,
-            LastName = request.LastName
+            LastName = request.LastName,
         };
 
         return await _mediator.Send(command);
@@ -64,7 +68,7 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
         {
             Code = request.CodeValue,
             CodeId = request.CodeId,
-            DeviceName = "tst"
+            DeviceName = context.RequestHeaders.FirstOrDefault(m => m.Key == "x-device-name")?.Value ?? throw new XDeviceNameIsRequiredException()
         };
         
         return _mediator.Send(command);
@@ -72,8 +76,27 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
 
     public override async Task<GenerateTestTokenResponse> GenerateTestToken(GenerateTestTokenRequest request, ServerCallContext context)
     {
-        var token = _jwtService.GenerateUserToken(request.UserId);
+        var token = _jwtService.GenerateServerToken(ServiceId.Identity);
 
-        return new GenerateTestTokenResponse() { Token = token.Value };
+        return new GenerateTestTokenResponse() { Token = token };
+    }
+
+    [Authorize(Policy = nameof(TokenType.User))]
+    public override Task<GetActiveSessionsResponse> GetActiveSessions(GetActiveSessionsRequest request, ServerCallContext context)
+    {
+        var command = new GetActiveSessionsCommand();
+        
+        return _mediator.Send(command);
+    }
+
+    [Authorize(Policy = nameof(TokenType.User))]
+    public override Task<RemoveActiveSessionResponse> RemoveActiveSession(RemoveActiveSessionRequest request, ServerCallContext context)
+    {
+        var command = new RemoveActiveSessionCommand()
+        {
+            Id = request.SessionId
+        };
+
+        return _mediator.Send(command);
     }
 }

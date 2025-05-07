@@ -27,7 +27,7 @@ public class ConfirmAccountCommandHandler(ConfirmationCodesStorage confirmationC
             throw new ConfirmationCodeNotFoundException();
         }
 
-        if (code.Expires > DateTime.UtcNow)
+        if (code.Expires < DateTime.UtcNow)
         {
             throw new ConfirmationCodeExpiredException();
         }

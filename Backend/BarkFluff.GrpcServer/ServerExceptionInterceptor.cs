@@ -1,7 +1,8 @@
+using BarkFluff.Shared.Exceptions;
 using Grpc.Core;
 using Grpc.Core.Interceptors;
 
-namespace BarkFluff.Shared.Exceptions.Interceptors;
+namespace BarkFluff.GrpcServer;
 
 public class ServerExceptionInterceptor : Interceptor
 {

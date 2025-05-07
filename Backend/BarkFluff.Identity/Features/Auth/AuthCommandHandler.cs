@@ -25,7 +25,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
         
         var usersRequest = new FindByLoginRequest();
 
-        if (string.IsNullOrEmpty(request.Username))
+        if (!string.IsNullOrEmpty(request.Username))
         {
             usersRequest.Username = request.Username;
         }
@@ -46,7 +46,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
 
         var accessTokenResponse = await mediator.Send(new CreateTokenCommand() { RefreshToken = refreshTokenString }, cancellationToken);
         
-        var response = new AuthResponse() { RefreshToken = new Token 
+        var response = new AuthResponse { RefreshToken = new Token 
             {
                 Value = refreshTokenString, 
                 ExpirationDate = Timestamp.FromDateTime(DateTime.UtcNow.AddDays(ExpDaysRefreshToken))

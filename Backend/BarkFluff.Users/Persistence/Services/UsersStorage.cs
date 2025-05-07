@@ -17,7 +17,7 @@ public class UsersStorage
     public async Task<User?> GetUserByUsername(string username)
     {
         var user = await _usersContext.Users.Include(u => u.Contact)
-            .FirstOrDefaultAsync(x => string.Equals(x.Username, username, StringComparison.InvariantCultureIgnoreCase));
+            .FirstOrDefaultAsync(x => string.Equals(x.Username.ToLower(), username.ToLower()));
         
         return user;
     }
@@ -25,7 +25,7 @@ public class UsersStorage
     public async Task<User?> GetUserByEmail(string email)
     {
         var userContact = await _usersContext.UserContacts.Include(u => u.User)
-            .FirstOrDefaultAsync(x => string.Equals(x.Email, email, StringComparison.InvariantCultureIgnoreCase));
+            .FirstOrDefaultAsync(x => string.Equals(x.Email.ToLower(), email.ToLower()));
         
         return userContact?.User;
     }
@@ -53,6 +53,8 @@ public class UsersStorage
         };
         
         await _usersContext.Users.AddAsync(user);
+
+        await _usersContext.SaveChangesAsync();
 
         return user;
     }

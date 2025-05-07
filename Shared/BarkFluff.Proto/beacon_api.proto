@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+option csharp_namespace = "BarkFluff.Proto.Beacon";
+
+package barkfluff.beacon;
+
+service BeaconApi {
+  rpc GetServerInfo(GetServerInfoRequest) returns(GetServerInfoResponse);
+}
+
+message GetServerInfoRequest {
+  
+}
+
+message GetServerInfoResponse {
+  
+  string name = 1;
+  
+  Service identity = 2;
+  Service users = 3;
+  Service notifications = 4;
+}
+
+
+message Service {
+  string name = 1;
+  ServiceEndpoint endpoint = 2;
+  bool tls_enabled = 3;
+  ServiceStatus status = 4;
+}
+
+enum ServiceStatus {
+  Unknown = 0;
+  Healthy = 1;
+  Degraded = 2;
+  Unhealthy = 3;
+  Offline = 4;
+}
+
+message ServiceEndpoint {
+  string host = 1;
+  string port = 2;
+}

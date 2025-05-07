@@ -17,8 +17,33 @@ service IdentityApi {
   rpc ConfirmAccount(ConfirmAccountRequest) returns(ConfirmAccountResponse);
   
   rpc GenerateTestToken(GenerateTestTokenRequest) returns(GenerateTestTokenResponse);
+  
+  rpc GetActiveSessions(GetActiveSessionsRequest) returns(GetActiveSessionsResponse);
+  
+  rpc RemoveActiveSession(RemoveActiveSessionRequest) returns(RemoveActiveSessionResponse);
 
 }
+
+message RemoveActiveSessionRequest {
+  int64 session_id = 1;
+}
+
+message RemoveActiveSessionResponse { }
+
+message GetActiveSessionsRequest { }
+
+message GetActiveSessionsResponse {
+
+  message Session {
+    int64 id = 1;
+    google.protobuf.Timestamp created_at = 2;
+    google.protobuf.Timestamp expiration_at = 3;
+    string device_name = 4;
+  }
+  
+  repeated Session sessions = 1;
+}
+
 
 message GenerateTestTokenRequest {
   int64 user_id = 1;

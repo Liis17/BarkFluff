@@ -7,6 +7,7 @@ using BarkFluff.Identity.Persistence.Services;
 using BarkFluff.Identity.Services;
 using BarkFluff.Identity.Settings;
 using BarkFluff.Proto.Users;
+using BarkFluff.Shared.Auth;
 using BarkFluff.Shared.Exceptions.Interceptors;
 using MassTransit;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -41,12 +42,13 @@ public class Program
             options.Issuer = builder.Configuration["JwtSettings:Issuer"];
             options.Audience = builder.Configuration["JwtSettings:Audience"];
         });
-        
-        
+
+
         builder.Services.AddGrpcClient<UsersServerApi.UsersServerApiClient>(o =>
-        {
-            o.Address = new Uri(builder.Configuration["UsersService"]);
-        });
+            {
+                o.Address = new Uri(builder.Configuration["UsersService:Host"]);
+            }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["UsersService:Token"]))
+            .AddInterceptor(() => new ExceptionClientInterceptor());
 
         builder.Services.AddTransient<RefreshTokensStorage>();
         builder.Services.AddTransient<JwtService>();

@@ -1,5 +1,6 @@
 using BarkFluff.Identity.Domain;
 using BarkFluff.Identity.Persistence.Contexts;
+using BarkFluff.Identity.Persistence.Exceptions;
 using Microsoft.EntityFrameworkCore;
 
 namespace BarkFluff.Identity.Persistence.Services;
@@ -31,5 +32,24 @@ public class RefreshTokensStorage(IdentityContext context)
         await context.SaveChangesAsync();
         
         return token.Entity;
+    }
+    
+    public async Task<List<RefreshToken>> GetRefreshTokens(long userId)
+    {
+        return await context.RefreshTokens.Where(x => x.UserId == userId).ToListAsync();
+    }
+
+    public async Task DeleteRefreshToken(long id, long userId)
+    {
+        var refreshToken = await context.RefreshTokens.FirstOrDefaultAsync(x => x.Id == id);
+
+        if (refreshToken is null)
+        {
+            throw new RefreshTokenNotFoundException();
+        }
+        
+        context.RefreshTokens.Remove(refreshToken);
+        
+        await context.SaveChangesAsync();
     }
 }
