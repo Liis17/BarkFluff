@@ -66,5 +66,13 @@ namespace BarkFluff.Client.WPF.Pages
         {
             MainWindow.MWindow.OpenNewProfilePage();
         }
+
+        private void TextBlock_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (sender is TextBlock textBlock)
+            {
+                textBlock.Text = MainWindow.GParam.ServerName;
+            }
+        }
     }
 }

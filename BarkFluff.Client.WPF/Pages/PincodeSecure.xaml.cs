@@ -21,9 +21,17 @@ namespace BarkFluff.Client.WPF.Pages
     public partial class PincodeSecure : UserControl
     {
         private char[] pinDigits = new char[4];
+        private int attempts = 3;
         public PincodeSecure()
         {
             InitializeComponent();
+            Loaded += PincodeSecure_Loaded;
+        }
+
+        private void PincodeSecure_Loaded(object sender, RoutedEventArgs e)
+        {
+            KeysIconUpdate();
+            helper.Text = "";
         }
 
         private void PinBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
@@ -68,12 +76,35 @@ namespace BarkFluff.Client.WPF.Pages
                     }
                     else
                     {
-                        MessageBox.Show("Неверный PIN-код", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                        ClearAll();
-                        GetBox(0).Focus();
+                        if (attempts > 0)
+                        {
+                            attempts--;
+                            KeysIconUpdate();
+                            ClearAll();
+                            GetBox(0).Focus();
+                        }
+                        if(attempts == 0)
+                        {
+                            helper.Text = "Попытки исчерпаны. Помянем";
+                            RemoveSettings(sender, e);
+                        }
+                        else if (attempts == 1)
+                        {
+                            helper.Text = "Последняя попытка ввести правильный код\nПри неудаче последует сброс...";
+                        }
+                        else if (attempts == 2)
+                        {
+                            helper.Text = "Это PIN код можно отключить в настройках";
+                        }
                     }
                 }
             }
+        }
+        private void KeysIconUpdate()
+        {
+            key3.Visibility = attempts >= 3 ? Visibility.Visible : Visibility.Collapsed;
+            key2.Visibility = attempts >= 2 ? Visibility.Visible : Visibility.Collapsed;
+            key1.Visibility = attempts >= 1 ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void PinBox_PreviewKeyDown(object sender, KeyEventArgs e)

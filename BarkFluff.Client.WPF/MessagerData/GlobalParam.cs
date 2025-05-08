@@ -16,20 +16,11 @@ namespace BarkFluff.Client.WPF.MessagerData
     public class GlobalParam
     {
         #region Приложение 
-        public string Host { get; set; } = string.Empty;
-        public string Port { get; set; } = string.Empty;
-        public string Socket
-        {
-            get
-            {
-                if (Host == string.Empty || Port == string.Empty)
-                {
-                    return string.Empty;
-                }
-                return Host + ":" + Port;
-            }
-        }
+        public string SocketBeacon { get; set; } = string.Empty; 
+        public string SocketUsers { get; set; } = string.Empty; 
+        public string SocketIdentity { get; set; } = string.Empty;
         public string AppPath { get; set; } = string.Empty;
+        public string ServerName { get; set; } = string.Empty;
 
         #endregion
         #region Пользователь

@@ -1,8 +1,7 @@
 ﻿using BarkFluff.Client.WPF.MessagerData;
 using BarkFluff.Client.WPF.Pages;
-
 using Grpc.Core;
-
+using Grpc.Net.Client;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
@@ -28,6 +27,12 @@ namespace BarkFluff.Client.WPF
     {
         public static MainWindow MWindow { get; private set; } = null!;
         public static GlobalParam GParam { get; set; } = null;
+
+        public static BarkFluff.Proto.Users.UsersApi.UsersApiClient UsersAC;
+        public static BarkFluff.Proto.Beacon.BeaconApi.BeaconApiClient BeaconAC;
+        public static BarkFluff.Proto.Identity.IdentityApi.IdentityApiClient IdentityAC;
+        private GrpcChannel _beaconChannel;
+
 
         #region Инициализация
         public MainWindow()
@@ -72,7 +77,7 @@ namespace BarkFluff.Client.WPF
             versionParts[3] = buildNumber.ToString();
             AppVersion.Version = string.Join(".", versionParts);
 
-            // Сохраняем новую версию в файл
+            // Сохраняет новую версию в файл
             SaveVersionToFile();
         }
 
@@ -130,13 +135,11 @@ namespace BarkFluff.Client.WPF
             MainFrame.Children.Add(new PincodeSecure());
         }
 
-        public void RegisterStep(string host, string port)
+        public void RegisterStep(string socket)
         {
-            GParam.Host = host;
-            GParam.Port = port;
+            GParam.SocketBeacon = socket;
 
-            MainFrame.Children.Clear();
-            MainFrame.Children.Add(new Login());
+            PincodeSuccessful();
         }
 
         public void OpenNewProfilePage()
@@ -147,22 +150,39 @@ namespace BarkFluff.Client.WPF
 
         public void PincodeSuccessful()
         {
-            if (GParam.Socket == "")
+            MainFrame.Children.Clear();
+
+            if (GParam.SocketBeacon == string.Empty)
             {
-                MainFrame.Children.Clear();
                 MainFrame.Children.Add(new ServerIP());
             }
             else
             {
-                MainFrame.Children.Clear();
                 MainFrame.Children.Add(new Login());
+
+                GParam.SocketBeacon = EnsureHttpPrefix(GParam.SocketBeacon);
+                _beaconChannel = GrpcChannel.ForAddress(GParam.SocketBeacon);
+                BeaconAC = new BarkFluff.Proto.Beacon.BeaconApi.BeaconApiClient(_beaconChannel);
+
+                var beaconData = BeaconAC.GetServerInfo(new BarkFluff.Proto.Beacon.GetServerInfoRequest());
+
+                GParam.SocketIdentity = EnsureHttpPrefix(beaconData.Users.Endpoint.Host + ":" + beaconData.Users.Endpoint.Port);
+                GParam.SocketUsers = EnsureHttpPrefix(beaconData.Identity.Endpoint.Host + ":" + beaconData.Identity.Endpoint.Port);
+
+                GParam.ServerName = beaconData.Name;
             }
-            
+        }
+
+        private string EnsureHttpPrefix(string url)
+        {
+            return !url.StartsWith("http://") && !url.StartsWith("https://")
+                   ? "http://" + url
+                   : url;
         }
 
 
         #endregion
 
-        
+
     }
 }

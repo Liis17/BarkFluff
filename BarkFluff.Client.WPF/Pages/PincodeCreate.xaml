@@ -11,14 +11,6 @@
     mc:Ignorable="d">
 
     <Grid Background="#212121">
-        <TextBlock
-            Margin="10"
-            HorizontalAlignment="Center"
-            FontFamily="AdwaitaSans"
-            FontSize="25"
-            FontWeight="Black"
-            Foreground="#FF828282"
-            Text="BarkFluff" />
         <StackPanel
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
@@ -31,7 +23,16 @@
                     FontSize="32"
                     FontWeight="Black"
                     Foreground="White"
-                    Text="Придумайте код приложения" />
+                    Text="Придумайте PIN-код приложения" />
+                <TextBlock
+                    Margin="10"
+                    HorizontalAlignment="Center"
+                    FontFamily="AdwaitaSans"
+                    FontSize="15"
+                    FontWeight="Medium"
+                    Foreground="White"
+                    Opacity="0.8"
+                    Text="Этот код необходимо для сохранения в безопасности ваших данных" />
                 <StackPanel
                     x:Name="PinContainer"
                     HorizontalAlignment="Center"

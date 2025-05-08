@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Sockets;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -52,6 +53,8 @@ namespace BarkFluff.Client.WPF.Pages
                 string host = match.Groups[1].Value;
                 string port = match.Groups[2].Value;
 
+                string socket = host + ":" + port;
+
                 // Создаем HttpClient с обработкой самоподписанных сертификатов
                 var handler = new HttpClientHandler
                 {
@@ -71,7 +74,7 @@ namespace BarkFluff.Client.WPF.Pages
                     string filePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "ignor.server");
                     if (File.Exists(filePath))
                     {
-                        NextStep(host, port);
+                        NextStep(socket);
                     }
                     return;
 #endif
@@ -82,7 +85,7 @@ namespace BarkFluff.Client.WPF.Pages
                         response.EnsureSuccessStatusCode();
 
                         string responseBody = await response.Content.ReadAsStringAsync();
-                        NextStep(host, port);
+                        NextStep(socket);
                     }
                     catch (HttpRequestException ex)
                     {
@@ -99,9 +102,9 @@ namespace BarkFluff.Client.WPF.Pages
                 ErrorText.Text = $"Неизвестная ошибка: {ex.Message}";
             }
         }
-        private void NextStep(string host, string port)
+        private void NextStep(string socket)
         {
-            MainWindow.MWindow.RegisterStep(host, port);
+            MainWindow.MWindow.RegisterStep(socket);
         }
     }
 }

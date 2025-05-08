@@ -23,6 +23,50 @@ namespace BarkFluff.Client.WPF.Pages
         public Register()
         {
             InitializeComponent();
+            Loaded += Register_Loaded;
+        }
+
+        private void Register_Loaded(object sender, RoutedEventArgs e)
+        {
+            test();
+        }
+
+        public void test()
+        {
+            
+        }
+
+        private void TextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                string login = LoginEnter.Text;
+                string password = PasswordEnter.Password; // если PasswordBox, иначе PasswordEnter.Text
+
+                if (login.Length > 3 && password.Length > 8)
+                {
+                    e.Handled = true;
+                    //ProcessLogin(login, password);
+                }
+                else
+                {
+                    // Можно подсветить поля или показать сообщение
+                    MessageBox.Show("Логин должен быть длиннее 3 символов, пароль — длиннее 8.");
+                }
+            }
+        }
+
+        private void Registration(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void TextBlock_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (sender is TextBlock textBlock)
+            {
+                textBlock.Text = MainWindow.GParam.ServerName;
+            }
         }
     }
 }
