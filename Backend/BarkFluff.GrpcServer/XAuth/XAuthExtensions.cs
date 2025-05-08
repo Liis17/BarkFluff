@@ -2,6 +2,7 @@ using System.Text;
 using BarkFluff.Shared.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 
@@ -9,24 +10,20 @@ namespace BarkFluff.GrpcServer.XAuth;
 
 public static class XAuthExtensions
 {
-    public static IServiceCollection AddXAuth(this IServiceCollection services, 
-        Action<XAuthOptions> configureOptions)
+    public static IServiceCollection AddXAuth(this IServiceCollection services, IConfiguration configuration)
     {
-        var options = new XAuthOptions();
-        configureOptions(options);
-        
-        services.AddSingleton(options);
+
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(cfg =>
             {
                 cfg.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(options.Secret)),
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(configuration["JwtSettings:SecretKey"]!)),
                     ValidateIssuer = true,
-                    ValidIssuer = options.Issuer,
+                    ValidIssuer = configuration["JwtSettings:Issuer"],
                     ValidateAudience = true,
-                    ValidAudience = options.Audience,
+                    ValidAudience = configuration["JwtSettings:Audience"],
                     ValidateLifetime = true,
                     ClockSkew = TimeSpan.Zero
                 };

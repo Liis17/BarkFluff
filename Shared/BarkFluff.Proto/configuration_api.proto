@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+option csharp_namespace = "BarkFluff.Proto.Configuration";
+
+import "google/protobuf/timestamp.proto";
+
+package barkfluff.configuration;
+
+service ConfigurationApi {
+  rpc GetConfiguration(GetConfigurationRequest) returns(GetConfigurationResponse); 
+}
+
+message GetConfigurationRequest{
+  int32 service_id = 1;
+  
+}
+
+message GetConfigurationResponse {
+  
+  repeated ConfigurationItem configurations = 1;
+  
+}
+
+message ConfigurationItem {
+  
+  string section = 1;
+  
+  string key = 2;
+  
+  string value = 3;
+  
+  google.protobuf.Timestamp edited_at = 4;
+  
+  string edited_by = 5;
+  
+  string edited_from = 6;
+  
+  int32 service_id = 7;
+}
+

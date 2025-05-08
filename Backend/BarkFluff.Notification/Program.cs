@@ -1,5 +1,9 @@
 using BarkFluff.GrpcServer;
+using BarkFluff.Notification.Configurations;
 using BarkFluff.Notification.Consumers;
+using BarkFluff.Notification.Parsers;
+using BarkFluff.Notification.Senders;
+using BarkFluff.Shared.Identity;
 using MassTransit;
 
 namespace BarkFluff.Notification;
@@ -10,10 +14,12 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
+        builder.LoadConfiguration(ServiceId.Notifications);
         builder.SetRunningAddress(builder.Configuration);
         
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
-        
+
+        builder.Services.AddSettings<EmailConfiguration>(builder.Configuration, "Email");
         builder.Services.AddMassTransit(x =>
         {
             x.AddConsumer<EmailQueueConsumer>();
@@ -32,6 +38,9 @@ public class Program
                 });
             });
         });
+
+        builder.Services.AddTransient<EmailSender>();
+        builder.Services.AddTransient<HtmlEmailTemplateParser>();
 
         var app = builder.Build();
         app.UseRouting();

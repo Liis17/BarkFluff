@@ -44,15 +44,27 @@ public class CreateAccountCommandHandler(UsersServerApi.UsersServerApiClient use
         };
         
         confirmationCode = await confirationCodesStorage.AddCode(confirmationCode);
+
+        var payload = new Dictionary<string, string>()
+        {
+            { "confirmation_code", code },
+            { "username", request.Username },
+            { "ip", "192.168.1.1" },
+            {"devicename", request.DeviceName },
+            {"os", "loh"},
+            {"location", "Россия 🎉"},
+            {"datetime", DateTime.UtcNow.ToString("F")}
+        };
         
         await notificationQueueSender.SendNotification(new EmailNotification()
         {
             Address = request.Email,
-            Body = $"Ваш код подтверждения регистрации: {confirmationCode.Value}",
             CreatedAt = DateTime.UtcNow,
             OwnerId = responseUser.UserId,
             ServiceId = ServiceId.Identity,
-            Title = "Код подтверждения"
+            Payload = payload,
+            Title = "Код подтверждения",
+            Type = NotificationType.ConfirmationRegistration,
         });
         
         return new CreateAccountResponse { CodeId = confirmationCode.Id.ToString()};

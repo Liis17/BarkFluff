@@ -11,4 +11,8 @@ public abstract class Notification
     public long? OwnerId { get; set; }
     
     public DateTime CreatedAt { get; set; }
+    
+    public NotificationType Type { get; set; }
+    
+    public Dictionary<string, string> Payload { get; set; }
 }

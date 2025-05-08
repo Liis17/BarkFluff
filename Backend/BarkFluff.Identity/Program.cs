@@ -9,6 +9,7 @@ using BarkFluff.Identity.Settings;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Auth;
 using BarkFluff.Shared.Exceptions.Interceptors;
+using BarkFluff.Shared.Identity;
 using MassTransit;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +22,7 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
+        builder.LoadConfiguration(ServiceId.Identity);
         builder.SetRunningAddress(builder.Configuration);
 
         builder.Services.AddGrpc(options =>
@@ -36,13 +38,7 @@ public class Program
 
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
         
-        builder.Services.AddXAuth(options =>
-        {
-            options.Secret = builder.Configuration["JwtSettings:SecretKey"];
-            options.Issuer = builder.Configuration["JwtSettings:Issuer"];
-            options.Audience = builder.Configuration["JwtSettings:Audience"];
-        });
-
+        builder.Services.AddXAuth(builder.Configuration);
 
         builder.Services.AddGrpcClient<UsersServerApi.UsersServerApiClient>(o =>
             {

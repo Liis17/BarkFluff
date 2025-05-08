@@ -10,6 +10,7 @@
       <PackageReference Include="Google.Protobuf" Version="3.30.2" />
       <PackageReference Include="Grpc.AspNetCore.Server" Version="2.70.0" />
       <PackageReference Include="Grpc.AspNetCore.Server.Reflection" Version="2.70.0" />
+      <PackageReference Include="Grpc.Net.Client" Version="2.70.0" />
       <PackageReference Include="Grpc.Tools" Version="2.71.0">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -23,6 +24,11 @@
       <ProjectReference Include="..\..\BarkFluff.Shared.Exceptions\BarkFluff.Shared.Exceptions.csproj" />
       <ProjectReference Include="..\..\Shared\BarkFluff.Shared.Auth\BarkFluff.Shared.Auth.csproj" />
       <ProjectReference Include="..\..\Shared\BarkFluff.Shared.Identity\BarkFluff.Shared.Identity.csproj" />
+    </ItemGroup>
+
+
+    <ItemGroup>
+        <Protobuf Include="..\..\Shared\BarkFluff.Proto\configuration_api.proto" GrpcServices="Client" />
     </ItemGroup>
 
 </Project>

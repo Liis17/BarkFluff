@@ -8,4 +8,8 @@ public enum ServiceId
     
     Users = 2,
     
+    Beacon = 3,
+    
+    Notifications = 4,
+    
 }

@@ -57,6 +57,7 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
             Email = request.Email,
             FirstName = request.FirstName,
             LastName = request.LastName,
+            DeviceName = context.RequestHeaders.FirstOrDefault(m => m.Key == "x-device-name")?.Value ?? throw new XDeviceNameIsRequiredException()
         };
 
         return await _mediator.Send(command);

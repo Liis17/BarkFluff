@@ -1,4 +1,8 @@
 using BarkFluff.GrpcServer.Settings;
+using BarkFluff.Proto.Configuration;
+using BarkFluff.Shared.Identity;
+using Grpc.Core;
+using Grpc.Net.Client;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -25,6 +29,34 @@ public static class WebApplicationBuilderExtensions
             });
         });
 
+        return builder;
+    }
+
+    public static WebApplicationBuilder LoadConfiguration(this WebApplicationBuilder builder, ServiceId serviceId)
+    {
+        builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
+        
+        var channel = GrpcChannel.ForAddress("http://localhost:7003");
+        var configurationApiClient = new ConfigurationApi.ConfigurationApiClient(channel);
+
+        var config = configurationApiClient.GetConfiguration(new GetConfigurationRequest {ServiceId = (int)serviceId});
+        
+        var configurationDictionary = new Dictionary<string, string>();
+
+        foreach (var configurationItem in config.Configurations)
+        {
+            var key = configurationItem.Section;
+
+            if (!string.IsNullOrWhiteSpace(configurationItem.Key))
+            {
+                key += $":{configurationItem.Key}";
+            }
+            
+            configurationDictionary.Add(key, configurationItem.Value);
+        }
+        
+        builder.Configuration.AddInMemoryCollection(configurationDictionary);
+        
         return builder;
     }
 }

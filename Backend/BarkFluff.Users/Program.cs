@@ -2,6 +2,7 @@ using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Interceptors;
+using BarkFluff.Shared.Identity;
 using BarkFluff.Users.Host;
 using BarkFluff.Users.Persistence.Contexts;
 using BarkFluff.Users.Persistence.Services;
@@ -14,7 +15,8 @@ public class Program
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
-        
+
+        builder.LoadConfiguration(ServiceId.Users);
         builder.SetRunningAddress(builder.Configuration);
 
         // Регистрируем gRPC сервисы с интерцепторами
@@ -35,14 +37,8 @@ public class Program
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
 
         // Регистрируем аутентификацию и авторизацию
-        builder.Services.AddXAuth(options =>
-        {
-            options.Secret = builder.Configuration["JwtSettings:SecretKey"];
-            options.Issuer = builder.Configuration["JwtSettings:Issuer"];
-            options.Audience = builder.Configuration["JwtSettings:Audience"];
-        });
+        builder.Services.AddXAuth(builder.Configuration);
         
-
         var app = builder.Build();
         
         app.MapGrpcReflectionService();
