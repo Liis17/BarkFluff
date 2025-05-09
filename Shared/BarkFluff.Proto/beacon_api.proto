@@ -5,6 +5,8 @@ option csharp_namespace = "BarkFluff.Proto.Beacon";
 package barkfluff.beacon;
 
 service BeaconApi {
+  
+  // Получить инфу о сервере
   rpc GetServerInfo(GetServerInfoRequest) returns(GetServerInfoResponse);
 }
 

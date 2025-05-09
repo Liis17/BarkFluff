@@ -55,21 +55,21 @@ message ListOtpVerificationRequest {
 }
 
 message ListOtpVerificationResponse {
-  bool authenticator_enabled = 1;
-  bool email_enabled = 2;
+  bool authenticator_enabled = 1; // Включен ли 2ФА по otp анутиифкатору
+  bool email_enabled = 2; // Включен ли 2ФА по почте
 }
 
 enum OtpTypeId {
-  Unknown = 0;
-  Authenticator = 1;
-  Email = 2;
+  Unknown = 0; // Неизвестный
+  Authenticator = 1; // Гугл аунтификатор, etc
+  Email = 2; // Почта
 }
 
 message DisableOtpVerificationRequest {
   
-  OtpTypeId otp_type = 1;
+  OtpTypeId otp_type = 1; // Тип 2ФА авторизации
   
-  string otp_code = 2;
+  string otp_code = 2; // Код для отключения (при отключении email не передавать)
 }
 
 message DisableOtpVerificationResponse {
@@ -77,7 +77,7 @@ message DisableOtpVerificationResponse {
 }
 
 message ConfirmOtpVerificationRequest {
-  string otp_code = 1;
+  string otp_code = 1; // ОТП код
 }
 
 message ConfirmOtpVerificationResponse {
@@ -85,15 +85,15 @@ message ConfirmOtpVerificationResponse {
 }
 
 message EnableOtpVerificationRequest {
-    OtpTypeId otp_type = 1;
+    OtpTypeId otp_type = 1; // Тип 2ФА авторизации
 }
 
 message EnableOtpVerificationResponse {
-  string otp_qr = 1;
+  string otp_qr = 1; // base64 QR кода для подключения гугл аунтификатора
 }
 
 message RemoveActiveSessionRequest {
-  int64 session_id = 1;
+  int64 session_id = 1; // Идентификатор сессии
 }
 
 message RemoveActiveSessionResponse { }
@@ -103,68 +103,68 @@ message GetActiveSessionsRequest { }
 message GetActiveSessionsResponse {
 
   message Session {
-    int64 id = 1;
-    google.protobuf.Timestamp created_at = 2;
-    google.protobuf.Timestamp expiration_at = 3;
-    string device_name = 4;
+    int64 id = 1; // Идентификатор 
+    google.protobuf.Timestamp created_at = 2; // Когда был первый вход
+    google.protobuf.Timestamp expiration_at = 3; // Когда сессия станет недействительной
+    string device_name = 4; // Имя устройства
   }
   
-  repeated Session sessions = 1;
+  repeated Session sessions = 1; // Список сессий
 }
 
 
 message GenerateTestTokenRequest {
-  int64 user_id = 1;
+  int64 user_id = 1; // Идентификатор пользователя
 }
 
 message GenerateTestTokenResponse {
-  string token = 1;
+  string token = 1; // Токен доступа
 }
 
 message CreateAccountRequest {
-  string first_name = 1;
-  string last_name = 2;
-  string username = 3;
-  string email = 4;
+  string first_name = 1; // Имя
+  string last_name = 2; // Фамилия
+  string username = 3; // Имя пользователя
+  string email = 4; // Почта
 }
 
 message CreateAccountResponse { 
-  string code_id = 1;
+  string code_id = 1; // Идентификатор кода подтверждения
 }
 
 message ConfirmAccountRequest {
-  string code_id = 1;
-  string code_value = 2;
+  string code_id = 1; // Идентификатор кода подтверждения
+  string code_value = 2; // Значение кода
 }
 
 message ConfirmAccountResponse {
-  Token refresh_token = 1;
+  Token refresh_token = 1; // Токен обновления
 }
 
 
 message CreateTokenRequest {
-  string refresh_token = 1;
+  string refresh_token = 1; // Токен обновления
 }
 
 message CreateTokenResponse {
-  Token access_token = 2;
+  Token access_token = 2; // Токен доступа
 }
 
 message AuthRequest {
   oneof login {
-    string username = 1;
-    string email = 2;
+    string username = 1; // имя пользователя
+    string email = 2; // емейл
   }
-  string password = 3;
-  string otp_code = 4;
+  string password = 3; // пароль
+  string otp_code = 4; // Код 2ФА авторизации
 }
 
 message AuthResponse {
-  Token access_token = 1;
-  Token refresh_token = 2;
+  Token access_token = 1; // токен доступа
+  Token refresh_token = 2; // токен обновления
 }
 
 message Token {
-  string value = 1;
-  google.protobuf.Timestamp expiration_date = 2;
+  string value = 1; // значение
+  google.protobuf.Timestamp expiration_date = 2; // дата окончания действия
 }

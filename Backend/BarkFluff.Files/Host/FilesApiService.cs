@@ -1,12 +1,30 @@
+using BarkFluff.Files.Features.GetUploadUrl;
 using BarkFluff.Proto.Files;
+using BarkFluff.Shared.Identity;
 using Grpc.Core;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using UploadFileType = BarkFluff.Files.Domain.UploadFileType;
 
 namespace BarkFluff.Files.Host;
 
-public class FilesApiService : BarkFluff.Proto.Files.FilesApi.FilesApiBase
+[Authorize(Policy = nameof(TokenType.User))]
+public class FilesApiService : FilesApi.FilesApiBase
 {
-    public override Task<HelloResponse> SayHello(HelloRequest request, ServerCallContext context)
+    private readonly IMediator _mediator;
+
+    public FilesApiService(IMediator mediator)
     {
-        return base.SayHello(request, context);
+        _mediator = mediator;
+    }
+
+    public override Task<GetUploadUrlResponse> GetUploadUrl(GetUploadUrlRequest request, ServerCallContext context)
+    {
+        var command = new GetUploadUrlCommand()
+        {
+            Type = (UploadFileType)(int)request.FileType
+        };
+        
+        return _mediator.Send(command);
     }
 }

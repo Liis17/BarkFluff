@@ -2,22 +2,46 @@ syntax = "proto3";
 
 option csharp_namespace = "BarkFluff.Proto.Files";
 
+import "google/protobuf/timestamp.proto";
+
 package barkfluff.files;
 
 service FilesApi {
-  rpc SayHello (HelloRequest) returns (HelloResponse);
+  rpc GetUploadUrl(GetUploadUrlRequest) returns(GetUploadUrlResponse); // Получить ссылку для загрузки файла
 }
 
-message HelloRequest {
-  int32 firstName = 1;
-  string name = 2;
+service FilesServerApi {
+  rpc GetFileData(GetFileDataRequest) returns(GetFileDataResponse); // Получить информацию о загруженном файле
 }
 
-message HelloResponse {
-  int32 code = 1;
+message GetFileDataRequest {
+  string file_id = 1;
 }
 
-message Hui {
-  string Loh = 1;
-  string Gay = 2;
+message GetFileDataResponse {
+    UploadFileInfo file_info = 1;
+}
+
+message UploadFileInfo {
+  string id = 1; // Идентификатор файла
+  int64 uploader = 2; // Индетификатор загрузившего пользователя
+  google.protobuf.Timestamp created_at = 3; // Время создания
+  google.protobuf.Timestamp uploaded_at = 4; // время загрузки
+  string etag = 5; // Etag S3
+  UploadFileType type = 6; // Тип загруженного файла
+  string file_name = 7; // Имя файла
+}
+
+message GetUploadUrlRequest {
+  UploadFileType file_type = 1; // Тип загружаемого файла
+}
+
+message GetUploadUrlResponse {
+  string url = 1; // адрес для загрузки файла
+}
+
+enum UploadFileType {
+  Unknown = 0; 
+  
+  UserAvatar = 1; // Аватарка пользователя
 }

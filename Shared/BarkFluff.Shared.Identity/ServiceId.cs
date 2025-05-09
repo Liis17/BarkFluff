@@ -12,4 +12,6 @@ public enum ServiceId
     
     Notifications = 4,
     
+    Files = 5,
+    
 }

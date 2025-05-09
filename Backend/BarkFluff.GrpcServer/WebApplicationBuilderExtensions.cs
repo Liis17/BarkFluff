@@ -15,6 +15,8 @@ public static class WebApplicationBuilderExtensions
     public static WebApplicationBuilder SetRunningAddress(this WebApplicationBuilder builder,
         IConfiguration configuration)
     {
+        builder.Services.AddSettings<RunSettings>(configuration, "RunSettings");
+        
         var runSettings = configuration.GetSection("RunSettings").Get<RunSettings>();
         
         builder.WebHost.ConfigureKestrel(options =>
@@ -27,7 +29,21 @@ public static class WebApplicationBuilderExtensions
                 }
                 listenOptions.Protocols = HttpProtocols.Http2;
             });
+
+            if (runSettings.Http1Port != null)
+            {
+                options.ListenAnyIP(runSettings.Http1Port.Value, listenOptions =>
+                {
+                    if (runSettings.Tls != null)
+                    {
+                        listenOptions.UseHttps(runSettings.Tls.Filename, runSettings.Tls.Password);
+                    }
+                    listenOptions.Protocols = HttpProtocols.Http1;
+                });
+            }
         });
+        
+        
 
         return builder;
     }

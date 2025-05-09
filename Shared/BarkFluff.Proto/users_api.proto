@@ -7,27 +7,46 @@ import "google/protobuf/timestamp.proto";
 package barkfluff.users;
 
 service UsersApi {
+  
+  // Установить пароль 
   rpc SetPassword(SetPasswordRequest) returns(SetPasswordResponse);
   
+  // Получить информацию о пользователе
   rpc GetUser(GetUserRequest) returns(GetUserResponse);
+  
+  // Установить аватарку
+  rpc SetProfilePicture(SetProfilePictureRequest) returns(SetProfilePictureResponse);
 }
 
 service UsersServerApi {
   
+  // Найти по логину
   rpc FindByLogin(FindByLoginRequest) returns(FindByLoginResponse);
 
+  // Проверить существование юзернейма
   rpc CheckExistUsername(CheckExistUsernameRequest) returns(CheckExistResponse);
-  
+
+  // Проверить существование емейла
   rpc CheckExistEmail(CheckExistEmailRequest) returns(CheckExistResponse);
   
+  // Добавить черновик юзера
   rpc AddDraftUser(AddDraftUserRequest) returns(AddDraftUserResponse);
   
+  // Подтвердить пользователя
   rpc ConfirmUser(ConfirmUserRequest) returns(ConfirmUserResponse);
   
+  // Получить пользователя по id
   rpc GetById(GetByIdRequest) returns(GetByIdResponse);
   
+  // Получить контакты пользователя по id
   rpc GetUserContacts(GetUserContactsRequest) returns(GetUserContactsResponse);
 }
+
+message SetProfilePictureRequest {
+  string file_id = 1;
+}
+
+message SetProfilePictureResponse { }
 
 message GetUserContactsRequest {
   int64 user_id = 1;
@@ -62,10 +81,7 @@ message ConfirmUserRequest {
   int64 user_id = 1;
 }
 
-message ConfirmUserResponse {
-  
-}
-
+message ConfirmUserResponse { }
 
 message SetPasswordRequest {
   string password = 1;
@@ -114,5 +130,6 @@ message User{
   string last_name = 3;
   string username = 4;
   google.protobuf.Timestamp registration_date = 5;
+  string profile_picture = 6;
 }
 
