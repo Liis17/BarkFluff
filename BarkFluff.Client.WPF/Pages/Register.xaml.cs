@@ -135,7 +135,7 @@ namespace BarkFluff.Client.WPF.Pages
 
         private void BackButton_Click(object sender, RoutedEventArgs e)
         {
-            if (currentStep > 0)
+            if (currentStep > 0 && currentStep < 4)
             {
                 AnimateTransition(steps[currentStep], steps[currentStep - 1], SlideDirection.Backward);
                 currentStep--;
