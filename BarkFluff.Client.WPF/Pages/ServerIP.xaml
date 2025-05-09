@@ -20,6 +20,8 @@
             Foreground="#FF828282"
             Text="BarkFluff" />
         <StackPanel
+            MinWidth="300"
+            MaxWidth="300"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             Orientation="Vertical">

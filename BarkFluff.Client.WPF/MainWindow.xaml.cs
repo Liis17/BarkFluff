@@ -32,6 +32,8 @@ namespace BarkFluff.Client.WPF
         public static BarkFluff.Proto.Beacon.BeaconApi.BeaconApiClient BeaconAC;
         public static BarkFluff.Proto.Identity.IdentityApi.IdentityApiClient IdentityAC;
         private GrpcChannel _beaconChannel;
+        private GrpcChannel _userChannel;
+        private GrpcChannel _identityChannel;
 
 
         #region Инициализация
@@ -170,6 +172,12 @@ namespace BarkFluff.Client.WPF
                 GParam.SocketUsers = EnsureHttpPrefix(beaconData.Identity.Endpoint.Host + ":" + beaconData.Identity.Endpoint.Port);
 
                 GParam.ServerName = beaconData.Name;
+
+                _identityChannel = GrpcChannel.ForAddress(GParam.SocketIdentity);
+                _userChannel = GrpcChannel.ForAddress(GParam.SocketUsers);
+
+                IdentityAC = new BarkFluff.Proto.Identity.IdentityApi.IdentityApiClient(_identityChannel);
+                UsersAC = new BarkFluff.Proto.Users.UsersApi.UsersApiClient(_userChannel);
             }
         }
 

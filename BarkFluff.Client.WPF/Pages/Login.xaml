@@ -12,6 +12,7 @@
 
     <Grid Background="#212121">
         <StackPanel
+            MinWidth="300"
             MaxWidth="300"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
@@ -26,12 +27,12 @@
                     Opacity="1"
                     Text="Авторизация" />
                 <TextBlock
-                    Loaded="TextBlock_Loaded"
                     HorizontalAlignment="Center"
                     FontFamily="AdwaitaSans"
                     FontSize="15"
                     FontWeight="Medium"
                     Foreground="White"
+                    Loaded="TextBlock_Loaded"
                     Opacity="0.8"
                     Text="192.168.1.1" />
             </StackPanel>

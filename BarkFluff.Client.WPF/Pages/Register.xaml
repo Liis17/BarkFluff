@@ -7,81 +7,411 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     d:DesignHeight="720"
-    d:DesignWidth="1280"
+    d:DesignWidth="1980"
     mc:Ignorable="d">
 
-    <Grid Background="#212121">
-        <StackPanel
-            MaxWidth="300"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
-            Orientation="Vertical">
-            <StackPanel Orientation="Vertical">
-                <TextBlock
-                    HorizontalAlignment="Center"
-                    FontFamily="AdwaitaSans"
-                    FontSize="32"
-                    FontWeight="Black"
-                    Foreground="White"
-                    Opacity="1"
-                    Text="Регистрация" />
-                <TextBlock
-                    Loaded="TextBlock_Loaded"
-                    HorizontalAlignment="Center"
-                    FontFamily="AdwaitaSans"
-                    FontSize="15"
-                    FontWeight="Medium"
-                    Foreground="White"
-                    Opacity="0.8"
-                    Text="192.168.1.1" />
-            </StackPanel>
 
-            <TextBlock
-                FontFamily="AdwaitaSans"
-                FontSize="15"
-                FontWeight="Medium"
-                Foreground="White"
-                Opacity="0.8"
-                Text="Логин" />
-            <ui:TextBox
-                x:Name="LoginEnter"
-                KeyDown="TextBox_KeyDown"
-                PlaceholderText="username или email"
-                VerticalScrollBarVisibility="Auto" />
-            <TextBlock
-                Margin="0,10,0,0"
-                FontFamily="AdwaitaSans"
-                FontSize="15"
-                FontWeight="Medium"
-                Foreground="#FFC3C3C3"
-                Text="Пароль" />
-            <ui:PasswordBox
-                x:Name="PasswordEnter"
-                KeyDown="TextBox_KeyDown"
-                PlaceholderText="Нажми для ввода пароля"
-                VerticalScrollBarVisibility="Auto" />
-            <ui:Button
-                Margin="0,5,0,5"
-                HorizontalAlignment="Stretch"
-                Click="Registration">
-                <StackPanel Orientation="Horizontal">
+
+    <Grid Background="#212121">
+
+
+        <StackPanel VerticalAlignment="Center" Orientation="Vertical">
+            <Grid >
+                <StackPanel
+                    x:Name="Step1"
+                    MinWidth="300"
+                    MaxWidth="300"
+                    Margin="5"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Orientation="Vertical">
+                    <StackPanel Orientation="Vertical">
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontFamily="AdwaitaSans"
+                            FontSize="32"
+                            FontWeight="Black"
+                            Foreground="White"
+                            Opacity="1"
+                            Text="Регистрация" />
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontFamily="AdwaitaSans"
+                            FontSize="15"
+                            FontWeight="Medium"
+                            Foreground="White"
+                            Loaded="TextBlock_Loaded"
+                            Opacity="0.8"
+                            Text="192.168.1.1" />
+                    </StackPanel>
+
                     <TextBlock
-                        Margin="0,0,5,0"
-                        HorizontalAlignment="Stretch"
-                        VerticalAlignment="Center"
                         FontFamily="AdwaitaSans"
-                        FontSize="12"
-                        FontWeight="Bold"
+                        FontSize="15"
+                        FontWeight="Medium"
                         Foreground="White"
-                        Text="Регистрация" />
-                    <ui:SymbolIcon
-                        HorizontalAlignment="Stretch"
-                        VerticalAlignment="Stretch"
-                        FontSize="20"
+                        Opacity="0.8"
+                        Text="Имя" />
+                    <ui:TextBox
+                        x:Name="FirstNameEnter"
+                        KeyDown="TextBox_KeyDown"
+                        PlaceholderText="Апогея"
+                        TextChanged="Enter_TextChanged"
+                        VerticalScrollBarVisibility="Auto" />
+                    <TextBlock
+                        FontFamily="AdwaitaSans"
+                        FontSize="15"
+                        FontWeight="Medium"
                         Foreground="White"
-                        Symbol="ArrowRight12" />
+                        Opacity="0.8"
+                        Text="Фамилия" />
+                    <ui:TextBox
+                        x:Name="LastNameEnter"
+                        KeyDown="TextBox_KeyDown"
+                        PlaceholderText="Тайнигейпиратовна"
+                        TextChanged="Enter_TextChanged"
+                        VerticalScrollBarVisibility="Auto" />
+                    <TextBlock
+                        x:Name="EmptyNames"
+                        Background="{x:Null}"
+                        FontFamily="AdwaitaSans"
+                        FontSize="15"
+                        FontWeight="Medium"
+                        Foreground="#FFFF4646"
+                        Opacity="0.8"
+                        Text="Заполните все поля"
+                        TextAlignment="Center" />
+
                 </StackPanel>
-            </ui:Button>
+                <StackPanel
+                    x:Name="Step2"
+                    MinWidth="300"
+                    MaxWidth="300"
+                    Margin="5"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Orientation="Vertical">
+                    <StackPanel Orientation="Vertical">
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontFamily="AdwaitaSans"
+                            FontSize="32"
+                            FontWeight="Black"
+                            Foreground="White"
+                            Opacity="1"
+                            Text="Регистрация" />
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontFamily="AdwaitaSans"
+                            FontSize="15"
+                            FontWeight="Medium"
+                            Foreground="White"
+                            Loaded="TextBlock_Loaded"
+                            Opacity="0.8"
+                            Text="192.168.1.1" />
+                    </StackPanel>
+                    <TextBlock
+                        FontFamily="AdwaitaSans"
+                        FontSize="15"
+                        FontWeight="Medium"
+                        Foreground="White"
+                        Opacity="0.8"
+                        Text="Логин" />
+                    <ui:TextBox
+                        x:Name="LoginEnter"
+                        KeyDown="TextBox_KeyDown"
+                        PlaceholderText="Apogee"
+                        TextChanged="Enter_TextChanged"
+                        VerticalScrollBarVisibility="Auto" />
+                    <TextBlock
+                        x:Name="UsernameEmpty"
+                        Background="{x:Null}"
+                        FontFamily="AdwaitaSans"
+                        FontSize="15"
+                        FontWeight="Medium"
+                        Foreground="#FFFF4646"
+                        Opacity="0.8"
+                        Text="Имя пользователя не может быть пустым"
+                        TextAlignment="Center" />
+                </StackPanel>
+                <StackPanel
+                    x:Name="Step3"
+                    MinWidth="300"
+                    MaxWidth="300"
+                    Margin="5"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Orientation="Vertical">
+                    <StackPanel Orientation="Vertical">
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontFamily="AdwaitaSans"
+                            FontSize="32"
+                            FontWeight="Black"
+                            Foreground="White"
+                            Opacity="1"
+                            Text="Регистрация" />
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontFamily="AdwaitaSans"
+                            FontSize="15"
+                            FontWeight="Medium"
+                            Foreground="White"
+                            Loaded="TextBlock_Loaded"
+                            Opacity="0.8"
+                            Text="192.168.1.1" />
+                    </StackPanel>
+                    <TextBlock
+                        FontFamily="AdwaitaSans"
+                        FontSize="15"
+                        FontWeight="Medium"
+                        Foreground="#FFC3C3C3"
+                        Text="Почта" />
+                    <ui:TextBox
+                        x:Name="EmailEnter"
+                        KeyDown="TextBox_KeyDown"
+                        PlaceholderText="apogee@barkfluff.ru"
+                        TextChanged="Enter_TextChanged"
+                        VerticalScrollBarVisibility="Auto" />
+                    <TextBlock
+                        x:Name="EmailEmpty"
+                        Background="{x:Null}"
+                        FontFamily="AdwaitaSans"
+                        FontSize="15"
+                        FontWeight="Medium"
+                        Foreground="#FFFF4646"
+                        Opacity="0.8"
+                        Text="Введите адрес почты"
+                        TextAlignment="Center" />
+                    <TextBlock
+                        x:Name="EmailIncorrect"
+                        Background="{x:Null}"
+                        FontFamily="AdwaitaSans"
+                        FontSize="15"
+                        FontWeight="Medium"
+                        Foreground="#FFFF4646"
+                        Opacity="0.8"
+                        Text="Введите корректный адрес почты"
+                        TextAlignment="Center" />
+                </StackPanel>
+                <StackPanel
+                    x:Name="Step4"
+                    MinWidth="300 "
+                    MaxWidth="300"
+                    Margin="5"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Orientation="Vertical">
+                    <StackPanel Orientation="Vertical">
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontFamily="AdwaitaSans"
+                            FontSize="32"
+                            FontWeight="Black"
+                            Foreground="White"
+                            Opacity="1"
+                            Text="Регистрация" />
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontFamily="AdwaitaSans"
+                            FontSize="15"
+                            FontWeight="Medium"
+                            Foreground="White"
+                            Loaded="TextBlock_Loaded"
+                            Opacity="0.8"
+                            Text="192.168.1.1" />
+                    </StackPanel>
+                    <TextBlock
+                        FontFamily="AdwaitaSans"
+                        FontSize="15"
+                        FontWeight="Medium"
+                        Foreground="#FFC3C3C3"
+                        Text="Код подтверждения" />
+                    <ui:TextBox
+                        x:Name="VerificationCodeEnter"
+                        KeyDown="TextBox_KeyDown"
+                        PlaceholderText="12345"
+                        TextChanged="Enter_TextChanged"
+                        VerticalScrollBarVisibility="Auto" />
+                    <TextBlock
+                        x:Name="IncorrentCode"
+                        Background="{x:Null}"
+                        FontFamily="AdwaitaSans"
+                        FontSize="15"
+                        FontWeight="Medium"
+                        Foreground="#FFFF4646"
+                        Opacity="0.8"
+                        Text="Неверный код подтверждения"
+                        TextAlignment="Center" />
+                    <TextBlock
+                        x:Name="UndersizedCode"
+                        Background="{x:Null}"
+                        FontFamily="AdwaitaSans"
+                        FontSize="15"
+                        FontWeight="Medium"
+                        Foreground="#FFFF4646"
+                        Opacity="0.8"
+                        Text="Код должен состоять из 6 цифр"
+                        TextAlignment="Center" />
+                </StackPanel>
+                <StackPanel
+                    x:Name="Step5"
+                    MinWidth="300"
+                    MaxWidth="300"
+                    Margin="5"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Orientation="Vertical">
+                    <StackPanel Orientation="Vertical">
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontFamily="AdwaitaSans"
+                            FontSize="32"
+                            FontWeight="Black"
+                            Foreground="White"
+                            Opacity="1"
+                            Text="Регистрация" />
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontFamily="AdwaitaSans"
+                            FontSize="15"
+                            FontWeight="Medium"
+                            Foreground="White"
+                            Loaded="TextBlock_Loaded"
+                            Opacity="0.8"
+                            Text="192.168.1.1" />
+                    </StackPanel>
+                    <TextBlock
+                        Margin="0,10,0,0"
+                        FontFamily="AdwaitaSans"
+                        FontSize="15"
+                        FontWeight="Medium"
+                        Foreground="#FFC3C3C3"
+                        Text="Пароль" />
+                    <ui:PasswordBox
+                        x:Name="PasswordEnter"
+                        KeyDown="TextBox_KeyDown"
+                        PlaceholderText="sobakapipiska1337"
+                        TextChanged="Enter_TextChanged"
+                        VerticalScrollBarVisibility="Auto" />
+                    <TextBlock
+                        x:Name="IncorrectPassword"
+                        Background="{x:Null}"
+                        FontFamily="AdwaitaSans"
+                        FontSize="15"
+                        FontWeight="Medium"
+                        Foreground="#FFFF4646"
+                        Opacity="0.8"
+                        Text="Пароль не может быть пустым"
+                        TextAlignment="Center" />
+
+                </StackPanel>
+                <StackPanel
+                    x:Name="Step6"
+                    MinWidth="300"
+                    MaxWidth="300"
+                    Margin="5"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Orientation="Vertical">
+                    <StackPanel Orientation="Vertical">
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontFamily="AdwaitaSans"
+                            FontSize="32"
+                            FontWeight="Black"
+                            Foreground="White"
+                            Opacity="1"
+                            Text="Регистрация" />
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontFamily="AdwaitaSans"
+                            FontSize="15"
+                            FontWeight="Medium"
+                            Foreground="White"
+                            Loaded="TextBlock_Loaded"
+                            Opacity="0.8"
+                            Text="192.168.1.1" />
+                    </StackPanel>
+
+                </StackPanel>
+            </Grid>
+            <StackPanel
+                Margin="10"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Bottom"
+                Orientation="Horizontal">
+                <ui:Button
+                    x:Name="BackButton"
+                    Margin="5"
+                    HorizontalAlignment="Stretch"
+                    Click="BackButton_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            FontSize="20"
+                            Foreground="White"
+                            Symbol="ArrowLeft12" />
+                        <TextBlock
+                            Margin="0,0,5,0"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Center"
+                            FontFamily="AdwaitaSans"
+                            FontSize="12"
+                            FontWeight="Bold"
+                            Foreground="White"
+                            Text="Назад" />
+
+                    </StackPanel>
+                </ui:Button>
+                <ui:Button
+                    x:Name="NextButton"
+                    Margin="5"
+                    HorizontalAlignment="Stretch"
+                    Click="NextButton_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock
+                            Margin="0,0,5,0"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Center"
+                            FontFamily="AdwaitaSans"
+                            FontSize="12"
+                            FontWeight="Bold"
+                            Foreground="White"
+                            Text="Далее" />
+                        <ui:SymbolIcon
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            FontSize="20"
+                            Foreground="White"
+                            Symbol="ArrowRight12" />
+                    </StackPanel>
+                </ui:Button>
+                <ui:Button
+                    x:Name="CreateButton"
+                    Margin="5"
+                    HorizontalAlignment="Stretch"
+                    Click="Registration">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock
+                            Margin="0,0,5,0"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Center"
+                            FontFamily="AdwaitaSans"
+                            FontSize="12"
+                            FontWeight="Bold"
+                            Foreground="White"
+                            Text="Создать аккаунт" />
+                        <ui:SymbolIcon
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            FontSize="20"
+                            Foreground="White"
+                            Symbol="Add12" />
+                    </StackPanel>
+                </ui:Button>
+            </StackPanel>
         </StackPanel>
     </Grid>
 </UserControl>
