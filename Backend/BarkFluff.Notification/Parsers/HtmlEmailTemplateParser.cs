@@ -7,7 +7,9 @@ public class HtmlEmailTemplateParser
 
     private readonly Dictionary<NotificationType, string> _templatesMap = new()
     {
-        { NotificationType.ConfirmationRegistration, "confirmation_account.html"}
+        { NotificationType.ConfirmationRegistration, "confirmation_account.html"},
+        { NotificationType.ConfirmationOtpEmail, "confirmation_otp_email.html"},
+        { NotificationType.ConfirmationAuth, "confirmation_auth.html"}
     };
     
     public async Task<string> Parse(NotificationType type, Dictionary<string, string> payload)

@@ -71,6 +71,20 @@ public class AuthPropertiesStorage
         await _context.SaveChangesAsync();
     }
 
+    public async Task EnableEmailOtp(long userId)
+    {
+        var props = await _context.AuthUserProperties.FirstOrDefaultAsync(x => x.UserId == userId);
+
+        if (props is null)
+        {
+            throw new OtpNotCreatedException();
+        }
+        
+        props.EmailOtpEnabled = true;
+        
+        await _context.SaveChangesAsync();
+    }
+
     public async Task<AuthUserProperty?> GetUserAuthProperties(long userId)
     {
         return await _context.AuthUserProperties.Where(x => x.UserId == userId).FirstOrDefaultAsync();
@@ -123,6 +137,20 @@ public class AuthPropertiesStorage
         }
         
         props.LastEmailAuthCode = code;
+        
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task UpdateOptType(OtpType type, long userId)
+    {
+        var props = await _context.AuthUserProperties.FirstOrDefaultAsync(x => x.UserId == userId);
+        
+        if (props is null)
+        {
+            throw new OtpNotCreatedException();
+        }
+        
+        props.SelectedOtpType = type;
         
         await _context.SaveChangesAsync();
     }

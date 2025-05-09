@@ -5,6 +5,7 @@ using BarkFluff.Shared.Exceptions.Identity;
 using MediatR;
 using OtpNet;
 using OtpNotCreatedException = BarkFluff.Identity.Persistence.Exceptions.OtpNotCreatedException;
+using OtpType = BarkFluff.Identity.Domain.OtpType;
 
 namespace BarkFluff.Identity.Features.ConfirmOtpVerification;
 
@@ -23,18 +24,37 @@ public class ConfirmOtpVerificationCommandHandler : IRequestHandler<ConfirmOtpVe
     {
         try
         {
-            var otpSecret = await _authPropertiesStorage.GetOtpSecretKey(_userContext.UserId);
             
-            var totp = new Totp(Base32Encoding.ToBytes(otpSecret));
-            
-            var isValid = totp.VerifyTotp(request.OtpCode, out long timeStepMatched, VerificationWindow.RfcSpecifiedNetworkDelay);
+            var otpConfigs = await _authPropertiesStorage.GetUserAuthProperties(_userContext.UserId);
 
-            if (!isValid)
+            if (otpConfigs.SelectedOtpType == OtpType.Authenticator)
             {
-                throw new NotValidOtpCodeException();
+                var otpSecret = await _authPropertiesStorage.GetOtpSecretKey(_userContext.UserId);
+            
+            
+                var totp = new Totp(Base32Encoding.ToBytes(otpSecret));
+            
+                var isValid = totp.VerifyTotp(request.OtpCode, out long timeStepMatched, VerificationWindow.RfcSpecifiedNetworkDelay);
+
+                if (!isValid)
+                {
+                    throw new NotValidOtpCodeException();
+                }
+
+                await _authPropertiesStorage.EnableOtp(_userContext.UserId);
             }
 
-            await _authPropertiesStorage.EnableOtp(_userContext.UserId);
+            if (otpConfigs.SelectedOtpType == OtpType.Email)
+            {
+                if (!string.Equals(otpConfigs.LastEmailAuthCode, request.OtpCode,
+                        StringComparison.InvariantCultureIgnoreCase))
+                {
+                    throw new NotValidOtpCodeException();
+                }
+                
+                await _authPropertiesStorage.EnableEmailOtp(_userContext.UserId);
+            }
+          
         }
         catch (OtpNotCreatedException ex)
         {

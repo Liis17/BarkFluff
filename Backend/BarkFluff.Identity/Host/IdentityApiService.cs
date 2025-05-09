@@ -110,7 +110,11 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
     public override Task<EnableOtpVerificationResponse> EnableOtpVerification(EnableOtpVerificationRequest request,
         ServerCallContext context)
     {
-        var command = new EnableOtpVerificationCommand();
+        var command = new EnableOtpVerificationCommand()
+        {
+            OptType = request.OtpType,
+            DeviceName = context.RequestHeaders.FirstOrDefault(m => m.Key == "x-device-name")?.Value ?? throw new XDeviceNameIsRequiredException()
+        };
         
         return _mediator.Send(command);
     }

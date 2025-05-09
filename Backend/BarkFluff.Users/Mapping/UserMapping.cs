@@ -13,7 +13,7 @@ public static class UserMapping
             Id = domainUser.Id,
             LastName = domainUser.LastName,
             RegistrationDate = Timestamp.FromDateTime(domainUser.RegistrationDate),
-
+            Username = domainUser.Username,
         };
     }
 }
