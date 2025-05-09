@@ -40,6 +40,8 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
             var uri = new OtpUri(OtpType.Totp, base32Secret, userInfo.User.Username, "BarkFluff").ToString();
         
             await _authPropertiesStorage.AddUserOtpSecretKey(_userContext.UserId, base32Secret);
+            await _authPropertiesStorage.UpdateOptType(Domain.OtpType.Authenticator, userInfo.User.Id);
+
         
             var qrGenerator = new QRCodeGenerator();
             var qrCodeData = qrGenerator.CreateQrCode(uri, QRCodeGenerator.ECCLevel.Q);
@@ -60,6 +62,10 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
 
             var code = CodeGenerator.GenerateDigitalCode(6);
             
+            await _authPropertiesStorage.UpdateLastEmailAuthCode(userContactInfo.User.Id, code);
+            
+            await _authPropertiesStorage.UpdateOptType(Domain.OtpType.Email, userContactInfo.User.Id);
+            
             var emailNotification = new EmailNotification()
             {
                 OwnerId = userInfo.User.Id,
@@ -68,7 +74,12 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
                 Payload = new Dictionary<string, string>()
                 {
                     {"username", userInfo.User.Username},
-                    {"confirmation_code", code}
+                    {"confirmation_code", code},
+                    {"ip", "192.168.1.1"},
+                    {"devicename", request.DeviceName},
+                    {"os", "loh"},
+                    {"location", "Россия 😊"},
+                    {"datetime", DateTime.UtcNow.ToString("D")}
                 },
                 ServiceId = ServiceId.Identity,
                 Title = "Код подтверждения для привязки",
@@ -81,6 +92,6 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
         }
 
 
-        return  new EnableOtpVerificationResponse() { OtpQr = string.Empty };;
+        return new EnableOtpVerificationResponse() { OtpQr = string.Empty };;
     }
 }

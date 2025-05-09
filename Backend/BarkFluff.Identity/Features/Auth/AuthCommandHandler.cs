@@ -66,11 +66,16 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                     Payload = new Dictionary<string, string>
                     {
                         {"username", userContactInfo.User.Username},
-                        {"confirmation_code", code}
+                        {"confirmation_code", code},
+                        {"ip", "192.168.1.1"},
+                        {"devicename", request.DeviceName},
+                        {"os", "loh"},
+                        {"location", "Россия 😊"},
+                        {"datetime", DateTime.UtcNow.ToString("D")}
                     },
                     ServiceId = ServiceId.Identity,
-                    Title = "Код подтверждения для вход",
-                    Type = NotificationType.ConfirmationOtpEmail
+                    Title = "Код подтверждения для входа",
+                    Type = NotificationType.ConfirmationAuth
                 };
 
                 await notificationQueueSender.SendNotification(emailNotification);
