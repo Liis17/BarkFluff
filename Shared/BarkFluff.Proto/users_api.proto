@@ -23,6 +23,31 @@ service UsersServerApi {
   rpc AddDraftUser(AddDraftUserRequest) returns(AddDraftUserResponse);
   
   rpc ConfirmUser(ConfirmUserRequest) returns(ConfirmUserResponse);
+  
+  rpc GetById(GetByIdRequest) returns(GetByIdResponse);
+  
+  rpc GetUserContacts(GetUserContactsRequest) returns(GetUserContactsResponse);
+}
+
+message GetUserContactsRequest {
+  int64 user_id = 1;
+}
+
+message GetUserContactsResponse {
+  User user = 1;
+  UserContact contact = 2;
+}
+
+message UserContact {
+  string email = 1;
+}
+
+message GetByIdRequest {
+  int64 user_id = 1;
+}
+
+message GetByIdResponse {
+  User user = 1;
 }
 
 message GetUserRequest {

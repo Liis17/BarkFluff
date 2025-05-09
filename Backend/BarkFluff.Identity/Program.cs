@@ -50,6 +50,7 @@ public class Program
         builder.Services.AddTransient<JwtService>();
         builder.Services.AddTransient<ConfirmationCodesStorage>();
         builder.Services.AddScoped<NotificationQueueSender>();
+        builder.Services.AddTransient<AuthPropertiesStorage>();
         
         builder.Services.AddMassTransit(x =>
         {

@@ -11,4 +11,6 @@ public class AuthCommand : DeviceNameCommand, IRequest<AuthResponse>
     public string? Email { get; set; }
     
     public string? Password { get; set; }
+    
+    public string? OtpCode { get; set; }
 }

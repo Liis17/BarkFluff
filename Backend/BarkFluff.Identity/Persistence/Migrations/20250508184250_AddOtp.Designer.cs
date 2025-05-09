@@ -3,6 +3,7 @@ using System;
 using BarkFluff.Identity.Persistence.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace BarkFluff.Identity.Persistence.Migrations
 {
     [DbContext(typeof(IdentityContext))]
-    partial class IdentityContextModelSnapshot : ModelSnapshot
+    [Migration("20250508184250_AddOtp")]
+    partial class AddOtp
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -30,21 +33,11 @@ namespace BarkFluff.Identity.Persistence.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
-                    b.Property<bool>("EmailOtpEnabled")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("LastEmailAuthCode")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.Property<bool>("OtpEnabled")
                         .HasColumnType("boolean");
 
                     b.Property<string>("OtpSecret")
                         .HasColumnType("text");
-
-                    b.Property<int>("SelectedOtpType")
-                        .HasColumnType("integer");
 
                     b.Property<long>("UserId")
                         .HasColumnType("bigint");

@@ -8,20 +8,88 @@ package barkfluff.identity;
 
 service IdentityApi {
   
-  rpc Auth(AuthRequest) returns(AuthResponse);
+  // Аторизация пользователя
+  rpc Auth(AuthRequest) returns(AuthResponse); 
   
-  rpc CreateToken(CreateTokenRequest) returns(CreateTokenResponse);
+  // Получить токен по refresh токену
+  rpc CreateToken(CreateTokenRequest) returns(CreateTokenResponse); 
   
-  rpc CreateAccount(CreateAccountRequest) returns(CreateAccountResponse);
+  // Создать аккаунт
+  rpc CreateAccount(CreateAccountRequest) returns(CreateAccountResponse); 
   
+  // Подтвердить создания аккаунта
   rpc ConfirmAccount(ConfirmAccountRequest) returns(ConfirmAccountResponse);
   
   rpc GenerateTestToken(GenerateTestTokenRequest) returns(GenerateTestTokenResponse);
   
+  // Получить активные сессии
   rpc GetActiveSessions(GetActiveSessionsRequest) returns(GetActiveSessionsResponse);
   
+  // Удалить активную сессию
   rpc RemoveActiveSession(RemoveActiveSessionRequest) returns(RemoveActiveSessionResponse);
+  
+  // Включить 2ФА авторизацию
+  rpc EnableOtpVerification(EnableOtpVerificationRequest) returns(EnableOtpVerificationResponse);
+  
+  // Подтвержить включение 2ФА авторизации
+  rpc ConfirmOtpVerification(ConfirmOtpVerificationRequest) returns(ConfirmOtpVerificationResponse);
+  
+  // Отключить метод 2ФА авторизации
+  rpc DisableOtpVerification(DisableOtpVerificationRequest) returns(DisableOtpVerificationResponse);
+  
+  // Получить статус 2ФА авторизации
+  rpc ListOtpVerification(ListOtpVerificationRequest) returns(ListOtpVerificationResponse);
+  
+}
 
+message SendEmailOtpCodeRequest {
+  
+}
+
+message SendEmailOtpCodeResponse {
+  
+}
+
+message ListOtpVerificationRequest {
+  
+}
+
+message ListOtpVerificationResponse {
+  bool authenticator_enabled = 1;
+  bool email_enabled = 2;
+}
+
+enum OtpTypeId {
+  Unknown = 0;
+  Authenticator = 1;
+  Email = 2;
+}
+
+message DisableOtpVerificationRequest {
+  
+  OtpTypeId otp_type = 1;
+  
+  string otp_code = 2;
+}
+
+message DisableOtpVerificationResponse {
+  
+}
+
+message ConfirmOtpVerificationRequest {
+  string otp_code = 1;
+}
+
+message ConfirmOtpVerificationResponse {
+  
+}
+
+message EnableOtpVerificationRequest {
+    OtpTypeId otp_type = 1;
+}
+
+message EnableOtpVerificationResponse {
+  string otp_qr = 1;
 }
 
 message RemoveActiveSessionRequest {
@@ -88,6 +156,7 @@ message AuthRequest {
     string email = 2;
   }
   string password = 3;
+  string otp_code = 4;
 }
 
 message AuthResponse {

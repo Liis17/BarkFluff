@@ -36,7 +36,7 @@ public static class WebApplicationBuilderExtensions
     {
         builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
         
-        var channel = GrpcChannel.ForAddress("http://localhost:7003");
+        var channel = GrpcChannel.ForAddress("http://192.168.1.111:7003");
         var configurationApiClient = new ConfigurationApi.ConfigurationApiClient(channel);
 
         var config = configurationApiClient.GetConfiguration(new GetConfigurationRequest {ServiceId = (int)serviceId});

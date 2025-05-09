@@ -5,6 +5,8 @@ using BarkFluff.Users.Features.CheckExistEmail;
 using BarkFluff.Users.Features.CheckExistUsername;
 using BarkFluff.Users.Features.ConfirmUser;
 using BarkFluff.Users.Features.FindByLogin;
+using BarkFluff.Users.Features.GetUser;
+using BarkFluff.Users.Features.GetUserContacts;
 using Grpc.Core;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -57,5 +59,23 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
         await _mediator.Send(command);
         
         return new ConfirmUserResponse();
+    }
+
+    public override async Task<GetByIdResponse> GetById(GetByIdRequest request, ServerCallContext context)
+    {
+        var query = new GetUserQuery { UserId = request.UserId };
+        var res = await _mediator.Send(query);
+        
+        return new GetByIdResponse { User = res.User };
+    }
+
+    public override Task<GetUserContactsResponse> GetUserContacts(GetUserContactsRequest request, ServerCallContext context)
+    {
+        var command = new GetUserContactsCommand()
+        {
+            UserId = request.UserId
+        };
+        
+        return _mediator.Send(command);
     }
 }

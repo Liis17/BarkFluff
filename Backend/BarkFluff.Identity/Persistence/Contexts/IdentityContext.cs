@@ -10,4 +10,6 @@ public class IdentityContext : DbContext
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     
     public DbSet<ConfirmationCode> ConfirmationCodes { get; set; }
+    
+    public DbSet<AuthUserProperty> AuthUserProperties { get; set; }
 }

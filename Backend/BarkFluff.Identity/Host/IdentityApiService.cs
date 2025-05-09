@@ -1,9 +1,13 @@
 using BarkFluff.Proto.Identity;
 using BarkFluff.Identity.Features.Auth;
 using BarkFluff.Identity.Features.ConfirmAccount;
+using BarkFluff.Identity.Features.ConfirmOtpVerification;
 using BarkFluff.Identity.Features.CreateAccount;
 using BarkFluff.Identity.Features.CreateToken;
+using BarkFluff.Identity.Features.DisableOtpVerification;
+using BarkFluff.Identity.Features.EnableOtpVerification;
 using BarkFluff.Identity.Features.GetActiveSessions;
+using BarkFluff.Identity.Features.ListOtpVerification;
 using BarkFluff.Identity.Features.RemoveActiveSession;
 using BarkFluff.Identity.Services;
 using BarkFluff.Shared.Exceptions.Identity;
@@ -31,6 +35,7 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
         {
             Username = request.Username,
             Email = request.Email,
+            OtpCode = request.OtpCode,
             Password = request.Password,
             DeviceName = context.RequestHeaders.FirstOrDefault(m => m.Key == "x-device-name")?.Value 
                          ?? throw new XDeviceNameIsRequiredException()
@@ -98,6 +103,46 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
             Id = request.SessionId
         };
 
+        return _mediator.Send(command);
+    }
+
+    [Authorize(Policy = nameof(TokenType.User))]
+    public override Task<EnableOtpVerificationResponse> EnableOtpVerification(EnableOtpVerificationRequest request,
+        ServerCallContext context)
+    {
+        var command = new EnableOtpVerificationCommand();
+        
+        return _mediator.Send(command);
+    }
+
+    [Authorize(Policy = nameof(TokenType.User))]
+    public override Task<ConfirmOtpVerificationResponse> ConfirmOtpVerification(ConfirmOtpVerificationRequest request, ServerCallContext context)
+    {
+        var command = new ConfirmOtpVerificationCommand()
+        {
+            OtpCode = request.OtpCode
+        };
+
+        return _mediator.Send(command);
+    }
+
+    [Authorize(Policy = nameof(TokenType.User))]
+    public override Task<DisableOtpVerificationResponse> DisableOtpVerification(DisableOtpVerificationRequest request, ServerCallContext context)
+    {
+        var command = new DisableOtpVerificationCommand
+        {
+            OtpCode = request.OtpCode,
+            OptType = request.OtpType
+        };
+        
+        return _mediator.Send(command);
+    }
+
+    [Authorize(Policy = nameof(TokenType.User))]
+    public override Task<ListOtpVerificationResponse> ListOtpVerification(ListOtpVerificationRequest request, ServerCallContext context)
+    {
+        var command = new ListOtpVerificationCommand();
+        
         return _mediator.Send(command);
     }
 }
