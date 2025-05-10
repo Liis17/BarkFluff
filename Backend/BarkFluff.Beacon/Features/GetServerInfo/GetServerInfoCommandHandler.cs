@@ -1,60 +1,75 @@
+using BarkFluff.Beacon.Configurations;
 using BarkFluff.Proto.Beacon;
+using BarkFluff.Proto.Configuration;
+using BarkFluff.Shared.Identity;
 using MediatR;
 
 namespace BarkFluff.Beacon.Features.GetServerInfo;
 
 public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand, GetServerInfoResponse>
 {
+    private readonly ServerColorSettings _serverColorSettings;
+    private readonly ServerPropsSettings _serverPropsSettings;
+
+    private readonly ConfigurationApi.ConfigurationApiClient _configurationApiClient;
+
+    public GetServerInfoCommandHandler(ServerColorSettings serverColorSettings, ServerPropsSettings serverPropsSettings, 
+        ConfigurationApi.ConfigurationApiClient configurationApiClient)
+    {
+        _serverColorSettings = serverColorSettings;
+        _serverPropsSettings = serverPropsSettings;
+        _configurationApiClient = configurationApiClient;
+    }
+
     public async Task<GetServerInfoResponse> Handle(GetServerInfoCommand request, CancellationToken cancellationToken)
     {
-        return new GetServerInfoResponse()
+        var identitySettings = await _configurationApiClient.GetConfigurationAsync(new GetConfigurationRequest()
         {
-            Name = "my best server",
+            ServiceId = (int)ServiceId.Identity
+        });
+        
+        var usersSettings = await _configurationApiClient.GetConfigurationAsync(new GetConfigurationRequest()
+        {
+            ServiceId = (int)ServiceId.Users
+        });
+        
+        var filesSettings = await _configurationApiClient.GetConfigurationAsync(new GetConfigurationRequest()
+        {
+            ServiceId = (int)ServiceId.Files
+        });
+        
+        return new GetServerInfoResponse
+        {
+            Name = _serverPropsSettings.Name,
+            Description = _serverPropsSettings.Description,
             
-            Beacon = new Service
+            Color = new ServerColor
             {
-                Endpoint = new ServiceEndpoint()
-                {
-                    Host = "fooxboy.ru",
-                    Port = 7002,
-                },
-                Name = "beacon",
-                Status = ServiceStatus.Healthy,
-                TlsEnabled = false
+                HardHex = _serverColorSettings.Hard,
+                LiteHex = _serverColorSettings.Lite,
+                MainHex = _serverColorSettings.Main
             },
-            Identity = new Service
+            
+            Files = ParseService(ServiceId.Files, filesSettings.Configurations.ToList()),
+            Identity = ParseService(ServiceId.Identity, identitySettings.Configurations.ToList()),
+            Users = ParseService(ServiceId.Users, usersSettings.Configurations.ToList()),
+        };
+    }
+
+    private Service ParseService(ServiceId id, List<ConfigurationItem> settings)
+    {
+        return new Service
+        {
+            Name = nameof(id),
+            Endpoint = new ServiceEndpoint
             {
-                Endpoint = new ServiceEndpoint()
-                {
-                    Host = "fooxboy.ru",
-                    Port = 7000,
-                },
-                Name = "identity",
-                Status = ServiceStatus.Healthy,
-                TlsEnabled = false
+                Host = settings.First(x => x.Section == "RunSettings"
+                                           && x.Key == "Host").Value,
+                Port = int.Parse(settings.First(x => x.Section == "RunSettings"
+                                                     && x.Key == "Port").Value)
             },
-            Notifications = new Service
-            {
-                Endpoint = new ServiceEndpoint()
-                {
-                    Host = "localhost",
-                    Port = 1234,
-                },
-                Name = "notifications",
-                Status = ServiceStatus.Healthy,
-                TlsEnabled = false
-            },
-            Users = new Service
-            {
-                Endpoint = new ServiceEndpoint()
-                {
-                    Host = "fooxboy.ru",
-                    Port = 7001,
-                },
-                Name = "users",
-                Status = ServiceStatus.Healthy,
-                TlsEnabled = false
-            }
+            Status = ServiceStatus.Healthy,
+            TlsEnabled = false
         };
     }
 }

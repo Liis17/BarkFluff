@@ -42,17 +42,17 @@ public static class WebApplicationBuilderExtensions
                 });
             }
         });
-        
-        
 
         return builder;
     }
 
     public static WebApplicationBuilder LoadConfiguration(this WebApplicationBuilder builder, ServiceId serviceId)
     {
+        const string ConfigurationsAddress = "http://192.168.1.111:7003";
+        
         builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
         
-        var channel = GrpcChannel.ForAddress("http://192.168.1.111:7003");
+        var channel = GrpcChannel.ForAddress(ConfigurationsAddress);
         var configurationApiClient = new ConfigurationApi.ConfigurationApiClient(channel);
 
         var config = configurationApiClient.GetConfiguration(new GetConfigurationRequest {ServiceId = (int)serviceId});
@@ -70,6 +70,8 @@ public static class WebApplicationBuilderExtensions
             
             configurationDictionary.Add(key, configurationItem.Value);
         }
+        
+        configurationDictionary.Add("ConfigurationServiceAddr", ConfigurationsAddress);
         
         builder.Configuration.AddInMemoryCollection(configurationDictionary);
         
