@@ -7,6 +7,9 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Client.WPF", "BarkFluff.Client.WPF\BarkFluff.Client.WPF.csproj", "{867B0465-D663-4751-87D1-1DA2ED41B125}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Backend", "Backend", "{7E5A1AA1-A416-4D7E-B885-FC81F6CEBF07}"
+	ProjectSection(SolutionItems) = preProject
+		Backend\docker-compose.yml = Backend\docker-compose.yml
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Identity", "Backend\BarkFluff.Identity\BarkFluff.Identity.csproj", "{63E44669-571D-4663-9850-33A1B63338F1}"
 EndProject

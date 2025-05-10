@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  beacon:
+    build:
+      context: ./BarkFluff.Beacon
+      dockerfile: Dockerfile
+    container_name: beacon-service
+    restart: always
+    ports:
+      - "8001:8001"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+    networks:
+      - microservices-network
+    depends_on:
+      - configuration
+  
+  configuration:
+    build:
+      context: ./BarkFluff.Configuration
+      dockerfile: Dockerfile
+    container_name: configuration-service
+    restart: always
+    ports:
+      - "8002:8002"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+    volumes:
+      - config-data:/app/config
+    networks:
+      - microservices-network
+  
+  files:
+    build:
+      context: ./BarkFluff.Files
+      dockerfile: Dockerfile
+    container_name: files-service
+    restart: always
+    ports:
+      - "8003:8003"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+    volumes:
+      - files-data:/app/files
+    networks:
+      - microservices-network
+    depends_on:
+      - configuration
+  
+  identity:
+    build:
+      context: ./BarkFluff.Identity
+      dockerfile: Dockerfile
+    container_name: identity-service
+    restart: always
+    ports:
+      - "8004:8004"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+    networks:
+      - microservices-network
+    depends_on:
+      - configuration
+  
+  notification:
+    build:
+      context: ./BarkFluff.Notification
+      dockerfile: Dockerfile
+    container_name: notification-service
+    restart: always
+    ports:
+      - "8005:8005"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+    networks:
+      - microservices-network
+    depends_on:
+      - configuration
+  
+  users:
+    build:
+      context: ./BarkFluff.Users
+      dockerfile: Dockerfile
+    container_name: users-service
+    restart: always
+    ports:
+      - "8006:8006"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+    networks:
+      - microservices-network
+    depends_on:
+      - configuration
+      - identity
+
+networks:
+  microservices-network:
+    driver: bridge
+
+volumes:
+  config-data:
+  files-data:
