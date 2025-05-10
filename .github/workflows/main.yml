@@ -75,6 +75,11 @@ jobs:
           file: ./Backend/BarkFluff.Beacon/Dockerfile
           push: true
           tags: docker.barkfluff.ru/barkfluff-beacon:latest,docker.barkfluff.ru/barkfluff-beacon:${{ github.sha }}
+
+      - name: Check image size
+        run: |
+          echo "Image size details:"
+          docker images temp-image-for-size-check --format "{{.Size}}"
   
   build-configuration:
     needs: detect-changes
