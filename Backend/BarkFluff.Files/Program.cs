@@ -56,6 +56,5 @@ public class Program
         app.MapGrpcService<FilesServerApiService>();
 
         app.Run();
-        
     }
 }
