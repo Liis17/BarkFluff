@@ -46,6 +46,5 @@ public class Program
         app.UseRouting();
 
         app.Run();
-        
     }
 }
