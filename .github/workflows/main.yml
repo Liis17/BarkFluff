@@ -75,11 +75,6 @@ jobs:
           file: ./Backend/BarkFluff.Beacon/Dockerfile
           push: true
           tags: docker.barkfluff.ru/barkfluff-beacon:latest,docker.barkfluff.ru/barkfluff-beacon:${{ github.sha }}
-
-      - name: Check image size
-        run: |
-          echo "Image size details:"
-          docker images temp-image-for-size-check --format "{{.Size}}"
   
   build-configuration:
     needs: detect-changes
@@ -101,7 +96,7 @@ jobs:
       - name: Build and Push Configuration
         uses: docker/build-push-action@v4
         with:
-          context: ./Backend/BarkFluff.Configuration
+          context: .
           file: ./Backend/BarkFluff.Configuration/Dockerfile
           push: true
           tags: docker.barkfluff.ru/barkfluff-configuration:latest,docker.barkfluff.ru/barkfluff-configuration:${{ github.sha }}
@@ -126,7 +121,7 @@ jobs:
       - name: Build and Push Files
         uses: docker/build-push-action@v4
         with:
-          context: ./Backend/BarkFluff.Files
+          context: .
           file: ./Backend/BarkFluff.Files/Dockerfile
           push: true
           tags: docker.barkfluff.ru/barkfluff-files:latest,docker.barkfluff.ru/barkfluff-files:${{ github.sha }}
@@ -151,7 +146,7 @@ jobs:
       - name: Build and Push Identity
         uses: docker/build-push-action@v4
         with:
-          context: ./Backend/BarkFluff.Identity
+          context: .
           file: ./Backend/BarkFluff.Identity/Dockerfile
           push: true
           tags: docker.barkfluff.ru/barkfluff-identity:latest,docker.barkfluff.ru/barkfluff-identity:${{ github.sha }}
@@ -176,7 +171,7 @@ jobs:
       - name: Build and Push Messages
         uses: docker/build-push-action@v4
         with:
-          context: ./Backend/BarkFluff.Messages
+          context: .
           file: ./Backend/BarkFluff.Messages/Dockerfile
           push: true
           tags: docker.barkfluff.ru/barkfluff-messages:latest,docker.barkfluff.ru/barkfluff-messages:${{ github.sha }}
@@ -201,7 +196,7 @@ jobs:
       - name: Build and Push Notification
         uses: docker/build-push-action@v4
         with:
-          context: ./Backend/BarkFluff.Notification
+          context: .
           file: ./Backend/BarkFluff.Notification/Dockerfile
           push: true
           tags: docker.barkfluff.ru/barkfluff-notification:latest,docker.barkfluff.ru/barkfluff-notification:${{ github.sha }}
@@ -226,7 +221,7 @@ jobs:
       - name: Build and Push Users
         uses: docker/build-push-action@v4
         with:
-          context: ./Backend/BarkFluff.Users
+          context: .
           file: ./Backend/BarkFluff.Users/Dockerfile
           push: true
           tags: docker.barkfluff.ru/barkfluff-users:latest,docker.barkfluff.ru/barkfluff-users:${{ github.sha }}
