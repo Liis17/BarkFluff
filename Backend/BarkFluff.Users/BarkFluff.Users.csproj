@@ -8,6 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="Grpc.Net.ClientFactory" Version="2.71.0" />
         <PackageReference Include="Grpc.Tools" Version="2.71.0">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -29,6 +30,8 @@
 
     <ItemGroup>
         <Protobuf Include="..\..\Shared\BarkFluff.Proto\users_api.proto" GrpcServices="Server" />
+        <Protobuf Include="..\..\Shared\BarkFluff.Proto\files_api.proto" GrpcServices="Client" />
+        
     </ItemGroup>
 
     <ItemGroup>

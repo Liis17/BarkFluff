@@ -20,4 +20,5 @@ public class User
     public string PasswordHash { get; set; }
     
     public bool IsDraft { get; set; }
+    public string? ProfilePicture { get; set; }
 }

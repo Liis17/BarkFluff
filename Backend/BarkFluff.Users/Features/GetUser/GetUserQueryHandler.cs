@@ -1,6 +1,7 @@
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Identity;
+using BarkFluff.Users.Mapping;
 using BarkFluff.Users.Persistence.Services;
 using Google.Protobuf.WellKnownTypes;
 using MediatR;
@@ -31,14 +32,7 @@ public class GetUserQueryHandler : IRequestHandler<GetUserQuery, GetUserResponse
 
         return new GetUserResponse
         {
-            User = new User
-            {
-                Id = user.Id,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                Username = user.Username,
-                RegistrationDate = Timestamp.FromDateTime(user.RegistrationDate.ToUniversalTime())
-            }
+            User = user.ToGrpc()
         };
     }
 } 

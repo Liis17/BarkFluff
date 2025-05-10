@@ -7,7 +7,6 @@ namespace BarkFluff.Configuration.Features.GetConfiguration;
 
 public class GetConfigurationCommandHandler : IRequestHandler<GetConfigurationCommand, GetConfigurationResponse>
 {
-
     private readonly ConfigurationStorage _configurationStorage;
 
     public GetConfigurationCommandHandler(ConfigurationStorage configurationStorage)
@@ -18,10 +17,17 @@ public class GetConfigurationCommandHandler : IRequestHandler<GetConfigurationCo
     public async Task<GetConfigurationResponse> Handle(GetConfigurationCommand request, CancellationToken cancellationToken)
     {
         var configurations = await _configurationStorage.GetConfiguration(request.ServiceId);
-
+        
+        var filteredConfigurations = configurations
+            .GroupBy(c => new { c.Section, c.Key })
+            .Select(group => group
+                .OrderByDescending(c => c.ServiceId == request.ServiceId) 
+                .First()) 
+            .ToList();
+        
         return new GetConfigurationResponse()
         {
-            Configurations = { configurations.Select(c => new ConfigurationItem()
+            Configurations = { filteredConfigurations.Select(c => new ConfigurationItem()
             {
                 Key = c.Key,
                 Value = c.Value,

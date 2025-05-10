@@ -30,6 +30,7 @@ message UploadFileInfo {
   string etag = 5; // Etag S3
   UploadFileType type = 6; // Тип загруженного файла
   string file_name = 7; // Имя файла
+  string file_url = 8; // Ссылка на загрузку файла
 }
 
 message GetUploadUrlRequest {

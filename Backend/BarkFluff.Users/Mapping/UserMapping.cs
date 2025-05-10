@@ -7,13 +7,14 @@ public static class UserMapping
 {
     public static User ToGrpc(this Domain.User domainUser)
     {
-        return new User()
+        return new User
         {
             FirstName = domainUser.FirstName,
             Id = domainUser.Id,
             LastName = domainUser.LastName,
             RegistrationDate = Timestamp.FromDateTime(domainUser.RegistrationDate),
             Username = domainUser.Username,
+            ProfilePicture = domainUser.ProfilePicture,
         };
     }
 }

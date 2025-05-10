@@ -1,12 +1,42 @@
+using BarkFluff.GrpcServer.XAuth;
+using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Users;
+using BarkFluff.Users.Persistence.Services;
 using MediatR;
 
 namespace BarkFluff.Users.Features.SetProfilePicture;
 
 public class SetProfilePictureCommandHandler : IRequestHandler<SetProfilePictureCommand, SetProfilePictureResponse>
 {
-    public Task<SetProfilePictureResponse> Handle(SetProfilePictureCommand request, CancellationToken cancellationToken)
+    private readonly FilesServerApi.FilesServerApiClient _filesServerApiClient;
+    private readonly UsersStorage _usersStorage;
+    private readonly UserContext _userContext;
+
+    public SetProfilePictureCommandHandler(
+        FilesServerApi.FilesServerApiClient filesServerApiClient,
+        UsersStorage usersStorage, UserContext userContext)
     {
-        return null;
+        _filesServerApiClient = filesServerApiClient;
+        _usersStorage = usersStorage;
+        _userContext = userContext;
+    }
+
+    public async Task<SetProfilePictureResponse> Handle(SetProfilePictureCommand request, CancellationToken cancellationToken)
+    {
+        // Получаем информацию о файле по его ID
+        var fileDataRequest = new GetFileDataRequest
+        {
+            FileId = request.FileId.ToString()
+        };
+        
+        var fileDataResponse = await _filesServerApiClient.GetFileDataAsync(fileDataRequest, cancellationToken: cancellationToken);
+        
+        // Извлекаем URL изображения из ответа
+        var fileUrl = fileDataResponse.FileInfo.FileUrl;
+        
+        // Обновляем профильное изображение пользователя
+        await _usersStorage.UpdateProfilePicture(_userContext.UserId, fileUrl);
+        
+        return new SetProfilePictureResponse();
     }
 }

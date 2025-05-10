@@ -16,6 +16,12 @@ service UsersApi {
   
   // Установить аватарку
   rpc SetProfilePicture(SetProfilePictureRequest) returns(SetProfilePictureResponse);
+
+  // Проверить существование юзернейма
+  rpc CheckExistUsername(CheckExistUsernameRequest) returns(CheckExistResponse);
+
+  // Проверить существование емейла
+  rpc CheckExistEmail(CheckExistEmailRequest) returns(CheckExistResponse);
 }
 
 service UsersServerApi {

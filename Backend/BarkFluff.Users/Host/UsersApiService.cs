@@ -1,7 +1,10 @@
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Identity;
+using BarkFluff.Users.Features.CheckExistEmail;
+using BarkFluff.Users.Features.CheckExistUsername;
 using BarkFluff.Users.Features.GetUser;
 using BarkFluff.Users.Features.SetPassword;
+using BarkFluff.Users.Features.SetProfilePicture;
 using Grpc.Core;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -30,5 +33,32 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
     {
         var query = new GetUserQuery { UserId = request.UserId == 0 ? null : request.UserId };
         return await _mediator.Send(query);
+    }
+
+    public override Task<SetProfilePictureResponse> SetProfilePicture(SetProfilePictureRequest request, ServerCallContext context)
+    {
+        var command = new SetProfilePictureCommand
+        {
+            FileId = Guid.Parse(request.FileId)
+        };
+        
+        return _mediator.Send(command);
+    }
+
+    [AllowAnonymous]
+    public override Task<CheckExistResponse> CheckExistEmail(CheckExistEmailRequest request, ServerCallContext context)
+    {
+        var command = new CheckExistEmailQuery() { Email = request.Email };
+        
+        return _mediator.Send(command);
+    }
+
+    [AllowAnonymous]
+    public override Task<CheckExistResponse> CheckExistUsername(CheckExistUsernameRequest request,
+        ServerCallContext context)
+    {
+        var command = new CheckExistUsernameQuery() { Username = request.Username };
+        
+        return _mediator.Send(command);
     }
 }

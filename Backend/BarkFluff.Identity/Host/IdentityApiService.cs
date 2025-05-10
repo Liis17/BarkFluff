@@ -82,7 +82,7 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
 
     public override async Task<GenerateTestTokenResponse> GenerateTestToken(GenerateTestTokenRequest request, ServerCallContext context)
     {
-        var token = _jwtService.GenerateServerToken(ServiceId.Identity);
+        var token = _jwtService.GenerateServerToken(ServiceId.Users);
 
         return new GenerateTestTokenResponse() { Token = token };
     }

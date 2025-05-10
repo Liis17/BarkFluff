@@ -73,6 +73,18 @@ public class UsersStorage
         await _usersContext.SaveChangesAsync();
     }
 
+     public async Task UpdateProfilePicture(long userId, string profilePictureUrl)
+     {
+        var user = await _usersContext.Users.FirstOrDefaultAsync(x => x.Id == userId);
+        
+        if (user is null)
+        {
+            throw new UserNotFoundException();
+        }
+        
+        user.ProfilePicture = profilePictureUrl;
+        await _usersContext.SaveChangesAsync();
+     }
     public async Task UpdatePasswordHash(long userId, string passwordHash)
     {
         var user = await _usersContext.Users.FirstOrDefaultAsync(x => x.Id == userId);

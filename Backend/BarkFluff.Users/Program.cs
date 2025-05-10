@@ -1,6 +1,8 @@
 using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.XAuth;
+using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Users;
+using BarkFluff.Shared.Auth;
 using BarkFluff.Shared.Exceptions.Interceptors;
 using BarkFluff.Shared.Identity;
 using BarkFluff.Users.Host;
@@ -38,6 +40,12 @@ public class Program
 
         // Регистрируем аутентификацию и авторизацию
         builder.Services.AddXAuth(builder.Configuration);
+        
+        builder.Services.AddGrpcClient<FilesServerApi.FilesServerApiClient>(o =>
+            {
+                o.Address = new Uri(builder.Configuration["FilesService:Host"]);
+            }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["FilesService:Token"]))
+            .AddInterceptor(() => new ExceptionClientInterceptor());
         
         var app = builder.Build();
         
