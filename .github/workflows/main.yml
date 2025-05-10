@@ -3,7 +3,7 @@ name: Deploy Microservices
 on:
   push:
     branches:
-      - main  # или master, в зависимости от вашей основной ветки
+      - master  # или master, в зависимости от вашей основной ветки
     paths:
       - 'Backend/BarkFluff.Beacon/**'
       - 'Backend/BarkFluff.Configuration/**'
