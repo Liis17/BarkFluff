@@ -34,5 +34,6 @@ public class Program
         app.MapGrpcService<ConfigurationApiService>();
 
         app.Run();
+        
     }
 }

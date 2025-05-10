@@ -43,5 +43,6 @@ public class Program
         app.MapGrpcService<BeaconApiService>();
 
         app.Run();
+          
     }
 }
