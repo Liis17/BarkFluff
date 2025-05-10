@@ -71,7 +71,7 @@ jobs:
       - name: Build and Push Beacon
         uses: docker/build-push-action@v4
         with:
-          context: ./Backend/BarkFluff.Beacon
+          context: .
           file: ./Backend/BarkFluff.Beacon/Dockerfile
           push: true
           tags: docker.barkfluff.ru/barkfluff-beacon:latest,docker.barkfluff.ru/barkfluff-beacon:${{ github.sha }}
