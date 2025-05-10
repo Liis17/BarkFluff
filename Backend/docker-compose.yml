@@ -3,8 +3,8 @@ version: '3.8'
 services:
   beacon:
     build:
-      context: ./BarkFluff.Beacon
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: BarkFluff.Beacon/Dockerfile
     container_name: beacon-service
     restart: always
     ports:
@@ -18,8 +18,8 @@ services:
   
   configuration:
     build:
-      context: ./BarkFluff.Configuration
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: BarkFluff.Configuration/Dockerfile
     container_name: configuration-service
     restart: always
     ports:
@@ -33,8 +33,8 @@ services:
   
   files:
     build:
-      context: ./BarkFluff.Files
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: BarkFluff.Files/Dockerfile
     container_name: files-service
     restart: always
     ports:
@@ -50,8 +50,8 @@ services:
   
   identity:
     build:
-      context: ./BarkFluff.Identity
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: BarkFluff.Identity/Dockerfile
     container_name: identity-service
     restart: always
     ports:
@@ -65,8 +65,8 @@ services:
   
   notification:
     build:
-      context: ./BarkFluff.Notification
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: BarkFluff.Notification/Dockerfile
     container_name: notification-service
     restart: always
     ports:
@@ -80,8 +80,8 @@ services:
   
   users:
     build:
-      context: ./BarkFluff.Users
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: BarkFluff.Users/Dockerfile
     container_name: users-service
     restart: always
     ports:
