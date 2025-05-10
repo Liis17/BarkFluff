@@ -49,93 +49,93 @@ service UsersServerApi {
 }
 
 message SetProfilePictureRequest {
-  string file_id = 1;
+  string file_id = 1; // идетификатор файла
 }
 
 message SetProfilePictureResponse { }
 
 message GetUserContactsRequest {
-  int64 user_id = 1;
+  int64 user_id = 1; // идентификатор пользователя
 }
 
 message GetUserContactsResponse {
-  User user = 1;
-  UserContact contact = 2;
+  User user = 1; // пользователб
+  UserContact contact = 2; // контакты пользователя
 }
 
 message UserContact {
-  string email = 1;
+  string email = 1; // эл. почта
 }
 
 message GetByIdRequest {
-  int64 user_id = 1;
+  int64 user_id = 1; // идентификатор пользователя
 }
 
 message GetByIdResponse {
-  User user = 1;
+  User user = 1; // пользователь
 }
 
 message GetUserRequest {
-  int64 user_id = 1;
+  int64 user_id = 1; // идентификатор пользователя
 }
 
 message GetUserResponse {
-  User user = 1;
+  User user = 1; // пользователь
 }
 
 message ConfirmUserRequest {
-  int64 user_id = 1;
+  int64 user_id = 1; // идентификатор пользователя
 }
 
 message ConfirmUserResponse { }
 
 message SetPasswordRequest {
-  string password = 1;
+  string password = 1; // пароль
 }
 
 message SetPasswordResponse { }
 
 message AddDraftUserRequest {
-  string first_name = 1;
-  string last_name = 2;
-  string username = 3;
-  string email = 4;
+  string first_name = 1; // имя 
+  string last_name = 2; // фамилия
+  string username = 3; // имя пользователя
+  string email = 4; // почта
 }
 
 message AddDraftUserResponse {
-  int64 user_id = 1;
+  int64 user_id = 1; // идентификатор пользователя
 }
 
 message CheckExistEmailRequest {
-  string email = 1;
+  string email = 1; // эл. почта
 }
 
 message CheckExistUsernameRequest {
-  string username = 1;
+  string username = 1; // имя пользователя
 }
 
 message CheckExistResponse {
-  bool exist = 1;
+  bool exist = 1; // существует или нет
 }
 
 
 message FindByLoginRequest {
   oneof login {
-    string username = 1;
-    string email = 2;
+    string username = 1; // имя пользователя
+    string email = 2; // почта
   }
 }
 
 message FindByLoginResponse {
-  User user = 1;
+  User user = 1; // пользователь
 }
 
 message User{
-  int64 id = 1;
-  string first_name = 2;
-  string last_name = 3;
-  string username = 4;
-  google.protobuf.Timestamp registration_date = 5;
-  string profile_picture = 6;
+  int64 id = 1; // идентификатор пользователя
+  string first_name = 2; // имя
+  string last_name = 3; // фамилия
+  string username = 4; // юзернейм
+  google.protobuf.Timestamp registration_date = 5; // дата регистрации
+  string profile_picture = 6; // ссылка на аватарку пользователя
 }
 
