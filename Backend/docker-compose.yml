@@ -1,5 +1,3 @@
-version: '3.8'
-
 # Общие переменные для всех сервисов
 x-common-variables: &common-variables
   CONFIGURATION_SERVICE_URL: "http://192.168.1.111:7003"
@@ -72,7 +70,6 @@ services:
       - barkfluff-network
     depends_on:
       - configuration
-      - identity
 
 networks:
   barkfluff-network:
