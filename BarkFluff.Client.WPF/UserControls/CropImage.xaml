@@ -1,0 +1,69 @@
+﻿<UserControl
+    x:Class="BarkFluff.Client.WPF.UserControls.CropImage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:BarkFluff.Client.WPF.UserControls"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    d:DesignHeight="450"
+    d:DesignWidth="800"
+    mc:Ignorable="d">
+    <Grid Background="Black">
+        <StackPanel
+            HorizontalAlignment="Center"
+            VerticalAlignment="Bottom"
+            Orientation="Vertical">
+            <Button
+                HorizontalAlignment="Center"
+                Panel.ZIndex="100"
+                Click="Button_Click"
+                Content="GetCropped" />
+            <Slider
+                x:Name="ZoomSlider"
+                Width="300"
+                Margin="10"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Bottom"
+                Panel.ZIndex="100"
+                Maximum="2.5"
+                Minimum="0.5"
+                Value="1.0" />
+        </StackPanel>
+
+        <Canvas x:Name="MainCanvas" ClipToBounds="True">
+
+            <Image x:Name="ImageControl" RenderTransformOrigin="0.5,0.5" />
+            <!--  Затенённая маска вокруг круга  -->
+            <Canvas
+                x:Name="MaskCanvas"
+                Canvas.Left="150"
+                Canvas.Top="150"
+                IsHitTestVisible="False">
+                <Path Fill="#99000000">
+                    <Path.Data>
+                        <CombinedGeometry GeometryCombineMode="Exclude">
+                            <CombinedGeometry.Geometry1>
+                                <RectangleGeometry Rect="0,0,500,500" />
+                            </CombinedGeometry.Geometry1>
+                            <CombinedGeometry.Geometry2>
+                                <EllipseGeometry
+                                    Center="250,250"
+                                    RadiusX="250"
+                                    RadiusY="250" />
+                            </CombinedGeometry.Geometry2>
+                        </CombinedGeometry>
+                    </Path.Data>
+                </Path>
+            </Canvas>
+            <Rectangle
+                x:Name="CropBorder"
+                Canvas.Left="150"
+                Canvas.Top="150"
+                Width="500"
+                Height="500"
+                IsHitTestVisible="False"
+                Stroke="Lime"
+                StrokeThickness="2" />
+        </Canvas>
+    </Grid>
+</UserControl>
