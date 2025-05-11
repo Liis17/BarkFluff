@@ -1,4 +1,5 @@
-﻿Microsoft Visual Studio Solution File, Format Version 12.00
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.13.35913.81
 MinimumVisualStudioVersion = 10.0.40219.1
@@ -7,9 +8,6 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Client.WPF", "BarkFluff.Client.WPF\BarkFluff.Client.WPF.csproj", "{867B0465-D663-4751-87D1-1DA2ED41B125}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Backend", "Backend", "{7E5A1AA1-A416-4D7E-B885-FC81F6CEBF07}"
-	ProjectSection(SolutionItems) = preProject
-		Backend\docker-compose.yml = Backend\docker-compose.yml
-	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Identity", "Backend\BarkFluff.Identity\BarkFluff.Identity.csproj", "{63E44669-571D-4663-9850-33A1B63338F1}"
 EndProject
@@ -40,6 +38,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Shared.Queue", "BarkFluff.Shared.Queue\BarkFluff.Shared.Queue.csproj", "{C5F262E3-2EA8-4483-A3F7-6F20540A1B33}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Configuration", "Backend\BarkFluff.Configuration\BarkFluff.Configuration.csproj", "{0C185FA4-1C9B-4CE5-BED4-09928E4A05F5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Shared.SecurityUtilities", "Shared\BarkFluff.Shared.SecurityUtilities\BarkFluff.Shared.SecurityUtilities.csproj", "{BD13B521-8B78-4A10-A498-2236C81ED12C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -111,12 +111,13 @@ Global
 		{0C185FA4-1C9B-4CE5-BED4-09928E4A05F5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0C185FA4-1C9B-4CE5-BED4-09928E4A05F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0C185FA4-1C9B-4CE5-BED4-09928E4A05F5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BD13B521-8B78-4A10-A498-2236C81ED12C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BD13B521-8B78-4A10-A498-2236C81ED12C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BD13B521-8B78-4A10-A498-2236C81ED12C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BD13B521-8B78-4A10-A498-2236C81ED12C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {B07C171A-90A2-41DB-A618-37C992F8D403}
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{63E44669-571D-4663-9850-33A1B63338F1} = {7E5A1AA1-A416-4D7E-B885-FC81F6CEBF07}
@@ -133,5 +134,9 @@ Global
 		{DEE15A10-7293-42F9-A17E-0E29301C7233} = {3282AE17-EFD0-495E-9958-FB40F68DA873}
 		{C5F262E3-2EA8-4483-A3F7-6F20540A1B33} = {3282AE17-EFD0-495E-9958-FB40F68DA873}
 		{0C185FA4-1C9B-4CE5-BED4-09928E4A05F5} = {7E5A1AA1-A416-4D7E-B885-FC81F6CEBF07}
+		{BD13B521-8B78-4A10-A498-2236C81ED12C} = {3282AE17-EFD0-495E-9958-FB40F68DA873}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {B07C171A-90A2-41DB-A618-37C992F8D403}
 	EndGlobalSection
 EndGlobal
