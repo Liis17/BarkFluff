@@ -1,103 +1,79 @@
 version: '3.8'
 
+# Общие переменные для всех сервисов
+x-common-variables: &common-variables
+  CONFIGURATION_SERVICE_URL: "http://192.168.1.111:7003"
+
 services:
   beacon:
-    build:
-      context: .
-      dockerfile: BarkFluff.Beacon/Dockerfile
-    container_name: beacon-service
+    image: docker.barkfluff.ru/barkfluff-beacon:latest
     restart: always
-    ports:
-      - "8001:8001"
+    ports: ["7002:7002"]
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
+      <<: *common-variables
     networks:
-      - microservices-network
+      - barkfluff-network
     depends_on:
       - configuration
-  
+
   configuration:
-    build:
-      context: .
-      dockerfile: BarkFluff.Configuration/Dockerfile
-    container_name: configuration-service
+    image: docker.barkfluff.ru/barkfluff-configuration:latest
     restart: always
-    ports:
-      - "8002:8002"
+    ports: ["7003:7003"]
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-    volumes:
-      - config-data:/app/config
+      <<: *common-variables
     networks:
-      - microservices-network
-  
+      - barkfluff-network
+
   files:
-    build:
-      context: .
-      dockerfile: BarkFluff.Files/Dockerfile
-    container_name: files-service
+    image: docker.barkfluff.ru/barkfluff-files:latest
     restart: always
-    ports:
-      - "8003:8003"
+    ports: 
+      - "7005:7005"
+      - "7006:7006"
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-    volumes:
-      - files-data:/app/files
+      <<: *common-variables
     networks:
-      - microservices-network
+      - barkfluff-network
     depends_on:
       - configuration
-  
+
   identity:
-    build:
-      context: .
-      dockerfile: BarkFluff.Identity/Dockerfile
-    container_name: identity-service
+    image: docker.barkfluff.ru/barkfluff-identity:latest
     restart: always
-    ports:
-      - "8004:8004"
+    ports: ["7000:7000"]
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
+      <<: *common-variables
     networks:
-      - microservices-network
+      - barkfluff-network
     depends_on:
       - configuration
-  
+      - users
+
   notification:
-    build:
-      context: .
-      dockerfile: BarkFluff.Notification/Dockerfile
-    container_name: notification-service
+    image: docker.barkfluff.ru/barkfluff-notification:latest
     restart: always
-    ports:
-      - "8005:8005"
+    ports: ["7004:7004"]
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
+      <<: *common-variables
     networks:
-      - microservices-network
+      - barkfluff-network
     depends_on:
       - configuration
-  
+      - identity
+
   users:
-    build:
-      context: .
-      dockerfile: BarkFluff.Users/Dockerfile
-    container_name: users-service
+    image: docker.barkfluff.ru/barkfluff-users:latest
     restart: always
-    ports:
-      - "8006:8006"
+    ports: ["7001:7001"]
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
+      <<: *common-variables
     networks:
-      - microservices-network
+      - barkfluff-network
     depends_on:
       - configuration
       - identity
 
 networks:
-  microservices-network:
+  barkfluff-network:
     driver: bridge
-
-volumes:
-  config-data:
-  files-data:

@@ -37,6 +37,9 @@ service UsersServerApi {
   
   // Добавить черновик юзера
   rpc AddDraftUser(AddDraftUserRequest) returns(AddDraftUserResponse);
+
+  // Переопределить черновик пользователя
+  rpc OverrideDraftUser(AddDraftUserRequest) returns(AddDraftUserResponse);
   
   // Подтвердить пользователя
   rpc ConfirmUser(ConfirmUserRequest) returns(ConfirmUserResponse);

@@ -7,6 +7,7 @@ using BarkFluff.Users.Features.ConfirmUser;
 using BarkFluff.Users.Features.FindByLogin;
 using BarkFluff.Users.Features.GetUser;
 using BarkFluff.Users.Features.GetUserContacts;
+using BarkFluff.Users.Features.OverrideDraftUser;
 using Grpc.Core;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -76,6 +77,19 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
             UserId = request.UserId
         };
         
+        return _mediator.Send(command);
+    }
+
+    public override Task<AddDraftUserResponse> OverrideDraftUser(AddDraftUserRequest request, ServerCallContext context)
+    {
+        var command = new OverrideDraftUserCommand()
+        {
+            LastName = request.LastName,
+            FirstName = request.FirstName,
+            Email = request.Email,
+            Username = request.Username,
+        };
+
         return _mediator.Send(command);
     }
 }
