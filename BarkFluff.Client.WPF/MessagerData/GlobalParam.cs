@@ -10,8 +10,9 @@ using Windows.Security.Cryptography.DataProtection;
 using Windows.Security.Cryptography;
 using System.Security.Cryptography;
 using Windows.Security.Cryptography.Certificates;
+using BarkFluff.Proto.Identity;
 
-namespace BarkFluff.Client.WPF.MessagerData
+namespace BarkFluff.Client.WPF.MessengerData
 {
     public class GlobalParam
     {
@@ -26,6 +27,8 @@ namespace BarkFluff.Client.WPF.MessagerData
         #region Пользователь
         public string UserName { get; set; } = string.Empty;
         public string UserPass { get; set; } = string.Empty;
+        public Token RefreshToken { get; set; } = new Token();
+        public Token AccessToken { get; set; } = new Token();
 
         #endregion
         #region Сохранение/загрузка настроек
