@@ -14,7 +14,7 @@ public static class UserMapping
             LastName = domainUser.LastName,
             RegistrationDate = Timestamp.FromDateTime(domainUser.RegistrationDate),
             Username = domainUser.Username,
-            ProfilePicture = domainUser.ProfilePicture,
+            ProfilePicture = domainUser.ProfilePicture ?? string.Empty,
         };
     }
 }

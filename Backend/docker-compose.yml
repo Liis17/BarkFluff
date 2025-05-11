@@ -1,0 +1,76 @@
+# Общие переменные для всех сервисов
+x-common-variables: &common-variables
+  CONFIGURATION_SERVICE_URL: "http://192.168.1.111:7003"
+
+services:
+  beacon:
+    image: docker.barkfluff.ru/barkfluff-beacon:latest
+    restart: always
+    ports: ["7002:7002"]
+    environment:
+      <<: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
+
+  configuration:
+    image: docker.barkfluff.ru/barkfluff-configuration:latest
+    restart: always
+    ports: ["7003:7003"]
+    environment:
+      <<: *common-variables
+    networks:
+      - barkfluff-network
+
+  files:
+    image: docker.barkfluff.ru/barkfluff-files:latest
+    restart: always
+    ports: 
+      - "7005:7005"
+      - "7006:7006"
+    environment:
+      <<: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
+
+  identity:
+    image: docker.barkfluff.ru/barkfluff-identity:latest
+    restart: always
+    ports: ["7000:7000"]
+    environment:
+      <<: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
+      - users
+
+  notification:
+    image: docker.barkfluff.ru/barkfluff-notification:latest
+    restart: always
+    ports: ["7004:7004"]
+    environment:
+      <<: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
+      - identity
+
+  users:
+    image: docker.barkfluff.ru/barkfluff-users:latest
+    restart: always
+    ports: ["7001:7001"]
+    environment:
+      <<: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
+
+networks:
+  barkfluff-network:
+    driver: bridge

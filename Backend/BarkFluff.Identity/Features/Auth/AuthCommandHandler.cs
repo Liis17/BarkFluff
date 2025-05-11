@@ -17,7 +17,7 @@ namespace BarkFluff.Identity.Features.Auth;
 
 public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient, 
     IMediator mediator, AuthPropertiesStorage authPropertiesStorage, NotificationQueueSender notificationQueueSender,
-    UserContext userContext, RefreshTokensStorage refreshTokensStorage) : IRequestHandler<AuthCommand, AuthResponse>
+    RefreshTokensStorage refreshTokensStorage) : IRequestHandler<AuthCommand, AuthResponse>
 {
 
     private const int ExpDaysRefreshToken = 9999;
@@ -53,7 +53,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
         {
             if (optOptions is { OtpEnabled: false, EmailOtpEnabled: true })
             {
-                var userContactInfo = await usersClient.GetUserContactsAsync(new GetUserContactsRequest { UserId = userContext.UserId });
+                var userContactInfo = await usersClient.GetUserContactsAsync(new GetUserContactsRequest { UserId = user.User.Id });
                 var code = CodeGenerator.GenerateDigitalCode(6);
                 
                 await authPropertiesStorage.UpdateLastEmailAuthCode(userContactInfo.User.Id, code);

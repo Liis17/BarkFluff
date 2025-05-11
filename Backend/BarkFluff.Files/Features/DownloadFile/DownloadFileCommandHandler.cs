@@ -11,9 +11,7 @@ public class DownloadFileCommandHandler : IRequestHandler<DownloadFileCommand, D
     private readonly UploadedFilesStorage _filesStorage;
     private readonly S3Uploader _s3Uploader;
 
-    public DownloadFileCommandHandler(
-        UploadedFilesStorage filesStorage,
-        S3Uploader s3Uploader)
+    public DownloadFileCommandHandler(UploadedFilesStorage filesStorage, S3Uploader s3Uploader)
     {
         _filesStorage = filesStorage;
         _s3Uploader = s3Uploader;
@@ -36,6 +34,8 @@ public class DownloadFileCommandHandler : IRequestHandler<DownloadFileCommand, D
         // Определяем тип контента по расширению файла
         var contentType = file.Filename.GetContentType();
         
+        var extension = Path.GetExtension(file.Filename).ToLowerInvariant();
+        
         // Получаем имя бакета в зависимости от типа файла
         var bucketName = S3BucketHelper.GetBucketName(file.Type);
         
@@ -48,7 +48,7 @@ public class DownloadFileCommandHandler : IRequestHandler<DownloadFileCommand, D
         return new DownloadFileResult
         {
             FileStream = fileStream,
-            FileName = file.Filename,
+            FileName = $"{file.Id}.{extension}",
             ContentType = contentType
         };
     }

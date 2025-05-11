@@ -85,6 +85,7 @@ public class UsersStorage
         user.ProfilePicture = profilePictureUrl;
         await _usersContext.SaveChangesAsync();
      }
+     
     public async Task UpdatePasswordHash(long userId, string passwordHash)
     {
         var user = await _usersContext.Users.FirstOrDefaultAsync(x => x.Id == userId);
@@ -95,6 +96,13 @@ public class UsersStorage
         }
         
         user.PasswordHash = passwordHash;
+        await _usersContext.SaveChangesAsync();
+    }
+
+    public async Task UpdateTrackedUser(User user)
+    {
+        _usersContext.Users.Update(user);
+
         await _usersContext.SaveChangesAsync();
     }
 }

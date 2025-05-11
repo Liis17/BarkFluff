@@ -18,7 +18,12 @@ public class CheckExistUsernameQueryHandler : IRequestHandler<CheckExistUsername
     public async Task<CheckExistResponse> Handle(CheckExistUsernameQuery request, CancellationToken cancellationToken)
     {
         var userByUsername = await _usersStorage.GetUserByUsername(request.Username);
+        
+        if (userByUsername is null || userByUsername.IsDraft)
+        {
+            return new CheckExistResponse { Exist = false };
+        }
 
-        return new CheckExistResponse() { Exist = userByUsername != null };
+        return new CheckExistResponse() { Exist = true };
     }
 }

@@ -1,0 +1,227 @@
+name: Deploy Microservices
+
+on:
+  push:
+    branches:
+      - master  # или master, в зависимости от вашей основной ветки
+    paths:
+      - 'Backend/BarkFluff.Beacon/**'
+      - 'Backend/BarkFluff.Configuration/**'
+      - 'Backend/BarkFluff.Files/**'
+      - 'Backend/BarkFluff.Identity/**'
+      - 'Backend/BarkFluff.Messages/**'
+      - 'Backend/BarkFluff.Notification/**'
+      - 'Backend/BarkFluff.Users/**'
+      - '.github/workflows/deploy-microservices.yml'
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      beacon: ${{ steps.filter.outputs.beacon }}
+      configuration: ${{ steps.filter.outputs.configuration }}
+      files: ${{ steps.filter.outputs.files }}
+      identity: ${{ steps.filter.outputs.identity }}
+      messages: ${{ steps.filter.outputs.messages }}
+      notification: ${{ steps.filter.outputs.notification }}
+      users: ${{ steps.filter.outputs.users }}
+    
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      - name: Check for file changes
+        id: filter
+        uses: dorny/paths-filter@v2
+        with:
+          filters: |
+            beacon:
+              - 'Backend/BarkFluff.Beacon/**'
+            configuration:
+              - 'Backend/BarkFluff.Configuration/**'
+            files:
+              - 'Backend/BarkFluff.Files/**'
+            identity:
+              - 'Backend/BarkFluff.Identity/**'
+            messages:
+              - 'Backend/BarkFluff.Messages/**'
+            notification:
+              - 'Backend/BarkFluff.Notification/**'
+            users:
+              - 'Backend/BarkFluff.Users/**'
+
+  build-beacon:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.beacon == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Login to Private Registry
+        uses: docker/login-action@v2
+        with:
+          registry: docker.barkfluff.ru
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Build and Push Beacon
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Backend/BarkFluff.Beacon/Dockerfile
+          push: true
+          tags: docker.barkfluff.ru/barkfluff-beacon:latest,docker.barkfluff.ru/barkfluff-beacon:${{ github.sha }}
+  
+  build-configuration:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.configuration == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Login to Private Registry
+        uses: docker/login-action@v2
+        with:
+          registry: docker.barkfluff.ru
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Build and Push Configuration
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Backend/BarkFluff.Configuration/Dockerfile
+          push: true
+          tags: docker.barkfluff.ru/barkfluff-configuration:latest,docker.barkfluff.ru/barkfluff-configuration:${{ github.sha }}
+
+  build-files:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.files == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Login to Private Registry
+        uses: docker/login-action@v2
+        with:
+          registry: docker.barkfluff.ru
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Build and Push Files
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Backend/BarkFluff.Files/Dockerfile
+          push: true
+          tags: docker.barkfluff.ru/barkfluff-files:latest,docker.barkfluff.ru/barkfluff-files:${{ github.sha }}
+
+  build-identity:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.identity == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Login to Private Registry
+        uses: docker/login-action@v2
+        with:
+          registry: docker.barkfluff.ru
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Build and Push Identity
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Backend/BarkFluff.Identity/Dockerfile
+          push: true
+          tags: docker.barkfluff.ru/barkfluff-identity:latest,docker.barkfluff.ru/barkfluff-identity:${{ github.sha }}
+
+  build-messages:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.messages == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Login to Private Registry
+        uses: docker/login-action@v2
+        with:
+          registry: docker.barkfluff.ru
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Build and Push Messages
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Backend/BarkFluff.Messages/Dockerfile
+          push: true
+          tags: docker.barkfluff.ru/barkfluff-messages:latest,docker.barkfluff.ru/barkfluff-messages:${{ github.sha }}
+
+  build-notification:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.notification == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Login to Private Registry
+        uses: docker/login-action@v2
+        with:
+          registry: docker.barkfluff.ru
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Build and Push Notification
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Backend/BarkFluff.Notification/Dockerfile
+          push: true
+          tags: docker.barkfluff.ru/barkfluff-notification:latest,docker.barkfluff.ru/barkfluff-notification:${{ github.sha }}
+
+  build-users:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.users == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Login to Private Registry
+        uses: docker/login-action@v2
+        with:
+          registry: docker.barkfluff.ru
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Build and Push Users
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Backend/BarkFluff.Users/Dockerfile
+          push: true
+          tags: docker.barkfluff.ru/barkfluff-users:latest,docker.barkfluff.ru/barkfluff-users:${{ github.sha }}

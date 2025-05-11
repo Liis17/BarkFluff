@@ -4,6 +4,7 @@ using BarkFluff.Identity.Persistence.Services;
 using BarkFluff.Identity.Services;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Proto.Users;
+using BarkFluff.Shared.Exceptions.Accounts;
 using BarkFluff.Shared.Exceptions.Identity;
 using BarkFluff.Shared.Identity;
 using BarkFluff.Shared.Queue.Notifications;
@@ -30,8 +31,17 @@ public class CreateAccountCommandHandler(UsersServerApi.UsersServerApiClient use
             FirstName = request.FirstName,
             LastName = request.LastName
         };
-        
-        var responseUser = await usersClient.AddDraftUserAsync(createAccountRequest);
+
+        AddDraftUserResponse responseUser = null;
+
+        try
+        {
+            responseUser = await usersClient.AddDraftUserAsync(createAccountRequest);
+        }
+        catch (UserIsDraftException)
+        {
+            responseUser = await usersClient.OverrideDraftUserAsync(createAccountRequest);
+        }
 
         var code = CodeGenerator.GenerateDigitalCode(6);
 
@@ -49,7 +59,7 @@ public class CreateAccountCommandHandler(UsersServerApi.UsersServerApiClient use
         {
             { "confirmation_code", code },
             { "username", request.Username },
-            { "ip", "192.168.1.1" },
+            { "ip", "localhost" },
             {"devicename", request.DeviceName },
             {"os", "loh"},
             {"location", "Россия 🎉"},

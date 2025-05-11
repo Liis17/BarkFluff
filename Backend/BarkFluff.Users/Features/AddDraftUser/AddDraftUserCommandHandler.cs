@@ -1,4 +1,5 @@
 using BarkFluff.Proto.Users;
+using BarkFluff.Shared.Exceptions.Accounts;
 using BarkFluff.Shared.Exceptions.Identity;
 using BarkFluff.Users.Persistence.Services;
 using MediatR;
@@ -21,6 +22,11 @@ public class AddDraftUserCommandHandler : IRequestHandler<AddDraftUserCommand, A
 
         if (userByEmail != null)
         {
+            if (userByEmail.IsDraft)
+            {
+                throw new UserIsDraftException();
+            }
+            
             throw new EmailExistException();
         }
         
@@ -28,11 +34,16 @@ public class AddDraftUserCommandHandler : IRequestHandler<AddDraftUserCommand, A
 
         if (userByUsername != null)
         {
+            if (userByUsername.IsDraft)
+            {
+                throw new UserIsDraftException();
+            }
+            
             throw new UsernameExistException();
         }
 
         var user = await _usersStorage.CreateUser(request.Username, request.FirstName, request.LastName, request.Email);
         
-        return new AddDraftUserResponse() { UserId = user.Id };
+        return new AddDraftUserResponse { UserId = user.Id };
     }
 }
