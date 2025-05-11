@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+option csharp_namespace = "BarkFluff.Proto.Messages";
+
+import "shared.proto";
+
+package barkfluff.messages;
+
+service MessagesApi {
+  
+  // Получить список диалогов
+  rpc ListChats(ListChatsRequest) returns(ListChatsResponse);
+  
+}
+
+message ListChatsRequest {
+  barkfluff.shared.PageRequest pagination = 1;
+}
+
+message ListChatsResponse {
+  repeated Chat chats = 1; // Список чатов
+  
+  int32 total_count = 2; // Общее количество чатов
+}
+
+message Chat {
+  
+  string id = 1; // Идентификатор чата
+  
+  string title = 2; // Название чата
+  
+  string picture = 3; // Картиночка чата
+  
+  bool is_group_chat = 4; // Признак того что это групповой чат
+  
+  Message last_message = 5; // Последнее отправленное сообщение
+
+  repeated ChatMember members = 6; // Участники чата (возвращается только для ЛС)
+  
+  int64 count_unread = 7; // Количество непрочитанных сообщений
+  
+}
+
+message ChatMember {
+  
+  int64 user_id = 1; // Идетификатор пользователя
+  
+}
+
+message Message {
+  
+  int64 id = 1; // Идетификатор сообщения
+  
+  int64 sender_id = 2; // Идентификатор отправителя
+  
+  repeated int64 read_by = 3; // Идентификатор пользователей, которые прочитали сообщение
+}
+
+

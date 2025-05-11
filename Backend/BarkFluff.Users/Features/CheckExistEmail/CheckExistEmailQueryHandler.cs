@@ -17,7 +17,12 @@ public class CheckExistEmailQueryHandler : IRequestHandler<CheckExistEmailQuery,
     public async Task<CheckExistResponse> Handle(CheckExistEmailQuery request, CancellationToken cancellationToken)
     {
         var userByEmail = await _usersStorage.GetUserByEmail(request.Email);
+
+        if (userByEmail is null || userByEmail.IsDraft)
+        {
+            return new CheckExistResponse { Exist = false };
+        }
         
-        return new CheckExistResponse() { Exist = userByEmail != null};
+        return new CheckExistResponse { Exist = true };
     }
 }
