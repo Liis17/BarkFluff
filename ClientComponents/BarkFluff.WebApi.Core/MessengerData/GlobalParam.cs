@@ -1,18 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
+﻿using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
-using Windows.Security.Cryptography.DataProtection;
-
-using Windows.Security.Cryptography;
 using System.Security.Cryptography;
-using Windows.Security.Cryptography.Certificates;
 using BarkFluff.Proto.Identity;
 
-namespace BarkFluff.Client.WPF.MessengerData
+namespace BarkFluff.WebApi.Core.MessengerData
 {
     public class GlobalParam
     {
