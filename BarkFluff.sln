@@ -41,6 +41,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Configuration", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Shared.SecurityUtilities", "Shared\BarkFluff.Shared.SecurityUtilities\BarkFluff.Shared.SecurityUtilities.csproj", "{BD13B521-8B78-4A10-A498-2236C81ED12C}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ClientComponents", "ClientComponents", "{36D591C7-65C7-A0D1-1CBC-10CDE441BDC8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.WebApi.Core", "ClientComponents\BarkFluff.WebApi.Core\BarkFluff.WebApi.Core.csproj", "{78AD9B01-7852-4B2F-B141-3BB37C2A0448}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -115,6 +119,10 @@ Global
 		{BD13B521-8B78-4A10-A498-2236C81ED12C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BD13B521-8B78-4A10-A498-2236C81ED12C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BD13B521-8B78-4A10-A498-2236C81ED12C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{78AD9B01-7852-4B2F-B141-3BB37C2A0448}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{78AD9B01-7852-4B2F-B141-3BB37C2A0448}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{78AD9B01-7852-4B2F-B141-3BB37C2A0448}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{78AD9B01-7852-4B2F-B141-3BB37C2A0448}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -135,6 +143,7 @@ Global
 		{C5F262E3-2EA8-4483-A3F7-6F20540A1B33} = {3282AE17-EFD0-495E-9958-FB40F68DA873}
 		{0C185FA4-1C9B-4CE5-BED4-09928E4A05F5} = {7E5A1AA1-A416-4D7E-B885-FC81F6CEBF07}
 		{BD13B521-8B78-4A10-A498-2236C81ED12C} = {3282AE17-EFD0-495E-9958-FB40F68DA873}
+		{78AD9B01-7852-4B2F-B141-3BB37C2A0448} = {36D591C7-65C7-A0D1-1CBC-10CDE441BDC8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B07C171A-90A2-41DB-A618-37C992F8D403}
