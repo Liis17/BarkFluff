@@ -104,7 +104,7 @@ namespace BarkFluff.Client.WPF.Pages
         }
         private void NextStep(string socket)
         {
-            MainWindow.MWindow.RegisterStep(socket);
+            //MainWindow.MWindow.RegisterStep(socket);
         }
     }
 }

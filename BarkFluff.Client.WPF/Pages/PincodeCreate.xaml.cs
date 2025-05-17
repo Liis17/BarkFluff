@@ -1,4 +1,4 @@
-﻿using BarkFluff.Client.WPF.MessagerData;
+﻿using BarkFluff.WebApi.Core.MessengerData;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -104,14 +104,14 @@ namespace BarkFluff.Client.WPF.Pages
         private int GetBoxIndex(TextBox box) => PinContainer.Children.IndexOf(box);
         private void Next()
         {
-            MainWindow.GParam = new GlobalParam();
-            MainWindow.GParam.AppPass = new string(pinDigits);
+            App.GParam = new GlobalParam();
+            App.GParam.AppPass = new string(pinDigits);
             string exeDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             string filePath = Path.Combine(exeDirectory, "GlobalParam.json");
-            MainWindow.GParam.AppPath = exeDirectory;
-            GlobalParam.Save(MainWindow.GParam, filePath, MainWindow.GParam.AppPass);
+            App.GParam.AppPath = exeDirectory;
+            GlobalParam.Save(App.GParam, filePath, App.GParam.AppPass);
 
-            MainWindow.MWindow.OpenPincodeSecure();
+            //App.OpenPincodeSecure();
         }
 
         private void FocusBoxZero(object sender, RoutedEventArgs e)

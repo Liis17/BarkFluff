@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
@@ -19,10 +19,18 @@
 
   <ItemGroup>
     <None Remove="Fonts\AdwaitaSans-Regular.ttf" />
+    <None Remove="Resources\Images\barkfluff_logo.png" />
+    <None Remove="Resources\Placeholders\Placeholder_1.jpg" />
+    <None Remove="Resources\Placeholders\Placeholder_2.jpg" />
+    <None Remove="Resources\Placeholders\Placeholder_3.png" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Include="Fonts\AdwaitaSans-Regular.ttf" />
+    <Resource Include="Resources\Images\barkfluff_logo.png" />
+    <Resource Include="Resources\Placeholders\Placeholder_1.jpg" />
+    <Resource Include="Resources\Placeholders\Placeholder_2.jpg" />
+    <Resource Include="Resources\Placeholders\Placeholder_3.png" />
   </ItemGroup>
 
   <ItemGroup>
@@ -37,14 +45,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Protobuf Include="..\Shared\BarkFluff.Proto\files_api.proto" GrpcServices="Client" />
-    <Protobuf Include="..\Shared\BarkFluff.Proto\users_api.proto" GrpcServices="Client" />
-    <Protobuf Include="..\Shared\BarkFluff.Proto\beacon_api.proto" GrpcServices="Client" />
-    <Protobuf Include="..\Shared\BarkFluff.Proto\identity_api.proto" GrpcServices="Client" />
+    <ProjectReference Include="..\ClientComponents\BarkFluff.WebApi.Core\BarkFluff.WebApi.Core.csproj" />
+    <ProjectReference Include="..\Shared\BarkFluff.Shared.Auth\BarkFluff.Shared.Auth.csproj" />
+    <ProjectReference Include="..\Shared\BarkFluff.Shared.SecurityUtilities\BarkFluff.Shared.SecurityUtilities.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="UserControls\" />
+    <Folder Include="Resources\Icons\" />
   </ItemGroup>
 
 </Project>

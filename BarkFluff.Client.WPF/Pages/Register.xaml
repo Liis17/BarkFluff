@@ -16,11 +16,10 @@
 
 
         <StackPanel VerticalAlignment="Center" Orientation="Vertical">
-            <Grid >
+            <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
                 <StackPanel
                     x:Name="Step1"
                     MinWidth="300"
-                    MaxWidth="300"
                     Margin="5"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
@@ -32,33 +31,38 @@
                             FontSize="32"
                             FontWeight="Black"
                             Foreground="White"
-                            Opacity="1"
-                            Text="Регистрация" />
+                            Opacity="1" Text="servername"
+                            Loaded="TextBlock_Loaded"
+                             />
                         <TextBlock
                             HorizontalAlignment="Center"
                             FontFamily="AdwaitaSans"
                             FontSize="15"
                             FontWeight="Medium"
                             Foreground="White"
-                            Loaded="TextBlock_Loaded"
+                            Text="Регистрация"
                             Opacity="0.8"
-                            Text="192.168.1.1" />
+                             />
                     </StackPanel>
-
                     <TextBlock
+                        Margin="5,0,5,0"
                         FontFamily="AdwaitaSans"
                         FontSize="15"
                         FontWeight="Medium"
                         Foreground="White"
                         Opacity="0.8"
-                        Text="Имя" />
+                        Text="Имя*" />
                     <ui:TextBox
                         x:Name="FirstNameEnter"
+                        MaxWidth="300"
                         KeyDown="TextBox_KeyDown"
                         PlaceholderText="Апогея"
+                        Tag="Names"
                         TextChanged="Enter_TextChanged"
                         VerticalScrollBarVisibility="Auto" />
                     <TextBlock
+                        MaxWidth="300"
+                        Margin="5,0,5,0"
                         FontFamily="AdwaitaSans"
                         FontSize="15"
                         FontWeight="Medium"
@@ -71,16 +75,23 @@
                         PlaceholderText="Тайнигейпиратовна"
                         TextChanged="Enter_TextChanged"
                         VerticalScrollBarVisibility="Auto" />
-                    <TextBlock
-                        x:Name="EmptyNames"
-                        Background="{x:Null}"
-                        FontFamily="AdwaitaSans"
-                        FontSize="15"
-                        FontWeight="Medium"
-                        Foreground="#FFFF4646"
-                        Opacity="0.8"
-                        Text="Заполните все поля"
-                        TextAlignment="Center" />
+                    <StackPanel Margin="5,0,5,0" Orientation="Vertical">
+                        <StackPanel.Resources>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Background" Value="{x:Null}" />
+                                <Setter Property="FontFamily" Value="AdwaitaSans" />
+                                <Setter Property="FontSize" Value="11" />
+                                <Setter Property="FontWeight" Value="Light" />
+                                <Setter Property="Foreground" Value="White" />
+                                <Setter Property="Opacity" Value="0.5" />
+                            </Style>
+                        </StackPanel.Resources>
+                        <TextBlock Text="● Имя может содержать любые символы" />
+                        <TextBlock Text="● Минимально может быть 3 символа" />
+                        <TextBlock Text="● Длинна имени и фамилии ограничена 40 символами" />
+                        <TextBlock Text="● Фамилия может отсутствовать" />
+                    </StackPanel>
+
 
                 </StackPanel>
                 <StackPanel
@@ -111,28 +122,38 @@
                             Text="192.168.1.1" />
                     </StackPanel>
                     <TextBlock
+                        Margin="5,0,5,0"
                         FontFamily="AdwaitaSans"
                         FontSize="15"
                         FontWeight="Medium"
                         Foreground="White"
                         Opacity="0.8"
-                        Text="Логин" />
+                        Text="Логин*" />
                     <ui:TextBox
                         x:Name="LoginEnter"
+                        MaxWidth="300"
                         KeyDown="TextBox_KeyDown"
                         PlaceholderText="Apogee"
                         TextChanged="Enter_TextChanged"
                         VerticalScrollBarVisibility="Auto" />
-                    <TextBlock
-                        x:Name="UsernameEmpty"
-                        Background="{x:Null}"
-                        FontFamily="AdwaitaSans"
-                        FontSize="15"
-                        FontWeight="Medium"
-                        Foreground="#FFFF4646"
-                        Opacity="0.8"
-                        Text="Имя пользователя не может быть пустым"
-                        TextAlignment="Center" />
+                    <StackPanel Margin="5,7,5,0" Orientation="Vertical">
+                        <StackPanel.Resources>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Background" Value="{x:Null}" />
+                                <Setter Property="FontFamily" Value="AdwaitaSans" />
+                                <Setter Property="FontSize" Value="11" />
+                                <Setter Property="FontWeight" Value="Light" />
+                                <Setter Property="Foreground" Value="White" />
+                                <Setter Property="Opacity" Value="0.5" />
+                            </Style>
+                        </StackPanel.Resources>
+                        <TextBlock Text="● Логин может содержать:" />
+                        <TextBlock Margin="10,0,0,0" Text="- Символы латинского алфавита" />
+                        <TextBlock Margin="10,0,0,0" Text="- Цифры" />
+                        <TextBlock Margin="10,0,0,0" Text="- Нижнее подчеркивание ( _ ) и тире ( - )" />
+                        <TextBlock Text="● Логин ограничен 30 символами" />
+                        <TextBlock Text="● Логин будет преобразован в нижний регистр" />
+                    </StackPanel>
                 </StackPanel>
                 <StackPanel
                     x:Name="Step3"
@@ -166,33 +187,29 @@
                         FontSize="15"
                         FontWeight="Medium"
                         Foreground="#FFC3C3C3"
-                        Text="Почта" />
+                        Text="Почта*" />
                     <ui:TextBox
                         x:Name="EmailEnter"
+                        MaxWidth="300"
                         KeyDown="TextBox_KeyDown"
                         PlaceholderText="apogee@barkfluff.ru"
                         TextChanged="Enter_TextChanged"
                         VerticalScrollBarVisibility="Auto" />
-                    <TextBlock
-                        x:Name="EmailEmpty"
-                        Background="{x:Null}"
-                        FontFamily="AdwaitaSans"
-                        FontSize="15"
-                        FontWeight="Medium"
-                        Foreground="#FFFF4646"
-                        Opacity="0.8"
-                        Text="Введите адрес почты"
-                        TextAlignment="Center" />
-                    <TextBlock
-                        x:Name="EmailIncorrect"
-                        Background="{x:Null}"
-                        FontFamily="AdwaitaSans"
-                        FontSize="15"
-                        FontWeight="Medium"
-                        Foreground="#FFFF4646"
-                        Opacity="0.8"
-                        Text="Введите корректный адрес почты"
-                        TextAlignment="Center" />
+                    <StackPanel Margin="5,7,5,0" Orientation="Vertical">
+                        <StackPanel.Resources>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Background" Value="{x:Null}" />
+                                <Setter Property="FontFamily" Value="AdwaitaSans" />
+                                <Setter Property="FontSize" Value="11" />
+                                <Setter Property="FontWeight" Value="Light" />
+                                <Setter Property="Foreground" Value="White" />
+                                <Setter Property="Opacity" Value="0.5" />
+                            </Style>
+                        </StackPanel.Resources>
+                        <TextBlock Text="● Почта может использоваться для 2FA" />
+                        <TextBlock Text="● Почта будет использоваться для сброса пароля" />
+                        <TextBlock Text="● На почту будут отправляться уведомления о входе" />
+                    </StackPanel>
                 </StackPanel>
                 <StackPanel
                     x:Name="Step4"
@@ -226,33 +243,28 @@
                         FontSize="15"
                         FontWeight="Medium"
                         Foreground="#FFC3C3C3"
-                        Text="Код подтверждения" />
+                        Text="Код подтверждения*" />
                     <ui:TextBox
                         x:Name="VerificationCodeEnter"
+                        MaxWidth="300"
                         KeyDown="TextBox_KeyDown"
-                        PlaceholderText="12345"
+                        PlaceholderText="123456"
                         TextChanged="Enter_TextChanged"
                         VerticalScrollBarVisibility="Auto" />
-                    <TextBlock
-                        x:Name="IncorrentCode"
-                        Background="{x:Null}"
-                        FontFamily="AdwaitaSans"
-                        FontSize="15"
-                        FontWeight="Medium"
-                        Foreground="#FFFF4646"
-                        Opacity="0.8"
-                        Text="Неверный код подтверждения"
-                        TextAlignment="Center" />
-                    <TextBlock
-                        x:Name="UndersizedCode"
-                        Background="{x:Null}"
-                        FontFamily="AdwaitaSans"
-                        FontSize="15"
-                        FontWeight="Medium"
-                        Foreground="#FFFF4646"
-                        Opacity="0.8"
-                        Text="Код должен состоять из 6 цифр"
-                        TextAlignment="Center" />
+                    <StackPanel Margin="5,7,5,0" Orientation="Vertical">
+                        <StackPanel.Resources>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Background" Value="{x:Null}" />
+                                <Setter Property="FontFamily" Value="AdwaitaSans" />
+                                <Setter Property="FontSize" Value="11" />
+                                <Setter Property="FontWeight" Value="Light" />
+                                <Setter Property="Foreground" Value="White" />
+                                <Setter Property="Opacity" Value="0.5" />
+                            </Style>
+                        </StackPanel.Resources>
+                        <TextBlock x:Name="EmailHelperText" Text="● Сообщение отправлено на ''твою почту''" />
+                        <TextBlock Text="● Проверьте папку со спамом" />
+                    </StackPanel>
                 </StackPanel>
                 <StackPanel
                     x:Name="Step5"
@@ -287,23 +299,59 @@
                         FontSize="15"
                         FontWeight="Medium"
                         Foreground="#FFC3C3C3"
-                        Text="Пароль" />
+                        Text="Пароль*" />
                     <ui:PasswordBox
                         x:Name="PasswordEnter"
                         KeyDown="TextBox_KeyDown"
                         PlaceholderText="sobakapipiska1337"
-                        TextChanged="Enter_TextChanged"
+                        TextChanged="PasspowrEnter_TextChanged"
                         VerticalScrollBarVisibility="Auto" />
+                    <ProgressBar
+                        x:Name="PasswordStrengthBar"
+                        Height="7"
+                        Margin="0,2,0,0"
+                        Background="#FF2A2A2A"
+                        Foreground="#FF00FF00"
+                        Maximum="100"
+                        Minimum="0"
+                        Value="50" />
                     <TextBlock
-                        x:Name="IncorrectPassword"
-                        Background="{x:Null}"
+                        x:Name="PasswordDifficultyIndicator"
+                        Margin="0,0,0,0"
+                        FontFamily="AdwaitaSans"
+                        FontSize="11"
+                        FontWeight="Normal"
+                        Foreground="#FFC3C3C3"
+                        Text="Пароророль нормас 👍" />
+                    <TextBlock
+                        Margin="0,10,0,0"
                         FontFamily="AdwaitaSans"
                         FontSize="15"
                         FontWeight="Medium"
-                        Foreground="#FFFF4646"
-                        Opacity="0.8"
-                        Text="Пароль не может быть пустым"
-                        TextAlignment="Center" />
+                        Foreground="#FFC3C3C3"
+                        Text="Подтвердите пароль*" />
+                    <ui:PasswordBox
+                        x:Name="PasswordRepeatedEnter"
+                        MaxWidth="300"
+                        KeyDown="TextBox_KeyDown"
+                        PlaceholderText="sobakapipiska1337"
+                        TextChanged="Enter_TextChanged"
+                        VerticalScrollBarVisibility="Auto" />
+
+                    <StackPanel Margin="5,7,5,0" Orientation="Vertical">
+                        <StackPanel.Resources>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Background" Value="{x:Null}" />
+                                <Setter Property="FontFamily" Value="AdwaitaSans" />
+                                <Setter Property="FontSize" Value="11" />
+                                <Setter Property="FontWeight" Value="Light" />
+                                <Setter Property="Foreground" Value="White" />
+                                <Setter Property="Opacity" Value="0.5" />
+                            </Style>
+                        </StackPanel.Resources>
+                        <TextBlock Text="● Сообщение отправлено на ''твою почту''" />
+                        <TextBlock Text="● Проверьте папку со спамом" />
+                    </StackPanel>
 
                 </StackPanel>
                 <StackPanel
@@ -335,82 +383,97 @@
                     </StackPanel>
 
                 </StackPanel>
-            </Grid>
+            </StackPanel>
             <StackPanel
                 Margin="10"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Bottom"
-                Orientation="Horizontal">
-                <ui:Button
-                    x:Name="BackButton"
-                    Margin="5"
-                    HorizontalAlignment="Stretch"
-                    Click="BackButton_Click">
-                    <StackPanel Orientation="Horizontal">
-                        <ui:SymbolIcon
+                Orientation="Vertical">
+                <StackPanel>
+                    <TextBlock
+                        x:Name="ErrorMessageTextBlock"
+                        Background="{x:Null}"
+                        FontFamily="AdwaitaSans"
+                        FontSize="15"
+                        FontWeight="Medium"
+                        Foreground="#FFFF4646"
+                        Opacity="0.8"
+                        Text="Текст ошибки"
+                        TextAlignment="Center" />
+                    <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                        <ui:Button
+                            x:Name="BackButton"
+                            Margin="5"
                             HorizontalAlignment="Stretch"
-                            VerticalAlignment="Stretch"
-                            FontSize="20"
-                            Foreground="White"
-                            Symbol="ArrowLeft12" />
-                        <TextBlock
-                            Margin="0,0,5,0"
-                            HorizontalAlignment="Stretch"
-                            VerticalAlignment="Center"
-                            FontFamily="AdwaitaSans"
-                            FontSize="12"
-                            FontWeight="Bold"
-                            Foreground="White"
-                            Text="Назад" />
+                            Click="BackButton_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch"
+                                    FontSize="20"
+                                    Foreground="White"
+                                    Symbol="ArrowLeft12" />
+                                <TextBlock
+                                    Margin="0,0,5,0"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Center"
+                                    FontFamily="AdwaitaSans"
+                                    FontSize="12"
+                                    FontWeight="Bold"
+                                    Foreground="White"
+                                    Text="Назад" />
 
+                            </StackPanel>
+                        </ui:Button>
+                        <ui:Button
+                            x:Name="NextButton"
+                            Margin="5"
+                            HorizontalAlignment="Stretch"
+                            Click="NextButton_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock
+                                    Margin="0,0,5,0"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Center"
+                                    FontFamily="AdwaitaSans"
+                                    FontSize="12"
+                                    FontWeight="Bold"
+                                    Foreground="White"
+                                    Text="Далее" />
+                                <ui:SymbolIcon
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch"
+                                    FontSize="20"
+                                    Foreground="White"
+                                    Symbol="ArrowRight12" />
+                            </StackPanel>
+                        </ui:Button>
+                        <ui:Button
+                            x:Name="CreateButton"
+                            Margin="5"
+                            HorizontalAlignment="Stretch"
+                            Click="Registration">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock
+                                    Margin="0,0,5,0"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Center"
+                                    FontFamily="AdwaitaSans"
+                                    FontSize="12"
+                                    FontWeight="Bold"
+                                    Foreground="White"
+                                    Text="Создать аккаунт" />
+                                <ui:SymbolIcon
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch"
+                                    FontSize="20"
+                                    Foreground="White"
+                                    Symbol="Add12" />
+                            </StackPanel>
+                        </ui:Button>
                     </StackPanel>
-                </ui:Button>
-                <ui:Button
-                    x:Name="NextButton"
-                    Margin="5"
-                    HorizontalAlignment="Stretch"
-                    Click="NextButton_Click">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock
-                            Margin="0,0,5,0"
-                            HorizontalAlignment="Stretch"
-                            VerticalAlignment="Center"
-                            FontFamily="AdwaitaSans"
-                            FontSize="12"
-                            FontWeight="Bold"
-                            Foreground="White"
-                            Text="Далее" />
-                        <ui:SymbolIcon
-                            HorizontalAlignment="Stretch"
-                            VerticalAlignment="Stretch"
-                            FontSize="20"
-                            Foreground="White"
-                            Symbol="ArrowRight12" />
-                    </StackPanel>
-                </ui:Button>
-                <ui:Button
-                    x:Name="CreateButton"
-                    Margin="5"
-                    HorizontalAlignment="Stretch"
-                    Click="Registration">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock
-                            Margin="0,0,5,0"
-                            HorizontalAlignment="Stretch"
-                            VerticalAlignment="Center"
-                            FontFamily="AdwaitaSans"
-                            FontSize="12"
-                            FontWeight="Bold"
-                            Foreground="White"
-                            Text="Создать аккаунт" />
-                        <ui:SymbolIcon
-                            HorizontalAlignment="Stretch"
-                            VerticalAlignment="Stretch"
-                            FontSize="20"
-                            Foreground="White"
-                            Symbol="Add12" />
-                    </StackPanel>
-                </ui:Button>
+                </StackPanel>
+
             </StackPanel>
         </StackPanel>
     </Grid>

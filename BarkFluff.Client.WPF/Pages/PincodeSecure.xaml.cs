@@ -1,20 +1,9 @@
-﻿using BarkFluff.Client.WPF.MessagerData;
-
-using System;
-using System.Collections.Generic;
+﻿using BarkFluff.WebApi.Core.MessengerData;
 using System.IO;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
 
 namespace BarkFluff.Client.WPF.Pages
 {
@@ -173,11 +162,11 @@ namespace BarkFluff.Client.WPF.Pages
         {
             string exeDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             string filePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "GlobalParam.json");
-            MainWindow.GParam = GlobalParam.Load(filePath, new string(pinDigits));
-            MainWindow.GParam.AppPass = new string(pinDigits);
-            MainWindow.GParam.AppPath = exeDirectory ?? string.Empty;
+            App.GParam = GlobalParam.Load(filePath, new string(pinDigits));
+            App.GParam.AppPass = new string(pinDigits);
+            App.GParam.AppPath = exeDirectory ?? string.Empty;
 
-            MainWindow.MWindow.PincodeSuccessful();
+            //App.PincodeSuccessful();
         }
 
         private void RemoveSettings(object sender, RoutedEventArgs e)
