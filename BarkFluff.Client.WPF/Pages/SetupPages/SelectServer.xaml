@@ -1,0 +1,499 @@
+﻿<UserControl
+    x:Class="BarkFluff.Client.WPF.Pages.SetupPages.SelectServer"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:BarkFluff.Client.WPF.Pages.SetupPages"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    d:DesignHeight="720"
+    d:DesignWidth="1280"
+    Background="#F5F7FA"
+    mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <Style x:Key="RoundButton" TargetType="Button">
+            <Setter Property="Background" Value="#6D90F3" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="20,10" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            Padding="{TemplateBinding Padding}"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="25">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#5A7AE6" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#4863C8" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ServerListItem" TargetType="ListBoxItem">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Padding" Value="15" />
+            <Setter Property="Margin" Value="0,0,0,10" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border
+                            Padding="{TemplateBinding Padding}"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="#E0E6EC"
+                            BorderThickness="1"
+                            CornerRadius="8">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#F0F4FF" />
+                                <Setter Property="BorderBrush" Value="#D1DCFF" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" Value="#E9EEF9" />
+                                <Setter Property="BorderBrush" Value="#6D90F3" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="CustomTextBox" TargetType="TextBox">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="#424B5A" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Padding" Value="15,12" />
+            <Setter Property="BorderBrush" Value="#E0E6EC" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="8">
+                            <ScrollViewer x:Name="PART_ContentHost" Padding="{TemplateBinding Padding}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter Property="BorderBrush" Value="#6D90F3" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!--  Header  -->
+        <Border
+            Grid.Row="0"
+            Padding="30,15"
+            Background="White"
+            BorderBrush="#E0E6EC"
+            BorderThickness="0,0,0,1">
+            <Grid>
+                <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
+                    <Image
+                        Width="40"
+                        Height="40"
+                        Source="/Resources/Images/barkfluff_logo.png" />
+                    <TextBlock
+                        Margin="15,0,0,0"
+                        VerticalAlignment="Center"
+                        FontSize="24"
+                        FontWeight="Bold"
+                        Foreground="#424B5A"
+                        Text="BarkFluff" />
+                </StackPanel>
+                <Button
+                    Width="100"
+                    Padding="15,8"
+                    HorizontalAlignment="Right"
+                    Background="#8B95A5"
+                    Content="Back"
+                    Style="{StaticResource RoundButton}" />
+            </Grid>
+        </Border>
+
+        <!--  Main Content  -->
+        <Grid Grid.Row="1" Margin="40">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!--  Title  -->
+            <StackPanel Grid.Row="0" Margin="0,0,0,30">
+                <TextBlock
+                    FontSize="28"
+                    FontWeight="Bold"
+                    Foreground="#424B5A"
+                    Text="Connect to a Server" />
+                <TextBlock
+                    Margin="0,10,0,0"
+                    FontSize="16"
+                    Foreground="#6B7280"
+                    Text="Choose a public server or connect to your own" />
+            </StackPanel>
+
+            <!--  Server List  -->
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="30" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!--  Public Servers  -->
+                <Border
+                    Grid.Column="0"
+                    Padding="20"
+                    Background="White"
+                    BorderBrush="#E0E6EC"
+                    BorderThickness="1"
+                    CornerRadius="10">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock
+                            Grid.Row="0"
+                            Margin="0,0,0,15"
+                            FontSize="18"
+                            FontWeight="SemiBold"
+                            Foreground="#424B5A"
+                            Text="Public Servers" />
+
+                        <ListBox
+                            Grid.Row="1"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            ItemContainerStyle="{StaticResource ServerListItem}">
+                            <ListBoxItem>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border
+                                        Grid.Column="0"
+                                        Width="40"
+                                        Height="40"
+                                        Background="#E9EEF9"
+                                        CornerRadius="5">
+                                        <TextBlock
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            FontWeight="Bold"
+                                            Foreground="#6D90F3"
+                                            Text="BP" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="15,0,0,0">
+                                        <TextBlock
+                                            FontSize="16"
+                                            FontWeight="SemiBold"
+                                            Foreground="#424B5A"
+                                            Text="BarkPark Central" />
+                                        <TextBlock
+                                            Margin="0,5,0,0"
+                                            FontSize="12"
+                                            Foreground="#8B95A5"
+                                            Text="central.barkpark.com:6789" />
+                                        <TextBlock
+                                            Margin="0,5,0,0"
+                                            FontSize="12"
+                                            Foreground="#6D90F3"
+                                            Text="Online Users: 2,456" />
+                                    </StackPanel>
+                                </Grid>
+                            </ListBoxItem>
+                            <ListBoxItem>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border
+                                        Grid.Column="0"
+                                        Width="40"
+                                        Height="40"
+                                        Background="#F9E9EE"
+                                        CornerRadius="5">
+                                        <TextBlock
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            FontWeight="Bold"
+                                            Foreground="#F36D90"
+                                            Text="PL" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="15,0,0,0">
+                                        <TextBlock
+                                            FontSize="16"
+                                            FontWeight="SemiBold"
+                                            Foreground="#424B5A"
+                                            Text="PawsLounge" />
+                                        <TextBlock
+                                            Margin="0,5,0,0"
+                                            FontSize="12"
+                                            Foreground="#8B95A5"
+                                            Text="pawslounge.barkfluff.net:8888" />
+                                        <TextBlock
+                                            Margin="0,5,0,0"
+                                            FontSize="12"
+                                            Foreground="#6D90F3"
+                                            Text="Online Users: 1,823" />
+                                    </StackPanel>
+                                </Grid>
+                            </ListBoxItem>
+                            <ListBoxItem>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border
+                                        Grid.Column="0"
+                                        Width="40"
+                                        Height="40"
+                                        Background="#E9F9EE"
+                                        CornerRadius="5">
+                                        <TextBlock
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            FontWeight="Bold"
+                                            Foreground="#6DF390"
+                                            Text="FC" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="15,0,0,0">
+                                        <TextBlock
+                                            FontSize="16"
+                                            FontWeight="SemiBold"
+                                            Foreground="#424B5A"
+                                            Text="Furry Companions" />
+                                        <TextBlock
+                                            Margin="0,5,0,0"
+                                            FontSize="12"
+                                            Foreground="#8B95A5"
+                                            Text="furrycomp.paws.org:7777" />
+                                        <TextBlock
+                                            Margin="0,5,0,0"
+                                            FontSize="12"
+                                            Foreground="#6D90F3"
+                                            Text="Online Users: 974" />
+                                    </StackPanel>
+                                </Grid>
+                            </ListBoxItem>
+                            <ListBoxItem>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border
+                                        Grid.Column="0"
+                                        Width="40"
+                                        Height="40"
+                                        Background="#F0E9F9"
+                                        CornerRadius="5">
+                                        <TextBlock
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            FontWeight="Bold"
+                                            Foreground="#966DF3"
+                                            Text="TR" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="15,0,0,0">
+                                        <TextBlock
+                                            FontSize="16"
+                                            FontWeight="SemiBold"
+                                            Foreground="#424B5A"
+                                            Text="Tail Runners" />
+                                        <TextBlock
+                                            Margin="0,5,0,0"
+                                            FontSize="12"
+                                            Foreground="#8B95A5"
+                                            Text="tailrunners.dogpack.io:9090" />
+                                        <TextBlock
+                                            Margin="0,5,0,0"
+                                            FontSize="12"
+                                            Foreground="#6D90F3"
+                                            Text="Online Users: 765" />
+                                    </StackPanel>
+                                </Grid>
+                            </ListBoxItem>
+                        </ListBox>
+                    </Grid>
+                </Border>
+
+                <!--  Separator  -->
+                <Rectangle
+                    Grid.Column="1"
+                    Width="1"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Stretch"
+                    Fill="#E0E6EC" />
+
+                <!--  Custom Server  -->
+                <Border
+                    Grid.Column="2"
+                    Padding="20"
+                    Background="White"
+                    BorderBrush="#E0E6EC"
+                    BorderThickness="1"
+                    CornerRadius="10">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock
+                            Grid.Row="0"
+                            Margin="0,0,0,15"
+                            FontSize="18"
+                            FontWeight="SemiBold"
+                            Foreground="#424B5A"
+                            Text="Connect to Your Server" />
+
+                        <StackPanel Grid.Row="1" Margin="0,10,0,20">
+                            <TextBlock
+                                Margin="0,0,0,8"
+                                FontSize="14"
+                                Foreground="#6B7280"
+                                Text="Server Address" />
+                            <TextBox
+                                Margin="0,0,0,5"
+                                FontSize="14"
+                                Style="{StaticResource CustomTextBox}"
+                                Text="" />
+                            <TextBlock
+                                FontSize="12"
+                                Foreground="#8B95A5"
+                                Text="Format: domain/IP:port (e.g. myserver.com:8080)" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Row="2" VerticalAlignment="Center">
+                            <Border
+                                Padding="15"
+                                Background="#F9F9FA"
+                                BorderBrush="#E0E6EC"
+                                BorderThickness="1"
+                                CornerRadius="8">
+                                <StackPanel>
+                                    <TextBlock
+                                        FontWeight="SemiBold"
+                                        Foreground="#424B5A"
+                                        Text="Recent Connections" />
+                                    <Rectangle
+                                        Height="1"
+                                        Margin="0,10"
+                                        Fill="#E0E6EC" />
+                                    <Grid Margin="0,5">
+                                        <TextBlock Foreground="#6B7280" Text="homeserver.local:6543" />
+                                        <TextBlock
+                                            HorizontalAlignment="Right"
+                                            Foreground="#8B95A5"
+                                            Text="Yesterday" />
+                                    </Grid>
+                                    <Grid Margin="0,5">
+                                        <TextBlock Foreground="#6B7280" Text="barkfluff-admin.net:9876" />
+                                        <TextBlock
+                                            HorizontalAlignment="Right"
+                                            Foreground="#8B95A5"
+                                            Text="3 days ago" />
+                                    </Grid>
+                                    <Grid Margin="0,5">
+                                        <TextBlock Foreground="#6B7280" Text="192.168.1.55:8080" />
+                                        <TextBlock
+                                            HorizontalAlignment="Right"
+                                            Foreground="#8B95A5"
+                                            Text="Last week" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <Button
+                            Grid.Row="3"
+                            Margin="0,20,0,0"
+                            HorizontalAlignment="Right"
+                            Content="Connect"
+                            Style="{StaticResource RoundButton}" />
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!--  Bottom Hint  -->
+            <TextBlock
+                Grid.Row="2"
+                Margin="0,20,0,0"
+                HorizontalAlignment="Center"
+                FontSize="14"
+                Foreground="#8B95A5"
+                Text="Having trouble connecting? Check our server setup guide for help.">
+                <TextBlock.TextDecorations>
+                    <TextDecoration Location="Underline" />
+                </TextBlock.TextDecorations>
+            </TextBlock>
+        </Grid>
+
+        <!--  Footer  -->
+        <Border
+            Grid.Row="2"
+            Padding="30,15"
+            Background="White"
+            BorderBrush="#E0E6EC"
+            BorderThickness="0,1,0,0">
+            <Grid>
+                <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        Foreground="#8B95A5"
+                        Text="© 2025 BarkFluff Inc." />
+                </StackPanel>
+
+                <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                    <TextBlock
+                        Margin="0,0,20,0"
+                        Cursor="Hand"
+                        Foreground="#6D90F3"
+                        Text="Privacy Policy" />
+                    <TextBlock
+                        Margin="0,0,20,0"
+                        Cursor="Hand"
+                        Foreground="#6D90F3"
+                        Text="Terms of Service" />
+                    <TextBlock
+                        Cursor="Hand"
+                        Foreground="#6D90F3"
+                        Text="Help Center" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>
