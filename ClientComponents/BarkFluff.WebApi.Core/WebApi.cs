@@ -44,5 +44,12 @@ namespace BarkFluff.WebApi.Core
                    ? "http://" + _url
                    : _url;
         }
+
+        public void ServerConnectCreate()
+        {
+            {
+
+            }
+        }
     }
 }
