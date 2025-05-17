@@ -1,6 +1,8 @@
-﻿using BarkFluff.Client.WPF.MessagerData;
+﻿using BarkFluff.Client.WPF.Debug;
+using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.Client.WPF.Pages;
 using Grpc.Core;
+using Grpc.Core.Interceptors;
 using Grpc.Net.Client;
 using System.Diagnostics;
 using System.IO;
@@ -17,6 +19,7 @@ using System.Windows.Navigation;
 
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
+using BarkFluff.Client.WPF.Pages.SetupPages;
 
 namespace BarkFluff.Client.WPF
 {
@@ -25,78 +28,57 @@ namespace BarkFluff.Client.WPF
     /// </summary>
     public partial class MainWindow : FluentWindow
     {
-        public static MainWindow MWindow { get; private set; } = null!;
-        public static GlobalParam GParam { get; set; } = null;
-
-        public static BarkFluff.Proto.Users.UsersApi.UsersApiClient UsersAC;
-        public static BarkFluff.Proto.Beacon.BeaconApi.BeaconApiClient BeaconAC;
-        public static BarkFluff.Proto.Identity.IdentityApi.IdentityApiClient IdentityAC;
-        private GrpcChannel _beaconChannel;
-        private GrpcChannel _userChannel;
-        private GrpcChannel _identityChannel;
-
-
+        private readonly HashSet<Key> _pressedKeys = new();
         #region Инициализация
         public MainWindow()
         {
             InitializeComponent();
 
-            Bootstrap();
+            MainWindowBootstrap();
 
             ApplicationThemeManager.Apply(this);
             MouseDown += MainWindow_MouseDown;
             Closing += MainWindow_Closing;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
         }
-        private void Bootstrap()
+        private void MainWindowBootstrap()
         {
-            MWindow = this;
-            string filePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "GlobalParam.json");
+            #if DEBUG
+            DebugBootstap();
+            #endif
+        }
 
-            if (Debugger.IsAttached)
-            {
-                // Увеличиваем версию
-                IncrementVersion();
-            }
+#if DEBUG
+        private void DebugBootstap()
+        {
+            this.KeyDown += OnKeyDown;
+            this.KeyUp += OnKeyUp;
+        }
+        private void OnKeyDown(object sender, KeyEventArgs e)
+        {
+            _pressedKeys.Add(e.Key);
 
-            if (!File.Exists(filePath))
+            if (_pressedKeys.Contains(Key.Space) && _pressedKeys.Contains(Key.Escape))
             {
-                MainFrame.Children.Clear();
-                MainFrame.Children.Add(new PincodeCreate());
-            }
-            else
-            {
-                MainFrame.Children.Clear();
-                MainFrame.Children.Add(new PincodeSecure());
+                ExecuteComboAction();
             }
         }
 
-        private void IncrementVersion()
+        private void OnKeyUp(object sender, KeyEventArgs e)
         {
-            var versionParts = AppVersion.Version.Split('.');
-            int buildNumber = int.Parse(versionParts[3]);
-            buildNumber++;
-            versionParts[3] = buildNumber.ToString();
-            AppVersion.Version = string.Join(".", versionParts);
-
-            // Сохраняет новую версию в файл
-            SaveVersionToFile();
+            //_pressedKeys.Remove(e.Key);
         }
 
-        private void SaveVersionToFile()
+        private void ExecuteComboAction()
         {
-            var versionFile = "K:\\source\\HavenProjects\\BarkFluff\\BarkFluff.Client.WPF\\AppVersion.cs";
-            var lines = System.IO.File.ReadAllLines(versionFile);
-            for (int i = 0; i < lines.Length; i++)
-            {
-                if (lines[i].Contains("public static string Version"))
-                {
-                    lines[i] = $"       public static string Version {{ get; set; }} = \"{AppVersion.Version}\";";
-                    break;
-                }
-            }
-            System.IO.File.WriteAllLines(versionFile, lines);
+            var _debugWindow = new DebugWindow();
+            _debugWindow.Show();
         }
+#endif
+
+        
+
+        
 
         private void MainFrame_Loaded(object sender, RoutedEventArgs e)
         {
@@ -114,8 +96,19 @@ namespace BarkFluff.Client.WPF
         {
             try
             {
-                string filePath = Path.Combine(GParam.AppPath, "GlobalParam.json");
-                GlobalParam.Save(GParam, filePath, GParam.AppPass);
+                SaveSettings();
+            }
+            catch
+            {
+                // ignored
+            }
+        }
+        public static void SaveSettings()
+        {
+            try
+            {
+                string filePath = Path.Combine(App.GParam.AppPath, "GlobalParam.json");
+                GlobalParam.Save(App.GParam, filePath, App.GParam.AppPass);
             }
             catch
             {
@@ -128,9 +121,17 @@ namespace BarkFluff.Client.WPF
         }
         #endregion
 
+        #region Первый запуск приложения
+        public void FirstStart()
+        {
+            MainFrame.Children.Clear();
+            MainFrame.Children.Add(new WelcomPage());
+        }
+        #endregion
 
-        
         #region Вход в приложение
+
+
         public void OpenPincodeSecure()
         {
             MainFrame.Children.Clear();
@@ -139,7 +140,7 @@ namespace BarkFluff.Client.WPF
 
         public void RegisterStep(string socket)
         {
-            GParam.SocketBeacon = socket;
+            App.GParam.SocketBeacon = socket;
 
             PincodeSuccessful();
         }
@@ -154,7 +155,7 @@ namespace BarkFluff.Client.WPF
         {
             MainFrame.Children.Clear();
 
-            if (GParam.SocketBeacon == string.Empty)
+            if (App.GParam.SocketBeacon == string.Empty)
             {
                 MainFrame.Children.Add(new ServerIP());
             }
@@ -162,30 +163,19 @@ namespace BarkFluff.Client.WPF
             {
                 MainFrame.Children.Add(new Login());
 
-                GParam.SocketBeacon = EnsureHttpPrefix(GParam.SocketBeacon);
-                _beaconChannel = GrpcChannel.ForAddress(GParam.SocketBeacon);
-                BeaconAC = new BarkFluff.Proto.Beacon.BeaconApi.BeaconApiClient(_beaconChannel);
+                
 
-                var beaconData = BeaconAC.GetServerInfo(new BarkFluff.Proto.Beacon.GetServerInfoRequest());
+                //var beaconData = App.ServerCommunication.BeaconAC.GetServerInfo(new BarkFluff.Proto.Beacon.GetServerInfoRequest());
 
-                GParam.SocketIdentity = EnsureHttpPrefix(beaconData.Users.Endpoint.Host + ":" + beaconData.Users.Endpoint.Port);
-                GParam.SocketUsers = EnsureHttpPrefix(beaconData.Identity.Endpoint.Host + ":" + beaconData.Identity.Endpoint.Port);
 
-                GParam.ServerName = beaconData.Name;
 
-                _identityChannel = GrpcChannel.ForAddress(GParam.SocketIdentity);
-                _userChannel = GrpcChannel.ForAddress(GParam.SocketUsers);
+                //App.GParam.SocketIdentity = EnsureHttpPrefix(beaconData.Users.Endpoint.Host + ":" + beaconData.Identity.Endpoint.Port);
+                //App.GParam.SocketUsers = EnsureHttpPrefix(beaconData.Identity.Endpoint.Host + ":" + beaconData.Users.Endpoint.Port);
 
-                IdentityAC = new BarkFluff.Proto.Identity.IdentityApi.IdentityApiClient(_identityChannel);
-                UsersAC = new BarkFluff.Proto.Users.UsersApi.UsersApiClient(_userChannel);
+                //App.GParam.ServerName = beaconData.Name;
+
+                
             }
-        }
-
-        private string EnsureHttpPrefix(string url)
-        {
-            return !url.StartsWith("http://") && !url.StartsWith("https://")
-                   ? "http://" + url
-                   : url;
         }
 
 
