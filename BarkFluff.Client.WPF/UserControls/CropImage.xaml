@@ -12,10 +12,10 @@
         <StackPanel
             HorizontalAlignment="Center"
             VerticalAlignment="Bottom"
+            Panel.ZIndex="100"
             Orientation="Vertical">
             <Button
                 HorizontalAlignment="Center"
-                Panel.ZIndex="100"
                 Click="Button_Click"
                 Content="GetCropped" />
             <Slider
@@ -23,8 +23,6 @@
                 Width="300"
                 Margin="10"
                 HorizontalAlignment="Center"
-                VerticalAlignment="Bottom"
-                Panel.ZIndex="100"
                 Maximum="2.5"
                 Minimum="0.5"
                 Value="1.0" />
