@@ -361,3 +361,4 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/BarkFluff.Client.WPF/Pages/Register.xaml.cs
