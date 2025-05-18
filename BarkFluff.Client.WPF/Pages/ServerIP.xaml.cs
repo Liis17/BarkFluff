@@ -68,17 +68,6 @@ namespace BarkFluff.Client.WPF.Pages
                     // Используем HTTPS вместо HTTP
                     string url = $"https://{host}:{port}/testping";
 
-
-#if DEBUG
-                    // Временно игнорируем проверку наличия сервера (ТОЛЬКО ДЛЯ ТЕСТОВ!)
-                    string filePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "ignor.server");
-                    if (File.Exists(filePath))
-                    {
-                        NextStep(socket);
-                    }
-                    return;
-#endif
-
                     try
                     {
                         HttpResponseMessage response = await client.GetAsync(url);
