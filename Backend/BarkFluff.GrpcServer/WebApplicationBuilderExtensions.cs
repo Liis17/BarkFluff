@@ -48,7 +48,7 @@ public static class WebApplicationBuilderExtensions
 
     public static WebApplicationBuilder LoadConfiguration(this WebApplicationBuilder builder, ServiceId serviceId)
     {
-        var configurationServiceAddress = "http://localhost:7003"; // Environment.GetEnvironmentVariable("CONFIGURATION_SERVICE_URL") ?? "http://192.168.1.111:7003";
+        var configurationServiceAddress = Environment.GetEnvironmentVariable("CONFIGURATION_SERVICE_URL") ?? "http://192.168.1.111:7003";
         
         builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
         
