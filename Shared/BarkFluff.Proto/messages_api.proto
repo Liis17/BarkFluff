@@ -3,18 +3,58 @@ syntax = "proto3";
 option csharp_namespace = "BarkFluff.Proto.Messages";
 
 import "shared.proto";
+import "google/protobuf/timestamp.proto";
 
 package barkfluff.messages;
 
 service MessagesApi {
   
-  // Получить список диалогов
+  // Получить список чатов
   rpc ListChats(ListChatsRequest) returns(ListChatsResponse);
   
+  // Получить список сообщений в чате
+  rpc ListMessages(ListMessagesRequest) returns(ListMessagesResponse);
+  
+  // Получить список участников в чате
+  rpc ListChatMembers(ListChatMembersRequest) returns(ListChatMembersResponse);
+}
+
+message ListChatMembersRequest {
+  
+  barkfluff.shared.PageRequest pagination = 1; // Пагинация (макс 50 элементов)
+  
+  string chat_id = 2; // Идентификатор чата
+}
+
+message ListChatMembersResponse {
+  message DetailedChatMemberInfo {
+    ChatMember general_info = 1; // Основная информация об участнике
+    
+    string first_name = 2; // Имя
+    
+    string last_name = 3; // Фамилия
+  }
+  
+  repeated DetailedChatMemberInfo chat_members = 1; // Участники чата
+  
+  int32 total_count = 2; // Общее количество записей
+}
+
+message ListMessagesRequest {
+  
+  int64 from_message_id = 1; // Индетификатор сообщения от которого вести отчет
+  
+  int32 count = 2; // Количество запрашиваемых сообщений (максимум 50)
+  
+  string chat_id = 3; // Идентификатор чата
+}
+
+message ListMessagesResponse {
+  repeated Message messages = 1; // Список сообщений
 }
 
 message ListChatsRequest {
-  barkfluff.shared.PageRequest pagination = 1;
+  barkfluff.shared.PageRequest pagination = 1; // Пагинация (макс 50 элементов)
 }
 
 message ListChatsResponse {
@@ -45,6 +85,7 @@ message ChatMember {
   
   int64 user_id = 1; // Идетификатор пользователя
   
+  google.protobuf.Timestamp joined_at = 4; // Когда присоеденился
 }
 
 message Message {
@@ -54,6 +95,8 @@ message Message {
   int64 sender_id = 2; // Идентификатор отправителя
   
   repeated int64 read_by = 3; // Идентификатор пользователей, которые прочитали сообщение
+
+  google.protobuf.Timestamp sent_at = 4; // Дата отправки сообщения
 }
 
 

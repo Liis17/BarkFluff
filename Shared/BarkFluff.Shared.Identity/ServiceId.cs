@@ -14,4 +14,6 @@ public enum ServiceId
     
     Files = 5,
     
+    Messages = 6,
+    
 }

@@ -7,6 +7,7 @@ using BarkFluff.Users.Features.ConfirmUser;
 using BarkFluff.Users.Features.FindByLogin;
 using BarkFluff.Users.Features.GetUser;
 using BarkFluff.Users.Features.GetUserContacts;
+using BarkFluff.Users.Features.ListByIds;
 using BarkFluff.Users.Features.OverrideDraftUser;
 using Grpc.Core;
 using MediatR;
@@ -91,5 +92,15 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
         };
 
         return _mediator.Send(command);
+    }
+
+    public override async Task<ListByIdsResponse> ListByIds(ListByIdsRequest request, ServerCallContext context)
+    {
+        var command = new ListByIdsCommand()
+        {
+            Ids = request.Ids.ToList()
+        };
+        
+        return await _mediator.Send(command);
     }
 }

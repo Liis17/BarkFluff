@@ -38,6 +38,11 @@ public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand,
             ServiceId = (int)ServiceId.Files
         });
         
+        var messagesSettings = await _configurationApiClient.GetConfigurationAsync(new GetConfigurationRequest()
+        {
+            ServiceId = (int)ServiceId.Messages
+        });
+        
         return new GetServerInfoResponse
         {
             Name = _serverPropsSettings.Name,
@@ -53,6 +58,7 @@ public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand,
             Files = ParseService(ServiceId.Files, filesSettings.Configurations.ToList()),
             Identity = ParseService(ServiceId.Identity, identitySettings.Configurations.ToList()),
             Users = ParseService(ServiceId.Users, usersSettings.Configurations.ToList()),
+            Messages = ParseService(ServiceId.Messages, messagesSettings.Configurations.ToList()),
         };
     }
 
@@ -60,7 +66,7 @@ public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand,
     {
         return new Service
         {
-            Name = nameof(id),
+            Name = id.ToString(),
             Endpoint = new ServiceEndpoint
             {
                 Host = settings.First(x => x.Section == "RunSettings"

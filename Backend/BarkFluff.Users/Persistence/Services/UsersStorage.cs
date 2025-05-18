@@ -37,6 +37,16 @@ public class UsersStorage
         return user;
     }
 
+    public async Task<List<User>> GetByIds(List<long> ids)
+    {
+        var users = await _usersContext.Users
+            .Include(u => u.Contact)
+            .Where(x => ids.Contains(x.Id))
+            .ToListAsync();
+
+        return users;
+    }
+
     public async Task<User> CreateUser(string username, string firstName, string lastName, string email)
     {
         var contactUser = new UserContact { Email = email };

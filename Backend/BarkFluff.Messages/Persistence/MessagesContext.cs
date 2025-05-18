@@ -1,8 +1,24 @@
+using BarkFluff.Messages.Domain;
+using BarkFluff.Messages.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
 
 namespace BarkFluff.Messages.Persistence;
 
 public class MessagesContext : DbContext
 {
+    public MessagesContext(DbContextOptions<MessagesContext> options) : base(options) { }
     
+    public DbSet<Chat> Chats { get; set; }
+    
+    public DbSet<Message> Messages { get; set; }
+    
+    public DbSet<ChatMember> ChatMembers { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.ApplyConfiguration(new ChatConfiguration());
+        modelBuilder.ApplyConfiguration(new ChatMemberConfiguration());
+
+        base.OnModelCreating(modelBuilder);
+    }
 }

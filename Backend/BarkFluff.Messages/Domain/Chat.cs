@@ -15,7 +15,7 @@ public class Chat
     
     public Message? LastMessage { get; set; }
     
-    public List<ChatMember> Members { get; set; }
+    public List<ChatMember>? Members { get; set; }
     
     public int CountUnread { get; set; }
 }

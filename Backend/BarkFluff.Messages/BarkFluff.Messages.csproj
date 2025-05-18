@@ -8,8 +8,18 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="Grpc.Net.ClientFactory" Version="2.71.0" />
+        <PackageReference Include="Grpc.Tools" Version="2.72.0">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0"/>
         <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.4" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.4">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="9.0.5" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
     </ItemGroup>
 
@@ -20,7 +30,15 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Host\" />
+      <ProjectReference Include="..\..\Shared\BarkFluff.Shared.Auth\BarkFluff.Shared.Auth.csproj" />
+      <ProjectReference Include="..\BarkFluff.GrpcServer\BarkFluff.GrpcServer.csproj" />
+    </ItemGroup>
+
+
+    <ItemGroup>
+        <Protobuf Include="..\..\Shared\BarkFluff.Proto\messages_api.proto" GrpcServices="Server" />
+        <Protobuf Include="..\..\Shared\BarkFluff.Proto\shared.proto" GrpcServices="None" />
+        <Protobuf Include="..\..\Shared\BarkFluff.Proto\users_api.proto" GrpcServices="Client" />
     </ItemGroup>
 
 </Project>
