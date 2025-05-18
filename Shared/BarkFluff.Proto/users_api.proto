@@ -49,6 +49,17 @@ service UsersServerApi {
   
   // Получить контакты пользователя по id
   rpc GetUserContacts(GetUserContactsRequest) returns(GetUserContactsResponse);
+  
+  // Получить пользователей по id
+  rpc ListByIds(ListByIdsRequest) returns(ListByIdsResponse);
+}
+
+message ListByIdsRequest {
+  repeated int64 ids = 1; // айдишники
+}
+
+message ListByIdsResponse {
+  repeated User users = 1; // пользователи
 }
 
 message SetProfilePictureRequest {

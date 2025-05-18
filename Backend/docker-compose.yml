@@ -71,6 +71,18 @@ services:
     depends_on:
       - configuration
 
+  messages:
+    image: docker.barkfluff.ru/barkfluff-messages:latest
+    restart: always
+    ports: [ "7007:7007" ]
+    environment:
+      <<: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
+      - users
+
 networks:
   barkfluff-network:
     driver: bridge
