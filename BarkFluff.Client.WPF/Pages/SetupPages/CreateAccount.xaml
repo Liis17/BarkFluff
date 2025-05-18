@@ -5,409 +5,409 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="clr-namespace:BarkFluff.Client.WPF.Pages.SetupPages"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     d:DesignHeight="720"
     d:DesignWidth="1280"
     mc:Ignorable="d">
     <UserControl.Resources>
-        <Style x:Key="PrimaryButton" TargetType="Button">
-            <Setter Property="Background" Value="#6D90F3" />
+        <!--  Common text style  -->
+        <Style x:Key="HeaderStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="AdwaitaSans" />
+            <Setter Property="FontSize" Value="32" />
+            <Setter Property="FontWeight" Value="Black" />
             <Setter Property="Foreground" Value="White" />
-            <Setter Property="FontSize" Value="14" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Padding" Value="20,12" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+
+        <Style x:Key="SubHeaderStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="AdwaitaSans" />
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Opacity" Value="0.8" />
+        </Style>
+
+        <Style x:Key="LabelStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="AdwaitaSans" />
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Opacity" Value="0.8" />
+            <Setter Property="Margin" Value="0,10,0,5" />
+        </Style>
+
+        <Style x:Key="HintStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="AdwaitaSans" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="Light" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Opacity" Value="0.5" />
+        </Style>
+
+        <!--  Button styles  -->
+        <Style x:Key="NavigationButton" TargetType="ui:Button">
+            <Setter Property="Margin" Value="5" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="Background" Value="#4C72F4" />
+            <Setter Property="Foreground" Value="White" />
             <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border
-                            Padding="{TemplateBinding Padding}"
-                            Background="{TemplateBinding Background}"
-                            CornerRadius="8">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#5A7AE6" />
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#4863C8" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Padding" Value="15,8" />
         </Style>
 
-        <Style x:Key="SecondaryButton" TargetType="Button">
-            <Setter Property="Background" Value="#FFFFFF" />
-            <Setter Property="Foreground" Value="#6D90F3" />
-            <Setter Property="FontSize" Value="14" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Padding" Value="20,12" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="BorderBrush" Value="#E0E6EC" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border
-                            Padding="{TemplateBinding Padding}"
-                            Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="8">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#F0F4FF" />
-                                <Setter Property="BorderBrush" Value="#6D90F3" />
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#E9EEF9" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="CustomTextBox" TargetType="TextBox">
-            <Setter Property="Background" Value="White" />
-            <Setter Property="Foreground" Value="#424B5A" />
-            <Setter Property="FontSize" Value="14" />
-            <Setter Property="Padding" Value="15,12" />
-            <Setter Property="BorderBrush" Value="#E0E6EC" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="TextBox">
-                        <Border
-                            Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="8">
-                            <ScrollViewer x:Name="PART_ContentHost" Padding="{TemplateBinding Padding}" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsFocused" Value="True">
-                                <Setter Property="BorderBrush" Value="#6D90F3" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="PasswordBoxStyle" TargetType="PasswordBox">
-            <Setter Property="Background" Value="White" />
-            <Setter Property="Foreground" Value="#424B5A" />
-            <Setter Property="FontSize" Value="14" />
-            <Setter Property="Padding" Value="15,12" />
-            <Setter Property="BorderBrush" Value="#E0E6EC" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="PasswordBox">
-                        <Border
-                            Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="8">
-                            <ScrollViewer x:Name="PART_ContentHost" Padding="{TemplateBinding Padding}" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsFocused" Value="True">
-                                <Setter Property="BorderBrush" Value="#6D90F3" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="CheckboxStyle" TargetType="CheckBox">
-            <Setter Property="Foreground" Value="#424B5A" />
-            <Setter Property="FontSize" Value="14" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="CheckBox">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Border
-                                x:Name="checkBoxBorder"
-                                Width="20"
-                                Height="20"
-                                VerticalAlignment="Center"
-                                Background="White"
-                                BorderBrush="#E0E6EC"
-                                BorderThickness="1"
-                                CornerRadius="4">
-                                <Path
-                                    x:Name="checkMark"
-                                    Data="M4,10 L8,14 L16,6"
-                                    Stroke="#6D90F3"
-                                    StrokeThickness="2"
-                                    Visibility="Collapsed" />
-                            </Border>
-                            <ContentPresenter
-                                Grid.Column="1"
-                                Margin="10,0,0,0"
-                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
-                        </Grid>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="checkMark" Property="Visibility" Value="Visible" />
-                                <Setter TargetName="checkBoxBorder" Property="Background" Value="#F0F4FF" />
-                                <Setter TargetName="checkBoxBorder" Property="BorderBrush" Value="#6D90F3" />
-                            </Trigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="checkBoxBorder" Property="BorderBrush" Value="#6D90F3" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
+        <!--  Animation related resources  -->
+        <CubicEase x:Key="EasingFunction" EasingMode="EaseInOut" />
     </UserControl.Resources>
+
     <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="450" />
-        </Grid.ColumnDefinitions>
+        <!--  Background with gradient  -->
+        <Grid.Background>
+            <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+                <GradientStop Offset="0" Color="#1A1A1A" />
+                <GradientStop Offset="1" Color="#212121" />
+            </LinearGradientBrush>
+        </Grid.Background>
 
-        <!--  Left Side - Image/Brand  -->
-        <Grid Grid.Column="0" Background="#6D90F3">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
+        <!--  Main container  -->
+        <Border
+            Width="420"
+            Margin="0"
+            Background="#262626"
+            BorderBrush="#383838"
+            BorderThickness="1"
+            CornerRadius="12">
 
-            <!--  Logo  -->
-            <StackPanel
-                Grid.Row="0"
-                Margin="40,30"
-                Orientation="Horizontal">
-                <Image
-                    Width="40"
-                    Height="40"
-                    Source="/Resources/Images/barkfluff_logo.png" />
-                <TextBlock
-                    Margin="15,0,0,0"
-                    VerticalAlignment="Center"
-                    FontSize="24"
-                    FontWeight="Bold"
-                    Foreground="White"
-                    Text="BarkFluff" />
-            </StackPanel>
-
-            <!--  Center Image  -->
-            <StackPanel
-                Grid.Row="1"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center">
-                <Image
-                    MaxWidth="300"
-                    MaxHeight="300"
-                    Source="/Resources/Placeholders/Placeholder_1.jpg" />
-                <TextBlock
-                    Margin="0,20,0,0"
-                    FontSize="24"
-                    FontWeight="SemiBold"
-                    Foreground="White"
-                    Text="Connect with your pack!"
-                    TextAlignment="Center" />
-                <TextBlock
-                    Margin="0,10,0,0"
-                    FontSize="16"
-                    Foreground="White"
-                    Opacity="0.85"
-                    Text="Share moments, exchange barks, and stay in touch"
-                    TextAlignment="Center" />
-            </StackPanel>
-
-            <!--  Bottom Text  -->
-            <TextBlock
-                Grid.Row="2"
-                Margin="40,30"
-                HorizontalAlignment="Center"
-                Foreground="White"
-                Opacity="0.7"
-                Text="© 2025 BarkFluff Inc. All rights reserved." />
-        </Grid>
-
-        <!--  Right Side - Login Form  -->
-        <Border Grid.Column="1" Background="White">
-            <Grid Margin="40">
+            <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <!--  Header  -->
-                <StackPanel Grid.Row="0">
-                    <TextBlock
-                        FontSize="28"
-                        FontWeight="Bold"
-                        Foreground="#424B5A"
-                        Text="Welcome Back" />
-                    <TextBlock
-                        Margin="0,10,0,0"
-                        FontSize="16"
-                        Foreground="#6B7280"
-                        Text="Sign in to your account to continue" />
-                </StackPanel>
-
-                <!--  Login Form  -->
-                <StackPanel
-                    Grid.Row="1"
-                    Margin="0,20"
-                    VerticalAlignment="Center">
-                    <!--  Username  -->
-                    <TextBlock
-                        Margin="0,0,0,8"
-                        FontSize="14"
-                        Foreground="#424B5A"
-                        Text="Username" />
-                    <TextBox Margin="0,0,0,20" Style="{StaticResource CustomTextBox}" />
-
-                    <!--  Password  -->
-                    <TextBlock
-                        Margin="0,0,0,8"
-                        FontSize="14"
-                        Foreground="#424B5A"
-                        Text="Password" />
-                    <Grid Margin="0,0,0,20">
-                        <PasswordBox Style="{StaticResource PasswordBoxStyle}" />
-                        <TextBlock
-                            Margin="0,0,10,0"
-                            HorizontalAlignment="Right"
-                            VerticalAlignment="Center"
-                            Cursor="Hand"
-                            FontSize="12"
-                            Foreground="#6D90F3"
-                            Text="Forgot Password?" />
-                    </Grid>
-
-                    <!--  Two-Factor Authentication  -->
-                    <Border
-                        Margin="0,0,0,20"
-                        Padding="15"
-                        Background="#F9FAFC"
-                        BorderBrush="#E0E6EC"
-                        BorderThickness="1"
-                        CornerRadius="8">
-                        <StackPanel>
-                            <TextBlock
-                                FontWeight="SemiBold"
-                                Foreground="#424B5A"
-                                Text="2FA" />
-                            <TextBlock
-                                Margin="0,5,0,10"
-                                FontSize="12"
-                                Foreground="#6B7280"
-                                Text="Enter the 6-digit code from your authenticator app" />
-
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-
-                                <TextBox
-                                    Grid.Column="0"
-                                    Margin="0,0,5,0"
-                                    MaxLength="1"
-                                    Style="{StaticResource CustomTextBox}"
-                                    TextAlignment="Center" />
-                                <TextBox
-                                    Grid.Column="1"
-                                    Margin="2,0,3,0"
-                                    MaxLength="1"
-                                    Style="{StaticResource CustomTextBox}"
-                                    TextAlignment="Center" />
-                                <TextBox
-                                    Grid.Column="2"
-                                    Margin="2,0,3,0"
-                                    MaxLength="1"
-                                    Style="{StaticResource CustomTextBox}"
-                                    TextAlignment="Center" />
-                                <TextBox
-                                    Grid.Column="3"
-                                    Margin="2,0,3,0"
-                                    MaxLength="1"
-                                    Style="{StaticResource CustomTextBox}"
-                                    TextAlignment="Center" />
-                                <TextBox
-                                    Grid.Column="4"
-                                    Margin="2,0,3,0"
-                                    MaxLength="1"
-                                    Style="{StaticResource CustomTextBox}"
-                                    TextAlignment="Center" />
-                                <TextBox
-                                    Grid.Column="5"
-                                    Margin="5,0,0,0"
-                                    MaxLength="1"
-                                    Style="{StaticResource CustomTextBox}"
-                                    TextAlignment="Center" />
-                            </Grid>
-
-                            <TextBlock
-                                Margin="0,10,0,0"
-                                HorizontalAlignment="Right"
-                                Cursor="Hand"
-                                FontSize="12"
-                                Foreground="#6D90F3"
-                                Text="Trouble with 2FA? Contact support" />
-                        </StackPanel>
-                    </Border>
-
-                    <!--  Remember Me  -->
-                    <CheckBox
-                        Margin="0,0,0,20"
-                        Content="Keep me signed in"
-                        Style="{StaticResource CheckboxStyle}" />
-
-                    <!--  Login Button  -->
-                    <Button
-                        Margin="0,0,0,15"
-                        Content="Sign In"
-                        Style="{StaticResource PrimaryButton}" />
-
-                    <!--  Server Selection Link  -->
-                    <TextBlock Margin="0,0,0,0" TextAlignment="Center">
-                        <Hyperlink Foreground="#6D90F3" TextDecorations="None">
-                            <TextBlock Foreground="#6D90F3" Text="Change server connection" />
-                        </Hyperlink>
-                    </TextBlock>
-                </StackPanel>
-
-                <!--  Register Link  -->
+                <!--  Logo could go here  -->
                 <Border
-                    Grid.Row="2"
-                    Padding="0,20,0,0"
-                    BorderBrush="#E0E6EC"
-                    BorderThickness="0,1,0,0">
-                    <StackPanel>
+                    Grid.Row="0"
+                    Padding="20"
+                    Background="#303030"
+                    CornerRadius="12,12,0,0">
+                    <StackPanel Margin="0,10" Orientation="Vertical">
                         <TextBlock
-                            Margin="0,0,0,15"
-                            FontSize="14"
-                            Foreground="#6B7280"
-                            Text="Don't have an account yet?"
-                            TextAlignment="Center" />
-                        <Button Content="Create a New Account" Style="{StaticResource SecondaryButton}" />
+                            Foreground="#4C72F4"
+                            Style="{StaticResource HeaderStyle}"
+                            Text="BarkFluff" />
+                        <TextBlock
+                            Loaded="TextBlock_Loaded"
+                            Style="{StaticResource SubHeaderStyle}"
+                            Text="servername" />
                     </StackPanel>
                 </Border>
+
+                <!--  Registration steps container  -->
+                <Grid Grid.Row="1" Margin="30,20">
+                    <!--  Step 1 - Name and Surname  -->
+                    <StackPanel x:Name="Step1" Orientation="Vertical">
+                        <TextBlock
+                            Margin="0,0,0,20"
+                            FontSize="20"
+                            Style="{StaticResource SubHeaderStyle}"
+                            Text="Регистрация" />
+
+                        <TextBlock Style="{StaticResource LabelStyle}" Text="Имя*" />
+                        <ui:TextBox
+                            x:Name="FirstNameEnter"
+                            Height="40"
+                            KeyDown="TextBox_KeyDown"
+                            PlaceholderText="Апогея"
+                            Tag="Names"
+                            TextChanged="Enter_TextChanged" />
+
+                        <TextBlock Style="{StaticResource LabelStyle}" Text="Фамилия" />
+                        <ui:TextBox
+                            x:Name="LastNameEnter"
+                            Height="40"
+                            KeyDown="TextBox_KeyDown"
+                            PlaceholderText="Тайнигейпиратовна"
+                            TextChanged="Enter_TextChanged" />
+
+                        <StackPanel Margin="0,15,0,0">
+                            <TextBlock Style="{StaticResource HintStyle}" Text="● Имя может содержать любые символы" />
+                            <TextBlock Style="{StaticResource HintStyle}" Text="● Минимально может быть 3 символа" />
+                            <TextBlock Style="{StaticResource HintStyle}" Text="● Длинна имени и фамилии ограничена 40 символами" />
+                            <TextBlock Style="{StaticResource HintStyle}" Text="● Фамилия может отсутствовать" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!--  Step 2 - Username  -->
+                    <StackPanel
+                        x:Name="Step2"
+                        Orientation="Vertical"
+                        Visibility="Collapsed">
+                        <TextBlock
+                            Margin="0,0,0,20"
+                            FontSize="20"
+                            Style="{StaticResource SubHeaderStyle}"
+                            Text="Регистрация" />
+
+                        <TextBlock Style="{StaticResource LabelStyle}" Text="Логин*" />
+                        <ui:TextBox
+                            x:Name="LoginEnter"
+                            Height="40"
+                            KeyDown="TextBox_KeyDown"
+                            PlaceholderText="Apogee"
+                            TextChanged="Enter_TextChanged" />
+
+                        <StackPanel Margin="0,15,0,0">
+                            <TextBlock Style="{StaticResource HintStyle}" Text="● Логин может содержать:" />
+                            <TextBlock
+                                Margin="10,0,0,0"
+                                Style="{StaticResource HintStyle}"
+                                Text="- Символы латинского алфавита" />
+                            <TextBlock
+                                Margin="10,0,0,0"
+                                Style="{StaticResource HintStyle}"
+                                Text="- Цифры" />
+                            <TextBlock
+                                Margin="10,0,0,0"
+                                Style="{StaticResource HintStyle}"
+                                Text="- Нижнее подчеркивание ( _ ) и тире ( - )" />
+                            <TextBlock Style="{StaticResource HintStyle}" Text="● Логин ограничен 30 символами" />
+                            <TextBlock Style="{StaticResource HintStyle}" Text="● Логин будет преобразован в нижний регистр" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!--  Step 3 - Email  -->
+                    <StackPanel
+                        x:Name="Step3"
+                        Orientation="Vertical"
+                        Visibility="Collapsed">
+                        <TextBlock
+                            Margin="0,0,0,20"
+                            FontSize="20"
+                            Style="{StaticResource SubHeaderStyle}"
+                            Text="Регистрация" />
+
+                        <TextBlock Style="{StaticResource LabelStyle}" Text="Почта*" />
+                        <ui:TextBox
+                            x:Name="EmailEnter"
+                            Height="40"
+                            KeyDown="TextBox_KeyDown"
+                            PlaceholderText="apogee@barkfluff.ru"
+                            TextChanged="Enter_TextChanged" />
+
+                        <StackPanel Margin="0,15,0,0">
+                            <TextBlock Style="{StaticResource HintStyle}" Text="● Почта может использоваться для 2FA" />
+                            <TextBlock Style="{StaticResource HintStyle}" Text="● Почта будет использоваться для сброса пароля" />
+                            <TextBlock Style="{StaticResource HintStyle}" Text="● На почту будут отправляться уведомления о входе" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!--  Step 4 - Verification Code  -->
+                    <StackPanel
+                        x:Name="Step4"
+                        Orientation="Vertical"
+                        Visibility="Collapsed">
+                        <TextBlock
+                            Margin="0,0,0,20"
+                            FontSize="20"
+                            Style="{StaticResource SubHeaderStyle}"
+                            Text="Регистрация" />
+
+                        <TextBlock Style="{StaticResource LabelStyle}" Text="Код подтверждения*" />
+                        <ui:TextBox
+                            x:Name="VerificationCodeEnter"
+                            Height="40"
+                            KeyDown="TextBox_KeyDown"
+                            PlaceholderText="123456"
+                            TextChanged="Enter_TextChanged" />
+
+                        <StackPanel Margin="0,15,0,0">
+                            <TextBlock
+                                x:Name="EmailHelperText"
+                                Style="{StaticResource HintStyle}"
+                                Text="● Сообщение отправлено на ''твою почту''" />
+                            <TextBlock Style="{StaticResource HintStyle}" Text="● Проверьте папку со спамом" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!--  Step 5 - Password  -->
+                    <StackPanel
+                        x:Name="Step5"
+                        Orientation="Vertical"
+                        Visibility="Collapsed">
+                        <TextBlock
+                            Margin="0,0,0,20"
+                            FontSize="20"
+                            Style="{StaticResource SubHeaderStyle}"
+                            Text="Регистрация" />
+
+                        <TextBlock Style="{StaticResource LabelStyle}" Text="Пароль*" />
+                        <ui:PasswordBox
+                            x:Name="PasswordEnter"
+                            Height="40"
+                            KeyDown="TextBox_KeyDown"
+                            PlaceholderText="Введите надежный пароль"
+                            TextChanged="PasspowrEnter_TextChanged" />
+
+                        <Grid Margin="0,5,0,15">
+                            <ProgressBar
+                                x:Name="PasswordStrengthBar"
+                                Height="5"
+                                Background="#FF2A2A2A"
+                                Foreground="#FF00FF00"
+                                Maximum="100"
+                                Minimum="0"
+                                Value="50" />
+                        </Grid>
+
+                        <TextBlock
+                            x:Name="PasswordDifficultyIndicator"
+                            Margin="0,0,0,15"
+                            FontFamily="AdwaitaSans"
+                            FontSize="12"
+                            FontWeight="Normal"
+                            Foreground="#FFC3C3C3"
+                            Text="Пароль достаточно надежный" />
+
+                        <TextBlock Style="{StaticResource LabelStyle}" Text="Подтвердите пароль*" />
+                        <ui:PasswordBox
+                            x:Name="PasswordRepeatedEnter"
+                            Height="40"
+                            KeyDown="TextBox_KeyDown"
+                            PlaceholderText="Повторите пароль"
+                            TextChanged="Enter_TextChanged" />
+
+                        <StackPanel Margin="0,15,0,0">
+                            <TextBlock Style="{StaticResource HintStyle}" Text="● Пароль должен содержать не менее 8 символов" />
+                            <TextBlock Style="{StaticResource HintStyle}" Text="● Используйте комбинацию букв, цифр и специальных символов" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!--  Step 6 - Completion  -->
+                    <StackPanel
+                        x:Name="Step6"
+                        Orientation="Vertical"
+                        Visibility="Collapsed">
+                        <TextBlock
+                            Margin="0,0,0,20"
+                            FontSize="20"
+                            Style="{StaticResource SubHeaderStyle}"
+                            Text="Регистрация завершена" />
+
+                        <Border
+                            Width="80"
+                            Height="80"
+                            Margin="0,20"
+                            Background="#4C72F4"
+                            CornerRadius="50">
+                            <ui:SymbolIcon
+                                FontSize="40"
+                                Foreground="White"
+                                Symbol="Checkmark24" />
+                        </Border>
+
+                        <TextBlock
+                            Margin="0,10"
+                            FontSize="18"
+                            Style="{StaticResource SubHeaderStyle}"
+                            Text="Ваш аккаунт успешно создан!" />
+
+                        <TextBlock
+                            Margin="0,0,0,20"
+                            Style="{StaticResource HintStyle}"
+                            Text="Теперь вы можете войти, используя свой логин и пароль."
+                            TextAlignment="Center" />
+                    </StackPanel>
+                </Grid>
+
+                <!--  Footer with error message and buttons  -->
+                <StackPanel Grid.Row="2" Margin="20,0,20,20">
+                    <TextBlock
+                        x:Name="ErrorMessageTextBlock"
+                        MinHeight="20"
+                        Margin="0,0,0,15"
+                        FontFamily="AdwaitaSans"
+                        FontSize="13"
+                        FontWeight="Medium"
+                        Foreground="#FFFF4646"
+                        Opacity="0.9"
+                        Text=""
+                        TextAlignment="Center" />
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!--  Back Button  -->
+                        <ui:Button
+                            x:Name="BackButton"
+                            Grid.Column="0"
+                            Click="BackButton_Click"
+                            Style="{StaticResource NavigationButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon
+                                    FontSize="16"
+                                    Foreground="White"
+                                    Symbol="ArrowLeft12" />
+                                <TextBlock
+                                    Margin="8,0,0,0"
+                                    FontFamily="AdwaitaSans"
+                                    FontSize="14"
+                                    FontWeight="SemiBold"
+                                    Foreground="White"
+                                    Text="Назад" />
+                            </StackPanel>
+                        </ui:Button>
+
+                        <!--  Next Button  -->
+                        <ui:Button
+                            x:Name="NextButton"
+                            Grid.Column="2"
+                            Click="NextButton_Click"
+                            Style="{StaticResource NavigationButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock
+                                    Margin="0,0,8,0"
+                                    FontFamily="AdwaitaSans"
+                                    FontSize="14"
+                                    FontWeight="SemiBold"
+                                    Foreground="White"
+                                    Text="Далее" />
+                                <ui:SymbolIcon
+                                    FontSize="16"
+                                    Foreground="White"
+                                    Symbol="ArrowRight12" />
+                            </StackPanel>
+                        </ui:Button>
+
+                        <!--  Create Account Button  -->
+                        <ui:Button
+                            x:Name="CreateButton"
+                            Grid.Column="2"
+                            Background="#4CAF50"
+                            Click="Registration"
+                            Style="{StaticResource NavigationButton}"
+                            Visibility="Collapsed">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock
+                                    Margin="0,0,8,0"
+                                    FontFamily="AdwaitaSans"
+                                    FontSize="14"
+                                    FontWeight="SemiBold"
+                                    Foreground="White"
+                                    Text="Создать аккаунт" />
+                                <ui:SymbolIcon
+                                    FontSize="16"
+                                    Foreground="White"
+                                    Symbol="Add12" />
+                            </StackPanel>
+                        </ui:Button>
+                    </Grid>
+                </StackPanel>
             </Grid>
         </Border>
     </Grid>

@@ -14,18 +14,13 @@ using System.Windows.Shapes;
 namespace BarkFluff.Client.WPF.Pages.SetupPages
 {
     /// <summary>
-    /// Логика взаимодействия для WelcomPage.xaml
+    /// Логика взаимодействия для Login.xaml
     /// </summary>
-    public partial class WelcomPage : UserControl
+    public partial class Login : UserControl
     {
-        public WelcomPage()
+        public Login()
         {
             InitializeComponent();
-        }
-
-        private void Button_Click(object sender, RoutedEventArgs e)
-        {
-            App.MessengerWindow.OpenCreatePinCodePage();
         }
     }
 }
