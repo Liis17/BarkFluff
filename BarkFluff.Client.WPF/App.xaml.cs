@@ -1,17 +1,19 @@
-﻿using BarkFluff.Proto.Users;
+﻿using BarkFluff.Client.WPF.Pages;
+using BarkFluff.Client.WPF.ServiceWindows;
+using BarkFluff.Proto.Users;
+using BarkFluff.WebApi.Core;
+using BarkFluff.WebApi.Core.MessengerData;
+
 using Grpc.Net.Client;
 
 using System.Configuration;
 using System.Data;
+using System.Diagnostics;
+using System.IO;
+using System.Reflection;
 using System.Windows;
-using BarkFluff.WebApi.Core;
 
 using static BarkFluff.Proto.Users.UsersApi;
-using BarkFluff.Client.WPF.Pages;
-using System.Diagnostics;
-using System.Reflection;
-using System.IO;
-using BarkFluff.Client.WPF.ServiceWindows;
 
 namespace BarkFluff.Client.WPF
 {
@@ -49,13 +51,18 @@ namespace BarkFluff.Client.WPF
 
         private void Bootstrap()
         {
+            ServerCommunication = new WebApi.Core.WebApi();
             string filePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "GlobalParam.json");
-
+            GParam = new BarkFluff.WebApi.Core.MessengerData.GlobalParam();
             if (Debugger.IsAttached)
             {
                 // Увеличивает версию
                 IncrementVersion();
             }
+            GParam.AppPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? string.Empty;
+
+            var machineName = Environment.MachineName;
+            GParam.MachineName = machineName;
 
             MessengerWindow = new MainWindow();
 
@@ -63,10 +70,23 @@ namespace BarkFluff.Client.WPF
             {
                 MessengerWindow.Show();
                 MessengerWindow.FirstStart();
+
+
+                
+
             }
             else
             {
-                
+                if (GParam.SocketBeacon != "http://" || GParam.SocketBeacon != string.Empty)
+                {
+                    ServerCommunication.CreateAC(GParam, GParam.MachineName);
+                }
+                else
+                {
+                    MessengerWindow.FirstStart();
+                    //если файл существует, но сокет пустой, то открываем страницу выбора сервера
+                }
+
             }
         }
 

@@ -13,6 +13,9 @@ namespace BarkFluff.WebApi.Core.MessengerData
         public string SocketIdentity { get; set; } = string.Empty;
         public string AppPath { get; set; } = string.Empty;
         public string ServerName { get; set; } = string.Empty;
+        public string ServerDescription { get; set; } = string.Empty;
+        public string MachineName { get; set; } = string.Empty;
+        public ClientColors Colors { get; set; } = new ClientColors();
 
         #endregion
         #region Пользователь

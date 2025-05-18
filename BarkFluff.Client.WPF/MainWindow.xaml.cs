@@ -1,9 +1,13 @@
 ﻿using BarkFluff.Client.WPF.Debug;
-using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.Client.WPF.Pages;
+using BarkFluff.Client.WPF.Pages.PinCode;
+using BarkFluff.Client.WPF.Pages.SetupPages;
+using BarkFluff.WebApi.Core.MessengerData;
+
 using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Grpc.Net.Client;
+
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
@@ -19,7 +23,8 @@ using System.Windows.Navigation;
 
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
-using BarkFluff.Client.WPF.Pages.SetupPages;
+
+using Login = BarkFluff.Client.WPF.Pages.SetupPages.Login;
 
 namespace BarkFluff.Client.WPF
 {
@@ -127,6 +132,26 @@ namespace BarkFluff.Client.WPF
             MainFrame.Children.Clear();
             MainFrame.Children.Add(new WelcomPage());
         }
+        public void OpenCreatePinCodePage()
+        {
+            MainFrame.Children.Clear();
+            MainFrame.Children.Add(new CreatePinCodePage());
+        }
+        public void OpenCreateAccountPage()
+        {
+            MainFrame.Children.Clear();
+            MainFrame.Children.Add(new CreateAccount());
+        }
+        public void OpenServerListPage()
+        {
+            MainFrame.Children.Clear();
+            MainFrame.Children.Add(new SelectServer());
+        }
+        public void OpenLoginPage()
+        {
+            MainFrame.Children.Clear();
+            MainFrame.Children.Add(new Login());
+        }
         #endregion
 
         #region Вход в приложение
@@ -161,7 +186,7 @@ namespace BarkFluff.Client.WPF
             }
             else
             {
-                MainFrame.Children.Add(new Login());
+                MainFrame.Children.Add(new Pages.SetupPages.Login());
 
                 
 
