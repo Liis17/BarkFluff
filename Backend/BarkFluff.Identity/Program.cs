@@ -74,6 +74,5 @@ public class Program
         app.MapGrpcService<IdentityApiService>();
 
         app.Run();
-        
     }
 }
