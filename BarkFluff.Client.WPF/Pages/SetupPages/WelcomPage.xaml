@@ -103,6 +103,7 @@
                     Width="180"
                     Margin="0,10,0,0"
                     HorizontalAlignment="Left"
+                    Click="Button_Click"
                     Content="Начать"
                     Style="{StaticResource RoundButton}" />
 

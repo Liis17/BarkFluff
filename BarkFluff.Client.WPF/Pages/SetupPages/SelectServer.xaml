@@ -387,11 +387,13 @@
                                 Foreground="#6B7280"
                                 Text="Server Address" />
                             <TextBox
+                                Name="ServerAddressTextBox"
                                 Margin="0,0,0,5"
                                 FontSize="14"
                                 Style="{StaticResource CustomTextBox}"
                                 Text="" />
                             <TextBlock
+                                x:Name="ErrorText"
                                 FontSize="12"
                                 Foreground="#8B95A5"
                                 Text="Format: domain/IP:port (e.g. myserver.com:8080)" />
@@ -442,6 +444,7 @@
                             Grid.Row="3"
                             Margin="0,20,0,0"
                             HorizontalAlignment="Right"
+                            Click="Button_Click"
                             Content="Connect"
                             Style="{StaticResource RoundButton}" />
                     </Grid>
