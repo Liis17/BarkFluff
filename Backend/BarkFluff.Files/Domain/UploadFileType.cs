@@ -5,4 +5,12 @@ public enum UploadFileType
     Unknown = 0,
     
     UserAvatar = 1,
+    
+    MessageAttachmentImage = 2,
+    
+    MessageAttachmentVideo = 3,
+    
+    MessageAttachmentGif = 4,
+    
+    MessageAttachmentDocument = 5
 }

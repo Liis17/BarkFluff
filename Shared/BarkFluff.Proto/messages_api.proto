@@ -17,6 +17,26 @@ service MessagesApi {
   
   // Получить список участников в чате
   rpc ListChatMembers(ListChatMembersRequest) returns(ListChatMembersResponse);
+  
+  // Отправить сообщение в чат
+  rpc SendMessage(SendMessageRequest) returns(SendMessageResponse);
+}
+
+
+message SendMessageRequest {
+  
+  oneof source_id {
+    string chat_id = 1; // Идентификатор чата
+    
+    int64 user_id = 2; // Идентификатор пользователя (использовать, только если неизвестен id чата)
+  }
+  
+  OutgoingMessage message = 3; // Отправляемое сообщение
+  
+}
+
+message SendMessageResponse {
+  Message message = 1; //Отправленное сообщение
 }
 
 message ListChatMembersRequest {
@@ -97,6 +117,55 @@ message Message {
   repeated int64 read_by = 3; // Идентификатор пользователей, которые прочитали сообщение
 
   google.protobuf.Timestamp sent_at = 4; // Дата отправки сообщения
+  
+  MessageContent content = 5; // Содержимое сообщения
+}
+
+message MessageContent {
+  
+  string text = 1; // Текст сообщения
+  
+  repeated MessageAttachment attachments = 2; // Вложения
+  
+}
+
+message MessageAttachment {
+  
+  int64 id = 1; // Идентификатор вложения
+  
+  MessageAttachmentType type = 2; // Тип вложения
+  
+  string file_id = 3; // Индетификатор файла
+  
+}
+
+enum MessageAttachmentType {
+  
+  MESSAGE_ATTACHMENT_TYPE_UNKNOWN = 0; // Неизвестно 
+  
+  IMAGE = 1; // Изображение
+  
+  VIDEO = 2; // Видео
+  
+  GIF = 3; // Гифка
+  
+  DOCUMENT = 4; // Документ
+}
+
+enum MessageContentType {
+  
+  MESSAGE_CONTENT_TYPE_UNKNOWN = 0; // Неизвестно
+  
+  GENERIC = 1; // Обычное содержимое
+  
+  SYSTEM = 2; // Системное содержимое
+}
+
+message OutgoingMessage {
+  
+  string text = 1; //Текст сообщения
+  
+  repeated string files_ids = 2; // Идентификаторы файлов
 }
 
 
