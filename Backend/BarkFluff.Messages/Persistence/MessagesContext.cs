@@ -13,12 +13,15 @@ public class MessagesContext : DbContext
     public DbSet<Message> Messages { get; set; }
     
     public DbSet<ChatMember> ChatMembers { get; set; }
+    
+    public DbSet<MessageAttachment> MessageAttachments { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfiguration(new ChatConfiguration());
         modelBuilder.ApplyConfiguration(new ChatMemberConfiguration());
-
+        modelBuilder.ApplyConfiguration(new MessageConfiguration());
+        
         base.OnModelCreating(modelBuilder);
     }
 }

@@ -13,7 +13,11 @@ public static class S3BucketHelper
     private static readonly Dictionary<UploadFileType, string> _bucketMap = new()
     {
         { UploadFileType.Unknown, "barkfluff-uploads" },
-        { UploadFileType.UserAvatar, "profile-pictures" }
+        { UploadFileType.UserAvatar, "profile-pictures" },
+        { UploadFileType.MessageAttachmentDocument, "message-documents"},
+        { UploadFileType.MessageAttachmentVideo, "message-videos"},
+        { UploadFileType.MessageAttachmentGif, "message-videos"},
+        { UploadFileType.MessageAttachmentImage, "message-images"}
     };
 
     /// <summary>

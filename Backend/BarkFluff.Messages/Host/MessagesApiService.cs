@@ -1,3 +1,4 @@
+using BarkFluff.Messages.Features.ListChatMembers;
 using BarkFluff.Messages.Features.ListChats;
 using BarkFluff.Messages.Features.ListMessages;
 using BarkFluff.Proto.Messages;
@@ -47,13 +48,32 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
             throw new ChatIdNotValidException();
         }
 
-        var command = new ListMessagesCommand()
+        var command = new ListMessagesCommand
         {
             ChatId = chatId,
             Count = request.Count,
             FromMessageId = request.FromMessageId,
         };
 
+        return await _mediator.Send(command);
+    }
+
+    public override async Task<ListChatMembersResponse> ListChatMembers(ListChatMembersRequest request, ServerCallContext context)
+    {
+        var parseGuidResult = Guid.TryParse(request.ChatId, out Guid chatId);
+
+        if (!parseGuidResult)
+        {
+            throw new ChatIdNotValidException();
+        }
+
+        var command = new ListChatMembersCommand()
+        {
+            ChatId = chatId,
+            Count = request.Pagination.Size,
+            Skip = request.Pagination.Skip,
+        };
+        
         return await _mediator.Send(command);
     }
 }
