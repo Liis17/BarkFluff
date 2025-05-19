@@ -59,6 +59,7 @@ namespace BarkFluff.WebApi.Core
         private void AddInterceptor(GlobalParam _gParam, string _deviceName)
         {
             var deviceInterceptor = new Shared.Auth.XDeviceClientInterceptor(deviceName: _deviceName);
+            var osinterceptor = new Shared.Auth.XOsClientInterceptor(osName: Environment.OSVersion.ToString());
             var jwtInterceptor = new Shared.Auth.JwtClientInterceptor(string.Empty);
             IdentityChannel = GrpcChannel.ForAddress(_gParam.SocketIdentity);
             UserChannel = GrpcChannel.ForAddress(_gParam.SocketUsers);
