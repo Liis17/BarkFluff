@@ -53,44 +53,33 @@ namespace BarkFluff.Client.WPF
         {
             ServerCommunication = new WebApi.Core.WebApi();
             string filePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "GlobalParam.json");
-            GParam = new BarkFluff.WebApi.Core.MessengerData.GlobalParam();
+            
             if (Debugger.IsAttached)
             {
                 // Увеличивает версию
                 IncrementVersion();
             }
-            GParam.AppPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? string.Empty;
-
-            var machineName = Environment.MachineName;
-            GParam.MachineName = machineName;
+            
+            MessageBox.Show($"{SystemInfo.GetFriendlyWindowsVersion()}");
 
             MessengerWindow = new MainWindow();
+            MessengerWindow.Show();
 
             if (!File.Exists(filePath))
             {
-                MessengerWindow.Show();
+                GParam = new BarkFluff.WebApi.Core.MessengerData.GlobalParam();
+                GParam.AppPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? string.Empty;
+                var machineName = Environment.MachineName;
+                GParam.MachineName = machineName;
                 MessengerWindow.FirstStart();
-
-
-                
-
             }
             else
             {
-                if (GParam.SocketBeacon != "http://" || GParam.SocketBeacon != string.Empty)
-                {
-                    ServerCommunication.CreateAC(GParam, GParam.MachineName);
-                }
-                else
-                {
-                    MessengerWindow.FirstStart();
-                    //если файл существует, но сокет пустой, то открываем страницу выбора сервера
-                }
-
+                MessengerWindow.OpenPinCodeSecurePage();
             }
         }
 
-
+        
 
         private void ProcessArguments(string[] args)
         {
