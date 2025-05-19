@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.Identity.Persistence.Services;
 using BarkFluff.Identity.Services;
 using BarkFluff.Proto.Identity;
@@ -9,7 +10,7 @@ using MediatR;
 namespace BarkFluff.Identity.Features.ConfirmAccount;
 
 public class ConfirmAccountCommandHandler(ConfirmationCodesStorage confirmationCodesStorage,
-    UsersServerApi.UsersServerApiClient usersClient, RefreshTokensStorage refreshTokensStorage) 
+    UsersServerApi.UsersServerApiClient usersClient, RefreshTokensStorage refreshTokensStorage, RequestContext requestContext) 
     : IRequestHandler<ConfirmAccountCommand, ConfirmAccountResponse>
 {
     
@@ -18,6 +19,11 @@ public class ConfirmAccountCommandHandler(ConfirmationCodesStorage confirmationC
     
     public async Task<ConfirmAccountResponse> Handle(ConfirmAccountCommand request, CancellationToken cancellationToken)
     {
+        if (string.IsNullOrEmpty(requestContext.DeviceName))
+        {
+            throw new XDeviceNameIsRequiredException();
+        } 
+        
         var codeId = Guid.Parse(request.CodeId);
 
         var code = await confirmationCodesStorage.GetCode(codeId);
@@ -45,7 +51,7 @@ public class ConfirmAccountCommandHandler(ConfirmationCodesStorage confirmationC
 
         var refreshTokenString = RefreshTokenGenerator.GenerateRefreshToken();
         
-        await refreshTokensStorage.CreateNewRefreshToken(refreshTokenString, code.OwnerId!.Value, request.DeviceName, ExpDaysRefreshToken);
+        await refreshTokensStorage.CreateNewRefreshToken(refreshTokenString, code.OwnerId!.Value, requestContext.DeviceName, ExpDaysRefreshToken);
 
         return new ConfirmAccountResponse()
         {

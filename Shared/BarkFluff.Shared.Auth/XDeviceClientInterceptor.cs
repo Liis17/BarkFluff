@@ -18,7 +18,7 @@ public class XDeviceClientInterceptor : Interceptor
         AsyncUnaryCallContinuation<TRequest, TResponse> continuation)
     {
         var metadata = context.Options.Headers ?? new Metadata();
-        metadata.Add("x-device-name", _deviceName);
+        metadata.Add(MetadataKeys.DeviceName, _deviceName);
 
         var newContext = new ClientInterceptorContext<TRequest, TResponse>(
             context.Method,

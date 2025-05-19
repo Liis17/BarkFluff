@@ -25,10 +25,7 @@ public class Program
         builder.LoadConfiguration(ServiceId.Identity);
         builder.SetRunningAddress(builder.Configuration);
 
-        builder.Services.AddGrpc(options =>
-        {
-            options.Interceptors.Add<ServerExceptionInterceptor>();
-        });
+        builder.Services.AddBarkFluffGrpc();
         builder.Services.AddGrpcReflection();
 
         builder.Services.AddDbContext<IdentityContext>(c 

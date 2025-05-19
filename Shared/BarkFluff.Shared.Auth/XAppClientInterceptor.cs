@@ -3,22 +3,25 @@ using Grpc.Core.Interceptors;
 
 namespace BarkFluff.Shared.Auth;
 
-public class XOsClientInterceptor : Interceptor
+public class XAppClientInterceptor : Interceptor
 {
-    private readonly string _osName;
+    private readonly string _appName;
+    private readonly string _appVersion;
 
-    public XOsClientInterceptor(string osName)
+    public XAppClientInterceptor(string appName, string appVersion)
     {
-        _osName = osName;
+        this._appName = appName;
+        this._appVersion = appVersion;
     }
 
     public override AsyncUnaryCall<TResponse> AsyncUnaryCall<TRequest, TResponse>(
         TRequest request,
-        ClientInterceptorContext<TRequest, TResponse> context,
-        AsyncUnaryCallContinuation<TRequest, TResponse> continuation)
+        ClientInterceptorContext<TRequest, TResponse> context, AsyncUnaryCallContinuation<TRequest, TResponse> continuation)
     {
         var metadata = context.Options.Headers ?? new Metadata();
-        metadata.Add(MetadataKeys.OsName, _osName);
+        
+        metadata.Add(MetadataKeys.AppName, _appName);
+        metadata.Add(MetadataKeys.AppVersion, _appVersion);
 
         var newContext = new ClientInterceptorContext<TRequest, TResponse>(
             context.Method,

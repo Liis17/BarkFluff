@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Identity.Domain;
 using BarkFluff.Identity.Features.CreateToken;
@@ -17,7 +18,7 @@ namespace BarkFluff.Identity.Features.Auth;
 
 public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient, 
     IMediator mediator, AuthPropertiesStorage authPropertiesStorage, NotificationQueueSender notificationQueueSender,
-    RefreshTokensStorage refreshTokensStorage) : IRequestHandler<AuthCommand, AuthResponse>
+    RefreshTokensStorage refreshTokensStorage, RequestContext requestContext) : IRequestHandler<AuthCommand, AuthResponse>
 {
 
     private const int ExpDaysRefreshToken = 9999;
@@ -27,6 +28,21 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
         if (string.IsNullOrEmpty(request.Username) && string.IsNullOrEmpty(request.Email))
         {
             throw new NotSetUsernameOrEmailException();
+        }
+
+        if (string.IsNullOrEmpty(requestContext.DeviceName))
+        {
+            throw new XDeviceNameIsRequiredException();
+        }
+
+        if (string.IsNullOrEmpty(requestContext.OperationSystem))
+        {
+            throw new XOsNameIsRequiredException();
+        }
+
+        if (string.IsNullOrEmpty(requestContext.AppName) || string.IsNullOrEmpty(requestContext.AppVersion))
+        {
+            throw new XAppInfoIsRequiedException();
         }
         
         var usersRequest = new FindByLoginRequest();
@@ -67,10 +83,11 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                     {
                         {"username", userContactInfo.User.Username},
                         {"confirmation_code", code},
-                        {"ip", "192.168.1.1"},
-                        {"devicename", request.DeviceName},
-                        {"os", "loh"},
-                        {"location", "Россия 😊"},
+                        {"ip", requestContext.IpAddress ?? string.Empty},
+                        {"devicename", requestContext.DeviceName},
+                        {"os", requestContext.OperationSystem},
+                        {"location", "-"},
+                        {"app", $"{requestContext.AppName} v.{requestContext.AppVersion}"},
                         {"datetime", DateTime.UtcNow.ToString("D")}
                     },
                     ServiceId = ServiceId.Identity,
@@ -108,7 +125,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
         }
 
         var refreshTokenString = RefreshTokenGenerator.GenerateRefreshToken();
-        await refreshTokensStorage.CreateNewRefreshToken(refreshTokenString, user.User.Id, request.DeviceName, ExpDaysRefreshToken);
+        await refreshTokensStorage.CreateNewRefreshToken(refreshTokenString, user.User.Id, requestContext.DeviceName, ExpDaysRefreshToken);
 
         var accessTokenResponse = await mediator.Send(new CreateTokenCommand() { RefreshToken = refreshTokenString }, cancellationToken);
         
