@@ -166,7 +166,7 @@ namespace BarkFluff.Client.WPF.Pages
             App.GParam.AppPass = new string(pinDigits);
             App.GParam.AppPath = exeDirectory ?? string.Empty;
 
-            //App.PincodeSuccessful();
+            App.MessengerWindow.PincodeSuccess();
         }
 
         private void RemoveSettings(object sender, RoutedEventArgs e)

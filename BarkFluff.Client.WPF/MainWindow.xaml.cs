@@ -137,10 +137,15 @@ namespace BarkFluff.Client.WPF
             MainFrame.Children.Clear();
             MainFrame.Children.Add(new CreatePinCodePage());
         }
+        public void OpenPinCodeSecurePage()
+        {
+            MainFrame.Children.Clear();
+            MainFrame.Children.Add(new PincodeSecure());
+        }
         public void OpenCreateAccountPage()
         {
             MainFrame.Children.Clear();
-            MainFrame.Children.Add(new CreateAccount());
+            MainFrame.Children.Add(new Register());
         }
         public void OpenServerListPage()
         {
@@ -151,7 +156,31 @@ namespace BarkFluff.Client.WPF
         {
             MainFrame.Children.Clear();
             MainFrame.Children.Add(new Login());
+
+            App.ServerCommunication.CreateAC(App.GParam, App.GParam.MachineName);
         }
+        public void PincodeSuccess()
+        {
+            if (App.GParam.RefreshToken == null!)
+            {
+                if (App.GParam.SocketBeacon != "http://" && App.GParam.SocketBeacon != "https://" && App.GParam.SocketBeacon != string.Empty)
+                {
+                    App.ServerCommunication.CreateAC(App.GParam, App.GParam.MachineName);
+                    OpenLoginPage();
+                }
+                else
+                {
+                    OpenServerListPage();
+                    //если файл существует, но сокет пустой, то открываем страницу выбора сервера
+                }
+            }
+            else
+            {
+                //открывать страницу с мессенджером
+            }
+
+        }
+
         #endregion
 
         #region Вход в приложение
