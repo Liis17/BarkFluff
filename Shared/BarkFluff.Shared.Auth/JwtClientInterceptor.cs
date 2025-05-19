@@ -18,7 +18,7 @@ public class JwtClientInterceptor : Interceptor
         AsyncUnaryCallContinuation<TRequest, TResponse> continuation)
     {
         var metadata = context.Options.Headers ?? new Metadata();
-        metadata.Add("x-auth-token", _token);
+        metadata.Add(MetadataKeys.Token, _token);
 
         var newContext = new ClientInterceptorContext<TRequest, TResponse>(
             context.Method,

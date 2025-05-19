@@ -14,11 +14,8 @@ public class Program
 
         builder.LoadConfiguration(ServiceId.Beacon);
         builder.SetRunningAddress(builder.Configuration);
-        
-        builder.Services.AddGrpc(options =>
-        {
-            options.Interceptors.Add<ServerExceptionInterceptor>();
-        });
+
+        builder.Services.AddBarkFluffGrpc();
         
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
 

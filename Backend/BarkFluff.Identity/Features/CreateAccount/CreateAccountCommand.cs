@@ -1,10 +1,9 @@
-using BarkFluff.Identity.Features.Shared;
 using BarkFluff.Proto.Identity;
 using MediatR;
 
 namespace BarkFluff.Identity.Features.CreateAccount;
 
-public class CreateAccountCommand : DeviceNameCommand, IRequest<CreateAccountResponse>
+public class CreateAccountCommand : IRequest<CreateAccountResponse>
 {
     public string FirstName { get; set; }
     

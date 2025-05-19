@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Tracker;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -13,6 +14,19 @@ public static class ServiceCollectionExtensions
         
         services.AddSingleton(provider => provider.GetRequiredService<IOptions<TSettings>>().Value);
         
+        return services;
+    }
+
+    public static IServiceCollection AddBarkFluffGrpc(this IServiceCollection services)
+    {
+        services.AddScoped<RequestContext>();
+        
+        services.AddGrpc(options =>
+        {
+            options.Interceptors.Add<ServerExceptionInterceptor>();
+            options.Interceptors.Add<RequestContextInterceptor>();
+        });
+
         return services;
     }
 }

@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.Identity.Domain;
 using BarkFluff.Identity.Infrastructure;
 using BarkFluff.Identity.Persistence.Services;
@@ -14,7 +15,8 @@ using MediatR;
 namespace BarkFluff.Identity.Features.CreateAccount;
 
 public class CreateAccountCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
-    ConfirmationCodesStorage confirationCodesStorage, NotificationQueueSender notificationQueueSender) 
+    ConfirmationCodesStorage confirationCodesStorage, NotificationQueueSender notificationQueueSender,
+    RequestContext requestContext) 
     : IRequestHandler<CreateAccountCommand, CreateAccountResponse>
 {
     public async Task<CreateAccountResponse> Handle(CreateAccountCommand request, CancellationToken cancellationToken)
@@ -22,6 +24,21 @@ public class CreateAccountCommandHandler(UsersServerApi.UsersServerApiClient use
         if (string.IsNullOrEmpty(request.Email) || string.IsNullOrEmpty(request.Username))
         {
             throw new UsernameOrEmailIsEmptyException();
+        }
+
+        if (string.IsNullOrEmpty(requestContext.DeviceName))
+        {
+            throw new XDeviceNameIsRequiredException();
+        }
+
+        if (string.IsNullOrEmpty(requestContext.OperationSystem))
+        {
+            throw new XOsNameIsRequiredException();
+        }
+
+        if (string.IsNullOrEmpty(requestContext.AppName) || string.IsNullOrEmpty(requestContext.AppVersion))
+        {
+            throw new XAppInfoIsRequiedException();
         }
         
         var createAccountRequest = new AddDraftUserRequest()
@@ -59,10 +76,11 @@ public class CreateAccountCommandHandler(UsersServerApi.UsersServerApiClient use
         {
             { "confirmation_code", code },
             { "username", request.Username },
-            { "ip", "localhost" },
-            {"devicename", request.DeviceName },
-            {"os", "loh"},
-            {"location", "Россия 🎉"},
+            { "ip", requestContext.IpAddress ?? string.Empty },
+            {"devicename", requestContext.DeviceName },
+            {"os", requestContext.OperationSystem},
+            {"location", "-"},
+            {"app", $"{requestContext.AppName} v.{requestContext.AppVersion}"},
             {"datetime", DateTime.UtcNow.ToString("F")}
         };
         

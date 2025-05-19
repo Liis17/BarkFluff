@@ -37,8 +37,6 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
             Email = request.Email,
             OtpCode = request.OtpCode,
             Password = request.Password,
-            DeviceName = context.RequestHeaders.FirstOrDefault(m => m.Key == "x-device-name")?.Value 
-                         ?? throw new XDeviceNameIsRequiredException()
         };
 
         return await _mediator.Send(command);
@@ -62,7 +60,6 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
             Email = request.Email,
             FirstName = request.FirstName,
             LastName = request.LastName,
-            DeviceName = context.RequestHeaders.FirstOrDefault(m => m.Key == "x-device-name")?.Value ?? throw new XDeviceNameIsRequiredException()
         };
 
         return await _mediator.Send(command);
@@ -74,7 +71,6 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
         {
             Code = request.CodeValue,
             CodeId = request.CodeId,
-            DeviceName = context.RequestHeaders.FirstOrDefault(m => m.Key == "x-device-name")?.Value ?? throw new XDeviceNameIsRequiredException()
         };
         
         return _mediator.Send(command);
@@ -113,7 +109,6 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
         var command = new EnableOtpVerificationCommand()
         {
             OptType = request.OtpType,
-            DeviceName = context.RequestHeaders.FirstOrDefault(m => m.Key == "x-device-name")?.Value ?? throw new XDeviceNameIsRequiredException()
         };
         
         return _mediator.Send(command);

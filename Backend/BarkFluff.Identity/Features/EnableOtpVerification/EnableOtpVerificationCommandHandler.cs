@@ -1,9 +1,11 @@
+using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Identity.Infrastructure;
 using BarkFluff.Identity.Persistence.Services;
 using BarkFluff.Identity.Services;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Proto.Users;
+using BarkFluff.Shared.Exceptions.Identity;
 using BarkFluff.Shared.Identity;
 using BarkFluff.Shared.Queue.Notifications;
 using MediatR;
@@ -18,18 +20,36 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
     private readonly AuthPropertiesStorage _authPropertiesStorage;
     private readonly BarkFluff.Proto.Users.UsersServerApi.UsersServerApiClient _usersClient;
     private readonly NotificationQueueSender _notificationQueueSender;
+    private readonly RequestContext _requestContext;
 
     public EnableOtpVerificationCommandHandler(UserContext userContext, AuthPropertiesStorage authPropertiesStorage, 
-        UsersServerApi.UsersServerApiClient usersClient, NotificationQueueSender notificationQueueSender)
+        UsersServerApi.UsersServerApiClient usersClient, NotificationQueueSender notificationQueueSender, 
+        RequestContext requestContext)
     {
         _userContext = userContext;
         _authPropertiesStorage = authPropertiesStorage;
         _usersClient = usersClient;
         _notificationQueueSender = notificationQueueSender;
+        _requestContext = requestContext;
     }
 
     public async Task<EnableOtpVerificationResponse> Handle(EnableOtpVerificationCommand request, CancellationToken cancellationToken)
     {
+        if (string.IsNullOrEmpty(_requestContext.DeviceName))
+        {
+            throw new XDeviceNameIsRequiredException();
+        }
+
+        if (string.IsNullOrEmpty(_requestContext.OperationSystem))
+        { 
+            throw new XOsNameIsRequiredException();
+        }
+
+        if (string.IsNullOrEmpty(_requestContext.AppName) || string.IsNullOrEmpty(_requestContext.AppVersion))
+        {
+            throw new XAppInfoIsRequiedException();
+        }
+        
         var userInfo = await _usersClient.GetByIdAsync(new GetByIdRequest() { UserId = _userContext.UserId });
 
         if (request.OptType == OtpTypeId.Authenticator)
@@ -75,10 +95,11 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
                 {
                     {"username", userInfo.User.Username},
                     {"confirmation_code", code},
-                    {"ip", "192.168.1.1"},
-                    {"devicename", request.DeviceName},
-                    {"os", "loh"},
-                    {"location", "Россия 😊"},
+                    {"ip", _requestContext.IpAddress ?? string.Empty},
+                    {"devicename", _requestContext.DeviceName},
+                    {"os", _requestContext.OperationSystem},
+                    {"location", "-"},
+                    {"app", $"{_requestContext.AppName} v.{_requestContext.AppVersion}"},
                     {"datetime", DateTime.UtcNow.ToString("D")}
                 },
                 ServiceId = ServiceId.Identity,
