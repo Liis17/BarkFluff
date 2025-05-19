@@ -21,8 +21,8 @@ namespace BarkFluff.WebApi.Core.MessengerData
         #region Пользователь
         public string UserName { get; set; } = string.Empty;
         public string UserPass { get; set; } = string.Empty;
-        public Token RefreshToken { get; set; } = new Token();
-        public Token AccessToken { get; set; } = new Token();
+        public Token RefreshToken { get; set; } = null!;
+        public Token AccessToken { get; set; } = null!;
 
         #endregion
         #region Сохранение/загрузка настроек
