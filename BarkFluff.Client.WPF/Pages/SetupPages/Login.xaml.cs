@@ -22,5 +22,10 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
         {
             InitializeComponent();
         }
+
+        private void CreateAccountPageOpen(object sender, RoutedEventArgs e)
+        {
+            App.MessengerWindow.OpenCreateAccountPage();
+        }
     }
 }
