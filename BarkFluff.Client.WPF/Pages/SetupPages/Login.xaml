@@ -405,7 +405,7 @@
                             Foreground="#6B7280"
                             Text="Don't have an account yet?"
                             TextAlignment="Center" />
-                        <Button Content="Create a New Account" Style="{StaticResource SecondaryButton}" />
+                        <Button Click="CreateAccountPageOpen" Content="Create a New Account" Style="{StaticResource SecondaryButton}" />
                     </StackPanel>
                 </Border>
             </Grid>
