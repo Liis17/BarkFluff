@@ -1,3 +1,4 @@
+using BarkFluff.Files.Mapping;
 using BarkFluff.Files.Persistence;
 using BarkFluff.GrpcServer.Settings;
 using BarkFluff.Proto.Files;
@@ -29,16 +30,7 @@ public class GetFileDataCommandHandler : IRequestHandler<GetFileDataCommand, Get
 
         return new GetFileDataResponse()
         {
-            FileInfo = new UploadFileInfo()
-            {
-                CreatedAt = Timestamp.FromDateTime(file.CreatedAt),
-                Etag = file.Etag ?? string.Empty,
-                FileName = file.Filename ?? string.Empty,
-                Id = file.Id.ToString(),
-                Type = (UploadFileType)(int)file.Type,
-                UploadedAt = Timestamp.FromDateTime(file.UploadedAt ?? DateTime.MinValue), Uploader = file.Uploader,
-                FileUrl = $"{_runSettings.Host}:{_runSettings.Http1Port}/download/{file.Id}"
-            }
+            FileInfo = file.ToGrpc(_runSettings)
         };
     }
 }

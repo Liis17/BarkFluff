@@ -18,6 +18,7 @@ public class ChatsStorage
         var chats = await _context
             .Chats
             .Include(x => x.Members)
+            .Where(x => x.Members!.Any(m => m.UserId == userId))
             .Skip(skip)
             .Take(count)
             .Select(c => new Chat
@@ -36,6 +37,17 @@ public class ChatsStorage
             .ToListAsync();
 
         return chats;
+    }
+
+    public async Task<Guid?> GetUserChatIdWithPerson(long person, long userId)
+    {
+        var chat = await _context.Chats
+            .Include(x => x.Members)
+            .FirstOrDefaultAsync(x => !x.IsGroupChat 
+                                      && x.Members!.Any(m => m.UserId == person)
+                                      && x.Members!.Any(m => m.UserId == userId));
+
+        return chat?.Id;
     }
 
     public async Task<bool> CheckAccessToChat(Guid chatId, long userId)
@@ -68,5 +80,25 @@ public class ChatsStorage
             .ToListAsync();
 
         return members;
+    }
+
+    public async Task<Chat> CreatePersonChat(long userId, long personId)
+    {
+        var chat = new Chat()
+        {
+            Members = new List<ChatMember>()
+            {
+                new() { UserId = userId, JoinedAt = DateTime.UtcNow },
+                new ChatMember() { UserId = personId, JoinedAt = DateTime.UtcNow }
+            },
+
+            IsGroupChat = false
+        };
+        
+        var result = await _context.Chats.AddAsync(chat);
+        
+        await _context.SaveChangesAsync();
+
+        return result.Entity;
     }
 }

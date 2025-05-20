@@ -1,4 +1,5 @@
 using BarkFluff.Files.Features.GetFileData;
+using BarkFluff.Files.Features.GetFilesData;
 using BarkFluff.Proto.Files;
 using BarkFluff.Shared.Identity;
 using Grpc.Core;
@@ -24,6 +25,16 @@ public class FilesServerApiService : FilesServerApi.FilesServerApiBase
             FileId = Guid.Parse(request.FileId)
         };
 
+        return _mediator.Send(command);
+    }
+    
+    public override Task<GetFilesDataResponse> GetFilesData(GetFilesDataRequest request, ServerCallContext context)
+    {
+        var command = new GetFilesDataCommand()
+        {
+            FileIds = request.FileIds.Select(Guid.Parse).ToList()
+        };
+        
         return _mediator.Send(command);
     }
 }

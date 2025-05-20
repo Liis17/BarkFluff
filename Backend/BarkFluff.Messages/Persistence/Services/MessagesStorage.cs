@@ -40,4 +40,12 @@ public class MessagesStorage
 
         return messages;
     }
+
+    public async Task<Message> AddMessage(Message message)
+    {
+        var result = await _context.Messages.AddAsync(message);
+        await _context.SaveChangesAsync();
+
+        return result.Entity;
+    }
 }
