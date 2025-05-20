@@ -12,6 +12,16 @@ service FilesApi {
 
 service FilesServerApi {
   rpc GetFileData(GetFileDataRequest) returns(GetFileDataResponse); // Получить информацию о загруженном файле
+  
+  rpc GetFilesData(GetFilesDataRequest) returns(GetFilesDataResponse); // Получить информацию о загруженных файлах
+}
+
+message GetFilesDataRequest {
+  repeated string file_ids = 1; // Идентификаторы файлов
+}
+
+message GetFilesDataResponse {
+  repeated UploadFileInfo files_infos = 1; // Информация о файлах
 }
 
 message GetFileDataRequest {

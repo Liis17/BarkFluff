@@ -34,4 +34,12 @@ public class UploadedFilesStorage
             .AsNoTracking()
             .FirstOrDefaultAsync( x=> x.Id == id);
     }
+
+    public async Task<List<UploadFile>> GetFiles(List<Guid> ids)
+    {
+        return await _context.UploadedFiles
+            .AsNoTracking()
+            .Where(x => ids.Contains(x.Id))
+            .ToListAsync();   
+    }
 }

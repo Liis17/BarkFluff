@@ -1,6 +1,7 @@
 using BarkFluff.Messages.Features.ListChatMembers;
 using BarkFluff.Messages.Features.ListChats;
 using BarkFluff.Messages.Features.ListMessages;
+using BarkFluff.Messages.Features.SendMessage;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Shared;
 using BarkFluff.Shared.Exceptions.Messages;
@@ -8,6 +9,7 @@ using BarkFluff.Shared.Identity;
 using Grpc.Core;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
+using OutgoingMessage = BarkFluff.Messages.Features.SendMessage.OutgoingMessage;
 
 namespace BarkFluff.Messages.Host;
 
@@ -74,6 +76,37 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
             Skip = request.Pagination.Skip,
         };
         
+        return await _mediator.Send(command);
+    }
+
+    public override async Task<SendMessageResponse> SendMessage(SendMessageRequest request, ServerCallContext context)
+    {
+        if (request.Message is null)
+        {
+            throw new MessageNotContainContextException();
+        }
+        
+        var command = new SendMessageCommand()
+        {
+            Message = new OutgoingMessage
+            {
+                FileIds = request.Message.FilesIds?.Select(x => Guid.Parse(x)).ToList(),
+                Text = request.Message.Text
+            },
+        };
+
+        switch (request.SourceIdCase)
+        {
+            case SendMessageRequest.SourceIdOneofCase.ChatId when Guid.TryParse(request.ChatId, out Guid chatId):
+                command.ChatId = chatId;
+                break;
+            case SendMessageRequest.SourceIdOneofCase.ChatId:
+                throw new ChatIdNotValidException();
+            case SendMessageRequest.SourceIdOneofCase.UserId:
+                command.UserId = request.UserId;
+                break;
+        }
+
         return await _mediator.Send(command);
     }
 }
