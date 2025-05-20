@@ -82,6 +82,7 @@ services:
     depends_on:
       - configuration
       - users
+      - files
 
 networks:
   barkfluff-network:
