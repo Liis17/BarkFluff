@@ -1,3 +1,4 @@
+using System.Text;
 using Grpc.Core;
 using Grpc.Core.Interceptors;
 
@@ -18,7 +19,10 @@ public class XOsClientInterceptor : Interceptor
         AsyncUnaryCallContinuation<TRequest, TResponse> continuation)
     {
         var metadata = context.Options.Headers ?? new Metadata();
-        metadata.Add(MetadataKeys.OsName, _osName);
+        
+        var osName = Convert.ToBase64String(Encoding.UTF8.GetBytes(_osName));
+
+        metadata.Add(MetadataKeys.OsName, osName);
 
         var newContext = new ClientInterceptorContext<TRequest, TResponse>(
             context.Method,

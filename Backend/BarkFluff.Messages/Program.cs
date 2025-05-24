@@ -59,6 +59,5 @@ public class Program
         app.MapGrpcService<MessagesApiService>();
 
         app.Run();
-        
     }
 }
