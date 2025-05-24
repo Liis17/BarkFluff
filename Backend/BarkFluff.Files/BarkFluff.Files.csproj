@@ -38,4 +38,8 @@
       <ProjectReference Include="..\BarkFluff.GrpcServer\BarkFluff.GrpcServer.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="Features\UploadFile\Validation\" />
+    </ItemGroup>
+
 </Project>
