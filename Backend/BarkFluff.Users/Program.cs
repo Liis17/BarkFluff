@@ -61,6 +61,5 @@ public class Program
         app.MapGrpcService<UsersApiService>();
 
         app.Run();
-        
     }
 }

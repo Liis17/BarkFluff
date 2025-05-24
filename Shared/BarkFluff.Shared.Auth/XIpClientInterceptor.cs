@@ -4,13 +4,13 @@ using Grpc.Core.Interceptors;
 
 namespace BarkFluff.Shared.Auth;
 
-public class XDeviceClientInterceptor : Interceptor
+public class XIpClientInterceptor : Interceptor
 {
-    private readonly string _deviceName;
+    private readonly string _ipAddr;
 
-    public XDeviceClientInterceptor(string deviceName)
+    public XIpClientInterceptor(string ip)
     {
-        _deviceName = deviceName;
+        _ipAddr = ip;
     }
 
     public override AsyncUnaryCall<TResponse> AsyncUnaryCall<TRequest, TResponse>(
@@ -20,9 +20,9 @@ public class XDeviceClientInterceptor : Interceptor
     {
         var metadata = context.Options.Headers ?? new Metadata();
         
-        var deviceName = Convert.ToBase64String(Encoding.UTF8.GetBytes(_deviceName));
+        var ipAddress = Convert.ToBase64String(Encoding.UTF8.GetBytes(_ipAddr));
 
-        metadata.Add(MetadataKeys.DeviceName, deviceName);
+        metadata.Add(MetadataKeys.IpAddress, ipAddress);
 
         var newContext = new ClientInterceptorContext<TRequest, TResponse>(
             context.Method,

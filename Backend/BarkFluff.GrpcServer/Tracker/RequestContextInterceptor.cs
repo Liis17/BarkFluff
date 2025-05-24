@@ -1,3 +1,4 @@
+using System.Text;
 using BarkFluff.Shared.Auth;
 using Grpc.Core;
 using Grpc.Core.Interceptors;
@@ -28,7 +29,8 @@ public class RequestContextInterceptor : Interceptor
         requestContext.AppName = GetMetadataValue(metadata, MetadataKeys.AppName);
         requestContext.AppVersion = GetMetadataValue(metadata, MetadataKeys.AppVersion);
         
-        requestContext.IpAddress = httpContext?.Connection?.RemoteIpAddress?.ToString();
+        requestContext.IpAddress = GetMetadataValue(metadata, MetadataKeys.IpAddress) 
+                                   ?? httpContext?.Connection?.RemoteIpAddress?.ToString();
         
         return await continuation(request, context);
     }
@@ -36,7 +38,14 @@ public class RequestContextInterceptor : Interceptor
     private string? GetMetadataValue(Metadata metadata, string key)
     {
         var entry = metadata.FirstOrDefault(m => m.Key.Equals(key, StringComparison.OrdinalIgnoreCase));
-        return entry?.Value;
+        var base64 = entry?.Value;
+
+        if (string.IsNullOrEmpty(base64))
+        {
+            return null;
+        }
+
+        return Encoding.UTF8.GetString(Convert.FromBase64String(base64));
     }
 
 }
