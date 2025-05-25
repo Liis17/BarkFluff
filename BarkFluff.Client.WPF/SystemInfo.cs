@@ -2,13 +2,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 
 namespace BarkFluff.Client.WPF
 {
     public class SystemInfo
     {
-        public static string GetDisplayVersion()
+        private static string GetDisplayVersion()
         {
             using (RegistryKey key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion"))
             {
@@ -60,6 +61,7 @@ namespace BarkFluff.Client.WPF
                 string displayVersion = GetDisplayVersion();
                 if (!string.IsNullOrEmpty(displayVersion))
                 {
+                    //return $"{windowsName} {displayVersion} {buildNumber}";
                     return $"{windowsName} {displayVersion} (сборка {buildNumber})";
                 }
             }
@@ -67,8 +69,31 @@ namespace BarkFluff.Client.WPF
             {
                 // Если не удалось получить через реестр, продолжаем с обычным форматом
             }
-
+            
             return $"{windowsName} (сборка {buildNumber})";
+        }
+
+        public static string GetExternalIp()
+        {
+            ProcessStartInfo psi = new ProcessStartInfo
+            {
+                FileName = "curl",
+                Arguments = "ifconfig.me",
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using (Process process = Process.Start(psi))
+            {
+                if (process == null)
+                    throw new InvalidOperationException("Не удалось запустить процесс curl.");
+
+                string output = process.StandardOutput.ReadToEnd();
+                process.WaitForExit();
+
+                return output.Trim();
+            }
         }
     }
 }
