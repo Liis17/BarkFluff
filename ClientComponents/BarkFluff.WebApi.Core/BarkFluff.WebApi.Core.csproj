@@ -22,6 +22,7 @@
     <Protobuf Include="..\..\Shared\BarkFluff.Proto\identity_api.proto" GrpcServices="Client" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\BarkFluff.Shared.Exceptions\BarkFluff.Shared.Exceptions.csproj" />
     <ProjectReference Include="..\..\Shared\BarkFluff.Shared.Auth\BarkFluff.Shared.Auth.csproj" />
     <ProjectReference Include="..\..\Shared\BarkFluff.Shared.SecurityUtilities\BarkFluff.Shared.SecurityUtilities.csproj" />
   </ItemGroup>
