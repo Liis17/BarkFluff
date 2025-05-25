@@ -1,6 +1,8 @@
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Users;
+using BarkFluff.Shared.Exceptions.Users;
+using BarkFluff.Users.Infrastructure;
 using BarkFluff.Users.Persistence.Services;
 using MediatR;
 
@@ -11,14 +13,16 @@ public class SetProfilePictureCommandHandler : IRequestHandler<SetProfilePicture
     private readonly FilesServerApi.FilesServerApiClient _filesServerApiClient;
     private readonly UsersStorage _usersStorage;
     private readonly UserContext _userContext;
+    private readonly UserInfoQueueSender _userInfoQueueSender;
 
     public SetProfilePictureCommandHandler(
         FilesServerApi.FilesServerApiClient filesServerApiClient,
-        UsersStorage usersStorage, UserContext userContext)
+        UsersStorage usersStorage, UserContext userContext, UserInfoQueueSender userInfoQueueSender)
     {
         _filesServerApiClient = filesServerApiClient;
         _usersStorage = usersStorage;
         _userContext = userContext;
+        _userInfoQueueSender = userInfoQueueSender;
     }
 
     public async Task<SetProfilePictureResponse> Handle(SetProfilePictureCommand request, CancellationToken cancellationToken)
@@ -30,12 +34,19 @@ public class SetProfilePictureCommandHandler : IRequestHandler<SetProfilePicture
         };
         
         var fileDataResponse = await _filesServerApiClient.GetFileDataAsync(fileDataRequest, cancellationToken: cancellationToken);
+
+        if (fileDataResponse.FileInfo.Type != UploadFileType.UserAvatar)
+        {
+            throw new ProfilePictureHasNotValidType();
+        }
         
         // Извлекаем URL изображения из ответа
         var fileUrl = fileDataResponse.FileInfo.FileUrl;
         
         // Обновляем профильное изображение пользователя
         await _usersStorage.UpdateProfilePicture(_userContext.UserId, fileUrl);
+
+        await _userInfoQueueSender.UserChangedAvatarEvent(_userContext.UserId, fileUrl);
         
         return new SetProfilePictureResponse();
     }

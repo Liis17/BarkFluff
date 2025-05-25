@@ -81,4 +81,6 @@ enum UploadFileType {
   MESSAGE_ATTACHMENT_GIF = 4; // Вложение сообщения - гифка 
   
   MESSAGE_ATTACHMENT_DOCUMENT = 5; // Вложение сообщения - документ
+  
+  CHAT_PICTURE = 6; // Обложка группового чата
 }

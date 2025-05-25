@@ -106,4 +106,28 @@ public class ChatsStorage
 
         return result.Entity;
     }
+
+    public async Task<Chat> CreateGroupChat(List<long> members,  string title, string? picture)
+    {
+        var chat = new Chat()
+        {
+            IsGroupChat = true,
+            Title = title,
+            Picture = picture,
+            Members = members.Select(x => new ChatMember() { UserId = x, JoinedAt = DateTime.UtcNow })
+                .ToList()
+        };
+        
+        var result = await _context.Chats.AddAsync(chat);
+        
+        await _context.SaveChangesAsync();
+        
+        return result.Entity;
+    }
+
+    public async Task CreateGroupChatInfo(GroupChatInfo groupChatInfo)
+    {
+        await _context.GroupChatInfos.AddAsync(groupChatInfo);
+        await _context.SaveChangesAsync();
+    }
 }

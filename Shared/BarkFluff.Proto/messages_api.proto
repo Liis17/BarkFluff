@@ -20,8 +20,23 @@ service MessagesApi {
   
   // Отправить сообщение в чат
   rpc SendMessage(SendMessageRequest) returns(SendMessageResponse);
+  
+  // Создать групповой чат
+  rpc CreateGroupChat(CreateGroupChatRequest) returns(CreateGroupChatResponse);
 }
 
+message CreateGroupChatRequest {
+  
+  repeated int64 user_ids = 1; // Идентификаторы пользователей
+  
+  string title = 2; // Заголовок чата
+  
+  string picture_file_id = 3; // Идентификатор файла для обложки чата
+}
+
+message CreateGroupChatResponse {
+    Chat created_chat = 1; // Созданный чат
+}
 
 message SendMessageRequest {
   
@@ -119,6 +134,9 @@ message Message {
   google.protobuf.Timestamp sent_at = 4; // Дата отправки сообщения
   
   MessageContent content = 5; // Содержимое сообщения
+
+  MessageContentType type = 6; // Тип сообщения
+  
 }
 
 message MessageContent {
@@ -126,7 +144,6 @@ message MessageContent {
   string text = 1; // Текст сообщения
   
   repeated MessageAttachment attachments = 2; // Вложения
-  
 }
 
 message MessageAttachment {

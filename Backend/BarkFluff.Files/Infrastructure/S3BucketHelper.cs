@@ -17,7 +17,8 @@ public static class S3BucketHelper
         { UploadFileType.MessageAttachmentDocument, "message-documents"},
         { UploadFileType.MessageAttachmentVideo, "message-videos"},
         { UploadFileType.MessageAttachmentGif, "message-videos"},
-        { UploadFileType.MessageAttachmentImage, "message-images"}
+        { UploadFileType.MessageAttachmentImage, "message-images"},
+        { UploadFileType.ChatPicture, "chat-pictures" },
     };
 
     /// <summary>
