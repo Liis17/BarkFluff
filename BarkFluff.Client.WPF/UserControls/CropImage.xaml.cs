@@ -30,6 +30,8 @@ namespace BarkFluff.Client.WPF.UserControls
         private ScaleTransform _imageScale = new ScaleTransform(1.0, 1.0);
         private TransformGroup _transformGroup = new TransformGroup();
 
+        private string _imagePath = string.Empty;
+
         public CropImage()
         {
             InitializeComponent();
@@ -42,11 +44,31 @@ namespace BarkFluff.Client.WPF.UserControls
             ImageControl.MouseLeftButtonUp += Image_MouseLeftButtonUp;
 
             ZoomSlider.ValueChanged += ZoomSlider_ValueChanged;
-            LoadImage("D:\\Win11\\download\\20250505_225025.jpg");
-        }
 
+            ButtonGrid.Visibility = Visibility.Visible;
+            CropGrid.Visibility = Visibility.Collapsed;
+        }
+        private void LoadButton_Click(object sender, RoutedEventArgs e)
+        {
+            OpenFileDialog openFileDialog = new OpenFileDialog
+            {
+                Title = "Выберите изображение",
+                Filter = "Изображения|*.bmp;*.jpg;*.jpeg;*.png;*.gif;*.tiff;*.ico;*.webp|Все файлы|*.*",
+                Multiselect = false
+            };
+
+            if (openFileDialog.ShowDialog() == true)
+            {
+                string selectedFilePath = openFileDialog.FileName;
+                _imagePath = selectedFilePath; // Сохраняем путь к изображению
+                LoadImage(selectedFilePath);
+            }
+        }
         public void LoadImage(string path)
         {
+            ButtonGrid.Visibility = Visibility.Collapsed;
+            CropGrid.Visibility = Visibility.Visible;
+
             BitmapImage bmp = new BitmapImage();
             bmp.BeginInit();
             bmp.UriSource = new Uri(path);
@@ -70,19 +92,16 @@ namespace BarkFluff.Client.WPF.UserControls
             double imageLeft = _imageTranslate.X;
             double imageTop = _imageTranslate.Y;
 
-            // Положение рамки на Canvas
             double cropLeft = Canvas.GetLeft(CropBorder);
             double cropTop = Canvas.GetTop(CropBorder);
             double cropWidth = CropBorder.Width;
             double cropHeight = CropBorder.Height;
 
-            // Определяем, какая часть изображения попадает внутрь рамки
             double cropXOnImage = (cropLeft - imageLeft - (ImageControl.ActualWidth * (1 - zoom) / 2)) / zoom;
             double cropYOnImage = (cropTop - imageTop - (ImageControl.ActualHeight * (1 - zoom) / 2)) / zoom;
             double cropWidthOnImage = cropWidth / zoom;
             double cropHeightOnImage = cropHeight / zoom;
 
-            // Преобразуем в пиксели оригинального изображения
             double ratioX = bitmapSource.PixelWidth / ImageControl.ActualWidth;
             double ratioY = bitmapSource.PixelHeight / ImageControl.ActualHeight;
 
@@ -91,7 +110,6 @@ namespace BarkFluff.Client.WPF.UserControls
             int width = (int)(cropWidthOnImage * ratioX);
             int height = (int)(cropHeightOnImage * ratioY);
 
-            // Ограничения
             x = Math.Max(0, Math.Min(x, bitmapSource.PixelWidth - 1));
             y = Math.Max(0, Math.Min(y, bitmapSource.PixelHeight - 1));
             width = Math.Max(1, Math.Min(width, bitmapSource.PixelWidth - x));
@@ -132,13 +150,21 @@ namespace BarkFluff.Client.WPF.UserControls
 
             string filePath = "C:\\Users\\daske\\Desktop\\crop\\" + Guid.NewGuid().ToString() + ".png";
 
-            // Создаем объект PngBitmapEncoder для сохранения изображения в формате PNG
             using (FileStream stream = new FileStream(filePath, FileMode.Create))
             {
                 PngBitmapEncoder encoder = new PngBitmapEncoder();
                 encoder.Frames.Add(BitmapFrame.Create(image));
                 encoder.Save(stream);
             }
+        }
+
+        private void ResetPosition(object sender, RoutedEventArgs e)
+        {
+            _imageTranslate.X = 0;
+            _imageTranslate.Y = 0;
+            _imageScale.ScaleX = 1.0;
+            _imageScale.ScaleY = 1.0;
+            ZoomSlider.Value = 1.0;
         }
     }
 }
