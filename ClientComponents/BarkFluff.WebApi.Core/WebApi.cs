@@ -4,6 +4,8 @@ using BarkFluff.WebApi.Core.MessengerData;
 using Grpc.Core.Interceptors;
 using Grpc.Net.Client;
 
+using System.ComponentModel;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace BarkFluff.WebApi.Core
@@ -18,16 +20,16 @@ namespace BarkFluff.WebApi.Core
         public GrpcChannel UserChannel;
         public GrpcChannel IdentityChannel;
 
-        public void CreateOnlyBeaconAC(GlobalParam _gParam)
+        public void CreateOnlyBeaconAC(GlobalParam gParam)
         {
-            CreateBeaconAC(_gParam);
+            CreateBeaconAC(gParam);
         }
-        public void CreateAC(GlobalParam _gParam, string _deviceName)
+        public void CreateAC(GlobalParam gParam, string deviceName, string os, string appName, string appVersion, string ip)
         {
-            CreateUsersAC(_gParam);
-            CreateBeaconAC(_gParam);
-            CreateIdentityAC(_gParam);
-            AddInterceptor(_gParam, _deviceName);
+            CreateUsersAC(gParam);
+            CreateBeaconAC(gParam);
+            CreateIdentityAC(gParam);
+            AddInterceptor(gParam, deviceName, os, appName, appVersion, ip);
         }
         private void CreateUsersAC(GlobalParam _gParam)
         {
@@ -56,16 +58,26 @@ namespace BarkFluff.WebApi.Core
             IdentityAC = new BarkFluff.Proto.Identity.IdentityApi.IdentityApiClient(IdentityChannel);
         }
 
-        private void AddInterceptor(GlobalParam _gParam, string _deviceName)
+        private void AddInterceptor(GlobalParam _gParam, string _deviceName, string os, string appName, string appVersion, string ip)
         {
-            var deviceInterceptor = new Shared.Auth.XDeviceClientInterceptor(deviceName: _deviceName);
-            var osinterceptor = new Shared.Auth.XOsClientInterceptor(osName: Environment.OSVersion.ToString());
-            var jwtInterceptor = new Shared.Auth.JwtClientInterceptor(string.Empty);
-            IdentityChannel = GrpcChannel.ForAddress(_gParam.SocketIdentity);
-            UserChannel = GrpcChannel.ForAddress(_gParam.SocketUsers);
+            IdentityAC = null!;
+            UsersAC = null!;
 
-            var identityInvoker = IdentityChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor);
-            var userInvoker = UserChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor);
+            var token = string.Empty;
+            if (_gParam.AccessToken != null)
+            {
+                token = _gParam.AccessToken.Value;
+            }
+
+            var deviceInterceptor = new Shared.Auth.XDeviceClientInterceptor(deviceName: _deviceName);
+            var osInterceptor = new Shared.Auth.XOsClientInterceptor(os);
+            var jwtInterceptor = new Shared.Auth.JwtClientInterceptor(token);
+            var appInterceptor = new Shared.Auth.XAppClientInterceptor(appName, appVersion);
+            var errorInterceptor = new Shared.Exceptions.Interceptors.ExceptionClientInterceptor();
+            var ipInterceptor = new Shared.Auth.XIpClientInterceptor(ip);
+
+            var identityInvoker = IdentityChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
+            var userInvoker = UserChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
 
             IdentityAC = new BarkFluff.Proto.Identity.IdentityApi.IdentityApiClient(identityInvoker);
             UsersAC = new BarkFluff.Proto.Users.UsersApi.UsersApiClient(userInvoker);
@@ -95,6 +107,18 @@ namespace BarkFluff.WebApi.Core
             };
 
             return response; // если нужно то он будет возвращать инфу о сервере
+        }
+
+        public async Task<string> TokenUpdate(GlobalParam globalParam, string refreshToken)
+        {
+            var response = await IdentityAC.CreateTokenAsync(new BarkFluff.Proto.Identity.CreateTokenRequest { RefreshToken = refreshToken });
+            globalParam.AccessToken = response.AccessToken;
+            return response.AccessToken.Value;
+        }
+
+        public async Task CreateAccount()
+        {
+
         }
     }
 }
