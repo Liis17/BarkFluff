@@ -23,7 +23,17 @@ service MessagesApi {
   
   // Создать групповой чат
   rpc CreateGroupChat(CreateGroupChatRequest) returns(CreateGroupChatResponse);
+  
+  // Убрать пользователя из группового чата
+  rpc KickUser(KickUserRequest) returns(KickUserResponse);
 }
+
+message KickUserRequest {
+  string chat_id = 1; // Идентификатор чата
+  int64 user_id = 2; // Пользователь которого необходимо кикнуть
+}
+
+message KickUserResponse { }
 
 message CreateGroupChatRequest {
   

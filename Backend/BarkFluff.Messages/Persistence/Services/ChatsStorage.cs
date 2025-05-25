@@ -130,4 +130,29 @@ public class ChatsStorage
         await _context.GroupChatInfos.AddAsync(groupChatInfo);
         await _context.SaveChangesAsync();
     }
+    
+    public async Task<GroupChatInfo?> GetGroupChatInfo(Guid chatId)
+    {
+        return await _context.GroupChatInfos.FirstOrDefaultAsync(x => x.ChatId == chatId);
+    }
+
+    public async Task<Chat?> GetChat(Guid chatId)
+    {
+        return await _context
+            .Chats
+            .Include(x => x.Members)
+            .FirstOrDefaultAsync(x => x.Id == chatId);
+    }
+
+    public async Task RemoveChatMember(Guid chatId, long userId)
+    {
+        var chatMember = await _context.ChatMembers.FirstOrDefaultAsync(x => x.ChatId == chatId && x.UserId == userId);
+        if (chatMember is null)
+        {
+            return;
+        }
+        
+        _context.ChatMembers.Remove(chatMember);
+        await _context.SaveChangesAsync();
+    }
 }
