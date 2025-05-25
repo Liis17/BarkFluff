@@ -38,18 +38,25 @@ jobs:
           filters: |
             beacon:
               - 'Backend/BarkFluff.Beacon/**'
+              - 'Backend/BarkFluff.GrpcServer/**'
             configuration:
               - 'Backend/BarkFluff.Configuration/**'
+              - 'Backend/BarkFluff.GrpcServer/**'
             files:
               - 'Backend/BarkFluff.Files/**'
+              - 'Backend/BarkFluff.GrpcServer/**'
             identity:
               - 'Backend/BarkFluff.Identity/**'
+              - 'Backend/BarkFluff.GrpcServer/**'
             messages:
               - 'Backend/BarkFluff.Messages/**'
+              - 'Backend/BarkFluff.GrpcServer/**'
             notification:
               - 'Backend/BarkFluff.Notification/**'
+              - 'Backend/BarkFluff.GrpcServer/**'
             users:
               - 'Backend/BarkFluff.Users/**'
+              - 'Backend/BarkFluff.GrpcServer/**'
 
   build-beacon:
     needs: detect-changes
