@@ -3,6 +3,7 @@ using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Messages.Host;
 using BarkFluff.Messages.Persistence;
 using BarkFluff.Messages.Persistence.Services;
+using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Auth;
 using BarkFluff.Shared.Exceptions.Interceptors;
@@ -43,6 +44,12 @@ public class Program
             {
                 o.Address = new Uri(builder.Configuration["UsersService:Host"]);
             }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["UsersService:Token"]))
+            .AddInterceptor(() => new ExceptionClientInterceptor());
+        
+        builder.Services.AddGrpcClient<FilesServerApi.FilesServerApiClient>(o =>
+            {
+                o.Address = new Uri(builder.Configuration["FilesService:Host"]);
+            }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["FilesService:Token"]))
             .AddInterceptor(() => new ExceptionClientInterceptor());
         
         builder.Services.AddTransient<ChatsStorage>();

@@ -64,7 +64,7 @@ public class DownloadFileCommandHandler : IRequestHandler<DownloadFileCommand, D
         return new DownloadFileResult
         {
             FileStream = fileStream,
-            FileName = $"{file.Id}.{extension}",
+            FileName = $"{file.Id}{extension}",
             ContentType = contentType
         };
     }

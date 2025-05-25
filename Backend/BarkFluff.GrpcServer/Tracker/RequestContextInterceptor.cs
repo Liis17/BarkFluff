@@ -44,7 +44,7 @@ public class RequestContextInterceptor : Interceptor
         {
             return null;
         }
-
+        
         return Encoding.UTF8.GetString(Convert.FromBase64String(base64));
     }
 
