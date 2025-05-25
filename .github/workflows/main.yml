@@ -12,6 +12,7 @@ on:
       - 'Backend/BarkFluff.Messages/**'
       - 'Backend/BarkFluff.Notification/**'
       - 'Backend/BarkFluff.Users/**'
+      - 'Backend/BarkFluff.GrpcServer/**'
       - '.github/workflows/deploy-microservices.yml'
 
 jobs:
