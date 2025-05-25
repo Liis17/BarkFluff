@@ -82,6 +82,11 @@ public class ChatsStorage
         return members;
     }
 
+    public async Task<int> GetTotalChatMembers(Guid chatId)
+    {
+        return await _context.ChatMembers.CountAsync(x => x.ChatId == chatId);
+    }
+
     public async Task<Chat> CreatePersonChat(long userId, long personId)
     {
         var chat = new Chat()
