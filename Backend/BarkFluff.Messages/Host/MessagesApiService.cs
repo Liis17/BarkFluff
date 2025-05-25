@@ -117,7 +117,7 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
     {
         Guid? pictureFileId = null;
 
-        if (request.PictureFileId != null)
+        if (!string.IsNullOrEmpty(request.PictureFileId))
         {
             var hasValidGuid = Guid.TryParse(request.PictureFileId, out Guid pictureFileIdTmp);
 
