@@ -1,9 +1,12 @@
+using BarkFluff.Messages.Features.CreateGroupChat;
+using BarkFluff.Messages.Features.KickUser;
 using BarkFluff.Messages.Features.ListChatMembers;
 using BarkFluff.Messages.Features.ListChats;
 using BarkFluff.Messages.Features.ListMessages;
 using BarkFluff.Messages.Features.SendMessage;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Shared;
+using BarkFluff.Shared.Exceptions.Files;
 using BarkFluff.Shared.Exceptions.Messages;
 using BarkFluff.Shared.Identity;
 using Grpc.Core;
@@ -108,5 +111,51 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
         }
 
         return await _mediator.Send(command);
+    }
+
+    public override async Task<CreateGroupChatResponse> CreateGroupChat(CreateGroupChatRequest request, ServerCallContext context)
+    {
+        Guid? pictureFileId = null;
+
+        if (request.PictureFileId != null)
+        {
+            var hasValidGuid = Guid.TryParse(request.PictureFileId, out Guid pictureFileIdTmp);
+
+            if (!hasValidGuid)
+            {
+                throw new NotValidFileIdException();
+            }
+
+            pictureFileId = pictureFileIdTmp;
+        }
+
+        var command = new CreateGroupChatCommand()
+        {
+            Title = request.Title,
+            UserIds = request.UserIds.ToList(),
+            PictureFileId = pictureFileId
+        };
+        
+        return await _mediator.Send(command);
+    }
+
+    public override async Task<KickUserResponse> KickUser(KickUserRequest request, ServerCallContext context)
+    {
+       var hasValidGuid = Guid.TryParse(request.ChatId, out Guid chatId);
+
+       if (!hasValidGuid)
+       {
+           throw new ChatIdNotValidException();
+       }
+
+       var command = new KickUserCommand()
+       {
+           UserId = request.UserId,
+           ChatId = chatId
+       };
+
+       await _mediator.Send(command);
+
+       return new KickUserResponse();
     }
 }
