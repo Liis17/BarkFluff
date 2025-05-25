@@ -1,5 +1,7 @@
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Identity;
+using BarkFluff.Users.Features.ChangeName;
+using BarkFluff.Users.Features.ChangeUsername;
 using BarkFluff.Users.Features.CheckExistEmail;
 using BarkFluff.Users.Features.CheckExistUsername;
 using BarkFluff.Users.Features.GetUser;
@@ -60,5 +62,30 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
         var command = new CheckExistUsernameQuery() { Username = request.Username };
         
         return _mediator.Send(command);
+    }
+
+    public override async Task<ChangeNameResponse> ChangeName(ChangeNameRequest request, ServerCallContext context)
+    {
+        var command = new ChangeNameCommand()
+        {
+            FirstName = request.FirstName,
+            LastName = request.LastName,
+        };
+        
+        await _mediator.Send(command);
+
+        return new ChangeNameResponse();
+    }
+
+    public override async Task<ChangeUsernameResponse> ChangeUsername(ChangeUsernameRequest request, ServerCallContext context)
+    {
+        var command = new ChangeUsernameCommand()
+        {
+            Username = request.Username
+        };
+        
+        await _mediator.Send(command);
+        
+        return new ChangeUsernameResponse();
     }
 }

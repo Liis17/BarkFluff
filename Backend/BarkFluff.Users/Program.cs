@@ -6,8 +6,10 @@ using BarkFluff.Shared.Auth;
 using BarkFluff.Shared.Exceptions.Interceptors;
 using BarkFluff.Shared.Identity;
 using BarkFluff.Users.Host;
+using BarkFluff.Users.Infrastructure;
 using BarkFluff.Users.Persistence.Contexts;
 using BarkFluff.Users.Persistence.Services;
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 
 namespace BarkFluff.Users;
@@ -35,6 +37,7 @@ public class Program
             => c.UseNpgsql(builder.Configuration["UsersDb"]));
 
         builder.Services.AddTransient<UsersStorage>();
+        builder.Services.AddScoped<UserInfoQueueSender>();
 
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
 
@@ -46,6 +49,18 @@ public class Program
                 o.Address = new Uri(builder.Configuration["FilesService:Host"]);
             }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["FilesService:Token"]))
             .AddInterceptor(() => new ExceptionClientInterceptor());
+        
+        builder.Services.AddMassTransit(x =>
+        {
+            x.UsingRabbitMq((context, cfg) =>
+            {
+                cfg.Host(builder.Configuration["RabbitMQ:Host"], "/", h =>
+                {
+                    h.Username(builder.Configuration["RabbitMQ:Username"]);
+                    h.Password(builder.Configuration["RabbitMQ:Password"]);
+                });
+            });
+        });
         
         var app = builder.Build();
         

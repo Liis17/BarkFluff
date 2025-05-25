@@ -12,7 +12,7 @@ public static class ChatMapping
             CountUnread = chat.CountUnread,
             IsGroupChat = chat.IsGroupChat,
             LastMessage = chat.LastMessage?.ToGrpc(),
-            Picture = chat.Picture,
+            Picture = chat.Picture ?? string.Empty,
             Title = chat.Title,
             Members = { chat.Members?.Select(x => x.ToGrpc()) }
         };

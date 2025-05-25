@@ -7,7 +7,9 @@ using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Messages;
 using MediatR;
 using Message = BarkFluff.Messages.Domain.Message;
+using MessageAttachment = BarkFluff.Messages.Domain.MessageAttachment;
 using MessageContent = BarkFluff.Messages.Domain.MessageContent;
+using MessageContentType = BarkFluff.Messages.Domain.MessageContentType;
 
 namespace BarkFluff.Messages.Features.SendMessage;
 
@@ -56,7 +58,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
 
         if (chatId != null)
         {
-            var hasAccess = await _chatsStorage.CheckAccessToChat(chatId.Value, request.UserId!.Value);
+            var hasAccess = await _chatsStorage.CheckAccessToChat(chatId.Value, _userContext.UserId);
             
             if(!hasAccess)
             {
@@ -92,7 +94,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             }
         }
 
-        List<Domain.MessageAttachment>? attachments = null;
+        List<Domain.MessageAttachment>? attachments = new List<MessageAttachment>();
         
         if (request.Message.FileIds != null && request.Message.FileIds.Any())
         {
@@ -107,7 +109,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
 
             if (!attachments.Any())
             {
-                attachments = null;
+                attachments = new List<MessageAttachment>();
             }
         }
 
@@ -119,7 +121,8 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             },
             ReadBy = [_userContext.UserId],
             SenderId = _userContext.UserId,
-            SentAt = DateTime.UtcNow
+            SentAt = DateTime.UtcNow,
+            Type = MessageContentType.Generic
         };
         
         

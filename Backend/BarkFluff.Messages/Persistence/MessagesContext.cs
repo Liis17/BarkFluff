@@ -14,6 +14,8 @@ public class MessagesContext : DbContext
     
     public DbSet<ChatMember> ChatMembers { get; set; }
     
+    public DbSet<GroupChatInfo> GroupChatInfos { get; set; }
+    
     public DbSet<MessageAttachment> MessageAttachments { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
