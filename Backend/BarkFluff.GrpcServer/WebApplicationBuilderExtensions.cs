@@ -48,7 +48,8 @@ public static class WebApplicationBuilderExtensions
 
     public static WebApplicationBuilder LoadConfiguration(this WebApplicationBuilder builder, ServiceId serviceId)
     {
-        var configurationServiceAddress = Environment.GetEnvironmentVariable("CONFIGURATION_SERVICE_URL") ?? "http://configuration:7003";
+        var configurationServiceAddress = Environment.GetEnvironmentVariable("CONFIGURATION_SERVICE_URL") 
+                                          ?? "http://configuration:7003";
         
         builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
         
