@@ -53,7 +53,7 @@ public class ListChatsCommandHandler : IRequestHandler<ListChatsCommand, ListCha
 
         foreach (var groupChat in chats.Where(x=> x.IsGroupChat))
         {
-            groupChat.Members = null;
+            groupChat.Members = [];
         }
         
         var totalCount = await _chatsStorage.GetTotalUserChats(_userContext.UserId);
