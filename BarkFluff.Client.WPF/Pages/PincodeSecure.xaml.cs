@@ -165,7 +165,7 @@ namespace BarkFluff.Client.WPF.Pages
             App.GParam = GlobalParam.Load(filePath, new string(pinDigits));
             App.GParam.AppPass = new string(pinDigits);
             App.GParam.AppPath = exeDirectory ?? string.Empty;
-
+            App.GParam.IpAddress = SystemInfo.GetExternalIp();
             App.MessengerWindow.PincodeSuccess();
         }
 

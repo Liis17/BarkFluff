@@ -108,6 +108,7 @@ namespace BarkFluff.Client.WPF.Pages
             App.GParam.AppPass = new string(pinDigits);
             string exeDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             string filePath = Path.Combine(exeDirectory, "GlobalParam.json");
+            App.GParam.IpAddress = SystemInfo.GetExternalIp();
             App.GParam.AppPath = exeDirectory;
             GlobalParam.Save(App.GParam, filePath, App.GParam.AppPass);
 

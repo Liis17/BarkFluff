@@ -178,6 +178,7 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
                 else
                 {
                     App.GParam.AppPass = firstPinCode;
+                    App.GParam.IpAddress = SystemInfo.GetExternalIp();
                     string filePath = Path.Combine(App.GParam.AppPath, "GlobalParam.json");
                     GlobalParam.Save(App.GParam, filePath, App.GParam.AppPass);
                     App.MessengerWindow.OpenServerListPage();
