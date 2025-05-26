@@ -7,10 +7,15 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     Title="MainWindow"
-    Width="1280"
-    Height="720"
+    Width="1370"
+    Height="730"
+    MinWidth="460"
+    MinHeight="700"
+    ExtendsContentIntoTitleBar="True"
+    SizeChanged="FluentWindow_SizeChanged"
+    WindowBackdropType="Mica"
     mc:Ignorable="d">
-    <Grid Background="#212121">
+    <Grid>
         <ui:TitleBar
             HorizontalAlignment="Stretch"
             VerticalAlignment="Top"
@@ -27,5 +32,16 @@
             Foreground="#FF737373"
             Loaded="Loaded_VersionText"
             Text="version" />
+        <TextBlock
+            x:Name="ResolutionTextBlock"
+            Margin="0,10,130,0"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Top"
+            FontFamily="AdwaitaSans"
+            FontSize="10"
+            FontWeight="Bold"
+            Foreground="#FF737373"
+            Text="version"
+            TextAlignment="Right" />
     </Grid>
 </ui:FluentWindow>

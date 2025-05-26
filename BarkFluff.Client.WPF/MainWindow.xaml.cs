@@ -122,7 +122,7 @@ namespace BarkFluff.Client.WPF
         }
         private void MainWindow_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
-            try { if (e.ChangedButton == MouseButton.Left) { this.DragMove(); } } catch { }
+            //try { if (e.ChangedButton == MouseButton.Left) { this.DragMove(); } } catch { }
         }
         #endregion
 
@@ -157,7 +157,7 @@ namespace BarkFluff.Client.WPF
             MainFrame.Children.Clear();
             MainFrame.Children.Add(new Login());
 
-            App.ServerCommunication.CreateAC(App.GParam, App.GParam.MachineName);
+            App.ServerCommunication.CreateAC(App.GParam, App.GParam.MachineName,SystemInfo.GetFriendlyWindowsVersion(), AppVersion.AppName,AppVersion.Version, App.GParam.IpAddress);
         }
         public void PincodeSuccess()
         {
@@ -165,7 +165,7 @@ namespace BarkFluff.Client.WPF
             {
                 if (App.GParam.SocketBeacon != "http://" && App.GParam.SocketBeacon != "https://" && App.GParam.SocketBeacon != string.Empty)
                 {
-                    App.ServerCommunication.CreateAC(App.GParam, App.GParam.MachineName);
+                    App.ServerCommunication.CreateAC(App.GParam, App.GParam.MachineName, SystemInfo.GetFriendlyWindowsVersion(), AppVersion.AppName, AppVersion.Version, App.GParam.IpAddress);
                     OpenLoginPage();
                 }
                 else
@@ -233,8 +233,13 @@ namespace BarkFluff.Client.WPF
         }
 
 
+
         #endregion
 
-
+        private void FluentWindow_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            var resolution = this.ActualWidth + "x" + this.ActualHeight;
+            ResolutionTextBlock.Text = resolution;
+        }
     }
 }
