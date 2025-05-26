@@ -79,23 +79,7 @@
                 </ui:Button.Content>
             </ui:Button>
 
-            <!--  Ссылка на вход  -->
-            <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
-                <TextBlock
-                    FontFamily="AdwaitaSans"
-                    FontSize="14"
-                    FontWeight="Light"
-                    Foreground="White"
-                    Opacity="0.7"
-                    Text="Уже есть аккаунт? " />
-                <TextBlock
-                    Cursor="Hand"
-                    FontFamily="AdwaitaSans"
-                    FontSize="14"
-                    FontWeight="Medium"
-                    Foreground="#6D90F3"
-                    Text="Войти" />
-            </StackPanel>
+
         </StackPanel>
 
         <!--  Нижний колонтитул  -->

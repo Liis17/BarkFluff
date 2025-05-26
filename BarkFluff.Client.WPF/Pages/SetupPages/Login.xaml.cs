@@ -27,5 +27,20 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
         {
             App.MessengerWindow.OpenCreateAccountPage();
         }
+
+        private void SignInButton_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void TwoFABox_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+
+        }
+
+        private void TwoFABox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+
+        }
     }
 }
