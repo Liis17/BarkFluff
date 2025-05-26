@@ -5,64 +5,38 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="clr-namespace:BarkFluff.Client.WPF.Pages.SetupPages"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    d:DesignHeight="720"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    d:DesignHeight="1280"
     d:DesignWidth="1280"
-    Background="#F5F7FA"
     mc:Ignorable="d">
 
     <UserControl.Resources>
-        <Style x:Key="RoundButton" TargetType="Button">
-            <Setter Property="Background" Value="#6D90F3" />
+        <Style x:Key="ServerButton" TargetType="Button">
+            <Setter Property="Background" Value="#282828" />
             <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontFamily" Value="AdwaitaSans" />
             <Setter Property="FontSize" Value="14" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Padding" Value="20,10" />
+            <Setter Property="FontWeight" Value="Normal" />
+            <Setter Property="Padding" Value="15,12" />
             <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Margin" Value="0,5" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border
                             Padding="{TemplateBinding Padding}"
                             Background="{TemplateBinding Background}"
-                            CornerRadius="25">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#5A7AE6" />
+                                <Setter Property="Background" Value="#383838" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#4863C8" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="ServerListItem" TargetType="ListBoxItem">
-            <Setter Property="Background" Value="White" />
-            <Setter Property="Padding" Value="15" />
-            <Setter Property="Margin" Value="0,0,0,10" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ListBoxItem">
-                        <Border
-                            Padding="{TemplateBinding Padding}"
-                            Background="{TemplateBinding Background}"
-                            BorderBrush="#E0E6EC"
-                            BorderThickness="1"
-                            CornerRadius="8">
-                            <ContentPresenter />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#F0F4FF" />
-                                <Setter Property="BorderBrush" Value="#D1DCFF" />
-                            </Trigger>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Background" Value="#E9EEF9" />
-                                <Setter Property="BorderBrush" Value="#6D90F3" />
+                                <Setter Property="Background" Value="#484848" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -71,432 +45,289 @@
         </Style>
 
         <Style x:Key="CustomTextBox" TargetType="TextBox">
-            <Setter Property="Background" Value="White" />
-            <Setter Property="Foreground" Value="#424B5A" />
-            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Background" Value="#282828" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontFamily" Value="AdwaitaSans" />
+            <Setter Property="FontSize" Value="16" />
             <Setter Property="Padding" Value="15,12" />
-            <Setter Property="BorderBrush" Value="#E0E6EC" />
-            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CaretBrush" Value="White" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TextBox">
-                        <Border
-                            Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="8">
-                            <ScrollViewer x:Name="PART_ContentHost" Padding="{TemplateBinding Padding}" />
+                        <Border Background="{TemplateBinding Background}" CornerRadius="8">
+                            <ScrollViewer
+                                x:Name="PART_ContentHost"
+                                Padding="{TemplateBinding Padding}"
+                                VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsFocused" Value="True">
-                                <Setter Property="BorderBrush" Value="#6D90F3" />
+                                <Setter Property="Background" Value="#383838" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <Style x:Key="ActionButton" TargetType="ui:Button">
+            <Setter Property="Padding" Value="25,12" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="FontFamily" Value="AdwaitaSans" />
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="FontWeight" Value="Medium" />
+        </Style>
     </UserControl.Resources>
-    <Grid>
+
+    <Grid Background="#1A1A1A">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!--  Header  -->
-        <Border
+        <!--  Основной контент  -->
+        <StackPanel
             Grid.Row="0"
-            Padding="30,15"
-            Background="White"
-            BorderBrush="#E0E6EC"
-            BorderThickness="0,0,0,1">
-            <Grid>
-                <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
-                    <Image
-                        Width="40"
-                        Height="40"
-                        Source="/Resources/Images/barkfluff_logo.png" />
-                    <TextBlock
-                        Margin="15,0,0,0"
-                        VerticalAlignment="Center"
-                        FontSize="24"
-                        FontWeight="Bold"
-                        Foreground="#424B5A"
-                        Text="BarkFluff" />
-                </StackPanel>
+            MaxWidth="600"
+            Margin="0,50,0,30"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Orientation="Vertical">
+
+            <!--  Заголовок  -->
+            <TextBlock
+                Margin="0,0,0,5"
+                HorizontalAlignment="Center"
+                FontFamily="AdwaitaSans"
+                FontSize="34"
+                FontWeight="SemiBold"
+                Foreground="White"
+                Text="Подключение к серверу" />
+
+            <!--  Подзаголовок  -->
+            <TextBlock
+                Margin="0,0,0,40"
+                HorizontalAlignment="Center"
+                FontFamily="AdwaitaSans"
+                FontSize="16"
+                FontWeight="Normal"
+                Foreground="#E0E0E0"
+                Opacity="0.8"
+                Text="Выберите публичный сервер или введите адрес своего"
+                TextAlignment="Center" />
+
+            <!--  Публичные серверы  -->
+            <TextBlock
+                Margin="0,0,0,15"
+                HorizontalAlignment="Left"
+                FontFamily="AdwaitaSans"
+                FontSize="18"
+                FontWeight="Normal"
+                Foreground="#E0E0E0"
+                Text="Публичные серверы" />
+
+            <StackPanel Margin="0,0,0,30">
                 <Button
-                    Width="100"
-                    Padding="15,8"
-                    HorizontalAlignment="Right"
-                    Background="#8B95A5"
-                    Content="Back"
-                    Style="{StaticResource RoundButton}" />
-            </Grid>
-        </Border>
+                    Click="PublicServer_Click"
+                    Style="{StaticResource ServerButton}"
+                    Tag="central.barkpark.com:6789">
+                    <StackPanel HorizontalAlignment="Left" Orientation="Vertical">
+                        <TextBlock FontWeight="Medium" Text="BarkPark Central" />
+                        <TextBlock
+                            FontSize="12"
+                            Foreground="#9E9E9E"
+                            Text="central.barkpark.com:6789 • 2,456 пользователей" />
+                    </StackPanel>
+                </Button>
 
-        <!--  Main Content  -->
-        <Grid Grid.Row="1" Margin="40">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
+                <Button
+                    Click="PublicServer_Click"
+                    Style="{StaticResource ServerButton}"
+                    Tag="pawslounge.barkfluff.net:8888">
+                    <StackPanel HorizontalAlignment="Left" Orientation="Vertical">
+                        <TextBlock FontWeight="Medium" Text="PawsLounge" />
+                        <TextBlock
+                            FontSize="12"
+                            Foreground="#9E9E9E"
+                            Text="pawslounge.barkfluff.net:8888 • 1,823 пользователя" />
+                    </StackPanel>
+                </Button>
 
-            <!--  Title  -->
-            <StackPanel Grid.Row="0" Margin="0,0,0,30">
-                <TextBlock
-                    FontSize="28"
-                    FontWeight="Bold"
-                    Foreground="#424B5A"
-                    Text="Connect to a Server" />
-                <TextBlock
-                    Margin="0,10,0,0"
-                    FontSize="16"
-                    Foreground="#6B7280"
-                    Text="Choose a public server or connect to your own" />
+                <Button
+                    Click="PublicServer_Click"
+                    Style="{StaticResource ServerButton}"
+                    Tag="furrycomp.paws.org:7777">
+                    <StackPanel HorizontalAlignment="Left" Orientation="Vertical">
+                        <TextBlock FontWeight="Medium" Text="Furry Companions" />
+                        <TextBlock
+                            FontSize="12"
+                            Foreground="#9E9E9E"
+                            Text="furrycomp.paws.org:7777 • 974 пользователя" />
+                    </StackPanel>
+                </Button>
+
+                <Button
+                    Click="PublicServer_Click"
+                    Style="{StaticResource ServerButton}"
+                    Tag="tailrunners.dogpack.io:9090">
+                    <StackPanel HorizontalAlignment="Left" Orientation="Vertical">
+                        <TextBlock FontWeight="Medium" Text="Tail Runners" />
+                        <TextBlock
+                            FontSize="12"
+                            Foreground="#9E9E9E"
+                            Text="tailrunners.dogpack.io:9090 • 765 пользователей" />
+                    </StackPanel>
+                </Button>
             </StackPanel>
 
-            <!--  Server List  -->
-            <Grid Grid.Row="1">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="30" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
+            <!--  Разделитель  -->
+            <Rectangle
+                Height="1"
+                Margin="0,10,0,30"
+                Fill="#383838" />
 
-                <!--  Public Servers  -->
-                <Border
-                    Grid.Column="0"
-                    Padding="20"
-                    Background="White"
-                    BorderBrush="#E0E6EC"
-                    BorderThickness="1"
-                    CornerRadius="10">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
-
-                        <TextBlock
-                            Grid.Row="0"
-                            Margin="0,0,0,15"
-                            FontSize="18"
-                            FontWeight="SemiBold"
-                            Foreground="#424B5A"
-                            Text="Public Servers" />
-
-                        <ListBox
-                            Grid.Row="1"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            ItemContainerStyle="{StaticResource ServerListItem}">
-                            <ListBoxItem>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <Border
-                                        Grid.Column="0"
-                                        Width="40"
-                                        Height="40"
-                                        Background="#E9EEF9"
-                                        CornerRadius="5">
-                                        <TextBlock
-                                            HorizontalAlignment="Center"
-                                            VerticalAlignment="Center"
-                                            FontWeight="Bold"
-                                            Foreground="#6D90F3"
-                                            Text="BP" />
-                                    </Border>
-                                    <StackPanel Grid.Column="1" Margin="15,0,0,0">
-                                        <TextBlock
-                                            FontSize="16"
-                                            FontWeight="SemiBold"
-                                            Foreground="#424B5A"
-                                            Text="BarkPark Central" />
-                                        <TextBlock
-                                            Margin="0,5,0,0"
-                                            FontSize="12"
-                                            Foreground="#8B95A5"
-                                            Text="central.barkpark.com:6789" />
-                                        <TextBlock
-                                            Margin="0,5,0,0"
-                                            FontSize="12"
-                                            Foreground="#6D90F3"
-                                            Text="Online Users: 2,456" />
-                                    </StackPanel>
-                                </Grid>
-                            </ListBoxItem>
-                            <ListBoxItem>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <Border
-                                        Grid.Column="0"
-                                        Width="40"
-                                        Height="40"
-                                        Background="#F9E9EE"
-                                        CornerRadius="5">
-                                        <TextBlock
-                                            HorizontalAlignment="Center"
-                                            VerticalAlignment="Center"
-                                            FontWeight="Bold"
-                                            Foreground="#F36D90"
-                                            Text="PL" />
-                                    </Border>
-                                    <StackPanel Grid.Column="1" Margin="15,0,0,0">
-                                        <TextBlock
-                                            FontSize="16"
-                                            FontWeight="SemiBold"
-                                            Foreground="#424B5A"
-                                            Text="PawsLounge" />
-                                        <TextBlock
-                                            Margin="0,5,0,0"
-                                            FontSize="12"
-                                            Foreground="#8B95A5"
-                                            Text="pawslounge.barkfluff.net:8888" />
-                                        <TextBlock
-                                            Margin="0,5,0,0"
-                                            FontSize="12"
-                                            Foreground="#6D90F3"
-                                            Text="Online Users: 1,823" />
-                                    </StackPanel>
-                                </Grid>
-                            </ListBoxItem>
-                            <ListBoxItem>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <Border
-                                        Grid.Column="0"
-                                        Width="40"
-                                        Height="40"
-                                        Background="#E9F9EE"
-                                        CornerRadius="5">
-                                        <TextBlock
-                                            HorizontalAlignment="Center"
-                                            VerticalAlignment="Center"
-                                            FontWeight="Bold"
-                                            Foreground="#6DF390"
-                                            Text="FC" />
-                                    </Border>
-                                    <StackPanel Grid.Column="1" Margin="15,0,0,0">
-                                        <TextBlock
-                                            FontSize="16"
-                                            FontWeight="SemiBold"
-                                            Foreground="#424B5A"
-                                            Text="Furry Companions" />
-                                        <TextBlock
-                                            Margin="0,5,0,0"
-                                            FontSize="12"
-                                            Foreground="#8B95A5"
-                                            Text="furrycomp.paws.org:7777" />
-                                        <TextBlock
-                                            Margin="0,5,0,0"
-                                            FontSize="12"
-                                            Foreground="#6D90F3"
-                                            Text="Online Users: 974" />
-                                    </StackPanel>
-                                </Grid>
-                            </ListBoxItem>
-                            <ListBoxItem>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <Border
-                                        Grid.Column="0"
-                                        Width="40"
-                                        Height="40"
-                                        Background="#F0E9F9"
-                                        CornerRadius="5">
-                                        <TextBlock
-                                            HorizontalAlignment="Center"
-                                            VerticalAlignment="Center"
-                                            FontWeight="Bold"
-                                            Foreground="#966DF3"
-                                            Text="TR" />
-                                    </Border>
-                                    <StackPanel Grid.Column="1" Margin="15,0,0,0">
-                                        <TextBlock
-                                            FontSize="16"
-                                            FontWeight="SemiBold"
-                                            Foreground="#424B5A"
-                                            Text="Tail Runners" />
-                                        <TextBlock
-                                            Margin="0,5,0,0"
-                                            FontSize="12"
-                                            Foreground="#8B95A5"
-                                            Text="tailrunners.dogpack.io:9090" />
-                                        <TextBlock
-                                            Margin="0,5,0,0"
-                                            FontSize="12"
-                                            Foreground="#6D90F3"
-                                            Text="Online Users: 765" />
-                                    </StackPanel>
-                                </Grid>
-                            </ListBoxItem>
-                        </ListBox>
-                    </Grid>
-                </Border>
-
-                <!--  Separator  -->
-                <Rectangle
-                    Grid.Column="1"
-                    Width="1"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Stretch"
-                    Fill="#E0E6EC" />
-
-                <!--  Custom Server  -->
-                <Border
-                    Grid.Column="2"
-                    Padding="20"
-                    Background="White"
-                    BorderBrush="#E0E6EC"
-                    BorderThickness="1"
-                    CornerRadius="10">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-
-                        <TextBlock
-                            Grid.Row="0"
-                            Margin="0,0,0,15"
-                            FontSize="18"
-                            FontWeight="SemiBold"
-                            Foreground="#424B5A"
-                            Text="Connect to Your Server" />
-
-                        <StackPanel Grid.Row="1" Margin="0,10,0,20">
-                            <TextBlock
-                                Margin="0,0,0,8"
-                                FontSize="14"
-                                Foreground="#6B7280"
-                                Text="Server Address" />
-                            <TextBox
-                                Name="ServerAddressTextBox"
-                                Margin="0,0,0,5"
-                                FontSize="14"
-                                Style="{StaticResource CustomTextBox}"
-                                Text="" />
-                            <TextBlock
-                                x:Name="ErrorText"
-                                FontSize="12"
-                                Foreground="#8B95A5"
-                                Text="Format: domain/IP:port (e.g. myserver.com:8080)" />
-                        </StackPanel>
-
-                        <StackPanel Grid.Row="2" VerticalAlignment="Center">
-                            <Border
-                                Padding="15"
-                                Background="#F9F9FA"
-                                BorderBrush="#E0E6EC"
-                                BorderThickness="1"
-                                CornerRadius="8">
-                                <StackPanel>
-                                    <TextBlock
-                                        FontWeight="SemiBold"
-                                        Foreground="#424B5A"
-                                        Text="Recent Connections" />
-                                    <Rectangle
-                                        Height="1"
-                                        Margin="0,10"
-                                        Fill="#E0E6EC" />
-                                    <Grid Margin="0,5">
-                                        <TextBlock Foreground="#6B7280" Text="homeserver.local:6543" />
-                                        <TextBlock
-                                            HorizontalAlignment="Right"
-                                            Foreground="#8B95A5"
-                                            Text="Yesterday" />
-                                    </Grid>
-                                    <Grid Margin="0,5">
-                                        <TextBlock Foreground="#6B7280" Text="barkfluff-admin.net:9876" />
-                                        <TextBlock
-                                            HorizontalAlignment="Right"
-                                            Foreground="#8B95A5"
-                                            Text="3 days ago" />
-                                    </Grid>
-                                    <Grid Margin="0,5">
-                                        <TextBlock Foreground="#6B7280" Text="192.168.1.55:8080" />
-                                        <TextBlock
-                                            HorizontalAlignment="Right"
-                                            Foreground="#8B95A5"
-                                            Text="Last week" />
-                                    </Grid>
-                                </StackPanel>
-                            </Border>
-                        </StackPanel>
-
-                        <Button
-                            Grid.Row="3"
-                            Margin="0,20,0,0"
-                            HorizontalAlignment="Right"
-                            Click="Button_Click"
-                            Content="Connect"
-                            Style="{StaticResource RoundButton}" />
-                    </Grid>
-                </Border>
-            </Grid>
-
-            <!--  Bottom Hint  -->
+            <!--  Свой сервер  -->
             <TextBlock
-                Grid.Row="2"
-                Margin="0,20,0,0"
-                HorizontalAlignment="Center"
+                Margin="0,0,0,15"
+                HorizontalAlignment="Left"
+                FontFamily="AdwaitaSans"
+                FontSize="18"
+                FontWeight="Normal"
+                Foreground="#E0E0E0"
+                Text="Подключиться к своему серверу" />
+
+            <TextBox
+                x:Name="ServerAddressTextBox"
+                Margin="0,0,0,10"
+                GotFocus="ServerAddressTextBox_GotFocus"
+                Style="{StaticResource CustomTextBox}"
+                Text="" />
+
+            <TextBlock
+                x:Name="ErrorText"
+                Margin="0,0,0,5"
+                HorizontalAlignment="Left"
+                FontFamily="AdwaitaSans"
+                FontSize="12"
+                Foreground="#9E9E9E"
+                Text="Формат: домен/IP:порт (например: myserver.com:8080)" />
+
+            <!--  Недавние подключения  -->
+            <TextBlock
+                Margin="0,20,0,10"
+                HorizontalAlignment="Left"
+                FontFamily="AdwaitaSans"
                 FontSize="14"
-                Foreground="#8B95A5"
-                Text="Having trouble connecting? Check our server setup guide for help.">
-                <TextBlock.TextDecorations>
-                    <TextDecoration Location="Underline" />
-                </TextBlock.TextDecorations>
-            </TextBlock>
-        </Grid>
+                FontWeight="Normal"
+                Foreground="#9E9E9E"
+                Text="Недавние подключения" />
 
-        <!--  Footer  -->
-        <Border
-            Grid.Row="2"
-            Padding="30,15"
-            Background="White"
-            BorderBrush="#E0E6EC"
-            BorderThickness="0,1,0,0">
-            <Grid>
-                <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
-                    <TextBlock
-                        VerticalAlignment="Center"
-                        Foreground="#8B95A5"
-                        Text="© 2025 BarkFluff Inc." />
-                </StackPanel>
+            <StackPanel Margin="0,0,0,30">
+                <Button
+                    Click="RecentServer_Click"
+                    Style="{StaticResource ServerButton}"
+                    Tag="homeserver.local:6543">
+                    <Grid>
+                        <TextBlock HorizontalAlignment="Left" Text="homeserver.local:6543" />
+                        <TextBlock
+                            HorizontalAlignment="Right"
+                            FontSize="12"
+                            Foreground="#9E9E9E"
+                            Text="Вчера" />
+                    </Grid>
+                </Button>
 
-                <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-                    <TextBlock
-                        Margin="0,0,20,0"
-                        Cursor="Hand"
-                        Foreground="#6D90F3"
-                        Text="Privacy Policy" />
-                    <TextBlock
-                        Margin="0,0,20,0"
-                        Cursor="Hand"
-                        Foreground="#6D90F3"
-                        Text="Terms of Service" />
-                    <TextBlock
-                        Cursor="Hand"
-                        Foreground="#6D90F3"
-                        Text="Help Center" />
-                </StackPanel>
-            </Grid>
-        </Border>
+                <Button
+                    Click="RecentServer_Click"
+                    Style="{StaticResource ServerButton}"
+                    Tag="barkfluff-admin.net:9876">
+                    <Grid>
+                        <TextBlock HorizontalAlignment="Left" Text="barkfluff-admin.net:9876" />
+                        <TextBlock
+                            HorizontalAlignment="Right"
+                            FontSize="12"
+                            Foreground="#9E9E9E"
+                            Text="3 дня назад" />
+                    </Grid>
+                </Button>
+
+                <Button
+                    Click="RecentServer_Click"
+                    Style="{StaticResource ServerButton}"
+                    Tag="192.168.1.55:8080">
+                    <Grid>
+                        <TextBlock HorizontalAlignment="Left" Text="192.168.1.55:8080" />
+                        <TextBlock
+                            HorizontalAlignment="Right"
+                            FontSize="12"
+                            Foreground="#9E9E9E"
+                            Text="Неделю назад" />
+                    </Grid>
+                </Button>
+            </StackPanel>
+
+            <!--  Кнопки действий  -->
+            <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                <ui:Button
+                    x:Name="BackButton"
+                    Margin="0,0,10,0"
+                    Click="BackButton_Click"
+                    Style="{StaticResource ActionButton}">
+                    <ui:Button.Content>
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon
+                                Margin="0,0,10,0"
+                                FontSize="18"
+                                Foreground="White"
+                                Symbol="ArrowLeft24" />
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                Foreground="White"
+                                Text="Назад" />
+                        </StackPanel>
+                    </ui:Button.Content>
+                </ui:Button>
+
+                <ui:Button
+                    x:Name="ConnectButton"
+                    Click="ConnectButton_Click"
+                    Style="{StaticResource ActionButton}">
+                    <ui:Button.Content>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                Foreground="White"
+                                Text="Подключиться" />
+                            <ui:SymbolIcon
+                                Margin="10,0,0,0"
+                                FontSize="18"
+                                Foreground="White"
+                                Symbol="ArrowRight24" />
+                        </StackPanel>
+                    </ui:Button.Content>
+                </ui:Button>
+            </StackPanel>
+        </StackPanel>
+
+        <!--  Нижняя информационная панель  -->
+        <StackPanel
+            Grid.Row="1"
+            Margin="0,0,0,20"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Bottom"
+            Orientation="Vertical">
+            <TextBlock
+                MaxWidth="600"
+                HorizontalAlignment="Center"
+                FontFamily="AdwaitaSans"
+                FontSize="14"
+                FontWeight="Light"
+                Foreground="#9E9E9E"
+                Text="Возникли проблемы с подключением? Ознакомьтесь с нашим руководством по настройке сервера."
+                TextAlignment="Center"
+                TextWrapping="Wrap" />
+        </StackPanel>
     </Grid>
 </UserControl>
