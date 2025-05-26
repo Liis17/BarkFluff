@@ -18,9 +18,6 @@ using System.Windows.Shapes;
 
 namespace BarkFluff.Client.WPF.UserControls
 {
-    /// <summary>
-    /// Логика взаимодействия для CropImage.xaml
-    /// </summary>
     public partial class CropImage : UserControl
     {
         private TranslateTransform _imageTranslate = new TranslateTransform();
@@ -60,7 +57,7 @@ namespace BarkFluff.Client.WPF.UserControls
             if (openFileDialog.ShowDialog() == true)
             {
                 string selectedFilePath = openFileDialog.FileName;
-                _imagePath = selectedFilePath; // Сохраняем путь к изображению
+                _imagePath = selectedFilePath; 
                 LoadImage(selectedFilePath);
             }
         }
@@ -148,14 +145,7 @@ namespace BarkFluff.Client.WPF.UserControls
         {
             BitmapSource image = GetCroppedAvatar();
 
-            string filePath = "C:\\Users\\daske\\Desktop\\crop\\" + Guid.NewGuid().ToString() + ".png";
-
-            using (FileStream stream = new FileStream(filePath, FileMode.Create))
-            {
-                PngBitmapEncoder encoder = new PngBitmapEncoder();
-                encoder.Frames.Add(BitmapFrame.Create(image));
-                encoder.Save(stream);
-            }
+            
         }
 
         private void ResetPosition(object sender, RoutedEventArgs e)
