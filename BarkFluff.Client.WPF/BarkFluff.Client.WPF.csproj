@@ -47,6 +47,7 @@
   <ItemGroup>
     <ProjectReference Include="..\ClientComponents\BarkFluff.WebApi.Core\BarkFluff.WebApi.Core.csproj" />
     <ProjectReference Include="..\Shared\BarkFluff.Shared.Auth\BarkFluff.Shared.Auth.csproj" />
+    <ProjectReference Include="..\BarkFluff.Shared.Exceptions\BarkFluff.Shared.Exceptions.csproj" />
     <ProjectReference Include="..\Shared\BarkFluff.Shared.SecurityUtilities\BarkFluff.Shared.SecurityUtilities.csproj" />
   </ItemGroup>
 

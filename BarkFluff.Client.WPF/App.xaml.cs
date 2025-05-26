@@ -10,6 +10,7 @@ using System.Configuration;
 using System.Data;
 using System.Diagnostics;
 using System.IO;
+using System.Net;
 using System.Reflection;
 using System.Windows;
 
@@ -28,8 +29,8 @@ namespace BarkFluff.Client.WPF
         public static MainWindow MessengerWindow { get; set; } = null!;
         public App()
         {
-            
-            
+
+
         }
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -53,14 +54,12 @@ namespace BarkFluff.Client.WPF
         {
             ServerCommunication = new WebApi.Core.WebApi();
             string filePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "GlobalParam.json");
-            
+
             if (Debugger.IsAttached)
             {
                 // Увеличивает версию
                 IncrementVersion();
             }
-            
-            MessageBox.Show($"{SystemInfo.GetFriendlyWindowsVersion()}");
 
             MessengerWindow = new MainWindow();
             MessengerWindow.Show();
@@ -79,11 +78,11 @@ namespace BarkFluff.Client.WPF
             }
         }
 
-        
+
 
         private void ProcessArguments(string[] args)
         {
-            
+
             foreach (string arg in args)
             {
                 //обработка аргументов
@@ -109,6 +108,13 @@ namespace BarkFluff.Client.WPF
             }
             System.IO.File.WriteAllLines(versionFile, lines);
         }
-    }
 
+        public static void UpdateApiClient()
+        {
+            ServerCommunication = null!;
+            ServerCommunication = new WebApi.Core.WebApi();
+
+            ServerCommunication.CreateAC(GParam, GParam.MachineName, SystemInfo.GetFriendlyWindowsVersion(), AppVersion.AppName, AppVersion.Version, GParam.IpAddress);
+        }
+    }
 }
