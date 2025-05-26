@@ -5,79 +5,21 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="clr-namespace:BarkFluff.Client.WPF.Pages.SetupPages"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    d:DesignHeight="720"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    d:DesignHeight="1280"
     d:DesignWidth="1280"
     mc:Ignorable="d">
+
     <UserControl.Resources>
-        <Style x:Key="PrimaryButton" TargetType="Button">
-            <Setter Property="Background" Value="#6D90F3" />
+        <Style x:Key="MinimalTextBox" TargetType="TextBox">
+            <Setter Property="Background" Value="#282828" />
             <Setter Property="Foreground" Value="White" />
-            <Setter Property="FontSize" Value="14" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Padding" Value="20,12" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border
-                            Padding="{TemplateBinding Padding}"
-                            Background="{TemplateBinding Background}"
-                            CornerRadius="8">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#5A7AE6" />
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#4863C8" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="SecondaryButton" TargetType="Button">
-            <Setter Property="Background" Value="#FFFFFF" />
-            <Setter Property="Foreground" Value="#6D90F3" />
-            <Setter Property="FontSize" Value="14" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Padding" Value="20,12" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="BorderBrush" Value="#E0E6EC" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border
-                            Padding="{TemplateBinding Padding}"
-                            Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="8">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#F0F4FF" />
-                                <Setter Property="BorderBrush" Value="#6D90F3" />
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#E9EEF9" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="CustomTextBox" TargetType="TextBox">
-            <Setter Property="Background" Value="White" />
-            <Setter Property="Foreground" Value="#424B5A" />
-            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontFamily" Value="AdwaitaSans" />
+            <Setter Property="FontSize" Value="16" />
             <Setter Property="Padding" Value="15,12" />
-            <Setter Property="BorderBrush" Value="#E0E6EC" />
+            <Setter Property="BorderBrush" Value="#404040" />
             <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CaretBrush" Value="White" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TextBox">
@@ -92,18 +34,22 @@
                             <Trigger Property="IsFocused" Value="True">
                                 <Setter Property="BorderBrush" Value="#6D90F3" />
                             </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="BorderBrush" Value="#505050" />
+                            </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
 
-        <Style x:Key="PasswordBoxStyle" TargetType="PasswordBox">
-            <Setter Property="Background" Value="White" />
-            <Setter Property="Foreground" Value="#424B5A" />
-            <Setter Property="FontSize" Value="14" />
+        <Style x:Key="MinimalPasswordBox" TargetType="PasswordBox">
+            <Setter Property="Background" Value="#282828" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontFamily" Value="AdwaitaSans" />
+            <Setter Property="FontSize" Value="16" />
             <Setter Property="Padding" Value="15,12" />
-            <Setter Property="BorderBrush" Value="#E0E6EC" />
+            <Setter Property="BorderBrush" Value="#404040" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -119,14 +65,52 @@
                             <Trigger Property="IsFocused" Value="True">
                                 <Setter Property="BorderBrush" Value="#6D90F3" />
                             </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="BorderBrush" Value="#505050" />
+                            </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
 
-        <Style x:Key="CheckboxStyle" TargetType="CheckBox">
-            <Setter Property="Foreground" Value="#424B5A" />
+        <Style x:Key="TwoFATextBox" TargetType="TextBox">
+            <Setter Property="Background" Value="#282828" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontFamily" Value="AdwaitaSans" />
+            <Setter Property="FontSize" Value="20" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="BorderBrush" Value="#404040" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CaretBrush" Value="White" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="8">
+                            <ScrollViewer x:Name="PART_ContentHost" Padding="8" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter Property="BorderBrush" Value="#6D90F3" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="BorderBrush" Value="#505050" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="MinimalCheckBox" TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#E0E0E0" />
+            <Setter Property="FontFamily" Value="AdwaitaSans" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="Template">
@@ -139,16 +123,16 @@
                             </Grid.ColumnDefinitions>
                             <Border
                                 x:Name="checkBoxBorder"
-                                Width="20"
-                                Height="20"
+                                Width="18"
+                                Height="18"
                                 VerticalAlignment="Center"
-                                Background="White"
-                                BorderBrush="#E0E6EC"
+                                Background="#282828"
+                                BorderBrush="#404040"
                                 BorderThickness="1"
                                 CornerRadius="4">
                                 <Path
                                     x:Name="checkMark"
-                                    Data="M4,10 L8,14 L16,6"
+                                    Data="M3,8 L7,12 L15,4"
                                     Stroke="#6D90F3"
                                     StrokeThickness="2"
                                     Visibility="Collapsed" />
@@ -162,7 +146,7 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsChecked" Value="True">
                                 <Setter TargetName="checkMark" Property="Visibility" Value="Visible" />
-                                <Setter TargetName="checkBoxBorder" Property="Background" Value="#F0F4FF" />
+                                <Setter TargetName="checkBoxBorder" Property="Background" Value="#1A2332" />
                                 <Setter TargetName="checkBoxBorder" Property="BorderBrush" Value="#6D90F3" />
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
@@ -173,242 +157,291 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <Style x:Key="LinkTextBlock" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#6D90F3" />
+            <Setter Property="FontFamily" Value="AdwaitaSans" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="TextDecorations" Value="None" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Foreground" Value="#5A7AE6" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
     </UserControl.Resources>
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="450" />
-        </Grid.ColumnDefinitions>
 
-        <!--  Left Side - Image/Brand  -->
-        <Grid Grid.Column="0" Background="#6D90F3">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
+    <Grid Background="#1A1A1A">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
 
-            <!--  Logo  -->
-            <StackPanel
-                Grid.Row="0"
-                Margin="40,30"
-                Orientation="Horizontal">
-                <Image
-                    Width="40"
-                    Height="40"
-                    Source="/Resources/Images/barkfluff_logo.png" />
-                <TextBlock
-                    Margin="15,0,0,0"
-                    VerticalAlignment="Center"
-                    FontSize="24"
-                    FontWeight="Bold"
-                    Foreground="White"
-                    Text="BarkFluff" />
-            </StackPanel>
-
-            <!--  Center Image  -->
-            <StackPanel
-                Grid.Row="1"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center">
-                <Image
-                    MaxWidth="300"
-                    MaxHeight="300"
-                    Source="/Resources/Placeholders/Placeholder_1.jpg" />
-                <TextBlock
-                    Margin="0,20,0,0"
-                    FontSize="24"
-                    FontWeight="SemiBold"
-                    Foreground="White"
-                    Text="Connect with your pack!"
-                    TextAlignment="Center" />
-                <TextBlock
-                    Margin="0,10,0,0"
-                    FontSize="16"
-                    Foreground="White"
-                    Opacity="0.85"
-                    Text="Share moments, exchange barks, and stay in touch"
-                    TextAlignment="Center" />
-            </StackPanel>
-
-            <!--  Bottom Text  -->
+        <!-- Логотип сверху -->
+        <StackPanel
+            Grid.Row="0"
+            Margin="0,40,0,0"
+            HorizontalAlignment="Center"
+            Orientation="Horizontal">
+            <Image
+                Width="32"
+                Height="32"
+                Source="/Resources/Images/barkfluff_logo.png" />
             <TextBlock
-                Grid.Row="2"
-                Margin="40,30"
-                HorizontalAlignment="Center"
+                Margin="12,0,0,0"
+                VerticalAlignment="Center"
+                FontFamily="AdwaitaSans"
+                FontSize="20"
+                FontWeight="SemiBold"
                 Foreground="White"
-                Opacity="0.7"
-                Text="© 2025 BarkFluff Inc. All rights reserved." />
-        </Grid>
+                Text="BarkFluff" />
+        </StackPanel>
 
-        <!--  Right Side - Login Form  -->
-        <Border Grid.Column="1" Background="White">
-            <Grid Margin="40">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
+        <!-- Основное содержимое -->
+        <StackPanel
+            Grid.Row="1"
+            Margin="0,40,0,40"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Orientation="Vertical">
 
-                <!--  Header  -->
-                <StackPanel Grid.Row="0">
-                    <TextBlock
-                        FontSize="28"
-                        FontWeight="Bold"
-                        Foreground="#424B5A"
-                        Text="Welcome Back" />
-                    <TextBlock
-                        Margin="0,10,0,0"
-                        FontSize="16"
-                        Foreground="#6B7280"
-                        Text="Sign in to your account to continue" />
-                </StackPanel>
+            <!-- Заголовок -->
+            <TextBlock
+                Margin="0,0,0,8"
+                HorizontalAlignment="Center"
+                FontFamily="AdwaitaSans"
+                FontSize="32"
+                FontWeight="SemiBold"
+                Foreground="White"
+                Text="Добро пожаловать" />
 
-                <!--  Login Form  -->
-                <StackPanel
-                    Grid.Row="1"
-                    Margin="0,20"
-                    VerticalAlignment="Center">
-                    <!--  Username  -->
-                    <TextBlock
-                        Margin="0,0,0,8"
-                        FontSize="14"
-                        Foreground="#424B5A"
-                        Text="Username" />
-                    <TextBox Margin="0,0,0,20" Style="{StaticResource CustomTextBox}" />
+            <TextBlock
+                Margin="0,0,0,40"
+                HorizontalAlignment="Center"
+                FontFamily="AdwaitaSans"
+                FontSize="16"
+                FontWeight="Normal"
+                Foreground="#B0B0B0"
+                Text="Войдите в свой аккаунт" />
 
-                    <!--  Password  -->
-                    <TextBlock
-                        Margin="0,0,0,8"
-                        FontSize="14"
-                        Foreground="#424B5A"
-                        Text="Password" />
-                    <Grid Margin="0,0,0,20">
-                        <PasswordBox Style="{StaticResource PasswordBoxStyle}" />
-                        <TextBlock
-                            Margin="0,0,10,0"
-                            HorizontalAlignment="Right"
-                            VerticalAlignment="Center"
-                            Cursor="Hand"
-                            FontSize="12"
-                            Foreground="#6D90F3"
-                            Text="Forgot Password?" />
-                    </Grid>
+            <!-- Поля ввода -->
+            <StackPanel Width="320" Orientation="Vertical">
 
-                    <!--  Two-Factor Authentication  -->
-                    <Border
-                        Margin="0,0,0,20"
-                        Padding="15"
-                        Background="#F9FAFC"
-                        BorderBrush="#E0E6EC"
-                        BorderThickness="1"
-                        CornerRadius="8">
-                        <StackPanel>
-                            <TextBlock
-                                FontWeight="SemiBold"
-                                Foreground="#424B5A"
-                                Text="2FA" />
-                            <TextBlock
-                                Margin="0,5,0,10"
-                                FontSize="12"
-                                Foreground="#6B7280"
-                                Text="Enter the 6-digit code from your authenticator app" />
+                <!-- Имя пользователя -->
+                <TextBlock
+                    Margin="0,0,0,8"
+                    FontFamily="AdwaitaSans"
+                    FontSize="14"
+                    Foreground="#E0E0E0"
+                    Text="Имя пользователя" />
+                <TextBox
+                    x:Name="UsernameTextBox"
+                    Margin="0,0,0,20"
+                    Style="{StaticResource MinimalTextBox}" />
 
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
+                <!-- Пароль -->
+                <TextBlock
+                    Margin="0,0,0,8"
+                    FontFamily="AdwaitaSans"
+                    FontSize="14"
+                    Foreground="#E0E0E0"
+                    Text="Пароль" />
+                <PasswordBox
+                    x:Name="PasswordBox"
+                    Margin="0,0,0,8"
+                    Style="{StaticResource MinimalPasswordBox}" />
 
-                                <TextBox
-                                    Grid.Column="0"
-                                    Margin="0,0,5,0"
-                                    MaxLength="1"
-                                    Style="{StaticResource CustomTextBox}"
-                                    TextAlignment="Center" />
-                                <TextBox
-                                    Grid.Column="1"
-                                    Margin="2,0,3,0"
-                                    MaxLength="1"
-                                    Style="{StaticResource CustomTextBox}"
-                                    TextAlignment="Center" />
-                                <TextBox
-                                    Grid.Column="2"
-                                    Margin="2,0,3,0"
-                                    MaxLength="1"
-                                    Style="{StaticResource CustomTextBox}"
-                                    TextAlignment="Center" />
-                                <TextBox
-                                    Grid.Column="3"
-                                    Margin="2,0,3,0"
-                                    MaxLength="1"
-                                    Style="{StaticResource CustomTextBox}"
-                                    TextAlignment="Center" />
-                                <TextBox
-                                    Grid.Column="4"
-                                    Margin="2,0,3,0"
-                                    MaxLength="1"
-                                    Style="{StaticResource CustomTextBox}"
-                                    TextAlignment="Center" />
-                                <TextBox
-                                    Grid.Column="5"
-                                    Margin="5,0,0,0"
-                                    MaxLength="1"
-                                    Style="{StaticResource CustomTextBox}"
-                                    TextAlignment="Center" />
-                            </Grid>
+                <TextBlock
+                    Margin="0,0,0,25"
+                    HorizontalAlignment="Right"
+                    Style="{StaticResource LinkTextBlock}"
+                    Text="Забыли пароль?" />
 
-                            <TextBlock
-                                Margin="0,10,0,0"
-                                HorizontalAlignment="Right"
-                                Cursor="Hand"
-                                FontSize="12"
-                                Foreground="#6D90F3"
-                                Text="Trouble with 2FA? Contact support" />
-                        </StackPanel>
-                    </Border>
-
-                    <!--  Remember Me  -->
-                    <CheckBox
-                        Margin="0,0,0,20"
-                        Content="Keep me signed in"
-                        Style="{StaticResource CheckboxStyle}" />
-
-                    <!--  Login Button  -->
-                    <Button
-                        Margin="0,0,0,15"
-                        Content="Sign In"
-                        Style="{StaticResource PrimaryButton}" />
-
-                    <!--  Server Selection Link  -->
-                    <TextBlock Margin="0,0,0,0" TextAlignment="Center">
-                        <Hyperlink Foreground="#6D90F3" TextDecorations="None">
-                            <TextBlock Foreground="#6D90F3" Text="Change server connection" />
-                        </Hyperlink>
-                    </TextBlock>
-                </StackPanel>
-
-                <!--  Register Link  -->
+                <!-- 2FA секция -->
                 <Border
-                    Grid.Row="2"
-                    Padding="0,20,0,0"
-                    BorderBrush="#E0E6EC"
-                    BorderThickness="0,1,0,0">
+                    Margin="0,0,0,25"
+                    Padding="20"
+                    Background="#1F1F1F"
+                    BorderBrush="#333333"
+                    BorderThickness="1"
+                    CornerRadius="12">
                     <StackPanel>
                         <TextBlock
+                            Margin="0,0,0,5"
+                            FontFamily="AdwaitaSans"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            Foreground="White"
+                            Text="Двухфакторная аутентификация" />
+
+                        <TextBlock
+                            TextWrapping="WrapWithOverflow"
                             Margin="0,0,0,15"
+                            FontFamily="AdwaitaSans"
                             FontSize="14"
-                            Foreground="#6B7280"
-                            Text="Don't have an account yet?"
-                            TextAlignment="Center" />
-                        <Button Click="CreateAccountPageOpen" Content="Create a New Account" Style="{StaticResource SecondaryButton}" />
+                            Foreground="#B0B0B0"
+                            Text="Введите 6-значный код из приложения-аутентификатора" />
+
+                        <!-- 2FA поля -->
+                        <StackPanel
+                            HorizontalAlignment="Center"
+                            Orientation="Horizontal">
+                            <TextBox
+                                x:Name="TwoFABox0"
+                                Width="40"
+                                Height="40"
+                                Margin="3"
+                                MaxLength="1"
+                                Style="{StaticResource TwoFATextBox}"
+                                PreviewTextInput="TwoFABox_PreviewTextInput"
+                                TextChanged="TwoFABox_TextChanged" />
+                            <TextBox
+                                x:Name="TwoFABox1"
+                                Width="40"
+                                Height="40"
+                                Margin="3"
+                                MaxLength="1"
+                                Style="{StaticResource TwoFATextBox}"
+                                PreviewTextInput="TwoFABox_PreviewTextInput"
+                                TextChanged="TwoFABox_TextChanged" />
+                            <TextBox
+                                x:Name="TwoFABox2"
+                                Width="40"
+                                Height="40"
+                                Margin="3"
+                                MaxLength="1"
+                                Style="{StaticResource TwoFATextBox}"
+                                PreviewTextInput="TwoFABox_PreviewTextInput"
+                                TextChanged="TwoFABox_TextChanged" />
+                            <TextBox
+                                x:Name="TwoFABox3"
+                                Width="40"
+                                Height="40"
+                                Margin="3"
+                                MaxLength="1"
+                                Style="{StaticResource TwoFATextBox}"
+                                PreviewTextInput="TwoFABox_PreviewTextInput"
+                                TextChanged="TwoFABox_TextChanged" />
+                            <TextBox
+                                x:Name="TwoFABox4"
+                                Width="40"
+                                Height="40"
+                                Margin="3"
+                                MaxLength="1"
+                                Style="{StaticResource TwoFATextBox}"
+                                PreviewTextInput="TwoFABox_PreviewTextInput"
+                                TextChanged="TwoFABox_TextChanged" />
+                            <TextBox
+                                x:Name="TwoFABox5"
+                                Width="40"
+                                Height="40"
+                                Margin="3"
+                                MaxLength="1"
+                                Style="{StaticResource TwoFATextBox}"
+                                PreviewTextInput="TwoFABox_PreviewTextInput"
+                                TextChanged="TwoFABox_TextChanged" />
+                        </StackPanel>
+
+                        <TextBlock
+                            Margin="0,15,0,0"
+                            HorizontalAlignment="Center"
+                            Style="{StaticResource LinkTextBlock}"
+                            Text="Проблемы с 2FA? Обратитесь в поддержку" />
                     </StackPanel>
                 </Border>
-            </Grid>
-        </Border>
+
+                <!-- Запомнить меня -->
+                <CheckBox
+                    Margin="0,0,0,30"
+                    Content="Оставаться в системе"
+                    Style="{StaticResource MinimalCheckBox}" />
+
+                <!-- Кнопка входа -->
+                <ui:Button
+                    x:Name="SignInButton"
+                    Margin="0,0,0,15"
+                    Padding="0,12"
+                    HorizontalAlignment="Stretch"
+                    Background="#6D90F3"
+                    BorderThickness="0"
+                    Click="SignInButton_Click"
+                    CornerRadius="8">
+                    <ui:Button.Content>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                FontFamily="AdwaitaSans"
+                                FontSize="16"
+                                FontWeight="SemiBold"
+                                Foreground="White"
+                                Text="Войти" />
+                            <ui:SymbolIcon
+                                Margin="10,0,0,0"
+                                FontSize="16"
+                                Foreground="White"
+                                Symbol="ArrowRight24" />
+                        </StackPanel>
+                    </ui:Button.Content>
+                </ui:Button>
+
+                <!-- Смена сервера -->
+                <TextBlock
+                    Margin="0,0,0,0"
+                    HorizontalAlignment="Center"
+                    Style="{StaticResource LinkTextBlock}"
+                    Text="Изменить подключение к серверу" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Нижняя секция -->
+        <StackPanel
+            Grid.Row="2"
+            Margin="0,0,0,30"
+            HorizontalAlignment="Center"
+            Orientation="Vertical">
+
+            <Border
+                Padding="0,20,0,0"
+                BorderBrush="#333333"
+                BorderThickness="0,1,0,0">
+                <StackPanel>
+                    <TextBlock
+                        Margin="0,0,0,15"
+                        HorizontalAlignment="Center"
+                        FontFamily="AdwaitaSans"
+                        FontSize="14"
+                        Foreground="#9E9E9E"
+                        Text="Еще нет аккаунта?" />
+
+                    <ui:Button
+                        x:Name="CreateAccountButton"
+                        Padding="25,10"
+                        HorizontalAlignment="Center"
+                        Appearance="Secondary"
+                        BorderThickness="1"
+                        Click="CreateAccountPageOpen"
+                        CornerRadius="8">
+                        <ui:Button.Content>
+                            <TextBlock
+                                FontFamily="AdwaitaSans"
+                                FontSize="14"
+                                FontWeight="Medium"
+                                Text="Создать новый аккаунт" />
+                        </ui:Button.Content>
+                    </ui:Button>
+                </StackPanel>
+            </Border>
+
+            <!-- Копирайт -->
+            <TextBlock
+                Margin="0,20,0,0"
+                HorizontalAlignment="Center"
+                FontFamily="AdwaitaSans"
+                FontSize="12"
+                Foreground="#666666"
+                Text="© 2025 BarkFluff Inc. Все права защищены." />
+        </StackPanel>
     </Grid>
 </UserControl>
