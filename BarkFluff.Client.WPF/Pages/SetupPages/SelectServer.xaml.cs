@@ -26,7 +26,8 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
         {
             InitializeComponent();
         }
-        private async void Button_Click(object sender, RoutedEventArgs e)
+
+        private void ConnectButton_Click(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -56,7 +57,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                 try
                 {
                     App.ServerCommunication.GetServerInfo(App.GParam);
-                    GlobalParam.Save(App.GParam, Path.Combine( App.GParam.AppPath, "GlobalParam.json"), App.GParam.AppPass);
+                    GlobalParam.Save(App.GParam, Path.Combine(App.GParam.AppPath, "GlobalParam.json"), App.GParam.AppPass);
                 }
                 catch (Exception ex)
                 {
@@ -72,6 +73,16 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
             {
                 ErrorText.Text = $"Неизвестная ошибка: {ex.Message}";
             }
+        }
+
+        private void ServerAddressTextBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void PublicServer_Click(object sender, RoutedEventArgs e)
+        {
+
         }
     }
 }

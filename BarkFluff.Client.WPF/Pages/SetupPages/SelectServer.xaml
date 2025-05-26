@@ -214,81 +214,10 @@
                 Foreground="#9E9E9E"
                 Text="Формат: домен/IP:порт (например: myserver.com:8080)" />
 
-            <!--  Недавние подключения  -->
-            <TextBlock
-                Margin="0,20,0,10"
-                HorizontalAlignment="Left"
-                FontFamily="AdwaitaSans"
-                FontSize="14"
-                FontWeight="Normal"
-                Foreground="#9E9E9E"
-                Text="Недавние подключения" />
-
-            <StackPanel Margin="0,0,0,30">
-                <Button
-                    Click="RecentServer_Click"
-                    Style="{StaticResource ServerButton}"
-                    Tag="homeserver.local:6543">
-                    <Grid>
-                        <TextBlock HorizontalAlignment="Left" Text="homeserver.local:6543" />
-                        <TextBlock
-                            HorizontalAlignment="Right"
-                            FontSize="12"
-                            Foreground="#9E9E9E"
-                            Text="Вчера" />
-                    </Grid>
-                </Button>
-
-                <Button
-                    Click="RecentServer_Click"
-                    Style="{StaticResource ServerButton}"
-                    Tag="barkfluff-admin.net:9876">
-                    <Grid>
-                        <TextBlock HorizontalAlignment="Left" Text="barkfluff-admin.net:9876" />
-                        <TextBlock
-                            HorizontalAlignment="Right"
-                            FontSize="12"
-                            Foreground="#9E9E9E"
-                            Text="3 дня назад" />
-                    </Grid>
-                </Button>
-
-                <Button
-                    Click="RecentServer_Click"
-                    Style="{StaticResource ServerButton}"
-                    Tag="192.168.1.55:8080">
-                    <Grid>
-                        <TextBlock HorizontalAlignment="Left" Text="192.168.1.55:8080" />
-                        <TextBlock
-                            HorizontalAlignment="Right"
-                            FontSize="12"
-                            Foreground="#9E9E9E"
-                            Text="Неделю назад" />
-                    </Grid>
-                </Button>
-            </StackPanel>
+            
 
             <!--  Кнопки действий  -->
             <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
-                <ui:Button
-                    x:Name="BackButton"
-                    Margin="0,0,10,0"
-                    Click="BackButton_Click"
-                    Style="{StaticResource ActionButton}">
-                    <ui:Button.Content>
-                        <StackPanel Orientation="Horizontal">
-                            <ui:SymbolIcon
-                                Margin="0,0,10,0"
-                                FontSize="18"
-                                Foreground="White"
-                                Symbol="ArrowLeft24" />
-                            <TextBlock
-                                VerticalAlignment="Center"
-                                Foreground="White"
-                                Text="Назад" />
-                        </StackPanel>
-                    </ui:Button.Content>
-                </ui:Button>
 
                 <ui:Button
                     x:Name="ConnectButton"
