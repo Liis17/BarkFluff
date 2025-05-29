@@ -3,6 +3,7 @@ using BarkFluff.Messages.Features.KickUser;
 using BarkFluff.Messages.Features.ListChatMembers;
 using BarkFluff.Messages.Features.ListChats;
 using BarkFluff.Messages.Features.ListMessages;
+using BarkFluff.Messages.Features.MarkAsRead;
 using BarkFluff.Messages.Features.SendMessage;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Shared;
@@ -157,5 +158,17 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
        await _mediator.Send(command);
 
        return new KickUserResponse();
+    }
+
+    public override async Task<MarkAsReadResponse> MarkAsRead(MarkAsReadRequest request, ServerCallContext context)
+    {
+        var command = new MarkAsReadCommand
+        {
+            MessageIds = request.MessageIds.ToList()
+        };
+
+        await _mediator.Send(command);
+
+        return new MarkAsReadResponse();
     }
 }
