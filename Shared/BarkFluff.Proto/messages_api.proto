@@ -26,7 +26,16 @@ service MessagesApi {
   
   // Убрать пользователя из группового чата
   rpc KickUser(KickUserRequest) returns(KickUserResponse);
+  
+  // Отментить сообщения как прочитанные 
+  rpc MarkAsRead(MarkAsReadRequest) returns(MarkAsReadResponse);
 }
+
+message MarkAsReadRequest {
+  repeated int64 message_ids = 1; // Идентификаторы сообщений
+}
+
+message MarkAsReadResponse { }
 
 message KickUserRequest {
   string chat_id = 1; // Идентификатор чата
