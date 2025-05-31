@@ -74,30 +74,33 @@
                 HorizontalAlignment="Center"
                 Opacity="0.7"
                 Orientation="Horizontal">
-                <emoji:TextBlock
+                <ui:SymbolIcon
                     x:Name="key3"
                     FontSize="17"
-                    Text="🔑" />
-                <emoji:TextBlock
+                    Foreground="White"
+                    Symbol="Key20" />
+                <ui:SymbolIcon
                     x:Name="key2"
                     FontSize="17"
-                    Text="🔑" />
-                <emoji:TextBlock
+                    Foreground="White"
+                    Symbol="Key20" />
+                <ui:SymbolIcon
                     x:Name="key1"
                     FontSize="17"
-                    Text="🔑" />
+                    Foreground="White"
+                    Symbol="Key20" />
             </StackPanel>
             <TextBlock
                 x:Name="helper"
                 Margin="10"
-                TextAlignment="Center"
                 HorizontalAlignment="Center"
                 FontFamily="AdwaitaSans"
                 FontSize="15"
                 FontWeight="Medium"
                 Foreground="White"
                 Opacity="0.8"
-                Text="АХхахахаха пиздец, долюоеб забыл пароль АЗАЗАзАЗА" />
+                Text="АХхахахаха пиздец, долюоеб забыл пароль АЗАЗАзАЗА"
+                TextAlignment="Center" />
         </StackPanel>
         <StackPanel
             HorizontalAlignment="Center"
