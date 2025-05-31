@@ -77,17 +77,17 @@
                 <ui:SymbolIcon
                     x:Name="key3"
                     FontSize="17"
-                    Foreground="White"
+                    Foreground="Orange"
                     Symbol="Key20" />
                 <ui:SymbolIcon
                     x:Name="key2"
                     FontSize="17"
-                    Foreground="White"
+                    Foreground="Orange"
                     Symbol="Key20" />
                 <ui:SymbolIcon
                     x:Name="key1"
                     FontSize="17"
-                    Foreground="White"
+                    Foreground="Orange"
                     Symbol="Key20" />
             </StackPanel>
             <TextBlock
@@ -99,7 +99,7 @@
                 FontWeight="Medium"
                 Foreground="White"
                 Opacity="0.8"
-                Text="АХхахахаха пиздец, долюоеб забыл пароль АЗАЗАзАЗА"
+                Text="Текст предупреждения будет отображаться тут"
                 TextAlignment="Center" />
         </StackPanel>
         <StackPanel
@@ -114,11 +114,16 @@
                 Foreground="#FF9A9A9A"
                 Text="Проблемы со входом? Попробуйте сбросить приложение." />
             <ui:Button
-                Margin="0,5,0,10"
+                Width="200"
+                Height="45"
+                Margin="0,7,0,7"
                 HorizontalAlignment="Center"
                 Background="#FFD20505"
                 Click="RemoveSettings"
-                Opacity="0.6">
+                CornerRadius="22"
+                MouseOverBackground="#FFC54700"
+                Opacity="0.6"
+                PressedBackground="#FFAB3D00">
                 <ui:Button.Content>
                     <StackPanel Orientation="Horizontal">
                         <TextBlock
