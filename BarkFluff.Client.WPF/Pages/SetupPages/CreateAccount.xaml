@@ -264,7 +264,7 @@
                         <TextBlock
                             x:Name="PasswordDifficultyIndicator"
                             Margin="0,0,0,15"
-                            FontFamily="AdwaitaSans"
+                            FontFamily="{DynamicResource AdwaitaSans}"
                             FontSize="12"
                             FontWeight="Normal"
                             Foreground="#FFC3C3C3"
@@ -327,7 +327,7 @@
                         x:Name="ErrorMessageTextBlock"
                         MinHeight="20"
                         Margin="0,0,0,15"
-                        FontFamily="AdwaitaSans"
+                        FontFamily="{DynamicResource AdwaitaSans}"
                         FontSize="13"
                         FontWeight="Medium"
                         Foreground="#FFFF4646"
@@ -355,7 +355,7 @@
                                     Symbol="ArrowLeft12" />
                                 <TextBlock
                                     Margin="8,0,0,0"
-                                    FontFamily="AdwaitaSans"
+                                    FontFamily="{DynamicResource AdwaitaSans}"
                                     FontSize="14"
                                     FontWeight="SemiBold"
                                     Foreground="White"
@@ -372,7 +372,7 @@
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock
                                     Margin="0,0,8,0"
-                                    FontFamily="AdwaitaSans"
+                                    FontFamily="{DynamicResource AdwaitaSans}"
                                     FontSize="14"
                                     FontWeight="SemiBold"
                                     Foreground="White"
@@ -395,7 +395,7 @@
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock
                                     Margin="0,0,8,0"
-                                    FontFamily="AdwaitaSans"
+                                    FontFamily="{DynamicResource AdwaitaSans}"
                                     FontSize="14"
                                     FontWeight="SemiBold"
                                     Foreground="White"

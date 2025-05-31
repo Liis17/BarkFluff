@@ -14,7 +14,7 @@
         <TextBlock
             Margin="10"
             HorizontalAlignment="Center"
-            FontFamily="AdwaitaSans"
+            FontFamily="{DynamicResource AdwaitaSans}"
             FontSize="25"
             FontWeight="Black"
             Foreground="#FF828282"

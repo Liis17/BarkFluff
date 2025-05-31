@@ -33,5 +33,10 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
         {
 
         }
+
+        private void BackToServerList(object sender, MouseButtonEventArgs e)
+        {
+            MessageBox.Show("тут должен быть редирект на страницу с выбором сервера");
+        }
     }
 }

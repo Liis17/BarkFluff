@@ -20,7 +20,7 @@
             <StackPanel Orientation="Vertical">
                 <TextBlock
                     HorizontalAlignment="Center"
-                    FontFamily="AdwaitaSans"
+                    FontFamily="{DynamicResource AdwaitaSans}"
                     FontSize="32"
                     FontWeight="Black"
                     Foreground="White"
@@ -28,7 +28,7 @@
                     Text="Авторизация" />
                 <TextBlock
                     HorizontalAlignment="Center"
-                    FontFamily="AdwaitaSans"
+                    FontFamily="{DynamicResource AdwaitaSans}"
                     FontSize="15"
                     FontWeight="Medium"
                     Foreground="White"
@@ -38,7 +38,7 @@
             </StackPanel>
 
             <TextBlock
-                FontFamily="AdwaitaSans"
+                FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="15"
                 FontWeight="Medium"
                 Foreground="White"
@@ -51,7 +51,7 @@
                 VerticalScrollBarVisibility="Auto" />
             <TextBlock
                 Margin="0,10,0,0"
-                FontFamily="AdwaitaSans"
+                FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="15"
                 FontWeight="Medium"
                 Foreground="#FFC3C3C3"
@@ -70,7 +70,7 @@
                         Margin="0,0,5,0"
                         HorizontalAlignment="Stretch"
                         VerticalAlignment="Center"
-                        FontFamily="AdwaitaSans"
+                        FontFamily="{DynamicResource AdwaitaSans}"
                         FontSize="12"
                         FontWeight="Bold"
                         Foreground="White"
@@ -85,7 +85,7 @@
             </ui:Button>
             <TextBlock
                 HorizontalAlignment="Center"
-                FontFamily="AdwaitaSans"
+                FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="10"
                 FontWeight="Medium"
                 Foreground="#FFC3C3C3"
@@ -99,7 +99,7 @@
                         Margin="0,0,5,0"
                         HorizontalAlignment="Stretch"
                         VerticalAlignment="Center"
-                        FontFamily="AdwaitaSans"
+                        FontFamily="{DynamicResource AdwaitaSans}"
                         FontSize="12"
                         FontWeight="Bold"
                         Foreground="White"

@@ -58,12 +58,20 @@
                         MouseOverBackground="#FFC54700"
                         PressedBackground="#FFAB3D00"
                         ToolTip="Выбрать текущий вариант аварата и применить его для профиля">
-                        <TextBlock
-                            FontFamily="AdwaitaSans"
-                            FontSize="16"
-                            FontWeight="SemiBold"
-                            Foreground="White"
-                            Text="Обрезать" />
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock
+                                Margin="5"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                FontFamily="{DynamicResource AdwaitaSans}"
+                                FontSize="16"
+                                FontWeight="SemiBold"
+                                Foreground="White"
+                                Text="Обрезать"
+                                TextAlignment="Center" />
+                            <ui:SymbolIcon FontSize="21" Symbol="ScreenCut20" />
+                        </StackPanel>
+
                     </ui:Button>
                     <ui:Button
                         Height="45"
@@ -75,7 +83,10 @@
                         MouseOverBackground="#FFC54700"
                         PressedBackground="#FFAB3D00"
                         ToolTip="Вернуть картинку в исходное состояние">
-                        <ui:SymbolIcon FontSize="21" Symbol="ArrowMoveInward20" />
+                        <ui:SymbolIcon
+                            Margin="5"
+                            FontSize="21"
+                            Symbol="ArrowMoveInward20" />
                     </ui:Button>
                     <ui:Button
                         Height="45"
@@ -87,7 +98,10 @@
                         MouseOverBackground="#FFC54700"
                         PressedBackground="#FFAB3D00"
                         ToolTip="Выбрать другую картинку">
-                        <ui:SymbolIcon FontSize="21" Symbol="ArrowDownload20" />
+                        <ui:SymbolIcon
+                            Margin="5"
+                            FontSize="21"
+                            Symbol="ArrowDownload20" />
                     </ui:Button>
                 </StackPanel>
                 <Slider
@@ -95,7 +109,8 @@
                     Width="300"
                     Margin="10"
                     HorizontalAlignment="Center"
-                    Foreground="AliceBlue"
+                    Background="#FFCA2727"
+                    Foreground="#FF2481D2"
                     Maximum="2.5"
                     Minimum="0.5"
                     TickFrequency="0.05"
