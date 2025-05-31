@@ -27,5 +27,11 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
         {
             App.MessengerWindow.OpenCreatePinCodePage();
         }
+
+        private void ClickFooter(object sender, MouseButtonEventArgs e)
+        {
+            MessageBoxOptions options = MessageBoxOptions.DefaultDesktopOnly | MessageBoxOptions.None;
+            MessageBox.Show("BarkFluff Client WPF\nVersion: " + AppVersion.VersionName + " " + AppVersion.Version, "About", MessageBoxButton.OK, MessageBoxImage.Exclamation, MessageBoxResult.OK, options);
+        }
     }
 }

@@ -179,7 +179,7 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Логотип сверху -->
+        <!--  Логотип сверху  -->
         <StackPanel
             Grid.Row="0"
             Margin="0,40,0,0"
@@ -199,203 +199,204 @@
                 Text="BarkFluff" />
         </StackPanel>
 
-        <!-- Основное содержимое -->
-        <StackPanel
+        <!--  Основное содержимое  -->
+        <ScrollViewer
             Grid.Row="1"
             Margin="0,40,0,40"
             HorizontalAlignment="Center"
-            VerticalAlignment="Center"
-            Orientation="Vertical">
-
-            <!-- Заголовок -->
-            <TextBlock
-                Margin="0,0,0,8"
+            VerticalAlignment="Center">
+            <StackPanel
                 HorizontalAlignment="Center"
-                FontFamily="AdwaitaSans"
-                FontSize="32"
-                FontWeight="SemiBold"
-                Foreground="White"
-                Text="Добро пожаловать" />
+                VerticalAlignment="Center"
+                Orientation="Vertical">
 
-            <TextBlock
-                Margin="0,0,0,40"
-                HorizontalAlignment="Center"
-                FontFamily="AdwaitaSans"
-                FontSize="16"
-                FontWeight="Normal"
-                Foreground="#B0B0B0"
-                Text="Войдите в свой аккаунт" />
-
-            <!-- Поля ввода -->
-            <StackPanel Width="320" Orientation="Vertical">
-
-                <!-- Имя пользователя -->
+                <!--  Заголовок  -->
                 <TextBlock
                     Margin="0,0,0,8"
+                    HorizontalAlignment="Center"
                     FontFamily="AdwaitaSans"
-                    FontSize="14"
-                    Foreground="#E0E0E0"
-                    Text="Имя пользователя" />
-                <TextBox
-                    x:Name="UsernameTextBox"
-                    Margin="0,0,0,20"
-                    Style="{StaticResource MinimalTextBox}" />
+                    FontSize="32"
+                    FontWeight="SemiBold"
+                    Foreground="White"
+                    Text="Добро пожаловать" />
 
-                <!-- Пароль -->
                 <TextBlock
-                    Margin="0,0,0,8"
+                    Margin="0,0,0,40"
+                    HorizontalAlignment="Center"
                     FontFamily="AdwaitaSans"
-                    FontSize="14"
-                    Foreground="#E0E0E0"
-                    Text="Пароль" />
-                <PasswordBox
-                    x:Name="PasswordBox"
-                    Margin="0,0,0,8"
-                    Style="{StaticResource MinimalPasswordBox}" />
+                    FontSize="16"
+                    FontWeight="Normal"
+                    Foreground="#B0B0B0"
+                    Text="Войдите в свой аккаунт" />
 
-                <TextBlock
-                    Margin="0,0,0,25"
-                    HorizontalAlignment="Right"
-                    Style="{StaticResource LinkTextBlock}"
-                    Text="Забыли пароль?" />
+                <!--  Поля ввода  -->
+                <StackPanel Width="320" Orientation="Vertical">
 
-                <!-- 2FA секция -->
-                <Border
-                    Margin="0,0,0,25"
-                    Padding="20"
-                    Background="#1F1F1F"
-                    BorderBrush="#333333"
-                    BorderThickness="1"
-                    CornerRadius="12">
-                    <StackPanel>
-                        <TextBlock
-                            Margin="0,0,0,5"
-                            FontFamily="AdwaitaSans"
-                            FontSize="16"
-                            FontWeight="SemiBold"
-                            Foreground="White"
-                            Text="Двухфакторная аутентификация" />
+                    <!--  Имя пользователя  -->
+                    <TextBlock
+                        Margin="0,0,0,8"
+                        FontFamily="AdwaitaSans"
+                        FontSize="14"
+                        Foreground="#E0E0E0"
+                        Text="Имя пользователя" />
+                    <TextBox
+                        x:Name="UsernameTextBox"
+                        Margin="0,0,0,20"
+                        Style="{StaticResource MinimalTextBox}" />
 
-                        <TextBlock
-                            TextWrapping="WrapWithOverflow"
-                            Margin="0,0,0,15"
-                            FontFamily="AdwaitaSans"
-                            FontSize="14"
-                            Foreground="#B0B0B0"
-                            Text="Введите 6-значный код из приложения-аутентификатора" />
+                    <!--  Пароль  -->
+                    <TextBlock
+                        Margin="0,0,0,8"
+                        FontFamily="AdwaitaSans"
+                        FontSize="14"
+                        Foreground="#E0E0E0"
+                        Text="Пароль" />
+                    <PasswordBox
+                        x:Name="PasswordBox"
+                        Margin="0,0,0,8"
+                        Style="{StaticResource MinimalPasswordBox}" />
 
-                        <!-- 2FA поля -->
-                        <StackPanel
-                            HorizontalAlignment="Center"
-                            Orientation="Horizontal">
-                            <TextBox
-                                x:Name="TwoFABox0"
-                                Width="40"
-                                Height="40"
-                                Margin="3"
-                                MaxLength="1"
-                                Style="{StaticResource TwoFATextBox}"
-                                PreviewTextInput="TwoFABox_PreviewTextInput"
-                                TextChanged="TwoFABox_TextChanged" />
-                            <TextBox
-                                x:Name="TwoFABox1"
-                                Width="40"
-                                Height="40"
-                                Margin="3"
-                                MaxLength="1"
-                                Style="{StaticResource TwoFATextBox}"
-                                PreviewTextInput="TwoFABox_PreviewTextInput"
-                                TextChanged="TwoFABox_TextChanged" />
-                            <TextBox
-                                x:Name="TwoFABox2"
-                                Width="40"
-                                Height="40"
-                                Margin="3"
-                                MaxLength="1"
-                                Style="{StaticResource TwoFATextBox}"
-                                PreviewTextInput="TwoFABox_PreviewTextInput"
-                                TextChanged="TwoFABox_TextChanged" />
-                            <TextBox
-                                x:Name="TwoFABox3"
-                                Width="40"
-                                Height="40"
-                                Margin="3"
-                                MaxLength="1"
-                                Style="{StaticResource TwoFATextBox}"
-                                PreviewTextInput="TwoFABox_PreviewTextInput"
-                                TextChanged="TwoFABox_TextChanged" />
-                            <TextBox
-                                x:Name="TwoFABox4"
-                                Width="40"
-                                Height="40"
-                                Margin="3"
-                                MaxLength="1"
-                                Style="{StaticResource TwoFATextBox}"
-                                PreviewTextInput="TwoFABox_PreviewTextInput"
-                                TextChanged="TwoFABox_TextChanged" />
-                            <TextBox
-                                x:Name="TwoFABox5"
-                                Width="40"
-                                Height="40"
-                                Margin="3"
-                                MaxLength="1"
-                                Style="{StaticResource TwoFATextBox}"
-                                PreviewTextInput="TwoFABox_PreviewTextInput"
-                                TextChanged="TwoFABox_TextChanged" />
-                        </StackPanel>
+                    <TextBlock
+                        Margin="0,0,0,25"
+                        HorizontalAlignment="Right"
+                        Style="{StaticResource LinkTextBlock}"
+                        Text="Забыли пароль?" />
 
-                        <TextBlock
-                            Margin="0,15,0,0"
-                            HorizontalAlignment="Center"
-                            Style="{StaticResource LinkTextBlock}"
-                            Text="Проблемы с 2FA? Обратитесь в поддержку" />
-                    </StackPanel>
-                </Border>
-
-                <!-- Запомнить меня -->
-                <CheckBox
-                    Margin="0,0,0,30"
-                    Content="Оставаться в системе"
-                    Style="{StaticResource MinimalCheckBox}" />
-
-                <!-- Кнопка входа -->
-                <ui:Button
-                    x:Name="SignInButton"
-                    Margin="0,0,0,15"
-                    Padding="0,12"
-                    HorizontalAlignment="Stretch"
-                    Background="#6D90F3"
-                    BorderThickness="0"
-                    Click="SignInButton_Click"
-                    CornerRadius="8">
-                    <ui:Button.Content>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <!--  2FA секция  -->
+                    <Border
+                        Margin="0,0,0,25"
+                        Padding="20"
+                        Background="#1F1F1F"
+                        BorderBrush="#333333"
+                        BorderThickness="1"
+                        CornerRadius="12">
+                        <StackPanel>
                             <TextBlock
-                                VerticalAlignment="Center"
+                                Margin="0,0,0,5"
                                 FontFamily="AdwaitaSans"
                                 FontSize="16"
                                 FontWeight="SemiBold"
                                 Foreground="White"
-                                Text="Войти" />
-                            <ui:SymbolIcon
-                                Margin="10,0,0,0"
-                                FontSize="16"
-                                Foreground="White"
-                                Symbol="ArrowRight24" />
+                                Text="Двухфакторная аутентификация" />
+
+                            <TextBlock
+                                Margin="0,0,0,15"
+                                FontFamily="AdwaitaSans"
+                                FontSize="14"
+                                Foreground="#B0B0B0"
+                                Text="Введите 6-значный код из приложения-аутентификатора"
+                                TextWrapping="WrapWithOverflow" />
+
+                            <!--  2FA поля  -->
+                            <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                                <TextBox
+                                    x:Name="TwoFABox0"
+                                    Width="40"
+                                    Height="40"
+                                    Margin="3"
+                                    MaxLength="1"
+                                    PreviewTextInput="TwoFABox_PreviewTextInput"
+                                    Style="{StaticResource TwoFATextBox}"
+                                    TextChanged="TwoFABox_TextChanged" />
+                                <TextBox
+                                    x:Name="TwoFABox1"
+                                    Width="40"
+                                    Height="40"
+                                    Margin="3"
+                                    MaxLength="1"
+                                    PreviewTextInput="TwoFABox_PreviewTextInput"
+                                    Style="{StaticResource TwoFATextBox}"
+                                    TextChanged="TwoFABox_TextChanged" />
+                                <TextBox
+                                    x:Name="TwoFABox2"
+                                    Width="40"
+                                    Height="40"
+                                    Margin="3"
+                                    MaxLength="1"
+                                    PreviewTextInput="TwoFABox_PreviewTextInput"
+                                    Style="{StaticResource TwoFATextBox}"
+                                    TextChanged="TwoFABox_TextChanged" />
+                                <TextBox
+                                    x:Name="TwoFABox3"
+                                    Width="40"
+                                    Height="40"
+                                    Margin="3"
+                                    MaxLength="1"
+                                    PreviewTextInput="TwoFABox_PreviewTextInput"
+                                    Style="{StaticResource TwoFATextBox}"
+                                    TextChanged="TwoFABox_TextChanged" />
+                                <TextBox
+                                    x:Name="TwoFABox4"
+                                    Width="40"
+                                    Height="40"
+                                    Margin="3"
+                                    MaxLength="1"
+                                    PreviewTextInput="TwoFABox_PreviewTextInput"
+                                    Style="{StaticResource TwoFATextBox}"
+                                    TextChanged="TwoFABox_TextChanged" />
+                                <TextBox
+                                    x:Name="TwoFABox5"
+                                    Width="40"
+                                    Height="40"
+                                    Margin="3"
+                                    MaxLength="1"
+                                    PreviewTextInput="TwoFABox_PreviewTextInput"
+                                    Style="{StaticResource TwoFATextBox}"
+                                    TextChanged="TwoFABox_TextChanged" />
+                            </StackPanel>
+
+                            <TextBlock
+                                Margin="0,15,0,0"
+                                HorizontalAlignment="Center"
+                                Style="{StaticResource LinkTextBlock}"
+                                Text="Проблемы с 2FA? Обратитесь в поддержку" />
                         </StackPanel>
-                    </ui:Button.Content>
-                </ui:Button>
+                    </Border>
 
-                <!-- Смена сервера -->
-                <TextBlock
-                    Margin="0,0,0,0"
-                    HorizontalAlignment="Center"
-                    Style="{StaticResource LinkTextBlock}"
-                    Text="Изменить подключение к серверу" />
+                    <!--  Запомнить меня  -->
+                    <CheckBox
+                        Margin="0,0,0,30"
+                        Content="Оставаться в системе"
+                        Style="{StaticResource MinimalCheckBox}" />
+
+                    <!--  Кнопка входа  -->
+                    <ui:Button
+                        x:Name="SignInButton"
+                        Margin="0,0,0,15"
+                        Padding="0,12"
+                        HorizontalAlignment="Stretch"
+                        Background="#6D90F3"
+                        BorderThickness="0"
+                        Click="SignInButton_Click"
+                        CornerRadius="8">
+                        <ui:Button.Content>
+                            <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                                <TextBlock
+                                    VerticalAlignment="Center"
+                                    FontFamily="AdwaitaSans"
+                                    FontSize="16"
+                                    FontWeight="SemiBold"
+                                    Foreground="White"
+                                    Text="Войти" />
+                                <ui:SymbolIcon
+                                    Margin="10,0,0,0"
+                                    FontSize="16"
+                                    Foreground="White"
+                                    Symbol="ArrowRight24" />
+                            </StackPanel>
+                        </ui:Button.Content>
+                    </ui:Button>
+
+                    <!--  Смена сервера  -->
+                    <TextBlock
+                        Margin="0,0,0,0"
+                        HorizontalAlignment="Center"
+                        Style="{StaticResource LinkTextBlock}"
+                        Text="Изменить подключение к серверу" />
+                </StackPanel>
             </StackPanel>
-        </StackPanel>
-
-        <!-- Нижняя секция -->
+        </ScrollViewer>
+        <!--  Нижняя секция  -->
         <StackPanel
             Grid.Row="2"
             Margin="0,0,0,30"
@@ -434,7 +435,7 @@
                 </StackPanel>
             </Border>
 
-            <!-- Копирайт -->
+            <!--  Копирайт  -->
             <TextBlock
                 Margin="0,20,0,0"
                 HorizontalAlignment="Center"
