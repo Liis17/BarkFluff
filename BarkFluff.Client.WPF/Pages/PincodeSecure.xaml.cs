@@ -1,4 +1,5 @@
 ﻿using BarkFluff.WebApi.Core.MessengerData;
+
 using System.IO;
 using System.Reflection;
 using System.Windows;
@@ -72,7 +73,7 @@ namespace BarkFluff.Client.WPF.Pages
                             ClearAll();
                             GetBox(0).Focus();
                         }
-                        if(attempts == 0)
+                        if (attempts == 0)
                         {
                             helper.Text = "Попытки исчерпаны. Помянем";
                             RemoveSettings(sender, e);
@@ -156,7 +157,7 @@ namespace BarkFluff.Client.WPF.Pages
                 MessageBox.Show("Файл GlobalParam.json не найден", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
-            
+
         }
         private void Next()
         {
@@ -177,8 +178,8 @@ namespace BarkFluff.Client.WPF.Pages
                 File.Delete("GlobalParam.json");
                 Application.Current.Shutdown();
             }
-            
-            
+
+
         }
 
         private void FocusBoxZero(object sender, RoutedEventArgs e)

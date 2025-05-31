@@ -1,20 +1,7 @@
-﻿using BarkFluff.Client.WPF.Pages;
-using BarkFluff.Client.WPF.ServiceWindows;
-using BarkFluff.Proto.Users;
-using BarkFluff.WebApi.Core;
-using BarkFluff.WebApi.Core.MessengerData;
-
-using Grpc.Net.Client;
-
-using System.Configuration;
-using System.Data;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.IO;
-using System.Net;
 using System.Reflection;
 using System.Windows;
-
-using static BarkFluff.Proto.Users.UsersApi;
 
 namespace BarkFluff.Client.WPF
 {

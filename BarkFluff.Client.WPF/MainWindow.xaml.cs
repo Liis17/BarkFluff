@@ -4,22 +4,9 @@ using BarkFluff.Client.WPF.Pages.PinCode;
 using BarkFluff.Client.WPF.Pages.SetupPages;
 using BarkFluff.WebApi.Core.MessengerData;
 
-using Grpc.Core;
-using Grpc.Core.Interceptors;
-using Grpc.Net.Client;
-
-using System.Diagnostics;
 using System.IO;
-using System.Reflection;
-using System.Text;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
 
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
@@ -48,9 +35,9 @@ namespace BarkFluff.Client.WPF
         }
         private void MainWindowBootstrap()
         {
-            #if DEBUG
+#if DEBUG
             DebugBootstap();
-            #endif
+#endif
         }
 
 #if DEBUG
@@ -81,9 +68,9 @@ namespace BarkFluff.Client.WPF
         }
 #endif
 
-        
 
-        
+
+
 
         private void MainFrame_Loaded(object sender, RoutedEventArgs e)
         {
@@ -157,7 +144,7 @@ namespace BarkFluff.Client.WPF
             MainFrame.Children.Clear();
             MainFrame.Children.Add(new Login());
 
-            App.ServerCommunication.CreateAC(App.GParam, App.GParam.MachineName,SystemInfo.GetFriendlyWindowsVersion(), AppVersion.AppName,AppVersion.Version, App.GParam.IpAddress);
+            App.ServerCommunication.CreateAC(App.GParam, App.GParam.MachineName, SystemInfo.GetFriendlyWindowsVersion(), AppVersion.AppName, AppVersion.Version, App.GParam.IpAddress);
         }
         public void PincodeSuccess()
         {
@@ -217,7 +204,7 @@ namespace BarkFluff.Client.WPF
             {
                 MainFrame.Children.Add(new Pages.SetupPages.Login());
 
-                
+
 
                 //var beaconData = App.ServerCommunication.BeaconAC.GetServerInfo(new BarkFluff.Proto.Beacon.GetServerInfoRequest());
 
@@ -228,7 +215,7 @@ namespace BarkFluff.Client.WPF
 
                 //App.GParam.ServerName = beaconData.Name;
 
-                
+
             }
         }
 

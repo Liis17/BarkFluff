@@ -1,18 +1,10 @@
 ﻿using BarkFluff.WebApi.Core.MessengerData;
 
-using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
 
 namespace BarkFluff.Client.WPF.Pages.PinCode
 {
@@ -170,7 +162,7 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
         {
             if (firstPinCode.Length == 4 && secondPinCode.Length == 4)
             {
-                
+
                 if (firstPinCode != secondPinCode)
                 {
                     ErrorTextBlockMessge.Text = "Пинкоды не совпадают";

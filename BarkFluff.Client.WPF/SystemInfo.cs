@@ -1,9 +1,6 @@
 ﻿using Microsoft.Win32;
 
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Text;
 
 namespace BarkFluff.Client.WPF
 {
@@ -69,7 +66,7 @@ namespace BarkFluff.Client.WPF
             {
                 // Если не удалось получить через реестр, продолжаем с обычным форматом
             }
-            
+
             return $"{windowsName} (сборка {buildNumber})";
         }
 
