@@ -14,7 +14,7 @@
         <TextBlock
             Margin="10"
             HorizontalAlignment="Center"
-            FontFamily="AdwaitaSans"
+            FontFamily="{DynamicResource AdwaitaSans}"
             FontSize="25"
             FontWeight="Black"
             Foreground="#FF828282"
@@ -28,14 +28,14 @@
             <TextBlock
                 Margin="10"
                 HorizontalAlignment="Center"
-                FontFamily="AdwaitaSans"
+                FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="32"
                 FontWeight="Black"
                 Foreground="White"
                 Text="BarkFluff сервер" />
             <TextBlock
                 HorizontalAlignment="Center"
-                FontFamily="AdwaitaSans"
+                FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="20"
                 FontWeight="Bold"
                 Foreground="#FFBBBBBB"
@@ -43,7 +43,7 @@
             <ui:TextBox
                 x:Name="ServerAddress"
                 HorizontalAlignment="Stretch"
-                FontFamily="AdwaitaSans"
+                FontFamily="{DynamicResource AdwaitaSans}"
                 FontWeight="Medium"
                 PlaceholderText="Введите IP адрес сервера"
                 TextAlignment="Justify" />
@@ -51,7 +51,7 @@
                 x:Name="ErrorText"
                 MaxWidth="200"
                 HorizontalAlignment="Center"
-                FontFamily="AdwaitaSans"
+                FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="12"
                 FontWeight="Medium"
                 Foreground="#FFCC2525"
@@ -67,7 +67,7 @@
                         <TextBlock
                             Margin="0,0,5,0"
                             VerticalAlignment="Center"
-                            FontFamily="AdwaitaSans"
+                            FontFamily="{DynamicResource AdwaitaSans}"
                             FontSize="12"
                             FontWeight="Bold"
                             Text="Продолжить" />

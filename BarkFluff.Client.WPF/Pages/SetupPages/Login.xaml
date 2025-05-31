@@ -179,7 +179,6 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!--  Логотип сверху  -->
         <StackPanel
             Grid.Row="0"
             Margin="0,40,0,0"
@@ -192,14 +191,13 @@
             <TextBlock
                 Margin="12,0,0,0"
                 VerticalAlignment="Center"
-                FontFamily="AdwaitaSans"
+                FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="20"
                 FontWeight="SemiBold"
-                Foreground="White"
+                Foreground="#FFF39E6D"
                 Text="BarkFluff" />
         </StackPanel>
 
-        <!--  Основное содержимое  -->
         <ScrollViewer
             Grid.Row="1"
             Margin="0,40,0,40"
@@ -210,11 +208,10 @@
                 VerticalAlignment="Center"
                 Orientation="Vertical">
 
-                <!--  Заголовок  -->
                 <TextBlock
                     Margin="0,0,0,8"
                     HorizontalAlignment="Center"
-                    FontFamily="AdwaitaSans"
+                    FontFamily="{DynamicResource AdwaitaSans}"
                     FontSize="32"
                     FontWeight="SemiBold"
                     Foreground="White"
@@ -223,19 +220,17 @@
                 <TextBlock
                     Margin="0,0,0,40"
                     HorizontalAlignment="Center"
-                    FontFamily="AdwaitaSans"
+                    FontFamily="{DynamicResource AdwaitaSans}"
                     FontSize="16"
                     FontWeight="Normal"
                     Foreground="#B0B0B0"
                     Text="Войдите в свой аккаунт" />
 
-                <!--  Поля ввода  -->
                 <StackPanel Width="320" Orientation="Vertical">
 
-                    <!--  Имя пользователя  -->
                     <TextBlock
                         Margin="0,0,0,8"
-                        FontFamily="AdwaitaSans"
+                        FontFamily="{DynamicResource AdwaitaSans}"
                         FontSize="14"
                         Foreground="#E0E0E0"
                         Text="Имя пользователя" />
@@ -244,10 +239,9 @@
                         Margin="0,0,0,20"
                         Style="{StaticResource MinimalTextBox}" />
 
-                    <!--  Пароль  -->
                     <TextBlock
                         Margin="0,0,0,8"
-                        FontFamily="AdwaitaSans"
+                        FontFamily="{DynamicResource AdwaitaSans}"
                         FontSize="14"
                         Foreground="#E0E0E0"
                         Text="Пароль" />
@@ -259,10 +253,10 @@
                     <TextBlock
                         Margin="0,0,0,25"
                         HorizontalAlignment="Right"
+                        Foreground="#FFF39E6D"
                         Style="{StaticResource LinkTextBlock}"
                         Text="Забыли пароль?" />
 
-                    <!--  2FA секция  -->
                     <Border
                         Margin="0,0,0,25"
                         Padding="20"
@@ -273,7 +267,7 @@
                         <StackPanel>
                             <TextBlock
                                 Margin="0,0,0,5"
-                                FontFamily="AdwaitaSans"
+                                FontFamily="{DynamicResource AdwaitaSans}"
                                 FontSize="16"
                                 FontWeight="SemiBold"
                                 Foreground="White"
@@ -281,7 +275,7 @@
 
                             <TextBlock
                                 Margin="0,0,0,15"
-                                FontFamily="AdwaitaSans"
+                                FontFamily="{DynamicResource AdwaitaSans}"
                                 FontSize="14"
                                 Foreground="#B0B0B0"
                                 Text="Введите 6-значный код из приложения-аутентификатора"
@@ -348,32 +342,30 @@
                             <TextBlock
                                 Margin="0,15,0,0"
                                 HorizontalAlignment="Center"
+                                Foreground="#FFF39E6D"
                                 Style="{StaticResource LinkTextBlock}"
                                 Text="Проблемы с 2FA? Обратитесь в поддержку" />
                         </StackPanel>
                     </Border>
 
-                    <!--  Запомнить меня  -->
-                    <CheckBox
-                        Margin="0,0,0,30"
-                        Content="Оставаться в системе"
-                        Style="{StaticResource MinimalCheckBox}" />
 
-                    <!--  Кнопка входа  -->
                     <ui:Button
                         x:Name="SignInButton"
+                        Height="45"
                         Margin="0,0,0,15"
                         Padding="0,12"
                         HorizontalAlignment="Stretch"
-                        Background="#6D90F3"
+                        Background="#df5000"
                         BorderThickness="0"
                         Click="SignInButton_Click"
-                        CornerRadius="8">
+                        CornerRadius="22"
+                        MouseOverBackground="#FFC54700"
+                        PressedBackground="#FFAB3D00">
                         <ui:Button.Content>
                             <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
                                 <TextBlock
                                     VerticalAlignment="Center"
-                                    FontFamily="AdwaitaSans"
+                                    FontFamily="{DynamicResource AdwaitaSans}"
                                     FontSize="16"
                                     FontWeight="SemiBold"
                                     Foreground="White"
@@ -387,16 +379,18 @@
                         </ui:Button.Content>
                     </ui:Button>
 
-                    <!--  Смена сервера  -->
                     <TextBlock
                         Margin="0,0,0,0"
                         HorizontalAlignment="Center"
+                        Cursor="Hand"
+                        Foreground="#FFF39E6D"
+                        MouseLeftButtonDown="BackToServerList"
                         Style="{StaticResource LinkTextBlock}"
                         Text="Изменить подключение к серверу" />
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>
-        <!--  Нижняя секция  -->
+
         <StackPanel
             Grid.Row="2"
             Margin="0,0,0,30"
@@ -411,22 +405,27 @@
                     <TextBlock
                         Margin="0,0,0,15"
                         HorizontalAlignment="Center"
-                        FontFamily="AdwaitaSans"
+                        FontFamily="{DynamicResource AdwaitaSans}"
                         FontSize="14"
                         Foreground="#9E9E9E"
                         Text="Еще нет аккаунта?" />
 
                     <ui:Button
                         x:Name="CreateAccountButton"
+                        Height="45"
+                        Margin="0,0,0,0"
                         Padding="25,10"
                         HorizontalAlignment="Center"
                         Appearance="Secondary"
+                        Background="#df5000"
                         BorderThickness="1"
                         Click="CreateAccountPageOpen"
-                        CornerRadius="8">
+                        CornerRadius="22"
+                        MouseOverBackground="#FFC54700"
+                        PressedBackground="#FFAB3D00">
                         <ui:Button.Content>
                             <TextBlock
-                                FontFamily="AdwaitaSans"
+                                FontFamily="{DynamicResource AdwaitaSans}"
                                 FontSize="14"
                                 FontWeight="Medium"
                                 Text="Создать новый аккаунт" />
@@ -435,14 +434,14 @@
                 </StackPanel>
             </Border>
 
-            <!--  Копирайт  -->
+
             <TextBlock
                 Margin="0,20,0,0"
                 HorizontalAlignment="Center"
-                FontFamily="AdwaitaSans"
+                FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="12"
                 Foreground="#666666"
-                Text="© 2025 BarkFluff Inc. Все права защищены." />
+                Text="2025 BarkFluff. Никакие права не защищены." />
         </StackPanel>
     </Grid>
 </UserControl>

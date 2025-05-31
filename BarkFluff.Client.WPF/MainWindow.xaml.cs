@@ -13,9 +13,6 @@ using Login = BarkFluff.Client.WPF.Pages.SetupPages.Login;
 
 namespace BarkFluff.Client.WPF
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
     public partial class MainWindow : FluentWindow
     {
         private readonly HashSet<Key> _pressedKeys = new();

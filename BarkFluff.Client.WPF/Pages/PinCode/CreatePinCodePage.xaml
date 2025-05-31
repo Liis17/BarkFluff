@@ -27,7 +27,7 @@
             <TextBlock
                 Margin="0,0,0,5"
                 HorizontalAlignment="Center"
-                FontFamily="AdwaitaSans"
+                FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="34"
                 FontWeight="SemiBold"
                 Foreground="White"
@@ -37,7 +37,7 @@
                 x:Name="statusText"
                 Margin="0,0,0,15"
                 HorizontalAlignment="Center"
-                FontFamily="AdwaitaSans"
+                FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="16"
                 FontWeight="Normal"
                 Foreground="#E0E0E0"
@@ -50,7 +50,7 @@
             <TextBlock
                 Margin="0,5,0,10"
                 HorizontalAlignment="Center"
-                FontFamily="AdwaitaSans"
+                FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="18"
                 FontWeight="Normal"
                 Foreground="#E0E0E0"
@@ -140,7 +140,7 @@
             <TextBlock
                 Margin="0,5,0,10"
                 HorizontalAlignment="Center"
-                FontFamily="AdwaitaSans"
+                FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="18"
                 FontWeight="Normal"
                 Foreground="#E0E0E0"
@@ -230,7 +230,7 @@
                 Margin="0,5,0,10"
                 HorizontalAlignment="Center"
                 Background="{x:Null}"
-                FontFamily="AdwaitaSans"
+                FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="18"
                 FontWeight="Normal"
                 Foreground="#FFE62F2F"
@@ -251,7 +251,7 @@
                 <ui:Button.Content>
                     <StackPanel Orientation="Horizontal">
                         <TextBlock
-                            FontFamily="AdwaitaSans"
+                            FontFamily="{DynamicResource AdwaitaSans}"
                             FontSize="16"
                             FontWeight="SemiBold"
                             Foreground="White"
@@ -277,7 +277,7 @@
             <TextBlock
                 MaxWidth="600"
                 HorizontalAlignment="Center"
-                FontFamily="AdwaitaSans"
+                FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="14"
                 FontWeight="Light"
                 Foreground="#9E9E9E"

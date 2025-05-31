@@ -19,7 +19,7 @@
             <TextBlock
                 Margin="40"
                 HorizontalAlignment="Center"
-                FontFamily="AdwaitaSans"
+                FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="32"
                 FontWeight="Black"
                 Foreground="White"
@@ -94,7 +94,7 @@
                 x:Name="helper"
                 Margin="10"
                 HorizontalAlignment="Center"
-                FontFamily="AdwaitaSans"
+                FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="15"
                 FontWeight="Medium"
                 Foreground="White"
@@ -108,7 +108,7 @@
             Orientation="Vertical">
             <TextBlock
                 HorizontalAlignment="Center"
-                FontFamily="AdwaitaSans"
+                FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="12"
                 FontWeight="Light"
                 Foreground="#FF9A9A9A"
@@ -128,7 +128,7 @@
                     <StackPanel Orientation="Horizontal">
                         <TextBlock
                             VerticalAlignment="Center"
-                            FontFamily="AdwaitaSans"
+                            FontFamily="{DynamicResource AdwaitaSans}"
                             FontWeight="Medium"
                             Foreground="#ffffff"
                             Text="Сбросить приложение" />

@@ -23,7 +23,7 @@
             <TextBlock
                 Margin="0,0,0,20"
                 HorizontalAlignment="Center"
-                FontFamily="AdwaitaSans"
+                FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="36"
                 FontWeight="Black"
                 Foreground="White"
@@ -31,7 +31,7 @@
             <TextBlock
                 Margin="0,0,0,40"
                 HorizontalAlignment="Center"
-                FontFamily="AdwaitaSans"
+                FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="16"
                 FontWeight="Medium"
                 Foreground="White"
@@ -42,7 +42,7 @@
                 MaxWidth="400"
                 Margin="0,0,0,50"
                 HorizontalAlignment="Center"
-                FontFamily="AdwaitaSans"
+                FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="14"
                 FontWeight="Light"
                 Foreground="White"
@@ -62,7 +62,7 @@
                 PressedBackground="#FFAB3D00">
                 <ui:Button.Content>
                     <TextBlock
-                        FontFamily="AdwaitaSans"
+                        FontFamily="{DynamicResource AdwaitaSans}"
                         FontSize="16"
                         FontWeight="SemiBold"
                         Foreground="White"
@@ -80,7 +80,7 @@
             <TextBlock
                 Margin="0,0,15,0"
                 Cursor="Hand"
-                FontFamily="AdwaitaSans"
+                FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="12"
                 FontWeight="Light"
                 Foreground="#FF9A9A9A"
@@ -88,7 +88,7 @@
                 Text="О проекте" />
             <TextBlock
                 Margin="0,0,15,0"
-                FontFamily="AdwaitaSans"
+                FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="12"
                 FontWeight="Light"
                 Foreground="#FF9A9A9A"
@@ -96,7 +96,7 @@
             <TextBlock
                 Margin="0,0,15,0"
                 Cursor="Hand"
-                FontFamily="AdwaitaSans"
+                FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="12"
                 FontWeight="Light"
                 Foreground="#FF9A9A9A"
@@ -104,14 +104,14 @@
                 Text="Политика конфиденциальности и условия использования" />
             <TextBlock
                 Margin="0,0,15,0"
-                FontFamily="AdwaitaSans"
+                FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="12"
                 FontWeight="Light"
                 Foreground="#FF9A9A9A"
                 Text="•" />
             <TextBlock
                 Cursor="Hand"
-                FontFamily="AdwaitaSans"
+                FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="12"
                 FontWeight="Light"
                 Foreground="#FF9A9A9A"
