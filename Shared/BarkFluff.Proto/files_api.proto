@@ -8,12 +8,29 @@ package barkfluff.files;
 
 service FilesApi {
   rpc GetUploadUrl(GetUploadUrlRequest) returns(GetUploadUrlResponse); // Получить ссылку для загрузки файла
+  
+  rpc GetTempDownloadUrl(GetTempDownloadUrlRequest) returns(GetTempDownloadUrlResponse); // Получить ссылку для скачивания файла
 }
 
 service FilesServerApi {
   rpc GetFileData(GetFileDataRequest) returns(GetFileDataResponse); // Получить информацию о загруженном файле
   
   rpc GetFilesData(GetFilesDataRequest) returns(GetFilesDataResponse); // Получить информацию о загруженных файлах
+}
+
+message GetTempDownloadUrlRequest {
+  repeated string file_ids = 1; // Идентификаторы файлов
+}
+
+message GetTempDownloadUrlResponse {
+  
+  message DownloadFileData {
+    string file_id = 1; // идентификатор файла
+    string url = 2; // ссылка на загрузку
+  }
+  
+  repeated DownloadFileData file_urls = 1; // ссылки на файлы
+  
 }
 
 message GetFilesDataRequest {
@@ -49,6 +66,7 @@ message GetUploadUrlRequest {
 
 message GetUploadUrlResponse {
   string url = 1; // адрес для загрузки файла
+  string file_id = 2; // идентификатор файла
 }
 
 enum UploadFileType {
@@ -63,4 +81,6 @@ enum UploadFileType {
   MESSAGE_ATTACHMENT_GIF = 4; // Вложение сообщения - гифка 
   
   MESSAGE_ATTACHMENT_DOCUMENT = 5; // Вложение сообщения - документ
+  
+  CHAT_PICTURE = 6; // Обложка группового чата
 }

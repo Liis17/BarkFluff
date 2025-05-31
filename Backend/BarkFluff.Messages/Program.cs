@@ -3,10 +3,12 @@ using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Messages.Host;
 using BarkFluff.Messages.Persistence;
 using BarkFluff.Messages.Persistence.Services;
+using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Auth;
 using BarkFluff.Shared.Exceptions.Interceptors;
 using BarkFluff.Shared.Identity;
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 
 namespace BarkFluff.Messages;
@@ -45,9 +47,27 @@ public class Program
             }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["UsersService:Token"]))
             .AddInterceptor(() => new ExceptionClientInterceptor());
         
+        builder.Services.AddGrpcClient<FilesServerApi.FilesServerApiClient>(o =>
+            {
+                o.Address = new Uri(builder.Configuration["FilesService:Host"]);
+            }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["FilesService:Token"]))
+            .AddInterceptor(() => new ExceptionClientInterceptor());
+        
         builder.Services.AddTransient<ChatsStorage>();
         builder.Services.AddScoped<ChatCache>();
         builder.Services.AddTransient<MessagesStorage>();
+        
+        builder.Services.AddMassTransit(x =>
+        {
+            x.UsingRabbitMq((context, cfg) =>
+            {
+                cfg.Host(builder.Configuration["RabbitMQ:Host"], "/", h =>
+                {
+                    h.Username(builder.Configuration["RabbitMQ:Username"]);
+                    h.Password(builder.Configuration["RabbitMQ:Password"]);
+                });
+            });
+        });
 
         var app = builder.Build();
 

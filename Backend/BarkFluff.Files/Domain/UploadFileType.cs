@@ -12,5 +12,7 @@ public enum UploadFileType
     
     MessageAttachmentGif = 4,
     
-    MessageAttachmentDocument = 5
+    MessageAttachmentDocument = 5,
+    
+    ChatPicture = 6,
 }

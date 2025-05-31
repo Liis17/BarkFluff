@@ -1,4 +1,4 @@
-namespace BarkFluff.Shared.Exceptions.Accounts;
+namespace BarkFluff.Shared.Exceptions.Users;
 
 public class UserIsDraftException : BaseGrpcException
 {

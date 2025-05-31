@@ -35,6 +35,7 @@ public class Program
         builder.Services.AddControllers();
         
         builder.Services.AddScoped<UploadedFilesStorage>();
+        builder.Services.AddScoped<TempFilesStorage>();
 
         builder.Services.AddMinioS3(builder.Configuration);
         

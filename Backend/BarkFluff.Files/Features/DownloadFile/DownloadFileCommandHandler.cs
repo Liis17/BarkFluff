@@ -1,3 +1,4 @@
+using BarkFluff.Files.Domain;
 using BarkFluff.Files.Exceptions;
 using BarkFluff.Files.Extensions;
 using BarkFluff.Files.Infrastructure;
@@ -10,20 +11,35 @@ public class DownloadFileCommandHandler : IRequestHandler<DownloadFileCommand, D
 {
     private readonly UploadedFilesStorage _filesStorage;
     private readonly S3Uploader _s3Uploader;
+    private readonly TempFilesStorage _tempFilesStorage;
 
-    public DownloadFileCommandHandler(UploadedFilesStorage filesStorage, S3Uploader s3Uploader)
+    public DownloadFileCommandHandler(UploadedFilesStorage filesStorage, S3Uploader s3Uploader,
+        TempFilesStorage tempFilesStorage)
     {
         _filesStorage = filesStorage;
         _s3Uploader = s3Uploader;
+        _tempFilesStorage = tempFilesStorage;
     }
 
     public async Task<DownloadFileResult> Handle(DownloadFileCommand request, CancellationToken cancellationToken)
     {
         var file = await _filesStorage.GetFile(request.FileId);
+
+        if (file != null && file.Type != UploadFileType.UserAvatar)
+        {
+            throw new Exception("Файл не найден");
+        }
         
         if (file is null)
         {
-            throw new Exception("Файл не найден");
+            var tempFile = await _tempFilesStorage.GetTempFile(request.FileId);
+
+            if (tempFile is null)
+            {
+                throw new Exception("Файл не найден");
+            }
+            
+            file = await _filesStorage.GetFile(tempFile.OriginalFileId);
         }
         
         if (string.IsNullOrEmpty(file.Etag))
@@ -48,7 +64,7 @@ public class DownloadFileCommandHandler : IRequestHandler<DownloadFileCommand, D
         return new DownloadFileResult
         {
             FileStream = fileStream,
-            FileName = $"{file.Id}.{extension}",
+            FileName = $"{file.Id}{extension}",
             ContentType = contentType
         };
     }

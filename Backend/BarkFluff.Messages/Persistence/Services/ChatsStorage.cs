@@ -82,6 +82,11 @@ public class ChatsStorage
         return members;
     }
 
+    public async Task<int> GetTotalChatMembers(Guid chatId)
+    {
+        return await _context.ChatMembers.CountAsync(x => x.ChatId == chatId);
+    }
+
     public async Task<Chat> CreatePersonChat(long userId, long personId)
     {
         var chat = new Chat()
@@ -100,5 +105,54 @@ public class ChatsStorage
         await _context.SaveChangesAsync();
 
         return result.Entity;
+    }
+
+    public async Task<Chat> CreateGroupChat(List<long> members,  string title, string? picture)
+    {
+        var chat = new Chat()
+        {
+            IsGroupChat = true,
+            Title = title,
+            Picture = picture,
+            Members = members.Select(x => new ChatMember() { UserId = x, JoinedAt = DateTime.UtcNow })
+                .ToList()
+        };
+        
+        var result = await _context.Chats.AddAsync(chat);
+        
+        await _context.SaveChangesAsync();
+        
+        return result.Entity;
+    }
+
+    public async Task CreateGroupChatInfo(GroupChatInfo groupChatInfo)
+    {
+        await _context.GroupChatInfos.AddAsync(groupChatInfo);
+        await _context.SaveChangesAsync();
+    }
+    
+    public async Task<GroupChatInfo?> GetGroupChatInfo(Guid chatId)
+    {
+        return await _context.GroupChatInfos.FirstOrDefaultAsync(x => x.ChatId == chatId);
+    }
+
+    public async Task<Chat?> GetChat(Guid chatId)
+    {
+        return await _context
+            .Chats
+            .Include(x => x.Members)
+            .FirstOrDefaultAsync(x => x.Id == chatId);
+    }
+
+    public async Task RemoveChatMember(Guid chatId, long userId)
+    {
+        var chatMember = await _context.ChatMembers.FirstOrDefaultAsync(x => x.ChatId == chatId && x.UserId == userId);
+        if (chatMember is null)
+        {
+            return;
+        }
+        
+        _context.ChatMembers.Remove(chatMember);
+        await _context.SaveChangesAsync();
     }
 }

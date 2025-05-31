@@ -34,7 +34,8 @@ public class GetUploadUrlCommandHandler : IRequestHandler<GetUploadUrlCommand, G
 
         return new GetUploadUrlResponse()
         {
-            Url = $"{_runSettings.Host}:{_runSettings.Http1Port}/upload/{file.Id}"
+            Url = $"{_runSettings.Host}:{_runSettings.Http1Port}/upload/{file.Id}",
+            FileId = file.Id.ToString()
         };
     }
 }

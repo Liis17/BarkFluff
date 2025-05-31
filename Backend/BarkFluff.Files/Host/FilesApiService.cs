@@ -1,3 +1,4 @@
+using BarkFluff.Files.Features.GetTempDownloadUrl;
 using BarkFluff.Files.Features.GetUploadUrl;
 using BarkFluff.Proto.Files;
 using BarkFluff.Shared.Identity;
@@ -26,5 +27,18 @@ public class FilesApiService : FilesApi.FilesApiBase
         };
         
         return _mediator.Send(command);
+    }
+
+
+    public override async Task<GetTempDownloadUrlResponse> GetTempDownloadUrl(GetTempDownloadUrlRequest request, ServerCallContext context)
+    {
+        var guids = request.FileIds.Select(Guid.Parse).ToList();
+        
+        var command = new GetTempDownloadUrlCommand()
+        {
+            FileIds = guids
+        };
+        
+        return await _mediator.Send(command);
     }
 }

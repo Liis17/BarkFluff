@@ -67,6 +67,32 @@ namespace BarkFluff.Messages.Persistence.Migrations
                     b.ToTable("ChatMembers");
                 });
 
+            modelBuilder.Entity("BarkFluff.Messages.Domain.GroupChatInfo", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("ChatId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("Creator")
+                        .HasColumnType("bigint");
+
+                    b.PrimitiveCollection<List<long>>("UsersCanKick")
+                        .IsRequired()
+                        .HasColumnType("bigint[]");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("GroupChatInfos");
+                });
+
             modelBuilder.Entity("BarkFluff.Messages.Domain.Message", b =>
                 {
                     b.Property<long>("Id")
@@ -87,6 +113,9 @@ namespace BarkFluff.Messages.Persistence.Migrations
 
                     b.Property<DateTime>("SentAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 

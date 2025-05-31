@@ -22,6 +22,25 @@ namespace BarkFluff.Files.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("BarkFluff.Files.Domain.TempFile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("OriginalFileId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OriginalFileId");
+
+                    b.ToTable("TempFiles");
+                });
+
             modelBuilder.Entity("BarkFluff.Files.Domain.UploadFile", b =>
                 {
                     b.Property<Guid>("Id")

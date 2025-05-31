@@ -22,6 +22,12 @@ service UsersApi {
 
   // Проверить существование емейла
   rpc CheckExistEmail(CheckExistEmailRequest) returns(CheckExistResponse);
+  
+  // Изменить имя или фамилию
+  rpc ChangeName(ChangeNameRequest) returns(ChangeNameResponse);
+  
+  // Изменить юзернейм
+  rpc ChangeUsername(ChangeUsernameRequest) returns(ChangeUsernameResponse);
 }
 
 service UsersServerApi {
@@ -53,6 +59,21 @@ service UsersServerApi {
   // Получить пользователей по id
   rpc ListByIds(ListByIdsRequest) returns(ListByIdsResponse);
 }
+
+message ChangeUsernameRequest {
+  string username = 1; // Имя пользователя
+}
+
+message ChangeUsernameResponse {
+  
+}
+
+message ChangeNameRequest {
+  string first_name = 1; // Имя
+  string last_name = 2; // Фамилия
+}
+
+message ChangeNameResponse { }
 
 message ListByIdsRequest {
   repeated int64 ids = 1; // айдишники

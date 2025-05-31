@@ -12,7 +12,9 @@ public static class MessageMapping
             Id = message.Id,
             SentAt = Timestamp.FromDateTime(message.SentAt),
             ReadBy = { message.ReadBy }, 
-            SenderId = message.SenderId
+            SenderId = message.SenderId,
+            Content = message.Content?.ToGrpc(),
+            Type = (MessageContentType)(int)message.Type
         };
     }
 }

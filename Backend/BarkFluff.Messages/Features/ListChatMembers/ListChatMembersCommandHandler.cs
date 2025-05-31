@@ -35,6 +35,7 @@ public class ListChatMembersCommandHandler : IRequestHandler<ListChatMembersComm
         var members = await _chatsStorage.GetChatMembers(request.ChatId, request.Skip, request.Count);
         var usersResponse = await _usersServerApiClient.ListByIdsAsync(new ListByIdsRequest { Ids = { members.Select(x => x.UserId).ToList() } });
 
+        var totalCount = await _chatsStorage.GetTotalChatMembers(request.ChatId);
 
         return new ListChatMembersResponse()
         {
@@ -46,7 +47,8 @@ public class ListChatMembersCommandHandler : IRequestHandler<ListChatMembersComm
                     LastName = x.LastName,
                     GeneralInfo = members.FirstOrDefault(cm => cm.UserId == x.Id)?.ToGrpc()
                 })
-            }
+            },
+            TotalCount = totalCount
         };
 
     }
