@@ -16,9 +16,16 @@
     <Grid Background="#1e1e1e">
         <Grid x:Name="ButtonGrid">
             <ui:Button
+                Width="200"
+                Height="45"
+                Margin="0,0,0,20"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
+                Background="#df5000"
                 Click="LoadButton_Click"
+                CornerRadius="22"
+                MouseOverBackground="#FFC54700"
+                PressedBackground="#FFAB3D00"
                 ToolTip="Выбрать картинку для аватара в проводнике">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock
@@ -27,7 +34,7 @@
                         VerticalAlignment="Center"
                         FontFamily="{DynamicResource AdwaitaSans}"
                         FontSize="16"
-                        FontWeight="Bold"
+                        FontWeight="SemiBold"
                         Foreground="White"
                         Text="Выбрать аватар" />
                     <ui:SymbolIcon FontSize="21" Symbol="ArrowDownload20" />
@@ -41,35 +48,58 @@
                 Panel.ZIndex="100"
                 Orientation="Vertical">
                 <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
-                    <Button
-                        Height="36"
-                        Margin="0,0,5,0"
+                    <ui:Button
+                        Height="45"
+                        Margin="0,0,0,0"
                         HorizontalAlignment="Center"
+                        Background="#df5000"
                         Click="Button_Click"
-                        Content="Обрезать"
-                        ToolTip="Выбрать текущий вариант аварата и применить его для профиля" />
-                    <Button
+                        CornerRadius="22"
+                        MouseOverBackground="#FFC54700"
+                        PressedBackground="#FFAB3D00"
+                        ToolTip="Выбрать текущий вариант аварата и применить его для профиля">
+                        <TextBlock
+                            FontFamily="AdwaitaSans"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            Foreground="White"
+                            Text="Обрезать" />
+                    </ui:Button>
+                    <ui:Button
+                        Height="45"
                         Margin="5,0,0,0"
                         HorizontalAlignment="Center"
+                        Background="#df5000"
                         Click="ResetPosition"
+                        CornerRadius="22"
+                        MouseOverBackground="#FFC54700"
+                        PressedBackground="#FFAB3D00"
                         ToolTip="Вернуть картинку в исходное состояние">
                         <ui:SymbolIcon FontSize="21" Symbol="ArrowMoveInward20" />
-                    </Button>
-                    <Button
+                    </ui:Button>
+                    <ui:Button
+                        Height="45"
                         Margin="5,0,0,0"
                         HorizontalAlignment="Center"
+                        Background="#df5000"
                         Click="LoadButton_Click"
+                        CornerRadius="22"
+                        MouseOverBackground="#FFC54700"
+                        PressedBackground="#FFAB3D00"
                         ToolTip="Выбрать другую картинку">
                         <ui:SymbolIcon FontSize="21" Symbol="ArrowDownload20" />
-                    </Button>
+                    </ui:Button>
                 </StackPanel>
                 <Slider
                     x:Name="ZoomSlider"
                     Width="300"
                     Margin="10"
                     HorizontalAlignment="Center"
+                    Foreground="AliceBlue"
                     Maximum="2.5"
                     Minimum="0.5"
+                    TickFrequency="0.05"
+                    TickPlacement="BottomRight"
                     Value="1.0" />
             </StackPanel>
 
