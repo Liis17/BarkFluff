@@ -115,4 +115,32 @@ public class UsersStorage
 
         await _usersContext.SaveChangesAsync();
     }
+
+    public async Task ChangeName(long userId, string firstName, string lastName)
+    {
+        var user = await _usersContext.Users.FirstOrDefaultAsync(x => x.Id == userId);
+
+        if (user is null)
+        {
+            throw new UserNotFoundException();
+        }
+        
+        user.FirstName = firstName;
+        user.LastName = lastName;
+        
+        await _usersContext.SaveChangesAsync();
+    }
+
+    public async Task ChangeUsername(long userId, string username)
+    {
+        var user = await _usersContext.Users.FirstOrDefaultAsync(x => x.Id == userId);
+        if (user is null)
+        {
+            throw new UserNotFoundException();
+        }
+        
+        user.Username = username;
+        
+        await _usersContext.SaveChangesAsync();
+    }
 }

@@ -16,4 +16,6 @@ public class Message
     public DateTime SentAt { get; set; }
     
     public MessageContent? Content { get; set; }
+    
+    public MessageContentType Type { get; set; }
 }
