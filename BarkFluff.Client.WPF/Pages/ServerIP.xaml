@@ -9,7 +9,7 @@
     d:DesignHeight="720"
     d:DesignWidth="1280"
     mc:Ignorable="d">
-
+    <!--  СТАРЫЙ ВАРИАНТ НЕ ИСПОЛЬЗОВАТЬ!  -->
     <Grid Background="#212121">
         <TextBlock
             Margin="10"

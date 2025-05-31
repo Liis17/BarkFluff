@@ -19,9 +19,7 @@ using System.Windows.Navigation;
 
 namespace BarkFluff.Client.WPF.Pages
 {
-    /// <summary>
-    /// Логика взаимодействия для Login.xaml
-    /// </summary>
+    //СТАРЫЙ ВАРИАНТ НЕ ИСПОЛЬЗОВАТЬ!
     public partial class ServerIP : UserControl
     {
         public ServerIP()
