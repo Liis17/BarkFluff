@@ -238,18 +238,22 @@
             <!--  Кнопка продолжить  -->
             <ui:Button
                 x:Name="ContinueButton"
-                Padding="25,12"
+                Width="200"
+                Height="45"
+                Margin="0,0,0,20"
                 HorizontalAlignment="Center"
+                Background="#df5000"
                 BorderThickness="0"
                 Click="ContinueButton_Click"
-                CornerRadius="10">
+                CornerRadius="22"
+                MouseOverBackground="#FFC54700"
+                PressedBackground="#FFAB3D00">
                 <ui:Button.Content>
                     <StackPanel Orientation="Horizontal">
                         <TextBlock
-                            VerticalAlignment="Center"
                             FontFamily="AdwaitaSans"
                             FontSize="16"
-                            FontWeight="Medium"
+                            FontWeight="SemiBold"
                             Foreground="White"
                             Text="Продолжить" />
                         <ui:SymbolIcon

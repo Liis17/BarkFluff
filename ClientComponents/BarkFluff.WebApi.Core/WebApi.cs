@@ -12,13 +12,13 @@ namespace BarkFluff.WebApi.Core
 {
     public class WebApi
     {
-        public BarkFluff.Proto.Users.UsersApi.UsersApiClient UsersAC;
-        public BarkFluff.Proto.Beacon.BeaconApi.BeaconApiClient BeaconAC;
-        public BarkFluff.Proto.Identity.IdentityApi.IdentityApiClient IdentityAC;
+        public BarkFluff.Proto.Users.UsersApi.UsersApiClient? UsersAC;
+        public BarkFluff.Proto.Beacon.BeaconApi.BeaconApiClient? BeaconAC;
+        public BarkFluff.Proto.Identity.IdentityApi.IdentityApiClient? IdentityAC;
 
-        public GrpcChannel BeaconChannel;
-        public GrpcChannel UserChannel;
-        public GrpcChannel IdentityChannel;
+        public GrpcChannel? BeaconChannel;
+        public GrpcChannel? UserChannel;
+        public GrpcChannel? IdentityChannel;
 
         public void CreateOnlyBeaconAC(GlobalParam gParam)
         {
