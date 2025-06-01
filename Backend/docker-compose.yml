@@ -84,6 +84,17 @@ services:
       - users
       - files
 
+  fast-auth:
+    image: docker.barkfluff.ru/barkfluff-fast-auth:latest
+    restart: always
+    ports: [ "7008:7008" ]
+    environment:
+      <<: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
+
 networks:
   barkfluff-network:
     driver: bridge
