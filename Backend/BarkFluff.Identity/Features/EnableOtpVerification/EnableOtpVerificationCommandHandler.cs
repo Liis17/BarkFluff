@@ -56,13 +56,14 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
         {
             var key = KeyGeneration.GenerateRandomKey(20);
             var base32Secret = Base32Encoding.ToString(key);
+
+            var optUri = new OtpUri(OtpType.Totp, base32Secret, userInfo.User.Username, "BarkFluff");
+
+            var uri = optUri.ToString();
             
-            var uri = new OtpUri(OtpType.Totp, base32Secret, userInfo.User.Username, "BarkFluff").ToString();
-        
             await _authPropertiesStorage.AddUserOtpSecretKey(_userContext.UserId, base32Secret);
             await _authPropertiesStorage.UpdateOptType(Domain.OtpType.Authenticator, userInfo.User.Id);
-
-        
+            
             var qrGenerator = new QRCodeGenerator();
             var qrCodeData = qrGenerator.CreateQrCode(uri, QRCodeGenerator.ECCLevel.Q);
         
@@ -72,7 +73,8 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
 
             return new EnableOtpVerificationResponse()
             {
-                OtpQr = qrCodeBase64
+                OtpQr = qrCodeBase64,
+                OtpCode = base32Secret
             };
         }
 
