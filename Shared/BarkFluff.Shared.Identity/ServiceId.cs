@@ -16,4 +16,6 @@ public enum ServiceId
     
     Messages = 6,
     
+    FastAuth = 7,
+    
 }

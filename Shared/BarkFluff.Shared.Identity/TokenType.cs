@@ -6,5 +6,7 @@ public enum TokenType
     
     User = 1,
     
-    Service = 2 
+    Service = 2,
+    
+    FastAuth = 3,
 }

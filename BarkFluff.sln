@@ -52,6 +52,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		modules.md = modules.md
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.FastAuth", "Backend\BarkFluff.FastAuth\BarkFluff.FastAuth.csproj", "{B688B2A8-0EFF-4890-B45E-4798B5BDA5C2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -130,6 +132,10 @@ Global
 		{78AD9B01-7852-4B2F-B141-3BB37C2A0448}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{78AD9B01-7852-4B2F-B141-3BB37C2A0448}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{78AD9B01-7852-4B2F-B141-3BB37C2A0448}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B688B2A8-0EFF-4890-B45E-4798B5BDA5C2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B688B2A8-0EFF-4890-B45E-4798B5BDA5C2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B688B2A8-0EFF-4890-B45E-4798B5BDA5C2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B688B2A8-0EFF-4890-B45E-4798B5BDA5C2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -151,6 +157,7 @@ Global
 		{0C185FA4-1C9B-4CE5-BED4-09928E4A05F5} = {7E5A1AA1-A416-4D7E-B885-FC81F6CEBF07}
 		{BD13B521-8B78-4A10-A498-2236C81ED12C} = {3282AE17-EFD0-495E-9958-FB40F68DA873}
 		{78AD9B01-7852-4B2F-B141-3BB37C2A0448} = {36D591C7-65C7-A0D1-1CBC-10CDE441BDC8}
+		{B688B2A8-0EFF-4890-B45E-4798B5BDA5C2} = {7E5A1AA1-A416-4D7E-B885-FC81F6CEBF07}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B07C171A-90A2-41DB-A618-37C992F8D403}
