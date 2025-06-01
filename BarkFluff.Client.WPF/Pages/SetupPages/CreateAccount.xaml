@@ -7,7 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:preview="clr-namespace:BarkFluff.Client.WPF.UserControls"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-    d:DesignHeight="3480"
+    d:DesignHeight="3980"
     d:DesignWidth="720"
     mc:Ignorable="d">
 
@@ -407,12 +407,19 @@
             <!--  Step 7: Добавление описания  -->
             <StackPanel
                 x:Name="Step7"
-                
                 Margin="0,0,0,0"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Orientation="Vertical">
-                <preview:PreviewUser x:Name="PreviewUserElement" />
+                <preview:PreviewUser x:Name="PreviewUserElement" Loaded="PreviewUserElement_Loaded" />
+            </StackPanel>
+            <StackPanel
+                x:Name="Step8"
+                Margin="0,0,0,0"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Orientation="Vertical">
+                <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="Двухфакторная аутентификация (2FA)" />
             </StackPanel>
         </StackPanel>
 
