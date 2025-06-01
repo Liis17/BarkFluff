@@ -1,5 +1,5 @@
 ﻿<UserControl
-    x:Class="BarkFluff.Client.WPF.Pages.PincodeSecure"
+    x:Class="BarkFluff.Client.WPF.Pages.PinCode.PincodeSecure"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -10,7 +10,6 @@
     d:DesignHeight="720"
     d:DesignWidth="1280"
     mc:Ignorable="d">
-
     <Grid>
         <StackPanel
             HorizontalAlignment="Center"
@@ -31,8 +30,15 @@
                 <TextBox
                     x:Name="Box0"
                     Width="40"
-                    Margin="3"
+                    Margin="5"
                     HorizontalContentAlignment="Center"
+                    VerticalContentAlignment="Center"
+                    Background="#282828"
+                    BorderThickness="0"
+                    CaretBrush="White"
+                    FontSize="24"
+                    FontWeight="Medium"
+                    Foreground="White"
                     GotFocus="PinBox_GotFocus"
                     Loaded="FocusBoxZero"
                     MaxLength="1"
@@ -42,8 +48,15 @@
                 <TextBox
                     x:Name="Box1"
                     Width="40"
-                    Margin="3"
+                    Margin="5"
                     HorizontalContentAlignment="Center"
+                    VerticalContentAlignment="Center"
+                    Background="#282828"
+                    BorderThickness="0"
+                    CaretBrush="White"
+                    FontSize="24"
+                    FontWeight="Medium"
+                    Foreground="White"
                     GotFocus="PinBox_GotFocus"
                     MaxLength="1"
                     PreviewKeyDown="PinBox_PreviewKeyDown"
@@ -52,8 +65,15 @@
                 <TextBox
                     x:Name="Box2"
                     Width="40"
-                    Margin="3"
+                    Margin="5"
                     HorizontalContentAlignment="Center"
+                    VerticalContentAlignment="Center"
+                    Background="#282828"
+                    BorderThickness="0"
+                    CaretBrush="White"
+                    FontSize="24"
+                    FontWeight="Medium"
+                    Foreground="White"
                     GotFocus="PinBox_GotFocus"
                     MaxLength="1"
                     PreviewKeyDown="PinBox_PreviewKeyDown"
@@ -62,8 +82,15 @@
                 <TextBox
                     x:Name="Box3"
                     Width="40"
-                    Margin="3"
+                    Margin="5"
                     HorizontalContentAlignment="Center"
+                    VerticalContentAlignment="Center"
+                    Background="#282828"
+                    BorderThickness="0"
+                    CaretBrush="White"
+                    FontSize="24"
+                    FontWeight="Medium"
+                    Foreground="White"
                     GotFocus="PinBox_GotFocus"
                     MaxLength="1"
                     PreviewKeyDown="PinBox_PreviewKeyDown"
@@ -76,19 +103,22 @@
                 Orientation="Horizontal">
                 <ui:SymbolIcon
                     x:Name="key3"
+                    Filled="True"
                     FontSize="17"
                     Foreground="Orange"
-                    Symbol="Key20" />
+                    Symbol="Key16" />
                 <ui:SymbolIcon
                     x:Name="key2"
+                    Filled="True"
                     FontSize="17"
                     Foreground="Orange"
-                    Symbol="Key20" />
+                    Symbol="Key16" />
                 <ui:SymbolIcon
                     x:Name="key1"
+                    Filled="True"
                     FontSize="17"
                     Foreground="Orange"
-                    Symbol="Key20" />
+                    Symbol="Key16" />
             </StackPanel>
             <TextBlock
                 x:Name="helper"

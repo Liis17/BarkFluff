@@ -38,5 +38,10 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
         {
             MessageBox.Show("тут должен быть редирект на страницу с выбором сервера");
         }
+
+        private void ResetPasswordClick(object sender, MouseButtonEventArgs e)
+        {
+            MessageBox.Show("Тут открыть страницу с сбросом пароля");
+        }
     }
 }
