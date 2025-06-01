@@ -1,4 +1,8 @@
-﻿using System.Text.RegularExpressions;
+﻿using BarkFluff.Shared.Exceptions;
+using BarkFluff.Shared.Exceptions.Identity;
+using BarkFluff.WebApi.Core.MessengerData;
+
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -13,7 +17,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
     public partial class CreateAccount : UserControl
     {
         private int currentStep = 0;
-        private List<StackPanel> steps;
+        private List<StackPanel>? steps;
         private string _codeId = string.Empty;
 
         public enum SlideDirection
@@ -26,7 +30,6 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
             InitializeComponent();
             Loaded += Register_Loaded;
         }
-
         private void Register_Loaded(object sender, RoutedEventArgs e)
         {
             steps = new List<StackPanel> { Step1, Step2, Step3, Step4, Step5, Step6 };
@@ -39,11 +42,11 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
             UpdateNavigationButtons();
             UpdateErrorMessageTextBlock("");
             FirstNameEnter.Focus();
+            CreateButton.Visibility = Visibility.Collapsed;
         }
-
         private void TextBox_KeyDown(object sender, KeyEventArgs e)
         {
-
+            NextButton.IsEnabled = true;
             if (e.Key == Key.Enter)
             {
                 if (sender is TextBox textBox)
@@ -61,12 +64,10 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                 }
             }
         }
-
         private void Registration(object sender, RoutedEventArgs e)
         {
 
         }
-
         private void TextBlock_Loaded(object sender, RoutedEventArgs e)
         {
             if (sender is TextBlock textBlock)
@@ -121,13 +122,14 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
 
         private void UpdateNavigationButtons()
         {
-            BackButton.Visibility = currentStep > 0 ? Visibility.Visible : Visibility.Collapsed;
+            //BackButton.Visibility = currentStep > 0 ? Visibility.Visible : Visibility.Collapsed;
             NextButton.Visibility = currentStep < steps.Count - 1 ? Visibility.Visible : Visibility.Collapsed;
             CreateButton.Visibility = currentStep == steps.Count - 1 ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void BackButton_Click(object sender, RoutedEventArgs e)
         {
+            UpdateErrorMessageTextBlock("");
             if (currentStep > 0)
             {
                 AnimateTransition(steps[currentStep], steps[currentStep - 1], SlideDirection.Backward);
@@ -169,6 +171,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
         }
         private async void NextButton_Click(object sender, RoutedEventArgs e)
         {
+            NextButton.IsEnabled = false; // Отключаем кнопку, чтобы предотвратить повторные нажатия
             if (currentStep < steps.Count - 1)
             {
                 if (currentStep == 0) // Первый шаг (имя фамилия)
@@ -197,6 +200,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                     {
                         UpdateErrorMessageTextBlock("Имя не может быть пустым");
                     }
+                    return;
                 }
                 else if (currentStep == 1) // Второй шаг (логин)
                 {
@@ -211,6 +215,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                             if (response.Exist == true)
                             {
                                 UpdateErrorMessageTextBlock("Имя пользователя уже занято.");
+                                return;
                             }
                             else
                             {
@@ -219,16 +224,19 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                                 UpdateNavigationButtons();
                                 UpdateErrorMessageTextBlock("");
                                 EmailEnter.Focus();
+                                return;
                             }
                         }
                         catch (Exception ex)
                         {
                             UpdateErrorMessageTextBlock("Ошибка подключения к серверу. Проверьте интернет-соединение.");
+                            return;
                         }
                     }
                     else
                     {
                         UpdateErrorMessageTextBlock(error);
+                        return;
                     }
                 }
                 else if (currentStep == 2) // Третий шаг (почта)
@@ -253,19 +261,25 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                                 });
                                 _codeId = response.CodeId;
                             }
-                            catch (Grpc.Core.RpcException ex) when (ex.StatusCode == Grpc.Core.StatusCode.FailedPrecondition)
+                            catch (EmailExistException)
                             {
-                                UpdateErrorMessageTextBlock("Данная почта уже зарегистрирована");
+                                UpdateErrorMessageTextBlock("Эта почта уже использовалась при регистрации на этом сервере");
                                 return;
                             }
-                            catch (Grpc.Core.RpcException ex)
+                            catch (BaseGrpcException)
                             {
-                                UpdateErrorMessageTextBlock($"Произошла ошибка при подтверждении:\n {ex.Status.Detail}");
+                                UpdateErrorMessageTextBlock("Неизвестная ошибка BaseGrpc");
+                                return;
+                            }
+                            catch (Grpc.Core.RpcException rpcEx)
+                            {
+                                UpdateErrorMessageTextBlock("Неизвестная ошибка Rpc");
                                 return;
                             }
                             catch (Exception ex)
                             {
-                                UpdateErrorMessageTextBlock(ex.Message);
+                                UpdateErrorMessageTextBlock("Неизвестная ошибка");
+                                return;
                             }
 
                             if (_codeId != string.Empty)
@@ -276,21 +290,20 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                                 UpdateErrorMessageTextBlock("");
                                 EmailHelperText.Text = "● Код отправлен на " + EmailEnter.Text.ToLower();
                                 VerificationCodeEnter.Focus();
-                            }
-                            else
-                            {
-                                UpdateErrorMessageTextBlock("Сервер не вернул CodeId");
+                                return;
                             }
 
                         }
                         else
                         {
                             UpdateErrorMessageTextBlock("Введите корректный адрес почты");
+                            return;
                         }
                     }
                     else
                     {
                         UpdateErrorMessageTextBlock("Поле ввода почты не может быть пустым");
+                        return;
                     }
                 }
                 else if (currentStep == 3) // Четвертый шаг (код подтверждения почты)
@@ -306,12 +319,24 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                             });
 
                             App.GParam.RefreshToken = response.RefreshToken;
+                            await App.ServerCommunication.TokenUpdate(App.GParam, response.RefreshToken.Value);
+                            GlobalParam.Save(App.GParam, App.GParam.AppPath + "GlobalParam.json", App.GParam.AppPass);
+                            App.UpdateApiClient();
                             MainWindow.SaveSettings();
-                            var a = response;
                         }
-                        catch (Grpc.Core.RpcException ex) when (ex.StatusCode == Grpc.Core.StatusCode.FailedPrecondition)
+                        catch (ConfirmationCodeExpiredException)
                         {
-                            UpdateErrorMessageTextBlock("Неверный код");
+                            UpdateErrorMessageTextBlock($"Код подтверждения больше недействителен");
+                            return;
+                        }
+                        catch (ConfirmationCodeIncorrectException)
+                        {
+                            UpdateErrorMessageTextBlock("Неверный код подтверждения");
+                            return;
+                        }
+                        catch (ConfirmationCodeNotFoundException)
+                        {
+                            UpdateErrorMessageTextBlock("Код подтверждения не найден?");
                             return;
                         }
                         catch (Grpc.Core.RpcException ex)
@@ -331,21 +356,31 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                         UpdateErrorMessageTextBlock("Введите код из сообщения на " + EmailEnter.Text.ToLower());
                     }
                 }
-                else if (currentStep == 4)
+                else if (currentStep == 4) //пятый шаг (придумать пароль)
                 {
                     if (PasswordEnter.Password != string.Empty)
                     {
                         if (IsValidPassword(PasswordEnter.Password) && Shared.SecurityUtilities.SecurityUtilities.EvaluatePasswordStrength(PasswordEnter.Password) >= 60 && PasswordEnter.Password == PasswordRepeatedEnter.Password)
                         {
-                            var response = App.ServerCommunication.UsersAC.SetPassword(new Proto.Users.SetPasswordRequest
+                            try
                             {
-                                Password = PasswordEnter.Password,
-                            });
+                                var response = await App.ServerCommunication.UsersAC.SetPasswordAsync(new Proto.Users.SetPasswordRequest
+                                {
+                                    Password = PasswordEnter.Password,
+                                });
+                                var a = response;
+                                AnimateTransition(steps[currentStep], steps[currentStep + 1], SlideDirection.Forward);
+                                currentStep++;
+                                UpdateNavigationButtons();
+                                UpdateErrorMessageTextBlock("");
+                                ExpansionSpace();
+                                return;
+                            }
+                            catch
+                            {
+                                UpdateErrorMessageTextBlock(@"Произошла неизвестная ошибка ¯\(°_o)/¯");
+                            }
 
-                            AnimateTransition(steps[currentStep], steps[currentStep + 1], SlideDirection.Forward);
-                            currentStep++;
-                            UpdateNavigationButtons();
-                            UpdateErrorMessageTextBlock("");
                         }
                         else if (PasswordEnter.Password != PasswordRepeatedEnter.Password)
                         {
@@ -362,8 +397,24 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
 
                     }
                 }
+                else if (currentStep == 5) //шестой шаг (обрезка аватара)
+                {
+
+                }
 
             }
+        }
+
+        private void ExpansionSpace()
+        {
+            ButtonBottomBar.Margin = new Thickness(left: 0, top: 0, right: 0, bottom: -620);
+            TitleServerNameBar.Margin = new Thickness(left: 25, top: -650, right: 25, bottom: 0);
+
+            MainGrid.MinWidth = 500;
+            MainGrid.MinHeight = 600;
+
+            MainGrid.MaxWidth = 500;
+            MainGrid.MaxHeight = 600;
         }
 
         #region Проверки
@@ -420,8 +471,28 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
             PasswordStrengthBar.Value = a = BarkFluff.Shared.SecurityUtilities.SecurityUtilities.EvaluatePasswordStrength(PasswordEnter.Password);
             var colors = BarkFluff.Shared.SecurityUtilities.SecurityUtilities.GetPasswordStrengthMessage(a);
             PasswordDifficultyIndicator.Text = colors.message;
-            PasswordDifficultyIndicator.Foreground =
-                (Brush)new BrushConverter().ConvertFromString(colors.colorHex);
+            //PasswordDifficultyIndicator.Foreground = (Brush)new BrushConverter().ConvertFromString(colors.colorHex); отключим, так выгляди лучше, наверное хз
+            PasswordStrengthBar.Foreground = (Brush)new BrushConverter().ConvertFromString(colors.colorHex);
+        }
+
+        private void MainContainer_Loaded(object sender, RoutedEventArgs e)
+        {
+            MoveChildren(MainContainer, MainGrid);
+        }
+
+        private void MoveChildren(StackPanel stackPanel, Grid grid)
+        {
+            if (stackPanel == null || grid == null)
+                return;
+            var children = new UIElement[stackPanel.Children.Count];
+            stackPanel.Children.CopyTo(children, 0);
+
+            stackPanel.Children.Clear();
+
+            foreach (var child in children)
+            {
+                grid.Children.Add(child);
+            }
         }
     }
 }

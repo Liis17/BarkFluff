@@ -8,7 +8,6 @@ using System.Windows;
 using System.Windows.Input;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
-
 using Login = BarkFluff.Client.WPF.Pages.SetupPages.Login;
 
 namespace BarkFluff.Client.WPF
@@ -127,7 +126,7 @@ namespace BarkFluff.Client.WPF
         public void OpenCreateAccountPage()
         {
             MainFrame.Children.Clear();
-            MainFrame.Children.Add(new Register());
+            MainFrame.Children.Add(new CreateAccount());
         }
         public void OpenServerListPage()
         {
@@ -184,7 +183,7 @@ namespace BarkFluff.Client.WPF
         public void OpenNewProfilePage()
         {
             MainFrame.Children.Clear();
-            MainFrame.Children.Add(new Register());
+            MainFrame.Children.Add(new CreateAccount());
         }
 
         public void PincodeSuccessful()

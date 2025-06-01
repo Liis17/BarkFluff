@@ -53,6 +53,7 @@
 
   <ItemGroup>
     <Folder Include="Resources\Icons\" />
+    <Folder Include="ServiceWindows\" />
   </ItemGroup>
 
   <ItemGroup>

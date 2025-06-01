@@ -83,7 +83,7 @@
                 FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="12"
                 FontWeight="Light"
-                Foreground="#FF9A9A9A"
+                Foreground="#FFF39E6D"
                 MouseLeftButtonDown="ClickFooter"
                 Text="О проекте" />
             <TextBlock
@@ -91,7 +91,7 @@
                 FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="12"
                 FontWeight="Light"
-                Foreground="#FF9A9A9A"
+                Foreground="#FFF39E6D"
                 Text="•" />
             <TextBlock
                 Margin="0,0,15,0"
@@ -99,7 +99,7 @@
                 FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="12"
                 FontWeight="Light"
-                Foreground="#FF9A9A9A"
+                Foreground="#FFF39E6D"
                 MouseLeftButtonDown="ClickFooter"
                 Text="Политика конфиденциальности и условия использования" />
             <TextBlock
@@ -107,14 +107,14 @@
                 FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="12"
                 FontWeight="Light"
-                Foreground="#FF9A9A9A"
+                Foreground="#FFF39E6D"
                 Text="•" />
             <TextBlock
                 Cursor="Hand"
                 FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="12"
                 FontWeight="Light"
-                Foreground="#FF9A9A9A"
+                Foreground="#FFF39E6D"
                 MouseLeftButtonDown="ClickFooter"
                 Text="Справка" />
         </StackPanel>
