@@ -1,5 +1,7 @@
 ﻿using Microsoft.Win32;
 
+using System;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -18,6 +20,7 @@ namespace BarkFluff.Client.WPF.UserControls
         private TransformGroup _transformGroup = new TransformGroup();
 
         private string _imagePath = string.Empty;
+        private BitmapImage _currentBitmap; // Сохраняем ссылку для освобождения
 
         public CropImage()
         {
@@ -25,6 +28,8 @@ namespace BarkFluff.Client.WPF.UserControls
             _transformGroup.Children.Add(_imageScale);
             _transformGroup.Children.Add(_imageTranslate);
             ImageControl.RenderTransform = _transformGroup;
+
+            this.Unloaded += CropImage_Unloaded;
 
             ImageControl.MouseLeftButtonDown += Image_MouseLeftButtonDown;
             ImageControl.MouseMove += Image_MouseMove;
@@ -35,6 +40,12 @@ namespace BarkFluff.Client.WPF.UserControls
             ButtonGrid.Visibility = Visibility.Visible;
             CropGrid.Visibility = Visibility.Collapsed;
         }
+
+        private void CropImage_Unloaded(object sender, RoutedEventArgs e)
+        {
+            DisposeCurrentImage();
+        }
+
         private void LoadButton_Click(object sender, RoutedEventArgs e)
         {
             OpenFileDialog openFileDialog = new OpenFileDialog
@@ -51,25 +62,66 @@ namespace BarkFluff.Client.WPF.UserControls
                 LoadImage(selectedFilePath);
             }
         }
+
         public void LoadImage(string path)
         {
+            DisposeCurrentImage();
+
             ButtonGrid.Visibility = Visibility.Collapsed;
             CropGrid.Visibility = Visibility.Visible;
 
-            BitmapImage bmp = new BitmapImage();
-            bmp.BeginInit();
-            bmp.UriSource = new Uri(path);
-            bmp.DecodePixelWidth = 600;
-            bmp.EndInit();
+            try
+            {
+                BitmapImage bmp = new BitmapImage();
+                bmp.BeginInit();
 
-            ImageControl.Source = bmp;
+                bmp.CacheOption = BitmapCacheOption.OnLoad;
+                bmp.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
+                bmp.UriSource = new Uri(path, UriKind.Absolute);
+                bmp.DecodePixelWidth = 600; 
+
+                bmp.EndInit();
+
+                bmp.Freeze();
+
+                _currentBitmap = bmp;
+                ImageControl.Source = bmp;
+
+                ResetImagePosition();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при загрузке изображения: {ex.Message}", "Ошибка",
+                               MessageBoxButton.OK, MessageBoxImage.Error);
+
+                ButtonGrid.Visibility = Visibility.Visible;
+                CropGrid.Visibility = Visibility.Collapsed;
+            }
         }
+
+        private void DisposeCurrentImage()
+        {
+            if (_currentBitmap != null)
+            {
+                ImageControl.Source = null;
+
+                _currentBitmap = null;
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                GC.Collect();
+            }
+        }
+
         private void ZoomSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            double zoom = e.NewValue;
-            _imageScale.ScaleX = zoom;
-            _imageScale.ScaleY = zoom;
+            if (_imageScale != null)
+            {
+                double zoom = e.NewValue;
+                _imageScale.ScaleX = zoom;
+                _imageScale.ScaleY = zoom;
+            }
         }
+
         public BitmapSource GetCroppedAvatar()
         {
             if (ImageControl.Source is not BitmapSource bitmapSource)
@@ -102,15 +154,24 @@ namespace BarkFluff.Client.WPF.UserControls
             width = Math.Max(1, Math.Min(width, bitmapSource.PixelWidth - x));
             height = Math.Max(1, Math.Min(height, bitmapSource.PixelHeight - y));
 
-            return new CroppedBitmap(bitmapSource, new Int32Rect(x, y, width, height));
+            try
+            {
+                return new CroppedBitmap(bitmapSource, new Int32Rect(x, y, width, height));
+            }
+            catch (ArgumentException)
+            {
+                return null;
+            }
         }
-
 
         private void Image_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            _lastMousePos = e.GetPosition(MainCanvas);
-            _isDragging = true;
-            ImageControl.CaptureMouse();
+            if (ImageControl.Source != null)
+            {
+                _lastMousePos = e.GetPosition(MainCanvas);
+                _isDragging = true;
+                ImageControl.CaptureMouse();
+            }
         }
 
         private void Image_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -121,7 +182,7 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private void Image_MouseMove(object sender, MouseEventArgs e)
         {
-            if (_isDragging)
+            if (_isDragging && ImageControl.Source != null)
             {
                 Point currentPos = e.GetPosition(MainCanvas);
                 Vector delta = currentPos - _lastMousePos;
@@ -134,17 +195,29 @@ namespace BarkFluff.Client.WPF.UserControls
         private void Button_Click(object sender, RoutedEventArgs e)
         {
             BitmapSource image = GetCroppedAvatar();
-
-
+            if (image != null)
+            {
+                // Здесь код для обработки изображения
+            }
         }
 
         private void ResetPosition(object sender, RoutedEventArgs e)
+        {
+            ResetImagePosition();
+        }
+
+        private void ResetImagePosition()
         {
             _imageTranslate.X = 0;
             _imageTranslate.Y = 0;
             _imageScale.ScaleX = 1.0;
             _imageScale.ScaleY = 1.0;
-            ZoomSlider.Value = 1.0;
+            if (ZoomSlider != null)
+            {
+                ZoomSlider.Value = 1.0;
+            }
         }
+
+
     }
 }

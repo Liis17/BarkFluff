@@ -69,7 +69,10 @@
                                 Foreground="White"
                                 Text="Обрезать"
                                 TextAlignment="Center" />
-                            <ui:SymbolIcon FontSize="21" Symbol="ScreenCut20" />
+                            <ui:SymbolIcon
+                                Margin="0,0,5,0"
+                                FontSize="21"
+                                Symbol="Cut20" />
                         </StackPanel>
 
                     </ui:Button>
@@ -84,7 +87,7 @@
                         PressedBackground="#FFAB3D00"
                         ToolTip="Вернуть картинку в исходное состояние">
                         <ui:SymbolIcon
-                            Margin="5"
+                            Margin="7,0,8,0"
                             FontSize="21"
                             Symbol="ArrowMoveInward20" />
                     </ui:Button>
@@ -99,9 +102,9 @@
                         PressedBackground="#FFAB3D00"
                         ToolTip="Выбрать другую картинку">
                         <ui:SymbolIcon
-                            Margin="5"
+                            Margin="7,0,8,0"
                             FontSize="21"
-                            Symbol="ArrowDownload20" />
+                            Symbol="ImageArrowCounterclockwise20" />
                     </ui:Button>
                 </StackPanel>
                 <Slider
@@ -117,7 +120,18 @@
                     TickPlacement="BottomRight"
                     Value="1.0" />
             </StackPanel>
-
+            <Grid
+                Height="200"
+                Margin="-1"
+                VerticalAlignment="Bottom"
+                Panel.ZIndex="10">
+                <Grid.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Offset="0" Color="#00000000" />
+                        <GradientStop Offset="1" Color="#FF000000" />
+                    </LinearGradientBrush>
+                </Grid.Background>
+            </Grid>
             <Canvas x:Name="MainCanvas" ClipToBounds="True">
 
                 <Image x:Name="ImageControl" RenderTransformOrigin="0.5,0.5" />
