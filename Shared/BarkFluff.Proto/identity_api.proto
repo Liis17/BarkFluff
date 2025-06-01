@@ -11,6 +11,9 @@ service IdentityApi {
   // Аторизация пользователя
   rpc Auth(AuthRequest) returns(AuthResponse); 
   
+  // Быстрый вход
+  rpc FastAuth(FastAuthRequest) returns(AuthResponse);
+  
   // Получить токен по refresh токену
   rpc CreateToken(CreateTokenRequest) returns(CreateTokenResponse); 
   
@@ -41,6 +44,11 @@ service IdentityApi {
   rpc ListOtpVerification(ListOtpVerificationRequest) returns(ListOtpVerificationResponse);
   
 }
+
+message FastAuthRequest {
+  string fast_auth_id = 1; // Идентификатор быстрого входа
+}
+
 
 message SendEmailOtpCodeRequest {
   
