@@ -98,6 +98,7 @@ message EnableOtpVerificationRequest {
 
 message EnableOtpVerificationResponse {
   string otp_qr = 1; // base64 QR кода для подключения гугл аунтификатора
+  string otp_code = 2; // код для подключения вручную
 }
 
 message RemoveActiveSessionRequest {

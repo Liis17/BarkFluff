@@ -30,10 +30,9 @@ public class ConfirmOtpVerificationCommandHandler : IRequestHandler<ConfirmOtpVe
             if (otpConfigs.SelectedOtpType == OtpType.Authenticator)
             {
                 var otpSecret = await _authPropertiesStorage.GetOtpSecretKey(_userContext.UserId);
-            
-            
+                
                 var totp = new Totp(Base32Encoding.ToBytes(otpSecret));
-            
+                
                 var isValid = totp.VerifyTotp(request.OtpCode, out long timeStepMatched, VerificationWindow.RfcSpecifiedNetworkDelay);
 
                 if (!isValid)

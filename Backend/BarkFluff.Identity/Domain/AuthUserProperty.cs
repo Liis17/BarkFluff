@@ -17,5 +17,5 @@ public class AuthUserProperty
     
     public OtpType SelectedOtpType { get; set; }
     
-    public string LastEmailAuthCode { get; set; }
+    public string? LastEmailAuthCode { get; set; }
 }
