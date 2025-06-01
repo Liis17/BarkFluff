@@ -94,7 +94,7 @@ namespace BarkFluff.Client.WPF
             try
             {
                 string filePath = Path.Combine(App.GParam.AppPath, "GlobalParam.json");
-                GlobalParam.Save(App.GParam, filePath, App.GParam.AppPass);
+                GlobalParam.Save(App.GParam, filePath, App.GParam.AppPass); 
             }
             catch
             {

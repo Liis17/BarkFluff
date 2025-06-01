@@ -1,11 +1,13 @@
 ﻿
 using BarkFluff.WebApi.Core.MessengerData;
+using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
 using Grpc.Core.Interceptors;
 using Grpc.Net.Client;
 
 using System.ComponentModel;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace BarkFluff.WebApi.Core
@@ -15,10 +17,12 @@ namespace BarkFluff.WebApi.Core
         public BarkFluff.Proto.Users.UsersApi.UsersApiClient? UsersAC;
         public BarkFluff.Proto.Beacon.BeaconApi.BeaconApiClient? BeaconAC;
         public BarkFluff.Proto.Identity.IdentityApi.IdentityApiClient? IdentityAC;
+        public BarkFluff.Proto.Files.FilesApi.FilesApiClient? FilesAC;
 
         public GrpcChannel? BeaconChannel;
         public GrpcChannel? UserChannel;
         public GrpcChannel? IdentityChannel;
+        public GrpcChannel? FilesChannel;
 
         public void CreateOnlyBeaconAC(GlobalParam gParam)
         {
@@ -29,6 +33,7 @@ namespace BarkFluff.WebApi.Core
             CreateUsersAC(gParam);
             CreateBeaconAC(gParam);
             CreateIdentityAC(gParam);
+            CreateFilesAC(gParam);
             AddInterceptor(gParam, deviceName, os, appName, appVersion, ip);
         }
         private void CreateUsersAC(GlobalParam _gParam)
@@ -57,6 +62,14 @@ namespace BarkFluff.WebApi.Core
             IdentityChannel = GrpcChannel.ForAddress(_gParam.SocketIdentity);
             IdentityAC = new BarkFluff.Proto.Identity.IdentityApi.IdentityApiClient(IdentityChannel);
         }
+        private void CreateFilesAC(GlobalParam _gParam)
+        {
+            FilesAC = null!;
+            FilesAC = null!;
+            _gParam.SocketFiles = EnsureHttpPrefix(_gParam.SocketFiles);
+            FilesChannel = GrpcChannel.ForAddress(_gParam.SocketFiles);
+            FilesAC = new BarkFluff.Proto.Files.FilesApi.FilesApiClient(FilesChannel);
+        }
 
         private void AddInterceptor(GlobalParam _gParam, string _deviceName, string os, string appName, string appVersion, string ip)
         {
@@ -78,10 +91,11 @@ namespace BarkFluff.WebApi.Core
 
             var identityInvoker = IdentityChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
             var userInvoker = UserChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
+            var filesInvoker = FilesChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
 
             IdentityAC = new BarkFluff.Proto.Identity.IdentityApi.IdentityApiClient(identityInvoker);
             UsersAC = new BarkFluff.Proto.Users.UsersApi.UsersApiClient(userInvoker);
-
+            FilesAC = new BarkFluff.Proto.Files.FilesApi.FilesApiClient(filesInvoker);
         }
 
         private string EnsureHttpPrefix(string _url)
@@ -99,6 +113,7 @@ namespace BarkFluff.WebApi.Core
             param.ServerDescription = response.Description;
             param.SocketIdentity = EnsureHttpPrefix(response.Identity.Endpoint.Host + ":" + response.Identity.Endpoint.Port);
             param.SocketUsers = EnsureHttpPrefix(response.Users.Endpoint.Host + ":" + response.Users.Endpoint.Port);
+            param.SocketFiles = EnsureHttpPrefix(response.Files.Endpoint.Host + ":" + response.Files.Endpoint.Port);
             param.Colors = new ClientColors()
             {
                 LiteHex = response.Color.LiteHex,
@@ -116,9 +131,93 @@ namespace BarkFluff.WebApi.Core
             return response.AccessToken.Value;
         }
 
-        public async Task CreateAccount()
+        public async Task UploadUserAvatarAsync(byte[] jpegImageBytes)
         {
+            try
+            {
+                var getLinkUpload = await FilesAC.GetUploadUrlAsync(new Proto.Files.GetUploadUrlRequest { FileType = Proto.Files.UploadFileType.UserAvatar });
 
+                using var httpClient = new HttpClient();
+                using var formData = new MultipartFormDataContent();
+
+                var fileContent = new ByteArrayContent(jpegImageBytes);
+                fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
+
+                formData.Add(fileContent, "file", "avatar.jpg");
+
+                try
+                {
+                    var response = await httpClient.PostAsync(getLinkUpload.Url, formData);
+                    response.EnsureSuccessStatusCode(); 
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"Ошибка при загрузке файла: {ex.Message}", ex);
+                }
+
+                try
+                {
+                    var setAvatar = await UsersAC.SetProfilePictureAsync(new Proto.Users.SetProfilePictureRequest { FileId = getLinkUpload.FileId });
+                }
+                catch(BarkFluff.Shared.Exceptions.Users.ProfilePictureHasNotValidType)
+                {
+                    //добавить обработчики
+                }
+                catch(BarkFluff.Shared.Exceptions.Files.NotValidFileIdException)
+                {
+                    //добавить обработчики
+                }
+
+            }
+            catch(BarkFluff.Shared.Exceptions.Files.NotValidFileIdException)
+            {
+                //добавить обработчики
+            }
+        }
+        public async Task<string> GetUserAvatar(long userId = 0)
+        {
+            try
+            {
+                var getLinkUpload = await GetUserDatas(userId);
+                return getLinkUpload.ProfilePictureUrl;
+            }
+            catch(BarkFluff.Shared.Exceptions.Users.ProfilePictureHasNotValidType)
+            {
+                //добавить обработчики
+            }
+            catch (BarkFluff.Shared.Exceptions.Users.UserIsDraftException)
+            {
+                //добавить обработчики
+            }
+            return null;
+        }
+        public async Task<UserData> GetUserDatas(long userId = 0)
+        {
+            try
+            {
+                var getUser = await UsersAC.GetUserAsync(new Proto.Users.GetUserRequest { UserId = userId });
+                var userData = new UserData
+                {
+                    FirstName = getUser.User.FirstName,
+                    LastName = getUser.User.LastName,
+                    Email = "Почта не установлена",
+                    Username = getUser.User.Username,
+                    RegistrationDate = getUser.User.RegistrationDate,
+                    Id = getUser.User.Id,
+                    ProfilePictureUrl = getUser.User.ProfilePicture,
+                };
+                return userData;
+            }
+            catch (BarkFluff.Shared.Exceptions.Users.ProfilePictureHasNotValidType)
+            {
+                //добавить обработчики
+            }
+            catch (BarkFluff.Shared.Exceptions.Users.UserIsDraftException)
+            {
+                //добавить обработчики
+            }
+            return null;
+            
         }
     }
 }

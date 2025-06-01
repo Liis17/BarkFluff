@@ -11,6 +11,7 @@ namespace BarkFluff.WebApi.Core.MessengerData
         public string SocketBeacon { get; set; } = string.Empty; 
         public string SocketUsers { get; set; } = string.Empty; 
         public string SocketIdentity { get; set; } = string.Empty;
+        public string SocketFiles { get; set; } = string.Empty;
         public string AppPath { get; set; } = string.Empty;
         public string ServerName { get; set; } = string.Empty;
         public string ServerDescription { get; set; } = string.Empty;
@@ -20,10 +21,10 @@ namespace BarkFluff.WebApi.Core.MessengerData
 
         #endregion
         #region Пользователь
-        public string UserName { get; set; } = string.Empty;
-        public string UserPass { get; set; } = string.Empty;
+        #region Токены пользователя
         public Token RefreshToken { get; set; } = null!;
         public Token AccessToken { get; set; } = null!;
+        #endregion
 
         #endregion
         #region Сохранение/загрузка настроек
@@ -36,16 +37,13 @@ namespace BarkFluff.WebApi.Core.MessengerData
 
         public static void Save(GlobalParam param, string filePath, string userPin)
         {
-            // Генерация соли
             var salt = RandomNumberGenerator.GetBytes(SaltSize);
 
-            // Получение ключа из PIN-кода
             var key = DeriveKeyFromPin(userPin, salt);
 
             var json = JsonSerializer.Serialize(param);
             var plainBytes = Encoding.UTF8.GetBytes(json);
 
-            // Шифрование
             using var aes = Aes.Create();
             aes.Key = key;
             aes.GenerateIV();
@@ -54,7 +52,6 @@ namespace BarkFluff.WebApi.Core.MessengerData
             using var encryptor = aes.CreateEncryptor();
             var encryptedBytes = encryptor.TransformFinalBlock(plainBytes, 0, plainBytes.Length);
 
-            // Сохраняем: [salt][IV][ciphertext]
             using var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write);
             fs.Write(salt, 0, salt.Length);
             fs.Write(iv, 0, iv.Length);
@@ -65,11 +62,10 @@ namespace BarkFluff.WebApi.Core.MessengerData
         {
             var allBytes = File.ReadAllBytes(filePath);
 
-            // Извлекаем: [salt][IV][ciphertext]
             var salt = new byte[SaltSize];
             Array.Copy(allBytes, 0, salt, 0, SaltSize);
 
-            var iv = new byte[16]; // IV для AES — 16 байт
+            var iv = new byte[16]; 
             Array.Copy(allBytes, SaltSize, iv, 0, iv.Length);
 
             var encryptedBytes = new byte[allBytes.Length - SaltSize - iv.Length];
@@ -103,7 +99,7 @@ namespace BarkFluff.WebApi.Core.MessengerData
                 var salt = new byte[SaltSize];
                 Array.Copy(allBytes, 0, salt, 0, SaltSize);
 
-                var iv = new byte[16]; // IV для AES — 16 байт
+                var iv = new byte[16]; 
                 Array.Copy(allBytes, SaltSize, iv, 0, iv.Length);
 
                 var encryptedBytes = new byte[allBytes.Length - SaltSize - iv.Length];

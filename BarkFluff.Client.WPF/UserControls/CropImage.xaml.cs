@@ -1,4 +1,7 @@
-﻿using Microsoft.Win32;
+﻿using BarkFluff.Client.WPF.Pages.SetupPages;
+using BarkFluff.Client.WPF.Services.App;
+
+using Microsoft.Win32;
 
 using System;
 using System.IO;
@@ -20,7 +23,18 @@ namespace BarkFluff.Client.WPF.UserControls
         private TransformGroup _transformGroup = new TransformGroup();
 
         private string _imagePath = string.Empty;
-        private BitmapImage _currentBitmap; // Сохраняем ссылку для освобождения
+        private BitmapImage _currentBitmap;
+
+        public CreateAccount Pattern { get; set; }
+
+        public AvatarImageHolder AvatarHolder
+        {
+            get => (AvatarImageHolder)GetValue(AvatarHolderProperty);
+            set => SetValue(AvatarHolderProperty, value);
+        }
+
+        public static readonly DependencyProperty AvatarHolderProperty =
+            DependencyProperty.Register(nameof(AvatarHolder), typeof(AvatarImageHolder), typeof(CropImage), new PropertyMetadata(null));
 
         public CropImage()
         {
@@ -197,7 +211,8 @@ namespace BarkFluff.Client.WPF.UserControls
             BitmapSource image = GetCroppedAvatar();
             if (image != null)
             {
-                // Здесь код для обработки изображения
+                AvatarHolder.Image = image;
+                Pattern.Cropping();
             }
         }
 

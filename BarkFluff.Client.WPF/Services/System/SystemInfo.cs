@@ -1,5 +1,4 @@
 ﻿using Microsoft.Win32;
-
 using System.Diagnostics;
 
 namespace BarkFluff.Client.WPF
@@ -19,7 +18,6 @@ namespace BarkFluff.Client.WPF
                     {
                         return $"{editionID.ToString()} {displayVersion.ToString()}";
                     }
-
                     object releaseId = key.GetValue("ReleaseId");
                     if (releaseId != null && editionID != null)
                     {
@@ -34,9 +32,7 @@ namespace BarkFluff.Client.WPF
         {
             OperatingSystem os = Environment.OSVersion;
             Version version = os.Version;
-
             int buildNumber = version.Build;
-
             string windowsName = "Windows ";
 
             if (buildNumber >= 22000)
@@ -58,7 +54,6 @@ namespace BarkFluff.Client.WPF
                 string displayVersion = GetDisplayVersion();
                 if (!string.IsNullOrEmpty(displayVersion))
                 {
-                    //return $"{windowsName} {displayVersion} {buildNumber}";
                     return $"{windowsName} {displayVersion} (сборка {buildNumber})";
                 }
             }
@@ -85,10 +80,8 @@ namespace BarkFluff.Client.WPF
             {
                 if (process == null)
                     throw new InvalidOperationException("Не удалось запустить процесс curl.");
-
                 string output = process.StandardOutput.ReadToEnd();
                 process.WaitForExit();
-
                 return output.Trim();
             }
         }

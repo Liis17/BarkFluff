@@ -83,7 +83,7 @@ namespace BarkFluff.Client.WPF
             versionParts[3] = buildNumber.ToString();
             AppVersion.Version = string.Join(".", versionParts);
 
-            var versionFile = "K:\\source\\HavenProjects\\BarkFluff\\BarkFluff.Client.WPF\\AppVersion.cs";
+            var versionFile = "K:\\source\\HavenProjects\\BarkFluff\\BarkFluff.Client.WPF\\Services\\App\\AppVersion.cs";
             var lines = System.IO.File.ReadAllLines(versionFile);
             for (int i = 0; i < lines.Length; i++)
             {
