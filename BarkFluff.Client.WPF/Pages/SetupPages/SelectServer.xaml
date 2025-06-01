@@ -202,6 +202,7 @@
                     x:Name="ServerAddressTextBox"
                     Margin="0,0,0,10"
                     GotFocus="ServerAddressTextBox_GotFocus"
+                    Loaded="ServerAddressTextBox_Loaded"
                     Style="{StaticResource CustomTextBox}"
                     Text="" />
 
@@ -232,7 +233,6 @@
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock
                                     FontFamily="{DynamicResource AdwaitaSans}"
-
                                     FontSize="16"
                                     FontWeight="SemiBold"
                                     Foreground="White"

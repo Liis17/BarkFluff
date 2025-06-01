@@ -5,8 +5,9 @@
     xmlns:crop="clr-namespace:BarkFluff.Client.WPF.UserControls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:preview="clr-namespace:BarkFluff.Client.WPF.UserControls"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-    d:DesignHeight="2980"
+    d:DesignHeight="3480"
     d:DesignWidth="720"
     mc:Ignorable="d">
 
@@ -246,6 +247,7 @@
                             x:Name="EmailEnter"
                             Margin="0,0,0,25"
                             KeyDown="TextBox_KeyDown"
+                            Loaded="EmailEnter_Loaded"
                             PlaceholderText="apogee@barkfluff.ru"
                             Style="{StaticResource MinimalTextBox}"
                             TextChanged="Enter_TextChanged" />
@@ -321,9 +323,9 @@
                             x:Name="PasswordEnter"
                             Margin="0,0,0,8"
                             KeyDown="TextBox_KeyDown"
-                            PasswordChanged="PasspowrEnter_TextChanged"
+                            PasswordChanged="PasswordEnter_TextChanged"
                             PlaceholderText="Введите пароль"
-                            TextChanged="PasspowrEnter_TextChanged" />
+                            TextChanged="PasswordEnter_TextChanged" />
 
                         <!--  Индикатор силы пароля  -->
                         <ProgressBar
@@ -387,16 +389,30 @@
                     CornerRadius="12">
                     <StackPanel HorizontalAlignment="Center">
                         <crop:CropImage
+                            x:Name="Cropper"
                             Width="600"
                             Height="700"
-                            Panel.ZIndex="100" />
+                            Panel.ZIndex="100"
+                            DataContext="CreateAccount"
+                            Loaded="CropperLoaded" />
                         <TextBlock
                             Margin="0,15,0,0"
                             HorizontalAlignment="Center"
                             Style="{StaticResource InfoTextStyle}"
-                            Text="Загрузите фото профиля или пропустите этот шаг" />
+                            Text="Загрузите фото профиля" />
                     </StackPanel>
                 </Border>
+            </StackPanel>
+
+            <!--  Step 7: Добавление описания  -->
+            <StackPanel
+                x:Name="Step7"
+                
+                Margin="0,0,0,0"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Orientation="Vertical">
+                <preview:PreviewUser x:Name="PreviewUserElement" />
             </StackPanel>
         </StackPanel>
 

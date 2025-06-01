@@ -4,6 +4,7 @@ using System.IO;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 
 namespace BarkFluff.Client.WPF.Pages.SetupPages
 {
@@ -73,6 +74,16 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
         private void PublicServer_Click(object sender, RoutedEventArgs e)
         {
 
+        }
+
+        private void ServerAddressTextBox_Loaded(object sender, RoutedEventArgs e)
+        {
+#if(DEBUG)
+            if (sender is TextBox serverIp)
+            {
+                serverIp.Text = "fooxboy.ru:7002";
+            }
+#endif
         }
     }
 }

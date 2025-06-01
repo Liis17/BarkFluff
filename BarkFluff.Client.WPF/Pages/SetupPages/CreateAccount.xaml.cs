@@ -1,13 +1,17 @@
-﻿using BarkFluff.Shared.Exceptions;
+﻿using BarkFluff.Client.WPF.Services.App;
+using BarkFluff.Client.WPF.UserControls;
+using BarkFluff.Shared.Exceptions;
 using BarkFluff.Shared.Exceptions.Identity;
 using BarkFluff.WebApi.Core.MessengerData;
 
+using System.IO;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
 
 namespace BarkFluff.Client.WPF.Pages.SetupPages
 {
@@ -19,6 +23,8 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
         private int currentStep = 0;
         private List<StackPanel>? steps;
         private string _codeId = string.Empty;
+        private BitmapSource _picture;
+        public AvatarImageHolder AvatarHolder { get; set; } = new AvatarImageHolder();
 
         public enum SlideDirection
         {
@@ -32,7 +38,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
         }
         private void Register_Loaded(object sender, RoutedEventArgs e)
         {
-            steps = new List<StackPanel> { Step1, Step2, Step3, Step4, Step5, Step6 };
+            steps = new List<StackPanel> { Step1, Step2, Step3, Step4, Step5, Step6, Step7 };
 
             foreach (var item in steps)
             {
@@ -172,7 +178,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
         private async void NextButton_Click(object sender, RoutedEventArgs e)
         {
             NextButton.IsEnabled = false; // Отключаем кнопку, чтобы предотвратить повторные нажатия
-            if (currentStep < steps.Count - 1)
+            if (currentStep < steps.Count)
             {
                 if (currentStep == 0) // Первый шаг (имя фамилия)
                 {
@@ -399,9 +405,32 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                 }
                 else if (currentStep == 5) //шестой шаг (обрезка аватара)
                 {
+                    AnimateTransition(steps[currentStep], steps[currentStep + 1], SlideDirection.Forward);
+                    currentStep++;
+                    UpdateNavigationButtons();
+                    UpdateErrorMessageTextBlock("");
+
+                    JpegBitmapEncoder encoder = new JpegBitmapEncoder();
+                    encoder.QualityLevel = 60; // Качество 60%
+                    encoder.Frames.Add(BitmapFrame.Create(AvatarHolder.Image));
+                    using var memoryStream = new MemoryStream();
+                    encoder.Save(memoryStream);
+                    byte[] jpegBytes = memoryStream.ToArray();
+
+                    await App.ServerCommunication.UploadUserAvatarAsync(jpegBytes);
+
+                    var response = await App.ServerCommunication.GetUserDatas();
+                    var fullName = $@"{response.FirstName} {response.LastName}"; 
+                    PreviewUserElement.PreviewUser_Update(fullName, response.Username, response.ProfilePictureUrl);
+                }
+                else if (currentStep == 6) //Дополнительная информация о профиле
+                {
+                
+                }
+                else if (currentStep == 7) //Предложение включить 2fa
+                {
 
                 }
-
             }
         }
 
@@ -464,7 +493,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
             ErrorMessageTextBlock.Text = text;
         }
 
-        private void PasspowrEnter_TextChanged(object sender, RoutedEventArgs e)
+        private void PasswordEnter_TextChanged(object sender, RoutedEventArgs e)
         {
             UpdateErrorMessageTextBlock("");
             var a = 0;
@@ -494,5 +523,31 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                 grid.Children.Add(child);
             }
         }
+
+        private void CropperLoaded(object sender, RoutedEventArgs e)
+        {
+            if(sender is CropImage)
+            {
+                Cropper.AvatarHolder = AvatarHolder;
+                Cropper.Pattern = this;
+            }
+        }
+
+        public void Cropping()
+        {
+            NextButton_Click(null, null);
+        }
+
+        #region потом удалить их
+        private void EmailEnter_Loaded(object sender, RoutedEventArgs e)
+        {
+#if (DEBUG)
+            if (sender is TextBox serverIp)
+            {
+                serverIp.Text = "me@liis17.ru";
+            }
+#endif
+        }
     }
+        #endregion
 }
