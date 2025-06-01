@@ -1,4 +1,6 @@
-﻿using System;
+﻿using BarkFluff.Client.WPF.Pages.SetupPages;
+
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Windows;
@@ -21,6 +23,8 @@ namespace BarkFluff.Client.WPF.UserControls
         public string? fullName;
         public string? username;
         public string? avatarUrl;
+
+        public CreateAccount Pattern;
         public PreviewUser()
         {
             InitializeComponent();
@@ -39,6 +43,7 @@ namespace BarkFluff.Client.WPF.UserControls
         private void SaveButton_Click(object sender, RoutedEventArgs e)
         {
             //вызвать отправку био на сервер 
+            Pattern.Cropping();
         }
 
         private void AboutTextBox_TextChanged(object sender, TextChangedEventArgs e)

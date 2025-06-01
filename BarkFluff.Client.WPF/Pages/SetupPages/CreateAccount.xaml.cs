@@ -526,10 +526,10 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
 
         private void CropperLoaded(object sender, RoutedEventArgs e)
         {
-            if(sender is CropImage)
+            if(sender is CropImage cropImage)
             {
-                Cropper.AvatarHolder = AvatarHolder;
-                Cropper.Pattern = this;
+                cropImage.AvatarHolder = AvatarHolder;
+                cropImage.Pattern = this;
             }
         }
 
@@ -547,6 +547,14 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                 serverIp.Text = "me@liis17.ru";
             }
 #endif
+        }
+
+        private void PreviewUserElement_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (sender is PreviewUser previewUser)
+            {
+                previewUser.Pattern = this;
+            }
         }
     }
         #endregion
