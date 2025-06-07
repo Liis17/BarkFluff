@@ -9,6 +9,20 @@
     d:DesignHeight="1000"
     d:DesignWidth="800"
     mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="AdwaitaSans" />
+            <Setter Property="FontSize" Value="24" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,0,0,30" />
+        </Style>
+    </UserControl.Resources>
+    <ScrollViewer>
+        
+    
     <Grid Background="#1A1A1A">
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
@@ -26,9 +40,9 @@
                 Margin="0,0,0,5"
                 HorizontalAlignment="Center"
                 FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="34"
                 FontWeight="SemiBold"
                 Foreground="White"
+                Style="{StaticResource SectionHeaderStyle}"
                 Text="Двухфакторная аутентификация" />
 
             <TextBlock
@@ -60,12 +74,13 @@
 
                     <Border
                         x:Name="QrCodeContainer"
-                        Width="200"
-                        Height="200"
+                        Width="250"
+                        Height="250"
+                        Padding="10"
                         Margin="0,0,0,15"
                         HorizontalAlignment="Center"
                         Background="White"
-                        CornerRadius="8">
+                        CornerRadius="16">
                         <Grid>
                             <Image x:Name="QrCodeImage" Stretch="Uniform" />
                             <TextBlock
@@ -90,20 +105,20 @@
                         Foreground="#B0B0B0"
                         Text="Или введите ключ вручную:" />
 
-                    <Border
-                        Margin="0,0,0,10"
-                        Padding="10,8"
-                        Background="#1A1A1A"
-                        BorderBrush="#404040"
-                        BorderThickness="1"
-                        CornerRadius="6">
-                        <TextBlock
+                    <Border>
+                        <TextBox
                             x:Name="SecretKeyText"
-                            HorizontalAlignment="Center"
+                            Margin="0,0,0,10"
+                            Padding="10,8"
+                            HorizontalAlignment="Stretch"
+                            Background="#1A1A1A"
+                            BorderBrush="#404040"
+                            BorderThickness="1"
                             FontFamily="Consolas"
                             FontSize="12"
                             FontWeight="Normal"
                             Foreground="#E0E0E0"
+                            IsReadOnly="True"
                             Text="ABCD EFGH IJKL MNOP QRST UVWX"
                             TextAlignment="Center" />
                     </Border>
@@ -349,4 +364,5 @@
                 TextWrapping="Wrap" />
         </StackPanel>
     </Grid>
+    </ScrollViewer>
 </UserControl>
