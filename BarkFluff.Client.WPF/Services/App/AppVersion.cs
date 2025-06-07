@@ -2,7 +2,7 @@ namespace BarkFluff.Client.WPF
 {
     public class AppVersion
     {
-       public static string Version { get; set; } = "0.0.0.390";
+       public static string Version { get; set; } = "0.0.0.392";
         public static string VersionName { get; } = "α";
         public static string AppName
         {
