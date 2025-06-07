@@ -1,6 +1,7 @@
 ﻿using BarkFluff.Client.WPF.Services.App.Converter;
 
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -14,6 +15,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages.Registration
     {
         public CreateAccount? Pattern;
         private TextBox[]? codeBoxes;
+        private bool isCodeSent = false; // Флаг для проверки, был ли код отправлен
 
         public TwoFA()
         {
@@ -49,7 +51,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages.Registration
                 current.SelectAll();
         }
 
-        private void CodeBox_TextChanged(object sender, TextChangedEventArgs e)
+        private async void CodeBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             TextBox current = sender as TextBox;
             if (current.Text.Length == 1)
@@ -66,21 +68,26 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages.Registration
                 string code = string.Concat(codeBoxes.Select(b => b.Text));
                 try
                 {
+                    ConnectionText.Text = "Подключение...";
+                    isCodeSent = true; // Устанавливаем флаг, что код отправлен
                     App.ServerCommunication.OtpAccept(code); // Отправляем код на сервер
+
                 }
                 catch(BarkFluff.Shared.Exceptions.Identity.NotValidOtpCodeException)
                 {
+                    isCodeSent = false; // Сбрасываем флаг, если код неверный
                     MessageBox.Show("Ошибка: Неверный код 2FA.");
                     return;
                 }
                 catch (BarkFluff.Shared.Exceptions.Identity.OtpNotCreatedException)
                 {
+                    isCodeSent = false; // Сбрасываем флаг, если код не был создан
                     MessageBox.Show("Ошибка: Код не был создан.");
                     return;
                 }
                 catch (BarkFluff.Shared.Exceptions.Identity.OtpCodeNeedException)
                 {
-
+                    isCodeSent = false; // Сбрасываем флаг, если код не нужен
                     MessageBox.Show("Ошибка: Обязательно необходимо ввести код 2FA.");
                     return;
                 }
@@ -114,7 +121,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages.Registration
             {
                 Clipboard.SetText(SecretKeyText.Text);
             });
-        }//копировать в буфер
+        } //копировать в буфер
         private void SkipButton_Click(object sender, RoutedEventArgs e)
         {
             //пропустить
@@ -123,7 +130,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages.Registration
         }
         private void FocusFirstCodeBox(object sender, RoutedEventArgs e)
         {
-
+            Pattern.Cropping();
         }
         private void ConnectButton_Click(object sender, RoutedEventArgs e)
         {
