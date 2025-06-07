@@ -1,4 +1,6 @@
-﻿using System.Diagnostics;
+﻿using BarkFluff.Client.WPF.Services.Notification;
+
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Windows;
@@ -39,6 +41,25 @@ namespace BarkFluff.Client.WPF
 
         private void Bootstrap()
         {
+            string shortcutPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.StartMenu),
+            "Programs",
+            "BarkFluff.lnk");
+
+            string targetPath;
+
+#if WINDOWS_UWP
+// Для UWP (включая WinUI)
+            folderPath = Windows.ApplicationModel.Package.Current.InstalledLocation.Path;
+#else
+            var exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+            targetPath = Path.Combine( Path.GetDirectoryName(exePath), "BarkFluff.Client.WPF.exe");
+#endif
+
+            string appUserModelId = "com.barkfluff.messenger";
+
+            ShortcutHelper.CreateShortcut(shortcutPath, targetPath, appUserModelId);
+            AppIdHelper.SetCurrentProcessExplicitAppUserModelID("com.barkfluff.messenger");
             ServerCommunication = new WebApi.Core.WebApi();
             string filePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "GlobalParam.json");
 
