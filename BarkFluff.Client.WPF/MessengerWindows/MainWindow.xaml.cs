@@ -3,11 +3,14 @@ using BarkFluff.Client.WPF.Pages;
 using BarkFluff.Client.WPF.Pages.PinCode;
 using BarkFluff.Client.WPF.Pages.SetupPages;
 using BarkFluff.WebApi.Core.MessengerData;
+
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
+
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
+
 using Login = BarkFluff.Client.WPF.Pages.SetupPages.Login;
 
 namespace BarkFluff.Client.WPF
@@ -26,6 +29,7 @@ namespace BarkFluff.Client.WPF
             MouseDown += MainWindow_MouseDown;
             Closing += MainWindow_Closing;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
+            //ExecuteComboAction();
         }
         private void MainWindowBootstrap()
         {
@@ -94,7 +98,7 @@ namespace BarkFluff.Client.WPF
             try
             {
                 string filePath = Path.Combine(App.GParam.AppPath, "GlobalParam.json");
-                GlobalParam.Save(App.GParam, filePath, App.GParam.AppPass); 
+                GlobalParam.Save(App.GParam, filePath, App.GParam.AppPass);
             }
             catch
             {
