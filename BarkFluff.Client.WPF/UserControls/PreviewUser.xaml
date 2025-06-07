@@ -9,6 +9,16 @@
     d:DesignHeight="720"
     d:DesignWidth="1280"
     mc:Ignorable="d">
+    <UserControl.Resources>
+        <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="AdwaitaSans" />
+            <Setter Property="FontSize" Value="24" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,0,0,30" />
+        </Style>
+    </UserControl.Resources>
     <Grid Background="#1A1A1A">
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
@@ -19,9 +29,9 @@
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             FontFamily="{DynamicResource AdwaitaSans}"
-            FontSize="34"
             FontWeight="SemiBold"
             Foreground="White"
+            Style="{StaticResource SectionHeaderStyle}"
             Text="Настройка профиля" />
         <Border
             Padding="30,25"
@@ -87,7 +97,7 @@
                                 FontSize="24"
                                 FontWeight="SemiBold"
                                 Foreground="White"
-                                Text="Имя Фамилия" />
+                                Text="Загрузка..." />
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock
                                     FontFamily="{DynamicResource AdwaitaSans}"
