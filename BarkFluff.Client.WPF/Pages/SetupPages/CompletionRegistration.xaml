@@ -1,0 +1,58 @@
+﻿<UserControl
+    x:Class="BarkFluff.Client.WPF.Pages.SetupPages.CompletionRegistration"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:BarkFluff.Client.WPF.Pages.SetupPages"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    d:DesignHeight="720"
+    d:DesignWidth="1280"
+    mc:Ignorable="d">
+    <UserControl.Resources>
+        <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="AdwaitaSans" />
+            <Setter Property="FontSize" Value="24" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,0,0,30" />
+        </Style>
+    </UserControl.Resources>
+    <Grid>
+        <Grid x:Name="MainGrid">
+            <Grid.RenderTransform>
+                <TranslateTransform x:Name="MainGridTransform" />
+            </Grid.RenderTransform>
+            <StackPanel
+                Margin="0"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Orientation="Vertical">
+                <TextBlock
+                    Margin="0,0,0,10"
+                    HorizontalAlignment="Center"
+                    FontFamily="{DynamicResource AdwaitaSans}"
+                    FontWeight="SemiBold"
+                    Foreground="White"
+                    Style="{StaticResource SectionHeaderStyle}"
+                    Text="Регистрация завершена!" />
+                <TextBlock
+                    Margin="0,0,0,20"
+                    HorizontalAlignment="Center"
+                    FontFamily="{DynamicResource AdwaitaSans}"
+                    FontSize="16"
+                    FontWeight="Regular"
+                    Foreground="White"
+                    Text="Вы успешно зарегистрировались в BarkFluff. Еще пару секунд и вы сможете использовать приложение. "
+                    TextAlignment="Center"
+                    TextWrapping="WrapWithOverflow" />
+                <ui:ProgressRing
+                    Foreground="#df5000"
+                    IsIndeterminate="True"
+                    OverridesDefaultStyle="True" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+
+</UserControl>

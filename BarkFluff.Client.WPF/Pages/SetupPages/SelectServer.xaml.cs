@@ -69,7 +69,6 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
         {
 
         }
-
         private void PublicServer_Click(object sender, RoutedEventArgs e)
         {
 
