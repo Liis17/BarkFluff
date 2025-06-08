@@ -1,4 +1,5 @@
-﻿using BarkFluff.Client.WPF.Services.Notification;
+﻿using BarkFluff.Client.WPF.Pages;
+using BarkFluff.Client.WPF.Services.Notification;
 
 using System.Diagnostics;
 using System.IO;
@@ -53,7 +54,7 @@ namespace BarkFluff.Client.WPF
             folderPath = Windows.ApplicationModel.Package.Current.InstalledLocation.Path;
 #else
             var exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
-            targetPath = Path.Combine( Path.GetDirectoryName(exePath), "BarkFluff.Client.WPF.exe");
+            targetPath = Path.Combine(Path.GetDirectoryName(exePath), "BarkFluff.Client.WPF.exe");
 #endif
 
             string appUserModelId = "com.barkfluff.messenger";
@@ -123,6 +124,12 @@ namespace BarkFluff.Client.WPF
             ServerCommunication = new WebApi.Core.WebApi();
 
             ServerCommunication.CreateAC(GParam, GParam.MachineName, SystemInfo.GetFriendlyWindowsVersion(), AppVersion.AppName, AppVersion.Version, GParam.IpAddress);
+        }
+
+        public static void OpenMessengerPage()
+        {
+            MessengerWindow.MainFrame.Children.Clear();
+            MessengerWindow.MainFrame.Children.Add(new MessengerPage());
         }
     }
 }

@@ -97,7 +97,7 @@ namespace BarkFluff.Client.WPF
         {
             try
             {
-                string filePath = Path.Combine(App.GParam.AppPath, "GlobalParam.json");
+                string filePath = Path.Combine(SystemInfo.GetAppPath(), "GlobalParam.json");
                 GlobalParam.Save(App.GParam, filePath, App.GParam.AppPass);
             }
             catch
@@ -196,24 +196,11 @@ namespace BarkFluff.Client.WPF
 
             if (App.GParam.SocketBeacon == string.Empty)
             {
-                MainFrame.Children.Add(new ServerIP());
+                MainFrame.Children.Add(new SelectServer());
             }
             else
             {
                 MainFrame.Children.Add(new Pages.SetupPages.Login());
-
-
-
-                //var beaconData = App.ServerCommunication.BeaconAC.GetServerInfo(new BarkFluff.Proto.Beacon.GetServerInfoRequest());
-
-
-
-                //App.GParam.SocketIdentity = EnsureHttpPrefix(beaconData.Users.Endpoint.Host + ":" + beaconData.Identity.Endpoint.Port);
-                //App.GParam.SocketUsers = EnsureHttpPrefix(beaconData.Identity.Endpoint.Host + ":" + beaconData.Users.Endpoint.Port);
-
-                //App.GParam.ServerName = beaconData.Name;
-
-
             }
         }
 

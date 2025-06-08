@@ -86,5 +86,11 @@ namespace BarkFluff.Client.WPF
                 return output.Trim();
             }
         }
+
+        public static string GetAppPath()
+        {
+            string exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+            return System.IO.Path.GetDirectoryName(exePath);
+        }
     }
 }
