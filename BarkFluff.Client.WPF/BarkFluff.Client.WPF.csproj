@@ -6,7 +6,11 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <UseWinRT>true</UseWinRT>
     <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <NuGetAuditLevel>critical</NuGetAuditLevel>
+    <ApplicationIcon>Resources\Icons\barkfluff_logo.ico</ApplicationIcon>
+    <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -27,6 +31,7 @@
 
   <ItemGroup>
     <Content Include="Fonts\AdwaitaSans-Regular.ttf" />
+    <Content Include="Resources\Icons\barkfluff_logo.ico" />
     <Resource Include="Resources\Images\barkfluff_logo.png" />
     <Resource Include="Resources\Placeholders\Placeholder_1.jpg" />
     <Resource Include="Resources\Placeholders\Placeholder_2.jpg" />
@@ -35,13 +40,15 @@
 
   <ItemGroup>
     <PackageReference Include="Emoji.Wpf" Version="0.3.4" />
-    <PackageReference Include="Google.Protobuf" Version="3.30.2" />
+    <PackageReference Include="Google.Protobuf" Version="3.31.1" />
     <PackageReference Include="Grpc.Net.Client" Version="2.71.0" />
     <PackageReference Include="Grpc.Tools" Version="2.72.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.1.3" />
     <PackageReference Include="WPF-UI" Version="4.0.2" />
+    <PackageReference Include="Microsoft.WindowsAPICodePack.Shell" Version="1.1.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -52,7 +59,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Resources\Icons\" />
     <Folder Include="ServiceWindows\" />
   </ItemGroup>
 

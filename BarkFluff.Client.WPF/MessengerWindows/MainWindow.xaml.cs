@@ -3,11 +3,14 @@ using BarkFluff.Client.WPF.Pages;
 using BarkFluff.Client.WPF.Pages.PinCode;
 using BarkFluff.Client.WPF.Pages.SetupPages;
 using BarkFluff.WebApi.Core.MessengerData;
+
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
+
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
+
 using Login = BarkFluff.Client.WPF.Pages.SetupPages.Login;
 
 namespace BarkFluff.Client.WPF
@@ -26,6 +29,7 @@ namespace BarkFluff.Client.WPF
             MouseDown += MainWindow_MouseDown;
             Closing += MainWindow_Closing;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
+            //ExecuteComboAction();
         }
         private void MainWindowBootstrap()
         {
@@ -93,8 +97,8 @@ namespace BarkFluff.Client.WPF
         {
             try
             {
-                string filePath = Path.Combine(App.GParam.AppPath, "GlobalParam.json");
-                GlobalParam.Save(App.GParam, filePath, App.GParam.AppPass); 
+                string filePath = Path.Combine(SystemInfo.GetAppPath(), "GlobalParam.json");
+                GlobalParam.Save(App.GParam, filePath, App.GParam.AppPass);
             }
             catch
             {
@@ -192,24 +196,11 @@ namespace BarkFluff.Client.WPF
 
             if (App.GParam.SocketBeacon == string.Empty)
             {
-                MainFrame.Children.Add(new ServerIP());
+                MainFrame.Children.Add(new SelectServer());
             }
             else
             {
                 MainFrame.Children.Add(new Pages.SetupPages.Login());
-
-
-
-                //var beaconData = App.ServerCommunication.BeaconAC.GetServerInfo(new BarkFluff.Proto.Beacon.GetServerInfoRequest());
-
-
-
-                //App.GParam.SocketIdentity = EnsureHttpPrefix(beaconData.Users.Endpoint.Host + ":" + beaconData.Identity.Endpoint.Port);
-                //App.GParam.SocketUsers = EnsureHttpPrefix(beaconData.Identity.Endpoint.Host + ":" + beaconData.Users.Endpoint.Port);
-
-                //App.GParam.ServerName = beaconData.Name;
-
-
             }
         }
 
