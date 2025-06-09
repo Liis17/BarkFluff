@@ -153,6 +153,8 @@ message ConnectDeviceStatus {
   ConnectedDeviceStatus status = 1; // Статус подключения устройства
   
   ConnectedDevice device = 2; // устройство (придет если статус - Accepted)
+  
+  string fast_token = 3; 
 }
 
 message ConnectDeviceRequest { }
