@@ -4,7 +4,6 @@ using System.IO;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 
 namespace BarkFluff.Client.WPF.Pages.SetupPages
 {
@@ -70,7 +69,6 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
         {
 
         }
-
         private void PublicServer_Click(object sender, RoutedEventArgs e)
         {
 

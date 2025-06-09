@@ -3,8 +3,6 @@ using BarkFluff.Client.WPF.Services.App;
 
 using Microsoft.Win32;
 
-using System;
-using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -92,7 +90,7 @@ namespace BarkFluff.Client.WPF.UserControls
                 bmp.CacheOption = BitmapCacheOption.OnLoad;
                 bmp.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
                 bmp.UriSource = new Uri(path, UriKind.Absolute);
-                bmp.DecodePixelWidth = 600; 
+                bmp.DecodePixelWidth = 600;
 
                 bmp.EndInit();
 

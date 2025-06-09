@@ -38,7 +38,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
         }
         private void Register_Loaded(object sender, RoutedEventArgs e)
         {
-            steps = new List<StackPanel> { Step1, Step2, Step3, Step4, Step5, Step6, Step7 };
+            steps = new List<StackPanel> { Step1, Step2, Step3, Step4, Step5, Step6, Step7, Step8 };
 
             foreach (var item in steps)
             {
@@ -420,16 +420,24 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                     await App.ServerCommunication.UploadUserAvatarAsync(jpegBytes);
 
                     var response = await App.ServerCommunication.GetUserDatas();
-                    var fullName = $@"{response.FirstName} {response.LastName}"; 
+                    var fullName = $@"{response.FirstName} {response.LastName}";
                     PreviewUserElement.PreviewUser_Update(fullName, response.Username, response.ProfilePictureUrl);
                 }
                 else if (currentStep == 6) //Дополнительная информация о профиле
                 {
-                
+                    AnimateTransition(steps[currentStep], steps[currentStep + 1], SlideDirection.Forward);
+                    currentStep++;
+                    UpdateNavigationButtons();
+                    UpdateErrorMessageTextBlock("");
+
+                    OtpSuggestion.Update();
                 }
                 else if (currentStep == 7) //Предложение включить 2fa
                 {
-
+                    AnimateTransition(steps[currentStep], steps[currentStep + 1], SlideDirection.Forward);
+                    currentStep++;
+                    UpdateNavigationButtons();
+                    UpdateErrorMessageTextBlock("");
                 }
             }
         }
@@ -526,7 +534,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
 
         private void CropperLoaded(object sender, RoutedEventArgs e)
         {
-            if(sender is CropImage cropImage)
+            if (sender is CropImage cropImage)
             {
                 cropImage.AvatarHolder = AvatarHolder;
                 cropImage.Pattern = this;
@@ -557,5 +565,5 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
             }
         }
     }
-        #endregion
+    #endregion
 }

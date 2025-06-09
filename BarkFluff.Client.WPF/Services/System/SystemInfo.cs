@@ -1,4 +1,5 @@
 ﻿using Microsoft.Win32;
+
 using System.Diagnostics;
 
 namespace BarkFluff.Client.WPF
@@ -84,6 +85,12 @@ namespace BarkFluff.Client.WPF
                 process.WaitForExit();
                 return output.Trim();
             }
+        }
+
+        public static string GetAppPath()
+        {
+            string exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+            return System.IO.Path.GetDirectoryName(exePath);
         }
     }
 }

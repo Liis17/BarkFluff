@@ -219,5 +219,19 @@ namespace BarkFluff.WebApi.Core
             return null;
             
         }
+
+        public async Task<(string qrBase64, string justCode)> OtpReceipt()
+        {
+            var response = await IdentityAC.EnableOtpVerificationAsync(new Proto.Identity.EnableOtpVerificationRequest { OtpType = Proto.Identity.OtpTypeId.Authenticator });
+            var qr = response.OtpQr; // строка base64 для qr кода
+            var code = response.OtpCode; //тут код для ручного ввода
+            return (qr, code);
+        }
+
+        public async void OtpAccept(string code)
+        {
+            var response = await IdentityAC.ConfirmOtpVerificationAsync(new Proto.Identity.ConfirmOtpVerificationRequest { OtpCode = code });
+            
+        }
     }
 }
