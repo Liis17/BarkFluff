@@ -9,7 +9,37 @@
     d:DesignWidth="800"
     Tag="MessengerPage - Главная страница мессенджера"
     mc:Ignorable="d">
-    <Grid>
+
+    <UserControl.Resources>
+        <Storyboard x:Key="SlideDownAndFadeIn">
+            <DoubleAnimation
+                Storyboard.TargetName="MainGrid"
+                Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                From="-50"
+                To="0"
+                Duration="0:0:0.2">
+                <DoubleAnimation.EasingFunction>
+                    <QuadraticEase EasingMode="EaseOut" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation
+                Storyboard.TargetName="MainGrid"
+                Storyboard.TargetProperty="Opacity"
+                From="0"
+                To="1"
+                Duration="0:0:0.1">
+                <DoubleAnimation.EasingFunction>
+                    <QuadraticEase EasingMode="EaseOut" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+    </UserControl.Resources>
+
+    <Grid x:Name="MainGrid" Opacity="0">
+        <Grid.RenderTransform>
+            <TranslateTransform Y="-50" />
+        </Grid.RenderTransform>
+
         <TextBlock
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
