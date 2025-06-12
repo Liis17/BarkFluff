@@ -82,7 +82,6 @@
                             Background="White"
                             CornerRadius="16">
                             <Grid>
-                                <Image x:Name="QrCodeImage" Stretch="Uniform" />
                                 <TextBlock
                                     HorizontalAlignment="Center"
                                     VerticalAlignment="Center"
@@ -92,6 +91,7 @@
                                     Foreground="#666666"
                                     Text="QR КОД"
                                     TextAlignment="Center" />
+                                <Image x:Name="QrCodeImage" Stretch="Uniform" />
                             </Grid>
 
                         </Border>
