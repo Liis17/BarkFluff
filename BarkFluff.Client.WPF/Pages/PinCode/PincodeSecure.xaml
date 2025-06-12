@@ -10,7 +10,40 @@
     d:DesignHeight="720"
     d:DesignWidth="1280"
     mc:Ignorable="d">
-    <Grid>
+
+    <UserControl.Resources>
+        <Storyboard x:Key="SlideDownAndFadeOut">
+            <!-- Анимация перемещения вниз -->
+            <DoubleAnimation 
+                Storyboard.TargetName="MainGrid"
+                Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                From="0" 
+                To="100" 
+                Duration="0:0:0.2">
+                <DoubleAnimation.EasingFunction>
+                    <QuadraticEase EasingMode="EaseIn"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+
+            <!-- Анимация исчезновения -->
+            <DoubleAnimation 
+                Storyboard.TargetName="MainGrid"
+                Storyboard.TargetProperty="Opacity"
+                From="1" 
+                To="0" 
+                Duration="0:0:0.1">
+                <DoubleAnimation.EasingFunction>
+                    <QuadraticEase EasingMode="EaseIn"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+    </UserControl.Resources>
+
+    <Grid x:Name="MainGrid">
+        <Grid.RenderTransform>
+            <TranslateTransform/>
+        </Grid.RenderTransform>
+
         <StackPanel
             HorizontalAlignment="Center"
             VerticalAlignment="Center"

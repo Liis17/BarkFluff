@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media.Animation;
 
 namespace BarkFluff.Client.WPF.Pages.PinCode
 {
@@ -169,7 +170,25 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
             App.GParam.AppPass = new string(pinDigits);
             App.GParam.AppPath = exeDirectory ?? string.Empty;
             App.GParam.IpAddress = SystemInfo.GetExternalIp();
-            App.MessengerWindow.PincodeSuccess();
+
+            Box0.Focusable = false;
+            Box1.Focusable = false;
+            Box2.Focusable = false;
+            Box3.Focusable = false;
+
+            StartSlideDownAndFadeOut(() =>
+            {
+                // Код, который выполнится после завершения анимации
+                // Например, переход на следующую страницу
+                App.MessengerWindow.PincodeSuccess();
+            });
+        }
+
+        public void StartSlideDownAndFadeOut(Action value)
+        {
+            var storyboard = (Storyboard)this.Resources["SlideDownAndFadeOut"];
+            storyboard.Completed += (s, e) => value?.Invoke();
+            storyboard.Begin();
         }
 
         private void RemoveSettings(object sender, RoutedEventArgs e)
