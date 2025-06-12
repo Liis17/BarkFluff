@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Windows;
+using System.Windows.Threading;
 
 namespace BarkFluff.Client.WPF
 {
@@ -128,8 +129,12 @@ namespace BarkFluff.Client.WPF
 
         public static void OpenMessengerPage()
         {
-            MessengerWindow.MainFrame.Children.Clear();
-            MessengerWindow.MainFrame.Children.Add(new MessengerPage());
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                MessengerWindow.MainFrame.Children.Clear();
+                MessengerWindow.MainFrame.Children.Add(new MessengerPage());
+            });
+
         }
     }
 }

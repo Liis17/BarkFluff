@@ -159,9 +159,16 @@ namespace BarkFluff.Client.WPF
                     //если файл существует, но сокет пустой, то открываем страницу выбора сервера
                 }
             }
-            else
+            else if(!string.IsNullOrEmpty(App.GParam.SocketBeacon) &&
+                !string.IsNullOrEmpty(App.GParam.SocketFiles) &&
+                !string.IsNullOrEmpty(App.GParam.SocketIdentity) &&
+                !string.IsNullOrEmpty(App.GParam.SocketUsers) &&
+                !string.IsNullOrEmpty(App.GParam.RefreshToken.Value) &&
+                !string.IsNullOrEmpty(App.GParam.ServerName)
+                )
             {
-                //открывать страницу с мессенджером
+                MainFrame.Children.Clear();
+                MainFrame.Children.Add(new MessengerPage());
             }
 
         }

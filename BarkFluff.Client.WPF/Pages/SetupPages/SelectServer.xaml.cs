@@ -79,7 +79,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
 #if(DEBUG)
             if (sender is TextBox serverIp)
             {
-                serverIp.Text = "fooxboy.ru:7002";
+                serverIp.Text = "charlie.liis17.ru:7002";
             }
 #endif
         }

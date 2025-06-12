@@ -210,7 +210,7 @@ namespace BarkFluff.Client.WPF.UserControls
             if (image != null)
             {
                 AvatarHolder.Image = image;
-                Pattern.Cropping();
+                Pattern.NextStep();
             }
         }
 

@@ -143,34 +143,40 @@
                 FontWeight="Light"
                 Foreground="#FF9A9A9A"
                 Text="Проблемы со входом? Попробуйте сбросить приложение." />
-            <ui:Button
-                Width="200"
-                Height="45"
-                Margin="0,7,0,7"
-                HorizontalAlignment="Center"
-                Background="#FFD20505"
-                Click="RemoveSettings"
-                CornerRadius="22"
-                MouseOverBackground="#FFC54700"
-                Opacity="0.6"
-                PressedBackground="#FFAB3D00">
-                <ui:Button.Content>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock
-                            VerticalAlignment="Center"
-                            FontFamily="{DynamicResource AdwaitaSans}"
-                            FontWeight="Medium"
-                            Foreground="#ffffff"
-                            Text="Сбросить приложение" />
-                        <ui:SymbolIcon
-                            Margin="5,0,0,0"
-                            FontSize="17"
-                            Foreground="#ffffff"
-                            Symbol="Delete28" />
-                    </StackPanel>
+            <StackPanel
+                x:Name="ButtonStack"
+                Loaded="ButtonStack_Loaded"
+                Orientation="Vertical">
+                <ui:Button
+                    Width="200"
+                    Height="45"
+                    Margin="0,7,0,7"
+                    HorizontalAlignment="Center"
+                    Background="#FFD20505"
+                    Click="RemoveSettings"
+                    CornerRadius="22"
+                    MouseOverBackground="#FFC54700"
+                    Opacity="0.6"
+                    PressedBackground="#FFAB3D00">
+                    <ui:Button.Content>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                FontFamily="{DynamicResource AdwaitaSans}"
+                                FontWeight="Medium"
+                                Foreground="#ffffff"
+                                Text="Сбросить приложение" />
+                            <ui:SymbolIcon
+                                Margin="5,0,0,0"
+                                FontSize="17"
+                                Foreground="#ffffff"
+                                Symbol="Delete28" />
+                        </StackPanel>
 
-                </ui:Button.Content>
-            </ui:Button>
+                    </ui:Button.Content>
+                </ui:Button>
+            </StackPanel>
+
         </StackPanel>
 
     </Grid>

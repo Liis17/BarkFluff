@@ -20,13 +20,12 @@
         </Style>
     </UserControl.Resources>
     <Grid>
-        <Grid x:Name="MainGrid">
+        <Grid x:Name="MainGrid" HorizontalAlignment="Center">
             <Grid.RenderTransform>
                 <TranslateTransform x:Name="MainGridTransform" />
             </Grid.RenderTransform>
             <StackPanel
-                Margin="0"
-                HorizontalAlignment="Center"
+                HorizontalAlignment="Right"
                 VerticalAlignment="Center"
                 Orientation="Vertical">
                 <TextBlock
@@ -38,7 +37,7 @@
                     Style="{StaticResource SectionHeaderStyle}"
                     Text="Регистрация завершена!" />
                 <TextBlock
-                    Margin="0,0,0,20"
+                    Margin="0,0,20,0"
                     HorizontalAlignment="Center"
                     FontFamily="{DynamicResource AdwaitaSans}"
                     FontSize="16"

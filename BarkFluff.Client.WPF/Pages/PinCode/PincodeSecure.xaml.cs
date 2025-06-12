@@ -1,5 +1,7 @@
-﻿using BarkFluff.WebApi.Core.MessengerData;
+﻿using BarkFluff.Client.WPF.Debug;
+using BarkFluff.WebApi.Core.MessengerData;
 
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Windows;
@@ -178,13 +180,35 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
                 File.Delete("GlobalParam.json");
                 Application.Current.Shutdown();
             }
-
-
         }
 
         private void FocusBoxZero(object sender, RoutedEventArgs e)
         {
             Box0.Focus();
+        }
+
+        private void ButtonStack_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (Debugger.IsAttached)
+            {
+                var btn = new Button
+                {
+                    Content = "открыть отладочное окно",
+                    Width = 150,
+                    Height = 30,
+                    Margin = new Thickness(5)
+                };
+
+                btn.Click += OpenDebugWindow;
+
+                ButtonStack.Children.Add(btn);
+            }
+        }
+
+        private void OpenDebugWindow(object sender, RoutedEventArgs e)
+        {
+            var debugWindow = new DebugWindow();
+            debugWindow.Show();
         }
     }
 }
