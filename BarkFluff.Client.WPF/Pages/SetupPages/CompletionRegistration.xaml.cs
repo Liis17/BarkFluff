@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Stfu.Linq;
+
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Windows;
@@ -29,8 +31,12 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
             _delayTimer = new DispatcherTimer();
             _delayTimer.Interval = TimeSpan.FromSeconds(2); 
             _delayTimer.Tick += DelayTimer_Tick; 
-            _delayTimer.IsEnabled = true; 
+            _delayTimer.IsEnabled = false; // Изначально таймер выключен
         }
+        public void TimerStart()
+        {
+            _delayTimer.Start();
+        }   
         private void DelayTimer_Tick(object sender, EventArgs e)
         {
             _delayTimer.Stop(); 

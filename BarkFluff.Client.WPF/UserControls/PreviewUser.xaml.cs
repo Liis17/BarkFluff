@@ -34,7 +34,7 @@ namespace BarkFluff.Client.WPF.UserControls
         private void SaveButton_Click(object sender, RoutedEventArgs e)
         {
             //вызвать отправку био на сервер 
-            Pattern.Cropping();
+            Pattern.NextStep();
         }
 
         private void AboutTextBox_TextChanged(object sender, TextChangedEventArgs e)

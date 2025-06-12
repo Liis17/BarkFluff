@@ -6,6 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:preview="clr-namespace:BarkFluff.Client.WPF.UserControls"
+    xmlns:setupPages="clr-namespace:BarkFluff.Client.WPF.Pages.SetupPages"
     xmlns:twofa="clr-namespace:BarkFluff.Client.WPF.Pages.SetupPages.Registration"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     d:DesignHeight="3980"
@@ -425,8 +426,22 @@
                     Style="{StaticResource SectionHeaderStyle}"
                     Text="Двухфакторная аутентификация (2FA)"
                     Visibility="Collapsed" />
-                <twofa:TwoFA x:Name="OtpSuggestion" />
+                <twofa:TwoFA x:Name="OtpSuggestion" Loaded="OtpSuggestion_Loaded" />
             </StackPanel>
+            <!--  Step 9: Завершение регистрации  -->
+            <StackPanel
+                x:Name="Step9"
+                Margin="0,0,0,0"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Orientation="Vertical">
+                <TextBlock
+                    Style="{StaticResource SectionHeaderStyle}"
+                    Text="Двухфакторная аутентификация (2FA)"
+                    Visibility="Collapsed" />
+                <setupPages:CompletionRegistration x:Name="CompletionRegistrationElement" />
+            </StackPanel>
+
         </StackPanel>
 
         <!--  Нижняя панель с кнопками  -->

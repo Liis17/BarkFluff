@@ -1,4 +1,5 @@
-﻿using BarkFluff.Client.WPF.Services.App;
+﻿using BarkFluff.Client.WPF.Pages.SetupPages.Registration;
+using BarkFluff.Client.WPF.Services.App;
 using BarkFluff.Client.WPF.UserControls;
 using BarkFluff.Shared.Exceptions;
 using BarkFluff.Shared.Exceptions.Identity;
@@ -12,6 +13,8 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
+
+using Windows.Devices.Sensors;
 
 namespace BarkFluff.Client.WPF.Pages.SetupPages
 {
@@ -38,7 +41,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
         }
         private void Register_Loaded(object sender, RoutedEventArgs e)
         {
-            steps = new List<StackPanel> { Step1, Step2, Step3, Step4, Step5, Step6, Step7, Step8 };
+            steps = new List<StackPanel> { Step1, Step2, Step3, Step4, Step5, Step6, Step7, Step8, Step9 };
 
             foreach (var item in steps)
             {
@@ -439,6 +442,14 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                     UpdateNavigationButtons();
                     UpdateErrorMessageTextBlock("");
                 }
+                else if (currentStep == 8) //Последний шаг (завершение регистрации)
+                {
+                    AnimateTransition(steps[currentStep], steps[currentStep + 1], SlideDirection.Forward);
+                    currentStep++;
+                    UpdateNavigationButtons();
+                    UpdateErrorMessageTextBlock("");
+                    CompletionRegistrationElement.TimerStart();
+                }
             }
         }
 
@@ -541,7 +552,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
             }
         }
 
-        public void Cropping()
+        public void NextStep()
         {
             NextButton_Click(null, null);
         }
@@ -556,7 +567,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
             }
 #endif
         }
-
+        #endregion
         private void PreviewUserElement_Loaded(object sender, RoutedEventArgs e)
         {
             if (sender is PreviewUser previewUser)
@@ -564,6 +575,15 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                 previewUser.Pattern = this;
             }
         }
+
+        private void OtpSuggestion_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (sender is TwoFA previewUser)
+            {
+                previewUser.Pattern = this;
+            }
+            
+        }
     }
-    #endregion
+   
 }

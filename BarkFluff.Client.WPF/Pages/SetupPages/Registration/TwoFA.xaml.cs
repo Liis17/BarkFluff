@@ -46,7 +46,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages.Registration
         {
             TextBox current = sender as TextBox;
             if (current.Text.Length == 1)
-                current.Select(1, 0); // чтобы курсор не прыгал
+                current.Select(1, 0); // Чтобы курсор не прыгал
             else
                 current.SelectAll();
         }
@@ -60,7 +60,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages.Registration
                 if (index < codeBoxes.Length - 1)
                     codeBoxes[index + 1].Focus();
                 else
-                    current.Select(1, 0); // не прыгать в конец
+                    current.Select(1, 0); // Не прыгать в конец
             }
 
             if (codeBoxes.All(b => b.Text.Length == 1))
@@ -69,9 +69,9 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages.Registration
                 try
                 {
                     ConnectionText.Text = "Подключение...";
-                    isCodeSent = true; // Устанавливаем флаг, что код отправлен
-                    App.ServerCommunication.OtpAccept(code); // Отправляем код на сервер
-
+                    isCodeSent = true; // Флаг, что код отправлен
+                    App.ServerCommunication.OtpAccept(code); // Отправка кода на сервер
+                    Pattern.NextStep();
                 }
                 catch(BarkFluff.Shared.Exceptions.Identity.NotValidOtpCodeException)
                 {
@@ -119,18 +119,16 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages.Registration
         {
             Application.Current.Dispatcher.Invoke(() =>
             {
-                Clipboard.SetText(SecretKeyText.Text);
+                Clipboard.SetText(SecretKeyText.Text); //Копировать в буфер
             });
-        } //копировать в буфер
+        } 
         private void SkipButton_Click(object sender, RoutedEventArgs e)
         {
-            //пропустить
-
-            Pattern.Cropping();
-        }
+            Pattern.NextStep(); //пропустить подключение
+        } 
         private void FocusFirstCodeBox(object sender, RoutedEventArgs e)
         {
-            Pattern.Cropping();
+            Pattern.NextStep();
         }
         private void ConnectButton_Click(object sender, RoutedEventArgs e)
         {
