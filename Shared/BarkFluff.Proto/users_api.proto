@@ -28,6 +28,9 @@ service UsersApi {
   
   // Изменить юзернейм
   rpc ChangeUsername(ChangeUsernameRequest) returns(ChangeUsernameResponse);
+  
+  // Изменить био
+  rpc ChangeBio(ChangeBioRequest) returns(ChangeBioResponse);
 }
 
 service UsersServerApi {
@@ -59,6 +62,13 @@ service UsersServerApi {
   // Получить пользователей по id
   rpc ListByIds(ListByIdsRequest) returns(ListByIdsResponse);
 }
+
+
+message ChangeBioRequest {
+  string bio = 1; // Новое био
+}
+
+message ChangeBioResponse { }
 
 message ChangeUsernameRequest {
   string username = 1; // Имя пользователя
@@ -172,5 +182,6 @@ message User{
   string username = 4; // юзернейм
   google.protobuf.Timestamp registration_date = 5; // дата регистрации
   string profile_picture = 6; // ссылка на аватарку пользователя
+  string bio = 7; // Био
 }
 
