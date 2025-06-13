@@ -1,3 +1,4 @@
+using BarkFluff.Identity.Domain;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Identity.Features.Auth;
 using BarkFluff.Identity.Features.ConfirmAccount;
@@ -9,6 +10,7 @@ using BarkFluff.Identity.Features.EnableOtpVerification;
 using BarkFluff.Identity.Features.GetActiveSessions;
 using BarkFluff.Identity.Features.ListOtpVerification;
 using BarkFluff.Identity.Features.RemoveActiveSession;
+using BarkFluff.Identity.Features.ResetPassword;
 using BarkFluff.Identity.Services;
 using BarkFluff.Shared.Exceptions.Identity;
 using BarkFluff.Shared.Identity;
@@ -17,6 +19,9 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 
 namespace BarkFluff.Identity.Host;
+
+using Features.ConfirmResetPassword;
+using Features.SetPassword;
 
 public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityApiBase
 {
@@ -143,5 +148,43 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
         var command = new ListOtpVerificationCommand();
         
         return _mediator.Send(command);
+    }
+
+    public override async Task<ResetPasswordResponse> ResetPassword(ResetPasswordRequest request,
+        ServerCallContext context)
+    {
+        var command = new ResetPasswordCommand()
+        {
+            Email = request.Email, OtpType = (OtpType)(int)request.OtpType, Username = request.Username
+        };
+        
+        return await _mediator.Send(command);
+    }
+
+    public override async Task<ConfirmResetPasswordResponse> ConfirmResetPassword(ConfirmResetPasswordRequest request, ServerCallContext context)
+    {
+        var command = new ConfirmResetPasswordCommand
+        {
+            NewPassword = request.NewPassword,
+            OtpCode = request.OptCode,
+            ResetId = Guid.Parse(request.ResetId)
+        };
+        
+        await _mediator.Send(command);
+
+        return new ConfirmResetPasswordResponse();
+    }
+
+    [Authorize(Policy = nameof(TokenType.User))]
+    public override async Task<SetPasswordResponse> SetPassword(SetPasswordRequest request, ServerCallContext context)
+    {
+        var command = new SetPasswordCommand
+        {
+            NewPassword = request.Password
+        };
+
+        await _mediator.Send(command);
+
+        return new SetPasswordResponse();
     }
 }

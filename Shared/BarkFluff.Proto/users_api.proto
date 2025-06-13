@@ -7,9 +7,7 @@ import "google/protobuf/timestamp.proto";
 package barkfluff.users;
 
 service UsersApi {
-  
-  // Установить пароль 
-  rpc SetPassword(SetPasswordRequest) returns(SetPasswordResponse);
+
   
   // Получить информацию о пользователе
   rpc GetUser(GetUserRequest) returns(GetUserResponse);
@@ -31,6 +29,7 @@ service UsersApi {
   
   // Изменить био
   rpc ChangeBio(ChangeBioRequest) returns(ChangeBioResponse);
+  
 }
 
 service UsersServerApi {
@@ -63,6 +62,14 @@ service UsersServerApi {
   rpc ListByIds(ListByIdsRequest) returns(ListByIdsResponse);
 }
 
+message ChangeUserPasswordRequest {
+  string new_password = 1; // новый пароль
+  int64 user_id = 2; // идентификатор пользователя
+}
+
+message ChangeUserPasswordResponse { 
+  string password_hash = 1;
+}
 
 message ChangeBioRequest {
   string bio = 1; // Новое био
@@ -134,11 +141,7 @@ message ConfirmUserRequest {
 
 message ConfirmUserResponse { }
 
-message SetPasswordRequest {
-  string password = 1; // пароль
-}
 
-message SetPasswordResponse { }
 
 message AddDraftUserRequest {
   string first_name = 1; // имя 

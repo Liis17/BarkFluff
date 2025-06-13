@@ -1,11 +1,11 @@
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Identity;
+using BarkFluff.Users.Features.ChangeBio;
 using BarkFluff.Users.Features.ChangeName;
 using BarkFluff.Users.Features.ChangeUsername;
 using BarkFluff.Users.Features.CheckExistEmail;
 using BarkFluff.Users.Features.CheckExistUsername;
 using BarkFluff.Users.Features.GetUser;
-using BarkFluff.Users.Features.SetPassword;
 using BarkFluff.Users.Features.SetProfilePicture;
 using Grpc.Core;
 using MediatR;
@@ -21,14 +21,6 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
     public UsersApiService(IMediator mediator)
     {
         _mediator = mediator;
-    }
-
-    public override async Task<SetPasswordResponse> SetPassword(SetPasswordRequest request, ServerCallContext context)
-    {
-        var command = new SetPasswordCommand { Password = request.Password };
-        await _mediator.Send(command);
-        
-        return new SetPasswordResponse();
     }
 
     public override async Task<GetUserResponse> GetUser(GetUserRequest request, ServerCallContext context)
@@ -87,5 +79,14 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
         await _mediator.Send(command);
         
         return new ChangeUsernameResponse();
+    }
+
+    public override async Task<ChangeBioResponse> ChangeBio(ChangeBioRequest request, ServerCallContext context)
+    {
+        var command = new ChangeBioCommand() { Bio = request.Bio };
+
+        await _mediator.Send(command);
+        
+        return new ChangeBioResponse();
     }
 }

@@ -9,4 +9,6 @@ public enum NotificationType
     ConfirmationOtpEmail = 2,
     
     ConfirmationAuth = 3,
+    
+    ResetPassword = 4,
 }

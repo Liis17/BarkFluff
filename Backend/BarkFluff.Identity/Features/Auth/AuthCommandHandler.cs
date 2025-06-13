@@ -18,7 +18,7 @@ namespace BarkFluff.Identity.Features.Auth;
 
 public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient, 
     IMediator mediator, AuthPropertiesStorage authPropertiesStorage, NotificationQueueSender notificationQueueSender,
-    RefreshTokensStorage refreshTokensStorage, RequestContext requestContext) : IRequestHandler<AuthCommand, AuthResponse>
+    RefreshTokensStorage refreshTokensStorage, RequestContext requestContext, PasswordsStorage passwordsStorage) : IRequestHandler<AuthCommand, AuthResponse>
 {
 
     private const int ExpDaysRefreshToken = 9999;
@@ -28,6 +28,11 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
         if (string.IsNullOrEmpty(request.Username) && string.IsNullOrEmpty(request.Email))
         {
             throw new NotSetUsernameOrEmailException();
+        }
+
+        if (string.IsNullOrEmpty(request.Password))
+        {
+            throw new InvalidLoginOrPasswordException();
         }
 
         if (string.IsNullOrEmpty(requestContext.DeviceName))
@@ -60,7 +65,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
 
         if (user.User is null)
         {
-            throw new UserNotFoundException();
+            throw new InvalidLoginOrPasswordException();
         }
 
         var optOptions = await authPropertiesStorage.GetUserAuthProperties(user.User.Id);
@@ -124,10 +129,18 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
             }
         }
 
+        var currentPasswordHash = await passwordsStorage.GetUserPasswordHash(user.User.Id);
+        var enteredPasswordHash = PasswordHasher.HashPassword(request.Password);
+
+        if (!string.Equals(currentPasswordHash, enteredPasswordHash))
+        {
+            throw new InvalidLoginOrPasswordException();
+        }
+        
         var refreshTokenString = RefreshTokenGenerator.GenerateRefreshToken();
         await refreshTokensStorage.CreateNewRefreshToken(refreshTokenString, user.User.Id, requestContext.DeviceName, ExpDaysRefreshToken);
 
-        var accessTokenResponse = await mediator.Send(new CreateTokenCommand() { RefreshToken = refreshTokenString }, cancellationToken);
+        var accessTokenResponse = await mediator.Send(new CreateTokenCommand { RefreshToken = refreshTokenString }, cancellationToken);
         
         var response = new AuthResponse { RefreshToken = new Token 
             {

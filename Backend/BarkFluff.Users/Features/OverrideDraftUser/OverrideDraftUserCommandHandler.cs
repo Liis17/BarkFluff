@@ -28,7 +28,6 @@ public class OverrideDraftUserCommandHandler : IRequestHandler<OverrideDraftUser
         user.LastName = request.LastName;
         user.Contact.Email = request.Email;
         user.Username = request.Username;
-        user.PasswordHash = string.Empty;
         user.ProfilePicture = null;
         user.RegistrationDate = DateTime.UtcNow;
         user.IsDraft = true;
