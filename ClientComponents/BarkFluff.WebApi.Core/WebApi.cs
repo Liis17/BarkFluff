@@ -24,10 +24,24 @@ namespace BarkFluff.WebApi.Core
         public GrpcChannel? IdentityChannel;
         public GrpcChannel? FilesChannel;
 
+        /// <summary>
+        /// Вызывает создание только gRPC клиента для работы с Beacon API на сервере.
+        /// </summary>
+        /// <param name="gParam">Параметры приложения</param>
         public void CreateOnlyBeaconAC(GlobalParam gParam)
         {
             CreateBeaconAC(gParam);
         }
+
+        /// <summary>
+        /// Вызывает создание gRPC клиентов для работы с API сервера.
+        /// </summary>
+        /// <param name="gParam">Параметры приложения</param>
+        /// <param name="deviceName">Имя устройства на котором запущен клиент</param>
+        /// <param name="os">Название операционной системы на котором запущен клиент</param>
+        /// <param name="appName">Имя клиента (приложения)</param>
+        /// <param name="appVersion">Версия приложения</param>
+        /// <param name="ip">IP адрес устройства клиента</param>
         public void CreateAC(GlobalParam gParam, string deviceName, string os, string appName, string appVersion, string ip)
         {
             CreateUsersAC(gParam);
@@ -36,6 +50,11 @@ namespace BarkFluff.WebApi.Core
             CreateFilesAC(gParam);
             AddInterceptor(gParam, deviceName, os, appName, appVersion, ip);
         }
+
+        /// <summary>
+        /// Создает gRPC клиент для работы с пользователями на сервере.
+        /// </summary>
+        /// <param name="_gParam">Параметры приложения</param>
         private void CreateUsersAC(GlobalParam _gParam)
         {
             UsersAC = null!;
@@ -45,6 +64,10 @@ namespace BarkFluff.WebApi.Core
             UsersAC = new BarkFluff.Proto.Users.UsersApi.UsersApiClient(UserChannel);
         }
 
+        /// <summary>
+        /// Создает gRPC клиент для работы с Beacon API на сервере.
+        /// </summary>
+        /// <param name="_gParam">Параметры приложения</param>
         private void CreateBeaconAC(GlobalParam _gParam)
         {
             BeaconAC = null!;
@@ -54,6 +77,10 @@ namespace BarkFluff.WebApi.Core
             BeaconAC = new BarkFluff.Proto.Beacon.BeaconApi.BeaconApiClient(BeaconChannel);
         }
 
+        /// <summary>
+        /// Создает gRPC клиент для работы с идентификацией на сервере.
+        /// </summary>
+        /// <param name="_gParam">Параметры приложения</param>
         private void CreateIdentityAC(GlobalParam _gParam)
         {
             IdentityAC = null!;
@@ -62,15 +89,28 @@ namespace BarkFluff.WebApi.Core
             IdentityChannel = GrpcChannel.ForAddress(_gParam.SocketIdentity);
             IdentityAC = new BarkFluff.Proto.Identity.IdentityApi.IdentityApiClient(IdentityChannel);
         }
+
+        /// <summary>
+        /// Создает gRPC клиент для работы с файлами на сервере.
+        /// </summary>
+        /// <param name="_gParam">Параметры приложения</param>
         private void CreateFilesAC(GlobalParam _gParam)
         {
             FilesAC = null!;
-            FilesAC = null!;
+            FilesChannel = null!;
             _gParam.SocketFiles = EnsureHttpPrefix(_gParam.SocketFiles);
             FilesChannel = GrpcChannel.ForAddress(_gParam.SocketFiles);
             FilesAC = new BarkFluff.Proto.Files.FilesApi.FilesApiClient(FilesChannel);
         }
-
+        /// <summary>
+        ///  Добавляет перехватчики для аутентификации и авторизации в gRPC каналы.
+        /// </summary>
+        /// <param name="_gParam">Параметры приложения</param>
+        /// <param name="_deviceName">Имя устройства на котором запущен клиент</param>
+        /// <param name="os">Название операционной системы на котором запущен клиент</param>
+        /// <param name="appName">Имя клиента (приложения)</param>
+        /// <param name="appVersion">Версия приложения</param>
+        /// <param name="ip">IP адрес устройства клиента</param>
         private void AddInterceptor(GlobalParam _gParam, string _deviceName, string os, string appName, string appVersion, string ip)
         {
             IdentityAC = null!;
