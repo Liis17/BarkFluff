@@ -56,7 +56,6 @@ public class UsersStorage
             Username = username,
             FirstName = firstName, 
             LastName = lastName,
-            PasswordHash = string.Empty,
             RegistrationDate = DateTime.UtcNow,
             Contact = contactUser,
             IsDraft = true,
@@ -95,19 +94,7 @@ public class UsersStorage
         user.ProfilePicture = profilePictureUrl;
         await _usersContext.SaveChangesAsync();
      }
-     
-    public async Task UpdatePasswordHash(long userId, string passwordHash)
-    {
-        var user = await _usersContext.Users.FirstOrDefaultAsync(x => x.Id == userId);
-
-        if (user is null)
-        {
-            throw new UserNotFoundException();
-        }
-        
-        user.PasswordHash = passwordHash;
-        await _usersContext.SaveChangesAsync();
-    }
+    
 
     public async Task UpdateTrackedUser(User user)
     {

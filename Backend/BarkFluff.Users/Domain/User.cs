@@ -17,8 +17,6 @@ public class User
     
     public UserContact Contact { get; set; }
     
-    public string PasswordHash { get; set; }
-    
     public bool IsDraft { get; set; }
     
     public string? ProfilePicture { get; set; }

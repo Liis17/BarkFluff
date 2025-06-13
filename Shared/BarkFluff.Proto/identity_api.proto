@@ -43,6 +43,35 @@ service IdentityApi {
   // Получить статус 2ФА авторизации
   rpc ListOtpVerification(ListOtpVerificationRequest) returns(ListOtpVerificationResponse);
   
+  // Запрос на сброс пароля
+  rpc ResetPassword(ResetPasswordRequest) returns(ResetPasswordResponse);
+  
+  // Подтвердить сброс пароля
+  rpc ConfirmResetPassword(ConfirmResetPasswordRequest) returns(ConfirmResetPasswordResponse);
+  
+  // Установить пароль 
+  rpc SetPassword(SetPasswordRequest) returns(SetPasswordResponse);
+}
+
+message ConfirmResetPasswordRequest {
+  string reset_id = 1; // идентификатор сброса пароля
+  string opt_code = 2; // код подтверждения
+  string new_password = 4; // новый пароль
+}
+
+message ConfirmResetPasswordResponse { }
+
+message ResetPasswordRequest {
+  oneof login {
+    string username = 1; // имя пользователя
+    string email = 2; // емейл
+  }
+
+  OtpTypeId otp_type = 3; // тип кода подверждения
+}
+
+message ResetPasswordResponse {
+  string reset_id = 1; // идентификатор сброса пароля
 }
 
 message FastAuthRequest {
@@ -177,3 +206,9 @@ message Token {
   string value = 1; // значение
   google.protobuf.Timestamp expiration_date = 2; // дата окончания действия
 }
+
+message SetPasswordRequest {
+  string password = 1; // пароль
+}
+
+message SetPasswordResponse { }

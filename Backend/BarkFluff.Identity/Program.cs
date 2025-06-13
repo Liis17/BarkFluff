@@ -48,6 +48,8 @@ public class Program
         builder.Services.AddTransient<ConfirmationCodesStorage>();
         builder.Services.AddScoped<NotificationQueueSender>();
         builder.Services.AddTransient<AuthPropertiesStorage>();
+        builder.Services.AddTransient<PasswordsStorage>();
+        builder.Services.AddTransient<ResetPasswordsStorage>();
         
         builder.Services.AddMassTransit(x =>
         {

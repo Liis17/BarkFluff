@@ -12,6 +12,10 @@ public class IdentityContext : DbContext
     public DbSet<ConfirmationCode> ConfirmationCodes { get; set; }
     
     public DbSet<AuthUserProperty> AuthUserProperties { get; set; }
+    
+    public DbSet<ResetPassword> ResetPasswords { get; set; }
+    
+    public DbSet<UserPassword> UserPasswords { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
