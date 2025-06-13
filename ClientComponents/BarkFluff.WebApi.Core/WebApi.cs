@@ -97,7 +97,11 @@ namespace BarkFluff.WebApi.Core
             UsersAC = new BarkFluff.Proto.Users.UsersApi.UsersApiClient(userInvoker);
             FilesAC = new BarkFluff.Proto.Files.FilesApi.FilesApiClient(filesInvoker);
         }
-
+        /// <summary>
+        /// Добавляет http:// или https:// к URL, если он не начинается с них.
+        /// </summary>
+        /// <param name="_url">Ссылка которая должна будет иметь http:// на выходе</param>
+        /// <returns>Возвращает строку с адресом которая будет начинаться на http://</returns>
         private string EnsureHttpPrefix(string _url)
         {
             return !_url.StartsWith("http://") && !_url.StartsWith("https://")
@@ -105,6 +109,11 @@ namespace BarkFluff.WebApi.Core
                    : _url;
         }
 
+        /// <summary>
+        /// Получает информацию о сервере и сохраняет её в GlobalParam.
+        /// </summary>
+        /// <param name="param">Параметры приложения</param>
+        /// <returns>Возвращает информацию о сервере</returns>
         public Proto.Beacon.GetServerInfoResponse GetServerInfo(GlobalParam param)
         {
             var response = BeaconAC.GetServerInfo(new BarkFluff.Proto.Beacon.GetServerInfoRequest());
@@ -124,13 +133,24 @@ namespace BarkFluff.WebApi.Core
             return response; // если нужно то он будет возвращать инфу о сервере
         }
 
-        public async Task<string> TokenUpdate(GlobalParam globalParam, string refreshToken)
+        /// <summary>
+        /// Обновляет токен доступа для приложения.
+        /// </summary>
+        /// <param name="globalParam">Параметры приложения</param>
+        /// <returns>Возвращает новый токен доступа</returns>
+        public async Task<string> TokenUpdate(GlobalParam globalParam)
         {
-            var response = await IdentityAC.CreateTokenAsync(new BarkFluff.Proto.Identity.CreateTokenRequest { RefreshToken = refreshToken });
+            var response = await IdentityAC.CreateTokenAsync(new BarkFluff.Proto.Identity.CreateTokenRequest { RefreshToken = globalParam.RefreshToken.Value });
             globalParam.AccessToken = response.AccessToken;
             return response.AccessToken.Value;
         }
 
+        /// <summary>
+        /// Отправляет аватар пользователя на сервер в формате JPEG.
+        /// </summary>
+        /// <param name="jpegImageBytes">Картинка в виде байтов</param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
         public async Task UploadUserAvatarAsync(byte[] jpegImageBytes)
         {
             try
@@ -174,11 +194,17 @@ namespace BarkFluff.WebApi.Core
                 //добавить обработчики
             }
         }
+
+        /// <summary>
+        /// Получает ссылку на аватар пользователя по его ID.
+        /// </summary>
+        /// <param name="userId">[НЕОБЯЗАТЕЛЬНО] ID пользователя, аватар которого нужно получить</param>
+        /// <returns>Возвращает URL аватара или null, если аватар не найден</returns>
         public async Task<string> GetUserAvatar(long userId = 0)
         {
             try
             {
-                var getLinkUpload = await GetUserDatas(userId);
+                var getLinkUpload = await GetUserData(userId);
                 return getLinkUpload.ProfilePictureUrl;
             }
             catch(BarkFluff.Shared.Exceptions.Users.ProfilePictureHasNotValidType)
@@ -191,7 +217,13 @@ namespace BarkFluff.WebApi.Core
             }
             return null;
         }
-        public async Task<UserData> GetUserDatas(long userId = 0)
+
+        /// <summary>
+        /// Получает данные пользователя по его ID.
+        /// </summary>
+        /// <param name="userId">[НЕОБЯЗАТЕЛЬНО] ID пользователя, данные которого нужно получить</param>
+        /// <returns>Объект данных пользователя</returns>
+        public async Task<UserData> GetUserData(long userId = 0)
         {
             try
             {
@@ -220,6 +252,10 @@ namespace BarkFluff.WebApi.Core
             
         }
 
+        /// <summary>
+        /// Запрашивает QR-код для настройки двухфакторной аутентификации (OTP) и возвращает его в виде base64 строки.
+        /// </summary>
+        /// <returns>Кортеж, содержащий QR-код в формате base64 и код для ручного ввода.</returns>
         public async Task<(string qrBase64, string justCode)> OtpReceipt()
         {
             var response = await IdentityAC.EnableOtpVerificationAsync(new Proto.Identity.EnableOtpVerificationRequest { OtpType = Proto.Identity.OtpTypeId.Authenticator });
@@ -228,7 +264,11 @@ namespace BarkFluff.WebApi.Core
             return (qr, code);
         }
 
-        public async void OtpAccept(string code)
+        /// <summary>
+        /// Подтверждает двухфакторную аутентификацию (OTP) с использованием предоставленного кода.
+        /// </summary>
+        /// <param name="code">Код который необходимо ввести для подтверждения из Google Authenticator</param>
+        public async Task OtpAccept(string code)
         {
             var response = await IdentityAC.ConfirmOtpVerificationAsync(new Proto.Identity.ConfirmOtpVerificationRequest { OtpCode = code });
             
