@@ -2,6 +2,7 @@
 using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
+using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Grpc.Net.Client;
 
@@ -14,16 +15,33 @@ namespace BarkFluff.WebApi.Core
 {
     public class WebApi
     {
+        #region ApiClients
         public BarkFluff.Proto.Users.UsersApi.UsersApiClient? UsersAC;
         public BarkFluff.Proto.Beacon.BeaconApi.BeaconApiClient? BeaconAC;
         public BarkFluff.Proto.Identity.IdentityApi.IdentityApiClient? IdentityAC;
         public BarkFluff.Proto.Files.FilesApi.FilesApiClient? FilesAC;
+        #endregion
 
+        #region gRPC Channels
         public GrpcChannel? BeaconChannel;
         public GrpcChannel? UserChannel;
         public GrpcChannel? IdentityChannel;
         public GrpcChannel? FilesChannel;
+        #endregion
 
+        #region На всякий случай, возможно переиспользование
+        private struct InitializationParams
+        {
+            public string DeviceName { get; set; }
+            public string Os { get; set; }
+            public string AppName { get; set; }
+            public string AppVersion { get; set; }
+            public string Ip { get; set; }
+        }
+        private InitializationParams? _initParams;
+        #endregion
+
+        #region Создание клиентов (AC - Api Client)
         /// <summary>
         /// Вызывает создание только gRPC клиента для работы с Beacon API на сервере.
         /// </summary>
@@ -44,6 +62,15 @@ namespace BarkFluff.WebApi.Core
         /// <param name="ip">IP адрес устройства клиента</param>
         public void CreateAC(GlobalParam gParam, string deviceName, string os, string appName, string appVersion, string ip)
         {
+            _initParams = new InitializationParams
+            {
+                DeviceName = deviceName,
+                Os = os,
+                AppName = appName,
+                AppVersion = appVersion,
+                Ip = ip
+            };
+
             CreateUsersAC(gParam);
             CreateBeaconAC(gParam);
             CreateIdentityAC(gParam);
@@ -102,6 +129,7 @@ namespace BarkFluff.WebApi.Core
             FilesChannel = GrpcChannel.ForAddress(_gParam.SocketFiles);
             FilesAC = new BarkFluff.Proto.Files.FilesApi.FilesApiClient(FilesChannel);
         }
+
         /// <summary>
         ///  Добавляет перехватчики для аутентификации и авторизации в gRPC каналы.
         /// </summary>
@@ -115,6 +143,7 @@ namespace BarkFluff.WebApi.Core
         {
             IdentityAC = null!;
             UsersAC = null!;
+            FilesAC = null!;
 
             var token = string.Empty;
             if (_gParam.AccessToken != null)
@@ -137,6 +166,85 @@ namespace BarkFluff.WebApi.Core
             UsersAC = new BarkFluff.Proto.Users.UsersApi.UsersApiClient(userInvoker);
             FilesAC = new BarkFluff.Proto.Files.FilesApi.FilesApiClient(filesInvoker);
         }
+        #endregion
+
+        #region Работа с токенами и безопасными вызовами API
+
+        /// <summary>
+        /// Вызов API с обработкой возможных ошибок, связанных с токеном.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="globalParam">Параметры приложения</param>
+        /// <param name="operation">Функция для выполнения API вызова</param>
+        /// <param name="allowRetry">Разрешить повторный вызов при ошибке токена</param>
+        /// <returns>Результат выполнения операции</returns>
+        /// <exception cref="InvalidOperationException">Выбрасывается, если не удалось обновить токен</exception>
+        private async Task<T> ExecuteWithTokenRefresh<T>(GlobalParam globalParam, Func<Task<T>> operation, bool allowRetry = true)
+        {
+            try
+            {
+                return await operation();
+            }
+            catch (Exception ex) when (IsTokenRelatedError(ex) && allowRetry)
+            {
+                if (globalParam?.RefreshToken == null)
+                {
+                    throw new InvalidOperationException("Refresh token is not available for token renewal", ex);
+                }
+
+                if (_initParams == null)
+                {
+                    throw new InvalidOperationException("Initialization parameters are not available for client reinitialization", ex);
+                }
+
+                try
+                {
+                    await TokenUpdate(globalParam);
+
+                    // Переинициализируем клиентов с новым токеном
+                    AddInterceptor(globalParam, _initParams.Value.DeviceName, _initParams.Value.Os,
+                                 _initParams.Value.AppName, _initParams.Value.AppVersion, _initParams.Value.Ip);
+
+                    // Повторяем операцию (только один раз, чтобы избежать бесконечной рекурсии)
+                    return await ExecuteWithTokenRefresh(globalParam, operation, allowRetry: false);
+                }
+                catch (Exception refreshEx)
+                {
+                    throw new InvalidOperationException("Failed to refresh token and retry operation", refreshEx);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Проверяет, является ли ошибка связанной с токеном доступа.
+        /// </summary>
+        /// <param name="ex"></param>
+        /// <returns></returns>
+        private bool IsTokenRelatedError(Exception ex)
+        {
+            if (ex is RpcException rpcEx)
+            {
+                return rpcEx.StatusCode == StatusCode.Unauthenticated ||
+                       rpcEx.StatusCode == StatusCode.PermissionDenied ||
+                       (rpcEx.Status.Detail?.Contains("token", StringComparison.OrdinalIgnoreCase) == true) ||
+                       (rpcEx.Status.Detail?.Contains("unauthorized", StringComparison.OrdinalIgnoreCase) == true) ||
+                       (rpcEx.Status.Detail?.Contains("expired", StringComparison.OrdinalIgnoreCase) == true);
+            }
+
+            // Можно добавить другие типы исключений при необходимости
+            return false;
+        }
+
+        public async Task<TResponse> SafeCallAsync<TResponse>(Func<Task<TResponse>> apiCall, GlobalParam globalParam)
+        {
+            return await ExecuteWithTokenRefresh(globalParam, apiCall);
+        }
+        #endregion
+
+
+
+
+        #region Обслуживание
         /// <summary>
         /// Добавляет http:// или https:// к URL, если он не начинается с них.
         /// </summary>
@@ -148,29 +256,33 @@ namespace BarkFluff.WebApi.Core
                    ? "http://" + _url
                    : _url;
         }
+        #endregion
+
+
 
         /// <summary>
-        /// Получает информацию о сервере и сохраняет её в GlobalParam.
+        /// Получает информацию о сервере
         /// </summary>
         /// <param name="param">Параметры приложения</param>
         /// <returns>Возвращает информацию о сервере</returns>
-        public Proto.Beacon.GetServerInfoResponse GetServerInfo(GlobalParam param)
+        public async Task<Proto.Beacon.GetServerInfoResponse> GetServerInfo(GlobalParam param)
         {
-            var response = BeaconAC.GetServerInfo(new BarkFluff.Proto.Beacon.GetServerInfoRequest());
-
-            param.ServerName = response.Name;
-            param.ServerDescription = response.Description;
-            param.SocketIdentity = EnsureHttpPrefix(response.Identity.Endpoint.Host + ":" + response.Identity.Endpoint.Port);
-            param.SocketUsers = EnsureHttpPrefix(response.Users.Endpoint.Host + ":" + response.Users.Endpoint.Port);
-            param.SocketFiles = EnsureHttpPrefix(response.Files.Endpoint.Host + ":" + response.Files.Endpoint.Port);
-            param.Colors = new ClientColors()
+            return await SafeCallAsync(async () =>
             {
-                LiteHex = response.Color.LiteHex,
-                MainHex = response.Color.MainHex,
-                HardHex = response.Color.HardHex,
-            };
-
-            return response; // если нужно то он будет возвращать инфу о сервере
+                var response = BeaconAC.GetServerInfo(new BarkFluff.Proto.Beacon.GetServerInfoRequest());
+                param.ServerName = response.Name;
+                param.ServerDescription = response.Description;
+                param.SocketIdentity = EnsureHttpPrefix(response.Identity.Endpoint.Host + ":" + response.Identity.Endpoint.Port);
+                param.SocketUsers = EnsureHttpPrefix(response.Users.Endpoint.Host + ":" + response.Users.Endpoint.Port);
+                param.SocketFiles = EnsureHttpPrefix(response.Files.Endpoint.Host + ":" + response.Files.Endpoint.Port);
+                param.Colors = new ClientColors()
+                {
+                    LiteHex = response.Color.LiteHex,
+                    MainHex = response.Color.MainHex,
+                    HardHex = response.Color.HardHex,
+                };
+                return response;
+            }, param);
         }
 
         /// <summary>
@@ -185,53 +297,57 @@ namespace BarkFluff.WebApi.Core
             return response.AccessToken.Value;
         }
 
+        #region Работа с пользователями и аватарками
         /// <summary>
         /// Отправляет аватар пользователя на сервер в формате JPEG.
         /// </summary>
         /// <param name="jpegImageBytes">Картинка в виде байтов</param>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
-        public async Task UploadUserAvatarAsync(byte[] jpegImageBytes)
+        public async Task UploadUserAvatarAsync(GlobalParam globalParam, byte[] jpegImageBytes)
         {
             try
             {
-                var getLinkUpload = await FilesAC.GetUploadUrlAsync(new Proto.Files.GetUploadUrlRequest { FileType = Proto.Files.UploadFileType.UserAvatar });
-
-                using var httpClient = new HttpClient();
-                using var formData = new MultipartFormDataContent();
-
-                var fileContent = new ByteArrayContent(jpegImageBytes);
-                fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
-
-                formData.Add(fileContent, "file", "avatar.jpg");
-
-                try
+                await SafeCallAsync<bool>(async () =>
                 {
+                    var getLinkUpload = await FilesAC.GetUploadUrlAsync(new Proto.Files.GetUploadUrlRequest
+                    {
+                        FileType = Proto.Files.UploadFileType.UserAvatar
+                    });
+
+                    using var httpClient = new HttpClient();
+                    using var formData = new MultipartFormDataContent();
+
+                    var fileContent = new ByteArrayContent(jpegImageBytes);
+                    fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
+
+                    formData.Add(fileContent, "file", "avatar.jpg");
+
                     var response = await httpClient.PostAsync(getLinkUpload.Url, formData);
-                    response.EnsureSuccessStatusCode(); 
-                }
-                catch (Exception ex)
-                {
-                    throw new Exception($"Ошибка при загрузке файла: {ex.Message}", ex);
-                }
+                    response.EnsureSuccessStatusCode();
 
-                try
-                {
-                    var setAvatar = await UsersAC.SetProfilePictureAsync(new Proto.Users.SetProfilePictureRequest { FileId = getLinkUpload.FileId });
-                }
-                catch(BarkFluff.Shared.Exceptions.Users.ProfilePictureHasNotValidType)
-                {
-                    //добавить обработчики
-                }
-                catch(BarkFluff.Shared.Exceptions.Files.NotValidFileIdException)
-                {
-                    //добавить обработчики
-                }
+                    try
+                    {
+                        var setAvatar = await UsersAC.SetProfilePictureAsync(new Proto.Users.SetProfilePictureRequest
+                        {
+                            FileId = getLinkUpload.FileId
+                        });
+                    }
+                    catch (BarkFluff.Shared.Exceptions.Users.ProfilePictureHasNotValidType)
+                    {
+                        // обработка
+                    }
+                    catch (BarkFluff.Shared.Exceptions.Files.NotValidFileIdException)
+                    {
+                        // обработка
+                    }
 
+                    return true; 
+                }, globalParam);
             }
-            catch(BarkFluff.Shared.Exceptions.Files.NotValidFileIdException)
+            catch (BarkFluff.Shared.Exceptions.Files.NotValidFileIdException)
             {
-                //добавить обработчики
+                // обработка
             }
         }
 
@@ -240,78 +356,101 @@ namespace BarkFluff.WebApi.Core
         /// </summary>
         /// <param name="userId">[НЕОБЯЗАТЕЛЬНО] ID пользователя, аватар которого нужно получить</param>
         /// <returns>Возвращает URL аватара или null, если аватар не найден</returns>
-        public async Task<string> GetUserAvatar(long userId = 0)
+        public async Task<string> GetUserAvatar(GlobalParam globalParam, long userId = 0)
         {
             try
             {
-                var getLinkUpload = await GetUserData(userId);
-                return getLinkUpload.ProfilePictureUrl;
+                return await SafeCallAsync(async () =>
+                {
+                    var getLinkUpload = await GetUserData(globalParam, userId);
+                    return getLinkUpload.ProfilePictureUrl;
+                }, globalParam);
             }
-            catch(BarkFluff.Shared.Exceptions.Users.ProfilePictureHasNotValidType)
+            catch (BarkFluff.Shared.Exceptions.Users.ProfilePictureHasNotValidType)
             {
-                //добавить обработчики
+                // обработка
             }
             catch (BarkFluff.Shared.Exceptions.Users.UserIsDraftException)
             {
-                //добавить обработчики
+                // обработка
             }
+
             return null;
         }
+        #endregion
 
         /// <summary>
         /// Получает данные пользователя по его ID.
         /// </summary>
         /// <param name="userId">[НЕОБЯЗАТЕЛЬНО] ID пользователя, данные которого нужно получить</param>
         /// <returns>Объект данных пользователя</returns>
-        public async Task<UserData> GetUserData(long userId = 0)
+        public async Task<UserData> GetUserData(GlobalParam globalParam, long userId = 0)
         {
             try
             {
-                var getUser = await UsersAC.GetUserAsync(new Proto.Users.GetUserRequest { UserId = userId });
-                var userData = new UserData
+                return await SafeCallAsync(async () =>
                 {
-                    FirstName = getUser.User.FirstName,
-                    LastName = getUser.User.LastName,
-                    Email = "Почта не установлена",
-                    Username = getUser.User.Username,
-                    RegistrationDate = getUser.User.RegistrationDate,
-                    Id = getUser.User.Id,
-                    ProfilePictureUrl = getUser.User.ProfilePicture,
-                };
-                return userData;
+                    var getUser = await UsersAC.GetUserAsync(new Proto.Users.GetUserRequest { UserId = userId });
+
+                    return new UserData
+                    {
+                        FirstName = getUser.User.FirstName,
+                        LastName = getUser.User.LastName,
+                        Email = "Почта не установлена",
+                        Username = getUser.User.Username,
+                        RegistrationDate = getUser.User.RegistrationDate,
+                        Id = getUser.User.Id,
+                        ProfilePictureUrl = getUser.User.ProfilePicture,
+                    };
+                }, globalParam);
             }
             catch (BarkFluff.Shared.Exceptions.Users.ProfilePictureHasNotValidType)
             {
-                //добавить обработчики
+                // обработка
             }
             catch (BarkFluff.Shared.Exceptions.Users.UserIsDraftException)
             {
-                //добавить обработчики
+                // обработка
             }
+
             return null;
-            
         }
+
+        #region Настройка двухфакторной аутентификации
 
         /// <summary>
         /// Запрашивает QR-код для настройки двухфакторной аутентификации (OTP) и возвращает его в виде base64 строки.
         /// </summary>
         /// <returns>Кортеж, содержащий QR-код в формате base64 и код для ручного ввода.</returns>
-        public async Task<(string qrBase64, string justCode)> OtpReceipt()
+        public async Task<(string qrBase64, string justCode)> OtpReceipt(GlobalParam globalParam)
         {
-            var response = await IdentityAC.EnableOtpVerificationAsync(new Proto.Identity.EnableOtpVerificationRequest { OtpType = Proto.Identity.OtpTypeId.Authenticator });
-            var qr = response.OtpQr; // строка base64 для qr кода
-            var code = response.OtpCode; //тут код для ручного ввода
-            return (qr, code);
+            return await SafeCallAsync(async () =>
+            {
+                var response = await IdentityAC.EnableOtpVerificationAsync(new Proto.Identity.EnableOtpVerificationRequest
+                {
+                    OtpType = Proto.Identity.OtpTypeId.Authenticator
+                });
+
+                return (response.OtpQr, response.OtpCode);
+            }, globalParam);
         }
 
         /// <summary>
         /// Подтверждает двухфакторную аутентификацию (OTP) с использованием предоставленного кода.
         /// </summary>
         /// <param name="code">Код который необходимо ввести для подтверждения из Google Authenticator</param>
-        public async Task OtpAccept(string code)
+        public async Task OtpAccept(GlobalParam globalParam, string code)
         {
-            var response = await IdentityAC.ConfirmOtpVerificationAsync(new Proto.Identity.ConfirmOtpVerificationRequest { OtpCode = code });
-            
+            await SafeCallAsync(async () =>
+            {
+                await IdentityAC.ConfirmOtpVerificationAsync(new Proto.Identity.ConfirmOtpVerificationRequest
+                {
+                    OtpCode = code
+                });
+
+                return true; // или `null`, если ты используешь `SafeCallAsync<object>`
+            }, globalParam);
         }
+        #endregion
     }
 }

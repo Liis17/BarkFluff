@@ -328,7 +328,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                             });
 
                             App.GParam.RefreshToken = response.RefreshToken;
-                            await App.ServerCommunication.TokenUpdate(App.GParam, response.RefreshToken.Value);
+                            await App.ServerCommunication.TokenUpdate(App.GParam);
                             GlobalParam.Save(App.GParam, App.GParam.AppPath + "GlobalParam.json", App.GParam.AppPass);
                             App.UpdateApiClient();
                             MainWindow.SaveSettings();
@@ -420,9 +420,9 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                     encoder.Save(memoryStream);
                     byte[] jpegBytes = memoryStream.ToArray();
 
-                    await App.ServerCommunication.UploadUserAvatarAsync(jpegBytes);
+                    await App.ServerCommunication.UploadUserAvatarAsync(App.GParam,jpegBytes);
 
-                    var response = await App.ServerCommunication.GetUserDatas();
+                    var response = await App.ServerCommunication.GetUserData(App.GParam);
                     var fullName = $@"{response.FirstName} {response.LastName}";
                     PreviewUserElement.PreviewUser_Update(fullName, response.Username, response.ProfilePictureUrl);
                 }
@@ -441,6 +441,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                     currentStep++;
                     UpdateNavigationButtons();
                     UpdateErrorMessageTextBlock("");
+                    CompletionRegistrationElement.TimerStart();
                 }
                 else if (currentStep == 8) //Последний шаг (завершение регистрации)
                 {
@@ -448,7 +449,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                     currentStep++;
                     UpdateNavigationButtons();
                     UpdateErrorMessageTextBlock("");
-                    CompletionRegistrationElement.TimerStart();
+                    
                 }
             }
         }
