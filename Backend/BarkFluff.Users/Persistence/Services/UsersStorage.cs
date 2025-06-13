@@ -143,4 +143,18 @@ public class UsersStorage
         
         await _usersContext.SaveChangesAsync();
     }
+    
+    public async Task ChangeBio(long userId, string newBio)
+    {
+        var user = await _usersContext.Users.FirstOrDefaultAsync(x => x.Id == userId);
+
+        if (user is null)
+        {
+            throw new UserNotFoundException();
+        }
+        
+        user.Bio = newBio;
+        
+        await _usersContext.SaveChangesAsync();
+    }
 }

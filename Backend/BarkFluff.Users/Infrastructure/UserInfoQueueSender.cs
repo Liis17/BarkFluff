@@ -63,4 +63,17 @@ public class UserInfoQueueSender
         
         await endpoint.Send(userChangedPasswordEvent);
     }
+    
+    public async Task UserBioChangedEvent(long userId, string newUsername)
+    {
+        var endpoint = await _rabbitMqBus.GetSendEndpoint(new Uri(Endpoints.UserChangeBio));
+
+        var usernameChangedEvent = new UserChangedBio()
+        {
+            NewBio = newUsername,
+            UserId = userId
+        };
+        
+        await endpoint.Send(usernameChangedEvent);
+    }
 }
