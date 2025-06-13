@@ -47,6 +47,7 @@
                     TextAlignment="Center"
                     TextWrapping="WrapWithOverflow" />
                 <ui:ProgressRing
+                    Margin="20"
                     Foreground="#df5000"
                     IsIndeterminate="True"
                     OverridesDefaultStyle="True" />

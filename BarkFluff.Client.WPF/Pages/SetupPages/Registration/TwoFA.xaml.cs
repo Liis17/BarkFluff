@@ -32,7 +32,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages.Registration
 
         public async void Update()
         {
-            var response = await App.ServerCommunication.OtpReceipt();
+            var response = await App.ServerCommunication.OtpReceipt(App.GParam);
             var qr = Base64ToBitmapSource.ConvertBase64ToBitmapSource(response.qrBase64);
             QrCodeImage.Source = qr;
             SecretKeyText.Text = response.justCode;
@@ -70,7 +70,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages.Registration
                 {
                     ConnectionText.Text = "Подключение...";
                     isCodeSent = true; // Флаг, что код отправлен
-                    App.ServerCommunication.OtpAccept(code); // Отправка кода на сервер
+                    await App.ServerCommunication.OtpAccept(App.GParam,code); // Отправка кода на сервер
                     Pattern.NextStep();
                 }
                 catch(BarkFluff.Shared.Exceptions.Identity.NotValidOtpCodeException)
