@@ -1,11 +1,11 @@
 # Общие переменные для всех сервисов
 x-common-variables: &common-variables
-  CONFIGURATION_SERVICE_URL: "http://192.168.1.111:7003"
+  CONFIGURATION_SERVICE_URL: "http://192.168.1.177:7003"
   ASPNETCORE_ENVIRONMENT: Production
 
 services:
   beacon:
-    image: docker.barkfluff.ru/barkfluff-beacon:latest
+    image: docker.barkfluff.com/barkfluff-beacon:latest
     restart: always
     ports: ["7002:7002"]
     environment:
@@ -16,7 +16,7 @@ services:
       - configuration
 
   configuration:
-    image: docker.barkfluff.ru/barkfluff-configuration:latest
+    image: docker.barkfluff.com/barkfluff-configuration:latest
     restart: always
     ports: ["7003:7003"]
     environment:
@@ -25,7 +25,7 @@ services:
       - barkfluff-network
 
   files:
-    image: docker.barkfluff.ru/barkfluff-files:latest
+    image: docker.barkfluff.com/barkfluff-files:latest
     restart: always
     ports: 
       - "7005:7005"
@@ -38,7 +38,7 @@ services:
       - configuration
 
   identity:
-    image: docker.barkfluff.ru/barkfluff-identity:latest
+    image: docker.barkfluff.com/barkfluff-identity:latest
     restart: always
     ports: ["7000:7000"]
     environment:
@@ -48,10 +48,9 @@ services:
     depends_on:
       - configuration
       - users
-      - notification
 
   notification:
-    image: docker.barkfluff.ru/barkfluff-notification:latest
+    image: docker.barkfluff.com/barkfluff-notification:latest
     restart: always
     ports: ["7004:7004"]
     environment:
@@ -60,9 +59,10 @@ services:
       - barkfluff-network
     depends_on:
       - configuration
+      - identity
 
   users:
-    image: docker.barkfluff.ru/barkfluff-users:latest
+    image: docker.barkfluff.com/barkfluff-users:latest
     restart: always
     ports: ["7001:7001"]
     environment:
@@ -73,7 +73,7 @@ services:
       - configuration
 
   messages:
-    image: docker.barkfluff.ru/barkfluff-messages:latest
+    image: docker.barkfluff.com/barkfluff-messages:latest
     restart: always
     ports: [ "7007:7007" ]
     environment:
@@ -86,7 +86,7 @@ services:
       - files
 
   fast-auth:
-    image: docker.barkfluff.ru/barkfluff-fast-auth:latest
+    image: docker.barkfluff.com/barkfluff-fast-auth:latest
     restart: always
     ports: [ "7008:7008" ]
     environment:
@@ -95,15 +95,16 @@ services:
       - barkfluff-network
     depends_on:
       - configuration
-  
+
   navigator:
-    image: docker.barkfluff.ru/barkfluff-navigator:latest
+    image: docker.barkfluff.com/barkfluff-navigator:latest
     restart: always
     ports: [ "7010:7010" ]
     environment:
       <<: *common-variables
     networks:
       - barkfluff-network
+
 
 networks:
   barkfluff-network:
