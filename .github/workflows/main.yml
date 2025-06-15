@@ -243,8 +243,8 @@ jobs:
           file: ./Backend/BarkFluff.Users/Dockerfile
           push: true
           tags: docker.barkfluff.com/barkfluff-users:latest,docker.barkfluff.com/barkfluff-users:${{ github.sha }}
-          
-   build-navigator:
+
+  build-navigator:
     needs: detect-changes
     if: ${{ needs.detect-changes.outputs.navigator == 'true' }}
     runs-on: ubuntu-latest
