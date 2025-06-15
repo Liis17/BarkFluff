@@ -24,7 +24,6 @@ var app = builder.Build();
 
 app.MapGrpcReflectionService();
 app.UseRouting();
-        
 app.UseXAuth();
         
 app.MapGrpcService<NavigatorApiService>();
