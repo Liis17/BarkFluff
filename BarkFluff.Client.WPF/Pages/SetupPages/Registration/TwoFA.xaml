@@ -180,7 +180,6 @@
                         FontWeight="Medium"
                         Foreground="White"
                         GotFocus="CodeBox_GotFocus"
-                        Loaded="FocusFirstCodeBox"
                         MaxLength="1"
                         PreviewKeyDown="CodeBox_PreviewKeyDown"
                         PreviewTextInput="CodeBox_PreviewTextInput"

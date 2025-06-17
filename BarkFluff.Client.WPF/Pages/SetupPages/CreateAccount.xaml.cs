@@ -373,7 +373,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                         {
                             try
                             {
-                                var response = await App.ServerCommunication.UsersAC.SetPasswordAsync(new Proto.Users.SetPasswordRequest
+                                var response = await App.ServerCommunication.IdentityAC.SetPasswordAsync(new Proto.Identity.SetPasswordRequest
                                 {
                                     Password = PasswordEnter.Password,
                                 });
