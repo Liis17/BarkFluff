@@ -128,7 +128,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages.Registration
         } 
         private void FocusFirstCodeBox(object sender, RoutedEventArgs e)
         {
-            Pattern.NextStep();
+            //Pattern.NextStep();
         }
         private void ConnectButton_Click(object sender, RoutedEventArgs e)
         {

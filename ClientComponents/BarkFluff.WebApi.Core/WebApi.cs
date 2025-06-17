@@ -292,9 +292,17 @@ namespace BarkFluff.WebApi.Core
         /// <returns>Возвращает новый токен доступа</returns>
         public async Task<string> TokenUpdate(GlobalParam globalParam)
         {
-            var response = await IdentityAC.CreateTokenAsync(new BarkFluff.Proto.Identity.CreateTokenRequest { RefreshToken = globalParam.RefreshToken.Value });
-            globalParam.AccessToken = response.AccessToken;
-            return response.AccessToken.Value;
+            try
+            {
+                var response = await IdentityAC.CreateTokenAsync(new BarkFluff.Proto.Identity.CreateTokenRequest { RefreshToken = globalParam.RefreshToken.Value });
+                globalParam.AccessToken = response.AccessToken;
+                return response.AccessToken.Value;
+            }
+            catch
+            {
+
+            }
+            return "";
         }
 
         #region Работа с пользователями и аватарками
