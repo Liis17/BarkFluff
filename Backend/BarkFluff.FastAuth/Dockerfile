@@ -11,11 +11,11 @@ COPY ["Backend/BarkFluff.FastAuth/BarkFluff.FastAuth.csproj", "Backend/BarkFluff
 RUN dotnet restore "Backend/BarkFluff.FastAuth/BarkFluff.FastAuth.csproj"
 COPY . .
 WORKDIR "/src/Backend/BarkFluff.FastAuth"
-RUN dotnet build "./BarkFluff.FastAuth.csproj" -c $BUILD_CONFIGURATION -o /app/build
+RUN dotnet build "BarkFluff.FastAuth.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./BarkFluff.FastAuth.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "BarkFluff.FastAuth.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app

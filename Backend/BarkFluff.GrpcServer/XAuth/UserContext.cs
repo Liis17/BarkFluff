@@ -23,8 +23,6 @@ public class UserContext
             
             Enum.TryParse(tokenTypeValue, out TokenType type);
             TokenType = type;
-            
         }
     }
-
 }
