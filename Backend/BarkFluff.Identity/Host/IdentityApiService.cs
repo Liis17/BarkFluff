@@ -169,9 +169,9 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
             ResetId = Guid.Parse(request.ResetId)
         };
         
-        await _mediator.Send(command);
+        var result = await _mediator.Send(command);
 
-        return new ConfirmResetPasswordResponse();
+        return result;
     }
 
     [Authorize(Policy = nameof(TokenType.User))]

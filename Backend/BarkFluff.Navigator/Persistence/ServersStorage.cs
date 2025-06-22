@@ -2,18 +2,19 @@ namespace BarkFluff.Navigator.Persistence;
 
 using Domain;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 public class ServersStorage
 {
-    private readonly NavigatorContext _context;
+    private readonly IMemoryCache memoryCache;
 
-    public ServersStorage(NavigatorContext context)
+    public ServersStorage(IMemoryCache memoryCache)
     {
-        _context = context;
+        this.memoryCache = memoryCache;
     }
 
     public async Task<List<ServerInfo>> GetServers()
     {
-        return await _context.Servers.ToListAsync();
+        return null;
     }
 }
