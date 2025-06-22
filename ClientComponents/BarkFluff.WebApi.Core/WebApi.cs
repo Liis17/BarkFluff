@@ -1,20 +1,12 @@
-﻿
-using BarkFluff.WebApi.Core.MessengerData;
+﻿using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
-
-using Google.Protobuf.WellKnownTypes;
-
 using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Grpc.Net.Client;
 
-using System.ComponentModel;
-using System.Text;
-using System.Text.Json;
-using System.Threading.Tasks;
-
 namespace BarkFluff.WebApi.Core
 {
+#pragma warning disable CS8619
     public class WebApi
     {
         #region ApiClients
@@ -352,7 +344,7 @@ namespace BarkFluff.WebApi.Core
                         // обработка
                     }
 
-                    return true; 
+                    return true;
                 }, globalParam);
             }
             catch (BarkFluff.Shared.Exceptions.Files.NotValidFileIdException)
@@ -644,6 +636,32 @@ namespace BarkFluff.WebApi.Core
                 // обработка
             }
             return false;
+        }
+        public async Task<(bool, string resetId)> ResetPassword(string emailOrUsername, GlobalParam globalParam)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var resetPassword = await IdentityAC.ResetPasswordAsync(new Proto.Identity.ResetPasswordRequest { Email = emailOrUsername });
+                    return (true, resetPassword.ResetId);
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.NotSetUsernameOrEmailException)
+            {
+                // обработка
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.UsernameOrEmailIsEmptyException)
+            {
+                // обработка
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.InvalidLoginOrPasswordException)
+            {
+                // обработка
+            }
+
+            return (false, null);
+
         }
     }
 }

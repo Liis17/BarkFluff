@@ -72,6 +72,7 @@ namespace BarkFluff.Client.WPF.Pages
                 var existLogin = await App.ServerCommunication.CheckUsername(EmailTextBox.Text, App.GParam);
                 if (existEmail || existLogin)
                 {
+                    // Отправка кода на почту
                     ShowStep2();
                 }
                 else
