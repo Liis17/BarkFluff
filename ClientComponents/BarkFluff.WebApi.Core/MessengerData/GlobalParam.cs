@@ -1,15 +1,16 @@
-﻿using System.Text;
-using System.Text.Json;
+﻿using BarkFluff.Proto.Identity;
+
 using System.Security.Cryptography;
-using BarkFluff.Proto.Identity;
+using System.Text;
+using System.Text.Json;
 
 namespace BarkFluff.WebApi.Core.MessengerData
 {
     public class GlobalParam
     {
         #region Приложение 
-        public string SocketBeacon { get; set; } = string.Empty; 
-        public string SocketUsers { get; set; } = string.Empty; 
+        public string SocketBeacon { get; set; } = string.Empty;
+        public string SocketUsers { get; set; } = string.Empty;
         public string SocketIdentity { get; set; } = string.Empty;
         public string SocketFiles { get; set; } = string.Empty;
         public string AppPath { get; set; } = string.Empty;
@@ -65,7 +66,7 @@ namespace BarkFluff.WebApi.Core.MessengerData
             var salt = new byte[SaltSize];
             Array.Copy(allBytes, 0, salt, 0, SaltSize);
 
-            var iv = new byte[16]; 
+            var iv = new byte[16];
             Array.Copy(allBytes, SaltSize, iv, 0, iv.Length);
 
             var encryptedBytes = new byte[allBytes.Length - SaltSize - iv.Length];
@@ -99,7 +100,7 @@ namespace BarkFluff.WebApi.Core.MessengerData
                 var salt = new byte[SaltSize];
                 Array.Copy(allBytes, 0, salt, 0, SaltSize);
 
-                var iv = new byte[16]; 
+                var iv = new byte[16];
                 Array.Copy(allBytes, SaltSize, iv, 0, iv.Length);
 
                 var encryptedBytes = new byte[allBytes.Length - SaltSize - iv.Length];
@@ -115,9 +116,9 @@ namespace BarkFluff.WebApi.Core.MessengerData
                 var decryptedBytes = decryptor.TransformFinalBlock(encryptedBytes, 0, encryptedBytes.Length);
 
                 var json = Encoding.UTF8.GetString(decryptedBytes);
-                JsonSerializer.Deserialize<GlobalParam>(json); 
+                JsonSerializer.Deserialize<GlobalParam>(json);
 
-                return true; 
+                return true;
             }
             catch (Exception)
             {
