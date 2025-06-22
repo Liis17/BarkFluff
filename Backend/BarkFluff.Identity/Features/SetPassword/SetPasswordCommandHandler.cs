@@ -9,11 +9,13 @@ public class SetPasswordCommandHandler : IRequestHandler<SetPasswordCommand>
 {
     private readonly UserContext _userContext;
     private readonly PasswordsStorage _passwordsStorage;
-
-    public SetPasswordCommandHandler(UserContext userContext, PasswordsStorage passwordsStorage)
+    private readonly RefreshTokensStorage refreshTokensStorage;
+    
+    public SetPasswordCommandHandler(UserContext userContext, PasswordsStorage passwordsStorage, RefreshTokensStorage refreshTokensStorage)
     {
         _userContext = userContext;
         _passwordsStorage = passwordsStorage;
+        this.refreshTokensStorage = refreshTokensStorage;
     }
 
     public async Task Handle(SetPasswordCommand request, CancellationToken cancellationToken)
