@@ -144,6 +144,11 @@ namespace BarkFluff.Client.WPF
 
             App.ServerCommunication.CreateAC(App.GParam, App.GParam.MachineName, SystemInfo.GetFriendlyWindowsVersion(), AppVersion.AppName, AppVersion.Version, App.GParam.IpAddress);
         }
+        public void OpenPasswordRecoveryPage()
+        {
+            MainFrame.Children.Clear();
+            MainFrame.Children.Add(new PasswordReset());
+        }
         public void PincodeSuccess()
         {
             if (App.GParam.RefreshToken == null!)
