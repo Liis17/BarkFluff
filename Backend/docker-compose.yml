@@ -4,6 +4,7 @@ x-common-variables: &common-variables
   ASPNETCORE_ENVIRONMENT: Production
 
 services:
+# Основные
   beacon:
     image: docker.barkfluff.com/barkfluff-beacon:latest
     restart: always
@@ -105,7 +106,62 @@ services:
     networks:
       - barkfluff-network
 
+#Дополнительные
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z-cpuv1
+    restart: always
+    container_name: minio
+    ports:
+      - "9000:9000" 
+      - "9001:9001"  
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: admin
+    volumes:
+      - C:/Barfluff/Minio:/data
+    command: server /data --console-address ":9001"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    restart: always
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672" 
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+  
+  redis:
+    image: redis:latest
+    restart: always
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+  postgres:
+    image: postgres:latest
+    container_name: postgres_barkfluff
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - C:/Barfluff/Backup:/backup 
+    ports:
+      - "5432:5432"
+    restart: always
 
 networks:
   barkfluff-network:
     driver: bridge
+
+volumes:
+  pgdata:
+  rabbitmq_data:
+  redis_data:
