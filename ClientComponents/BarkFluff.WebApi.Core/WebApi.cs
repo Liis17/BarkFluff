@@ -418,7 +418,7 @@ namespace BarkFluff.WebApi.Core
             return null;
         }
 
-        public async Task<(bool, BarkFluff.Proto.Identity.Token refreshToken, BarkFluff.Proto.Identity.Token accesToken)> Authorisation(string _email, string _username, string _otpcode, GlobalParam global)
+        public async Task<(bool, BarkFluff.Proto.Identity.Token refreshToken, BarkFluff.Proto.Identity.Token accesToken, string error, bool getMeOtpCode)> Authorisation(string _email, string _username,string _password, string _otpCode, GlobalParam global)
         {
             try
             {
@@ -426,31 +426,43 @@ namespace BarkFluff.WebApi.Core
                 {
                     var response = await IdentityAC.AuthAsync(new Proto.Identity.AuthRequest
                     {
-
                         Email = _email,
                         Username = _username,
-                        OtpCode = _otpcode
+                        Password = _password,
+                        OtpCode = _otpCode
                     });
-                    return (true, response.RefreshToken, response.AccessToken);
+                    return (true, response.RefreshToken, response.AccessToken, "Успешно", false);
                 }, global);
             }
             catch (BarkFluff.Shared.Exceptions.Identity.InvalidLoginOrPasswordException)
             {
-                // обработка
+                return (false, null, null, "Неверный логин или пароль", false);
             }
             catch (BarkFluff.Shared.Exceptions.Identity.NotSetUsernameOrEmailException)
             {
-                // обработка
+                return (false, null, null, "Не передан логин или почта", false);
             }
             catch (BarkFluff.Shared.Exceptions.Identity.UsernameOrEmailIsEmptyException)
             {
-                // обработка
+                return (false, null, null, "Логин или почта пустые", false);
             }
             catch (BarkFluff.Shared.Exceptions.Identity.UserNotFoundException)
             {
-                // обработка
+                return (false, null, null, "Пользователь не найден", false);
             }
-            return (false, null, null);
+            catch (BarkFluff.Shared.Exceptions.Identity.OtpCodeNeedException)
+            {
+                return (false, null, null, "Необходимо ввести код двухфакторной аутентификации (OTP)", true);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.OtpNotCreatedException)
+            {
+                return (false, null, null, "Двухфакторная аутентификация не настроена. Пожалуйста, настройте её в настройках аккаунта.", false);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.NotValidOtpCodeException)
+            {
+                return (false, null, null, "Неверный код двухфакторной аутентификации (OTP)", true);
+            }
+            return (false, null, null, "Неизвестная ошибка", false  );
         }
 
 

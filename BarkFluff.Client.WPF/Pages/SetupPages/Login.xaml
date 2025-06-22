@@ -232,38 +232,42 @@
                             MinWidth="300"
                             VerticalAlignment="Center"
                             Orientation="Vertical">
-                            <TextBlock
-                                Margin="0,0,0,8"
-                                FontFamily="{DynamicResource AdwaitaSans}"
-                                FontSize="14"
-                                Foreground="#E0E0E0"
-                                Text="@username или email" />
-                            <TextBox
-                                x:Name="UsernameTextBox"
-                                Margin="0,0,0,20"
-                                Style="{StaticResource MinimalTextBox}" />
+                            <StackPanel x:Name="LoginPasswordFields" Visibility="Visible">
+                                <TextBlock
+                                    Margin="0,0,0,8"
+                                    FontFamily="{DynamicResource AdwaitaSans}"
+                                    FontSize="14"
+                                    Foreground="#E0E0E0"
+                                    Text="@username или email" />
+                                <TextBox
+                                    x:Name="UsernameTextBox"
+                                    Margin="0,0,0,20"
+                                    Style="{StaticResource MinimalTextBox}" />
 
-                            <TextBlock
-                                Margin="0,0,0,8"
-                                FontFamily="{DynamicResource AdwaitaSans}"
-                                FontSize="14"
-                                Foreground="#E0E0E0"
-                                Text="Пароль" />
-                            <PasswordBox
-                                x:Name="PasswordBox"
-                                Margin="0,0,0,8"
-                                Style="{StaticResource MinimalPasswordBox}" />
+                                <TextBlock
+                                    Margin="0,0,0,8"
+                                    FontFamily="{DynamicResource AdwaitaSans}"
+                                    FontSize="14"
+                                    Foreground="#E0E0E0"
+                                    Text="Пароль" />
+                                <PasswordBox
+                                    x:Name="PasswordBox"
+                                    Margin="0,0,0,8"
+                                    Style="{StaticResource MinimalPasswordBox}" />
 
-                            <TextBlock
-                                Margin="0,0,0,25"
-                                HorizontalAlignment="Right"
-                                Cursor="Hand"
-                                Foreground="#FFF39E6D"
-                                MouseLeftButtonDown="ResetPasswordClick"
-                                Style="{StaticResource LinkTextBlock}"
-                                Text="Забыли пароль?" />
+                                <TextBlock
+                                    Margin="0,0,0,25"
+                                    HorizontalAlignment="Right"
+                                    Cursor="Hand"
+                                    Foreground="#FFF39E6D"
+                                    MouseLeftButtonDown="ResetPasswordClick"
+                                    Style="{StaticResource LinkTextBlock}"
+                                    Text="Забыли пароль?" />
+                            </StackPanel>
+
 
                             <Border
+                                x:Name="OtpBlock"
                                 Margin="0,0,0,25"
                                 Padding="20"
                                 Background="#1F1F1F"
@@ -350,6 +354,7 @@
                                         Margin="0,15,0,0"
                                         HorizontalAlignment="Center"
                                         Foreground="#FFF39E6D"
+                                        MouseLeftButtonDown="TextBlock_MouseLeftButtonDown"
                                         Style="{StaticResource LinkTextBlock}"
                                         Text="Проблемы с 2FA? Обратитесь в поддержку" />
                                 </StackPanel>
