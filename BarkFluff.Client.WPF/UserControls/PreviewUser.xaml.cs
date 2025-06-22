@@ -1,5 +1,6 @@
 ﻿using BarkFluff.Client.WPF.Pages.SetupPages;
 
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
@@ -31,15 +32,10 @@ namespace BarkFluff.Client.WPF.UserControls
             }
         }
 
-        private void SaveButton_Click(object sender, RoutedEventArgs e)
+        private async void SaveButton_Click(object sender, RoutedEventArgs e)
         {
-            //вызвать отправку био на сервер 
-            Pattern.NextStep();
-        }
-
-        private void AboutTextBox_TextChanged(object sender, TextChangedEventArgs e)
-        {
-
+            await App.ServerCommunication.ChangeBio(AboutTextBox.Text, App.GParam);
+            Pattern?.NextStep();
         }
     }
 }

@@ -218,10 +218,9 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                     {
                         try
                         {
-                            var response = await App.ServerCommunication.UsersAC.CheckExistUsernameAsync(
-                                new Proto.Users.CheckExistUsernameRequest { Username = LoginEnter.Text.ToLower() });
+                            var response = await App.ServerCommunication.CheckUsername(LoginEnter.Text, App.GParam);
 
-                            if (response.Exist == true)
+                            if (response)
                             {
                                 UpdateErrorMessageTextBlock("Имя пользователя уже занято.");
                                 return;
@@ -259,37 +258,19 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                             var _email = EmailEnter.Text.ToLower();
                             var _login = LoginEnter.Text.ToLower();
 
-                            try
+                            var response = await App.ServerCommunication.CreateAccount(
+                                     _firstName,
+                                     _lastName,
+                                     _email,
+                                     _login,
+                                     App.GParam
+                                );
+                            if (!response.Item1)
                             {
-                                var response = await App.ServerCommunication.IdentityAC.CreateAccountAsync(new Proto.Identity.CreateAccountRequest
-                                {
-                                    FirstName = _firstName,
-                                    LastName = _lastName,
-                                    Email = _email,
-                                    Username = _login
-                                });
-                                _codeId = response.CodeId;
-                            }
-                            catch (EmailExistException)
-                            {
-                                UpdateErrorMessageTextBlock("Эта почта уже использовалась при регистрации на этом сервере");
+                                UpdateErrorMessageTextBlock("Ошибка при создании аккаунта");
                                 return;
                             }
-                            catch (BaseGrpcException)
-                            {
-                                UpdateErrorMessageTextBlock("Неизвестная ошибка BaseGrpc");
-                                return;
-                            }
-                            catch (Grpc.Core.RpcException rpcEx)
-                            {
-                                UpdateErrorMessageTextBlock("Неизвестная ошибка Rpc");
-                                return;
-                            }
-                            catch (Exception ex)
-                            {
-                                UpdateErrorMessageTextBlock("Неизвестная ошибка");
-                                return;
-                            }
+                            _codeId = response.Item2;
 
                             if (_codeId != string.Empty)
                             {
@@ -321,12 +302,12 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                     {
                         try
                         {
-                            var response = await App.ServerCommunication.IdentityAC.ConfirmAccountAsync(new Proto.Identity.ConfirmAccountRequest
+                            var response = await App.ServerCommunication.ConfirmAccount(_codeId, VerificationCodeEnter.Text, App.GParam);
+                            if (!response.Item1)
                             {
-                                CodeId = _codeId,
-                                CodeValue = VerificationCodeEnter.Text
-                            });
-
+                                UpdateErrorMessageTextBlock("Ошибка подтверждения аккаунта");
+                                return;
+                            }
                             App.GParam.RefreshToken = response.RefreshToken;
                             await App.ServerCommunication.TokenUpdate(App.GParam);
                             GlobalParam.Save(App.GParam, App.GParam.AppPath + "GlobalParam.json", App.GParam.AppPass);
@@ -373,11 +354,12 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                         {
                             try
                             {
-                                var response = await App.ServerCommunication.IdentityAC.SetPasswordAsync(new Proto.Identity.SetPasswordRequest
+                                var response = await App.ServerCommunication.SetPassword(PasswordEnter.Password, App.GParam);
+                                if (!response)
                                 {
-                                    Password = PasswordEnter.Password,
-                                });
-                                var a = response;
+                                    UpdateErrorMessageTextBlock("Ошибка при установке пароля");
+                                    return;
+                                }
                                 AnimateTransition(steps[currentStep], steps[currentStep + 1], SlideDirection.Forward);
                                 currentStep++;
                                 UpdateNavigationButtons();
@@ -472,7 +454,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
             string pattern = @"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}";
             return Regex.IsMatch(input, pattern);
         }
-        public bool IsValidPassword(string password)
+        private bool IsValidPassword(string password)
         {
             if (string.IsNullOrEmpty(password))
             {
