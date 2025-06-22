@@ -55,7 +55,7 @@ service IdentityApi {
 
 message ConfirmResetPasswordRequest {
   string reset_id = 1; // идентификатор сброса пароля
-  string opt_code = 2; // код подтверждения
+  string otp_code = 2; // код подтверждения
 }
 
 message ConfirmResetPasswordResponse {

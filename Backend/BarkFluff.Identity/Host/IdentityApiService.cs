@@ -165,7 +165,7 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
     {
         var command = new ConfirmResetPasswordCommand
         {
-            OtpCode = request.OptCode,
+            OtpCode = request.OtpCode,
             ResetId = Guid.Parse(request.ResetId)
         };
         
