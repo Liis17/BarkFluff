@@ -255,6 +255,7 @@
                                 Margin="0,0,0,25"
                                 HorizontalAlignment="Right"
                                 Foreground="#FFF39E6D"
+                                Cursor="Hand"
                                 MouseLeftButtonDown="ResetPasswordClick"
                                 Style="{StaticResource LinkTextBlock}"
                                 Text="Забыли пароль?" />

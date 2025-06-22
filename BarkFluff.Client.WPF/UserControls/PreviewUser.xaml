@@ -111,7 +111,7 @@
                                     FontSize="16"
                                     FontWeight="Normal"
                                     Foreground="#9E9E9E"
-                                    Text="username" />
+                                    Text="" />
                             </StackPanel>
 
                         </StackPanel>
@@ -153,7 +153,6 @@
                                 Foreground="White"
                                 PlaceholderText="О себе, работе, хобби... или оставьте пустым"
                                 Text=""
-                                TextChanged="AboutTextBox_TextChanged"
                                 TextWrapping="Wrap"
                                 VerticalScrollBarVisibility="Disabled" />
                         </ScrollViewer>

@@ -2,6 +2,8 @@
 using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
+using Google.Protobuf.WellKnownTypes;
+
 using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Grpc.Net.Client;
@@ -16,17 +18,17 @@ namespace BarkFluff.WebApi.Core
     public class WebApi
     {
         #region ApiClients
-        public BarkFluff.Proto.Users.UsersApi.UsersApiClient? UsersAC;
-        public BarkFluff.Proto.Beacon.BeaconApi.BeaconApiClient? BeaconAC;
-        public BarkFluff.Proto.Identity.IdentityApi.IdentityApiClient? IdentityAC;
-        public BarkFluff.Proto.Files.FilesApi.FilesApiClient? FilesAC;
+        private BarkFluff.Proto.Users.UsersApi.UsersApiClient? UsersAC;
+        private BarkFluff.Proto.Beacon.BeaconApi.BeaconApiClient? BeaconAC;
+        private BarkFluff.Proto.Identity.IdentityApi.IdentityApiClient? IdentityAC;
+        private BarkFluff.Proto.Files.FilesApi.FilesApiClient? FilesAC;
         #endregion
 
         #region gRPC Channels
-        public GrpcChannel? BeaconChannel;
-        public GrpcChannel? UserChannel;
-        public GrpcChannel? IdentityChannel;
-        public GrpcChannel? FilesChannel;
+        private GrpcChannel? BeaconChannel;
+        private GrpcChannel? UserChannel;
+        private GrpcChannel? IdentityChannel;
+        private GrpcChannel? FilesChannel;
         #endregion
 
         #region На всякий случай, возможно переиспользование
@@ -460,5 +462,188 @@ namespace BarkFluff.WebApi.Core
             }, globalParam);
         }
         #endregion
+
+        /// <summary>
+        /// Вызывает создание аккаунта с предоставленными данными.
+        /// </summary>
+        /// <param name="firstName">Имя</param>
+        /// <param name="lastName">Фамилия</param>
+        /// <param name="email">Почта</param>
+        /// <param name="login">Username</param>
+        /// <param name="global">Глобальный параметр конфигурации</param>
+        /// <returns>Кортеж, состоящий из статуса создания аккаунта и идентификатора кода</returns>
+        public async Task<(bool, string)> CreateAccount(string firstName, string lastName, string email, string login, GlobalParam global)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var createAccount = await IdentityAC.CreateAccountAsync(new Proto.Identity.CreateAccountRequest
+                    {
+                        FirstName = firstName,
+                        LastName = lastName,
+                        Email = email,
+                        Username = login
+                    });
+                    return (true, createAccount.CodeId);
+                }, global);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.UsernameExistException)
+            {
+                // обработка
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.EmailExistException)
+            {
+                // обработка
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.UsernameOrEmailIsEmptyException)
+            {
+                // обработка
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.NotSetUsernameOrEmailException)
+            {
+                // обработка
+            }
+            return (false, null);
+        }
+
+        /// <summary>
+        /// Подтверждает аккаунт по коду и значению кода подтверждения.
+        /// </summary>
+        /// <param name="code">Код подтверждения который получен при создании аккаунта</param>
+        /// <param name="verifyCode">Значение кода подтверждения из почты/аутентификатора</param>
+        /// <param name="global">Глобальный параметр конфигурации.</param>
+        /// <returns>Кортеж, содержащий статус подтверждения и токен обновления.</returns>
+        public async Task<(bool, BarkFluff.Proto.Identity.Token RefreshToken)> ConfirmAccount(string code, string verifyCode, GlobalParam global)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var confirmAccount = await IdentityAC.ConfirmAccountAsync(new Proto.Identity.ConfirmAccountRequest
+                    {
+                        CodeId = code,
+                        CodeValue = verifyCode
+                    });
+                    return (true, confirmAccount.RefreshToken);
+                }, global);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.ConfirmationCodeExpiredException)
+            {
+                // обработка
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.ConfirmationCodeIncorrectException)
+            {
+                // обработка
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.ConfirmationCodeNotFoundException)
+            {
+                // обработка
+            }
+            return (false, null);
+        }
+
+        /// <summary>
+        /// Изменяет биографию пользователя.
+        /// </summary>
+        /// <param name="bio">Новая биография пользователя</param>
+        /// <param name="globalParam">Параметр глобальной конфигурации</param>
+        /// <returns>Возвращает true, если операция успешна</returns>
+        public async Task<bool> ChangeBio(string bio, GlobalParam globalParam)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var getUser = await UsersAC.ChangeBioAsync(new Proto.Users.ChangeBioRequest { Bio = bio });
+                    return true;
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Users.UserIsDraftException)
+            {
+                // обработка
+            }
+            return false;
+        }
+
+        public async Task<bool> ChangeUsername(string username, GlobalParam globalParam)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var getUser = await UsersAC.ChangeUsernameAsync(new Proto.Users.ChangeUsernameRequest { Username = username });
+                    return true;
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Users.UserIsDraftException)
+            {
+                // обработка
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Проверяет, существует ли адрес электронной почты в системе.
+        /// </summary>
+        /// <param name="email">Адрес электронной почты для проверки.</param>
+        /// <param name="globalParam">Параметр глобальной конфигурации.</param>
+        /// <returns>Возвращает true, если почта существует, иначе false.</returns>
+        public async Task<bool> CheckEmail(string email, GlobalParam globalParam)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var getUser = await UsersAC.CheckExistEmailAsync(new Proto.Users.CheckExistEmailRequest { Email = email.ToLower() });
+                    return getUser.Exist;
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Users.UserIsDraftException)
+            {
+                // обработка
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Проверяет, существует ли имя пользователя в системе.
+        /// </summary>
+        /// <param name="username">Имя пользователя для проверки.</param>
+        /// <param name="globalParam">Параметр глобальной конфигурации.</param>
+        /// <returns>Возвращает true, если имя пользователя существует, иначе false.</returns>
+        public async Task<bool> CheckUsername(string username, GlobalParam globalParam)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var getUser = await UsersAC.CheckExistUsernameAsync(new Proto.Users.CheckExistUsernameRequest { Username = username.ToLower() });
+                    return getUser.Exist;
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Users.UserIsDraftException)
+            {
+                // обработка
+            }
+            return false;
+        }
+
+        public async Task<bool> SetPassword(string newPassword, GlobalParam globalParam)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var setPassword = await IdentityAC.SetPasswordAsync(new Proto.Identity.SetPasswordRequest { Password = newPassword });
+                    return true;
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.InvalidLoginOrPasswordException)
+            {
+                // обработка
+            }
+            return false;
+        }
     }
 }

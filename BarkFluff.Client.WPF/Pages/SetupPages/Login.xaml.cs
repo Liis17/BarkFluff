@@ -41,7 +41,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
 
         private void ResetPasswordClick(object sender, MouseButtonEventArgs e)
         {
-            MessageBox.Show("Тут открыть страницу с сбросом пароля");
+            App.MessengerWindow.OpenPasswordRecoveryPage();
         }
     }
 }
