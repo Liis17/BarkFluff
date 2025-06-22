@@ -24,6 +24,7 @@
   <ItemGroup>
     <None Remove="Fonts\AdwaitaSans-Regular.ttf" />
     <None Remove="Resources\Images\barkfluff_logo.png" />
+    <None Remove="Resources\Images\qrplaceholder.png" />
     <None Remove="Resources\Placeholders\Placeholder_1.jpg" />
     <None Remove="Resources\Placeholders\Placeholder_2.jpg" />
     <None Remove="Resources\Placeholders\Placeholder_3.png" />
@@ -33,6 +34,7 @@
     <Content Include="Fonts\AdwaitaSans-Regular.ttf" />
     <Content Include="Resources\Icons\barkfluff_logo.ico" />
     <Resource Include="Resources\Images\barkfluff_logo.png" />
+    <Resource Include="Resources\Images\qrplaceholder.png" />
     <Resource Include="Resources\Placeholders\Placeholder_1.jpg" />
     <Resource Include="Resources\Placeholders\Placeholder_2.jpg" />
     <Resource Include="Resources\Placeholders\Placeholder_3.png" />

@@ -1,5 +1,8 @@
-﻿using System;
+﻿using BarkFluff.WebApi.Core.MessengerData;
+
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -11,7 +14,6 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 using Windows.Devices.Power;
 
@@ -23,6 +25,7 @@ namespace BarkFluff.Client.WPF.Pages
     public partial class PasswordReset : UserControl
     {
         private TextBox[]? codeBoxes;
+        private string _resetId = string.Empty;
         public PasswordReset()
         {
             InitializeComponent();
@@ -58,6 +61,9 @@ namespace BarkFluff.Client.WPF.Pages
         {
             Step3Panel.Visibility = Visibility.Collapsed;
             SuccessPanel.Visibility = Visibility.Visible;
+            Step4Indicator.Style = (Style)FindResource("ActiveStepIndicator");
+            StepLine3.Fill = new SolidColorBrush(Color.FromRgb(109, 144, 243));
+            BackToLoginTextBlock.Visibility = Visibility.Collapsed;
         }
         private void BackToLogin_Click(object sender, MouseButtonEventArgs e)
         {
@@ -72,7 +78,26 @@ namespace BarkFluff.Client.WPF.Pages
                 var existLogin = await App.ServerCommunication.CheckUsername(EmailTextBox.Text, App.GParam);
                 if (existEmail || existLogin)
                 {
-                    // Отправка кода на почту
+
+                    bool ContainsEmail(string input)
+                    {
+                        string pattern = @"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}";
+                        return Regex.IsMatch(input, pattern);
+                    }
+
+                    string _email = string.Empty;
+                    string _username = string.Empty;
+                    if (ContainsEmail(EmailTextBox.Text))
+                    {
+                        _email = EmailTextBox.Text;
+                    }
+                    else
+                    {
+                        _username = EmailTextBox.Text;
+                    }
+                    var response = await App.ServerCommunication.ResetPassword(_email, _username, App.GParam);
+                    if (!response.Item1) { return; } 
+                    _resetId = response.resetId; 
                     ShowStep2();
                 }
                 else
@@ -83,10 +108,21 @@ namespace BarkFluff.Client.WPF.Pages
             }
         }
         
-        private void VerifyCodeButton_Click(object sender, RoutedEventArgs e)
+        private async void VerifyCodeButton_Click(object sender, RoutedEventArgs e)
         {
-            
-            
+            if (codeBoxes.All(b => b.Text.Length == 1))
+            {
+                string code = string.Concat(codeBoxes.Select(b => b.Text));
+                //MessageBox.Show(code);
+                var response = await App.ServerCommunication.ConfirmResetCode(_resetId, code , App.GParam);
+                App.GParam.RefreshToken = response.refreshToken;
+                MainWindow.SaveSettings();
+                App.UpdateApiClient();
+                await App.ServerCommunication.TokenUpdate(App.GParam);
+                MainWindow.SaveSettings();
+
+                ShowStep3();
+            }
         }
 
         private void VerifyBox_GotFocus(object sender, RoutedEventArgs e)
@@ -178,11 +214,16 @@ namespace BarkFluff.Client.WPF.Pages
             }
             return true;
         }
-        private void ResetPasswordButton_Click(object sender, RoutedEventArgs e)
+        private async void ResetPasswordButton_Click(object sender, RoutedEventArgs e)
         {
             if (IsValidPassword(PasswordEnter.Password) && Shared.SecurityUtilities.SecurityUtilities.EvaluatePasswordStrength(PasswordEnter.Password) >= 60 && PasswordEnter.Password == PasswordRepeatedEnter.Password)
             {
-                ShowStep3();
+                var response = await App.ServerCommunication.SetPassword(PasswordEnter.Password, App.GParam);
+                ShowStep4();
+            }
+            else
+            {
+                MessageBox.Show("Пароли не совпадают или не достаточно сильные.");
             }
         }
 

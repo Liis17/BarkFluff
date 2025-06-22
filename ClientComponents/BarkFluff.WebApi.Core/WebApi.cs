@@ -418,12 +418,48 @@ namespace BarkFluff.WebApi.Core
             return null;
         }
 
+        public async Task<(bool, BarkFluff.Proto.Identity.Token refreshToken, BarkFluff.Proto.Identity.Token accesToken)> Authorisation(string _email, string _username, string _otpcode, GlobalParam global)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var response = await IdentityAC.AuthAsync(new Proto.Identity.AuthRequest
+                    {
+
+                        Email = _email,
+                        Username = _username,
+                        OtpCode = _otpcode
+                    });
+                    return (true, response.RefreshToken, response.AccessToken);
+                }, global);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.InvalidLoginOrPasswordException)
+            {
+                // обработка
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.NotSetUsernameOrEmailException)
+            {
+                // обработка
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.UsernameOrEmailIsEmptyException)
+            {
+                // обработка
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.UserNotFoundException)
+            {
+                // обработка
+            }
+            return (false, null, null);
+        }
+
+
         #region Настройка двухфакторной аутентификации
 
-        /// <summary>
-        /// Запрашивает QR-код для настройки двухфакторной аутентификации (OTP) и возвращает его в виде base64 строки.
-        /// </summary>
-        /// <returns>Кортеж, содержащий QR-код в формате base64 и код для ручного ввода.</returns>
+            /// <summary>
+            /// Запрашивает QR-код для настройки двухфакторной аутентификации (OTP) и возвращает его в виде base64 строки.
+            /// </summary>
+            /// <returns>Кортеж, содержащий QR-код в формате base64 и код для ручного ввода.</returns>
         public async Task<(string qrBase64, string justCode)> OtpReceipt(GlobalParam globalParam)
         {
             return await SafeCallAsync(async () =>
@@ -621,6 +657,7 @@ namespace BarkFluff.WebApi.Core
             return false;
         }
 
+        #region Сброс пароля и установка нового пароля
         public async Task<bool> SetPassword(string newPassword, GlobalParam globalParam)
         {
             try
@@ -637,14 +674,32 @@ namespace BarkFluff.WebApi.Core
             }
             return false;
         }
-        public async Task<(bool, string resetId)> ResetPassword(string emailOrUsername, GlobalParam globalParam)
+        public async Task<(bool, string resetId)> ResetPassword(string email, string username, GlobalParam globalParam)
         {
             try
             {
                 return await SafeCallAsync(async () =>
                 {
-                    var resetPassword = await IdentityAC.ResetPasswordAsync(new Proto.Identity.ResetPasswordRequest { Email = emailOrUsername });
-                    return (true, resetPassword.ResetId);
+                    if (!string.IsNullOrEmpty(email))
+                    {
+                        var resetPassword = await IdentityAC.ResetPasswordAsync(new Proto.Identity.ResetPasswordRequest
+                        {
+                            OtpType = Proto.Identity.OtpTypeId.Email,
+                            Email = email,
+                        });
+                        return (true, resetPassword.ResetId);
+                    }
+                    else if (!string.IsNullOrEmpty(username))
+                    {
+                        var resetPassword = await IdentityAC.ResetPasswordAsync(new Proto.Identity.ResetPasswordRequest
+                        {
+                            OtpType = Proto.Identity.OtpTypeId.Email,
+                            Username = username,
+                        });
+                        return (true, resetPassword.ResetId);
+                    }
+
+                    return (false, null);
                 }, globalParam);
             }
             catch (BarkFluff.Shared.Exceptions.Identity.NotSetUsernameOrEmailException)
@@ -659,9 +714,83 @@ namespace BarkFluff.WebApi.Core
             {
                 // обработка
             }
+            catch (BarkFluff.Shared.Exceptions.Identity.UserNotFoundException) 
+            { 
+            
+            }
+            catch(Exception ex)
+            {
+                var a = ex;
+            }
 
             return (false, null);
+        }
+        public async Task<(bool, BarkFluff.Proto.Identity.Token refreshToken)> ConfirmResetCode(string resetId, string otpCode, GlobalParam globalParam)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var response = await IdentityAC.ConfirmResetPasswordAsync(new Proto.Identity.ConfirmResetPasswordRequest { ResetId = resetId, OtpCode = otpCode });
+                    return (true, response.RefreshToken);
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.ConfirmationCodeExpiredException)
+            {
+                // обработка
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.ConfirmationCodeIncorrectException)
+            {
+                // обработка
+            }
+            return (false, null);
+        }
+        public async Task<bool> ConfirmResetPassword(string resetId, string code, string newPassword, GlobalParam globalParam)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var response = await IdentityAC.ConfirmResetPasswordAsync(
+                        new Proto.Identity.ConfirmResetPasswordRequest 
+                        {
+                            ResetId = resetId,
+                            OtpCode = code,
+                        }
+                    );
+                    
+                    return true;
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.ConfirmationCodeExpiredException)
+            {
+                // обработка
+            }
 
+            return false;
+        }
+        #endregion
+        public async Task<(bool, List<string> devicesList)> GetDevicesList(GlobalParam globalParam)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var response = await IdentityAC.GetActiveSessionsAsync(new Proto.Identity.GetActiveSessionsRequest { });
+                    var devicesList = new List<string>();
+
+                    foreach (var session in response.Sessions)
+                    {
+                        devicesList.Add(session.DeviceName ?? "Неизвестное устройство");
+                    }
+                    return (true, devicesList);
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.InvalidRefreshTokenException)
+            {
+                // обработка
+            }
+            return (false, null);
         }
     }
 }
