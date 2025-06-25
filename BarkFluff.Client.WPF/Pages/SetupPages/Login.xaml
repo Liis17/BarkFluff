@@ -108,6 +108,40 @@
             </Setter>
         </Style>
 
+        <Style x:Key="VerificationTextBox" TargetType="TextBox">
+            <Setter Property="Background" Value="#282828" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontFamily" Value="AdwaitaSans" />
+            <Setter Property="FontSize" Value="20" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="BorderBrush" Value="#404040" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CaretBrush" Value="White" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="8">
+                            <ScrollViewer x:Name="PART_ContentHost" Padding="8" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter Property="BorderBrush" Value="#6D90F3" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="BorderBrush" Value="#505050" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="MinimalCheckBox" TargetType="CheckBox">
             <Setter Property="Foreground" Value="#E0E0E0" />
             <Setter Property="FontFamily" Value="AdwaitaSans" />
@@ -202,11 +236,11 @@
             Grid.Row="1"
             Margin="0,40,0,40"
             HorizontalAlignment="Stretch"
-            VerticalAlignment="Top">
+            VerticalAlignment="Center">
             <Grid>
                 <StackPanel
                     HorizontalAlignment="Center"
-                    VerticalAlignment="Top"
+                    VerticalAlignment="Center"
                     Orientation="Vertical">
 
                     <TextBlock
@@ -274,89 +308,102 @@
                                 BorderBrush="#333333"
                                 BorderThickness="1"
                                 CornerRadius="12"
-                                Visibility="Collapsed">
-                                <StackPanel>
+                                Visibility="Visible">
+                                <StackPanel
+                                    x:Name="Step2Panel"
+                                    Orientation="Vertical"
+                                    Visibility="Visible">
                                     <TextBlock
-                                        Margin="0,0,0,5"
+                                        Margin="0,0,0,10"
+                                        HorizontalAlignment="Center"
                                         FontFamily="{DynamicResource AdwaitaSans}"
-                                        FontSize="16"
-                                        FontWeight="SemiBold"
+                                        FontSize="18"
+                                        FontWeight="Medium"
                                         Foreground="White"
-                                        Text="Двухфакторная аутентификация" />
+                                        Text="Введите код подтверждения"
+                                        TextAlignment="Center" />
 
                                     <TextBlock
-                                        Margin="0,0,0,15"
+                                        Margin="0,0,0,25"
+                                        HorizontalAlignment="Center"
                                         FontFamily="{DynamicResource AdwaitaSans}"
                                         FontSize="14"
                                         Foreground="#B0B0B0"
-                                        Text="Введите 6-значный код из приложения-аутентификатора"
-                                        TextWrapping="WrapWithOverflow" />
+                                        Text="Введите 6-значный код подтверждения"
+                                        TextAlignment="Center" />
 
-                                    <!--  2FA поля  -->
-                                    <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
-                                        <TextBox
-                                            x:Name="TwoFABox0"
-                                            Width="40"
-                                            Height="40"
-                                            Margin="3"
-                                            MaxLength="1"
-                                            PreviewTextInput="TwoFABox_PreviewTextInput"
-                                            Style="{StaticResource TwoFATextBox}"
-                                            TextChanged="TwoFABox_TextChanged" />
-                                        <TextBox
-                                            x:Name="TwoFABox1"
-                                            Width="40"
-                                            Height="40"
-                                            Margin="3"
-                                            MaxLength="1"
-                                            PreviewTextInput="TwoFABox_PreviewTextInput"
-                                            Style="{StaticResource TwoFATextBox}"
-                                            TextChanged="TwoFABox_TextChanged" />
-                                        <TextBox
-                                            x:Name="TwoFABox2"
-                                            Width="40"
-                                            Height="40"
-                                            Margin="3"
-                                            MaxLength="1"
-                                            PreviewTextInput="TwoFABox_PreviewTextInput"
-                                            Style="{StaticResource TwoFATextBox}"
-                                            TextChanged="TwoFABox_TextChanged" />
-                                        <TextBox
-                                            x:Name="TwoFABox3"
-                                            Width="40"
-                                            Height="40"
-                                            Margin="3"
-                                            MaxLength="1"
-                                            PreviewTextInput="TwoFABox_PreviewTextInput"
-                                            Style="{StaticResource TwoFATextBox}"
-                                            TextChanged="TwoFABox_TextChanged" />
-                                        <TextBox
-                                            x:Name="TwoFABox4"
-                                            Width="40"
-                                            Height="40"
-                                            Margin="3"
-                                            MaxLength="1"
-                                            PreviewTextInput="TwoFABox_PreviewTextInput"
-                                            Style="{StaticResource TwoFATextBox}"
-                                            TextChanged="TwoFABox_TextChanged" />
-                                        <TextBox
-                                            x:Name="TwoFABox5"
-                                            Width="40"
-                                            Height="40"
-                                            Margin="3"
-                                            MaxLength="1"
-                                            PreviewTextInput="TwoFABox_PreviewTextInput"
-                                            Style="{StaticResource TwoFATextBox}"
-                                            TextChanged="TwoFABox_TextChanged" />
-                                    </StackPanel>
-
-                                    <TextBlock
-                                        Margin="0,15,0,0"
+                                    <!--  Verification Code Input  -->
+                                    <StackPanel
+                                        Margin="0,0,0,20"
                                         HorizontalAlignment="Center"
-                                        Foreground="#FFF39E6D"
-                                        MouseLeftButtonDown="TextBlock_MouseLeftButtonDown"
-                                        Style="{StaticResource LinkTextBlock}"
-                                        Text="Проблемы с 2FA? Обратитесь в поддержку" />
+                                        Orientation="Horizontal">
+                                        <TextBox
+                                            x:Name="VerifyBox0"
+                                            Width="45"
+                                            Height="45"
+                                            Margin="4"
+                                            GotFocus="VerifyBox_GotFocus"
+                                            MaxLength="1"
+                                            PreviewKeyDown="VerifyBox_PreviewKeyDown"
+                                            PreviewTextInput="VerifyBox_PreviewTextInput"
+                                            Style="{StaticResource VerificationTextBox}"
+                                            TextChanged="VerifyBox_TextChanged" />
+                                        <TextBox
+                                            x:Name="VerifyBox1"
+                                            Width="45"
+                                            Height="45"
+                                            Margin="4"
+                                            GotFocus="VerifyBox_GotFocus"
+                                            MaxLength="1"
+                                            PreviewKeyDown="VerifyBox_PreviewKeyDown"
+                                            PreviewTextInput="VerifyBox_PreviewTextInput"
+                                            Style="{StaticResource VerificationTextBox}"
+                                            TextChanged="VerifyBox_TextChanged" />
+                                        <TextBox
+                                            x:Name="VerifyBox2"
+                                            Width="45"
+                                            Height="45"
+                                            Margin="4"
+                                            GotFocus="VerifyBox_GotFocus"
+                                            MaxLength="1"
+                                            PreviewKeyDown="VerifyBox_PreviewKeyDown"
+                                            PreviewTextInput="VerifyBox_PreviewTextInput"
+                                            Style="{StaticResource VerificationTextBox}"
+                                            TextChanged="VerifyBox_TextChanged" />
+                                        <TextBox
+                                            x:Name="VerifyBox3"
+                                            Width="45"
+                                            Height="45"
+                                            Margin="4"
+                                            GotFocus="VerifyBox_GotFocus"
+                                            MaxLength="1"
+                                            PreviewKeyDown="VerifyBox_PreviewKeyDown"
+                                            PreviewTextInput="VerifyBox_PreviewTextInput"
+                                            Style="{StaticResource VerificationTextBox}"
+                                            TextChanged="VerifyBox_TextChanged" />
+                                        <TextBox
+                                            x:Name="VerifyBox4"
+                                            Width="45"
+                                            Height="45"
+                                            Margin="4"
+                                            GotFocus="VerifyBox_GotFocus"
+                                            MaxLength="1"
+                                            PreviewKeyDown="VerifyBox_PreviewKeyDown"
+                                            PreviewTextInput="VerifyBox_PreviewTextInput"
+                                            Style="{StaticResource VerificationTextBox}"
+                                            TextChanged="VerifyBox_TextChanged" />
+                                        <TextBox
+                                            x:Name="VerifyBox5"
+                                            Width="45"
+                                            Height="45"
+                                            Margin="4"
+                                            GotFocus="VerifyBox_GotFocus"
+                                            MaxLength="1"
+                                            PreviewKeyDown="VerifyBox_PreviewKeyDown"
+                                            PreviewTextInput="VerifyBox_PreviewTextInput"
+                                            Style="{StaticResource VerificationTextBox}"
+                                            TextChanged="VerifyBox_TextChanged" />
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
                             <ui:Button

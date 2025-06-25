@@ -39,7 +39,7 @@ namespace BarkFluff.Client.WPF.Pages
             Step3Panel.Visibility = Visibility.Collapsed;
             SuccessPanel.Visibility = Visibility.Collapsed;
             codeBoxes = new[] { VerifyBox0, VerifyBox1, VerifyBox2, VerifyBox3, VerifyBox4, VerifyBox5 };
-            VerifyBox0.Focus();
+            EmailTextBox.Focus();
         }
 
         private void ShowStep2()
@@ -183,7 +183,6 @@ namespace BarkFluff.Client.WPF.Pages
             if (e.Key == Key.Tab)
                 e.Handled = true;
         }
-
         private void VerifyBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
             e.Handled = !Regex.IsMatch(e.Text, @"^\d$");
@@ -192,6 +191,7 @@ namespace BarkFluff.Client.WPF.Pages
         private void ResendCode_Click(object sender, MouseButtonEventArgs e)
         {
             //повторная отправка кода
+            MessageBox.Show("Пока что это не реализовано, увы", "Повторная отправка кода которая не работает", MessageBoxButton.YesNoCancel, MessageBoxImage.Information);
         }
         public bool IsValidPassword(string password)
         {
