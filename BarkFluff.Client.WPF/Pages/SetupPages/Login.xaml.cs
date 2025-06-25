@@ -58,29 +58,44 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                 {
                     _username = UsernameTextBox.Text;
                 }
+                if (codeBoxes.All(b => b.Text.Length == 1))
+                {
+                    _otpCode = string.Concat(codeBoxes.Select(b => b.Text));
+                }
                 _password = PasswordBox.Password;
                 var response = await App.ServerCommunication.Authorisation(_email, _username, _password, _otpCode, App.GParam);
+                if (!string.IsNullOrEmpty(response.error) && !response.Item1)
+                {
+                    MessageBox.Show(response.error, "Ошибка авторизации", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
                 if (response.getMeOtpCode)
                 {
                     _step2FA = true;
                     LoginPasswordFields.Visibility = Visibility.Collapsed;
                     OtpBlock.Visibility = Visibility.Visible;
+                    return;
                 }
                 else if (!response.Item1)
                 {
                     MessageBox.Show(response.error, "Ошибка авторизации", MessageBoxButton.OK, MessageBoxImage.Error);
                     return;
                 }
+                if (!response.Item1)
+                {
+                    MessageBox.Show(response.error, "Ошибка авторизации", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                App.GParam.RefreshToken = response.refreshToken;
+                App.GParam.AccessToken = response.accessToken;
+                MainWindow.SaveSettings();
+                App.OpenMessengerPage();
             }
             else
             {
                 MessageBox.Show("Имя пользователя/почта или пароль содержат ошибку", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
             }
-
-
-
-
-            
         }
 
         private void TwoFABox_PreviewTextInput(object sender, TextCompositionEventArgs e)
@@ -129,22 +144,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                     current.Select(1, 0); // Не прыгать в конец
             }
 
-            if (codeBoxes.All(b => b.Text.Length == 1))
-            {
-                string code = string.Concat(codeBoxes.Select(b => b.Text));
-                try
-                {
-
-                    await App.ServerCommunication.OtpAccept(App.GParam, code); // Отправка кода на сервер
-
-                }
-                catch
-                {
-
-                    return;
-                }
-
-            }
+             
         }
         private void VerifyBox_PreviewKeyDown(object sender, KeyEventArgs e)
         {

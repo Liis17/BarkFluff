@@ -418,7 +418,7 @@ namespace BarkFluff.WebApi.Core
             return null;
         }
 
-        public async Task<(bool, BarkFluff.Proto.Identity.Token refreshToken, BarkFluff.Proto.Identity.Token accesToken, string error, bool getMeOtpCode)> Authorisation(string _email, string _username,string _password, string _otpCode, GlobalParam global)
+        public async Task<(bool, BarkFluff.Proto.Identity.Token refreshToken, BarkFluff.Proto.Identity.Token accessToken, string error, bool getMeOtpCode)> Authorisation(string _email, string _username,string _password, string _otpCode, GlobalParam global)
         {
             try
             {
