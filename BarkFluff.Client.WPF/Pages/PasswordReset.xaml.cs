@@ -144,23 +144,6 @@ namespace BarkFluff.Client.WPF.Pages
                 else
                     current.Select(1, 0); // Не прыгать в конец
             }
-
-            if (codeBoxes.All(b => b.Text.Length == 1))
-            {
-                string code = string.Concat(codeBoxes.Select(b => b.Text));
-                try
-                {
-                  
-                    await App.ServerCommunication.OtpAccept(App.GParam, code); // Отправка кода на сервер
-                    
-                }
-                catch 
-                {
-                   
-                    return;
-                }
-                
-            }
         }
         private void VerifyBox_PreviewKeyDown(object sender, KeyEventArgs e)
         {
@@ -219,6 +202,11 @@ namespace BarkFluff.Client.WPF.Pages
             if (IsValidPassword(PasswordEnter.Password) && Shared.SecurityUtilities.SecurityUtilities.EvaluatePasswordStrength(PasswordEnter.Password) >= 60 && PasswordEnter.Password == PasswordRepeatedEnter.Password)
             {
                 var response = await App.ServerCommunication.SetPassword(PasswordEnter.Password, App.GParam);
+                if (!response)
+                {
+                    MessageBox.Show("Не удалось установить новый пароль. Пожалуйста, попробуйте еще раз.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
                 ShowStep4();
             }
             else
