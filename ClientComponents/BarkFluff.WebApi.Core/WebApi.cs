@@ -817,5 +817,32 @@ namespace BarkFluff.WebApi.Core
             }
             return (false, null);
         }
+
+
+
+        #region Работа с сообщениями
+
+        public async Task<(bool, string)> GetChats(GlobalParam globalParam)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var response = await UsersAC.GetUserAsync(new Proto.Users.GetUserRequest
+                    {
+                        UserId = 0
+                    });
+                    
+                    return (true, "");
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Users.UserIsDraftException)
+            {
+                // обработка
+            }
+            return (false, null);
+        }
+
+        #endregion
     }
 }
