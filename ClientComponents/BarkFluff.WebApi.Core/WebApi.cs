@@ -418,6 +418,15 @@ namespace BarkFluff.WebApi.Core
             return null;
         }
 
+        /// <summary>
+        /// Выполняет авторизацию пользователя с использованием электронной почты или имени пользователя, пароля и кода двухфакторной аутентификации (OTP).
+        /// </summary>
+        /// <param name="_email"></param>
+        /// <param name="_username"></param>
+        /// <param name="_password"></param>
+        /// <param name="_otpCode"></param>
+        /// <param name="global"></param>
+        /// <returns>Токены refreshToken и accessToken</returns>
         public async Task<(bool, BarkFluff.Proto.Identity.Token refreshToken, BarkFluff.Proto.Identity.Token accessToken, string error, bool getMeOtpCode)> Authorisation(string _email, string _username,string _password, string _otpCode, GlobalParam global)
         {
             try
@@ -468,10 +477,10 @@ namespace BarkFluff.WebApi.Core
 
         #region Настройка двухфакторной аутентификации
 
-            /// <summary>
-            /// Запрашивает QR-код для настройки двухфакторной аутентификации (OTP) и возвращает его в виде base64 строки.
-            /// </summary>
-            /// <returns>Кортеж, содержащий QR-код в формате base64 и код для ручного ввода.</returns>
+        /// <summary>
+        /// Запрашивает QR-код для настройки двухфакторной аутентификации (OTP) и возвращает его в виде base64 строки.
+        /// </summary>
+        /// <returns>Кортеж, содержащий QR-код в формате base64 и код для ручного ввода.</returns>
         public async Task<(string qrBase64, string justCode)> OtpReceipt(GlobalParam globalParam)
         {
             return await SafeCallAsync(async () =>
@@ -670,6 +679,12 @@ namespace BarkFluff.WebApi.Core
         }
 
         #region Сброс пароля и установка нового пароля
+        /// <summary>
+        /// Устанавливает новый пароль для пользователя.
+        /// </summary>
+        /// <param name="newPassword"></param>
+        /// <param name="globalParam"></param>
+        /// <returns>Возвращает true, если установка пароля успешна, иначе false.</returns>
         public async Task<bool> SetPassword(string newPassword, GlobalParam globalParam)
         {
             try
@@ -686,6 +701,14 @@ namespace BarkFluff.WebApi.Core
             }
             return false;
         }
+
+        /// <summary>
+        /// Вызывает сброс пароля для пользователя по электронной почте или имени пользователя.
+        /// </summary>
+        /// <param name="email"></param>
+        /// <param name="username"></param>
+        /// <param name="globalParam"></param>
+        /// <returns>Возвращает resetId для дальнейшего сброса</returns>
         public async Task<(bool, string resetId)> ResetPassword(string email, string username, GlobalParam globalParam)
         {
             try
@@ -737,6 +760,14 @@ namespace BarkFluff.WebApi.Core
 
             return (false, null);
         }
+
+        /// <summary>
+        /// Выполняет подтверждение кода сброса пароля по resetId и возвращает новый токен обновления.
+        /// </summary>
+        /// <param name="resetId"></param>
+        /// <param name="otpCode"></param>
+        /// <param name="globalParam"></param>
+        /// <returns></returns>
         public async Task<(bool, BarkFluff.Proto.Identity.Token refreshToken)> ConfirmResetCode(string resetId, string otpCode, GlobalParam globalParam)
         {
             try
@@ -757,31 +788,13 @@ namespace BarkFluff.WebApi.Core
             }
             return (false, null);
         }
-        public async Task<bool> ConfirmResetPassword(string resetId, string code, string newPassword, GlobalParam globalParam)
-        {
-            try
-            {
-                return await SafeCallAsync(async () =>
-                {
-                    var response = await IdentityAC.ConfirmResetPasswordAsync(
-                        new Proto.Identity.ConfirmResetPasswordRequest 
-                        {
-                            ResetId = resetId,
-                            OtpCode = code,
-                        }
-                    );
-                    
-                    return true;
-                }, globalParam);
-            }
-            catch (BarkFluff.Shared.Exceptions.Identity.ConfirmationCodeExpiredException)
-            {
-                // обработка
-            }
-
-            return false;
-        }
         #endregion
+
+        /// <summary>
+        /// Возвращает список активных устройств пользователя.
+        /// </summary>
+        /// <param name="globalParam"></param>
+        /// <returns>Возвращает List<string> устройств</returns>
         public async Task<(bool, List<string> devicesList)> GetDevicesList(GlobalParam globalParam)
         {
             try
