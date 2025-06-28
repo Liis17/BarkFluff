@@ -11,46 +11,171 @@
     d:DesignWidth="400"
     mc:Ignorable="d">
 
-    <Grid HorizontalAlignment="Stretch">
-        <StackPanel HorizontalAlignment="Stretch" Orientation="Horizontal">
-            <Border
-                Width="130"
-                Height="130"
-                Margin="0,0,30,0"
-                Background="#FFDA9A9A"
-                CornerRadius="90" />
+    <Border
+        x:Name="MainBackground"
+        Margin="2,1,10,1"
+        Padding="8"
+        Background="Transparent"
+        CornerRadius="12">
+        <Border.Effect>
+            <DropShadowEffect
+                BlurRadius="8"
+                Opacity="0.1"
+                ShadowDepth="2"
+                Color="Black" />
+        </Border.Effect>
+        <Border.Style>
+            <Style TargetType="Border">
+                <Setter Property="Background" Value="Transparent"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Trigger.EnterActions>
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <ColorAnimation Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
+                                                        To="#FF2D2D30"
+                                                        Duration="0:0:0.25" />
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </Trigger.EnterActions>
+                        <Trigger.ExitActions>
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <ColorAnimation Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
+                                                        To="Transparent"
+                                                        Duration="0:0:0.25" />
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </Trigger.ExitActions>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+        </Border.Style>
+        <Grid HorizontalAlignment="Stretch">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
 
-            <StackPanel
-                HorizontalAlignment="Stretch"
+            <!--  Аватар  -->
+            <Border
+                Grid.Column="0"
+                Width="50"
+                Height="50"
+                Margin="0,0,16,0"
                 VerticalAlignment="Center"
-                Orientation="Vertical">
-                <Grid HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                CornerRadius="90">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Offset="0" Color="#FF6B73FF" />
+                        <GradientStop Offset="1" Color="#FF9B59B6" />
+                    </LinearGradientBrush>
+                </Border.Background>
+                <Border.Effect>
+                    <DropShadowEffect
+                        BlurRadius="12"
+                        Opacity="0.3"
+                        ShadowDepth="0"
+                        Color="#FF6B73FF" />
+                </Border.Effect>
+                <Border CornerRadius="30">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Offset="0" Color="#FF6B73FF" />
+                            <GradientStop Offset="1" Color="#FF9B59B6" />
+                        </LinearGradientBrush>
+                    </Border.Background>
                     <TextBlock
-                        x:Name="Title"
-                        HorizontalAlignment="Left"
-                        FontFamily="{DynamicResource AdwaitaSans}"
-                        FontSize="15"
-                        FontWeight="Medium"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        FontSize="24"
+                        FontWeight="Bold"
                         Foreground="White"
-                        Text="Apogee" />
-                    <ui:SymbolIcon
-                        Margin="0,2,4,0"
-                        HorizontalAlignment="Right"
-                        Foreground="#d48e41"
-                        Symbol="Checkmark12" />
-                    <ui:SymbolIcon
-                        HorizontalAlignment="Right"
-                        Foreground="#d48e41"
-                        Symbol="Checkmark12" />
-                </Grid>
+                        Text="A" />
+                </Border>
+            </Border>
+
+            <!--  Контент сообщения  -->
+            <StackPanel
+                Grid.Column="1"
+                Margin="0,8"
+                VerticalAlignment="Center">
+
+                <!--  Имя пользователя  -->
+                <TextBlock
+                    x:Name="Title"
+                    Margin="0,0,0,4"
+                    FontFamily="{DynamicResource AdwaitaSans}"
+                    FontSize="16"
+                    FontWeight="SemiBold"
+                    Foreground="White"
+                    Text="Apogee" />
+
+                <!--  Последнее сообщение  -->
                 <TextBlock
                     x:Name="LastMessage"
+                    MaxWidth="280"
                     FontFamily="{DynamicResource AdwaitaSans}"
-                    FontSize="13"
-                    Foreground="#FF9E9E9E"
-                    Text="хвост слишком пушистый (" />
+                    FontSize="14"
+                    Foreground="#FFB0B0B0"
+                    Text="хвост слишком пушистый ("
+                    TextWrapping="Wrap" />
 
             </StackPanel>
-        </StackPanel>
-    </Grid>
+
+            <!--  Статус прочтения и время  -->
+            <StackPanel
+                Grid.Column="2"
+                Margin="0,8,0,8"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Orientation="Horizontal">
+                <Grid HorizontalAlignment="Right">
+                    <ui:SymbolIcon
+                        Width="24"
+                        Height="24"
+                        Margin="0,0,-6,0"
+                        FontSize="20"
+                        Foreground="#f8a947"
+                        Symbol="Checkmark12">
+                        <ui:SymbolIcon.Effect>
+                            <DropShadowEffect
+                                BlurRadius="4"
+                                Opacity="0.4"
+                                ShadowDepth="0"
+                                Color="#f8a947" />
+                        </ui:SymbolIcon.Effect>
+                    </ui:SymbolIcon>
+                    <ui:SymbolIcon
+                        Width="24"
+                        Height="24"
+                        FontSize="20"
+                        Foreground="#f8a947"
+                        Symbol="Checkmark12">
+                        <ui:SymbolIcon.Effect>
+                            <DropShadowEffect
+                                BlurRadius="4"
+                                Opacity="0.4"
+                                ShadowDepth="0"
+                                Color="#f8a947" />
+                        </ui:SymbolIcon.Effect>
+                    </ui:SymbolIcon>
+                </Grid>
+                <!--  Время  -->
+                <TextBlock
+                    Margin="0,0,0,0"
+                    HorizontalAlignment="Right"
+                    FontFamily="{DynamicResource AdwaitaSans}"
+                    FontSize="11" VerticalAlignment="Center"
+                    FontWeight="Medium"
+                    Foreground="#FF808080"
+                    Text="14:30" />
+
+                <!--  Галочки прочтения  -->
+
+
+            </StackPanel>
+        </Grid>
+    </Border>
 </UserControl>
