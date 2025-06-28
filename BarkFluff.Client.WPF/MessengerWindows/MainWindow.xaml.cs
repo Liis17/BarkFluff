@@ -1,4 +1,4 @@
-﻿using BarkFluff.Client.WPF.Debug;
+﻿using BarkFluff.Client.WPF.Debugs;
 using BarkFluff.Client.WPF.Pages;
 using BarkFluff.Client.WPF.Pages.PinCode;
 using BarkFluff.Client.WPF.Pages.SetupPages;

@@ -13,6 +13,7 @@ namespace BarkFluff.WebApi.Core.MessengerData
         public string SocketUsers { get; set; } = string.Empty;
         public string SocketIdentity { get; set; } = string.Empty;
         public string SocketFiles { get; set; } = string.Empty;
+        public string SocketMessages {  get; set; } = string.Empty;
         public string AppPath { get; set; } = string.Empty;
         public string ServerName { get; set; } = string.Empty;
         public string ServerDescription { get; set; } = string.Empty;

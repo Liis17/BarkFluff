@@ -1,4 +1,4 @@
-﻿using BarkFluff.Client.WPF.Debug;
+﻿using BarkFluff.Client.WPF.Debugs;
 using BarkFluff.WebApi.Core.MessengerData;
 
 using System.Diagnostics;
@@ -212,10 +212,11 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
             {
                 var btn = new Button
                 {
-                    Content = "открыть отладочное окно",
+                    Content = "Открыть дебаг окно",
                     Width = 150,
                     Height = 30,
-                    Margin = new Thickness(5)
+                    Margin = new Thickness(5),
+                    HorizontalAlignment = HorizontalAlignment.Center,
                 };
 
                 btn.Click += OpenDebugWindow;
