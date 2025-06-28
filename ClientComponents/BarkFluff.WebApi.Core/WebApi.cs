@@ -4,9 +4,12 @@ using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Grpc.Net.Client;
 
+using Windows.Networking.NetworkOperators;
+
 namespace BarkFluff.WebApi.Core
 {
 #pragma warning disable CS8619
+#pragma warning disable CS8602
     public class WebApi
     {
         #region ApiClients
@@ -14,6 +17,7 @@ namespace BarkFluff.WebApi.Core
         private BarkFluff.Proto.Beacon.BeaconApi.BeaconApiClient? BeaconAC;
         private BarkFluff.Proto.Identity.IdentityApi.IdentityApiClient? IdentityAC;
         private BarkFluff.Proto.Files.FilesApi.FilesApiClient? FilesAC;
+        private BarkFluff.Proto.Messages.MessagesApi.MessagesApiClient? MessagesAC;
         #endregion
 
         #region gRPC Channels
@@ -21,6 +25,7 @@ namespace BarkFluff.WebApi.Core
         private GrpcChannel? UserChannel;
         private GrpcChannel? IdentityChannel;
         private GrpcChannel? FilesChannel;
+        private GrpcChannel? MessagesChannel;
         #endregion
 
         #region На всякий случай, возможно переиспользование
@@ -42,7 +47,8 @@ namespace BarkFluff.WebApi.Core
         /// <param name="gParam">Параметры приложения</param>
         public void CreateOnlyBeaconAC(GlobalParam gParam)
         {
-            CreateBeaconAC(gParam);
+            BeaconChannel = GrpcChannel.ForAddress(gParam.SocketBeacon);
+            BeaconAC = new Proto.Beacon.BeaconApi.BeaconApiClient(BeaconChannel);
         }
 
         /// <summary>
@@ -64,64 +70,7 @@ namespace BarkFluff.WebApi.Core
                 AppVersion = appVersion,
                 Ip = ip
             };
-
-            CreateUsersAC(gParam);
-            CreateBeaconAC(gParam);
-            CreateIdentityAC(gParam);
-            CreateFilesAC(gParam);
             AddInterceptor(gParam, deviceName, os, appName, appVersion, ip);
-        }
-
-        /// <summary>
-        /// Создает gRPC клиент для работы с пользователями на сервере.
-        /// </summary>
-        /// <param name="_gParam">Параметры приложения</param>
-        private void CreateUsersAC(GlobalParam _gParam)
-        {
-            UsersAC = null!;
-            UserChannel = null!;
-            _gParam.SocketUsers = EnsureHttpPrefix(_gParam.SocketUsers);
-            UserChannel = GrpcChannel.ForAddress(_gParam.SocketUsers);
-            UsersAC = new BarkFluff.Proto.Users.UsersApi.UsersApiClient(UserChannel);
-        }
-
-        /// <summary>
-        /// Создает gRPC клиент для работы с Beacon API на сервере.
-        /// </summary>
-        /// <param name="_gParam">Параметры приложения</param>
-        private void CreateBeaconAC(GlobalParam _gParam)
-        {
-            BeaconAC = null!;
-            BeaconChannel = null!;
-            _gParam.SocketBeacon = EnsureHttpPrefix(_gParam.SocketBeacon);
-            BeaconChannel = GrpcChannel.ForAddress(_gParam.SocketBeacon);
-            BeaconAC = new BarkFluff.Proto.Beacon.BeaconApi.BeaconApiClient(BeaconChannel);
-        }
-
-        /// <summary>
-        /// Создает gRPC клиент для работы с идентификацией на сервере.
-        /// </summary>
-        /// <param name="_gParam">Параметры приложения</param>
-        private void CreateIdentityAC(GlobalParam _gParam)
-        {
-            IdentityAC = null!;
-            IdentityChannel = null!;
-            _gParam.SocketIdentity = EnsureHttpPrefix(_gParam.SocketIdentity);
-            IdentityChannel = GrpcChannel.ForAddress(_gParam.SocketIdentity);
-            IdentityAC = new BarkFluff.Proto.Identity.IdentityApi.IdentityApiClient(IdentityChannel);
-        }
-
-        /// <summary>
-        /// Создает gRPC клиент для работы с файлами на сервере.
-        /// </summary>
-        /// <param name="_gParam">Параметры приложения</param>
-        private void CreateFilesAC(GlobalParam _gParam)
-        {
-            FilesAC = null!;
-            FilesChannel = null!;
-            _gParam.SocketFiles = EnsureHttpPrefix(_gParam.SocketFiles);
-            FilesChannel = GrpcChannel.ForAddress(_gParam.SocketFiles);
-            FilesAC = new BarkFluff.Proto.Files.FilesApi.FilesApiClient(FilesChannel);
         }
 
         /// <summary>
@@ -138,6 +87,7 @@ namespace BarkFluff.WebApi.Core
             IdentityAC = null!;
             UsersAC = null!;
             FilesAC = null!;
+            MessagesAC = null!;
 
             var token = string.Empty;
             if (_gParam.AccessToken != null)
@@ -152,13 +102,31 @@ namespace BarkFluff.WebApi.Core
             var errorInterceptor = new Shared.Exceptions.Interceptors.ExceptionClientInterceptor();
             var ipInterceptor = new Shared.Auth.XIpClientInterceptor(ip);
 
+            MessagesChannel = GrpcChannel.ForAddress(_gParam.SocketMessages);
+            FilesChannel = GrpcChannel.ForAddress(_gParam.SocketFiles);
+            IdentityChannel = GrpcChannel.ForAddress(_gParam.SocketIdentity);
+            BeaconChannel = GrpcChannel.ForAddress(_gParam.SocketBeacon);
+            UserChannel = GrpcChannel.ForAddress(_gParam.SocketUsers);
+
+            _gParam.SocketMessages = EnsureHttpPrefix(_gParam.SocketMessages);
+            _gParam.SocketFiles = EnsureHttpPrefix(_gParam.SocketFiles);
+            _gParam.SocketIdentity = EnsureHttpPrefix(_gParam.SocketIdentity);
+            _gParam.SocketBeacon = EnsureHttpPrefix(_gParam.SocketBeacon);
+            _gParam.SocketUsers = EnsureHttpPrefix(_gParam.SocketUsers);
+
             var identityInvoker = IdentityChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
             var userInvoker = UserChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
             var filesInvoker = FilesChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
+            var messageInvoker = MessagesChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
 
             IdentityAC = new BarkFluff.Proto.Identity.IdentityApi.IdentityApiClient(identityInvoker);
             UsersAC = new BarkFluff.Proto.Users.UsersApi.UsersApiClient(userInvoker);
             FilesAC = new BarkFluff.Proto.Files.FilesApi.FilesApiClient(filesInvoker);
+            MessagesAC = new Proto.Messages.MessagesApi.MessagesApiClient(messageInvoker);
+
+
+            
+            
         }
         #endregion
 
@@ -269,6 +237,7 @@ namespace BarkFluff.WebApi.Core
                 param.SocketIdentity = EnsureHttpPrefix(response.Identity.Endpoint.Host + ":" + response.Identity.Endpoint.Port);
                 param.SocketUsers = EnsureHttpPrefix(response.Users.Endpoint.Host + ":" + response.Users.Endpoint.Port);
                 param.SocketFiles = EnsureHttpPrefix(response.Files.Endpoint.Host + ":" + response.Files.Endpoint.Port);
+                param.SocketMessages = EnsureHttpPrefix(response.Messages.Endpoint.Host + ":" + response.Messages.Endpoint.Port);
                 param.Colors = new ClientColors()
                 {
                     LiteHex = response.Color.LiteHex,
@@ -818,27 +787,131 @@ namespace BarkFluff.WebApi.Core
             return (false, null);
         }
 
-
-
         #region Работа с сообщениями
 
-        public async Task<(bool, string)> GetChats(GlobalParam globalParam)
+        public async Task<(bool, List<Proto.Messages.Chat> chats)> GetChats(GlobalParam globalParam)
         {
             try
             {
                 return await SafeCallAsync(async () =>
                 {
-                    var response = await UsersAC.GetUserAsync(new Proto.Users.GetUserRequest
-                    {
-                        UserId = 0
+                    var response = await MessagesAC.ListChatsAsync(new Proto.Messages.ListChatsRequest 
+                    { 
+                        Pagination = new Proto.Shared.PageRequest { Size = 50},
                     });
-                    
-                    return (true, "");
+                    var chats = new List<Proto.Messages.Chat>();
+                    foreach (var item in response.Chats)
+                    {
+                        chats.Add(item);
+                    }
+
+                    return (true, chats);
                 }, globalParam);
             }
             catch (BarkFluff.Shared.Exceptions.Users.UserIsDraftException)
             {
                 // обработка
+            }
+            catch (Exception ex)
+            {
+                var a = ex;
+            }
+            return (false, null);
+        }
+
+        public async Task<(bool, string)> SendMessage(GlobalParam globalParam, string chatId, long userid, MessageModel model)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    if (!string.IsNullOrEmpty(chatId))
+                    {
+                        var response = await MessagesAC.SendMessageAsync(new Proto.Messages.SendMessageRequest
+                        {
+                            ChatId = chatId,
+                            Message = new Proto.Messages.OutgoingMessage { Text = model.Text },
+                        });
+                        var a = response;
+                    }
+                    else if (userid != 0)
+                    {
+                        var response = await MessagesAC.SendMessageAsync(new Proto.Messages.SendMessageRequest
+                        {
+                            UserId = userid,
+                            Message = new Proto.Messages.OutgoingMessage { Text = model.Text },
+                        });
+                        var a = response;
+                    }
+                    
+
+                    return (true, string.Empty);
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.ChatIdNotValidException)
+            {
+                // обработка
+            }
+            catch (Exception ex)
+            {
+                var a = ex;
+            }
+            return (false, null);
+        }
+
+        public async Task<(bool, string)> CreateGroupChat(GlobalParam globalParam, string chatName, List<long> userIds)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    //var response = await MessagesAC.CreateGroupChatAsync(new Proto.Messages.CreateGroupChatRequest
+                    //{
+                        
+                    //});
+                    
+                    return (true, string.Empty);
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.ChatIdNotValidException)
+            {
+                // обработка
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.UserNotMemberChatException)
+            {
+                // обработка
+            }
+            catch (Exception ex)
+            {
+                var a = ex;
+            }
+            return (false, null);
+        }
+        public async Task<(bool, string chatId)> CreateChat(GlobalParam globalParam, string userId)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var response = await MessagesAC.CreateGroupChatAsync(new Proto.Messages.CreateGroupChatRequest
+                    {
+                        //UserIds = new Google.Protobuf.Collections.RepeatedField<long> { userId }
+                    });
+
+                    return (true, string.Empty);
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.ChatIdNotValidException)
+            {
+                // обработка
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.UserNotMemberChatException)
+            {
+                // обработка
+            }
+            catch (Exception ex)
+            {
+                var a = ex;
             }
             return (false, null);
         }
