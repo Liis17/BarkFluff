@@ -19,8 +19,9 @@
         <ui:TitleBar
             HorizontalAlignment="Stretch"
             VerticalAlignment="Top"
-            Panel.ZIndex="999" />
-        <Grid x:Name="MainFrame" />
+            Margin="80 0 0 0"
+            Panel.ZIndex="500" />
+        <Grid x:Name="MainFrame" Panel.ZIndex="501" />
         <TextBlock
             x:Name="VersionTextBlock"
             Margin="2"
