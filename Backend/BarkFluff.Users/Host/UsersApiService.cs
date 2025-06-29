@@ -13,6 +13,8 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace BarkFluff.Users.Host;
 
+using Features.SearchUsers;
+
 [Authorize(Policy = nameof(TokenType.User))]
 public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
 {
@@ -88,5 +90,12 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
         await _mediator.Send(command);
         
         return new ChangeBioResponse();
+    }
+
+    public override Task<SearchUsersResponse> SearchUsers(SearchUsersRequest request, ServerCallContext context)
+    {
+        var command = new SearchUsersQuery() { Query = request.Query };
+        
+        return _mediator.Send(command);
     }
 }

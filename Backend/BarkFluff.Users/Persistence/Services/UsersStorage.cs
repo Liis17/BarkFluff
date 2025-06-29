@@ -2,6 +2,7 @@ using BarkFluff.Shared.Exceptions.Identity;
 using BarkFluff.Users.Domain;
 using BarkFluff.Users.Persistence.Contexts;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace BarkFluff.Users.Persistence.Services;
 
@@ -45,6 +46,116 @@ public class UsersStorage
             .ToListAsync();
 
         return users;
+    }
+
+    /// <summary>
+    /// Метод для поиска пользователей по имени, фамилии или имени пользователя.
+    /// Использует полнотекстовый поиск PostgreSQL для эффективного поиска с учетом нечеткого соответствия.
+    /// </summary>
+    /// <param name="searchTerm">Поисковый запрос</param>
+    /// <param name="page">Номер страницы (начинается с 1)</param>
+    /// <param name="pageSize">Размер страницы</param>
+    /// <returns>Список пользователей и общее количество найденных пользователей</returns>
+    public async Task<(List<User> Users, int TotalCount)> SearchUsers(string searchTerm, int page = 1, int pageSize = 10)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            return (new List<User>(), 0);
+        }
+
+        // Используем сырой SQL запрос для полнотекстового поиска
+        // Это самый эффективный способ для полнотекстового поиска в PostgreSQL
+        // Не требует настройки специальных функций в EF Core
+        var skip = (page - 1) * pageSize;
+        var normalizedSearchTerm = searchTerm.Trim().ToLower();
+    
+        var sql = @"
+            SELECT u.""Id"", u.""FirstName"", u.""LastName"", u.""Username"", u.""RegistrationDate"", 
+                   u.""ProfilePicture"", u.""Bio"", u.""IsDraft"",
+                   uc.""Email"", uc.""UserId""
+            FROM ""Users"" u
+            LEFT JOIN ""UserContacts"" uc ON u.""Id"" = uc.""UserId""
+            WHERE to_tsvector('russian', u.""FirstName"" || ' ' || u.""LastName"" || ' ' || u.""Username"") @@ plainto_tsquery('russian', @searchTerm)
+            ORDER BY ts_rank(to_tsvector('russian', u.""FirstName"" || ' ' || u.""LastName"" || ' ' || u.""Username""), plainto_tsquery('russian', @searchTerm)) DESC
+            LIMIT @pageSize OFFSET @skip";
+
+        var users = await _usersContext.Users
+            .FromSqlRaw(sql, 
+                new NpgsqlParameter("@searchTerm", normalizedSearchTerm), 
+                new NpgsqlParameter("@pageSize", pageSize),
+                new NpgsqlParameter("@skip", skip))
+            .Include(u => u.Contact)
+            .ToListAsync();
+
+        // Получение общего количества результатов для пагинации
+        var countSql = @"
+            SELECT COUNT(*)
+            FROM ""Users"" u
+            WHERE to_tsvector('russian', u.""FirstName"" || ' ' || u.""LastName"" || ' ' || u.""Username"") @@ plainto_tsquery('russian', @searchTerm)";
+
+        var totalCount = await _usersContext.Database.ExecuteSqlRawAsync(countSql, 
+            new NpgsqlParameter("@searchTerm", normalizedSearchTerm));
+
+        return (users, totalCount);
+    }
+
+    /// <summary>
+    /// Альтернативный метод поиска пользователей, использующий триграммы PostgreSQL
+    /// для нахождения похожих строк (например, с опечатками).
+    /// </summary>
+    /// <param name="searchTerm">Поисковый запрос</param>
+    /// <param name="page">Номер страницы (начинается с 1)</param>
+    /// <param name="pageSize">Размер страницы</param>
+    /// <param name="similarityThreshold">Порог схожести (от 0 до 1, рекомендуется 0.3)</param>
+    /// <returns>Список пользователей и общее количество найденных пользователей</returns>
+    public async Task<(List<User> Users, int TotalCount)> SearchUsersByTrigram(string searchTerm, int skip = 0, int pageSize = 10, double similarityThreshold = 0.3)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            return (new List<User>(), 0);
+        }
+
+        var normalizedSearchTerm = searchTerm.Trim();
+
+        // SQL запрос для поиска с использованием триграмм
+        var sql = @"
+            SELECT u.""Id"", u.""FirstName"", u.""LastName"", u.""Username"", u.""RegistrationDate"", 
+                   u.""ProfilePicture"", u.""Bio"", u.""IsDraft"",
+                   uc.""Email"", uc.""UserId""
+            FROM ""Users"" u
+            LEFT JOIN ""UserContacts"" uc ON u.""Id"" = uc.""UserId""
+            WHERE similarity(u.""FirstName"", @searchTerm) > @threshold
+               OR similarity(u.""LastName"", @searchTerm) > @threshold
+               OR similarity(u.""Username"", @searchTerm) > @threshold
+            ORDER BY GREATEST(
+                similarity(u.""FirstName"", @searchTerm),
+                similarity(u.""LastName"", @searchTerm),
+                similarity(u.""Username"", @searchTerm)
+            ) DESC
+            LIMIT @pageSize OFFSET @skip";
+
+        var users = await _usersContext.Users
+            .FromSqlRaw(sql, 
+                new NpgsqlParameter("@searchTerm", normalizedSearchTerm),
+                new NpgsqlParameter("@threshold", similarityThreshold),
+                new NpgsqlParameter("@pageSize", pageSize),
+                new NpgsqlParameter("@skip", skip))
+            .Include(u => u.Contact)
+            .ToListAsync();
+
+        // Запрос для получения общего количества
+        var countSql = @"
+            SELECT COUNT(*)
+            FROM ""Users"" u
+            WHERE similarity(u.""FirstName"", @searchTerm) > @threshold
+               OR similarity(u.""LastName"", @searchTerm) > @threshold
+               OR similarity(u.""Username"", @searchTerm) > @threshold";
+
+        var totalCount = await _usersContext.Database.ExecuteSqlRawAsync(countSql, 
+            new NpgsqlParameter("@searchTerm", normalizedSearchTerm),
+            new NpgsqlParameter("@threshold", similarityThreshold));
+
+        return (users, totalCount);
     }
 
     public async Task<User> CreateUser(string username, string firstName, string lastName, string email)
