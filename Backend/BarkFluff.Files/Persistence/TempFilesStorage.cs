@@ -24,6 +24,8 @@ public class TempFilesStorage
         
         await _context.TempFiles.AddAsync(file);
         
+        await _context.SaveChangesAsync();
+        
         return file;
     }
 
