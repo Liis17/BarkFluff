@@ -6,7 +6,7 @@ package barkfluff.shared;
 
 message PageRequest {
   
-  int32 skip = 1; // Количество элементов для пропуска
+  int32 offset = 1; // Количество элементов для пропуска
   
   int32 size = 2; // Размер элементов на странице
   
