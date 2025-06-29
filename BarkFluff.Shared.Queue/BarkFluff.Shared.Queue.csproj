@@ -10,8 +10,4 @@
       <ProjectReference Include="..\Shared\BarkFluff.Shared.Identity\BarkFluff.Shared.Identity.csproj" />
     </ItemGroup>
 
-    <ItemGroup>
-      <Folder Include="Messages\" />
-    </ItemGroup>
-
 </Project>

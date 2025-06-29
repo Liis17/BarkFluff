@@ -1,7 +1,8 @@
-using BarkFluff.Proto.Messages;
 using Google.Protobuf.WellKnownTypes;
 
 namespace BarkFluff.Messages.Mapping;
+
+using Proto.Shared;
 
 public static class MessageMapping
 {

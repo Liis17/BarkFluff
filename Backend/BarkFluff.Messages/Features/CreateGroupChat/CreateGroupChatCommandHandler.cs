@@ -13,20 +13,24 @@ using MessageContentType = BarkFluff.Messages.Domain.MessageContentType;
 
 namespace BarkFluff.Messages.Features.CreateGroupChat;
 
+using Infrastructure;
+
 public class CreateGroupChatCommandHandler : IRequestHandler<CreateGroupChatCommand, CreateGroupChatResponse>
 {
     private readonly UserContext _userContext;
     private readonly FilesServerApi.FilesServerApiClient _filesServerApiClient;
     private readonly ChatsStorage _chatsStorage;
     private readonly MessagesStorage _messagesStorage;
+    private readonly MessageQueueSender _messageQueueSender;
 
     public CreateGroupChatCommandHandler(UserContext userContext, FilesServerApi.FilesServerApiClient filesServerApiClient, 
-        ChatsStorage chatsStorage, MessagesStorage messagesStorage)
+        ChatsStorage chatsStorage, MessagesStorage messagesStorage, MessageQueueSender messageQueueSender)
     {
         _userContext = userContext;
         _filesServerApiClient = filesServerApiClient;
         _chatsStorage = chatsStorage;
         _messagesStorage = messagesStorage;
+        _messageQueueSender = messageQueueSender;
     }
     
     public async Task<CreateGroupChatResponse> Handle(CreateGroupChatCommand request, CancellationToken cancellationToken)
@@ -87,6 +91,8 @@ public class CreateGroupChatCommandHandler : IRequestHandler<CreateGroupChatComm
         };
 
         await _messagesStorage.AddMessage(message);
+
+        await _messageQueueSender.SendMessage(message, groupChat.Id, request.UserIds);
 
         groupChat.LastMessage = message;
         groupChat.Members = [];

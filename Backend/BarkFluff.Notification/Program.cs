@@ -32,7 +32,7 @@ public class Program
                     h.Password(builder.Configuration["RabbitMQ:Password"]);
                 });
         
-                cfg.ReceiveEndpoint("notifications-email", e =>
+                cfg.ReceiveEndpoint("notifications-email-handler", e =>
                 {
                     e.ConfigureConsumer<EmailQueueConsumer>(context);
                 });

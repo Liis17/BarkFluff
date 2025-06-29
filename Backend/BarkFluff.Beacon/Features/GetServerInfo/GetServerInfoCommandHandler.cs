@@ -43,6 +43,11 @@ public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand,
             ServiceId = (int)ServiceId.Messages
         });
         
+        var updatesSettings = await _configurationApiClient.GetConfigurationAsync(new GetConfigurationRequest()
+        {
+            ServiceId = (int)ServiceId.Updates
+        });
+        
         return new GetServerInfoResponse
         {
             Name = _serverPropsSettings.Name,
@@ -59,6 +64,7 @@ public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand,
             Identity = ParseService(ServiceId.Identity, identitySettings.Configurations.ToList()),
             Users = ParseService(ServiceId.Users, usersSettings.Configurations.ToList()),
             Messages = ParseService(ServiceId.Messages, messagesSettings.Configurations.ToList()),
+            Updates = ParseService(ServiceId.Updates, updatesSettings.Configurations.ToList())
         };
     }
 

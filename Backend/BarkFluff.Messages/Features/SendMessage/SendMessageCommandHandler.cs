@@ -13,6 +13,8 @@ using MessageContentType = BarkFluff.Messages.Domain.MessageContentType;
 
 namespace BarkFluff.Messages.Features.SendMessage;
 
+using Infrastructure;
+
 public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, SendMessageResponse>
 {
     private readonly ChatsStorage _chatsStorage;
@@ -21,6 +23,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
     private readonly UserContext _userContext;
     private readonly ChatCache _chatCache;
     private readonly MessagesStorage _messagesStorage;
+    private readonly MessageQueueSender _messageQueueSender;
 
     private readonly Dictionary<UploadFileType, Domain.MessageAttachmentType> _attachmentMap =
         new()
@@ -32,7 +35,8 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
         };
 
     public SendMessageCommandHandler(ChatsStorage chatsStorage, UsersServerApi.UsersServerApiClient usersServerApiClient,
-        UserContext userContext, FilesServerApi.FilesServerApiClient filesServerApiClient, ChatCache chatCache, MessagesStorage messagesStorage)
+        UserContext userContext, FilesServerApi.FilesServerApiClient filesServerApiClient, ChatCache chatCache, MessagesStorage messagesStorage, 
+        MessageQueueSender messageQueueSender)
     {
         _chatsStorage = chatsStorage;
         _usersServerApiClient = usersServerApiClient;
@@ -40,6 +44,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
         _filesServerApiClient = filesServerApiClient;
         _chatCache = chatCache;
         _messagesStorage = messagesStorage;
+        _messageQueueSender = messageQueueSender;
     }
 
     public async Task<SendMessageResponse> Handle(SendMessageCommand request, CancellationToken cancellationToken)
@@ -125,11 +130,13 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             Type = MessageContentType.Generic
         };
         
+        var members = await _chatsStorage.GetChatMembers(chatId.Value, 0, int.MaxValue);
         
         await _messagesStorage.AddMessage(message);
         
+        await _messageQueueSender.SendMessage(message, chatId.Value, members
+            .Select(x => x.UserId).ToList());
+        
         return new SendMessageResponse() { Message = message.ToGrpc() };
     }
-    
-    
 }

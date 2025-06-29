@@ -5,25 +5,18 @@ namespace BarkFluff.Identity.Infrastructure;
 
 public class NotificationQueueSender
 {
-    private readonly IBus rabbitMqBus;
+    private readonly IPublishEndpoint _publishEndpoint;
 
-    public NotificationQueueSender(IBus rabbitMqBus)
+    public NotificationQueueSender(IPublishEndpoint publishEndpoint)
     {
-        this.rabbitMqBus = rabbitMqBus;
+        _publishEndpoint = publishEndpoint;
     }
-
 
     public async Task SendNotification(Notification notification)
     {
-        
         if (notification is EmailNotification emailNotification)
         {
-            var endpoint = await rabbitMqBus.GetSendEndpoint(new Uri("queue:notifications-email"));
-            
-            await endpoint.Send(emailNotification);
-            
-            return;
+            await _publishEndpoint.Publish(emailNotification);
         }
-        
     }
 }

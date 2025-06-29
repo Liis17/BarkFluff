@@ -12,6 +12,16 @@ public class ChatsStorage
         _context = context;
     }
 
+    public async Task<List<Chat>> GetDmChatsWithUser(long userId)
+    {
+        var chats = await _context.Chats
+            .Include(x => x.Members)
+            .Where(x => x.IsGroupChat == false
+                        && x.Members!.Any(m => m.UserId == userId)).ToListAsync();
+
+        return chats;
+    }
+
     public async Task<List<Chat>> GetUserChats(long userId, int skip, int count)
     {
         //todo: если будет лагать, то разделить на два разных запроса 
