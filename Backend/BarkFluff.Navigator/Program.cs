@@ -20,6 +20,8 @@ builder.Services.AddXAuth(builder.Configuration);
 
 builder.Services.AddTransient<ServersStorage>();
 
+builder.Services.AddMemoryCache();
+
 var app = builder.Build();
 
 app.MapGrpcReflectionService();
