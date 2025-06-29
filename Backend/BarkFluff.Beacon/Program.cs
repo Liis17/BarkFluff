@@ -25,12 +25,14 @@ public class Program
         
         builder.Services.AddSettings<ServerColorSettings>(builder.Configuration, "ServerColor");
         builder.Services.AddSettings<ServerPropsSettings>(builder.Configuration, "ServerProps");
-
-        builder.Services.AddGrpcClient<ConfigurationApi.ConfigurationApiClient>(o =>
+        
+        builder.Services.AddGrpcClient<BarkFluff.Proto.Navigator.NavigatorApi.NavigatorApiClient>(o =>
         {
-            o.Address = new Uri(builder.Configuration["ConfigurationServiceAddr"]);
+            o.Address = new Uri(builder.Configuration["NavigatorUrl"]); 
         });
       
+        builder.Services.AddHostedService<BarkFluff.Beacon.Features.RegisterServer.ServerRegistrationService>();
+
         var app = builder.Build();
 
         app.MapGrpcReflectionService();
