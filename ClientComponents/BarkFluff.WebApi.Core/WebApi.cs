@@ -4,6 +4,8 @@ using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Grpc.Net.Client;
 
+using System.Diagnostics;
+
 using Windows.Networking.NetworkOperators;
 
 namespace BarkFluff.WebApi.Core
@@ -47,6 +49,7 @@ namespace BarkFluff.WebApi.Core
         /// <param name="gParam">Параметры приложения</param>
         public void CreateOnlyBeaconAC(GlobalParam gParam)
         {
+            gParam.SocketBeacon = EnsureHttpPrefix(gParam.SocketBeacon);
             BeaconChannel = GrpcChannel.ForAddress(gParam.SocketBeacon);
             BeaconAC = new Proto.Beacon.BeaconApi.BeaconApiClient(BeaconChannel);
         }
@@ -102,17 +105,17 @@ namespace BarkFluff.WebApi.Core
             var errorInterceptor = new Shared.Exceptions.Interceptors.ExceptionClientInterceptor();
             var ipInterceptor = new Shared.Auth.XIpClientInterceptor(ip);
 
-            MessagesChannel = GrpcChannel.ForAddress(_gParam.SocketMessages);
-            FilesChannel = GrpcChannel.ForAddress(_gParam.SocketFiles);
-            IdentityChannel = GrpcChannel.ForAddress(_gParam.SocketIdentity);
-            BeaconChannel = GrpcChannel.ForAddress(_gParam.SocketBeacon);
-            UserChannel = GrpcChannel.ForAddress(_gParam.SocketUsers);
-
             _gParam.SocketMessages = EnsureHttpPrefix(_gParam.SocketMessages);
             _gParam.SocketFiles = EnsureHttpPrefix(_gParam.SocketFiles);
             _gParam.SocketIdentity = EnsureHttpPrefix(_gParam.SocketIdentity);
             _gParam.SocketBeacon = EnsureHttpPrefix(_gParam.SocketBeacon);
             _gParam.SocketUsers = EnsureHttpPrefix(_gParam.SocketUsers);
+
+            MessagesChannel = GrpcChannel.ForAddress(_gParam.SocketMessages);
+            FilesChannel = GrpcChannel.ForAddress(_gParam.SocketFiles);
+            IdentityChannel = GrpcChannel.ForAddress(_gParam.SocketIdentity);
+            BeaconChannel = GrpcChannel.ForAddress(_gParam.SocketBeacon);
+            UserChannel = GrpcChannel.ForAddress(_gParam.SocketUsers);
 
             var identityInvoker = IdentityChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
             var userInvoker = UserChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
@@ -797,8 +800,9 @@ namespace BarkFluff.WebApi.Core
                 {
                     var response = await MessagesAC.ListChatsAsync(new Proto.Messages.ListChatsRequest 
                     { 
-                        Pagination = new Proto.Shared.PageRequest { Size = 50},
+                        Pagination = new Proto.Shared.PageRequest { Size = 2},
                     });
+                    
                     var chats = new List<Proto.Messages.Chat>();
                     foreach (var item in response.Chats)
                     {

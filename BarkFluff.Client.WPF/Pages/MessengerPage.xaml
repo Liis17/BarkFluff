@@ -37,7 +37,7 @@
         </Storyboard>
     </UserControl.Resources>
 
-    <Grid x:Name="MainGrid" Opacity="0">
+    <Grid x:Name="MainGrid" Opacity="1">
         <Grid.RowDefinitions>
             <RowDefinition Height="30" />
             <RowDefinition Height="*" />
@@ -53,11 +53,11 @@
                     BlurRadius="8"
                     Direction="300"
                     Opacity="0.2"
-                    ShadowDepth="5"
+                    ShadowDepth="2"
                     Color="Black" />
             </Border.Effect>
 
-            <Grid Margin="16,8">
+            <Grid Margin="12,-2">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
@@ -90,25 +90,31 @@
                 </Button>
 
                 <!--  Заголовок приложения  -->
+
                 <StackPanel
                     Grid.Column="1"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
                     Orientation="Horizontal">
+                    <Border
+                        Width="25"
+                        Height="25"
+                        Margin="0,0,5,0"
+                        CornerRadius="6"
+                        Visibility="Collapsed">
+                        <Border.Background>
+                            <ImageBrush ImageSource="https://charlie.liis17.ru/apogee.png" Stretch="UniformToFill" />
+                        </Border.Background>
+
+                    </Border>
                     <TextBlock
+                        x:Name="TitleWindow"
                         VerticalAlignment="Center"
                         FontFamily="{DynamicResource AdwaitaSans}"
-                        FontSize="18"
+                        FontSize="13"
                         FontWeight="SemiBold"
                         Foreground="White"
                         Text="Apogee" />
-                    <TextBlock
-                        Margin="8,2,0,0"
-                        VerticalAlignment="Center"
-                        FontFamily="{DynamicResource AdwaitaSans}"
-                        FontSize="14"
-                        Foreground="#FF9E9E9E"
-                        Text="В сети" />
                 </StackPanel>
 
                 <!--  Аватар пользователя  -->
@@ -207,8 +213,7 @@
                                     BorderThickness="0"
                                     FontFamily="{DynamicResource AdwaitaSans}"
                                     FontSize="14"
-                                    Foreground="White">
-                                </TextBox>
+                                    Foreground="White" />
 
                                 <TextBlock
                                     Grid.Column="1"
@@ -238,19 +243,169 @@
                         Grid.Row="1"
                         HorizontalScrollBarVisibility="Disabled"
                         VerticalScrollBarVisibility="Auto">
-                        <StackPanel Orientation="Vertical">
-                            <!--  Примеры чатов  -->
-                            <uc:ChatItem Margin="4,2" />
-                            <uc:ChatItem Margin="4,2" />
-                            <uc:ChatItem Margin="4,2" />
-                            <uc:ChatItem Margin="4,2" />
-                            <uc:ChatItem Margin="4,2" />
-                            <uc:ChatItem Margin="4,2" />
+                        <StackPanel x:Name="ChatList" Orientation="Vertical">
+                            <!--  Тут будут появляться чаты  -->
                         </StackPanel>
                     </ScrollViewer>
                 </Grid>
             </Border>
+            <Border
+                x:Name="EmptyChatListBlock"
+                Margin="32"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Background="Transparent">
 
+                <StackPanel
+                    MaxWidth="280"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+
+                    <!--  Иконка  -->
+                    <Border
+                        Width="80"
+                        Height="80"
+                        Margin="0,0,0,24"
+                        HorizontalAlignment="Center"
+                        Background="#FF3C3C3C"
+                        CornerRadius="40">
+                        <Border.Effect>
+                            <DropShadowEffect
+                                BlurRadius="12"
+                                Opacity="0.2"
+                                ShadowDepth="4"
+                                Color="Black" />
+                        </Border.Effect>
+
+                        <ui:SymbolIcon
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            FontSize="32"
+                            Foreground="#FF9E9E9E"
+                            Symbol="Chat24" />
+                    </Border>
+
+                    <!--  Заголовок  -->
+                    <TextBlock
+                        Margin="0,0,0,8"
+                        HorizontalAlignment="Center"
+                        FontFamily="{DynamicResource AdwaitaSans}"
+                        FontSize="20"
+                        FontWeight="SemiBold"
+                        Foreground="White"
+                        Text="Пока что здесь пусто"
+                        TextAlignment="Center" />
+
+                    <!--  Описание  -->
+                    <TextBlock
+                        Margin="0,0,0,24"
+                        HorizontalAlignment="Center"
+                        FontFamily="{DynamicResource AdwaitaSans}"
+                        FontSize="14"
+                        Foreground="#FF9E9E9E"
+                        LineHeight="20"
+                        TextAlignment="Center"
+                        TextWrapping="Wrap">
+                        <Run Text="У вас пока нет ни одного чата." />
+                        <LineBreak />
+                        <Run Text="Начните новый разговор или дождитесь сообщений от друзей." />
+                    </TextBlock>
+
+                    <!--  Кнопка действия  -->
+                    <ui:Button
+                        Padding="24,12"
+                        HorizontalAlignment="Center"
+                        Background="#df5000"
+                        BorderThickness="0"
+                        Content="Начать новый чат"
+                        CornerRadius="22"
+                        Cursor="Hand"
+                        FontFamily="{DynamicResource AdwaitaSans}"
+                        FontSize="14"
+                        FontWeight="Medium"
+                        Foreground="White"
+                        MouseOverBackground="#FFC54700"
+                        PressedBackground="#FFAB3D00" />
+
+                    <!--  Дополнительные действия  -->
+                    <StackPanel
+                        Margin="0,16,0,0"
+                        HorizontalAlignment="Center"
+                        Orientation="Horizontal">
+
+                        <Button
+                            Margin="0,0,16,0"
+                            Padding="8,4"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Cursor="Hand"
+                            FontFamily="{DynamicResource AdwaitaSans}"
+                            FontSize="12"
+                            Foreground="#FF9E9E9E">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border
+                                        Padding="{TemplateBinding Padding}"
+                                        Background="{TemplateBinding Background}"
+                                        CornerRadius="4">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#FF404040" />
+                                            <Setter Property="Foreground" Value="White" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon
+                                    Margin="0,0,4,0"
+                                    VerticalAlignment="Center"
+                                    FontSize="12"
+                                    Symbol="People16" />
+                                <TextBlock VerticalAlignment="Center" Text="Найти друзей" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button
+                            Padding="8,4"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Cursor="Hand"
+                            FontFamily="{DynamicResource AdwaitaSans}"
+                            FontSize="12"
+                            Foreground="#FF9E9E9E">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border
+                                        Padding="{TemplateBinding Padding}"
+                                        Background="{TemplateBinding Background}"
+                                        CornerRadius="4">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#FF404040" />
+                                            <Setter Property="Foreground" Value="White" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon
+                                    Margin="0,0,4,0"
+                                    VerticalAlignment="Center"
+                                    FontSize="12"
+                                    Symbol="Add12" />
+                                <TextBlock VerticalAlignment="Center" Text="Создать группу" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                </StackPanel>
+            </Border>
             <!--  Разделитель с возможностью изменения размера  -->
             <GridSplitter
                 Grid.Column="1"
@@ -288,7 +443,7 @@
 
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="45" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
@@ -296,7 +451,8 @@
                     <!--  Заголовок диалога  -->
                     <Border
                         Grid.Row="0"
-                        Padding="20,12"
+                        Margin="0,0,0,0"
+                        Padding="10,0,0,0"
                         Background="#FF2D2D30"
                         BorderBrush="#FF404040"
                         BorderThickness="0,0,0,1">
@@ -308,49 +464,44 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
 
-                            <!--  Аватар собеседника  -->
-                            <Border
-                                Grid.Column="0"
-                                Width="36"
-                                Height="36"
-                                Margin="0,0,12,0"
-                                VerticalAlignment="Center">
-                                <Border.Background>
-                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                        <GradientStop Offset="0" Color="#FF4CAF50" />
-                                        <GradientStop Offset="1" Color="#FF2196F3" />
-                                    </LinearGradientBrush>
-                                </Border.Background>
-                                <Border CornerRadius="18">
-                                    <Border.Background>
-                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                            <GradientStop Offset="0" Color="#FF4CAF50" />
-                                            <GradientStop Offset="1" Color="#FF2196F3" />
-                                        </LinearGradientBrush>
-                                    </Border.Background>
-                                    <TextBlock
-                                        HorizontalAlignment="Center"
-                                        VerticalAlignment="Center"
-                                        FontSize="16"
-                                        FontWeight="Bold"
-                                        Foreground="White"
-                                        Text="A" />
-                                </Border>
-                            </Border>
+
 
                             <!--  Информация о собеседнике  -->
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <StackPanel
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                Orientation="Horizontal">
+                                <ui:Button
+                                    Width="35"
+                                    Height="35"
+                                    Padding="-5"
+                                    Background="Transparent"
+                                    BorderBrush="Transparent"
+                                    CornerRadius="30"
+                                    Focusable="False">
+                                    <ui:SymbolIcon
+                                        FontSize="19"
+                                        Foreground="Wheat"
+                                        Symbol="ChevronLeft12" />
+                                </ui:Button>
+                                <ui:Button
+                                    Width="35"
+                                    Height="35"
+                                    Padding="-5"
+                                    BorderBrush="Transparent"
+                                    CornerRadius="30"
+                                    Focusable="False">
+                                    <ui:Button.Background>
+                                        <ImageBrush ImageSource="https://charlie.liis17.ru/apogee.png" Stretch="UniformToFill" />
+                                    </ui:Button.Background>
+                                </ui:Button>
                                 <TextBlock
-                                    FontFamily="{DynamicResource AdwaitaSans}"
-                                    FontSize="16"
-                                    FontWeight="SemiBold"
-                                    Foreground="White"
-                                    Text="Apogee" />
-                                <TextBlock
+                                    Margin="15,0,0,0"
+                                    VerticalAlignment="Center"
                                     FontFamily="{DynamicResource AdwaitaSans}"
                                     FontSize="12"
-                                    Foreground="#FF4CAF50"
-                                    Text="в сети" />
+                                    Foreground="#b95d2c"
+                                    Text="Был(а) в 22:37" />
                             </StackPanel>
 
                             <!--  Кнопки действий  -->
@@ -362,24 +513,33 @@
                                     Width="36"
                                     Height="36"
                                     Margin="4,0"
+                                    Padding="-5"
                                     Background="Transparent"
-                                    BorderThickness="0">
+                                    BorderThickness="0"
+                                    Focusable="False"
+                                    FontSize="16">
                                     <ui:SymbolIcon Foreground="#FF9E9E9E" Symbol="Call16" />
                                 </Button>
                                 <Button
                                     Width="36"
                                     Height="36"
                                     Margin="4,0"
+                                    Padding="-5"
                                     Background="Transparent"
-                                    BorderThickness="0">
+                                    BorderThickness="0"
+                                    Focusable="False"
+                                    FontSize="16">
                                     <ui:SymbolIcon Foreground="#FF9E9E9E" Symbol="Video16" />
                                 </Button>
                                 <Button
                                     Width="36"
                                     Height="36"
                                     Margin="4,0"
+                                    Padding="-5"
                                     Background="Transparent"
-                                    BorderThickness="0">
+                                    BorderThickness="0"
+                                    Focusable="False"
+                                    FontSize="16">
                                     <ui:SymbolIcon Foreground="#FF9E9E9E" Symbol="MoreHorizontal16" />
                                 </Button>
                             </StackPanel>

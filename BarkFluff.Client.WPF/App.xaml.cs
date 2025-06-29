@@ -1,4 +1,5 @@
 ﻿using BarkFluff.Client.WPF.Pages;
+using BarkFluff.Client.WPF.Services;
 using BarkFluff.Client.WPF.Services.Notification;
 
 using System.Diagnostics;
@@ -16,6 +17,7 @@ namespace BarkFluff.Client.WPF
     {
         public static BarkFluff.WebApi.Core.WebApi ServerCommunication { get; set; } = null!;
         public static BarkFluff.WebApi.Core.MessengerData.GlobalParam GParam { get; set; } = null!;
+        public static ImageColorAnalyzer ColorAnalyzer { get; set; } = null!;
 
         public static MainWindow MessengerWindow { get; set; } = null!;
         public App()
@@ -63,6 +65,7 @@ namespace BarkFluff.Client.WPF
             ShortcutHelper.CreateShortcut(shortcutPath, targetPath, appUserModelId);
             AppIdHelper.SetCurrentProcessExplicitAppUserModelID("com.barkfluff.messenger");
             ServerCommunication = new WebApi.Core.WebApi();
+            ColorAnalyzer = new ImageColorAnalyzer();
             string filePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "GlobalParam.json");
 
             if (Debugger.IsAttached)
