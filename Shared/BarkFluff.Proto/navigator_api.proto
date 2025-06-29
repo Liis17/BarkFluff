@@ -9,6 +9,7 @@ package barkfluff.navigator;
 
 service NavigatorApi {
   rpc ListServers(ListServersRequest) returns (ListServersResponse);
+  rpc RegisterServer(RegisterServerRequest) returns (RegisterServerResponse);
 }
 
 message ListServersRequest {
@@ -29,4 +30,12 @@ message ServerInfo {
 message ServiceEndpoint {
   string host = 1; // Хост
   int32 port = 2; // Порт
+}
+
+message RegisterServerRequest {
+  ServerInfo server = 1; // Данные о сервере
+}
+
+message RegisterServerResponse {
+  // Можно добавить поля при необходимости, пока пусто
 }

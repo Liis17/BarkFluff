@@ -63,7 +63,7 @@ public class ListChatsCommandHandler : IRequestHandler<ListChatsCommand, ListCha
 
     private async Task LoadNameAndImageChat(Chat chat)
     {
-        var memberId = chat.Members[0].Id == _userContext.UserId ? chat.Members[1].UserId : chat.Members[0].UserId;
+        var memberId = chat.Members[0].UserId == _userContext.UserId ? chat.Members[1].UserId : chat.Members[0].UserId;
 
         var userInfo = await _usersServerApiClient.GetByIdAsync(new GetByIdRequest() { UserId = memberId });
 
