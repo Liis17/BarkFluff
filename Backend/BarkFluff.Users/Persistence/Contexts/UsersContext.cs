@@ -18,5 +18,10 @@ public class UsersContext : DbContext
             .WithOne(p => p.User)
             .HasForeignKey<UserContact>(p => p.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+        
+        base.OnModelCreating(modelBuilder);
+    
+        // Настройка функций полнотекстового поиска
+        modelBuilder.ConfigureFullTextSearch();
     }
 }
