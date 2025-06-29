@@ -3,6 +3,7 @@ syntax = "proto3";
 option csharp_namespace = "BarkFluff.Proto.Users";
 
 import "google/protobuf/timestamp.proto";
+import "shared.proto";
 
 package barkfluff.users;
 
@@ -30,6 +31,8 @@ service UsersApi {
   // Изменить био
   rpc ChangeBio(ChangeBioRequest) returns(ChangeBioResponse);
   
+  // Найти пользователей по имени/фамилии/юзернейму
+  rpc SearchUsers(SearchUsersRequest) returns(SearchUsersResponse);
 }
 
 service UsersServerApi {
@@ -60,6 +63,17 @@ service UsersServerApi {
   
   // Получить пользователей по id
   rpc ListByIds(ListByIdsRequest) returns(ListByIdsResponse);
+}
+
+message SearchUsersRequest {
+  string query = 1; // Поисковой запрос
+  barkfluff.shared.PageRequest pagination = 2; // Пагинация (макс 50 элементов)
+}
+
+message SearchUsersResponse {
+  repeated User users = 1;
+
+  int32 total_count = 2; // Общее количество чатов
 }
 
 message ChangeUserPasswordRequest {

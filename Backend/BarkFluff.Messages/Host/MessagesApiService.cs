@@ -33,13 +33,13 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
         request.Pagination ??= new PageRequest()
         {
             Size = 10,
-            Skip = 0
+            Offset = 0
         };
         
         var command = new ListChatsCommand()
         {
             Size = request.Pagination.Size,
-            Skip = request.Pagination.Skip,
+            Skip = request.Pagination.Offset,
         };
         
         return await _mediator.Send(command);
@@ -77,7 +77,7 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
         {
             ChatId = chatId,
             Count = request.Pagination.Size,
-            Skip = request.Pagination.Skip,
+            Skip = request.Pagination.Offset,
         };
         
         return await _mediator.Send(command);
