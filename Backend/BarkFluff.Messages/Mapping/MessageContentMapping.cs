@@ -1,6 +1,7 @@
-using BarkFluff.Proto.Messages;
 
 namespace BarkFluff.Messages.Mapping;
+
+using Proto.Shared;
 
 public static class MessageContentMapping
 {

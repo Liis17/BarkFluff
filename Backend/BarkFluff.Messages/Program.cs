@@ -13,6 +13,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BarkFluff.Messages;
 
+using Consumers;
+using Shared.Queue.Users;
+
 public class Program
 {
     public static void Main(string[] args)
@@ -59,12 +62,25 @@ public class Program
         
         builder.Services.AddMassTransit(x =>
         {
+            x.AddConsumer<UserChangedAvatarConsumer>();
+            x.AddConsumer<UserChangedNameConsumer>();
+            
             x.UsingRabbitMq((context, cfg) =>
             {
                 cfg.Host(builder.Configuration["RabbitMQ:Host"], "/", h =>
                 {
                     h.Username(builder.Configuration["RabbitMQ:Username"]);
                     h.Password(builder.Configuration["RabbitMQ:Password"]);
+                });
+                
+                cfg.ReceiveEndpoint("user-changed-name-messages", e =>
+                {
+                    e.ConfigureConsumer<UserChangedNameConsumer>(context);
+                });
+                
+                cfg.ReceiveEndpoint("user-changed-avatar-messages", e =>
+                {
+                    e.ConfigureConsumer<UserChangedAvatarConsumer>(context);
                 });
             });
         });

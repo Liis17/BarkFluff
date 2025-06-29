@@ -18,4 +18,6 @@ public enum ServiceId
     
     FastAuth = 7,
     
+    Updates = 8,
+    
 }

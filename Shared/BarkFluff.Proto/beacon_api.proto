@@ -29,6 +29,8 @@ message GetServerInfoResponse {
   Service files = 6; // Микросервис files
   
   Service messages = 7; // Микросервис messages
+  
+  Service updates = 8; // Микросервис updates
 }
 
 message ServerColor {

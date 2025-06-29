@@ -7,20 +7,24 @@ using MediatR;
 
 namespace BarkFluff.Messages.Features.KickUser;
 
+using Infrastructure;
+
 public class KickUserCommandHandler : IRequestHandler<KickUserCommand>
 {
     private readonly ChatsStorage _chatsStorage;
     private readonly UserContext _userContext;
     private readonly MessagesStorage _messagesStorage;
     private readonly UsersServerApi.UsersServerApiClient _usersServerApiClient;
+    private readonly MessageQueueSender _messageQueueSender;
 
     public KickUserCommandHandler(ChatsStorage chatsStorage, UserContext userContext, MessagesStorage messagesStorage, 
-        UsersServerApi.UsersServerApiClient usersServerApiClient)
+        UsersServerApi.UsersServerApiClient usersServerApiClient, MessageQueueSender messageQueueSender)
     {
         _chatsStorage = chatsStorage;
         _userContext = userContext;
         _messagesStorage = messagesStorage;
         _usersServerApiClient = usersServerApiClient;
+        _messageQueueSender = messageQueueSender;
     }
 
     public async Task Handle(KickUserCommand request, CancellationToken cancellationToken)
@@ -86,6 +90,9 @@ public class KickUserCommandHandler : IRequestHandler<KickUserCommand>
             SentAt = DateTime.UtcNow,
             Type = MessageContentType.System
         };
+        
+        await _messageQueueSender.SendMessage(kickSystemMessage, request.ChatId, chatInfo.Members!
+            .Select(x => x.UserId).ToList());
         
         await _messagesStorage.AddMessage(kickSystemMessage);
     }

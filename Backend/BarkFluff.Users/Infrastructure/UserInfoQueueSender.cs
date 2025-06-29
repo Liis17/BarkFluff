@@ -5,16 +5,16 @@ namespace BarkFluff.Users.Infrastructure;
 
 public class UserInfoQueueSender
 {
-    private readonly IBus _rabbitMqBus;
+    private readonly IPublishEndpoint _publishEndpoint;
 
-    public UserInfoQueueSender(IBus rabbitMqBus)
+    public UserInfoQueueSender(IPublishEndpoint publishEndpoint)
     {
-        _rabbitMqBus = rabbitMqBus;
+        _publishEndpoint = publishEndpoint;
     }
+
 
     public async Task NameChangedEvent(long userId, string newFirstName, string newLastName)
     {
-        var endpoint = await _rabbitMqBus.GetSendEndpoint(new Uri(Endpoints.UserChangeName));
 
         var userChangeNameEvent = new UserChangedName()
         {
@@ -23,57 +23,49 @@ public class UserInfoQueueSender
             NewLastName = newLastName
         };
         
-        await endpoint.Send(userChangeNameEvent);
+        await _publishEndpoint.Publish(userChangeNameEvent);
     }
 
     public async Task UsernameChangedEvent(long userId, string newUsername)
     {
-        var endpoint = await _rabbitMqBus.GetSendEndpoint(new Uri(Endpoints.UserChangeUsername));
-
         var usernameChangedEvent = new UserChangedUsername()
         {
             NewUsername = newUsername,
             UserId = userId
         };
         
-        await endpoint.Send(usernameChangedEvent);
+        await _publishEndpoint.Publish(usernameChangedEvent);
     }
 
     public async Task UserChangedAvatarEvent(long userId, string profilePictureUrl)
     {
-        var endpoint = await _rabbitMqBus.GetSendEndpoint(new Uri(Endpoints.UserChangeAvatar));
-
         var userChangedAvatarEvent = new UserChangedAvatar()
         {
             UserId = userId,
             ProfilePictureUrl = profilePictureUrl
         };
         
-        await endpoint.Send(userChangedAvatarEvent);
+        await _publishEndpoint.Publish(userChangedAvatarEvent);
     }
 
     public async Task UserChangedPasswordEvent(long userId)
     {
-        var endpoint = await _rabbitMqBus.GetSendEndpoint(new Uri(Endpoints.UserChangePassword));
-
         var userChangedPasswordEvent = new UserChangedPassword()
         {
             UserId = userId
         };
         
-        await endpoint.Send(userChangedPasswordEvent);
+        await _publishEndpoint.Publish(userChangedPasswordEvent);
     }
     
     public async Task UserBioChangedEvent(long userId, string newUsername)
     {
-        var endpoint = await _rabbitMqBus.GetSendEndpoint(new Uri(Endpoints.UserChangeBio));
-
         var usernameChangedEvent = new UserChangedBio()
         {
             NewBio = newUsername,
             UserId = userId
         };
         
-        await endpoint.Send(usernameChangedEvent);
+        await _publishEndpoint.Publish(usernameChangedEvent);
     }
 }
