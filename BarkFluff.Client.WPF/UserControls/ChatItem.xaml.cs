@@ -35,7 +35,7 @@ namespace BarkFluff.Client.WPF.UserControls
             SentAndRead
         }
         private string _url;
-        public ChatItem(string imageUrl, string chatName, string lastMessageText, string time, ReadingStatus reading)
+        public ChatItem(string imageUrl, string chatName, string lastMessageText, string time, ReadingStatus reading, List<long> readBy)
         {
             InitializeComponent();
             Title.Text = chatName;
@@ -66,7 +66,7 @@ namespace BarkFluff.Client.WPF.UserControls
             DropShadowEffect shadowEffect = new DropShadowEffect
             {
                 BlurRadius = 12,
-                Opacity = 0.3,
+                Opacity = 0.7,
                 ShadowDepth = 0,
                 Color = averageColor
             };

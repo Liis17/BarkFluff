@@ -20,6 +20,7 @@ namespace BarkFluff.WebApi.Core
         private BarkFluff.Proto.Identity.IdentityApi.IdentityApiClient? IdentityAC;
         private BarkFluff.Proto.Files.FilesApi.FilesApiClient? FilesAC;
         private BarkFluff.Proto.Messages.MessagesApi.MessagesApiClient? MessagesAC;
+        private BarkFluff.Proto.Navigator.NavigatorApi.NavigatorApiClient? NavigatorAC;
         #endregion
 
         #region gRPC Channels
@@ -28,6 +29,7 @@ namespace BarkFluff.WebApi.Core
         private GrpcChannel? IdentityChannel;
         private GrpcChannel? FilesChannel;
         private GrpcChannel? MessagesChannel;
+        private GrpcChannel? NavigatorChannel;
         #endregion
 
         #region На всякий случай, возможно переиспользование
@@ -52,6 +54,12 @@ namespace BarkFluff.WebApi.Core
             gParam.SocketBeacon = EnsureHttpPrefix(gParam.SocketBeacon);
             BeaconChannel = GrpcChannel.ForAddress(gParam.SocketBeacon);
             BeaconAC = new Proto.Beacon.BeaconApi.BeaconApiClient(BeaconChannel);
+        }
+
+        public void CreateNavigatorAC()
+        {
+            NavigatorChannel = GrpcChannel.ForAddress(EnsureHttpPrefix("nl.liis17.ru:7010"));
+            NavigatorAC = new Proto.Navigator.NavigatorApi.NavigatorApiClient(NavigatorChannel);
         }
 
         /// <summary>
@@ -249,6 +257,30 @@ namespace BarkFluff.WebApi.Core
                 };
                 return response;
             }, param);
+        }
+
+        public async Task<(bool, List<ServerDataElement> ServerElements)> GetServerList(GlobalParam global)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var response = await NavigatorAC.ListServersAsync(new Proto.Navigator.ListServersRequest { });
+                    var list = new List<ServerDataElement>();
+                    foreach (var item in response.Servers)
+                    {
+                        var server = new ServerDataElement { Ip = $"{item.BeaconUri.Host}:{item.BeaconUri.Port}", Title = item.Name, UserCount = item.AccountsCount.ToString(), Description = item.Description };
+                        list.Add(server);
+                    }
+
+                    return (true, list);
+                }, global);
+            }
+            catch
+            {
+                return (false, new List<ServerDataElement>());
+            }
+           
         }
 
         /// <summary>
@@ -800,7 +832,7 @@ namespace BarkFluff.WebApi.Core
                 {
                     var response = await MessagesAC.ListChatsAsync(new Proto.Messages.ListChatsRequest 
                     { 
-                        Pagination = new Proto.Shared.PageRequest { Size = 2},
+                        Pagination = new Proto.Shared.PageRequest { Size = 50},
                     });
                     
                     var chats = new List<Proto.Messages.Chat>();

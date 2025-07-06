@@ -1,12 +1,19 @@
 ﻿using BarkFluff.Client.WPF.Pages;
 using BarkFluff.Client.WPF.Services;
 using BarkFluff.Client.WPF.Services.Notification;
+using BarkFluff.Client.WPF.Services.Notification.System;
 
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Threading;
+
+using Wpf.Ui.Controls;
+
+using MessageBox = System.Windows.MessageBox;
+using MessageBoxButton = System.Windows.MessageBoxButton;
+using MessageBoxResult = System.Windows.MessageBoxResult;
 
 namespace BarkFluff.Client.WPF
 {
@@ -18,7 +25,8 @@ namespace BarkFluff.Client.WPF
         public static BarkFluff.WebApi.Core.WebApi ServerCommunication { get; set; } = null!;
         public static BarkFluff.WebApi.Core.MessengerData.GlobalParam GParam { get; set; } = null!;
         public static ImageColorAnalyzer ColorAnalyzer { get; set; } = null!;
-
+        private static Mutex mutex = null!;
+        private CancellationTokenSource cts = new CancellationTokenSource();
         public static MainWindow MessengerWindow { get; set; } = null!;
         public App()
         {
@@ -27,29 +35,55 @@ namespace BarkFluff.Client.WPF
         }
         protected override void OnStartup(StartupEventArgs e)
         {
-            base.OnStartup(e);
 
-            string[] args = e.Args;
-
-            foreach (string arg in args)
+            #region
+            mutex = new Mutex(true, "BarkFluffMutex", out bool isNew);
+            if (!isNew)
             {
-                Console.WriteLine($"Аргумент: {arg}");
+                if (e.Args.Length > 0)
+                {
+                    // Отправляем аргумент главному экземпляру
+                    BFSingleInstance.SendToExistingInstance(e.Args[0]);
+                }
+
+                Shutdown();
+                return;
             }
 
-            ProcessArguments(args);
+            // Первый экземпляр — запускаем слушателя
+            _ = BFSingleInstance.ListenAsync(OnBFUriReceived, cts.Token);
 
-            //дополнительная обработка тут если нужно (хз нужно ли)
+
+            if (e.Args.Length > 0)
+                OnBFUriReceived(e.Args[0]); // если пришёл bf:// при запуске
+            #endregion
+
+            base.OnStartup(e);
+
+            if (!ProtocolHelper.IsBFProtocolRegistered())
+            {
+                var result = MessageBox.Show("Протокол bf:// не зарегистрирован. Зарегистрировать?",
+                    "Регистрация протокола", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    ProtocolRegistrar.RegisterBFProtocol();
+                    MessageBox.Show("Готово. Перезапустите приложение через bf:// ссылку.");
+                    Shutdown();
+                    return;
+                }
+            }
+
+
+            string[] args = e.Args;
+            ProcessArguments(args);
 
             Bootstrap();
         }
 
         private void Bootstrap()
         {
-            string shortcutPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.StartMenu),
-            "Programs",
-            "BarkFluff.lnk");
-
+            string shortcutPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Programs", "BarkFluff.lnk");
             string targetPath;
 
 #if WINDOWS_UWP
@@ -91,15 +125,27 @@ namespace BarkFluff.Client.WPF
             }
         }
 
+        protected override void OnExit(ExitEventArgs e)
+        {
+            cts.Cancel();
+            base.OnExit(e);
+        }
 
+        private void OnBFUriReceived(string uri)
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                MessageBox.Show("Получен bf:// URI: " + uri);
+            });
+        }
 
         private void ProcessArguments(string[] args)
         {
-
             foreach (string arg in args)
             {
-                //обработка аргументов
+                
             }
+           
         } //обработка аргументов
         private void IncrementVersion()
         {
