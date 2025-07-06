@@ -61,7 +61,8 @@ namespace BarkFluff.Client.WPF.Pages
                 {
                     avatar = "https://charlie.liis17.ru/Photoshop_TmPl02VbWB.png";
                 }
-                var messageItem = new ChatItem(avatar, item.Title, item.LastMessage.Content.Text, time: item.LastMessage.SentAt.ToString(), reading: ChatItem.ReadingStatus.None);
+                List<long> list = item.LastMessage.ReadBy.ToList();
+                var messageItem = new ChatItem(avatar, item.Title, item.LastMessage.Content.Text, time: item.LastMessage.SentAt.ToString(), reading: ChatItem.ReadingStatus.None, list);
                 ChatList.Children.Add(messageItem);
             }
         }

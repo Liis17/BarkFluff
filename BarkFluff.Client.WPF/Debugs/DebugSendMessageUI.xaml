@@ -8,29 +8,29 @@
     d:DesignHeight="450"
     d:DesignWidth="800"
     mc:Ignorable="d">
-    <Grid>
+    <Grid Background="#1e1e1e">
         <StackPanel
             MinWidth="500"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             Orientation="Vertical">
-            <TextBlock Text="Сообщение" />
+            <TextBlock Foreground="White" Text="Сообщение" />
             <TextBox x:Name="Text" />
-            <TextBlock Text="ChatID" />
+            <TextBlock Foreground="White" Text="ChatID" />
             <TextBox x:Name="ChatID" />
             <Button
-                Click="Button_Click"
                 Padding="15,5,15,5"
                 HorizontalAlignment="Center"
-                Content="Отправить сообщение" />
+                Click="Button_Click"
+                Content="Отправить  по chatID" />
             <Separator />
-            <TextBlock Text="UserID" />
+            <TextBlock Foreground="White" Text="UserID" />
             <TextBox x:Name="UserID" />
             <Button
-                Click="Button_Click_1"
                 Padding="15,5,15,5"
                 HorizontalAlignment="Center"
-                Content="Создать чат" />
+                Click="Button_Click_1"
+                Content="Отправить по userID" />
         </StackPanel>
     </Grid>
 </UserControl>

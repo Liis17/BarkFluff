@@ -1,7 +1,9 @@
-﻿using BarkFluff.WebApi.Core.MessengerData;
+﻿using BarkFluff.Client.WPF.UserControls;
+using BarkFluff.WebApi.Core.MessengerData;
 
 using System.IO;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -15,6 +17,22 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
         public SelectServer()
         {
             InitializeComponent();
+            Loaded += SelectServer_Loaded;
+        }
+
+        private async void SelectServer_Loaded(object sender, RoutedEventArgs e)
+        {
+            App.ServerCommunication.CreateNavigatorAC();
+            var response = await App.ServerCommunication.GetServerList(App.GParam);
+            if (!response.Item1) { return; }
+            NoServer.Visibility = Visibility.Collapsed;
+            ServerList.Children.Clear();
+
+            foreach (var item in response.ServerElements)
+            {
+                var server = new ServerItem(item);
+                ServerList.Children.Add(server);
+            }
         }
 
         private void ConnectButton_Click(object sender, RoutedEventArgs e)
@@ -66,10 +84,6 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
         }
 
         private void ServerAddressTextBox_GotFocus(object sender, RoutedEventArgs e)
-        {
-
-        }
-        private void PublicServer_Click(object sender, RoutedEventArgs e)
         {
 
         }

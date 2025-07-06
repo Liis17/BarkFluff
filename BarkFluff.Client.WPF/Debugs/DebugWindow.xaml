@@ -8,12 +8,17 @@
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     xmlns:usercontrols="clr-namespace:BarkFluff.Client.WPF.UserControls"
     Title="DebugWindow"
-    Width="1580"
-    Height="900"
+    Width="1280"
+    Height="720"
     ExtendsContentIntoTitleBar="True"
     WindowBackdropType="Mica"
     mc:Ignorable="d">
     <Grid Background="Transparent">
+        <ui:TitleBar
+            Margin="80,0,0,0"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Top"
+            Panel.ZIndex="500" Cursor="" />
         <StackPanel
             Width="250"
             HorizontalAlignment="Left"

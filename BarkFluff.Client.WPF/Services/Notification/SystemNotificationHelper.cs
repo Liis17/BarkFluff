@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Media;
 
 namespace BarkFluff.Client.WPF.Services.Notification
 {
@@ -29,7 +30,7 @@ namespace BarkFluff.Client.WPF.Services.Notification
         {
             try
             {
-                System.Media.SystemSounds.Asterisk.Play();
+                SystemSounds.Asterisk.Play();
             }
             catch
             {

@@ -2,6 +2,8 @@
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 using System.Text;
+using System.Runtime;
+using System.IO;
 
 namespace BarkFluff.Client.WPF.Services.Notification
 {
@@ -40,9 +42,9 @@ namespace BarkFluff.Client.WPF.Services.Notification
         private struct WIN32_FIND_DATA
         {
             public uint dwFileAttributes;
-            public System.Runtime.InteropServices.ComTypes.FILETIME ftCreationTime;
-            public System.Runtime.InteropServices.ComTypes.FILETIME ftLastAccessTime;
-            public System.Runtime.InteropServices.ComTypes.FILETIME ftLastWriteTime;
+            public FILETIME ftCreationTime;
+            public FILETIME ftLastAccessTime;
+            public FILETIME ftLastWriteTime;
             public uint nFileSizeHigh;
             public uint nFileSizeLow;
             public uint dwReserved0;
@@ -113,7 +115,7 @@ namespace BarkFluff.Client.WPF.Services.Notification
 
             link.SetPath(targetPath);
             link.SetDescription("BarkFluff Messenger");
-            link.SetWorkingDirectory(System.IO.Path.GetDirectoryName(targetPath));
+            link.SetWorkingDirectory(Path.GetDirectoryName(targetPath));
 
             var propStore = (IPropertyStore)link;
 
