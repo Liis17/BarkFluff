@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barkfluff - Мессенджер нового поколения</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dark-bg: #121212;
+            --card-bg: #1e1e1e;
+            --accent: #bb86fc;
+            --accent-dark: #3700b3;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0b0b0;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--dark-bg);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        /* Header Styles */
+        header {
+            padding: 30px 0;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+            background: rgba(18, 18, 18, 0.95);
+            backdrop-filter: blur(10px);
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+        
+        .logo-icon {
+            background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 35px;
+        }
+        
+        nav a {
+            color: var(--text-primary);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 1.1rem;
+            transition: color 0.3s ease;
+            position: relative;
+        }
+        
+        nav a:hover {
+            color: var(--accent);
+        }
+        
+        nav a::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--accent);
+            transition: width 0.3s ease;
+        }
+        
+        nav a:hover::after {
+            width: 100%;
+        }
+        
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding-top: 100px;
+            position: relative;
+        }
+        
+        .hero-content {
+            max-width: 650px;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: 25px;
+            background: linear-gradient(to right, #ffffff, var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .hero p {
+            font-size: 1.4rem;
+            color: var(--text-secondary);
+            margin-bottom: 40px;
+        }
+        
+        .cta-buttons {
+            display: flex;
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .btn {
+            padding: 16px 32px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            border: none;
+        }
+        
+        .primary-btn {
+            background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+            color: white;
+            box-shadow: 0 10px 20px rgba(187, 134, 252, 0.3);
+        }
+        
+        .primary-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 25px rgba(187, 134, 252, 0.4);
+        }
+        
+        .secondary-btn {
+            background: transparent;
+            border: 2px solid var(--accent);
+            color: var(--accent);
+        }
+        
+        .secondary-btn:hover {
+            background: rgba(187, 134, 252, 0.1);
+        }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(255, 193, 7, 0.15);
+            color: #ffc107;
+            padding: 8px 16px;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 30px;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-badge::before {
+            content: '';
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #ffc107;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { opacity: 0.7; }
+        }
+        
+        /* Features Section */
+        .section {
+            padding: 100px 0;
+        }
+        
+        .section-title {
+            font-size: 2.5rem;
+            text-align: center;
+            margin-bottom: 80px;
+            font-weight: 700;
+            position: relative;
+        }
+        
+        .section-title::after {
+            content: '';
+            display: block;
+            width: 80px;
+            height: 4px;
+            background: var(--accent);
+            margin: 20px auto 0;
+            border-radius: 2px;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 40px;
+        }
+        
+        .feature-card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 40px 30px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 30px rgba(0, 0, 0, 0.4);
+        }
+        
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: var(--accent);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.5s ease;
+        }
+        
+        .feature-card:hover::before {
+            transform: scaleX(1);
+        }
+        
+        .feature-icon {
+            font-size: 2.5rem;
+            color: var(--accent);
+            margin-bottom: 25px;
+        }
+        
+        .feature-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+        
+        .feature-card p {
+            color: var(--text-secondary);
+        }
+        
+        /* Self-hosted Section */
+        .self-hosted {
+            background: var(--card-bg);
+            border-radius: 30px;
+            padding: 70px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            position: relative;
+        }
+        
+        .self-hosted h2 {
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+        }
+        
+        .self-hosted p {
+            max-width: 700px;
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            margin-bottom: 40px;
+        }
+        
+        .code-block {
+            background: #2d2d2d;
+            padding: 25px;
+            border-radius: 15px;
+            width: 100%;
+            max-width: 600px;
+            font-family: 'Roboto Mono', monospace;
+            text-align: left;
+            margin-top: 20px;
+            position: relative;
+        }
+        
+        .code-block::before {
+            content: 'Терминал';
+            position: absolute;
+            top: -25px;
+            left: 0;
+            background: #2d2d2d;
+            padding: 5px 15px;
+            border-radius: 10px 10px 0 0;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        
+        .code-line {
+            display: block;
+            margin-bottom: 10px;
+        }
+        
+        .code-comment {
+            color: #57a64a;
+        }
+        
+        .code-command {
+            color: #dcdcdc;
+        }
+        
+        .code-highlight {
+            color: var(--accent);
+        }
+        
+        /* Footer */
+        footer {
+            padding: 70px 0 40px;
+            text-align: center;
+            color: var(--text-secondary);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .footer-logo {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 30px;
+        }
+        
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+        
+        .footer-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        .footer-links a:hover {
+            color: var(--accent);
+        }
+        
+        .copyright {
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+        
+        /* Background Elements */
+        .background-elements {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        
+        .element {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0.1;
+            filter: blur(50px);
+        }
+        
+        .element-1 {
+            width: 400px;
+            height: 400px;
+            background: var(--accent);
+            top: 20%;
+            left: -10%;
+        }
+        
+        .element-2 {
+            width: 300px;
+            height: 300px;
+            background: var(--accent-dark);
+            bottom: 10%;
+            right: -5%;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.8rem;
+            }
+            
+            .hero p {
+                font-size: 1.2rem;
+            }
+            
+            .cta-buttons {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .self-hosted {
+                padding: 40px 20px;
+            }
+            
+            nav ul {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-icon">B</div>
+                    <span>Barkfluff</span>
+                </div>
+                <nav>
+                    <ul>
+                        <li><a href="#">Главная</a></li>
+                        <li><a href="#">Возможности</a></li>
+                        <li><a href="#">О проекте</a></li>
+                        <li><a href="#">Документация</a></li>
+                        <li><a href="#">Контакты</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="background-elements">
+            <div class="element element-1"></div>
+            <div class="element element-2"></div>
+        </div>
+        <div class="container">
+            <div class="hero-content">
+                <div class="status-badge">В активной разработке</div>
+                <h1>Мессенджер нового поколения для вашей конфиденциальности</h1>
+                <p>Barkfluff сочетает элегантный дизайн, максимальную безопасность и полный контроль над вашими данными. Приватность начинается здесь.</p>
+                <div class="cta-buttons">
+                    <a href="#" class="btn primary-btn">Следить за обновлениями</a>
+                    <a href="#" class="btn secondary-btn">Документация</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="section">
+        <div class="container">
+            <h2 class="section-title">Наши особенности</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🔒</div>
+                    <h3>Конец-Конец Шифрование</h3>
+                    <p>Ваши сообщения защищены с помощью передовых алгоритмов шифрования. Только вы и получатель можете читать ваши сообщения.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🌐</div>
+                    <h3>Self-Hosted Решение</h3>
+                    <p>Полный контроль над вашими данными. Разверните Barkfluff на собственном сервере и управляйте инфраструктурой самостоятельно.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🚀</div>
+                    <h3>Высокая Производительность</h3>
+                    <p>Оптимизированный для скорости, Barkfluff работает плавно даже на слабых устройствах. Больше никаких тормозов.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🧩</div>
+                    <h3>Модульная Архитектура</h3>
+                    <p>Расширяйте функционал с помощью плагинов и модулей. Настраивайте мессенджер под свои нужды.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Self-Hosted Section -->
+    <section class="section">
+        <div class="container">
+            <div class="self-hosted">
+                <h2>Полный контроль с Self-Hosted</h2>
+                <p>Barkfluff разработан с возможностью самостоятельного хостинга. Вы можете развернуть его на собственном сервере, сохраняя полный контроль над своими данными и инфраструктурой.</p>
+                <a href="#" class="btn primary-btn">Документация по установке</a>
+                
+                <div class="code-block">
+                    <span class="code-line"><span class="code-comment"># Клонируем репозиторий</span></span>
+                    <span class="code-line"><span class="code-command">git clone </span><span class="code-highlight">https://github.com/barkfluff/barkfluff.git</span></span>
+                    <span class="code-line"><br></span>
+                    <span class="code-line"><span class="code-comment"># Устанавливаем зависимости</span></span>
+                    <span class="code-line"><span class="code-command">npm install</span></span>
+                    <span class="code-line"><br></span>
+                    <span class="code-line"><span class="code-comment"># Запускаем сервер</span></span>
+                    <span class="code-line"><span class="code-command">npm run start</span></span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Status Section -->
+    <section class="section">
+        <div class="container">
+            <div class="self-hosted">
+                <h2>Активная разработка</h2>
+                <p>Barkfluff находится в стадии активной разработки. Мы работаем над созданием лучшего решения для общения, которое будет соответствовать самым высоким стандартам безопасности и удобства.</p>
+                <p>Присоединяйтесь к нашему сообществу, чтобы следить за прогрессом, предлагать идеи и тестировать ранние версии!</p>
+                <a href="#" class="btn primary-btn">Присоединиться к сообществу</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-logo">Barkfluff</div>
+            <div class="footer-links">
+                <a href="#">Главная</a>
+                <a href="#">Возможности</a>
+                <a href="#">О проекте</a>
+                <a href="#">Документация</a>
+                <a href="#">Блог</a>
+                <a href="#">Контакты</a>
+            </div>
+            <p class="copyright">© 2023 Barkfluff Messenger. Все права защищены. Проект находится в активной разработке.</p>
+        </div>
+    </footer>
+</body>
+</html>
