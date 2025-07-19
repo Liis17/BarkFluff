@@ -98,7 +98,8 @@ namespace BarkFluff.Client.WPF
             try
             {
                 string filePath = Path.Combine(SystemInfo.GetAppPath(), "GlobalParam.json");
-                if (App.GParam == null) { return; } if (string.IsNullOrEmpty(App.GParam.AppPass) || string.IsNullOrEmpty( App.GParam.AppPath)){return;}
+                if (App.GParam == null) { return; }
+                if (string.IsNullOrEmpty(App.GParam.AppPass) || string.IsNullOrEmpty(App.GParam.AppPath)) { return; }
                 GlobalParam.Save(App.GParam, filePath, App.GParam.AppPass);
             }
             catch
@@ -165,7 +166,7 @@ namespace BarkFluff.Client.WPF
                     //если файл существует, но сокет пустой, то открываем страницу выбора сервера
                 }
             }
-            else if(!string.IsNullOrEmpty(App.GParam.SocketBeacon) &&
+            else if (!string.IsNullOrEmpty(App.GParam.SocketBeacon) &&
                 !string.IsNullOrEmpty(App.GParam.SocketFiles) &&
                 !string.IsNullOrEmpty(App.GParam.SocketIdentity) &&
                 !string.IsNullOrEmpty(App.GParam.SocketUsers) &&

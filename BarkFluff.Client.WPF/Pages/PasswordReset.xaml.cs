@@ -1,21 +1,8 @@
-﻿using BarkFluff.WebApi.Core.MessengerData;
-
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+﻿using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-
-using Windows.Devices.Power;
 
 namespace BarkFluff.Client.WPF.Pages
 {
@@ -96,8 +83,8 @@ namespace BarkFluff.Client.WPF.Pages
                         _username = EmailTextBox.Text;
                     }
                     var response = await App.ServerCommunication.ResetPassword(_email, _username, App.GParam);
-                    if (!response.Item1) { return; } 
-                    _resetId = response.resetId; 
+                    if (!response.Item1) { return; }
+                    _resetId = response.resetId;
                     ShowStep2();
                 }
                 else
@@ -107,14 +94,14 @@ namespace BarkFluff.Client.WPF.Pages
 
             }
         }
-        
+
         private async void VerifyCodeButton_Click(object sender, RoutedEventArgs e)
         {
             if (codeBoxes.All(b => b.Text.Length == 1))
             {
                 string code = string.Concat(codeBoxes.Select(b => b.Text));
                 //MessageBox.Show(code);
-                var response = await App.ServerCommunication.ConfirmResetCode(_resetId, code , App.GParam);
+                var response = await App.ServerCommunication.ConfirmResetCode(_resetId, code, App.GParam);
                 App.GParam.RefreshToken = response.refreshToken;
                 MainWindow.SaveSettings();
                 App.UpdateApiClient();
@@ -217,7 +204,7 @@ namespace BarkFluff.Client.WPF.Pages
 
         private void BackToLoginButton_Click(object sender, RoutedEventArgs e)
         {
-            
+
             App.MessengerWindow.OpenLoginPage();
         }
 

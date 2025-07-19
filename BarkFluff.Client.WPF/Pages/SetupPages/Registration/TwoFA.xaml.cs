@@ -1,7 +1,6 @@
 ﻿using BarkFluff.Client.WPF.Services.App.Converter;
 
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -70,10 +69,10 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages.Registration
                 {
                     ConnectionText.Text = "Подключение...";
                     isCodeSent = true; // Флаг, что код отправлен
-                    await App.ServerCommunication.OtpAccept(App.GParam,code); // Отправка кода на сервер
+                    await App.ServerCommunication.OtpAccept(App.GParam, code); // Отправка кода на сервер
                     Pattern.NextStep();
                 }
-                catch(BarkFluff.Shared.Exceptions.Identity.NotValidOtpCodeException)
+                catch (BarkFluff.Shared.Exceptions.Identity.NotValidOtpCodeException)
                 {
                     isCodeSent = false; // Сбрасываем флаг, если код неверный
                     MessageBox.Show("Ошибка: Неверный код 2FA.");
@@ -121,11 +120,11 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages.Registration
             {
                 Clipboard.SetText(SecretKeyText.Text); //Копировать в буфер
             });
-        } 
+        }
         private void SkipButton_Click(object sender, RoutedEventArgs e)
         {
             Pattern.NextStep(); //пропустить подключение
-        } 
+        }
         private void FocusFirstCodeBox(object sender, RoutedEventArgs e)
         {
             //Pattern.NextStep();

@@ -1,5 +1,4 @@
 ﻿using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -144,7 +143,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                     current.Select(1, 0); // Не прыгать в конец
             }
 
-             
+
         }
         private void VerifyBox_PreviewKeyDown(object sender, KeyEventArgs e)
         {

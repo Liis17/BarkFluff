@@ -1,7 +1,6 @@
 ﻿using System.Diagnostics;
-using System.IO;
-using System.Windows;
 using System.Reflection;
+using System.Windows;
 
 namespace BarkFluff.Client.WPF.Services.Notification.System
 {
@@ -12,7 +11,7 @@ namespace BarkFluff.Client.WPF.Services.Notification.System
             string exePath = Assembly.GetExecutingAssembly().Location;
             if (exePath.EndsWith(".dll"))
             {
-                exePath = exePath.Replace(".dll",".exe");
+                exePath = exePath.Replace(".dll", ".exe");
             }
 
             var psi = new ProcessStartInfo

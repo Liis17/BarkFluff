@@ -1,16 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
-using System.Runtime.InteropServices.WindowsRuntime;
-using System.Text;
-using System.Windows;
-using Windows.UI.Notifications;
-using Microsoft.Toolkit.Uwp.Notifications;
+﻿using Microsoft.Toolkit.Uwp.Notifications;
 
-using Windows.Data.Xml.Dom;
 using System.IO;
 using System.Net.Http;
+using System.Runtime.InteropServices;
+
+using Windows.UI.Notifications;
 
 namespace BarkFluff.Client.WPF.Services.Notification
 {
@@ -35,7 +29,7 @@ namespace BarkFluff.Client.WPF.Services.Notification
             string localUri = new Uri(tempPath).AbsoluteUri;
 
             var toastContent = new ToastContentBuilder()
-                 .AddAppLogoOverride(new Uri(localUri), ToastGenericAppLogoCrop.Circle) 
+                 .AddAppLogoOverride(new Uri(localUri), ToastGenericAppLogoCrop.Circle)
                 .AddText(title)
                 .AddText(message)
                 .GetToastContent();
@@ -65,8 +59,8 @@ namespace BarkFluff.Client.WPF.Services.Notification
             // Собираем уведомление
             var toastContent = new ToastContentBuilder()
                 .AddAppLogoOverride(new Uri(avatarUri), ToastGenericAppLogoCrop.Circle)
-                .AddText(userName)              
-                .AddText(message)              
+                .AddText(userName)
+                .AddText(message)
                 .AddInlineImage(new Uri(imageUri))
                 .GetToastContent();
 
