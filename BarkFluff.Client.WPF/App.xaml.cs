@@ -59,8 +59,7 @@ namespace BarkFluff.Client.WPF
 
             if (!ProtocolHelper.IsBFProtocolRegistered())
             {
-                var result = MessageBox.Show("Протокол bf:// не зарегистрирован. Зарегистрировать?",
-                    "Регистрация протокола", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                var result = MessageBox.Show("Протокол bf:// не зарегистрирован. Зарегистрировать?", "Регистрация протокола", MessageBoxButton.YesNo, MessageBoxImage.Question);
 
                 if (result == MessageBoxResult.Yes)
                 {
@@ -70,7 +69,6 @@ namespace BarkFluff.Client.WPF
                     return;
                 }
             }
-
 
             string[] args = e.Args;
             ProcessArguments(args);
