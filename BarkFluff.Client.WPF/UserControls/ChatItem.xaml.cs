@@ -34,7 +34,6 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private async void ChatItem_Loaded(object sender, RoutedEventArgs e)
         {
-            // Загружаем изображение в UI (можно сразу)
             ImageBrush imageBrush = new ImageBrush
             {
                 ImageSource = new BitmapImage(new Uri(_url)),
@@ -42,13 +41,11 @@ namespace BarkFluff.Client.WPF.UserControls
             };
             border.Background = imageBrush;
 
-            // Асинхронно получаем средний цвет
             Color averageColor = await Task.Run(() =>
             {
                 return App.ColorAnalyzer.GetAverageColorFromUrl(_url);
             });
 
-            // Применяем DropShadowEffect в UI-потоке
             DropShadowEffect shadowEffect = new DropShadowEffect
             {
                 BlurRadius = 12,
@@ -61,30 +58,42 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private string FormatDateTime(string input)
         {
-            // Парсим строку как UTC
             if (!DateTime.TryParseExact(input, "yyyy-MM-ddTHH:mm:ss.ffffffZ",
                 CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out DateTime dateTimeUtc))
             {
                 return "Неверный формат даты";
             }
 
-            // Переводим в локальное время
             DateTime localDateTime = dateTimeUtc.ToLocalTime();
             DateTime now = DateTime.Now;
 
+            CultureInfo ruCulture = new CultureInfo("ru-RU");
+
             if (localDateTime.Date == now.Date)
             {
-                // Если сегодня — возвращаем только время (часы и минуты)
                 return localDateTime.ToString("HH:mm");
             }
-            else if (localDateTime.Date <= now.Date.AddDays(-1))
-            {
-                // Если вчера или ранее — возвращаем сокращённое название дня недели (Пн, Вт и т.д.)
-                return localDateTime.ToString("ddd", new CultureInfo("ru-RU"));
-            }
 
-            // По условию других случаев быть не должно
-            return "";
+            System.Globalization.Calendar calendar = ruCulture.Calendar;
+            CalendarWeekRule rule = ruCulture.DateTimeFormat.CalendarWeekRule;
+            DayOfWeek firstDayOfWeek = ruCulture.DateTimeFormat.FirstDayOfWeek;
+
+            int weekNow = calendar.GetWeekOfYear(now, rule, firstDayOfWeek);
+            int weekThen = calendar.GetWeekOfYear(localDateTime, rule, firstDayOfWeek);
+
+            if (localDateTime.Year == now.Year && weekThen == weekNow)
+            {
+                return localDateTime.ToString("ddd", ruCulture); 
+            }
+            else if (localDateTime.Year == now.Year)
+            {
+                
+                return localDateTime.ToString("dd MMM", ruCulture); 
+            }
+            else
+            {
+                return localDateTime.ToString("dd MMM yyyy", ruCulture); 
+            }
         }
     }
 }
