@@ -7,9 +7,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Windows;
-using System.Windows.Threading;
-
-using Wpf.Ui.Controls;
 
 using MessageBox = System.Windows.MessageBox;
 using MessageBoxButton = System.Windows.MessageBoxButton;
@@ -143,9 +140,9 @@ namespace BarkFluff.Client.WPF
         {
             foreach (string arg in args)
             {
-                
+
             }
-           
+
         } //обработка аргументов
         private void IncrementVersion()
         {

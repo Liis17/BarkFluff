@@ -1,23 +1,9 @@
-﻿using BarkFluff.Client.WPF.Services;
-
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Drawing;
-using System.Globalization;
-using System.IO;
-using System.Net.Http;
-using System.Text;
+﻿using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 using Color = System.Windows.Media.Color;
 
@@ -40,7 +26,7 @@ namespace BarkFluff.Client.WPF.UserControls
             InitializeComponent();
             Title.Text = chatName;
             LastMessage.Text = lastMessageText;
-            TimeMessage.Text = FormatDateTime(time.Length >=2 ? time.Substring(1, time.Length - 2) : time);
+            TimeMessage.Text = FormatDateTime(time.Length >= 2 ? time.Substring(1, time.Length - 2) : time);
 
             Loaded += ChatItem_Loaded;
             _url = imageUrl;

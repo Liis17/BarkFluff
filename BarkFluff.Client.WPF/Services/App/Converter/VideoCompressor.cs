@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Text;
-
-using Windows.Media.Transcoding;
-using Windows.Storage;
+﻿using System.Diagnostics;
 
 namespace BarkFluff.Client.WPF.Services.App.Converter
 {

@@ -1,7 +1,6 @@
 ﻿using BarkFluff.Client.WPF.Pages.SetupPages.Registration;
 using BarkFluff.Client.WPF.Services.App;
 using BarkFluff.Client.WPF.UserControls;
-using BarkFluff.Shared.Exceptions;
 using BarkFluff.Shared.Exceptions.Identity;
 using BarkFluff.WebApi.Core.MessengerData;
 
@@ -13,8 +12,6 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
-
-using Windows.Devices.Sensors;
 
 namespace BarkFluff.Client.WPF.Pages.SetupPages
 {
@@ -402,7 +399,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                     encoder.Save(memoryStream);
                     byte[] jpegBytes = memoryStream.ToArray();
 
-                    await App.ServerCommunication.UploadUserAvatarAsync(App.GParam,jpegBytes);
+                    await App.ServerCommunication.UploadUserAvatarAsync(App.GParam, jpegBytes);
 
                     var response = await App.ServerCommunication.GetUserData(App.GParam);
                     var fullName = $@"{response.FirstName} {response.LastName}";
@@ -431,7 +428,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                     currentStep++;
                     UpdateNavigationButtons();
                     UpdateErrorMessageTextBlock("");
-                    
+
                 }
             }
         }
@@ -565,8 +562,8 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
             {
                 previewUser.Pattern = this;
             }
-            
+
         }
     }
-   
+
 }

@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
+﻿using System.IO;
 using System.IO.Pipes;
-using System.Text;
 
 namespace BarkFluff.Client.WPF.Services.Notification.System
 {

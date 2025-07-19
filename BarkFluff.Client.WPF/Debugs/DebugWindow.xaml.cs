@@ -4,10 +4,7 @@ using BarkFluff.Client.WPF.Services.App.Converter;
 using BarkFluff.Client.WPF.Services.Notification;
 using BarkFluff.Client.WPF.UserControls;
 
-using System.Threading.Tasks;
 using System.Windows;
-
-using Windows.ApplicationModel.Appointments;
 
 using Wpf.Ui.Controls;
 
@@ -35,20 +32,20 @@ namespace BarkFluff.Client.WPF.Debugs
 
         private void SimpleNotification(object sender, RoutedEventArgs e)
         {
-            toastNotificationService.ShowToast("Apogee","пошли в фортнайт пёс", "https://charlie.liis17.ru/apogeemini.png");
+            toastNotificationService.ShowToast("Apogee", "пошли в фортнайт пёс", "https://charlie.liis17.ru/apogeemini.png");
         }
 
         private void AdvancedNotification(object sender, RoutedEventArgs e)
         {
-           
+
         }
 
-        public void ImageNotification(object sender, RoutedEventArgs e) 
+        public void ImageNotification(object sender, RoutedEventArgs e)
         {
             toastNotificationService.ShowToastWithImage(
             "Apogee",
             "Отправил(a) изображение",
-            "https://charlie.liis17.ru/apogeemini.png", 
+            "https://charlie.liis17.ru/apogeemini.png",
             "https://charlie.liis17.ru/FortniteClient-Win64-Shipping_lOV3mo24Xo.jpg"
             );
         }

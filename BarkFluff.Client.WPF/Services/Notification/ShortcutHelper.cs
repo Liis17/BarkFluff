@@ -1,9 +1,7 @@
-﻿using System;
+﻿using System.IO;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 using System.Text;
-using System.Runtime;
-using System.IO;
 
 namespace BarkFluff.Client.WPF.Services.Notification
 {
