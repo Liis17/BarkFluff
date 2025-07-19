@@ -34,7 +34,6 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
             throw new FileAlreadyUploadedException("Файл уже был загружен");
         }
         
-        // Сохраняем имя файла
         file.Filename = request.FileName;
         
         // Определяем тип контента по расширению файла
