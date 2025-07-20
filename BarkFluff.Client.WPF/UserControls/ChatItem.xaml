@@ -10,14 +10,14 @@
     HorizontalAlignment="Stretch"
     d:DesignHeight="150"
     d:DesignWidth="400"
+    Background="#00ffffff"
     mc:Ignorable="d">
 
     <Border
         x:Name="MainBackground"
         Margin="2,0,10,0"
         Padding="8"
-        Background="Transparent"
-        CornerRadius="12">
+        CornerRadius="0 12 12 0">
         <Border.Effect>
             <DropShadowEffect
                 BlurRadius="8"
@@ -29,7 +29,7 @@
             <Style TargetType="Border">
                 <Setter Property="Background">
                     <Setter.Value>
-                        <SolidColorBrush Color="#00000000" />
+                        <SolidColorBrush Color="Transparent" />
                     </Setter.Value>
                 </Setter>
                 <Style.Triggers>
@@ -39,8 +39,9 @@
                                 <Storyboard>
                                     <ColorAnimation
                                         Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
-                                        To="#FF2D2D30"
-                                        Duration="0:0:0.25" />
+                                        From="#252526"
+                                        To="#373737"
+                                        Duration="0:0:0.05" />
                                 </Storyboard>
                             </BeginStoryboard>
                         </Trigger.EnterActions>
@@ -49,8 +50,9 @@
                                 <Storyboard>
                                     <ColorAnimation
                                         Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
-                                        To="#00000000"
-                                        Duration="0:0:0.25" />
+                                        From="#373737"
+                                        To="#252526"
+                                        Duration="0:0:0.05" />
                                 </Storyboard>
                             </BeginStoryboard>
                         </Trigger.ExitActions>

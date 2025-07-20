@@ -13,7 +13,6 @@ namespace BarkFluff.Client.WPF.Services.App.Converter
         {
             var result = new List<int>();
 
-            // 1. Получить длительность файла через ffprobe
             double duration = GetAudioDuration(oggFilePath);
             if (duration <= 0)
                 throw new Exception("Не удалось получить длительность аудио");
@@ -26,8 +25,6 @@ namespace BarkFluff.Client.WPF.Services.App.Converter
             {
                 double start = i * segmentDuration;
                 double end = segmentDuration;
-
-                // 2. Вызов ffmpeg с фильтром volumedetect на каждый сегмент
                 string args = $"-ss {start.ToString(CultureInfo.InvariantCulture)} -t {end.ToString(CultureInfo.InvariantCulture)} " +
                               $"-i \"{oggFilePath}\" -af volumedetect -f null NUL";
 
@@ -37,7 +34,6 @@ namespace BarkFluff.Client.WPF.Services.App.Converter
                 loudnessValues.Add(rms);
             }
 
-            // 3. Нормализация в диапазон 1..100
             double min = double.MaxValue;
             double max = double.MinValue;
             foreach (var val in loudnessValues)

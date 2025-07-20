@@ -82,8 +82,7 @@ namespace BarkFluff.Client.WPF
             string shortcutPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Programs", "BarkFluff.lnk");
             string targetPath;
 
-#if WINDOWS_UWP
-// Для UWP (включая WinUI)
+#if WINDOWS_UWP // Для UWP (включая WinUI)
             folderPath = Windows.ApplicationModel.Package.Current.InstalledLocation.Path;
 #else
             var exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
