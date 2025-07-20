@@ -1,6 +1,7 @@
 using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Messages.Host;
+using BarkFluff.Messages.Infrastructure;
 using BarkFluff.Messages.Persistence;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Files;
@@ -59,6 +60,7 @@ public class Program
         builder.Services.AddTransient<ChatsStorage>();
         builder.Services.AddScoped<ChatCache>();
         builder.Services.AddTransient<MessagesStorage>();
+        builder.Services.AddTransient<MessageQueueSender>();
         
         builder.Services.AddMassTransit(x =>
         {
