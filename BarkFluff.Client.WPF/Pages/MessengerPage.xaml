@@ -110,11 +110,12 @@
                     <TextBlock
                         x:Name="TitleWindow"
                         VerticalAlignment="Center"
+                        Cursor=""
                         FontFamily="{DynamicResource AdwaitaSans}"
                         FontSize="13"
                         FontWeight="SemiBold"
                         Foreground="White"
-                        Text="Apogee" />
+                        Text="AppName" />
                 </StackPanel>
 
                 <!--  Аватар пользователя  -->
@@ -122,36 +123,13 @@
                     Grid.Column="0"
                     Width="25"
                     Height="25"
+                    Margin="30,0,0,0"
                     VerticalAlignment="Center"
+                    CornerRadius="15"
                     Cursor="Hand">
                     <Border.Background>
-                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                            <GradientStop Offset="0" Color="#FF6B73FF" />
-                            <GradientStop Offset="1" Color="#FF9B59B6" />
-                        </LinearGradientBrush>
+                        <ImageBrush ImageSource="https://charlie.liis17.ru/apogee.png" Stretch="UniformToFill" />
                     </Border.Background>
-                    <Border.Effect>
-                        <DropShadowEffect
-                            BlurRadius="8"
-                            Opacity="0.4"
-                            ShadowDepth="0"
-                            Color="#FF6B73FF" />
-                    </Border.Effect>
-                    <Border CornerRadius="90">
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                <GradientStop Offset="0" Color="#FF6B73FF" />
-                                <GradientStop Offset="1" Color="#FF9B59B6" />
-                            </LinearGradientBrush>
-                        </Border.Background>
-                        <TextBlock
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            FontSize="18"
-                            FontWeight="Bold"
-                            Foreground="White"
-                            Text="U" />
-                    </Border>
                 </Border>
             </Grid>
         </Border>
@@ -317,15 +295,20 @@
                         HorizontalAlignment="Center"
                         Background="#df5000"
                         BorderThickness="0"
-                        Content="Начать новый чат"
                         CornerRadius="22"
                         Cursor="Hand"
-                        FontFamily="{DynamicResource AdwaitaSans}"
-                        FontSize="14"
-                        FontWeight="Medium"
-                        Foreground="White"
                         MouseOverBackground="#FFC54700"
-                        PressedBackground="#FFAB3D00" />
+                        PressedBackground="#FFAB3D00">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="Add16" />
+                            <TextBlock
+                                FontFamily="{DynamicResource AdwaitaSans}"
+                                FontSize="14"
+                                FontWeight="Medium"
+                                Foreground="White"
+                                Text="Начать новый чат" />
+                        </StackPanel>
+                    </ui:Button>
 
                     <!--  Дополнительные действия  -->
                     <StackPanel
@@ -412,7 +395,7 @@
                 Width="6"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Stretch"
-                Background="#FF404040"
+                Background="Transparent"
                 Cursor="SizeWE"
                 ResizeBehavior="PreviousAndNext"
                 ResizeDirection="Columns">
@@ -422,7 +405,8 @@
                             <Border
                                 Width="2"
                                 HorizontalAlignment="Center"
-                                Background="#FF404040">
+                                Background="Transparent"
+                                Cursor="">
                                 <Border.Style>
                                     <Style TargetType="Border">
                                         <Style.Triggers>
@@ -495,13 +479,27 @@
                                         <ImageBrush ImageSource="https://charlie.liis17.ru/apogee.png" Stretch="UniformToFill" />
                                     </ui:Button.Background>
                                 </ui:Button>
-                                <TextBlock
-                                    Margin="15,0,0,0"
-                                    VerticalAlignment="Center"
-                                    FontFamily="{DynamicResource AdwaitaSans}"
-                                    FontSize="12"
-                                    Foreground="#b95d2c"
-                                    Text="Был(а) в 22:37" />
+                                <StackPanel Orientation="Vertical">
+                                    <TextBlock
+                                        x:Name="UserNameTextBlock"
+                                        Margin="15,0,0,0"
+                                        VerticalAlignment="Center"
+                                        Cursor=""
+                                        FontFamily="{DynamicResource AdwaitaSans}"
+                                        FontSize="13"
+                                        FontWeight="SemiBold"
+                                        Foreground="White"
+                                        Text="Apogee1" />
+                                    <TextBlock
+                                        x:Name="UserOnlineTime"
+                                        Margin="15,0,0,0"
+                                        VerticalAlignment="Center"
+                                        FontFamily="{DynamicResource AdwaitaSans}"
+                                        FontSize="12"
+                                        Foreground="#b95d2c"
+                                        Text="Был(а) в 22:37" />
+                                </StackPanel>
+
                             </StackPanel>
 
                             <!--  Кнопки действий  -->
