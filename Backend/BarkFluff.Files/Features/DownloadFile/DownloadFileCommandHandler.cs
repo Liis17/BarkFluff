@@ -4,6 +4,7 @@ using BarkFluff.Files.Extensions;
 using BarkFluff.Files.Infrastructure;
 using BarkFluff.Files.Persistence;
 using MediatR;
+using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace BarkFluff.Files.Features.DownloadFile;
 
@@ -25,11 +26,13 @@ public class DownloadFileCommandHandler : IRequestHandler<DownloadFileCommand, D
     {
         var file = await _filesStorage.GetFile(request.FileId);
 
-        if (file != null && file.Type != UploadFileType.UserAvatar)
+        // Незя получать файлы по их оригинальным ID кроме аватарок и картинок чата
+        if (file is { Type: not (UploadFileType.UserAvatar or UploadFileType.ChatPicture) })
         {
             throw new Exception("Файл не найден");
         }
         
+        // Это временная ссылка
         if (file is null)
         {
             var tempFile = await _tempFilesStorage.GetTempFile(request.FileId);
@@ -40,6 +43,23 @@ public class DownloadFileCommandHandler : IRequestHandler<DownloadFileCommand, D
             }
             
             file = await _filesStorage.GetFile(tempFile.OriginalFileId);
+        }
+
+        // Это ссылка на превью
+        if (file is null)
+        {
+            file = await _filesStorage.GetFileByPreviewId(request.FileId);
+
+            if (file != null)
+            {
+                file.Id = file.PreviewId!.Value;
+            }
+        }
+
+        // Если все ещё не нашли
+        if (file is null)
+        {
+            throw new Exception("Файл не найден");
         }
         
         if (string.IsNullOrEmpty(file.Etag))

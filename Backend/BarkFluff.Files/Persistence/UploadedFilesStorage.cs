@@ -42,4 +42,9 @@ public class UploadedFilesStorage
             .Where(x => ids.Contains(x.Id))
             .ToListAsync();   
     }
+
+    public async Task<UploadFile?> GetFileByPreviewId(Guid previewId)
+    {
+        return await _context.UploadedFiles.AsNoTracking().FirstOrDefaultAsync(x => x.PreviewId == previewId);
+    }
 }

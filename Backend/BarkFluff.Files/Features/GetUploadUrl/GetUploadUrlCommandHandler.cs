@@ -4,6 +4,7 @@ using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Proto.Files;
 using MediatR;
 
+
 namespace BarkFluff.Files.Features.GetUploadUrl;
 
 public class GetUploadUrlCommandHandler : IRequestHandler<GetUploadUrlCommand, GetUploadUrlResponse>
@@ -11,9 +12,9 @@ public class GetUploadUrlCommandHandler : IRequestHandler<GetUploadUrlCommand, G
 
     private readonly UploadedFilesStorage _uploadedFilesStorage;
     private readonly RunSettings _runSettings;
-
     private readonly UserContext _userContext;
 
+    
     public GetUploadUrlCommandHandler(UploadedFilesStorage uploadedFilesStorage, UserContext userContext, RunSettings runSettings)
     {
         _uploadedFilesStorage = uploadedFilesStorage;
@@ -27,7 +28,7 @@ public class GetUploadUrlCommandHandler : IRequestHandler<GetUploadUrlCommand, G
         {
             CreatedAt = DateTime.UtcNow,
             Type = request.Type,
-            Uploader = _userContext.UserId
+            Uploader = _userContext.UserId,
         };
         
         var file = await _uploadedFilesStorage.AddToStorage(uploadFile);

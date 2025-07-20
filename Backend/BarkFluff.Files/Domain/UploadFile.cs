@@ -19,4 +19,8 @@ public class UploadFile
     public UploadFileType Type { get; set; }
 
     public string? Filename { get; set; }
+    
+    public Guid? PreviewId { get; set; }
+    
+    public long Size { get; set; }
 }

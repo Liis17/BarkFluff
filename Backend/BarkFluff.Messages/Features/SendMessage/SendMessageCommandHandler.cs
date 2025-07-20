@@ -110,7 +110,10 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                 throw new FileNotSupportedException();
             }
             
-            attachments = filesInfo.FilesInfos.Select(x => new Domain.MessageAttachment { FileId = x.Id, Type = _attachmentMap[x.Type]}).ToList();
+            attachments = filesInfo.FilesInfos.Select(x => new Domain.MessageAttachment { FileId = x.Id, 
+                FileSize = x.FileSize, 
+                PreviewUrl = x.PreviewUrl,
+                Type = _attachmentMap[x.Type]}).ToList();
 
             if (!attachments.Any())
             {
@@ -118,7 +121,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             }
         }
 
-        var message = new Message()
+        var message = new Message
         {
             ChatId = chatId.Value, Content = new MessageContent()
             {
