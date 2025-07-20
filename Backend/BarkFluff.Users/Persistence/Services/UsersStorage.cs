@@ -197,7 +197,7 @@ public class UsersStorage
         await _usersContext.SaveChangesAsync();
     }
 
-     public async Task UpdateProfilePicture(long userId, string profilePictureUrl)
+     public async Task UpdateProfilePicture(long userId, string profilePictureUrl, string profilePicturePreviewUrl)
      {
         var user = await _usersContext.Users.FirstOrDefaultAsync(x => x.Id == userId);
         
@@ -207,6 +207,7 @@ public class UsersStorage
         }
         
         user.ProfilePicture = profilePictureUrl;
+        user.ProfilePicturePreviewUrl = profilePicturePreviewUrl;
         await _usersContext.SaveChangesAsync();
      }
     

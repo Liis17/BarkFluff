@@ -42,11 +42,12 @@ public class SetProfilePictureCommandHandler : IRequestHandler<SetProfilePicture
         
         // Извлекаем URL изображения из ответа
         var fileUrl = fileDataResponse.FileInfo.FileUrl;
+        var previewUrl = fileDataResponse.FileInfo.PreviewUrl;
         
         // Обновляем профильное изображение пользователя
-        await _usersStorage.UpdateProfilePicture(_userContext.UserId, fileUrl);
+        await _usersStorage.UpdateProfilePicture(_userContext.UserId, fileUrl, previewUrl);
 
-        await _userInfoQueueSender.UserChangedAvatarEvent(_userContext.UserId, fileUrl);
+        await _userInfoQueueSender.UserChangedAvatarEvent(_userContext.UserId, fileUrl, previewUrl);
         
         return new SetProfilePictureResponse();
     }

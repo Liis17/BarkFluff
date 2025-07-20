@@ -200,5 +200,6 @@ message User{
   google.protobuf.Timestamp registration_date = 5; // дата регистрации
   string profile_picture = 6; // ссылка на аватарку пользователя
   string bio = 7; // Био
+  string profile_picture_preview = 8; // ссылка на превью аватарки
 }
 

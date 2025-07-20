@@ -37,12 +37,13 @@ public class UserInfoQueueSender
         await _publishEndpoint.Publish(usernameChangedEvent);
     }
 
-    public async Task UserChangedAvatarEvent(long userId, string profilePictureUrl)
+    public async Task UserChangedAvatarEvent(long userId, string profilePictureUrl, string profilePicturePreviewUrl)
     {
         var userChangedAvatarEvent = new UserChangedAvatar()
         {
             UserId = userId,
-            ProfilePictureUrl = profilePictureUrl
+            ProfilePictureUrl = profilePictureUrl,
+            ProfilePictureUrlPreview = profilePicturePreviewUrl
         };
         
         await _publishEndpoint.Publish(userChangedAvatarEvent);
