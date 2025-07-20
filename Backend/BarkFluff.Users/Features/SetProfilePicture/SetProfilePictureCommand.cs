@@ -5,5 +5,5 @@ namespace BarkFluff.Users.Features.SetProfilePicture;
 
 public class SetProfilePictureCommand : IRequest<SetProfilePictureResponse>
 {
-    public Guid FileId { get; set; }
+    public Guid? FileId { get; set; }
 }
