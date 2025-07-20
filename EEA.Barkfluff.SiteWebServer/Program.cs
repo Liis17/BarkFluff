@@ -7,7 +7,6 @@ namespace EEA.Barkfluff.SiteWebServer
             var builder = WebApplication.CreateBuilder(args);
             var app = builder.Build();
 
-            // Обслуживание единственного HTML-файла
             app.MapGet("/", async context =>
             {
                 var filePath = Path.Combine("Pages", "index.html");

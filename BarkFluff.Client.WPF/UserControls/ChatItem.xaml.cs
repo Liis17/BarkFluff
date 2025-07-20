@@ -48,9 +48,9 @@ namespace BarkFluff.Client.WPF.UserControls
 
             DropShadowEffect shadowEffect = new DropShadowEffect
             {
-                BlurRadius = 12,
-                Opacity = 0.7,
-                ShadowDepth = 0,
+                BlurRadius = 15,
+                Opacity = 0.9,
+                ShadowDepth = 2,
                 Color = averageColor
             };
             border.Effect = shadowEffect;
