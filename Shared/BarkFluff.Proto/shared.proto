@@ -44,6 +44,10 @@ message MessageAttachment {
   MessageAttachmentType type = 2; // Тип вложения
 
   string file_id = 3; // Индетификатор файла
+  
+  string preview_url = 4; // Ссылка на превью файла (может быть пустым)
+  
+  int64 attachment_size = 5; // Размер файла в байтах
 }
 
 enum MessageAttachmentType {

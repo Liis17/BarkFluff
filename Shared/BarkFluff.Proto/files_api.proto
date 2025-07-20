@@ -27,6 +27,7 @@ message GetTempDownloadUrlResponse {
   message DownloadFileData {
     string file_id = 1; // идентификатор файла
     string url = 2; // ссылка на загрузку
+    string preview_url = 3; // ссылка на превью файла
   }
   
   repeated DownloadFileData file_urls = 1; // ссылки на файлы
@@ -58,6 +59,8 @@ message UploadFileInfo {
   UploadFileType type = 6; // Тип загруженного файла
   string file_name = 7; // Имя файла
   string file_url = 8; // Ссылка на загрузку файла
+  string preview_url = 9; // Ссылка на превью, если есть
+  int64 file_size = 10; // Размер файла в байтах
 }
 
 message GetUploadUrlRequest {
