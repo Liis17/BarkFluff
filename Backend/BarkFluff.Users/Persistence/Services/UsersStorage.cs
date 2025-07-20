@@ -71,7 +71,7 @@ public class UsersStorage
     
         var sql = @"
             SELECT u.""Id"", u.""FirstName"", u.""LastName"", u.""Username"", u.""RegistrationDate"", 
-                   u.""ProfilePicture"", u.""Bio"", u.""IsDraft"",
+                   u.""ProfilePicture"", u.""ProfilePicturePreviewUrl"", u.""Bio"", u.""IsDraft"",
                    uc.""Email"", uc.""UserId""
             FROM ""Users"" u
             LEFT JOIN ""UserContacts"" uc ON u.""Id"" = uc.""UserId""
@@ -122,7 +122,7 @@ public class UsersStorage
         // SQL запрос для поиска с использованием триграмм
         var sql = @"
             SELECT u.""Id"", u.""FirstName"", u.""LastName"", u.""Username"", u.""RegistrationDate"", 
-                   u.""ProfilePicture"", u.""Bio"", u.""IsDraft"",
+                   u.""ProfilePicture"", u.""ProfilePicturePreviewUrl"", u.""Bio"", u.""IsDraft"",
                    uc.""Email"", uc.""UserId""
             FROM ""Users"" u
             LEFT JOIN ""UserContacts"" uc ON u.""Id"" = uc.""UserId""
