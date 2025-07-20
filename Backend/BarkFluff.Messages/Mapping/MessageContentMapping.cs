@@ -23,7 +23,7 @@ public static class MessageContentMapping
             content.Attachments.Add(new MessageAttachment()
             {
                 FileId = attachment.FileId,
-                PreviewUrl = attachment.PreviewUrl,
+                PreviewUrl = attachment.PreviewUrl ?? string.Empty,
                 AttachmentSize = attachment.FileSize,
                 Id = attachment.Id,
                 Type = (MessageAttachmentType)(int)attachment.Type

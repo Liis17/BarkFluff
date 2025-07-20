@@ -68,58 +68,66 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
         
         long fileSize = request.FileStream.Length;
 
-        using var originalStream = new MemoryStream();
+        var originalStream = new MemoryStream();
         await request.FileStream.CopyToAsync(originalStream, cancellationToken);
         
         originalStream.Position = 0;
         
-        // Загружаем файл в S3 напрямую из стрима
-        var etag = await _s3Uploader.UploadAsync(
-            bucketName, // Имя бакета на основе типа файла
-            $"{file.Id}", // Используем ID файла как ключ
-            originalStream,
-            contentType
-        );
-        
-        _logger.LogInformation("Файл успешно загружен в S3, получен Etag: {Etag}", etag);
-        
-        // Если это изображение — сжимаем и сохраняем с другим ключом
-        if (_filesToNeedGeneratePreview.Contains(file.Type) && contentType.StartsWith("image/"))
+        try
         {
-            _logger.LogInformation("Создание превью для изображения с ID {FileId}", file.Id);
-            try
+            // Загружаем файл в S3 напрямую из стрима
+            var etag = await _s3Uploader.UploadAsync(
+                bucketName, // Имя бакета на основе типа файла
+                $"{file.Id}", // Используем ID файла как ключ
+                originalStream,
+                contentType
+            );
+            
+            _logger.LogInformation("Файл успешно загружен в S3, получен Etag: {Etag}", etag);
+            
+            // Если это изображение — сжимаем и сохраняем с другим ключом
+            if (_filesToNeedGeneratePreview.Contains(file.Type) && contentType.StartsWith("image/"))
             {
-                var previewId = Guid.NewGuid();
-
-                originalStream.Position = 0;
-
-                var customWidth = _customFileTypeWidth.GetValueOrDefault(file.Type, 1024);
-                // Сжимаем
-                var compressedBytes = await _imageCompressor.CompressImageAsync(originalStream, customWidth);
-
-                using var compressedStream = new MemoryStream(compressedBytes);
-
-                await _s3Uploader.UploadAsync(
-                    bucketName,
-                    $"{previewId}", // ключ для сжатой версии
-                    compressedStream,
-                    "image/jpeg" // сохраняем как JPEG
-                );
-
-                file.PreviewId = previewId;
-                _logger.LogInformation("Превью успешно создано с ID: {PreviewId}", previewId);
+                _logger.LogInformation("Создание превью для изображения с ID {FileId}", file.Id);
+                try
+                {
+                    var previewId = Guid.NewGuid();
+            
+                    originalStream.Position = 0;
+            
+                    var customWidth = _customFileTypeWidth.GetValueOrDefault(file.Type, 1024);
+                    // Сжимаем
+                    var compressedBytes = await _imageCompressor.CompressImageAsync(originalStream, customWidth);
+            
+                    using var compressedStream = new MemoryStream(compressedBytes);
+            
+                    await _s3Uploader.UploadAsync(
+                        bucketName,
+                        $"{previewId}", // ключ для сжатой версии
+                        compressedStream,
+                        "image/jpeg" // сохраняем как JPEG
+                    );
+            
+                    file.PreviewId = previewId;
+                    _logger.LogInformation("Превью успешно создано с ID: {PreviewId}", previewId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Ошибка при создании превью для изображения с ID {FileId}", file.Id);
+                }
+             
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Ошибка при создании превью для изображения с ID {FileId}", file.Id);
-            }
-         
+            
+            // Обновляем метаданные файла
+            file.Etag = etag;
+            file.UploadedAt = DateTime.UtcNow;
+            file.Size = fileSize;
         }
-        
-        // Обновляем метаданные файла
-        file.Etag = etag;
-        file.UploadedAt = DateTime.UtcNow;
-        file.Size = fileSize;
+        finally
+        {
+            // Обязательно закрываем поток в конце работы
+            await originalStream.DisposeAsync();
+        }
         
         // Сохраняем изменения
         await _filesStorage.UpdateFile(file);
