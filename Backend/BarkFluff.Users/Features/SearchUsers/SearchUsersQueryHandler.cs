@@ -27,6 +27,11 @@ public class SearchUsersQueryHandler : IRequestHandler<SearchUsersQuery, SearchU
         }
         
         var usersResult =  await _usersStorage.SearchUsersByTrigram(request.Query, request.Skip, request.Size);
+
+        if (usersResult.TotalCount < 0)
+        {
+            usersResult.TotalCount = 0;
+        }
         
         return new SearchUsersResponse
         {
