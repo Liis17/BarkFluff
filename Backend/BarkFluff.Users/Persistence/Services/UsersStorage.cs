@@ -76,6 +76,7 @@ public class UsersStorage
             FROM ""Users"" u
             LEFT JOIN ""UserContacts"" uc ON u.""Id"" = uc.""UserId""
             WHERE to_tsvector('russian', u.""FirstName"" || ' ' || u.""LastName"" || ' ' || u.""Username"") @@ plainto_tsquery('russian', @searchTerm)
+            AND u.""IsDraft"" = false
             ORDER BY ts_rank(to_tsvector('russian', u.""FirstName"" || ' ' || u.""LastName"" || ' ' || u.""Username""), plainto_tsquery('russian', @searchTerm)) DESC
             LIMIT @pageSize OFFSET @skip";
 
@@ -91,7 +92,8 @@ public class UsersStorage
         var countSql = @"
             SELECT COUNT(*)
             FROM ""Users"" u
-            WHERE to_tsvector('russian', u.""FirstName"" || ' ' || u.""LastName"" || ' ' || u.""Username"") @@ plainto_tsquery('russian', @searchTerm)";
+            WHERE to_tsvector('russian', u.""FirstName"" || ' ' || u.""LastName"" || ' ' || u.""Username"") @@ plainto_tsquery('russian', @searchTerm)
+            AND u.""IsDraft"" = false";
 
         var totalCount = await _usersContext.Database.ExecuteSqlRawAsync(countSql, 
             new NpgsqlParameter("@searchTerm", normalizedSearchTerm));
@@ -124,9 +126,10 @@ public class UsersStorage
                    uc.""Email"", uc.""UserId""
             FROM ""Users"" u
             LEFT JOIN ""UserContacts"" uc ON u.""Id"" = uc.""UserId""
-            WHERE similarity(u.""FirstName"", @searchTerm) > @threshold
+            WHERE (similarity(u.""FirstName"", @searchTerm) > @threshold
                OR similarity(u.""LastName"", @searchTerm) > @threshold
-               OR similarity(u.""Username"", @searchTerm) > @threshold
+               OR similarity(u.""Username"", @searchTerm) > @threshold)
+            AND u.""IsDraft"" = false
             ORDER BY GREATEST(
                 similarity(u.""FirstName"", @searchTerm),
                 similarity(u.""LastName"", @searchTerm),
@@ -147,9 +150,10 @@ public class UsersStorage
         var countSql = @"
             SELECT COUNT(*)
             FROM ""Users"" u
-            WHERE similarity(u.""FirstName"", @searchTerm) > @threshold
+            WHERE (similarity(u.""FirstName"", @searchTerm) > @threshold
                OR similarity(u.""LastName"", @searchTerm) > @threshold
-               OR similarity(u.""Username"", @searchTerm) > @threshold";
+               OR similarity(u.""Username"", @searchTerm) > @threshold)
+            AND u.""IsDraft"" = false";
 
         var totalCount = await _usersContext.Database.ExecuteSqlRawAsync(countSql, 
             new NpgsqlParameter("@searchTerm", normalizedSearchTerm),
