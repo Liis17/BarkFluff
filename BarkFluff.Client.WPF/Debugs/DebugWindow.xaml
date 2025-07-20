@@ -18,7 +18,8 @@
             Margin="80,0,0,0"
             HorizontalAlignment="Stretch"
             VerticalAlignment="Top"
-            Panel.ZIndex="500" Cursor="" />
+            Panel.ZIndex="500"
+            Cursor="" />
         <StackPanel
             Width="250"
             HorizontalAlignment="Left"
@@ -141,6 +142,36 @@
                 Background="#df5000"
                 Click="CompressVideo"
                 Content="Сжать видео"
+                CornerRadius="22"
+                FontFamily="{DynamicResource AdwaitaSans}"
+                FontSize="16"
+                FontWeight="SemiBold"
+                Foreground="White"
+                MouseOverBackground="#FFC54700"
+                PressedBackground="#FFAB3D00" />
+            <ui:Button
+                Width="200"
+                Height="45"
+                Margin="5"
+                HorizontalAlignment="Center"
+                Background="#df5000"
+                Click="VoiceRecord"
+                Content="Кнопка голосовухи"
+                CornerRadius="22"
+                FontFamily="{DynamicResource AdwaitaSans}"
+                FontSize="16"
+                FontWeight="SemiBold"
+                Foreground="White"
+                MouseOverBackground="#FFC54700"
+                PressedBackground="#FFAB3D00" />
+            <ui:Button
+                Width="200"
+                Height="45"
+                Margin="5"
+                HorizontalAlignment="Center"
+                Background="#df5000"
+                Click="viewVoice"
+                Content="Показать голосовуху"
                 CornerRadius="22"
                 FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="16"

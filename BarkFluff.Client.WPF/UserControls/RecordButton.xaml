@@ -1,0 +1,31 @@
+﻿<UserControl
+    x:Class="BarkFluff.Client.WPF.UserControls.RecordButton"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:BarkFluff.Client.WPF.UserControls"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Width="120"
+    Height="120"
+    d:DesignHeight="450"
+    d:DesignWidth="800"
+    mc:Ignorable="d">
+    <UserControl.Resources>
+        <LinearGradientBrush x:Key="ButtonGradientBrush" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Offset="0.0" Color="#FF66CCFF" />
+            <GradientStop Offset="1.0" Color="#FF3399FF" />
+        </LinearGradientBrush>
+    </UserControl.Resources>
+    <Grid>
+        <Ellipse
+            x:Name="GlowEllipse"
+            Width="100"
+            Height="100"
+            Fill="{StaticResource ButtonGradientBrush}"
+            RenderTransformOrigin="0.5,0.5">
+            <Ellipse.RenderTransform>
+                <ScaleTransform x:Name="ButtonScale" ScaleX="1" ScaleY="1" />
+            </Ellipse.RenderTransform>
+        </Ellipse>
+    </Grid>
+</UserControl>

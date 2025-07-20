@@ -89,5 +89,20 @@ namespace BarkFluff.Client.WPF.Debugs
             var response = await App.ServerCommunication.GetChats(App.GParam);
             var a = response;
         }
+
+        private void VoiceRecord(object sender, RoutedEventArgs e)
+        {
+            var child = new RecordButton();
+            HolaBolaGrid.Children.Clear();
+            HolaBolaGrid.Children.Add(child);
+        }
+
+        private void viewVoice(object sender, RoutedEventArgs e)
+        {
+            var a = AudioAnalyzer.AnalyzeLoudness(@"C:\Users\daske\Desktop\record_20250720_002906.ogg");
+            var child = new VoiceMessage(a);
+            HolaBolaGrid.Children.Clear();
+            HolaBolaGrid.Children.Add(child);
+        }
     }
 }

@@ -71,10 +71,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="ServiceWindows\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Compile Update="Pages\SetupPages\Login.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
