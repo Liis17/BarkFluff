@@ -36,7 +36,7 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
     {
         var command = new SetProfilePictureCommand
         {
-            FileId = Guid.Parse(request.FileId)
+            FileId = string.IsNullOrEmpty(request.FileId) ? null : Guid.Parse(request.FileId)
         };
         
         return _mediator.Send(command);
