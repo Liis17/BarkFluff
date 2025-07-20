@@ -3,6 +3,7 @@ using BarkFluff.Files.Extensions;
 using BarkFluff.Files.Host;
 using BarkFluff.Files.Infrastructure;
 using BarkFluff.Files.Persistence;
+using BarkFluff.Files.Services;
 using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Shared.Identity;
@@ -36,6 +37,7 @@ public class Program
         
         builder.Services.AddScoped<UploadedFilesStorage>();
         builder.Services.AddScoped<TempFilesStorage>();
+        builder.Services.AddScoped<ImageCompressor>();
 
         builder.Services.AddMinioS3(builder.Configuration);
         
