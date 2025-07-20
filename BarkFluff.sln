@@ -58,7 +58,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Updates", "Backen
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ExternalEnvironmentApplications", "ExternalEnvironmentApplications", "{C71695D9-DCBE-32C0-BF7A-7B5E62F77FEC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EEA.Barkfluff.SiteWebServer", "EEA.Barkfluff.SiteWebServer\EEA.Barkfluff.SiteWebServer.csproj", "{9F1A872F-9733-41C1-9C3C-C2E82AF7F48F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Barkfluff.SiteWebServer", "Barkfluff.SiteWebServer\Barkfluff.SiteWebServer.csproj", "{9F1A872F-9733-41C1-9C3C-C2E82AF7F48F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

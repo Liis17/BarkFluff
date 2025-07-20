@@ -1,4 +1,4 @@
-namespace EEA.Barkfluff.SiteWebServer
+namespace Barkfluff.SiteWebServer
 {
     public class Program
     {
