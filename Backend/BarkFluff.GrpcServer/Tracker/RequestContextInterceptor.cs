@@ -28,6 +28,7 @@ public class RequestContextInterceptor : Interceptor
         requestContext.OperationSystem = GetMetadataValue(metadata, MetadataKeys.OsName);
         requestContext.AppName = GetMetadataValue(metadata, MetadataKeys.AppName);
         requestContext.AppVersion = GetMetadataValue(metadata, MetadataKeys.AppVersion);
+        requestContext.DeviceId = GetMetadataValue(metadata, MetadataKeys.DeviceId);
         
         requestContext.IpAddress = GetMetadataValue(metadata, MetadataKeys.IpAddress) 
                                    ?? httpContext?.Connection?.RemoteIpAddress?.ToString();
