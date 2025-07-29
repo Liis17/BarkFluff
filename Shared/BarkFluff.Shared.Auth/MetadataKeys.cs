@@ -13,4 +13,6 @@ public class MetadataKeys
     public const string AppVersion = "x-app-version";
     
     public const string IpAddress = "x-ip-address";
+    
+    public const string DeviceId = "x-device-id";
 }

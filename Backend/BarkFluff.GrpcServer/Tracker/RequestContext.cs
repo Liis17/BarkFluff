@@ -11,4 +11,6 @@ public class RequestContext
     public string? AppName { get; set; }
     
     public string? AppVersion { get; set; }
+    
+    public string? DeviceId { get; set; }
 }
