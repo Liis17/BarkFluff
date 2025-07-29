@@ -37,12 +37,10 @@ public class DownloadFileCommandHandler : IRequestHandler<DownloadFileCommand, D
         {
             var tempFile = await _tempFilesStorage.GetTempFile(request.FileId);
 
-            if (tempFile is null)
+            if (tempFile != null)
             {
-                throw new Exception("Файл не найден");
+                file = await _filesStorage.GetFile(tempFile.OriginalFileId);
             }
-            
-            file = await _filesStorage.GetFile(tempFile.OriginalFileId);
         }
 
         // Это ссылка на превью

@@ -18,6 +18,8 @@ public class S3Uploader
             BucketName = bucket,
             Key = key,
             InputStream = data,
+            AutoCloseStream = false, 
+            AutoResetStreamPosition = false,
             ContentType = contentType,
             Metadata = { ["original-filename"] = Path.GetFileName(key) }
         };
