@@ -9,6 +9,8 @@ jobs:
   build:
     runs-on: self-hosted
     steps:
+    - name: Configure Git safe directory
+      run: git config --global --add safe.directory $GITHUB_WORKSPACE
     - uses: actions/checkout@v4
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
@@ -19,12 +21,12 @@ jobs:
     - name: Build
       run: dotnet build BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj --no-restore --configuration Release
     - name: Publish
-      run: dotnet publish BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj --no-build --configuration Release --self-contained true --runtime win-x64 -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --output ./BarkFluff/BarkFluff/publish
+      run: dotnet publish BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj --no-build --configuration Release --self-contained true --runtime win-x64 -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --output ./publish
     - name: Zip build
       uses: vimtor/action-zip@v1
       with:
-        files: BarkFluff/BarkFluff/publish/
-        dest: BarkFluff/BarkFluff/wpf-build.zip
+        files: publish/
+        dest: wpf-build.zip
     - name: Generate tag
       id: generate_tag
       run: |
@@ -35,4 +37,4 @@ jobs:
         GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
       run: |
         echo "Using tag: ${{ env.TAG }}"
-        gh release create ${{ env.TAG }} BarkFluff/BarkFluff/wpf-build.zip --repo Liis17/BarkFluff.Releases --title "Dev Build ${{ env.TAG }}" --notes "Automated build from Dev branch" --prerelease
+        gh release create ${{ env.TAG }} wpf-build.zip --repo Liis17/BarkFluff.Releases --title "Dev Build ${{ env.TAG }}" --notes "Automated build from Dev branch"
