@@ -45,14 +45,15 @@ jobs:
     - name: Delete existing tag and release if it exists
       shell: pwsh
       env:
-        GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
-        TAG: ${{ env.TAG }}
+      GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+      TAG: ${{ env.TAG }}
       run: |
         gh release view $env:TAG --repo Liis17/BarkFluff.Releases > $null 2>&1
         if ($LASTEXITCODE -eq 0) {
-          Write-Host "Tag $env:TAG already exists, deleting it"
-          gh release delete $env:TAG --repo Liis17/BarkFluff.Releases --yes
-          git push --delete origin $env:TAG
+        Write-Host "Tag $env:TAG already exists, deleting it"
+        gh release delete $env:TAG --repo Liis17/BarkFluff.Releases --yes
+        git push --delete origin $env:TAG
         } else {
-          Write-Host "Tag $env:TAG does not exist, proceeding"
+        Write-Host "Tag $env:TAG does not exist, proceeding"
         }
+        exit 0
