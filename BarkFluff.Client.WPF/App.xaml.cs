@@ -100,15 +100,16 @@ namespace BarkFluff.Client.WPF
         private void Bootstrap()
         {
             CacheManager = new MessageCacheManager("cache.db", "Cache/");
-            string targetPath;
+            
+            try
+            {
+                string targetPath;
 #if WINDOWS_UWP // Для UWP (включая WinUI)
             folderPath = Windows.ApplicationModel.Package.Current.InstalledLocation.Path;
 #else
-            var exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
-            targetPath = Path.Combine(Path.GetDirectoryName(exePath), "BarkFluff.Client.WPF.exe");
+                var exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+                targetPath = Path.Combine(Path.GetDirectoryName(exePath), "BarkFluff.Client.WPF.exe");
 #endif
-            try
-            {
                 string shortcutPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Programs", "BarkFluff.lnk");
                 ShortcutHelper.CreateShortcut(shortcutPath, targetPath, AppUserModelId);
             }
