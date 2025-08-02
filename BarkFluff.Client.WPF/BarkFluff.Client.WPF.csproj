@@ -12,7 +12,13 @@
     <ApplicationIcon>Resources\Icons\barkfluff_logo.ico</ApplicationIcon>
     <Platforms>x64</Platforms>
     <ProduceReferenceAssembly>False</ProduceReferenceAssembly>
+    <StartupObject>BarkFluff.Client.WPF.App</StartupObject>
     
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
