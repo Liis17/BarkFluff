@@ -1,5 +1,6 @@
 ﻿using BarkFluff.Client.WPF.Pages;
 using BarkFluff.Client.WPF.Services;
+using BarkFluff.Client.WPF.Services.App.Caching;
 using BarkFluff.Client.WPF.Services.App.Converter;
 using BarkFluff.Client.WPF.Services.Notification;
 using BarkFluff.Client.WPF.Services.Notification.System;
@@ -8,6 +9,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Windows;
+
+using static Microsoft.WindowsAPICodePack.Shell.PropertySystem.SystemProperties.System;
 
 using MessageBox = System.Windows.MessageBox;
 using MessageBoxButton = System.Windows.MessageBoxButton;
@@ -20,12 +23,20 @@ namespace BarkFluff.Client.WPF
     /// </summary>
     public partial class App : Application
     {
+        private const string appUserModelId = "com.barkfluff.messenger";
+        private const string debugAppUserModelId = "com.barkfluff.messenger.debug";
+        private const string mutexName = "BarkFluffMutex";
+        private const string debugMutexName = "BarkFluffDebug";
+
+        public static string AppUserModelId { get; set; }
+        public static string MutexName { get; set; }
         public static BarkFluff.WebApi.Core.WebApi ServerCommunication { get; set; } = null!;
         public static BarkFluff.WebApi.Core.MessengerData.GlobalParam GParam { get; set; } = null!;
         public static ImageColorAnalyzer ColorAnalyzer { get; set; } = null!;
         private static Mutex mutex = null!;
         private CancellationTokenSource cts = new CancellationTokenSource();
         public static MainWindow MessengerWindow { get; set; } = null!;
+        public static MessageCacheManager CacheManager { get; set; } = null!;
         public App()
         {
 
@@ -33,9 +44,15 @@ namespace BarkFluff.Client.WPF
         }
         protected override void OnStartup(StartupEventArgs e)
         {
-
+#if (DEBUG)
+            AppUserModelId = debugAppUserModelId;
+            MutexName = debugMutexName;
+#else
+            AppUserModelId = appUserModelId;
+            MutexName = mutexName;
+#endif
             #region
-            mutex = new Mutex(true, "BarkFluffMutex", out bool isNew);
+            mutex = new Mutex(true, MutexName, out bool isNew);
             if (!isNew)
             {
                 if (e.Args.Length > 0)
@@ -77,32 +94,40 @@ namespace BarkFluff.Client.WPF
             Bootstrap();
         }
 
+        /// <summary>
+        /// Главный метод инициализации приложения.
+        /// </summary>
         private void Bootstrap()
         {
-            string shortcutPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Programs", "BarkFluff.lnk");
+            CacheManager = new MessageCacheManager("cache.db", "Cache/");
             string targetPath;
-
 #if WINDOWS_UWP // Для UWP (включая WinUI)
             folderPath = Windows.ApplicationModel.Package.Current.InstalledLocation.Path;
 #else
             var exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
             targetPath = Path.Combine(Path.GetDirectoryName(exePath), "BarkFluff.Client.WPF.exe");
 #endif
+            try
+            {
+                string shortcutPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Programs", "BarkFluff.lnk");
+                ShortcutHelper.CreateShortcut(shortcutPath, targetPath, AppUserModelId);
+            }
+            catch
+            {
 
-            string appUserModelId = "com.barkfluff.messenger";
-
-            ShortcutHelper.CreateShortcut(shortcutPath, targetPath, appUserModelId);
-            AppIdHelper.SetCurrentProcessExplicitAppUserModelID("com.barkfluff.messenger");
+            }
+            AppIdHelper.SetCurrentProcessExplicitAppUserModelID(AppUserModelId);
             ServerCommunication = new WebApi.Core.WebApi();
             ColorAnalyzer = new ImageColorAnalyzer();
             string filePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "GlobalParam.json");
 
+#if (DEBUG)
             if (Debugger.IsAttached)
             {
-                // Увеличивает версию
+                // Увеличивает версию если в дебаге под отладкой
                 IncrementVersion();
             }
-
+#endif
             MessengerWindow = new MainWindow();
             MessengerWindow.Show();
 
