@@ -46,15 +46,12 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
       run: |
-        if (gh release view $env:TAG --repo Liis17/BarkFluff.Releases) {
-          echo "Tag $env:TAG already exists, deleting it"
-          gh release delete $env:TAG --repo Liis17/BarkFluff.Releases --yes
-        } else {
-          echo "Tag $env:TAG does not exist, proceeding"
-        }
-    - name: Create and upload release
+        $ErrorActionPreference = "Continue"
+        gh release delete $env:TAG --repo Liis17/BarkFluff.Releases --yes 2>$null
+        git push --delete origin $env:TAG 2>$null
+
+    - name: Create new release
       env:
         GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
       run: |
-        echo "Using tag: $env:TAG"
-        gh release create $env:TAG wpf-build.zip --repo Liis17/BarkFluff.Releases --title "Dev Build $env:TAG" --notes "Automated build from Dev branch"
+        gh release create $env:TAG ./wpf-build.zip --repo Liis17/BarkFluff.Releases --title "Dev Release $env:TAG" --notes "Automated build from Dev branch"
