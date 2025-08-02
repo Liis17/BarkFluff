@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: [self-hosted, CHARLIE-SERVER]
 
     steps:
     - uses: actions/checkout@v4
@@ -34,9 +34,13 @@ jobs:
         files: publish/
         dest: wpf-build.zip
 
-    - name: Upload to public repo release
+    - name: Generate tag
+      id: generate_tag
+      run: echo "TAG=dev-$(date +%Y%m%d%H%M%S)" >> $GITHUB_ENV
+
+    - name: Create and upload release
       env:
         GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
       run: |
-        gh release create ${{ env.TAG }} --repo Liis17/BarkFluff.Releases --title "Build ${{ github.sha }}" --notes "Automated build from Dev branch" || true
-        gh release upload ${{ env.TAG }} wpf-build.zip --repo Liis17/BarkFluff.Releases
+        echo "Using tag: ${{ env.TAG }}"
+        gh release create ${{ env.TAG }} wpf-build.zip --repo Liis17/BarkFluff.Releases --title "Dev Build ${{ env.TAG }}" --notes "Automated build from Dev branch" --prerelease
