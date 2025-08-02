@@ -29,14 +29,29 @@ jobs:
       with:
         files: publish/
         dest: wpf-build.zip
+    - name: Verify zip file
+      run: |
+        if (Test-Path wpf-build.zip) { echo "wpf-build.zip exists" } else { echo "wpf-build.zip not found"; exit 1 }
+        dir wpf-build.zip
     - name: Generate tag
       id: generate_tag
       run: |
         $commitHash = $(git rev-parse --short HEAD)
         $timestamp = $(Get-Date -Format 'yyyyMMddHHmmss')
-        $tag = "dev-$timestamp-$commitHash"
+        $random = Get-Random -Minimum 1000 -Maximum 9999
+        $tag = "dev-$timestamp-$commitHash-$random"
         echo "TAG=$tag" >> $env:GITHUB_ENV
         echo "Generated tag: $tag"
+    - name: Delete existing tag if it exists
+      env:
+        GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+      run: |
+        if (gh release view $env:TAG --repo Liis17/BarkFluff.Releases) {
+          echo "Tag $env:TAG already exists, deleting it"
+          gh release delete $env:TAG --repo Liis17/BarkFluff.Releases --yes
+        } else {
+          echo "Tag $env:TAG does not exist, proceeding"
+        }
     - name: Create and upload release
       env:
         GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
