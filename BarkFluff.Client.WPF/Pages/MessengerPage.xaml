@@ -35,6 +35,30 @@
                 </DoubleAnimation.EasingFunction>
             </DoubleAnimation>
         </Storyboard>
+
+        <Storyboard x:Key="ExpandAnimation">
+            <DoubleAnimation
+                Storyboard.TargetName="SearchResultList"
+                Storyboard.TargetProperty="Height"
+                To="550"
+                Duration="0:0:0.3">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+
+        <Storyboard x:Key="CollapseAnimation">
+            <DoubleAnimation
+                Storyboard.TargetName="SearchResultList"
+                Storyboard.TargetProperty="Height"
+                To="0"
+                Duration="0:0:0.3">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
     </UserControl.Resources>
 
     <Grid x:Name="MainGrid" Opacity="1">
@@ -70,7 +94,8 @@
                     VerticalAlignment="Center"
                     Background="Red"
                     BorderThickness="0"
-                    Cursor="Hand">
+                    Cursor="Hand"
+                    ToolTip="Открыть боковое меню">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
                             <Border Background="{TemplateBinding Background}" CornerRadius="8">
@@ -126,7 +151,8 @@
                     Margin="30,0,0,0"
                     VerticalAlignment="Center"
                     CornerRadius="15"
-                    Cursor="Hand">
+                    Cursor="Hand"
+                    ToolTip="Открыть мой профиль">
                     <Border.Background>
                         <ImageBrush ImageSource="https://charlie.liis17.ru/apogee.png" Stretch="UniformToFill" />
                     </Border.Background>
@@ -146,29 +172,27 @@
             </Grid.ColumnDefinitions>
 
             <!--  Панель списка чатов  -->
+
             <Border
                 Grid.Column="0"
                 Background="#FF252526"
                 BorderBrush="#FF404040"
                 BorderThickness="0,0,1,0">
-
-                <Grid>
+                <Grid Margin="0,0,0,0" Background="#FF252526">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-
                     <!--  Панель поиска  -->
                     <Border
                         Grid.Row="0"
-                        Padding="16,12"
+                        Padding="0,0"
                         Background="#FF2D2D30"
                         BorderBrush="#FF404040"
                         BorderThickness="0,0,0,1">
-
                         <Border
                             Padding="12,8"
-                            Background="#FF3C3C3C"
+                            Background="Transparent"
                             CornerRadius="8">
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -184,14 +208,19 @@
                                     Foreground="#FF9E9E9E"
                                     Symbol="Search16" />
 
-                                <TextBox
+                                <ui:TextBox
+                                    x:Name="SearchTextBox"
                                     Grid.Column="1"
                                     VerticalAlignment="Center"
                                     Background="Transparent"
                                     BorderThickness="0"
                                     FontFamily="{DynamicResource AdwaitaSans}"
                                     FontSize="14"
-                                    Foreground="White" />
+                                    Foreground="White"
+                                    GotFocus="SearchTextBox_GotFocus"
+                                    LostFocus="SearchTextBox_LostFocus"
+                                    PlaceholderText="Поиск"
+                                    TextChanged="SearchTextBox_TextChanged" />
 
                                 <TextBlock
                                     Grid.Column="1"
@@ -214,17 +243,20 @@
                                 </TextBlock>
                             </Grid>
                         </Border>
+
                     </Border>
 
                     <!--  Список чатов  -->
                     <ScrollViewer
                         Grid.Row="1"
+                        Panel.ZIndex="1"
                         HorizontalScrollBarVisibility="Disabled"
                         VerticalScrollBarVisibility="Auto">
                         <StackPanel x:Name="ChatList" Orientation="Vertical">
                             <!--  Тут будут появляться чаты  -->
                         </StackPanel>
                     </ScrollViewer>
+
                 </Grid>
             </Border>
             <Border
@@ -241,8 +273,8 @@
 
                     <!--  Иконка  -->
                     <Border
-                        Width="80"
-                        Height="80"
+                        Width="64"
+                        Height="64"
                         Margin="0,0,0,24"
                         HorizontalAlignment="Center"
                         Background="#FF3C3C3C"
@@ -295,6 +327,7 @@
                         HorizontalAlignment="Center"
                         Background="#df5000"
                         BorderThickness="0"
+                        Click="SearchBoxFocus"
                         CornerRadius="22"
                         Cursor="Hand"
                         MouseOverBackground="#FFC54700"
@@ -355,7 +388,7 @@
                             Padding="8,4"
                             Background="Transparent"
                             BorderThickness="0"
-                            Cursor="Hand"
+                            Cursor="No"
                             FontFamily="{DynamicResource AdwaitaSans}"
                             FontSize="12"
                             Foreground="#FF9E9E9E">
@@ -389,6 +422,26 @@
 
                 </StackPanel>
             </Border>
+            <Grid
+                x:Name="SearchResultList"
+                Height="0"
+                Margin="0,40,0,0"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Top"
+                Panel.ZIndex="200"
+                Background="#2d2d30">
+                <ScrollViewer>
+                    <StackPanel>
+                        <TextBlock
+                            Margin="8,0"
+                            FontWeight="Bold"
+                            Foreground="White"
+                            Text="Результаты поиска" />
+                        <StackPanel x:Name="SearchCollectin" Orientation="Vertical" />
+                    </StackPanel>
+                </ScrollViewer>
+
+            </Grid>
             <!--  Разделитель с возможностью изменения размера  -->
             <GridSplitter
                 Grid.Column="1"
@@ -580,12 +633,13 @@
                             <!--  Кнопка прикрепления  -->
                             <Button
                                 Grid.Column="0"
-                                Width="40"
-                                Height="40"
+                                Width="50"
+                                Height="50"
+                                Padding="5"
                                 Margin="0,0,12,0"
                                 Background="Transparent"
                                 BorderThickness="0">
-                                <ui:SymbolIcon Foreground="#FF9E9E9E" Symbol="Attach16" />
+                                <ui:SymbolIcon FontSize="40" Foreground="#FF9E9E9E" Symbol="Attach16" />
                             </Button>
 
                             <!--  Поле ввода  -->
