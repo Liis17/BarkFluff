@@ -1,10 +1,12 @@
 ﻿using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
+
 using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Grpc.Net.Client;
 
 using System.Diagnostics;
+using System.Xml.Linq;
 
 using Windows.Networking.NetworkOperators;
 
@@ -948,6 +950,53 @@ namespace BarkFluff.WebApi.Core
             catch (Exception ex)
             {
                 var a = ex;
+            }
+            return (false, null);
+        }
+
+        #endregion
+
+        #region Поиск
+
+        public async Task<(bool, List<UserData> userList)> SearchUser(GlobalParam globalParam, string userNameSearched)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var response = await UsersAC.SearchUsersAsync(new Proto.Users.SearchUsersRequest 
+                    { 
+                        Pagination = new Proto.Shared.PageRequest 
+                        { 
+                            Offset = 0, 
+                            Size = 50 
+                        }, 
+                        Query = userNameSearched 
+                    });
+
+                    var a = new List<UserData>();
+
+                    foreach (var item in response.Users)
+                    {
+                        var user = new UserData
+                        {
+                            FirstName = item.FirstName,
+                            LastName = item.LastName,
+                            Email = "Почта скрыта",
+                            Username = item.Username,
+                            RegistrationDate = item.RegistrationDate,
+                            Id = item.Id,
+                            ProfilePictureUrl = item.ProfilePicture,
+                        };
+                        a.Add(user);
+                    }
+                    
+                    return (true, a);
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.InvalidRefreshTokenException)
+            {
+                // обработка
             }
             return (false, null);
         }

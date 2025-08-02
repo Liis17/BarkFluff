@@ -1,5 +1,6 @@
 ﻿using BarkFluff.Client.WPF.UserControls;
 
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Animation;
@@ -63,5 +64,52 @@ namespace BarkFluff.Client.WPF.Pages
             var storyboard = (Storyboard)this.Resources["SlideDownAndFadeIn"];
             storyboard.Begin();
         }
+        #region SearchBox
+        private void SearchBoxFocus(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void SearchTextBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            ExpandGrid();
+        }
+
+        private void ExpandGrid()
+        {
+            var expandAnimation = (Storyboard)FindResource("ExpandAnimation");
+            expandAnimation.Begin();
+        }
+
+        private void CollapseGrid()
+        {
+            var collapseAnimation = (Storyboard)FindResource("CollapseAnimation");
+            collapseAnimation.Begin();
+        }
+
+        public void ClearSearchAndHideResults()
+        {
+            SearchTextBox.Text = string.Empty;
+            CollapseGrid();
+        }
+
+        private void SearchTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            // потом заменить на что то другое а то так хуева оставлять
+            ClearSearchAndHideResults();
+        }
+        private async void SearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            var response =  await App.ServerCommunication.SearchUser(App.GParam, SearchTextBox.Text);
+            SearchCollectin.Children.Clear();
+            foreach (var item in response.userList)
+            {
+                var a = new SearchElement(item);
+                SearchCollectin.Children.Add(a);
+            }
+        }
+        #endregion
+
+
     }
 }
