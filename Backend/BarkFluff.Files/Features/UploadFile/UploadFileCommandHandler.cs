@@ -21,7 +21,7 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
 
     private readonly Dictionary<UploadFileType, int> _customFileTypeWidth = new()
     {
-        { UploadFileType.UserAvatar, 256 }
+        { UploadFileType.UserAvatar, 64 }
     };
 
     public UploadFileCommandHandler(
