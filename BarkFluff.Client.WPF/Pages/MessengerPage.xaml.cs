@@ -1,6 +1,5 @@
 ﻿using BarkFluff.Client.WPF.UserControls;
 
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Animation;
@@ -100,7 +99,7 @@ namespace BarkFluff.Client.WPF.Pages
         }
         private async void SearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            var response =  await App.ServerCommunication.SearchUser(App.GParam, SearchTextBox.Text);
+            var response = await App.ServerCommunication.SearchUser(App.GParam, SearchTextBox.Text);
             SearchCollectin.Children.Clear();
             foreach (var item in response.userList)
             {
