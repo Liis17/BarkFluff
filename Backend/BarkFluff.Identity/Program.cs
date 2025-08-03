@@ -47,6 +47,8 @@ public class Program
         builder.Services.AddTransient<JwtService>();
         builder.Services.AddTransient<ConfirmationCodesStorage>();
         builder.Services.AddScoped<NotificationQueueSender>();
+        builder.Services.AddHttpClient<LocationClient>();
+        builder.Services.AddScoped<LocationClient>();
         builder.Services.AddTransient<AuthPropertiesStorage>();
         builder.Services.AddTransient<PasswordsStorage>();
         builder.Services.AddTransient<ResetPasswordsStorage>();

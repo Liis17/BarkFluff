@@ -18,7 +18,8 @@ namespace BarkFluff.Identity.Features.Auth;
 
 public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient, 
     IMediator mediator, AuthPropertiesStorage authPropertiesStorage, NotificationQueueSender notificationQueueSender,
-    RefreshTokensStorage refreshTokensStorage, RequestContext requestContext, PasswordsStorage passwordsStorage) : IRequestHandler<AuthCommand, AuthResponse>
+    RefreshTokensStorage refreshTokensStorage, RequestContext requestContext, PasswordsStorage passwordsStorage,
+    LocationClient locationClient) : IRequestHandler<AuthCommand, AuthResponse>
 {
 
     private const int ExpDaysRefreshToken = 9999;
@@ -78,6 +79,17 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                 var code = CodeGenerator.GenerateDigitalCode(6);
                 
                 await authPropertiesStorage.UpdateLastEmailAuthCode(userContactInfo.User.Id, code);
+                
+                // Получаем данные о местоположении IP-адреса
+                string locationInfo = "-";
+                if (!string.IsNullOrEmpty(requestContext.IpAddress))
+                {
+                    var ipLocation = await locationClient.GetLocation(requestContext.IpAddress);
+                    if (ipLocation != null)
+                    {
+                        locationInfo = $"{ipLocation.Country}, {ipLocation.RegionName}, {ipLocation.City}";
+                    }
+                }
             
                 var emailNotification = new EmailNotification
                 {
@@ -91,7 +103,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                         {"ip", requestContext.IpAddress ?? string.Empty},
                         {"devicename", requestContext.DeviceName},
                         {"os", requestContext.OperationSystem},
-                        {"location", "-"},
+                        {"location", locationInfo},
                         {"app", $"{requestContext.AppName} v.{requestContext.AppVersion}"},
                         {"datetime", DateTime.UtcNow.ToString("D")}
                     },
