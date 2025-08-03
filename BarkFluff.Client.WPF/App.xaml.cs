@@ -1,7 +1,6 @@
 ﻿using BarkFluff.Client.WPF.Pages;
 using BarkFluff.Client.WPF.Services;
 using BarkFluff.Client.WPF.Services.App.Caching;
-using BarkFluff.Client.WPF.Services.App.Converter;
 using BarkFluff.Client.WPF.Services.Notification;
 using BarkFluff.Client.WPF.Services.Notification.System;
 
@@ -9,8 +8,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Windows;
-
-using static Microsoft.WindowsAPICodePack.Shell.PropertySystem.SystemProperties.System;
 
 using MessageBox = System.Windows.MessageBox;
 using MessageBoxButton = System.Windows.MessageBoxButton;
@@ -100,7 +97,7 @@ namespace BarkFluff.Client.WPF
         private void Bootstrap()
         {
             CacheManager = new MessageCacheManager("cache.db", "Cache/");
-            
+
             try
             {
                 string targetPath;

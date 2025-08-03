@@ -83,16 +83,16 @@ namespace BarkFluff.Client.WPF.UserControls
 
             if (localDateTime.Year == now.Year && weekThen == weekNow)
             {
-                return localDateTime.ToString("ddd", ruCulture); 
+                return localDateTime.ToString("ddd", ruCulture);
             }
             else if (localDateTime.Year == now.Year)
             {
-                
-                return localDateTime.ToString("dd MMM", ruCulture); 
+
+                return localDateTime.ToString("dd MMM", ruCulture);
             }
             else
             {
-                return localDateTime.ToString("dd MMM yyyy", ruCulture); 
+                return localDateTime.ToString("dd MMM yyyy", ruCulture);
             }
         }
     }
