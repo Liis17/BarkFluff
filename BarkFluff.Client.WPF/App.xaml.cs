@@ -17,10 +17,17 @@ namespace BarkFluff.Client.WPF
 {
     public partial class App : Application
     {
-        private const string appUserModelId = "com.barkfluff.messenger";
-        private const string debugAppUserModelId = "com.barkfluff.messenger.debug";
-        private const string mutexName = "BarkFluffMutex";
-        private const string debugMutexName = "BarkFluffDebug";
+#if (DEBUG)
+        private const string appUserModelId = "com.barkfluff.messenger.debug";
+        private const string mutexName = "BarkFluffDebug";
+#else
+            private const string appUserModelId = "com.barkfluff.messenger";
+            private const string mutexName = "BarkFluffMutex";
+#endif
+
+
+
+
 
         public static string AppUserModelId { get; set; }
         public static string MutexName { get; set; }
@@ -38,13 +45,6 @@ namespace BarkFluff.Client.WPF
         }
         protected override void OnStartup(StartupEventArgs e)
         {
-#if (DEBUG)
-            AppUserModelId = debugAppUserModelId;
-            MutexName = debugMutexName;
-#else
-            AppUserModelId = appUserModelId;
-            MutexName = mutexName;
-#endif
             #region
             mutex = new Mutex(true, MutexName, out bool isNew);
             if (!isNew)
