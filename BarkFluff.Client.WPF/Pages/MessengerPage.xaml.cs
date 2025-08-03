@@ -1,5 +1,6 @@
 ﻿using BarkFluff.Client.WPF.UserControls;
 
+using System.Security.Cryptography;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Animation;
@@ -107,6 +108,102 @@ namespace BarkFluff.Client.WPF.Pages
                 SearchCollectin.Children.Add(a);
             }
         }
+
+        #endregion
+
+        #region боковая панель
+
+        private bool isOpenPanel = false;
+        private readonly CubicEase easingPanel = new CubicEase { EasingMode = EasingMode.EaseInOut };
+        private void OpenPanelClick(object sender, RoutedEventArgs e)
+        {
+            if (!isOpenPanel)
+                OpenPanel();
+            else
+                ClosePanel();
+        }
+        private void OverlayPanel_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            ClosePanel();
+        }
+        private void OpenPanel()
+        {
+            var anim = new ThicknessAnimation
+            {
+                From = new Thickness(-350, 0, 0, 0),
+                To = new Thickness(0, 0, 0, 0),
+                Duration = TimeSpan.FromSeconds(0.2),
+                EasingFunction = easingPanel
+            };
+            SidePanel.BeginAnimation(MarginProperty, anim);
+            OverlayPanel.Visibility = Visibility.Visible;
+            isOpenPanel = true;
+        }
+        private void ClosePanel()
+        {
+            var anim = new ThicknessAnimation
+            {
+                From = new Thickness(0, 0, 0, 0),
+                To = new Thickness(-350, 0, 0, 0),
+                Duration = TimeSpan.FromSeconds(0.2),
+                EasingFunction = easingPanel
+            };
+            SidePanel.BeginAnimation(MarginProperty, anim);
+            OverlayPanel.Visibility = Visibility.Collapsed;
+            isOpenPanel = false;
+        }
+        #endregion
+
+        #region Центральный блок контента
+
+        private bool isOpenCenter = false;
+        private readonly CubicEase easingCenter = new CubicEase { EasingMode = EasingMode.EaseInOut };
+
+        private void OpenCenterBlock(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (!isOpenCenter)
+                OpenCenterPanel();
+            else
+                CloseCenterPanel();
+        }
+        private void OpenCenterPanel()
+        {
+            CenterPanel.Visibility = Visibility.Visible;
+            OverlayCenter.Visibility = Visibility.Visible;
+
+            var anim = new DoubleAnimation
+            {
+                From = 0,
+                To = 1,
+                Duration = TimeSpan.FromSeconds(0.2),
+                EasingFunction = easingCenter
+            };
+            CenterPanel.BeginAnimation(OpacityProperty, anim);
+            isOpenCenter = true;
+        }
+
+        private void CloseCenterPanel()
+        {
+            var anim = new DoubleAnimation
+            {
+                From = 1,
+                To = 0,
+                Duration = TimeSpan.FromSeconds(0.2),
+                EasingFunction = easingCenter
+            };
+            anim.Completed += (s, e) =>
+            {
+                CenterPanel.Visibility = Visibility.Collapsed;
+                OverlayCenter.Visibility = Visibility.Collapsed;
+            };
+            CenterPanel.BeginAnimation(OpacityProperty, anim);
+            isOpenCenter = false;
+        }
+        private void OverlayCenter_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            CloseCenterPanel();
+        }
+
         #endregion
 
 
