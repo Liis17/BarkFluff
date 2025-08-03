@@ -15,9 +15,6 @@ using MessageBoxResult = System.Windows.MessageBoxResult;
 
 namespace BarkFluff.Client.WPF
 {
-    /// <summary>
-    /// Interaction logic for App.xaml
-    /// </summary>
     public partial class App : Application
     {
         private const string appUserModelId = "com.barkfluff.messenger";
