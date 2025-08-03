@@ -56,3 +56,10 @@ jobs:
         } else {
           Write-Host "Tag $env:TAG does not exist, proceeding"
         }
+        exit 0
+    - name: Upload Release
+      shell: pwsh
+      env:
+        GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+      run: |
+        GitReleaseUploader ${{ env.GH_TOKEN }} "$env:GITHUB_WORKSPACE\wpf-build.zip"
