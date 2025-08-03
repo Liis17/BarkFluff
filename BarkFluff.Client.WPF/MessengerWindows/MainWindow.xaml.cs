@@ -117,7 +117,7 @@ namespace BarkFluff.Client.WPF
         public void FirstStart()
         {
             MainFrame.Children.Clear();
-            MainFrame.Children.Add(new WelcomPage());
+            MainFrame.Children.Add(new WelcomePage());
         }
         public void OpenCreatePinCodePage()
         {
@@ -226,6 +226,11 @@ namespace BarkFluff.Client.WPF
         {
             var resolution = this.ActualWidth + "x" + this.ActualHeight;
             ResolutionTextBlock.Text = resolution;
+        }
+
+        private void ContentPanel_Loaded(object sender, RoutedEventArgs e)
+        {
+            App.CreateEridaMessage(ContentPanel);
         }
     }
 }

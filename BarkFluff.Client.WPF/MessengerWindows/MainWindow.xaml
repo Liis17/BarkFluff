@@ -44,5 +44,10 @@
             Foreground="#FF737373"
             Text="version"
             TextAlignment="Right" />
+        <StackPanel
+            x:Name="ContentPanel"
+            Margin="20,40,20,20"
+            VerticalAlignment="Bottom"
+            Loaded="ContentPanel_Loaded" />
     </Grid>
 </ui:FluentWindow>

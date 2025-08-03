@@ -1,6 +1,7 @@
 ﻿using BarkFluff.Client.WPF.Pages;
 using BarkFluff.Client.WPF.Services;
 using BarkFluff.Client.WPF.Services.App.Caching;
+using BarkFluff.Client.WPF.Services.Erida;
 using BarkFluff.Client.WPF.Services.Notification;
 using BarkFluff.Client.WPF.Services.Notification.System;
 
@@ -8,6 +9,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Windows;
+using System.Windows.Controls;
 
 using MessageBox = System.Windows.MessageBox;
 using MessageBoxButton = System.Windows.MessageBoxButton;
@@ -21,14 +23,9 @@ namespace BarkFluff.Client.WPF
         private const string appUserModelId = "com.barkfluff.messenger.debug";
         private const string mutexName = "BarkFluffDebug";
 #else
-            private const string appUserModelId = "com.barkfluff.messenger";
-            private const string mutexName = "BarkFluffMutex";
+        private const string appUserModelId = "com.barkfluff.messenger";
+        private const string mutexName = "BarkFluffMutex";
 #endif
-
-
-
-
-
         public static string AppUserModelId { get; set; }
         public static string MutexName { get; set; }
         public static BarkFluff.WebApi.Core.WebApi ServerCommunication { get; set; } = null!;
@@ -38,6 +35,7 @@ namespace BarkFluff.Client.WPF
         private CancellationTokenSource cts = new CancellationTokenSource();
         public static MainWindow MessengerWindow { get; set; } = null!;
         public static MessageCacheManager CacheManager { get; set; } = null!;
+        public static DropMessage ErideMessage { get; set; } = null!;
         public App()
         {
 
@@ -94,6 +92,7 @@ namespace BarkFluff.Client.WPF
         private void Bootstrap()
         {
             CacheManager = new MessageCacheManager("cache.db", "Cache/");
+           
 
             try
             {
@@ -139,7 +138,10 @@ namespace BarkFluff.Client.WPF
                 MessengerWindow.OpenPinCodeSecurePage();
             }
         }
-
+        public static void CreateEridaMessage(StackPanel stack)
+        {
+            ErideMessage = new DropMessage(stack);
+        }
         protected override void OnExit(ExitEventArgs e)
         {
             cts.Cancel();
