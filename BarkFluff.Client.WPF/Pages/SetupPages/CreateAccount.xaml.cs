@@ -46,7 +46,6 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
             }
             steps[0].Visibility = Visibility.Visible;
             UpdateNavigationButtons();
-            UpdateErrorMessageTextBlock("");
             FirstNameEnter.Focus();
             CreateButton.Visibility = Visibility.Collapsed;
         }
@@ -135,7 +134,6 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
 
         private void BackButton_Click(object sender, RoutedEventArgs e)
         {
-            UpdateErrorMessageTextBlock("");
             if (currentStep > 0)
             {
                 AnimateTransition(steps[currentStep], steps[currentStep - 1], SlideDirection.Backward);
@@ -187,24 +185,23 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                         AnimateTransition(steps[currentStep], steps[currentStep + 1], SlideDirection.Forward);
                         currentStep++;
                         UpdateNavigationButtons();
-                        UpdateErrorMessageTextBlock("");
                         LoginEnter.Focus();
                     }
                     else if (FirstNameEnter.Text.Length >= 41 && LastNameEnter.Text.Length >= 41)
                     {
-                        UpdateErrorMessageTextBlock("Имя и фамилия слиииииииииииииииииииииии");
+                        App.ErideMessage.AddMessage("Имя и фамилия слиииииииииииииииииииииии", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Warning });
                     }
                     else if (FirstNameEnter.Text.Length >= 41)
                     {
-                        UpdateErrorMessageTextBlock("Имя слииииииишком длинное");
+                        App.ErideMessage.AddMessage("Имя слииииииишком длинное", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Warning });
                     }
                     else if (LastNameEnter.Text.Length >= 41)
                     {
-                        UpdateErrorMessageTextBlock("Фамилия слииииииишком длинная");
+                        App.ErideMessage.AddMessage("Фамилия слииииииишком длинная", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Warning });
                     }
                     else if (FirstNameEnter.Text.Replace(" ", "") == string.Empty)
                     {
-                        UpdateErrorMessageTextBlock("Имя не может быть пустым");
+                        App.ErideMessage.AddMessage("Имя не может быть пустым", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Warning });
                     }
                     return;
                 }
@@ -216,10 +213,14 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                         try
                         {
                             var response = await App.ServerCommunication.CheckUsername(LoginEnter.Text, App.GParam);
-
-                            if (response)
+                            if (!response.error.IsSuccess)
                             {
-                                UpdateErrorMessageTextBlock("Имя пользователя уже занято.");
+                                App.ErideMessage.AddMessage(response.error.ErrorMessage, new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
+                                return;
+                            }
+                            if (!response.exists)
+                            {
+                                App.ErideMessage.AddMessage("Имя пользователя уже занято.", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Warning });
                                 return;
                             }
                             else
@@ -227,20 +228,19 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                                 AnimateTransition(steps[currentStep], steps[currentStep + 1], SlideDirection.Forward);
                                 currentStep++;
                                 UpdateNavigationButtons();
-                                UpdateErrorMessageTextBlock("");
                                 EmailEnter.Focus();
                                 return;
                             }
                         }
                         catch (Exception ex)
                         {
-                            UpdateErrorMessageTextBlock("Ошибка подключения к серверу. Проверьте интернет-соединение.");
+                            App.ErideMessage.AddMessage("Ошибка подключения к серверу. Проверьте интернет-соединение.", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
                             return;
                         }
                     }
                     else
                     {
-                        UpdateErrorMessageTextBlock(error);
+                        App.ErideMessage.AddMessage(error, new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
                         return;
                     }
                 }
@@ -255,16 +255,10 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                             var _email = EmailEnter.Text.ToLower();
                             var _login = LoginEnter.Text.ToLower();
 
-                            var response = await App.ServerCommunication.CreateAccount(
-                                     _firstName,
-                                     _lastName,
-                                     _email,
-                                     _login,
-                                     App.GParam
-                                );
-                            if (!response.Item1)
+                            var response = await App.ServerCommunication.CreateAccount(_firstName, _lastName, _email, _login, App.GParam);
+                            if (!response.error.IsSuccess)
                             {
-                                UpdateErrorMessageTextBlock("Ошибка при создании аккаунта");
+                                App.ErideMessage.AddMessage("Ошибка при создании аккаунта", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
                                 return;
                             }
                             _codeId = response.Item2;
@@ -274,7 +268,6 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                                 AnimateTransition(steps[currentStep], steps[currentStep + 1], SlideDirection.Forward);
                                 currentStep++;
                                 UpdateNavigationButtons();
-                                UpdateErrorMessageTextBlock("");
                                 EmailHelperText.Text = "● Код отправлен на " + EmailEnter.Text.ToLower();
                                 VerificationCodeEnter.Focus();
                                 return;
@@ -283,13 +276,13 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                         }
                         else
                         {
-                            UpdateErrorMessageTextBlock("Введите корректный адрес почты");
+                            App.ErideMessage.AddMessage("Введите корректный адрес почты", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
                             return;
                         }
                     }
                     else
                     {
-                        UpdateErrorMessageTextBlock("Поле ввода почты не может быть пустым");
+                        App.ErideMessage.AddMessage("Поле ввода почты не может быть пустым", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
                         return;
                     }
                 }
@@ -300,9 +293,9 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                         try
                         {
                             var response = await App.ServerCommunication.ConfirmAccount(_codeId, VerificationCodeEnter.Text, App.GParam);
-                            if (!response.Item1)
+                            if (!response.error.IsSuccess)
                             {
-                                UpdateErrorMessageTextBlock("Ошибка подтверждения аккаунта");
+                                App.ErideMessage.AddMessage("Ошибка подтверждения аккаунта", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Warning });
                                 return;
                             }
                             App.GParam.RefreshToken = response.RefreshToken;
@@ -313,34 +306,33 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                         }
                         catch (ConfirmationCodeExpiredException)
                         {
-                            UpdateErrorMessageTextBlock($"Код подтверждения больше недействителен");
+                            App.ErideMessage.AddMessage($"Код подтверждения больше недействителен", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Warning });
                             return;
                         }
                         catch (ConfirmationCodeIncorrectException)
                         {
-                            UpdateErrorMessageTextBlock("Неверный код подтверждения");
+                            App.ErideMessage.AddMessage("Неверный код подтверждения", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Warning });
                             return;
                         }
                         catch (ConfirmationCodeNotFoundException)
                         {
-                            UpdateErrorMessageTextBlock("Код подтверждения не найден?");
+                            App.ErideMessage.AddMessage("Код подтверждения не найден?", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Warning });
                             return;
                         }
                         catch (Grpc.Core.RpcException ex)
                         {
-                            UpdateErrorMessageTextBlock($"Произошла ошибка при подтверждении:\n {ex.Status.Detail}");
+                            App.ErideMessage.AddMessage($"Произошла ошибка при подтверждении:\n {ex.Status.Detail}", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
                             return;
                         }
 
                         AnimateTransition(steps[currentStep], steps[currentStep + 1], SlideDirection.Forward);
                         currentStep++;
                         UpdateNavigationButtons();
-                        UpdateErrorMessageTextBlock("");
                         PasswordEnter.Focus();
                     }
                     else
                     {
-                        UpdateErrorMessageTextBlock("Введите код из сообщения на " + EmailEnter.Text.ToLower());
+                        App.ErideMessage.AddMessage("Введите код из сообщения на " + EmailEnter.Text.ToLower(), new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Info });
                     }
                 }
                 else if (currentStep == 4) //пятый шаг (придумать пароль)
@@ -352,27 +344,26 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                             try
                             {
                                 var response = await App.ServerCommunication.SetPassword(PasswordEnter.Password, App.GParam);
-                                if (!response)
+                                if (!response.IsSuccess)
                                 {
-                                    UpdateErrorMessageTextBlock("Ошибка при установке пароля");
+                                    App.ErideMessage.AddMessage("Ошибка при установке пароля", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
                                     return;
                                 }
                                 AnimateTransition(steps[currentStep], steps[currentStep + 1], SlideDirection.Forward);
                                 currentStep++;
                                 UpdateNavigationButtons();
-                                UpdateErrorMessageTextBlock("");
                                 ExpansionSpace();
                                 return;
                             }
                             catch
                             {
-                                UpdateErrorMessageTextBlock(@"Произошла неизвестная ошибка ¯\(°_o)/¯");
+                                App.ErideMessage.AddMessage(@"Произошла неизвестная ошибка ¯\(°_o)/¯", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
                             }
 
                         }
                         else if (PasswordEnter.Password != PasswordRepeatedEnter.Password)
                         {
-                            UpdateErrorMessageTextBlock("Пароли не совпадают");
+                            App.ErideMessage.AddMessage("Пароли не совпадают", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Warning });
                         }
                         else
                         {
@@ -390,7 +381,6 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                     AnimateTransition(steps[currentStep], steps[currentStep + 1], SlideDirection.Forward);
                     currentStep++;
                     UpdateNavigationButtons();
-                    UpdateErrorMessageTextBlock("");
 
                     JpegBitmapEncoder encoder = new JpegBitmapEncoder();
                     encoder.QualityLevel = 60; // Качество 60%
@@ -402,15 +392,27 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                     await App.ServerCommunication.UploadUserAvatarAsync(App.GParam, jpegBytes);
 
                     var response = await App.ServerCommunication.GetUserData(App.GParam);
-                    var fullName = $@"{response.FirstName} {response.LastName}";
-                    PreviewUserElement.PreviewUser_Update(fullName, response.Username, response.ProfilePictureUrl);
+                    if (!response.Error.IsSuccess)
+                    {
+                        App.ErideMessage.AddMessage(response.Error.ErrorMessage, new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error});
+                        return;
+                    }
+                    var fullName = $@"{response.Data.FirstName} {response.Data.LastName}";
+                    PreviewUserElement.PreviewUser_Update(fullName, response.Data.Username, response.Data.ProfilePictureUrl);
+
+                    App.GParam.UserId = response.Data.Id;
+                    App.GParam.UserName = response.Data.Username;
+                    App.GParam.FirstName = response.Data.FirstName;
+                    App.GParam.LastName = response.Data.LastName;
+                    App.GParam.Description = response.Data.Description;
+
+                    MainWindow.SaveSettings();
                 }
                 else if (currentStep == 6) //Дополнительная информация о профиле
                 {
                     AnimateTransition(steps[currentStep], steps[currentStep + 1], SlideDirection.Forward);
                     currentStep++;
                     UpdateNavigationButtons();
-                    UpdateErrorMessageTextBlock("");
 
                     OtpSuggestion.Update();
                 }
@@ -419,7 +421,6 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                     AnimateTransition(steps[currentStep], steps[currentStep + 1], SlideDirection.Forward);
                     currentStep++;
                     UpdateNavigationButtons();
-                    UpdateErrorMessageTextBlock("");
                     CompletionRegistrationElement.TimerStart();
                 }
                 else if (currentStep == 8) //Последний шаг (завершение регистрации)
@@ -427,7 +428,6 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                     AnimateTransition(steps[currentStep], steps[currentStep + 1], SlideDirection.Forward);
                     currentStep++;
                     UpdateNavigationButtons();
-                    UpdateErrorMessageTextBlock("");
 
                 }
             }
@@ -455,23 +455,23 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
         {
             if (string.IsNullOrEmpty(password))
             {
-                UpdateErrorMessageTextBlock("Пароль не должен быть пустым.");
+                App.ErideMessage.AddMessage("Пароль не должен быть пустым.", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
                 return false;
             }
 
             if (password.Length < 8)
             {
-                UpdateErrorMessageTextBlock("Пароль должен содержать не менее 8 символов.");
+                App.ErideMessage.AddMessage("Пароль должен содержать не менее 8 символов.", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
                 return false;
             }
 
             if (password.Contains(" "))
             {
-                UpdateErrorMessageTextBlock("Пароль не должен содержать пробелы.");
+                App.ErideMessage.AddMessage("Пароль не должен содержать пробелы.", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
                 return false;
             }
 
-            UpdateErrorMessageTextBlock(""); // ошибок нет
+            App.ErideMessage.AddMessage("", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Info }); // ошибок нет
             return true;
         }
 
@@ -482,19 +482,11 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
 
         private void Enter_TextChanged(object sender, TextChangedEventArgs e)
         {
-            UpdateErrorMessageTextBlock("");
-        }
-
-
-
-        private void UpdateErrorMessageTextBlock(string text)
-        {
-            ErrorMessageTextBlock.Text = text;
+            
         }
 
         private void PasswordEnter_TextChanged(object sender, RoutedEventArgs e)
         {
-            UpdateErrorMessageTextBlock("");
             var a = 0;
             PasswordStrengthBar.Value = a = BarkFluff.Shared.SecurityUtilities.SecurityUtilities.EvaluatePasswordStrength(PasswordEnter.Password);
             var colors = BarkFluff.Shared.SecurityUtilities.SecurityUtilities.GetPasswordStrengthMessage(a);

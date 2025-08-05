@@ -1,10 +1,13 @@
 ﻿using BarkFluff.Client.WPF.UserControls;
+using BarkFluff.WebApi.Core.MessengerData;
 
 using System.Security.Cryptography;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Animation;
 
+using Erida = BarkFluff.Client.WPF.Services.Erida.MessageType;
+using MType = BarkFluff.Client.WPF.Services.Erida.MessageType.MessageTypeEnum;
 namespace BarkFluff.Client.WPF.Pages
 {
     /// <summary>
@@ -22,14 +25,48 @@ namespace BarkFluff.Client.WPF.Pages
         {
             StartSlideDownAndFadeIn();
             App.ServerCommunication.CreateOnlyBeaconAC(App.GParam);
-            await App.ServerCommunication.GetServerInfo(App.GParam);
-            App.ServerCommunication.CreateAC(App.GParam, App.GParam.MachineName, SystemInfo.GetFriendlyWindowsVersion(), AppVersion.AppName, AppVersion.Version, App.GParam.IpAddress);
+            var (error, serverInfo) = await App.ServerCommunication.GetServerInfo(App.GParam);
+            if (!error.IsSuccess)
+            {
+                App.ErideMessage.AddMessage(error.ErrorMessage, new Erida { Type = MType.Error });
+                return;
+            }
+            else
+            {
+                App.ErideMessage.AddMessage("Получена информация о сервере", new Erida { Type = MType.Debug });
 
+                App.GParam.ServerName = serverInfo.Name;
+                App.GParam.ServerDescription = serverInfo.Description;
+                App.GParam.SocketIdentity = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Identity.Endpoint.Host + ":" + serverInfo.Identity.Endpoint.Port);
+                App.GParam.SocketUsers = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Users.Endpoint.Host + ":" + serverInfo.Users.Endpoint.Port);
+                App.GParam.SocketFiles = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Files.Endpoint.Host + ":" + serverInfo.Files.Endpoint.Port);
+                App.GParam.SocketMessages = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Messages.Endpoint.Host + ":" + serverInfo.Messages.Endpoint.Port);
+                App.GParam.Colors = new ClientColors()
+                {
+                    LiteHex = serverInfo.Color.LiteHex,
+                    MainHex = serverInfo.Color.MainHex,
+                    HardHex = serverInfo.Color.HardHex,
+                };
+                MainWindow.SaveSettings();
+            }
 
-            TitleWindow.Text = "Barkfluff";
+            
+            
+            var response = App.ServerCommunication.CreateAC(App.GParam, App.GParam.MachineName, SystemInfo.GetFriendlyWindowsVersion(), AppVersion.AppName, AppVersion.Version, App.GParam.IpAddress);
+            if (!response.IsSuccess)
+            {
+                App.ErideMessage.AddMessage(response.ErrorMessage ?? "Неизвестная проблема", new Erida { Type = MType.Error });
+                return;
+            }
+            else
+            {
+                App.ErideMessage.AddMessage("API клиент успешно обновлён", new Erida { Type = MType.Debug });
+            }
 
-            ChatUpdate();
+                TitleWindow.Text = "Barkfluff";
+
             UserInfoUpdate();
+            ChatUpdate();
         }
         public async void ChatUpdate()
         {
@@ -51,12 +88,28 @@ namespace BarkFluff.Client.WPF.Pages
                     avatar = "https://charlie.liis17.ru/Photoshop_TmPl02VbWB.png";
                 }
                 List<long> list = item.LastMessage.ReadBy.ToList();
-                var messageItem = new ChatItem(avatar, item.Title, item.LastMessage.Content.Text, time: item.LastMessage.SentAt.ToString(), reading: ChatItem.ReadingStatus.None, list);
+                var isRead = ChatItem.ReadingStatus.ForMe;
+                var title = item.Title;
+                if (App.GParam.UserId == item.Members[0].UserId && App.GParam.UserId == item.Members[1].UserId)
+                {
+                    isRead = ChatItem.ReadingStatus.Me;
+                    title = "Избранное";
+                }
+                var messageItem = new ChatItem(avatar, title, item.LastMessage.Content.Text, time: item.LastMessage.SentAt.ToString(), reading: isRead, list, item.CountUnread);
                 ChatList.Children.Add(messageItem);
             }
         }
         public async void UserInfoUpdate()
         {
+            var response = await App.ServerCommunication.GetUserData(App.GParam);
+
+            App.GParam.UserId = response.Data.Id;
+            App.GParam.UserName = response.Data.Username;
+            App.GParam.FirstName = response.Data.FirstName;
+            App.GParam.LastName = response.Data.LastName;
+            App.GParam.Description = response.Data.Description;
+            MainWindow.SaveSettings();
+            
 
         }
         public void StartSlideDownAndFadeIn()

@@ -1,16 +1,18 @@
 ﻿using BarkFluff.Client.WPF.UserControls;
 using BarkFluff.WebApi.Core.MessengerData;
-
 using System.IO;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using Erida = BarkFluff.Client.WPF.Services.Erida.MessageType;
+using MType = BarkFluff.Client.WPF.Services.Erida.MessageType.MessageTypeEnum;
+
+#pragma warning disable CA1416 
+#pragma warning disable CS4014 
 
 namespace BarkFluff.Client.WPF.Pages.SetupPages
 {
-    /// <summary>
-    /// Логика взаимодействия для SelectServer.xaml
-    /// </summary>
     public partial class SelectServer : UserControl
     {
         public SelectServer()
@@ -21,9 +23,10 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
 
         private async void SelectServer_Loaded(object sender, RoutedEventArgs e)
         {
+
             App.ServerCommunication.CreateNavigatorAC();
             var response = await App.ServerCommunication.GetServerList(App.GParam);
-            if (!response.Item1) { return; }
+            if (!response.Item1.IsSuccess) { return; }
             NoServer.Visibility = Visibility.Collapsed;
             ServerList.Children.Clear();
 
@@ -34,7 +37,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
             }
         }
 
-        private void ConnectButton_Click(object sender, RoutedEventArgs e)
+        private async void ConnectButton_Click(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -42,7 +45,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
 
                 if (string.IsNullOrEmpty(serverInput))
                 {
-                    ErrorText.Text = "Укажите адрес сервера и порт";
+                    App.ErideMessage.AddMessage("Укажите адрес сервера и порт", new Erida { Type = MType.Info });
                     return;
                 }
 
@@ -50,7 +53,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                 var match = Regex.Match(serverInput, pattern);
                 if (!match.Success)
                 {
-                    ErrorText.Text = "Неверный формат. Используйте [домен или IP]:[порт]";
+                    App.ErideMessage.AddMessage("Неверный формат. Используйте [домен или IP]:[порт]", new Erida { Type = MType.Info });
                     return;
                 }
 
@@ -63,12 +66,34 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
 
                 try
                 {
-                    App.ServerCommunication.GetServerInfo(App.GParam);
-                    GlobalParam.Save(App.GParam, Path.Combine(App.GParam.AppPath, "GlobalParam.json"), App.GParam.AppPass);
+                    var (error, serverInfo) = await App.ServerCommunication.GetServerInfo(App.GParam);
+                    if (!error.IsSuccess)
+                    {
+                        App.ErideMessage.AddMessage(error.ErrorMessage ?? "Неизвестная проблема", new Erida { Type = MType.Error });
+                        return;
+                    }
+                    else
+                    {
+                        App.ErideMessage.AddMessage("Получена информация о сервере", new Erida { Type = MType.Debug });
+
+                        App.GParam.ServerName = serverInfo.Name;
+                        App.GParam.ServerDescription = serverInfo.Description;
+                        App.GParam.SocketIdentity = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Identity.Endpoint.Host + ":" + serverInfo.Identity.Endpoint.Port);
+                        App.GParam.SocketUsers = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Users.Endpoint.Host + ":" + serverInfo.Users.Endpoint.Port);
+                        App.GParam.SocketFiles = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Files.Endpoint.Host + ":" + serverInfo.Files.Endpoint.Port);
+                        App.GParam.SocketMessages = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Messages.Endpoint.Host + ":" + serverInfo.Messages.Endpoint.Port);
+                        App.GParam.Colors = new ClientColors()
+                        {
+                            LiteHex = serverInfo.Color.LiteHex,
+                            MainHex = serverInfo.Color.MainHex,
+                            HardHex = serverInfo.Color.HardHex,
+                        };
+                        MainWindow.SaveSettings();
+                    }
                 }
                 catch (Exception ex)
                 {
-                    ErrorText.Text = $"Ошибка подключения: {ex.Message}";
+                    App.ErideMessage.AddMessage($"Ошибка подключения: {ex.Message}", new Erida { Type = MType.Error });
                     return;
                 }
 
@@ -78,7 +103,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
             }
             catch (Exception ex)
             {
-                ErrorText.Text = $"Неизвестная ошибка: {ex.Message}";
+                App.ErideMessage.AddMessage(ex.Message, new Erida { Type = MType.Error });
             }
         }
 
@@ -96,5 +121,6 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
             }
 #endif
         }
+
     }
 }

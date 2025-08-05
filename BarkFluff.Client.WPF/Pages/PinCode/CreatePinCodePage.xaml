@@ -64,75 +64,35 @@
                 Orientation="Horizontal">
                 <TextBox
                     x:Name="FirstBox0"
-                    Width="40"
-                    Margin="5"
-                    HorizontalContentAlignment="Center"
-                    VerticalContentAlignment="Center"
-                    Background="#282828"
-                    BorderThickness="0"
-                    CaretBrush="White"
-                    FontSize="24"
-                    FontWeight="Medium"
-                    Foreground="White"
                     GotFocus="PinBox_GotFocus"
                     Loaded="FocusFirstBoxZero"
-                    MaxLength="1"
                     PreviewKeyDown="FirstPinBox_PreviewKeyDown"
                     PreviewTextInput="PinBox_PreviewTextInput"
+                    Style="{StaticResource VerificationTextBox}"
                     TextChanged="FirstPinBox_TextChanged" />
 
                 <TextBox
                     x:Name="FirstBox1"
-                    Width="40"
-                    Margin="5"
-                    HorizontalContentAlignment="Center"
-                    VerticalContentAlignment="Center"
-                    Background="#282828"
-                    BorderThickness="0"
-                    CaretBrush="White"
-                    FontSize="24"
-                    FontWeight="Medium"
-                    Foreground="White"
                     GotFocus="PinBox_GotFocus"
-                    MaxLength="1"
                     PreviewKeyDown="FirstPinBox_PreviewKeyDown"
                     PreviewTextInput="PinBox_PreviewTextInput"
+                    Style="{StaticResource VerificationTextBox}"
                     TextChanged="FirstPinBox_TextChanged" />
 
                 <TextBox
                     x:Name="FirstBox2"
-                    Width="40"
-                    Margin="5"
-                    HorizontalContentAlignment="Center"
-                    VerticalContentAlignment="Center"
-                    Background="#282828"
-                    BorderThickness="0"
-                    CaretBrush="White"
-                    FontSize="24"
-                    FontWeight="Medium"
-                    Foreground="White"
                     GotFocus="PinBox_GotFocus"
-                    MaxLength="1"
                     PreviewKeyDown="FirstPinBox_PreviewKeyDown"
                     PreviewTextInput="PinBox_PreviewTextInput"
+                    Style="{StaticResource VerificationTextBox}"
                     TextChanged="FirstPinBox_TextChanged" />
 
                 <TextBox
                     x:Name="FirstBox3"
-                    Width="40"
-                    Margin="5"
-                    HorizontalContentAlignment="Center"
-                    VerticalContentAlignment="Center"
-                    Background="#282828"
-                    BorderThickness="0"
-                    CaretBrush="White"
-                    FontSize="24"
-                    FontWeight="Medium"
-                    Foreground="White"
                     GotFocus="PinBox_GotFocus"
-                    MaxLength="1"
                     PreviewKeyDown="FirstPinBox_PreviewKeyDown"
                     PreviewTextInput="PinBox_PreviewTextInput"
+                    Style="{StaticResource VerificationTextBox}"
                     TextChanged="FirstPinBox_TextChanged" />
             </StackPanel>
 
@@ -154,113 +114,47 @@
                 Orientation="Horizontal">
                 <TextBox
                     x:Name="SecondBox0"
-                    Width="40"
-                    Margin="5"
-                    HorizontalContentAlignment="Center"
-                    VerticalContentAlignment="Center"
-                    Background="#282828"
-                    BorderThickness="0"
-                    CaretBrush="White"
-                    FontSize="24"
-                    FontWeight="Medium"
-                    Foreground="White"
                     GotFocus="PinBox_GotFocus"
-                    MaxLength="1"
                     PreviewKeyDown="SecondPinBox_PreviewKeyDown"
                     PreviewTextInput="PinBox_PreviewTextInput"
+                    Style="{StaticResource VerificationTextBox}"
                     TextChanged="SecondPinBox_TextChanged" />
 
                 <TextBox
                     x:Name="SecondBox1"
-                    Width="40"
-                    Margin="5"
-                    HorizontalContentAlignment="Center"
-                    VerticalContentAlignment="Center"
-                    Background="#282828"
-                    BorderThickness="0"
-                    CaretBrush="White"
-                    FontSize="24"
-                    FontWeight="Medium"
-                    Foreground="White"
                     GotFocus="PinBox_GotFocus"
-                    MaxLength="1"
                     PreviewKeyDown="SecondPinBox_PreviewKeyDown"
                     PreviewTextInput="PinBox_PreviewTextInput"
+                    Style="{StaticResource VerificationTextBox}"
                     TextChanged="SecondPinBox_TextChanged" />
 
                 <TextBox
                     x:Name="SecondBox2"
-                    Width="40"
-                    Margin="5"
-                    HorizontalContentAlignment="Center"
-                    VerticalContentAlignment="Center"
-                    Background="#282828"
-                    BorderThickness="0"
-                    CaretBrush="White"
-                    FontSize="24"
-                    FontWeight="Medium"
-                    Foreground="White"
                     GotFocus="PinBox_GotFocus"
-                    MaxLength="1"
                     PreviewKeyDown="SecondPinBox_PreviewKeyDown"
                     PreviewTextInput="PinBox_PreviewTextInput"
+                    Style="{StaticResource VerificationTextBox}"
                     TextChanged="SecondPinBox_TextChanged" />
 
                 <TextBox
                     x:Name="SecondBox3"
-                    Width="40"
-                    Margin="5"
-                    HorizontalContentAlignment="Center"
-                    VerticalContentAlignment="Center"
-                    Background="#282828"
-                    BorderThickness="0"
-                    CaretBrush="White"
-                    FontSize="24"
-                    FontWeight="Medium"
-                    Foreground="White"
                     GotFocus="PinBox_GotFocus"
-                    MaxLength="1"
                     PreviewKeyDown="SecondPinBox_PreviewKeyDown"
                     PreviewTextInput="PinBox_PreviewTextInput"
+                    Style="{StaticResource VerificationTextBox}"
                     TextChanged="SecondPinBox_TextChanged" />
             </StackPanel>
 
-            <TextBlock
-                x:Name="ErrorTextBlockMessge"
-                Margin="0,5,0,10"
-                HorizontalAlignment="Center"
-                Background="{x:Null}"
-                FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="18"
-                FontWeight="Normal"
-                Foreground="#FFE62F2F"
-                Text="ошибка" />
+
             <!--  Кнопка продолжить  -->
             <ui:Button
                 x:Name="ContinueButton"
-                Width="200"
-                Height="45"
-                Margin="0,0,0,20"
-                HorizontalAlignment="Center"
-                Background="#df5000"
-                BorderThickness="0"
                 Click="ContinueButton_Click"
-                CornerRadius="22"
-                MouseOverBackground="#FFC54700"
-                PressedBackground="#FFAB3D00">
+                Style="{StaticResource MainButton}">
                 <ui:Button.Content>
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock
-                            FontFamily="{DynamicResource AdwaitaSans}"
-                            FontSize="16"
-                            FontWeight="SemiBold"
-                            Foreground="White"
-                            Text="Продолжить" />
-                        <ui:SymbolIcon
-                            Margin="10,0,0,0"
-                            FontSize="18"
-                            Foreground="White"
-                            Symbol="ArrowRight24" />
+                        <ui:TextBlock Style="{StaticResource MainButtonTextLeft}" Text="Продолжить" />
+                        <ui:SymbolIcon Style="{StaticResource ButtonSymbolRight}" Symbol="ArrowRight24" />
                     </StackPanel>
                 </ui:Button.Content>
 

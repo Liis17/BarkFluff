@@ -16,28 +16,12 @@
     <Grid Background="#1e1e1e">
         <Grid x:Name="ButtonGrid">
             <ui:Button
-                Width="200"
-                Height="45"
-                Margin="0,0,0,20"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                Background="#df5000"
                 Click="LoadButton_Click"
-                CornerRadius="22"
-                MouseOverBackground="#FFC54700"
-                PressedBackground="#FFAB3D00"
+                Style="{StaticResource MainButton}"
                 ToolTip="Выбрать картинку для аватара в проводнике">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock
-                        Margin="0,0,5,0"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        FontFamily="{DynamicResource AdwaitaSans}"
-                        FontSize="16"
-                        FontWeight="SemiBold"
-                        Foreground="White"
-                        Text="Выбрать аватар" />
-                    <ui:SymbolIcon FontSize="21" Symbol="ArrowDownload20" />
+                    <ui:TextBlock Style="{StaticResource MainButtonTextLeft}" Text="Выбрать аватар" />
+                    <ui:SymbolIcon Style="{StaticResource ButtonSymbolRight}" Symbol="ArrowDownload20" />
                 </StackPanel>
             </ui:Button>
         </Grid>
@@ -49,61 +33,31 @@
                 Orientation="Vertical">
                 <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
                     <ui:Button
-                        Height="45"
-                        Margin="0,0,0,0"
-                        HorizontalAlignment="Center"
-                        Background="#df5000"
                         Click="Button_Click"
-                        CornerRadius="22"
-                        MouseOverBackground="#FFC54700"
-                        PressedBackground="#FFAB3D00"
+                        Style="{StaticResource MainButton}"
                         ToolTip="Выбрать текущий вариант аварата и применить его для профиля">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock
-                                Margin="5"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                FontFamily="{DynamicResource AdwaitaSans}"
-                                FontSize="16"
-                                FontWeight="SemiBold"
-                                Foreground="White"
-                                Text="Обрезать"
-                                TextAlignment="Center" />
-                            <ui:SymbolIcon
-                                Margin="0,0,5,0"
-                                FontSize="21"
-                                Symbol="Cut20" />
+                            <ui:TextBlock Style="{StaticResource MainButtonTextLeft}" Text="Обрезать" />
+                            <ui:SymbolIcon Style="{StaticResource ButtonSymbolRight}" Symbol="Cut20" />
                         </StackPanel>
 
                     </ui:Button>
                     <ui:Button
-                        Height="45"
-                        Margin="5,0,0,0"
-                        HorizontalAlignment="Center"
-                        Background="#df5000"
                         Click="ResetPosition"
-                        CornerRadius="22"
-                        MouseOverBackground="#FFC54700"
-                        PressedBackground="#FFAB3D00"
+                        Style="{StaticResource MainButton}"
                         ToolTip="Вернуть картинку в исходное состояние">
                         <ui:SymbolIcon
-                            Margin="7,0,8,0"
-                            FontSize="21"
+                            Margin="25,0,25,0"
+                            Style="{StaticResource ButtonSymbolSingle}"
                             Symbol="ArrowMoveInward20" />
                     </ui:Button>
                     <ui:Button
-                        Height="45"
-                        Margin="5,0,0,0"
-                        HorizontalAlignment="Center"
-                        Background="#df5000"
                         Click="LoadButton_Click"
-                        CornerRadius="22"
-                        MouseOverBackground="#FFC54700"
-                        PressedBackground="#FFAB3D00"
+                        Style="{StaticResource MainButton}"
                         ToolTip="Выбрать другую картинку">
                         <ui:SymbolIcon
-                            Margin="7,0,8,0"
-                            FontSize="21"
+                            Margin="25,0,25,0"
+                            Style="{StaticResource ButtonSymbolSingle}"
                             Symbol="ImageArrowCounterclockwise20" />
                     </ui:Button>
                 </StackPanel>

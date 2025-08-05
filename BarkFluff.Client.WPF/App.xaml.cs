@@ -4,10 +4,12 @@ using BarkFluff.Client.WPF.Services.App.Caching;
 using BarkFluff.Client.WPF.Services.Erida;
 using BarkFluff.Client.WPF.Services.Notification;
 using BarkFluff.Client.WPF.Services.Notification.System;
+using BarkFluff.WebApi.Core.MessengerData;
 
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -20,14 +22,13 @@ namespace BarkFluff.Client.WPF
     public partial class App : Application
     {
 #if (DEBUG)
-        private const string appUserModelId = "com.barkfluff.messenger.debug";
-        private const string mutexName = "BarkFluffDebug";
+        private const string AppUserModelId = "com.barkfluff.messenger.debug";
+        private const string MutexName = "BarkFluffDebug";
 #else
-        private const string appUserModelId = "com.barkfluff.messenger";
-        private const string mutexName = "BarkFluffMutex";
+        private const string AppUserModelId = "com.barkfluff.messenger";
+        private const string MutexName = "BarkFluffMutex";
 #endif
-        public static string AppUserModelId { get; set; }
-        public static string MutexName { get; set; }
+
         public static BarkFluff.WebApi.Core.WebApi ServerCommunication { get; set; } = null!;
         public static BarkFluff.WebApi.Core.MessengerData.GlobalParam GParam { get; set; } = null!;
         public static ImageColorAnalyzer ColorAnalyzer { get; set; } = null!;
@@ -97,12 +98,12 @@ namespace BarkFluff.Client.WPF
             try
             {
                 string targetPath;
-#if WINDOWS_UWP // Для UWP (включая WinUI)
-            folderPath = Windows.ApplicationModel.Package.Current.InstalledLocation.Path;
-#else
+                #if WINDOWS_UWP
+                folderPath = Windows.ApplicationModel.Package.Current.InstalledLocation.Path;
+                #else
                 var exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
                 targetPath = Path.Combine(Path.GetDirectoryName(exePath), "BarkFluff.Client.WPF.exe");
-#endif
+                #endif
                 string shortcutPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Programs", "BarkFluff.lnk");
                 ShortcutHelper.CreateShortcut(shortcutPath, targetPath, AppUserModelId);
             }
@@ -172,7 +173,7 @@ namespace BarkFluff.Client.WPF
             versionParts[3] = buildNumber.ToString();
             AppVersion.Version = string.Join(".", versionParts);
 
-            var versionFile = "K:\\source\\HavenProjects\\BarkFluff\\BarkFluff.Client.WPF\\Services\\App\\AppVersion.cs";
+            var versionFile = "K:\\source\\BarkFluff\\BarkFluff.Client.WPF\\Services\\App\\AppVersion.cs";
             var lines = System.IO.File.ReadAllLines(versionFile);
             for (int i = 0; i < lines.Length; i++)
             {
@@ -185,12 +186,49 @@ namespace BarkFluff.Client.WPF
             System.IO.File.WriteAllLines(versionFile, lines);
         }
 
-        public static void UpdateApiClient()
+        /// <summary>
+        /// Метод для обновления API клиента.
+        /// </summary>
+        public static async void UpdateApiClient()
         {
             ServerCommunication = null!;
             ServerCommunication = new WebApi.Core.WebApi();
-
-            ServerCommunication.CreateAC(GParam, GParam.MachineName, SystemInfo.GetFriendlyWindowsVersion(), AppVersion.AppName, AppVersion.Version, GParam.IpAddress);
+            var (error, serverInfo) = await ServerCommunication.GetServerInfo(GParam);
+            if (!error.IsSuccess)
+            {
+                App.ErideMessage.AddMessage(error.ErrorMessage ?? "Не удалось получить информацию о сервере", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
+                return;
+            }
+            else
+            {
+                App.GParam.ServerName = serverInfo.Name;
+                App.GParam.ServerDescription = serverInfo.Description;
+                App.GParam.SocketIdentity = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Identity.Endpoint.Host + ":" + serverInfo.Identity.Endpoint.Port);
+                App.GParam.SocketUsers = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Users.Endpoint.Host + ":" + serverInfo.Users.Endpoint.Port);
+                App.GParam.SocketFiles = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Files.Endpoint.Host + ":" + serverInfo.Files.Endpoint.Port);
+                App.GParam.SocketMessages = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Messages.Endpoint.Host + ":" + serverInfo.Messages.Endpoint.Port);
+                App.GParam.Colors = new ClientColors()
+                {
+                    LiteHex = serverInfo.Color.LiteHex,
+                    MainHex = serverInfo.Color.MainHex,
+                    HardHex = serverInfo.Color.HardHex,
+                };
+                string filePath = Path.Combine(SystemInfo.GetAppPath(), "GlobalParam.json");
+                if (App.GParam == null) { return; }
+                if (string.IsNullOrEmpty(App.GParam.AppPass) || string.IsNullOrEmpty(App.GParam.AppPath)) { return; }
+                GlobalParam.Save(App.GParam, filePath, App.GParam.AppPass);
+            }
+            var response = ServerCommunication.CreateAC(GParam, GParam.MachineName, SystemInfo.GetFriendlyWindowsVersion(), AppVersion.AppName, AppVersion.Version, GParam.IpAddress);
+            if (!response.IsSuccess)
+            {
+                App.ErideMessage.AddMessage(response.ErrorMessage ?? "Не удалось обновить API клиент", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
+                return;
+            }
+            else
+            {
+                App.ErideMessage.AddMessage("API клиент успешно обновлён", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Debug });
+            }
+            
         }
 
         public static void OpenMessengerPage()

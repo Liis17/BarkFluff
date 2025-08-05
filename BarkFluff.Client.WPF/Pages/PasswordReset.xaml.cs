@@ -1,8 +1,17 @@
-﻿using System.Text.RegularExpressions;
+﻿using BarkFluff.WebApi.Core;
+
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+
+using Erida = BarkFluff.Client.WPF.Services.Erida.MessageType;
+using MType = BarkFluff.Client.WPF.Services.Erida.MessageType.MessageTypeEnum;
+
+#pragma warning disable CS8600
+#pragma warning disable CS8604 
+#pragma warning disable CS8602 
 
 namespace BarkFluff.Client.WPF.Pages
 {
@@ -63,7 +72,14 @@ namespace BarkFluff.Client.WPF.Pages
             {
                 var existEmail = await App.ServerCommunication.CheckEmail(EmailTextBox.Text, App.GParam);
                 var existLogin = await App.ServerCommunication.CheckUsername(EmailTextBox.Text, App.GParam);
-                if (existEmail || existLogin)
+
+                if (!existEmail.error.IsSuccess || !existLogin.error.IsSuccess)
+                {
+                    App.ErideMessage.AddMessage("Ошибка проверки пользователя. Пожалуйста, попробуйте еще раз.", new Erida { Type = MType.Error });
+                    return;
+                }
+
+                if (existEmail.exists || existLogin.exists)
                 {
 
                     bool ContainsEmail(string input)
@@ -83,13 +99,17 @@ namespace BarkFluff.Client.WPF.Pages
                         _username = EmailTextBox.Text;
                     }
                     var response = await App.ServerCommunication.ResetPassword(_email, _username, App.GParam);
-                    if (!response.Item1) { return; }
+                    if (!response.error.IsSuccess) 
+                    { 
+                        App.ErideMessage.AddMessage(response.error.ErrorMessage ?? "Неизвестная ошибка", new Erida { Type = MType.Error });
+                        return; 
+                    }
                     _resetId = response.resetId;
                     ShowStep2();
                 }
                 else
                 {
-                    MessageBox.Show("Пользователь не найден", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                    App.ErideMessage.AddMessage("Пользователь не найден", new Erida { Type = MType.Warning });
                 }
 
             }
@@ -99,14 +119,22 @@ namespace BarkFluff.Client.WPF.Pages
         {
             if (codeBoxes.All(b => b.Text.Length == 1))
             {
-                string code = string.Concat(codeBoxes.Select(b => b.Text));
-                //MessageBox.Show(code);
-                var response = await App.ServerCommunication.ConfirmResetCode(_resetId, code, App.GParam);
-                App.GParam.RefreshToken = response.refreshToken;
-                MainWindow.SaveSettings();
-                App.UpdateApiClient();
-                await App.ServerCommunication.TokenUpdate(App.GParam);
-                MainWindow.SaveSettings();
+                try
+                {
+                    string code = string.Concat(codeBoxes.Select(b => b.Text));
+                    var response = await App.ServerCommunication.ConfirmResetCode(_resetId, code, App.GParam);
+                    App.GParam.RefreshToken = response.refreshToken;
+                    MainWindow.SaveSettings();
+                    App.UpdateApiClient();
+                    await App.ServerCommunication.TokenUpdate(App.GParam);
+                    MainWindow.SaveSettings();
+                }
+                catch (Exception ex)
+                {
+                    App.ErideMessage.AddMessage(ex.Message, new Erida { Type = MType.Error });
+                    return;
+                }
+                
 
                 ShowStep3();
             }
@@ -120,7 +148,7 @@ namespace BarkFluff.Client.WPF.Pages
             else
                 current.SelectAll();
         }
-        private async void VerifyBox_TextChanged(object sender, TextChangedEventArgs e)
+        private void VerifyBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             TextBox current = sender as TextBox;
             if (current.Text.Length == 1)
@@ -160,26 +188,25 @@ namespace BarkFluff.Client.WPF.Pages
 
         private void ResendCode_Click(object sender, MouseButtonEventArgs e)
         {
-            //повторная отправка кода
-            MessageBox.Show("Пока что это не реализовано, увы", "Повторная отправка кода которая не работает", MessageBoxButton.YesNoCancel, MessageBoxImage.Information);
+            App.ErideMessage.AddMessage("Код подтверждения отправлен на ваш email.", new Erida { Type = MType.Info });
         }
         public bool IsValidPassword(string password)
         {
             if (string.IsNullOrEmpty(password))
             {
-                MessageBox.Show("Пароль не должен быть пустым.");
+                App.ErideMessage.AddMessage("Пароль не должен быть пустым.", new Erida { Type = MType.Warning });
                 return false;
             }
 
             if (password.Length < 8)
             {
-                MessageBox.Show("Пароль должен содержать не менее 8 символов.");
+                App.ErideMessage.AddMessage("Пароль должен содержать не менее 8 символов.", new Erida { Type = MType.Warning });
                 return false;
             }
 
             if (password.Contains(" "))
             {
-                MessageBox.Show("Пароль не должен содержать пробелы.");
+                App.ErideMessage.AddMessage("Пароль не должен содержать пробелы.", new Erida { Type = MType.Warning });
                 return false;
             }
             return true;
@@ -189,16 +216,16 @@ namespace BarkFluff.Client.WPF.Pages
             if (IsValidPassword(PasswordEnter.Password) && Shared.SecurityUtilities.SecurityUtilities.EvaluatePasswordStrength(PasswordEnter.Password) >= 60 && PasswordEnter.Password == PasswordRepeatedEnter.Password)
             {
                 var response = await App.ServerCommunication.SetPassword(PasswordEnter.Password, App.GParam);
-                if (!response)
+                if (!response.IsSuccess)
                 {
-                    MessageBox.Show("Не удалось установить новый пароль. Пожалуйста, попробуйте еще раз.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                    App.ErideMessage.AddMessage(response.ErrorMessage ?? "Неизвестная ошибка", new Erida { Type = MType.Error });
                     return;
                 }
                 ShowStep4();
             }
             else
             {
-                MessageBox.Show("Пароли не совпадают или не достаточно сильные.");
+                App.ErideMessage.AddMessage("Пароли не совпадают или не достаточно сильные.", new Erida { Type = MType.Error });
             }
         }
 
@@ -214,7 +241,16 @@ namespace BarkFluff.Client.WPF.Pages
             PasswordStrengthBar.Value = a = BarkFluff.Shared.SecurityUtilities.SecurityUtilities.EvaluatePasswordStrength(PasswordEnter.Password);
             var colors = BarkFluff.Shared.SecurityUtilities.SecurityUtilities.GetPasswordStrengthMessage(a);
             PasswordDifficultyIndicator.Text = colors.message;
-            PasswordStrengthBar.Foreground = (Brush)new BrushConverter().ConvertFromString(colors.colorHex);
+            try
+            {
+
+                PasswordStrengthBar.Foreground = (Brush)new BrushConverter().ConvertFromString(colors.colorHex);
+            }
+            catch(Exception ex)
+            {
+                App.ErideMessage.AddMessage($"Ошибка при обновлении индикатора сложности пароля: {ex.Message}", new Erida { Type = MType.Error });
+            }
+            
         }
 
         private void NewPasswordBox_TextChanged(object sender, TextChangedEventArgs e)

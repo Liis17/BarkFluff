@@ -1,0 +1,254 @@
+﻿<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
+
+    <!--  Текст на кнопке  -->
+    <Style x:Key="MainButtonTextLeft" TargetType="ui:TextBlock">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Margin" Value="35,0,0,0" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
+        <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style x:Key="MainButtonTextRight" TargetType="ui:TextBlock">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Margin" Value="0,0,35,0" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
+        <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style x:Key="MainButtonTextSingle" TargetType="ui:TextBlock">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Margin" Value="35,0,35,0" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
+        <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style x:Key="ButtonSymbolRight" TargetType="ui:SymbolIcon">
+        <Setter Property="FontSize" Value="18" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="Margin" Value="10,0,35,0" />
+    </Style>
+    <Style x:Key="ButtonSymbolLeft" TargetType="ui:SymbolIcon">
+        <Setter Property="FontSize" Value="18" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="Margin" Value="35,0,10,0" />
+    </Style>
+    <Style x:Key="ButtonSymbolSingle" TargetType="ui:SymbolIcon">
+        <Setter Property="FontSize" Value="18" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="Margin" Value="35,0,35,0" />
+    </Style>
+
+    <!--  Главный стиль кнопки  -->
+    <Style x:Key="MainButton" TargetType="{x:Type ui:Button}">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="MinWidth" Value="50" />
+        <Setter Property="Padding" Value="55,112" />
+        <Setter Property="Height" Value="45" />
+        <Setter Property="Margin" Value="0,0,0,20" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="Background" Value="#df5000" />
+        <Setter Property="CornerRadius" Value="22" />
+        <Setter Property="MouseOverBackground" Value="#FFC54700" />
+        <Setter Property="PressedBackground" Value="#FFAB3D00" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ui:Button}">
+                    <Border
+                        x:Name="Border"
+                        Background="{TemplateBinding Background}"
+                        BorderThickness="1"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Border" Property="Background" Value="{Binding MouseOverBackground, RelativeSource={RelativeSource TemplatedParent}}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Border" Property="Background" Value="{Binding PressedBackground, RelativeSource={RelativeSource TemplatedParent}}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="UseLayoutRounding" Value="True" />
+    </Style>
+
+
+
+
+    <Style x:Key="MinimalTextBox" TargetType="TextBox">
+        <Setter Property="Background" Value="#282828" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="FontFamily" Value="AdwaitaSans" />
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="Padding" Value="15,12" />
+        <Setter Property="BorderBrush" Value="#404040" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CaretBrush" Value="White" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Border
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="8">
+                        <ScrollViewer x:Name="PART_ContentHost" Padding="{TemplateBinding Padding}" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsFocused" Value="True">
+                            <Setter Property="BorderBrush" Value="#6D90F3" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="BorderBrush" Value="#505050" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="InfoTextStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="AdwaitaSans" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="Foreground" Value="#B0B0B0" />
+        <Setter Property="Margin" Value="0,2,0,0" />
+    </Style>
+
+    <Style x:Key="MinimalPasswordBox" TargetType="PasswordBox">
+        <Setter Property="Background" Value="#282828" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="FontFamily" Value="AdwaitaSans" />
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="Padding" Value="15,12" />
+        <Setter Property="BorderBrush" Value="#404040" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="PasswordBox">
+                    <Border
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="8">
+                        <ScrollViewer x:Name="PART_ContentHost" Padding="{TemplateBinding Padding}" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsFocused" Value="True">
+                            <Setter Property="BorderBrush" Value="#6D90F3" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="BorderBrush" Value="#505050" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="VerificationTextBox" TargetType="TextBox">
+        <Setter Property="Background" Value="#282828" />
+        <Setter Property="Width" Value="45" />
+        <Setter Property="Margin" Value="4" />
+        <Setter Property="MaxLength" Value="1" />
+        <Setter Property="Height" Value="45" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="FontFamily" Value="AdwaitaSans" />
+        <Setter Property="FontSize" Value="20" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="BorderBrush" Value="#404040" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CaretBrush" Value="White" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Border
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="8">
+                        <ScrollViewer x:Name="PART_ContentHost" Padding="8" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsFocused" Value="True">
+                            <Setter Property="BorderBrush" Value="#6D90F3" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="BorderBrush" Value="#505050" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="LinkTextBlock" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="#6D90F3" />
+        <Setter Property="FontFamily" Value="AdwaitaSans" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="TextDecorations" Value="None" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Foreground" Value="#5A7AE6" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="StepIndicator" TargetType="Border">
+        <Setter Property="Width" Value="30" />
+        <Setter Property="Height" Value="30" />
+        <Setter Property="CornerRadius" Value="15" />
+        <Setter Property="Background" Value="#404040" />
+        <Setter Property="BorderBrush" Value="#404040" />
+        <Setter Property="BorderThickness" Value="2" />
+    </Style>
+
+    <Style
+        x:Key="ActiveStepIndicator"
+        BasedOn="{StaticResource StepIndicator}"
+        TargetType="Border">
+        <Setter Property="Background" Value="#6D90F3" />
+        <Setter Property="BorderBrush" Value="#6D90F3" />
+    </Style>
+
+    <Style
+        x:Key="CompletedStepIndicator"
+        BasedOn="{StaticResource StepIndicator}"
+        TargetType="Border">
+        <Setter Property="Background" Value="#28a745" />
+        <Setter Property="BorderBrush" Value="#28a745" />
+    </Style>
+
+
+    <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="AdwaitaSans" />
+        <Setter Property="FontSize" Value="24" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="Margin" Value="0,0,0,30" />
+    </Style>
+
+    <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="AdwaitaSans" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="Foreground" Value="#E0E0E0" />
+        <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+</ResourceDictionary>

@@ -9,38 +9,6 @@
     d:DesignHeight="720"
     d:DesignWidth="1280"
     mc:Ignorable="d">
-    <UserControl.Resources>
-        <Style TargetType="{x:Type ui:Button}">
-            <Setter Property="Width" Value="200" />
-            <Setter Property="Height" Value="45" />
-            <Setter Property="Margin" Value="0,0,0,20" />
-            <Setter Property="HorizontalAlignment" Value="Center" />
-            <Setter Property="Background" Value="#df5000" />
-            <Setter Property="CornerRadius" Value="22" />
-            <Setter Property="MouseOverBackground" Value="#FFC54700" />
-            <Setter Property="PressedBackground" Value="#FFAB3D00" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type ui:Button}">
-                        <Border
-                            Background="{TemplateBinding Background}"
-                            BorderThickness="1"
-                            CornerRadius="{TemplateBinding CornerRadius}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="{Binding MouseOverBackground, RelativeSource={RelativeSource TemplatedParent}}" />
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="{Binding PressedBackground, RelativeSource={RelativeSource TemplatedParent}}" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-    </UserControl.Resources>
     <Grid>
         <StackPanel
             HorizontalAlignment="Center"
@@ -81,14 +49,14 @@
                 Text="Общайтесь с друзьями, делитесь моментами и оставайтесь на связи с теми, кто важен, гаф"
                 TextAlignment="Center"
                 TextWrapping="Wrap" />
-            <ui:Button Click="Button_Click">
+            <ui:Button Click="Button_Click" Style="{StaticResource MainButton}">
                 <ui:Button.Content>
-                    <TextBlock
-                        FontFamily="{DynamicResource AdwaitaSans}"
-                        FontSize="16"
-                        FontWeight="SemiBold"
-                        Foreground="White"
-                        Text="Начать" />
+                    <StackPanel Orientation="Horizontal">
+                        <ui:TextBlock Style="{StaticResource MainButtonTextLeft}" Text="Начать" />
+                        <ui:SymbolIcon Style="{StaticResource ButtonSymbolRight}" Symbol="ArrowRight24" />
+                    </StackPanel>
+
+
                 </ui:Button.Content>
             </ui:Button>
 

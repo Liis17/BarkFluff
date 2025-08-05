@@ -3,6 +3,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 
+using Erida = BarkFluff.Client.WPF.Services.Erida.MessageType;
+using MType = BarkFluff.Client.WPF.Services.Erida.MessageType.MessageTypeEnum;
 namespace BarkFluff.Client.WPF.Pages.SetupPages
 {
     /// <summary>
@@ -29,6 +31,17 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
             OtpBlock.Visibility = Visibility.Collapsed;
             codeBoxes = new[] { VerifyBox0, VerifyBox1, VerifyBox2, VerifyBox3, VerifyBox4, VerifyBox5 };
             VerifyBox0.Focus();
+
+            if (App.ServerCommunication.BeaconIsnull)
+            {
+                App.ErideMessage.AddMessage("Beacon API клиент успешно инициализирован.", new Erida { Type = MType.Debug });
+            }
+            else
+            {
+                App.ServerCommunication.CreateOnlyBeaconAC(App.GParam);
+                App.ErideMessage.AddMessage("Ошибка инициализации Beacon API клиента, попытка переподключения.", new Erida { Type = MType.Error });
+                //App.UpdateApiClient();
+            }
         }
 
         private void CreateAccountPageOpen(object sender, RoutedEventArgs e)
@@ -40,7 +53,15 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
         {
             var existEmail = await App.ServerCommunication.CheckEmail(UsernameTextBox.Text, App.GParam);
             var existLogin = await App.ServerCommunication.CheckUsername(UsernameTextBox.Text, App.GParam);
-            if (existEmail || existLogin)
+
+            if (!existEmail.error.IsSuccess && !existLogin.error.IsSuccess)
+            {
+                App.ErideMessage.AddMessage("Ошибка проверки имени пользователя или почты", new Erida { Type = MType.Error });
+                return;
+            }
+
+
+            if (existEmail.exists || existLogin.exists)
             {
 
                 bool ContainsEmail(string input)
@@ -63,48 +84,39 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                 }
                 _password = PasswordBox.Password;
                 var response = await App.ServerCommunication.Authorisation(_email, _username, _password, _otpCode, App.GParam);
-                if (!string.IsNullOrEmpty(response.error) && !response.Item1)
+                if (!response.Error.IsSuccess && !response.getMeOtpCode)
                 {
-                    MessageBox.Show(response.error, "Ошибка авторизации", MessageBoxButton.OK, MessageBoxImage.Error);
+                    App.ErideMessage.AddMessage(response.Error.ErrorMessage, new Erida { Type = MType.Error });
+                    return;
                 }
-                if (response.getMeOtpCode)
+                else if (response.getMeOtpCode)
                 {
                     _step2FA = true;
                     LoginPasswordFields.Visibility = Visibility.Collapsed;
                     OtpBlock.Visibility = Visibility.Visible;
-                    return;
-                }
-                else if (!response.Item1)
-                {
-                    MessageBox.Show(response.error, "Ошибка авторизации", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
-                }
-                if (!response.Item1)
-                {
-                    MessageBox.Show(response.error, "Ошибка авторизации", MessageBoxButton.OK, MessageBoxImage.Error);
+                    App.ErideMessage.AddMessage("Введите код двухфакторной аутентификации", new Erida { Type = MType.Info });
                     return;
                 }
 
                 App.GParam.RefreshToken = response.refreshToken;
                 App.GParam.AccessToken = response.accessToken;
+
+                var responseUserData = await App.ServerCommunication.GetUserData(App.GParam);
+
+                App.GParam.UserId = responseUserData.Data.Id;
+                App.GParam.UserName = responseUserData.Data.Username;
+                App.GParam.FirstName = responseUserData.Data.FirstName;
+                App.GParam.LastName = responseUserData.Data.LastName;
+                App.GParam.Description = responseUserData.Data.Description;
                 MainWindow.SaveSettings();
+
                 App.OpenMessengerPage();
             }
             else
             {
-                MessageBox.Show("Имя пользователя/почта или пароль содержат ошибку", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                App.ErideMessage.AddMessage("Имя пользователя/почта или пароль содержат ошибку", new Erida { Type = MType.Error });
                 return;
             }
-        }
-
-        private void TwoFABox_PreviewTextInput(object sender, TextCompositionEventArgs e)
-        {
-
-        }
-
-        private void TwoFABox_TextChanged(object sender, TextChangedEventArgs e)
-        {
-
         }
 
         private void BackToServerList(object sender, MouseButtonEventArgs e)
@@ -119,7 +131,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
 
         private void TextBlock_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            MessageBox.Show("Раздел помощи в разработке, не скучайте )", "Информация", MessageBoxButton.AbortRetryIgnore, MessageBoxImage.Information);
+            App.ErideMessage.AddMessage("Раздел помощи в разработке, не скучайте )", new Erida { Type = MType.Info });
         }
 
 

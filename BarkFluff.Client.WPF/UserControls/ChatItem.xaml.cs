@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿using System.ComponentModel;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -6,6 +7,8 @@ using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
 
 using Color = System.Windows.Media.Color;
+using Erida = BarkFluff.Client.WPF.Services.Erida.MessageType;
+using MType = BarkFluff.Client.WPF.Services.Erida.MessageType.MessageTypeEnum;
 
 namespace BarkFluff.Client.WPF.UserControls
 {
@@ -14,19 +17,39 @@ namespace BarkFluff.Client.WPF.UserControls
     /// </summary>
     public partial class ChatItem : UserControl
     {
+        /// <summary>
+        /// Статус прочтения сообщения
+        /// </summary>
         public enum ReadingStatus
         {
-            None,
+            /// <summary>
+            /// Сообщение отправлено и прочитано мной
+            /// </summary>
+            Me,
+
+            /// <summary>
+            /// Сообщение отправлено, но не прочитано собеседником
+            /// </summary>
             OnlySent,
-            SentAndRead
+
+            /// <summary>
+            /// Сообщение отправлено и прочитано собеседником
+            /// </summary>
+            SentAndRead,
+
+            /// <summary>
+            /// Сообщение отправлено мне, но не прочитано мной
+            /// </summary>
+            ForMe
         }
         private string _url;
-        public ChatItem(string imageUrl, string chatName, string lastMessageText, string time, ReadingStatus reading, List<long> readBy)
+        public ChatItem(string imageUrl, string chatName, string lastMessageText, string time, ReadingStatus reading, List<long> readBy, long unReaded)
         {
             InitializeComponent();
             Title.Text = chatName;
             LastMessage.Text = lastMessageText;
             TimeMessage.Text = FormatDateTime(time.Length >= 2 ? time.Substring(1, time.Length - 2) : time);
+
 
             Loaded += ChatItem_Loaded;
             _url = imageUrl;
