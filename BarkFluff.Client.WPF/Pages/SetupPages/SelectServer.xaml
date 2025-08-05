@@ -11,66 +11,6 @@
     mc:Ignorable="d">
 
     <UserControl.Resources>
-        <Style x:Key="ServerButton" TargetType="Button">
-            <Setter Property="Background" Value="#282828" />
-            <Setter Property="Foreground" Value="White" />
-            <Setter Property="FontFamily" Value="AdwaitaSans" />
-            <Setter Property="FontSize" Value="14" />
-            <Setter Property="FontWeight" Value="Normal" />
-            <Setter Property="Padding" Value="15,12" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Margin" Value="0,5" />
-            <Setter Property="HorizontalAlignment" Value="Stretch" />
-            <Setter Property="HorizontalContentAlignment" Value="Left" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border
-                            Padding="{TemplateBinding Padding}"
-                            Background="{TemplateBinding Background}"
-                            CornerRadius="8">
-                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#383838" />
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#484848" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="CustomTextBox" TargetType="TextBox">
-            <Setter Property="Background" Value="#282828" />
-            <Setter Property="Foreground" Value="White" />
-            <Setter Property="FontFamily" Value="AdwaitaSans" />
-            <Setter Property="FontSize" Value="16" />
-            <Setter Property="Padding" Value="15,12" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="CaretBrush" Value="White" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="TextBox">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="8">
-                            <ScrollViewer
-                                x:Name="PART_ContentHost"
-                                Padding="{TemplateBinding Padding}"
-                                VerticalAlignment="Center" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsFocused" Value="True">
-                                <Setter Property="Background" Value="#383838" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
         <Style x:Key="ActionButton" TargetType="ui:Button">
             <Setter Property="Padding" Value="25,12" />
             <Setter Property="BorderThickness" Value="0" />
@@ -169,31 +109,6 @@
                                         FontSize="28"
                                         Foreground="#FFFF9800"
                                         Symbol="Server20" />
-
-                                    <!--  Знак вопроса для удивления  -->
-                                    <Border
-                                        Width="24"
-                                        Height="24"
-                                        Margin="0,-6,-6,0"
-                                        HorizontalAlignment="Right"
-                                        VerticalAlignment="Top"
-                                        Background="#FFFF5722"
-                                        CornerRadius="12">
-                                        <Border.Effect>
-                                            <DropShadowEffect
-                                                BlurRadius="6"
-                                                Opacity="0.4"
-                                                ShadowDepth="0"
-                                                Color="#FFFF5722" />
-                                        </Border.Effect>
-                                        <TextBlock
-                                            HorizontalAlignment="Center"
-                                            VerticalAlignment="Center"
-                                            FontSize="14"
-                                            FontWeight="Bold"
-                                            Foreground="White"
-                                            Text="?" />
-                                    </Border>
                                 </Grid>
                             </Border>
 
@@ -205,7 +120,7 @@
                                 FontSize="18"
                                 FontWeight="SemiBold"
                                 Foreground="White"
-                                Text="А где же серверы? 🤔"
+                                Text="А где же серверы?"
                                 TextAlignment="Center" />
 
                             <!--  Описание с удивлением  -->
@@ -218,37 +133,17 @@
                                 LineHeight="18"
                                 TextAlignment="Center"
                                 TextWrapping="Wrap">
-                                <Run Text="Странно... Тут должны были быть серверы," />
-                                <LineBreak />
-                                <Run Text="но их почему-то нет. Может быть," />
-                                <LineBreak />
-                                <Run Text="пора создать свой собственный?" />
+                                <Run Text="Странно... Тут должны были быть серверы..." />
+
                             </TextBlock>
 
                             <!--  Главная кнопка  -->
-                            <ui:Button
-                                Margin="0,0,0,12"
-                                Padding="20,10"
-                                HorizontalAlignment="Center"
-                                Background="#df5000"
-                                BorderThickness="0"
-                                CornerRadius="22"
-                                Cursor="Hand"
-                                FontFamily="{DynamicResource AdwaitaSans}"
-                                FontSize="13"
-                                FontWeight="Medium"
-                                Foreground="White"
-                                MouseOverBackground="#FFC54700"
-                                PressedBackground="#FFAB3D00">
+                            <ui:Button Style="{StaticResource MainButton}">
 
 
                                 <StackPanel Orientation="Horizontal">
-                                    <ui:SymbolIcon
-                                        Margin="0,0,6,0"
-                                        VerticalAlignment="Center"
-                                        FontSize="14"
-                                        Symbol="Add16" />
-                                    <TextBlock VerticalAlignment="Center" Text="Поднять свой сервер" />
+                                    <ui:SymbolIcon Style="{StaticResource ButtonSymbolLeft}" Symbol="Add16" />
+                                    <ui:TextBlock Style="{StaticResource MainButtonTextRight}" Text="Поднять свой сервер" />
                                 </StackPanel>
                             </ui:Button>
 
@@ -273,50 +168,26 @@
                     Foreground="#E0E0E0"
                     Text="Подключиться к другому серверу" />
 
-                <TextBox
+                <ui:TextBox
                     x:Name="ServerAddressTextBox"
                     Margin="0,0,0,10"
+                    Padding="12,10"
                     GotFocus="ServerAddressTextBox_GotFocus"
                     Loaded="ServerAddressTextBox_Loaded"
-                    Style="{StaticResource CustomTextBox}"
-                    Text="" />
-
-                <TextBlock
-                    x:Name="ErrorText"
-                    Margin="0,0,0,5"
-                    HorizontalAlignment="Left"
-                    FontFamily="{DynamicResource AdwaitaSans}"
-                    FontSize="12"
-                    Foreground="#9E9E9E"
-                    Text="Формат: домен/IP:порт (например: myserver.com:8080)" />
-
-
+                    PlaceholderEnabled="True"
+                    PlaceholderText="myserver.com:8080" />
 
                 <!--  Кнопки действий  -->
                 <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
 
                     <ui:Button
                         x:Name="ConnectButton"
-                        Width="200"
-                        Height="45"
-                        Background="#df5000"
                         Click="ConnectButton_Click"
-                        CornerRadius="22"
-                        MouseOverBackground="#FFC54700"
-                        PressedBackground="#FFAB3D00">
+                        Style="{StaticResource MainButton}">
                         <ui:Button.Content>
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock
-                                    FontFamily="{DynamicResource AdwaitaSans}"
-                                    FontSize="16"
-                                    FontWeight="SemiBold"
-                                    Foreground="White"
-                                    Text="Подключиться" />
-                                <ui:SymbolIcon
-                                    Margin="10,0,0,0"
-                                    FontSize="18"
-                                    Foreground="White"
-                                    Symbol="ArrowRight24" />
+                                <ui:TextBlock Style="{StaticResource MainButtonTextLeft}" Text="Подключиться" />
+                                <ui:SymbolIcon Style="{StaticResource ButtonSymbolRight}" Symbol="ArrowRight24" />
                             </StackPanel>
                         </ui:Button.Content>
                     </ui:Button>

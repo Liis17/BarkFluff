@@ -2,7 +2,7 @@ name: WPF Build and Release
 on:
   push:
     branches:
-      - Dev
+      - dev
     paths:
       - 'BarkFluff.Client.WPF/**'
 jobs:

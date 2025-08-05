@@ -15,7 +15,7 @@
 
     <!-- Основной контейнер с фоном и эффектами -->
     <Border
-        Background="#1a1a1a"
+        Background="#2a2a2a"
         CornerRadius="12"
         Padding="16,12">
         <Border.Effect>

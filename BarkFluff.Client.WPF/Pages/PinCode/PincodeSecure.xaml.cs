@@ -1,6 +1,7 @@
 ﻿using BarkFluff.Client.WPF.Debugs;
 using BarkFluff.WebApi.Core.MessengerData;
-
+using Erida = BarkFluff.Client.WPF.Services.Erida.MessageType;
+using MType = BarkFluff.Client.WPF.Services.Erida.MessageType.MessageTypeEnum;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
@@ -157,7 +158,7 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
             }
             else
             {
-                MessageBox.Show("Файл GlobalParam.json не найден", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                App.ErideMessage.AddMessage("Файл GlobalParam.json не найден", new Erida { Type = MType.Error });
                 return false;
             }
 

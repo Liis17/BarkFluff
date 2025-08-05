@@ -171,29 +171,12 @@
 
                     <ui:Button
                         x:Name="SaveButton"
-                        Width="200"
-                        Height="45"
-                        Margin="0,25,0,20"
-                        HorizontalAlignment="Center"
-                        Background="#df5000"
-                        BorderThickness="0"
                         Click="SaveButton_Click"
-                        CornerRadius="22"
-                        MouseOverBackground="#FFC54700"
-                        PressedBackground="#FFAB3D00">
+                        Style="{StaticResource MainButton}">
                         <ui:Button.Content>
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock
-                                    FontFamily="{DynamicResource AdwaitaSans}"
-                                    FontSize="16"
-                                    FontWeight="SemiBold"
-                                    Foreground="White"
-                                    Text="Сохранить" />
-                                <ui:SymbolIcon
-                                    Margin="10,0,0,0"
-                                    FontSize="18"
-                                    Foreground="White"
-                                    Symbol="Checkmark24" />
+                                <ui:TextBlock Style="{StaticResource MainButtonTextLeft}" Text="Сохранить" />
+                                <ui:SymbolIcon Style="{StaticResource ButtonSymbolRight}" Symbol="Checkmark24" />
                             </StackPanel>
                         </ui:Button.Content>
                     </ui:Button>

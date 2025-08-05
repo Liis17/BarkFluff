@@ -12,7 +12,8 @@ namespace BarkFluff.Client.WPF.Services.Erida
             Info,
             Warning,
             Error,
-            Success
+            Success,
+            Debug
         }
     }
 }

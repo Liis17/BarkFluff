@@ -28,6 +28,13 @@ namespace BarkFluff.WebApi.Core.MessengerData
         public Token AccessToken { get; set; } = null!;
         #endregion
 
+        public long UserId { get; set; } = 0;
+        public string UserName { get; set; } = string.Empty;
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string PictureId { get; set; } = string.Empty;
+
         #endregion
         #region Сохранение/загрузка настроек
         private const int SaltSize = 16; // 128 бит
