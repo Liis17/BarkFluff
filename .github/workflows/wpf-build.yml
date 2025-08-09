@@ -1,40 +1,53 @@
 name: WPF Build and Release
+
 on:
   push:
     branches:
       - dev
+      - master
     paths:
       - 'BarkFluff.Client.WPF/**'
+
 jobs:
   build:
     runs-on: self-hosted
     steps:
     - name: Debug GITHUB_WORKSPACE
       run: echo "GITHUB_WORKSPACE is $env:GITHUB_WORKSPACE"
+
     - name: Configure Git safe directory
       run: git config --global --add safe.directory "$env:GITHUB_WORKSPACE"
+
     - uses: actions/checkout@v4
+
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '10.0.x'
+
     - name: Restore dependencies
       run: dotnet restore BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj
+
     - name: Build
       run: dotnet build BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj --no-restore --configuration Release
+
     - name: Publish
       run: dotnet publish BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj --no-build --configuration Release --self-contained true --runtime win-x64 -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --output ./publish
+
     - name: Zip build
       uses: vimtor/action-zip@v1
       with:
         files: publish/
         dest: wpf-build.zip
+
     - name: Verify zip file
       run: |
         if (Test-Path wpf-build.zip) { echo "wpf-build.zip exists" } else { echo "wpf-build.zip not found"; exit 1 }
         dir wpf-build.zip
-    - name: Generate tag
-      id: generate_tag
+
+    - name: Generate tag for dev
+      if: github.ref == 'refs/heads/dev'
+      id: generate_tag_dev
       run: |
         $commitHash = $(git rev-parse --short HEAD)
         $timestamp = $(Get-Date -Format 'yyyyMMddHHmmss')
@@ -42,11 +55,28 @@ jobs:
         $tag = "dev-$timestamp-$commitHash-$random"
         echo "TAG=$tag" >> $env:GITHUB_ENV
         echo "Generated tag: $tag"
+
+    - name: Generate tag for master
+      if: github.ref == 'refs/heads/master'
+      id: generate_tag_master
+      run: |
+        $commitHash = $(git rev-parse --short HEAD)
+        $timestamp = $(Get-Date -Format 'yyyyMMddHHmmss')
+        $random = Get-Random -Minimum 1000 -Maximum 9999
+        $tag = "master-$timestamp-$commitHash-$random"
+        echo "TAG=$tag" >> $env:GITHUB_ENV
+        echo "Generated tag: $tag"
+
     - name: Delete existing tag and release if it exists
       shell: pwsh
       env:
         GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
         TAG: ${{ env.TAG }}
+        GH_USER: ${{ secrets.OWNER_RELEASE_REPO }}
+        TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TG_CHANNEL: ${{ secrets.TELEGRAM_CHANNEL }} 
+        THIS_BRANCH: ${{ github.ref == 'refs/heads/dev' && 'Dev' || 'Master' }}
+        REPO: ${{ secrets.RELEASE_REPO_NAME }}
       run: |
         gh release view $env:TAG --repo Liis17/BarkFluff.Releases > $null 2>&1
         if ($LASTEXITCODE -eq 0) {
@@ -57,9 +87,15 @@ jobs:
           Write-Host "Tag $env:TAG does not exist, proceeding"
         }
         exit 0
+
     - name: Upload Release
       shell: pwsh
       env:
         GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+        GH_USER: ${{ secrets.OWNER_RELEASE_REPO }}
+        REPO: ${{ secrets.RELEASE_REPO_NAME }}
+        TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TG_CHANNEL: ${{ secrets.TELEGRAM_CHANNEL }} 
+        THIS_BRANCH: ${{ github.ref == 'refs/heads/dev' && 'Dev' || 'Master' }}
       run: |
-        C:\ProgramData\gituploader\GitReleaseUploader.exe ${{ env.GH_TOKEN }} "$env:GITHUB_WORKSPACE\wpf-build.zip"
+        C:\ProgramData\gituploader\GitReleaseUploader.exe ${{ env.GH_USER }} ${{ env.GH_TOKEN }} ${{ env.REPO }} "$env:GITHUB_WORKSPACE\wpf-build.zip" true ${{ env.TG_TOKEN }} ${{ env.TELEGRAM_BOT_TOKEN }} ${{ env.THIS_BRANCH }}
