@@ -98,4 +98,4 @@ jobs:
         TG_CHANNEL: ${{ secrets.TELEGRAM_CHANNEL }} 
         THIS_BRANCH: ${{ github.ref == 'refs/heads/dev' && 'Dev' || 'Master' }}
       run: |
-        C:\ProgramData\gituploader\GitReleaseUploader.exe ${{ env.GH_USER }} ${{ env.GH_TOKEN }} ${{ env.REPO }} "$env:GITHUB_WORKSPACE\wpf-build.zip" true ${{ env.TG_TOKEN }} ${{ env.TELEGRAM_BOT_TOKEN }} ${{ env.THIS_BRANCH }} WPF-Client
+        C:\ProgramData\gituploader\GitReleaseUploader.exe ${{ env.GH_USER }} ${{ env.GH_TOKEN }} ${{ env.REPO }} "$env:GITHUB_WORKSPACE\wpf-build.zip" true ${{ env.TG_TOKEN }} ${{ env.TG_CHANNEL }} ${{ env.THIS_BRANCH }} WPF-Client
