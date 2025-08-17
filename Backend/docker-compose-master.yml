@@ -39,6 +39,17 @@ services:
     depends_on:
       - configuration
 
+  messages:
+    image: docker.barkfluff.com/barkfluff-messages:latest
+    restart: always
+    ports: ["7007:7007"]
+    environment:
+      <<: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
+
   identity:
     image: docker.barkfluff.com/barkfluff-identity:latest
     restart: always
@@ -72,10 +83,10 @@ services:
     depends_on:
       - configuration
 
-  messages:
-    image: docker.barkfluff.com/barkfluff-messages:latest
+  fast-auth:
+    image: docker.barkfluff.com/barkfluff-fast-auth:latest
     restart: always
-    ports: ["7007:7007"]
+    ports: ["7008:7008"]
     environment:
       <<: *common-variables
     networks:
@@ -83,10 +94,10 @@ services:
     depends_on:
       - configuration
 
-  fast-auth:
-    image: docker.barkfluff.com/barkfluff-fast-auth:latest
+  updates:
+    image: docker.barkfluff.com/barkfluff-updates:latest
     restart: always
-    ports: ["7008:7008"]
+    ports: ["7015:7015"]
     environment:
       <<: *common-variables
     networks:
