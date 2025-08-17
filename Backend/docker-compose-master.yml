@@ -1,0 +1,177 @@
+version: '3.8'
+
+x-common-variables: &common-variables
+  CONFIGURATION_SERVICE_URL: "${CONFIGURATION_SERVICE_URL}"
+  ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT}"
+
+services:
+  # Основные
+  beacon:
+    image: docker.barkfluff.com/barkfluff-beacon:latest 
+    restart: always
+    ports: ["7002:7002"]
+    environment:
+      <<: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
+
+  configuration:
+    image: docker.barkfluff.com/barkfluff-configuration:latest
+    restart: always
+    ports: ["7003:7003"]
+    environment:
+      <<: *common-variables
+    networks:
+      - barkfluff-network
+
+  files:
+    image: docker.barkfluff.com/barkfluff-files:latest
+    restart: always
+    ports:
+      - "7005:7005"
+      - "7006:7006"
+    environment:
+      <<: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
+
+  messages:
+    image: docker.barkfluff.com/barkfluff-messages:latest
+    restart: always
+    ports: ["7007:7007"]
+    environment:
+      <<: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
+
+  identity:
+    image: docker.barkfluff.com/barkfluff-identity:latest
+    restart: always
+    ports: ["7000:7000"]
+    environment:
+      <<: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
+
+  notification:
+    image: docker.barkfluff.com/barkfluff-notification:latest
+    restart: always
+    ports: ["7004:7004"]
+    environment:
+      <<: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
+
+  users:
+    image: docker.barkfluff.com/barkfluff-users:latest
+    restart: always
+    ports: ["7001:7001"]
+    environment:
+      <<: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
+
+  fast-auth:
+    image: docker.barkfluff.com/barkfluff-fast-auth:latest
+    restart: always
+    ports: ["7008:7008"]
+    environment:
+      <<: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
+
+  updates:
+    image: docker.barkfluff.com/barkfluff-updates:latest
+    restart: always
+    ports: ["7015:7015"]
+    environment:
+      <<: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
+
+  # Дополнительные
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z-cpuv1
+    restart: always
+    container_name: minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: "${MINIO_ROOT_USER}"
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD}"
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - barkfluff-network
+
+  rabbitmq:
+    image: rabbitmq:3.13-management 
+    restart: always
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: "${RABBITMQ_DEFAULT_USER}"
+      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_DEFAULT_PASS}"
+    networks:
+      - barkfluff-network
+
+  redis:
+    image: redis:7.4 
+    restart: always
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - barkfluff-network
+
+  postgres:
+    image: postgres:16 
+    container_name: postgres_barkfluff
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      POSTGRES_DB: "${POSTGRES_DB}"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - backup_volume:/backup
+    ports:
+      - "5432:5432"
+    restart: always
+    networks:
+      - barkfluff-network
+
+networks:
+  barkfluff-network:
+    driver: bridge
+
+volumes:
+  pgdata:
+  rabbitmq_data:
+  redis_data:
+  minio_data:
+  backup_volume:

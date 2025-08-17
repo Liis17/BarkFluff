@@ -7,7 +7,7 @@ x-common-variables: &common-variables
 services:
   # Основные
   beacon:
-    image: docker.barkfluff.com/barkfluff-beacon:latest 
+    image: docker.barkfluff.com/barkfluff-beacon-dev:latest 
     restart: always
     ports: ["7002:7002"]
     environment:
@@ -18,7 +18,7 @@ services:
       - configuration
 
   configuration:
-    image: docker.barkfluff.com/barkfluff-configuration:latest
+    image: docker.barkfluff.com/barkfluff-configuration-dev:latest
     restart: always
     ports: ["7003:7003"]
     environment:
@@ -27,7 +27,7 @@ services:
       - barkfluff-network
 
   files:
-    image: docker.barkfluff.com/barkfluff-files:latest
+    image: docker.barkfluff.com/barkfluff-files-dev:latest
     restart: always
     ports:
       - "7005:7005"
@@ -40,7 +40,7 @@ services:
       - configuration
 
   identity:
-    image: docker.barkfluff.com/barkfluff-identity:latest
+    image: docker.barkfluff.com/barkfluff-identity-dev:latest
     restart: always
     ports: ["7000:7000"]
     environment:
@@ -50,8 +50,19 @@ services:
     depends_on:
       - configuration
 
+  messages:
+    image: docker.barkfluff.com/barkfluff-messages-dev:latest
+    restart: always
+    ports: ["7007:7007"]
+    environment:
+      <<: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
+  
   notification:
-    image: docker.barkfluff.com/barkfluff-notification:latest
+    image: docker.barkfluff.com/barkfluff-notification-dev:latest
     restart: always
     ports: ["7004:7004"]
     environment:
@@ -62,7 +73,7 @@ services:
       - configuration
 
   users:
-    image: docker.barkfluff.com/barkfluff-users:latest
+    image: docker.barkfluff.com/barkfluff-users-dev:latest
     restart: always
     ports: ["7001:7001"]
     environment:
@@ -72,10 +83,10 @@ services:
     depends_on:
       - configuration
 
-  messages:
-    image: docker.barkfluff.com/barkfluff-messages:latest
+  fast-auth:
+    image: docker.barkfluff.com/barkfluff-fast-auth-dev:latest
     restart: always
-    ports: ["7007:7007"]
+    ports: ["7008:7008"]
     environment:
       <<: *common-variables
     networks:
@@ -83,10 +94,10 @@ services:
     depends_on:
       - configuration
 
-  fast-auth:
-    image: docker.barkfluff.com/barkfluff-fast-auth:latest
+  updates:
+    image: docker.barkfluff.com/barkfluff-updates-dev:latest
     restart: always
-    ports: ["7008:7008"]
+    ports: ["7015:7015"]
     environment:
       <<: *common-variables
     networks:
@@ -112,7 +123,7 @@ services:
       - barkfluff-network
 
   rabbitmq:
-    image: rabbitmq:3.13-management 
+    image: rabbitmq:latest
     restart: always
     container_name: rabbitmq
     ports:
@@ -127,7 +138,7 @@ services:
       - barkfluff-network
 
   redis:
-    image: redis:7.4 
+    image: redis:latest
     restart: always
     container_name: redis
     ports:
@@ -139,7 +150,7 @@ services:
       - barkfluff-network
 
   postgres:
-    image: postgres:16 
+    image: postgres:latest
     container_name: postgres_barkfluff
     environment:
       POSTGRES_USER: "${POSTGRES_USER}"
