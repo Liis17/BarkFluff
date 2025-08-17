@@ -1,9 +1,9 @@
 name: Deploy Microservices
+
 on:
   push:
     branches:
-      - master
-      - dev
+      - master  # или master, в зависимости от вашей основной ветки
     paths:
       - 'Backend/BarkFluff.Beacon/**'
       - 'Backend/BarkFluff.Configuration/**'
@@ -16,10 +16,11 @@ on:
       - 'Backend/BarkFluff.FastAuth/**'
       - 'Backend/BarkFluff.Navigator/**'
       - 'Backend/BarkFluff.Updates/**'
-      - '.github/workflows/main.yml'
+      - '.github/workflows/deploy-microservices-master.yml'
+
 jobs:
   detect-changes:
-    runs-on: ["self-hosted", "windows"]
+    runs-on: ubuntu-latest
     outputs:
       beacon: ${{ steps.filter.outputs.beacon }}
       configuration: ${{ steps.filter.outputs.configuration }}
@@ -31,10 +32,12 @@ jobs:
       fast-auth: ${{ steps.filter.outputs.fast-auth }}
       navigator: ${{ steps.filter.outputs.navigator }}
       updates: ${{ steps.filter.outputs.updates }}
+    
     steps:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      
       - name: Check for file changes
         id: filter
         uses: dorny/paths-filter@v2
@@ -70,313 +73,253 @@ jobs:
             updates:
               - 'Backend/BarkFluff.Updates/**'
               - 'Backend/BarkFluff.GrpcServer/**'
+
   build-beacon:
     needs: detect-changes
     if: ${{ needs.detect-changes.outputs.beacon == 'true' }}
-    runs-on: ["self-hosted", "windows"]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      
       - name: Login to Private Registry
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
+      
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-      - name: Define tags
-        shell: pwsh
-        run: |
-          if ("${{ github.ref_name }}" -eq "dev") {
-            "LATEST_TAG=docker.barkfluff.com/barkfluff-beacon:latest-dev" | Out-File -FilePath $env:GITHUB_ENV -Append
-            "SHA_TAG=docker.barkfluff.com/barkfluff-beacon:${{ github.sha }}-dev" | Out-File -FilePath $env:GITHUB_ENV -Append
-          } else {
-            "LATEST_TAG=docker.barkfluff.com/barkfluff-beacon:latest" | Out-File -FilePath $env:GITHUB_ENV -Append
-            "SHA_TAG=docker.barkfluff.com/barkfluff-beacon:${{ github.sha }}" | Out-File -FilePath $env:GITHUB_ENV -Append
-          }
+      
       - name: Build and Push Beacon
         uses: docker/build-push-action@v4
         with:
           context: .
           file: ./Backend/BarkFluff.Beacon/Dockerfile
           push: true
-          tags: ${{ env.LATEST_TAG }},${{ env.SHA_TAG }}
+          tags: docker.barkfluff.com/barkfluff-beacon:latest,docker.barkfluff.com/barkfluff-beacon:${{ github.sha }}
+  
   build-configuration:
     needs: detect-changes
     if: ${{ needs.detect-changes.outputs.configuration == 'true' }}
-    runs-on: ["self-hosted", "windows"]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      
       - name: Login to Private Registry
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
+      
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-      - name: Define tags
-        shell: pwsh
-        run: |
-          if ("${{ github.ref_name }}" -eq "dev") {
-            "LATEST_TAG=docker.barkfluff.com/barkfluff-configuration:latest-dev" | Out-File -FilePath $env:GITHUB_ENV -Append
-            "SHA_TAG=docker.barkfluff.com/barkfluff-configuration:${{ github.sha }}-dev" | Out-File -FilePath $env:GITHUB_ENV -Append
-          } else {
-            "LATEST_TAG=docker.barkfluff.com/barkfluff-configuration:latest" | Out-File -FilePath $env:GITHUB_ENV -Append
-            "SHA_TAG=docker.barkfluff.com/barkfluff-configuration:${{ github.sha }}" | Out-File -FilePath $env:GITHUB_ENV -Append
-          }
+      
       - name: Build and Push Configuration
         uses: docker/build-push-action@v4
         with:
           context: .
           file: ./Backend/BarkFluff.Configuration/Dockerfile
           push: true
-          tags: ${{ env.LATEST_TAG }},${{ env.SHA_TAG }}
+          tags: docker.barkfluff.com/barkfluff-configuration:latest,docker.barkfluff.com/barkfluff-configuration:${{ github.sha }}
+
   build-files:
     needs: detect-changes
     if: ${{ needs.detect-changes.outputs.files == 'true' }}
-    runs-on: ["self-hosted", "windows"]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      
       - name: Login to Private Registry
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
+      
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-      - name: Define tags
-        shell: pwsh
-        run: |
-          if ("${{ github.ref_name }}" -eq "dev") {
-            "LATEST_TAG=docker.barkfluff.com/barkfluff-files:latest-dev" | Out-File -FilePath $env:GITHUB_ENV -Append
-            "SHA_TAG=docker.barkfluff.com/barkfluff-files:${{ github.sha }}-dev" | Out-File -FilePath $env:GITHUB_ENV -Append
-          } else {
-            "LATEST_TAG=docker.barkfluff.com/barkfluff-files:latest" | Out-File -FilePath $env:GITHUB_ENV -Append
-            "SHA_TAG=docker.barkfluff.com/barkfluff-files:${{ github.sha }}" | Out-File -FilePath $env:GITHUB_ENV -Append
-          }
+      
       - name: Build and Push Files
         uses: docker/build-push-action@v4
         with:
           context: .
           file: ./Backend/BarkFluff.Files/Dockerfile
           push: true
-          tags: ${{ env.LATEST_TAG }},${{ env.SHA_TAG }}
+          tags: docker.barkfluff.com/barkfluff-files:latest,docker.barkfluff.com/barkfluff-files:${{ github.sha }}
+
   build-identity:
     needs: detect-changes
     if: ${{ needs.detect-changes.outputs.identity == 'true' }}
-    runs-on: ["self-hosted", "windows"]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      
       - name: Login to Private Registry
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
+      
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-      - name: Define tags
-        shell: pwsh
-        run: |
-          if ("${{ github.ref_name }}" -eq "dev") {
-            "LATEST_TAG=docker.barkfluff.com/barkfluff-identity:latest-dev" | Out-File -FilePath $env:GITHUB_ENV -Append
-            "SHA_TAG=docker.barkfluff.com/barkfluff-identity:${{ github.sha }}-dev" | Out-File -FilePath $env:GITHUB_ENV -Append
-          } else {
-            "LATEST_TAG=docker.barkfluff.com/barkfluff-identity:latest" | Out-File -FilePath $env:GITHUB_ENV -Append
-            "SHA_TAG=docker.barkfluff.com/barkfluff-identity:${{ github.sha }}" | Out-File -FilePath $env:GITHUB_ENV -Append
-          }
+      
       - name: Build and Push Identity
         uses: docker/build-push-action@v4
         with:
           context: .
           file: ./Backend/BarkFluff.Identity/Dockerfile
           push: true
-          tags: ${{ env.LATEST_TAG }},${{ env.SHA_TAG }}
+          tags: docker.barkfluff.com/barkfluff-identity:latest,docker.barkfluff.com/barkfluff-identity:${{ github.sha }}
+
   build-messages:
     needs: detect-changes
     if: ${{ needs.detect-changes.outputs.messages == 'true' }}
-    runs-on: ["self-hosted", "windows"]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      
       - name: Login to Private Registry
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
+      
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-      - name: Define tags
-        shell: pwsh
-        run: |
-          if ("${{ github.ref_name }}" -eq "dev") {
-            "LATEST_TAG=docker.barkfluff.com/barkfluff-messages:latest-dev" | Out-File -FilePath $env:GITHUB_ENV -Append
-            "SHA_TAG=docker.barkfluff.com/barkfluff-messages:${{ github.sha }}-dev" | Out-File -FilePath $env:GITHUB_ENV -Append
-          } else {
-            "LATEST_TAG=docker.barkfluff.com/barkfluff-messages:latest" | Out-File -FilePath $env:GITHUB_ENV -Append
-            "SHA_TAG=docker.barkfluff.com/barkfluff-messages:${{ github.sha }}" | Out-File -FilePath $env:GITHUB_ENV -Append
-          }
+      
       - name: Build and Push Messages
         uses: docker/build-push-action@v4
         with:
           context: .
           file: ./Backend/BarkFluff.Messages/Dockerfile
           push: true
-          tags: ${{ env.LATEST_TAG }},${{ env.SHA_TAG }}
+          tags: docker.barkfluff.com/barkfluff-messages:latest,docker.barkfluff.com/barkfluff-messages:${{ github.sha }}
+
   build-notification:
     needs: detect-changes
     if: ${{ needs.detect-changes.outputs.notification == 'true' }}
-    runs-on: ["self-hosted", "windows"]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      
       - name: Login to Private Registry
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
+      
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-      - name: Define tags
-        shell: pwsh
-        run: |
-          if ("${{ github.ref_name }}" -eq "dev") {
-            "LATEST_TAG=docker.barkfluff.com/barkfluff-notification:latest-dev" | Out-File -FilePath $env:GITHUB_ENV -Append
-            "SHA_TAG=docker.barkfluff.com/barkfluff-notification:${{ github.sha }}-dev" | Out-File -FilePath $env:GITHUB_ENV -Append
-          } else {
-            "LATEST_TAG=docker.barkfluff.com/barkfluff-notification:latest" | Out-File -FilePath $env:GITHUB_ENV -Append
-            "SHA_TAG=docker.barkfluff.com/barkfluff-notification:${{ github.sha }}" | Out-File -FilePath $env:GITHUB_ENV -Append
-          }
+      
       - name: Build and Push Notification
         uses: docker/build-push-action@v4
         with:
           context: .
           file: ./Backend/BarkFluff.Notification/Dockerfile
           push: true
-          tags: ${{ env.LATEST_TAG }},${{ env.SHA_TAG }}
+          tags: docker.barkfluff.com/barkfluff-notification:latest,docker.barkfluff.com/barkfluff-notification:${{ github.sha }}
+
   build-users:
     needs: detect-changes
     if: ${{ needs.detect-changes.outputs.users == 'true' }}
-    runs-on: ["self-hosted", "windows"]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      
       - name: Login to Private Registry
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
+      
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-      - name: Define tags
-        shell: pwsh
-        run: |
-          if ("${{ github.ref_name }}" -eq "dev") {
-            "LATEST_TAG=docker.barkfluff.com/barkfluff-users:latest-dev" | Out-File -FilePath $env:GITHUB_ENV -Append
-            "SHA_TAG=docker.barkfluff.com/barkfluff-users:${{ github.sha }}-dev" | Out-File -FilePath $env:GITHUB_ENV -Append
-          } else {
-            "LATEST_TAG=docker.barkfluff.com/barkfluff-users:latest" | Out-File -FilePath $env:GITHUB_ENV -Append
-            "SHA_TAG=docker.barkfluff.com/barkfluff-users:${{ github.sha }}" | Out-File -FilePath $env:GITHUB_ENV -Append
-          }
+      
       - name: Build and Push Users
         uses: docker/build-push-action@v4
         with:
           context: .
           file: ./Backend/BarkFluff.Users/Dockerfile
           push: true
-          tags: ${{ env.LATEST_TAG }},${{ env.SHA_TAG }}
+          tags: docker.barkfluff.com/barkfluff-users:latest,docker.barkfluff.com/barkfluff-users:${{ github.sha }}
+
   build-navigator:
     needs: detect-changes
     if: ${{ needs.detect-changes.outputs.navigator == 'true' }}
-    runs-on: ["self-hosted", "windows"]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      
       - name: Login to Private Registry
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
+      
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-      - name: Define tags
-        shell: pwsh
-        run: |
-          if ("${{ github.ref_name }}" -eq "dev") {
-            "LATEST_TAG=docker.barkfluff.com/barkfluff-navigator:latest-dev" | Out-File -FilePath $env:GITHUB_ENV -Append
-            "SHA_TAG=docker.barkfluff.com/barkfluff-navigator:${{ github.sha }}-dev" | Out-File -FilePath $env:GITHUB_ENV -Append
-          } else {
-            "LATEST_TAG=docker.barkfluff.com/barkfluff-navigator:latest" | Out-File -FilePath $env:GITHUB_ENV -Append
-            "SHA_TAG=docker.barkfluff.com/barkfluff-navigator:${{ github.sha }}" | Out-File -FilePath $env:GITHUB_ENV -Append
-          }
-      - name: Build and Push Navigator
+      
+      - name: Build and Push Users
         uses: docker/build-push-action@v4
         with:
           context: .
           file: ./Backend/BarkFluff.Navigator/Dockerfile
           push: true
-          tags: ${{ env.LATEST_TAG }},${{ env.SHA_TAG }}
+          tags: docker.barkfluff.com/barkfluff-navigator:latest,docker.barkfluff.com/barkfluff-navigator:${{ github.sha }}
+    
   build-updates:
     needs: detect-changes
     if: ${{ needs.detect-changes.outputs.updates == 'true' }}
-    runs-on: ["self-hosted", "windows"]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      
       - name: Login to Private Registry
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
+      
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-      - name: Define tags
-        shell: pwsh
-        run: |
-          if ("${{ github.ref_name }}" -eq "dev") {
-            "LATEST_TAG=docker.barkfluff.com/barkfluff-updates:latest-dev" | Out-File -FilePath $env:GITHUB_ENV -Append
-            "SHA_TAG=docker.barkfluff.com/barkfluff-updates:${{ github.sha }}-dev" | Out-File -FilePath $env:GITHUB_ENV -Append
-          } else {
-            "LATEST_TAG=docker.barkfluff.com/barkfluff-updates:latest" | Out-File -FilePath $env:GITHUB_ENV -Append
-            "SHA_TAG=docker.barkfluff.com/barkfluff-updates:${{ github.sha }}" | Out-File -FilePath $env:GITHUB_ENV -Append
-          }
-      - name: Build and Push Updates
+      
+      - name: Build and Push Users
         uses: docker/build-push-action@v4
         with:
           context: .
           file: ./Backend/BarkFluff.Updates/Dockerfile
           push: true
-          tags: ${{ env.LATEST_TAG }},${{ env.SHA_TAG }}
+          tags: docker.barkfluff.com/barkfluff-updates:latest,docker.barkfluff.com/barkfluff-updates:${{ github.sha }}
+
   build-fast-auth:
     needs: detect-changes
     if: ${{ needs.detect-changes.outputs.fast-auth == 'true' }}
-    runs-on: ["self-hosted", "windows"]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+
       - name: Login to Private Registry
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-      - name: Define tags
-        shell: pwsh
-        run: |
-          if ("${{ github.ref_name }}" -eq "dev") {
-            "LATEST_TAG=docker.barkfluff.com/barkfluff-fast-auth:latest-dev" | Out-File -FilePath $env:GITHUB_ENV -Append
-            "SHA_TAG=docker.barkfluff.com/barkfluff-fast-auth:${{ github.sha }}-dev" | Out-File -FilePath $env:GITHUB_ENV -Append
-          } else {
-            "LATEST_TAG=docker.barkfluff.com/barkfluff-fast-auth:latest" | Out-File -FilePath $env:GITHUB_ENV -Append
-            "SHA_TAG=docker.barkfluff.com/barkfluff-fast-auth:${{ github.sha }}" | Out-File -FilePath $env:GITHUB_ENV -Append
-          }
-      - name: Build and Push FastAuth
+
+      - name: Build and Push Users
         uses: docker/build-push-action@v4
         with:
           context: .
           file: ./Backend/BarkFluff.FastAuth/Dockerfile
           push: true
-          tags: ${{ env.LATEST_TAG }},${{ env.SHA_TAG }}
+          tags: docker.barkfluff.com/barkfluff-fast-auth:latest,docker.barkfluff.com/barkfluff-fast-auth:${{ github.sha }}
