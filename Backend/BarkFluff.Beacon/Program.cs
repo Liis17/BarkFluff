@@ -5,7 +5,9 @@ using BarkFluff.Proto.Configuration;
 using BarkFluff.Shared.Identity;
 
 namespace BarkFluff.Beacon;
-
+/// <summary>
+/// тест, потом можешь удалить
+/// </summary>
 public class Program
 {
     public static void Main(string[] args)
