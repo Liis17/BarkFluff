@@ -20,7 +20,7 @@ on:
 
 jobs:
   detect-changes:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       beacon: ${{ steps.filter.outputs.beacon }}
       configuration: ${{ steps.filter.outputs.configuration }}
@@ -97,7 +97,7 @@ jobs:
           context: .
           file: ./Backend/BarkFluff.Beacon/Dockerfile
           push: true
-          tags: docker.barkfluff.com/barkfluff-beacon:latest,docker.barkfluff.com/barkfluff-beacon:${{ github.sha }}
+          tags: docker.barkfluff.com/barkfluff-beacon-dev:latest,docker.barkfluff.com/barkfluff-beacon-dev:${{ github.sha }}
   
   build-configuration:
     needs: detect-changes
@@ -122,7 +122,7 @@ jobs:
           context: .
           file: ./Backend/BarkFluff.Configuration/Dockerfile
           push: true
-          tags: docker.barkfluff.com/barkfluff-configuration:latest,docker.barkfluff.com/barkfluff-configuration:${{ github.sha }}
+          tags: docker.barkfluff.com/barkfluff-configuration-dev:latest,docker.barkfluff.com/barkfluff-configuration-dev:${{ github.sha }}
 
   build-files:
     needs: detect-changes
@@ -147,7 +147,7 @@ jobs:
           context: .
           file: ./Backend/BarkFluff.Files/Dockerfile
           push: true
-          tags: docker.barkfluff.com/barkfluff-files:latest,docker.barkfluff.com/barkfluff-files:${{ github.sha }}
+          tags: docker.barkfluff.com/barkfluff-files-dev:latest,docker.barkfluff.com/barkfluff-files-dev:${{ github.sha }}
 
   build-identity:
     needs: detect-changes
@@ -172,7 +172,7 @@ jobs:
           context: .
           file: ./Backend/BarkFluff.Identity/Dockerfile
           push: true
-          tags: docker.barkfluff.com/barkfluff-identity:latest,docker.barkfluff.com/barkfluff-identity:${{ github.sha }}
+          tags: docker.barkfluff.com/barkfluff-identity-dev:latest,docker.barkfluff.com/barkfluff-identity-dev:${{ github.sha }}
 
   build-messages:
     needs: detect-changes
@@ -197,7 +197,7 @@ jobs:
           context: .
           file: ./Backend/BarkFluff.Messages/Dockerfile
           push: true
-          tags: docker.barkfluff.com/barkfluff-messages:latest,docker.barkfluff.com/barkfluff-messages:${{ github.sha }}
+          tags: docker.barkfluff.com/barkfluff-messages-dev:latest,docker.barkfluff.com/barkfluff-messages-dev:${{ github.sha }}
 
   build-notification:
     needs: detect-changes
@@ -222,7 +222,7 @@ jobs:
           context: .
           file: ./Backend/BarkFluff.Notification/Dockerfile
           push: true
-          tags: docker.barkfluff.com/barkfluff-notification:latest,docker.barkfluff.com/barkfluff-notification:${{ github.sha }}
+          tags: docker.barkfluff.com/barkfluff-notification-dev:latest,docker.barkfluff.com/barkfluff-notification-dev:${{ github.sha }}
 
   build-users:
     needs: detect-changes
@@ -247,7 +247,7 @@ jobs:
           context: .
           file: ./Backend/BarkFluff.Users/Dockerfile
           push: true
-          tags: docker.barkfluff.com/barkfluff-users:latest,docker.barkfluff.com/barkfluff-users:${{ github.sha }}
+          tags: docker.barkfluff.com/barkfluff-users-dev:latest,docker.barkfluff.com/barkfluff-users-dev:${{ github.sha }}
 
   build-navigator:
     needs: detect-changes
@@ -272,7 +272,7 @@ jobs:
           context: .
           file: ./Backend/BarkFluff.Navigator/Dockerfile
           push: true
-          tags: docker.barkfluff.com/barkfluff-navigator:latest,docker.barkfluff.com/barkfluff-navigator:${{ github.sha }}
+          tags: docker.barkfluff.com/barkfluff-navigator-dev:latest,docker.barkfluff.com/barkfluff-navigator-dev:${{ github.sha }}
     
   build-updates:
     needs: detect-changes
@@ -297,7 +297,7 @@ jobs:
           context: .
           file: ./Backend/BarkFluff.Updates/Dockerfile
           push: true
-          tags: docker.barkfluff.com/barkfluff-updates:latest,docker.barkfluff.com/barkfluff-updates:${{ github.sha }}
+          tags: docker.barkfluff.com/barkfluff-updates-dev:latest,docker.barkfluff.com/barkfluff-updates-dev:${{ github.sha }}
 
   build-fast-auth:
     needs: detect-changes
@@ -322,4 +322,4 @@ jobs:
           context: .
           file: ./Backend/BarkFluff.FastAuth/Dockerfile
           push: true
-          tags: docker.barkfluff.com/barkfluff-fast-auth:latest,docker.barkfluff.com/barkfluff-fast-auth:${{ github.sha }}
+          tags: docker.barkfluff.com/barkfluff-fast-auth-dev:latest,docker.barkfluff.com/barkfluff-fast-auth-dev:${{ github.sha }}
