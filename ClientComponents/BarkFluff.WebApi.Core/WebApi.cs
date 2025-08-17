@@ -270,6 +270,10 @@ namespace BarkFluff.WebApi.Core
         /// <returns>Возвращает информацию о сервере</returns>
         public async Task<(ErrorReturner error,Proto.Beacon.GetServerInfoResponse)> GetServerInfo(GlobalParam param)
         {
+            if (BeaconAC == null)
+            {
+                CreateOnlyBeaconAC(param);
+            }
             return await SafeCallAsync(async () =>
             {
                 var response = BeaconAC.GetServerInfo(new BarkFluff.Proto.Beacon.GetServerInfoRequest());
