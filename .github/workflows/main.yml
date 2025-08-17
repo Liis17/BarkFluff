@@ -153,15 +153,17 @@ jobs:
       - name: Define tags
         if: env.CHANGED == 'true'
         shell: pwsh
+        env:
+          IMAGE: ${{ matrix.image }}
         run: |
-          $image='${{ matrix.image }}'
           if ("${{ github.ref_name }}" -eq "dev") {
-            "LATEST_TAG=docker.barkfluff.com/$image:latest-dev" | Out-File -FilePath $env:GITHUB_ENV -Append
-            "SHA_TAG=docker.barkfluff.com/$image:${{ github.sha }}-dev" | Out-File -FilePath $env:GITHUB_ENV -Append
+            "LATEST_TAG=docker.barkfluff.com/$env:IMAGE:latest-dev" | Out-File -FilePath $env:GITHUB_ENV -Append
+            "SHA_TAG=docker.barkfluff.com/$env:IMAGE:${{ github.sha }}-dev" | Out-File -FilePath $env:GITHUB_ENV -Append
           } else {
-            "LATEST_TAG=docker.barkfluff.com/$image:latest" | Out-File -FilePath $env:GITHUB_ENV -Append
-            "SHA_TAG=docker.barkfluff.com/$image:${{ github.sha }}" | Out-File -FilePath $env:GITHUB_ENV -Append
+            "LATEST_TAG=docker.barkfluff.com/$env:IMAGE:latest" | Out-File -FilePath $env:GITHUB_ENV -Append
+            "SHA_TAG=docker.barkfluff.com/$env:IMAGE:${{ github.sha }}" | Out-File -FilePath $env:GITHUB_ENV -Append
           }
+
 
       - name: Build and Push
         if: env.CHANGED == 'true'
