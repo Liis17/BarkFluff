@@ -77,7 +77,7 @@ jobs:
   build-beacon:
     needs: detect-changes
     if: ${{ needs.detect-changes.outputs.beacon == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v3
       
@@ -102,7 +102,7 @@ jobs:
   build-configuration:
     needs: detect-changes
     if: ${{ needs.detect-changes.outputs.configuration == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v3
       
@@ -127,7 +127,7 @@ jobs:
   build-files:
     needs: detect-changes
     if: ${{ needs.detect-changes.outputs.files == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v3
       
@@ -152,7 +152,7 @@ jobs:
   build-identity:
     needs: detect-changes
     if: ${{ needs.detect-changes.outputs.identity == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v3
       
@@ -177,7 +177,7 @@ jobs:
   build-messages:
     needs: detect-changes
     if: ${{ needs.detect-changes.outputs.messages == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v3
       
@@ -202,7 +202,7 @@ jobs:
   build-notification:
     needs: detect-changes
     if: ${{ needs.detect-changes.outputs.notification == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v3
       
@@ -227,7 +227,7 @@ jobs:
   build-users:
     needs: detect-changes
     if: ${{ needs.detect-changes.outputs.users == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v3
       
@@ -252,7 +252,7 @@ jobs:
   build-navigator:
     needs: detect-changes
     if: ${{ needs.detect-changes.outputs.navigator == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v3
       
@@ -277,7 +277,7 @@ jobs:
   build-updates:
     needs: detect-changes
     if: ${{ needs.detect-changes.outputs.updates == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v3
       
@@ -302,7 +302,7 @@ jobs:
   build-fast-auth:
     needs: detect-changes
     if: ${{ needs.detect-changes.outputs.fast-auth == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v3
 
