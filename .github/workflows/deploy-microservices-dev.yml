@@ -16,7 +16,7 @@ on:
       - 'Backend/BarkFluff.FastAuth/**'
       - 'Backend/BarkFluff.Navigator/**'
       - 'Backend/BarkFluff.Updates/**'
-      - '.github/workflows/deploy-microservices-master.yml'
+      - '.github/workflows/deploy-microservices-dev.yml'
 
 jobs:
   detect-changes:
