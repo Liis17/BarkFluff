@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
     <PropertyGroup>
-        <TargetFramework>net9.0</TargetFramework>
+        <TargetFramework>net10.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
@@ -28,6 +28,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\..\Shared\BarkFluff.Shared.Identity\BarkFluff.Shared.Identity.csproj" />
+      <ProjectReference Include="..\BarkFluff.Beacon\BarkFluff.Beacon.csproj" />
       <ProjectReference Include="..\BarkFluff.GrpcServer\BarkFluff.GrpcServer.csproj" />
     </ItemGroup>
 
