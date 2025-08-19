@@ -323,3 +323,4 @@ jobs:
           file: ./Backend/BarkFluff.FastAuth/Dockerfile
           push: true
           tags: docker.barkfluff.com/barkfluff-fast-auth-dev:latest,docker.barkfluff.com/barkfluff-fast-auth-dev:${{ github.sha }}
+          
