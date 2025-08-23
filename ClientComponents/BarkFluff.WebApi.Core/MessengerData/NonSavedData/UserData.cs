@@ -10,6 +10,7 @@
         public long Id { get; set; }
         public Google.Protobuf.WellKnownTypes.Timestamp RegistrationDate { get; set; }
         public string ProfilePictureUrl { get; set; } = string.Empty;
+        public string ProfilePicturePreviewUrl { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
 
     }

@@ -251,4 +251,50 @@
         <Setter Property="Foreground" Value="#E0E0E0" />
         <Setter Property="Margin" Value="0,0,0,8" />
     </Style>
+
+
+    <!--  текстовое поле ввода у чата  -->
+
+    <Style x:Key="TextField" TargetType="ui:TextBox">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ui:TextBox">
+                    <Grid>
+                        <Border
+                            x:Name="ContentBorder"
+                            Background="Transparent"
+                            BorderBrush="Transparent"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="15">
+                            <Grid Margin="{TemplateBinding Padding}">
+                                <ui:PassiveScrollViewer x:Name="PART_ContentHost" Foreground="{TemplateBinding Foreground}" />
+                                <TextBlock
+                                    x:Name="Placeholder"
+                                    Foreground="{DynamicResource TextBoxPlaceholderForegroundBrush}"
+                                    Text="{TemplateBinding PlaceholderText}"
+                                    Visibility="Collapsed" />
+                            </Grid>
+                        </Border>
+                        <Border
+                            x:Name="AccentBorder"
+                            BorderBrush="Transparent"
+                            BorderThickness="0"
+                            CornerRadius="15" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="AccentBorder" Property="BorderBrush" Value="Red" />
+                        </Trigger>
+                        <Trigger Property="IsFocused" Value="True">
+                            <Setter TargetName="AccentBorder" Property="BorderThickness" Value="0" />
+                            <Setter TargetName="AccentBorder" Property="BorderBrush" Value="Bisque" />
+                        </Trigger>
+                        <Trigger Property="PlaceholderEnabled" Value="True">
+                            <Setter TargetName="Placeholder" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 </ResourceDictionary>

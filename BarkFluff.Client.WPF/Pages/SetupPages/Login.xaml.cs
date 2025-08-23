@@ -83,7 +83,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                     _otpCode = string.Concat(codeBoxes.Select(b => b.Text));
                 }
                 _password = PasswordBox.Password;
-                var response = await App.ServerCommunication.Authorisation(_email, _username, _password, _otpCode, App.GParam);
+                var response = await App.ServerCommunication.Authorizations(_email, _username, _password, _otpCode, App.GParam);
                 if (!response.Error.IsSuccess && !response.getMeOtpCode)
                 {
                     App.ErideMessage.AddMessage(response.Error.ErrorMessage, new Erida { Type = MType.Error });

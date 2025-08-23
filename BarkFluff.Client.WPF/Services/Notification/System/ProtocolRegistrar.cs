@@ -8,7 +8,7 @@ namespace BarkFluff.Client.WPF.Services.Notification.System
     {
         public static void RegisterBFProtocol()
         {
-            string exePath = Assembly.GetExecutingAssembly().Location;
+            string exePath = AppContext.BaseDirectory;
             if (exePath.EndsWith(".dll"))
             {
                 exePath = exePath.Replace(".dll", ".exe");

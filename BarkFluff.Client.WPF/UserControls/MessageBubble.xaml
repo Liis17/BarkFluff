@@ -17,14 +17,16 @@
             <Setter Property="HorizontalAlignment" Value="Left" />
             <Setter Property="MaxWidth" Value="400" />
             <Setter Property="Margin" Value="12,4,60,4" />
+            <Setter Property="CornerRadius" Value="25,25,25,4" />
         </Style>
 
         <!--  Стиль для исходящих сообщений  -->
         <Style x:Key="OutgoingMessageStyle" TargetType="Border">
-            <Setter Property="Background" Value="#FF6B73FF" />
+            <Setter Property="Background" Value="#c87e5b" />
             <Setter Property="HorizontalAlignment" Value="Right" />
             <Setter Property="MaxWidth" Value="400" />
-            <Setter Property="Margin" Value="60,4,12,4" />
+            <Setter Property="Margin" Value="0,2,0,2" />
+            <Setter Property="CornerRadius" Value="25,25,4,25" />
         </Style>
 
         <!--  Контекстное меню  -->
@@ -148,10 +150,9 @@
         <!--  Основное облачко сообщения  -->
         <Border
             x:Name="MessageBorder"
-            Padding="16,10,16,8"
+            Padding="0,0,0,0"
             ContextMenu="{StaticResource MessageContextMenu}"
-            CornerRadius="16,16,16,4"
-            Style="{StaticResource IncomingMessageStyle}">
+            Style="{StaticResource OutgoingMessageStyle}">
 
             <Border.Effect>
                 <DropShadowEffect
@@ -172,19 +173,19 @@
                 <TextBlock
                     x:Name="SenderName"
                     Grid.Row="0"
-                    Margin="0,0,0,4"
+                    Margin="0,0,0,1"
                     FontFamily="{DynamicResource AdwaitaSans}"
                     FontSize="12"
                     FontWeight="Medium"
                     Foreground="#FF4CAF50"
                     Text="Apogee"
-                    Visibility="Visible" />
+                    Visibility="Collapsed" />
 
                 <!--  Текст сообщения  -->
                 <TextBox
                     x:Name="MessageText"
                     Grid.Row="1"
-                    Margin="0,0,0,6"
+                    Margin="0,0,0,0"
                     AcceptsReturn="True"
                     Background="Transparent"
                     BorderThickness="0"
@@ -220,7 +221,7 @@
                     <TextBlock
                         x:Name="MessageTime"
                         Grid.Column="0"
-                        HorizontalAlignment="Left"
+                        HorizontalAlignment="Right"
                         VerticalAlignment="Bottom"
                         FontFamily="{DynamicResource AdwaitaSans}"
                         FontSize="11"

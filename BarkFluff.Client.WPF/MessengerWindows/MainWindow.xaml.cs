@@ -195,8 +195,7 @@ namespace BarkFluff.Client.WPF
                 !string.IsNullOrEmpty(App.GParam.ServerName)
                 )
             {
-                MainFrame.Children.Clear();
-                MainFrame.Children.Add(new MessengerPage());
+                App.OpenMessengerPage();
             }
 
         }

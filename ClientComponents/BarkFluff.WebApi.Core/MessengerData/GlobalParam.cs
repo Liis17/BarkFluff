@@ -34,6 +34,7 @@ namespace BarkFluff.WebApi.Core.MessengerData
         public string LastName { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public string PictureId { get; set; } = string.Empty;
+        public string PictureUrl { get; set; } = string.Empty;
 
         #endregion
         #region Сохранение/загрузка настроек

@@ -218,7 +218,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                                 App.ErideMessage.AddMessage(response.error.ErrorMessage, new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
                                 return;
                             }
-                            if (!response.exists)
+                            if (response.exists)
                             {
                                 App.ErideMessage.AddMessage("Имя пользователя уже занято.", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Warning });
                                 return;
