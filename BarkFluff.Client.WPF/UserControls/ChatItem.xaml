@@ -10,12 +10,14 @@
     HorizontalAlignment="Stretch"
     d:DesignHeight="150"
     d:DesignWidth="400"
+    Cursor="Hand"
+    MouseLeftButtonUp="UserControl_MouseLeftButtonUp"
     Background="#00ffffff"
     mc:Ignorable="d">
 
     <Border
         x:Name="MainBackground"
-        Margin="2,0,10,0"
+        Margin="2,0,0,0"
         Padding="8"
         CornerRadius="0 12 12 0">
         <Border.Effect>
@@ -29,7 +31,7 @@
             <Style TargetType="Border">
                 <Setter Property="Background">
                     <Setter.Value>
-                        <SolidColorBrush Color="Transparent" />
+                        <SolidColorBrush Opacity="0" Color="#252526" />
                     </Setter.Value>
                 </Setter>
                 <Style.Triggers>
@@ -39,9 +41,12 @@
                                 <Storyboard>
                                     <ColorAnimation
                                         Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
-                                        From="#252526"
                                         To="#373737"
-                                        Duration="0:0:0.05" />
+                                        Duration="0:0:0.1" />
+                                    <DoubleAnimation
+                                        Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Opacity)"
+                                        To="1"
+                                        Duration="0:0:0.1" />
                                 </Storyboard>
                             </BeginStoryboard>
                         </Trigger.EnterActions>
@@ -50,9 +55,12 @@
                                 <Storyboard>
                                     <ColorAnimation
                                         Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
-                                        From="#373737"
                                         To="#252526"
-                                        Duration="0:0:0.05" />
+                                        Duration="0:0:0.1" />
+                                    <DoubleAnimation
+                                        Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Opacity)"
+                                        To="0"
+                                        Duration="0:0:0.1" />
                                 </Storyboard>
                             </BeginStoryboard>
                         </Trigger.ExitActions>
@@ -75,7 +83,7 @@
                 Height="50"
                 Margin="0,0,16,0"
                 VerticalAlignment="Center"
-                CornerRadius="90">
+                CornerRadius="23">
                 <Border.Background>
                     <ImageBrush ImageSource="https://charlie.liis17.ru/apogee.png" Stretch="UniformToFill" />
                 </Border.Background>
@@ -84,6 +92,7 @@
                         BlurRadius="12"
                         Opacity="0.3"
                         ShadowDepth="0"
+                        
                         Color="#FF6B73FF" />
                 </Border.Effect>
             </Border>
@@ -99,7 +108,7 @@
                     x:Name="Title"
                     Margin="0,0,0,4"
                     FontFamily="{DynamicResource AdwaitaSans}"
-                    FontSize="16"
+                    FontSize="14"
                     FontWeight="SemiBold"
                     Foreground="White"
                     Text="Apogee" />
@@ -108,10 +117,14 @@
                 <TextBlock
                     x:Name="LastMessage"
                     MaxWidth="280"
-                    FontFamily="{DynamicResource AdwaitaSans}"
-                    FontSize="14"
-                    Foreground="#FFB0B0B0"
-                    Text="хвост слишком пушистый ("
+                    FontFamily="{DynamicResource Neucha}"
+                    FontSize="12"
+                    FontStretch="Medium"
+                    FontStyle="Normal"
+                    FontWeight="Normal"
+                    Foreground="#9e9e9e"
+                    Opacity="0.7"
+                    Text="Apogee хвост слишком пушистый ("
                     TextWrapping="Wrap" />
 
             </StackPanel>

@@ -35,6 +35,7 @@ namespace BarkFluff.Client.WPF
         private static Mutex mutex = null!;
         private CancellationTokenSource cts = new CancellationTokenSource();
         public static MainWindow MessengerWindow { get; set; } = null!;
+        public static MessengerPage Messenger { get; set; } = null!;
         public static MessageCacheManager CacheManager { get; set; } = null!;
         public static DropMessage ErideMessage { get; set; } = null!;
         public App()
@@ -92,20 +93,23 @@ namespace BarkFluff.Client.WPF
         /// </summary>
         private void Bootstrap()
         {
-            CacheManager = new MessageCacheManager("cache.db", "Cache/");
-           
+            CacheManager = new MessageCacheManager("cache.db", "temp");
 
+            string targetPath = string.Empty;
             try
             {
-                string targetPath;
-                #if WINDOWS_UWP
+                
+#if WINDOWS_UWP
                 folderPath = Windows.ApplicationModel.Package.Current.InstalledLocation.Path;
-                #else
-                var exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
-                targetPath = Path.Combine(Path.GetDirectoryName(exePath), "BarkFluff.Client.WPF.exe");
-                #endif
+#else
+                var baseDir = AppContext.BaseDirectory;
+                targetPath = Path.Combine(baseDir, "BarkFluff.Client.WPF.exe");
+#endif
                 string shortcutPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Programs", "BarkFluff.lnk");
-                ShortcutHelper.CreateShortcut(shortcutPath, targetPath, AppUserModelId);
+                if (!File.Exists(shortcutPath))
+                {
+                    ShortcutHelper.CreateShortcut(shortcutPath, targetPath, AppUserModelId);
+                }
             }
             catch
             {
@@ -114,7 +118,7 @@ namespace BarkFluff.Client.WPF
             AppIdHelper.SetCurrentProcessExplicitAppUserModelID(AppUserModelId);
             ServerCommunication = new WebApi.Core.WebApi();
             ColorAnalyzer = new ImageColorAnalyzer();
-            string filePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "GlobalParam.json");
+            string filePath = Path.Combine(Path.GetDirectoryName(targetPath), "GlobalParam.json");
 
 #if (DEBUG)
             if (Debugger.IsAttached)
@@ -129,7 +133,7 @@ namespace BarkFluff.Client.WPF
             if (!File.Exists(filePath))
             {
                 GParam = new BarkFluff.WebApi.Core.MessengerData.GlobalParam();
-                GParam.AppPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? string.Empty;
+                GParam.AppPath = Path.GetDirectoryName(AppContext.BaseDirectory) ?? string.Empty;
                 var machineName = Environment.MachineName;
                 GParam.MachineName = machineName;
                 MessengerWindow.FirstStart();
@@ -233,10 +237,12 @@ namespace BarkFluff.Client.WPF
 
         public static void OpenMessengerPage()
         {
+            
             Application.Current.Dispatcher.Invoke(() =>
             {
+                Messenger = new MessengerPage();
                 MessengerWindow.MainFrame.Children.Clear();
-                MessengerWindow.MainFrame.Children.Add(new MessengerPage());
+                MessengerWindow.MainFrame.Children.Add(Messenger);
             });
 
         }

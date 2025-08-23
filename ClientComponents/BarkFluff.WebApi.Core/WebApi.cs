@@ -67,7 +67,7 @@ namespace BarkFluff.WebApi.Core
             {
                 return new ErrorReturner(false, ex.Message);
             }
-            
+
         }
 
         public ErrorReturner CreateNavigatorAC()
@@ -112,7 +112,7 @@ namespace BarkFluff.WebApi.Core
             {
                 return new ErrorReturner(false, ex.Message);
             }
-            
+
         }
 
         /// <summary>
@@ -268,7 +268,7 @@ namespace BarkFluff.WebApi.Core
         /// </summary>
         /// <param name="param">Параметры приложения</param>
         /// <returns>Возвращает информацию о сервере</returns>
-        public async Task<(ErrorReturner error,Proto.Beacon.GetServerInfoResponse)> GetServerInfo(GlobalParam param)
+        public async Task<(ErrorReturner error, Proto.Beacon.GetServerInfoResponse)> GetServerInfo(GlobalParam param)
         {
             if (BeaconAC == null)
             {
@@ -281,6 +281,11 @@ namespace BarkFluff.WebApi.Core
             }, param);
         }
 
+        /// <summary>
+        /// Получает список серверов, доступных для подключения.
+        /// </summary>
+        /// <param name="global">Параметры приложения</param>
+        /// <returns></returns>
         public async Task<(ErrorReturner, List<ServerDataElement> ServerElements)> GetServerList(GlobalParam global)
         {
             try
@@ -302,7 +307,7 @@ namespace BarkFluff.WebApi.Core
             {
                 return (new ErrorReturner(false, ex.Message), new List<ServerDataElement>());
             }
-           
+
         }
 
         /// <summary>
@@ -316,13 +321,13 @@ namespace BarkFluff.WebApi.Core
             {
                 var response = await IdentityAC.CreateTokenAsync(new BarkFluff.Proto.Identity.CreateTokenRequest { RefreshToken = globalParam.RefreshToken.Value });
                 globalParam.AccessToken = response.AccessToken;
-                return (new ErrorReturner(true),response.AccessToken.Value);
+                return (new ErrorReturner(true), response.AccessToken.Value);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                return (new ErrorReturner(false,ex.Message),"");
+                return (new ErrorReturner(false, ex.Message), "");
             }
-            
+
         }
 
         #region Работа с пользователями и аватарками
@@ -415,7 +420,7 @@ namespace BarkFluff.WebApi.Core
         /// </summary>
         /// <param name="userId">[НЕОБЯЗАТЕЛЬНО] ID пользователя, данные которого нужно получить</param>
         /// <returns>Объект данных пользователя</returns>
-        public async Task<(ErrorReturner Error,UserData Data)> GetUserData(GlobalParam globalParam, long userId = 0)
+        public async Task<(ErrorReturner Error, UserData Data)> GetUserData(GlobalParam globalParam, long userId = 0)
         {
             try
             {
@@ -433,6 +438,7 @@ namespace BarkFluff.WebApi.Core
                         Id = getUser.User.Id,
                         ProfilePictureUrl = getUser.User.ProfilePicture,
                         Description = getUser.User.Bio,
+                        ProfilePicturePreviewUrl = getUser.User.ProfilePicturePreview
                     });
                 }, globalParam);
             }
@@ -451,7 +457,7 @@ namespace BarkFluff.WebApi.Core
         /// <param name="_otpCode"></param>
         /// <param name="global"></param>
         /// <returns>Токены refreshToken и accessToken</returns>
-        public async Task<(ErrorReturner Error, Proto.Identity.Token refreshToken, Proto.Identity.Token accessToken, bool getMeOtpCode)> Authorisation(string _email, string _username,string _password, string _otpCode, GlobalParam global)
+        public async Task<(ErrorReturner Error, Proto.Identity.Token refreshToken, Proto.Identity.Token accessToken, bool getMeOtpCode)> Authorizations(string _email, string _username, string _password, string _otpCode, GlobalParam global)
         {
             try
             {
@@ -504,7 +510,7 @@ namespace BarkFluff.WebApi.Core
         /// Запрашивает QR-код для настройки двухфакторной аутентификации (OTP) и возвращает его в виде base64 строки.
         /// </summary>
         /// <returns>Кортеж, содержащий QR-код в формате base64 и код для ручного ввода.</returns>
-        public async Task<(ErrorReturner error,string qrBase64, string justCode)> OtpReceipt(GlobalParam globalParam)
+        public async Task<(ErrorReturner error, string qrBase64, string justCode)> OtpReceipt(GlobalParam globalParam)
         {
             try
             {
@@ -518,7 +524,7 @@ namespace BarkFluff.WebApi.Core
                     return (new ErrorReturner(true), response.OtpQr, response.OtpCode);
                 }, globalParam);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 return (new ErrorReturner(false, ex.Message), null, null);
             }
@@ -542,11 +548,11 @@ namespace BarkFluff.WebApi.Core
                     return new ErrorReturner(true);
                 }, globalParam);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 return new ErrorReturner(false, ex.Message);
             }
-            
+
         }
         #endregion
 
@@ -686,7 +692,7 @@ namespace BarkFluff.WebApi.Core
         /// <returns>Возвращает true, если почта существует, иначе false.</returns>
         public async Task<(ErrorReturner error, bool exists)> CheckEmail(string email, GlobalParam globalParam)
         {
-            
+
             try
             {
                 return await SafeCallAsync(async () =>
@@ -756,7 +762,7 @@ namespace BarkFluff.WebApi.Core
             }
             catch (Exception ex)
             {
-                return new ErrorReturner(false, "Неизвестная ошибка при установке пароля.");    
+                return new ErrorReturner(false, "Неизвестная ошибка при установке пароля.");
             }
         }
 
@@ -811,7 +817,7 @@ namespace BarkFluff.WebApi.Core
             {
                 return (new ErrorReturner(false, "Пользователь не найден."), null);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 return (new ErrorReturner(false, ex.Message), null);
             }
@@ -843,7 +849,7 @@ namespace BarkFluff.WebApi.Core
             {
                 return (new ErrorReturner(false, "Неверный код подтверждения."), null);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 return (new ErrorReturner(false, ex.Message), null);
             }
@@ -875,7 +881,7 @@ namespace BarkFluff.WebApi.Core
             {
                 return (new ErrorReturner(false, "Неверный токен обновления."), null);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 return (new ErrorReturner(false, ex.Message), null);
             }
@@ -893,7 +899,7 @@ namespace BarkFluff.WebApi.Core
                     {
                         Pagination = new Proto.Shared.PageRequest { Size = 50 },
                     });
-                    
+
                     var chats = new List<Proto.Messages.Chat>();
                     foreach (var item in response.Chats)
                     {
@@ -937,7 +943,7 @@ namespace BarkFluff.WebApi.Core
                         });
                         var a = response;
                     }
-                    
+
 
                     return (new ErrorReturner(true), string.Empty);
                 }, globalParam);
@@ -960,9 +966,9 @@ namespace BarkFluff.WebApi.Core
                 {
                     //var response = await MessagesAC.CreateGroupChatAsync(new Proto.Messages.CreateGroupChatRequest
                     //{
-                        
+
                     //});
-                    
+
                     return (true, string.Empty);
                 }, globalParam);
             }
@@ -1009,6 +1015,54 @@ namespace BarkFluff.WebApi.Core
             return (false, null);
         }
 
+        /// <summary>
+        /// Метод для получения сообщений из чата.
+        /// </summary>
+        /// <param name="globalParam">Параметры приложения</param>
+        /// <param name="chatId">Идентификатор чата</param>
+        /// <param name="fromMessageId">Идентификатор сообщения, с которого начинать</param>
+        /// <returns></returns>
+        public async Task<(ErrorReturner error, List<MessageModel> messages)> GetMessages(GlobalParam globalParam, string chatId, long fromMessageId)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var response = await MessagesAC.ListMessagesAsync(new Proto.Messages.ListMessagesRequest { ChatId = chatId, Count = 50, FromMessageId = fromMessageId });
+                    if (response.Messages.Count == 0)
+                    {
+                        return (new ErrorReturner(false, "Нет сообщений в этом чате", 1), null);
+                    }
+                    return (new ErrorReturner(true), response.Messages.Select(m => new MessageModel
+                    {
+                        Id = m.Id,
+                        Text = m.Content.Text,
+                        Attachments = m.Content.Attachments.Select(a => new AttachmentsModel
+                        {
+                            Id = a.Id,
+                            Type = a.Type,
+                            PreviewUrl = a.PreviewUrl,
+                            FileId = a.FileId,
+                            PreviewFileId = "", //Славик блять отдавай мне тут PreviewFileId
+                        }).ToList(),
+                        SenderId = m.SenderId,
+                        SentAt = m.SentAt,
+                        Type = m.Type,
+                        ReadBy = m.ReadBy.ToList(),
+                    }).ToList());
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.ChatIdNotValidException)
+            {
+                //
+            }
+            catch (Exception ex)
+            {
+                return (new ErrorReturner(false, ex.Message), null);
+            }
+            return (new ErrorReturner(false, "Не удалось получить сообщения"), null);
+        }
+
         #endregion
 
         #region Поиск
@@ -1019,14 +1073,14 @@ namespace BarkFluff.WebApi.Core
             {
                 return await SafeCallAsync(async () =>
                 {
-                    var response = await UsersAC.SearchUsersAsync(new Proto.Users.SearchUsersRequest 
-                    { 
-                        Pagination = new Proto.Shared.PageRequest 
-                        { 
-                            Offset = 0, 
-                            Size = 50 
-                        }, 
-                        Query = userNameSearched 
+                    var response = await UsersAC.SearchUsersAsync(new Proto.Users.SearchUsersRequest
+                    {
+                        Pagination = new Proto.Shared.PageRequest
+                        {
+                            Offset = 0,
+                            Size = 50
+                        },
+                        Query = userNameSearched
                     });
 
                     var a = new List<UserData>();
@@ -1053,7 +1107,43 @@ namespace BarkFluff.WebApi.Core
             {
                 return (new ErrorReturner(false, "Неверный токен обновления."), null);
             }
-            catch(Exception ex)
+            catch (Exception ex)
+            {
+                return (new ErrorReturner(false, ex.Message), null);
+            }
+        }
+
+        #endregion
+
+        #region Файлы
+
+        public async Task<(ErrorReturner error, string url)> GetFile(GlobalParam globalParam, string fileId)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var response = await FilesAC.GetTempDownloadUrlAsync(new Proto.Files.GetTempDownloadUrlRequest { FileIds = { fileId } });
+                    return (new ErrorReturner(true), response.FileUrls[0].Url);
+                }, globalParam);
+            }
+            catch (Exception ex)
+            {
+                return (new ErrorReturner(false, ex.Message), null);
+            }
+        }
+        public async Task<(ErrorReturner error, List<string> urls)> GetFiles(GlobalParam globalParam, List<string> fileId)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var response = await FilesAC.GetTempDownloadUrlAsync(new Proto.Files.GetTempDownloadUrlRequest { FileIds = { fileId } });
+                    response.FileUrls.ToList();
+                    return (new ErrorReturner(true), new List<string>());
+                }, globalParam);
+            }
+            catch (Exception ex)
             {
                 return (new ErrorReturner(false, ex.Message), null);
             }

@@ -8,10 +8,15 @@ namespace BarkFluff.WebApi.Core
     {
         public bool IsSuccess { get; set; }
         public string? ErrorMessage { get; set; }
-        public ErrorReturner(bool isSuccess, string? errorMessage = null)
+        /// <summary>
+        /// 1 - получаемый список сообщений в чате пустой
+        /// </summary>
+        public int ErrorCode { get; set; } = 0;
+        public ErrorReturner(bool isSuccess, string? errorMessage = null, int errorCode = 0)
         {
             IsSuccess = isSuccess;
             ErrorMessage = errorMessage;
+            ErrorCode = errorCode;
         }
     }
 }

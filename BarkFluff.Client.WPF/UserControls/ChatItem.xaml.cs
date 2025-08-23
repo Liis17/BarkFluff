@@ -1,4 +1,6 @@
-﻿using System.ComponentModel;
+﻿using BarkFluff.Client.WPF.Pages;
+
+using System.ComponentModel;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
@@ -25,7 +27,7 @@ namespace BarkFluff.Client.WPF.UserControls
             /// <summary>
             /// Сообщение отправлено и прочитано мной
             /// </summary>
-            Me,
+            My,
 
             /// <summary>
             /// Сообщение отправлено, но не прочитано собеседником
@@ -43,13 +45,19 @@ namespace BarkFluff.Client.WPF.UserControls
             ForMe
         }
         private string _url;
-        public ChatItem(string imageUrl, string chatName, string lastMessageText, string time, ReadingStatus reading, List<long> readBy, long unReaded)
+        private string _chatId;
+        private long _lastMessageId;
+        private bool _isGroupChat;
+        public ChatItem(string imageUrl, string chatName, string lastMessageText, string time, ReadingStatus reading, List<long> readBy, long unReaded, string chatId, long lastMessageId, bool isGroupChat)
         {
             InitializeComponent();
+            _chatId = chatId;
+            _lastMessageId = lastMessageId;
+            _isGroupChat = isGroupChat;
             Title.Text = chatName;
             LastMessage.Text = lastMessageText;
             TimeMessage.Text = FormatDateTime(time.Length >= 2 ? time.Substring(1, time.Length - 2) : time);
-
+            
 
             Loaded += ChatItem_Loaded;
             _url = imageUrl;
@@ -71,9 +79,9 @@ namespace BarkFluff.Client.WPF.UserControls
 
             DropShadowEffect shadowEffect = new DropShadowEffect
             {
-                BlurRadius = 15,
-                Opacity = 0.9,
-                ShadowDepth = 2,
+                BlurRadius = 10,
+                Opacity = 0.3,
+                ShadowDepth = 0,
                 Color = averageColor
             };
             border.Effect = shadowEffect;
@@ -117,6 +125,11 @@ namespace BarkFluff.Client.WPF.UserControls
             {
                 return localDateTime.ToString("dd MMM yyyy", ruCulture);
             }
+        }
+
+        private void UserControl_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            App.Messenger.OpenChatById(_chatId, _lastMessageId, _isGroupChat);
         }
     }
 }

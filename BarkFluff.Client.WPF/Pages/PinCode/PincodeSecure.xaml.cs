@@ -148,7 +148,7 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
 
         private bool IsValid(string pin)
         {
-            string exePath = Assembly.GetExecutingAssembly().Location;
+            string exePath = AppContext.BaseDirectory;
             string exeDirectory = Path.GetDirectoryName(exePath);
             string filePath = Path.Combine(exeDirectory, "GlobalParam.json");
             if (File.Exists(filePath))
@@ -165,8 +165,8 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
         }
         private void Next()
         {
-            string exeDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            string filePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "GlobalParam.json");
+            string exeDirectory = Path.GetDirectoryName(AppContext.BaseDirectory);
+            string filePath = Path.Combine(Path.GetDirectoryName(AppContext.BaseDirectory), "GlobalParam.json");
             App.GParam = GlobalParam.Load(filePath, new string(pinDigits));
             App.GParam.AppPass = new string(pinDigits);
             App.GParam.AppPath = exeDirectory ?? string.Empty;
@@ -194,7 +194,7 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
 
         private void RemoveSettings(object sender, RoutedEventArgs e)
         {
-            string filePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "GlobalParam.json");
+            string filePath = Path.Combine(Path.GetDirectoryName(AppContext.BaseDirectory), "GlobalParam.json");
             if (File.Exists(filePath))
             {
                 File.Delete("GlobalParam.json");
