@@ -68,17 +68,15 @@
                 Duration="0:0:0.5">
                 <DoubleAnimation.EasingFunction>
                     <CubicEase EasingMode="EaseOut" />
-                    <!--  Кривая для плавности  -->
                 </DoubleAnimation.EasingFunction>
             </DoubleAnimation>
             <DoubleAnimation
-                Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
-                From="0.5"
-                To="1"
+                Storyboard.TargetProperty="Width"
+                From="500"
+                To="200"
                 Duration="0:0:0.5">
                 <DoubleAnimation.EasingFunction>
                     <CubicEase EasingMode="EaseOut" />
-                    <!--  Кривая для масштаба снизу вверх  -->
                 </DoubleAnimation.EasingFunction>
             </DoubleAnimation>
         </Storyboard>
@@ -538,10 +536,14 @@
                                 x:Name="MessageScrollViewer"
                                 Grid.Row="1"
                                 Padding="20"
+                                HorizontalAlignment="Stretch"
                                 VerticalAlignment="Bottom"
                                 HorizontalScrollBarVisibility="Disabled"
                                 VerticalScrollBarVisibility="Auto">
-                                <StackPanel x:Name="MessageArea" Orientation="Vertical">
+                                <StackPanel
+                                    x:Name="MessageArea"
+                                    HorizontalAlignment="Stretch"
+                                    Orientation="Vertical">
                                     <!--  Здесь будут добавляться элементы динамически  -->
                                 </StackPanel>
                             </ScrollViewer>
@@ -592,6 +594,7 @@
                                         Background="{StaticResource BlurredBackgroundBrush}"
                                         CornerRadius="20">
                                         <ui:TextBox
+                                            x:Name="TextForMessage"
                                             Height="35"
                                             VerticalAlignment="Center"
                                             AcceptsReturn="True"

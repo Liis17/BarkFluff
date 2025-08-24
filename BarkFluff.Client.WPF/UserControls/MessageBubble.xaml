@@ -6,7 +6,7 @@
     xmlns:local="clr-namespace:BarkFluff.Client.WPF.UserControls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-    HorizontalAlignment="Stretch"
+    HorizontalAlignment="Right"
     d:DesignHeight="130"
     d:DesignWidth="600"
     mc:Ignorable="d">
@@ -14,17 +14,17 @@
         <!--  Стиль для входящих сообщений  -->
         <Style x:Key="IncomingMessageStyle" TargetType="Border">
             <Setter Property="Background" Value="#FF2D2D30" />
-            <Setter Property="HorizontalAlignment" Value="Left" />
-            <Setter Property="MaxWidth" Value="400" />
-            <Setter Property="Margin" Value="12,4,60,4" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+            <Setter Property="MaxWidth" Value="500" />
+            <Setter Property="Margin" Value="0,2,0,2" />
             <Setter Property="CornerRadius" Value="25,25,25,4" />
         </Style>
 
         <!--  Стиль для исходящих сообщений  -->
         <Style x:Key="OutgoingMessageStyle" TargetType="Border">
             <Setter Property="Background" Value="#c87e5b" />
-            <Setter Property="HorizontalAlignment" Value="Right" />
-            <Setter Property="MaxWidth" Value="400" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="MaxWidth" Value="500" />
             <Setter Property="Margin" Value="0,2,0,2" />
             <Setter Property="CornerRadius" Value="25,25,4,25" />
         </Style>
@@ -146,7 +146,7 @@
             </MenuItem>
         </ContextMenu>
     </UserControl.Resources>
-    <Grid>
+    <Grid x:Name="MainGrid" HorizontalAlignment="Right">
         <!--  Основное облачко сообщения  -->
         <Border
             x:Name="MessageBorder"
@@ -235,7 +235,7 @@
                         HorizontalAlignment="Right"
                         VerticalAlignment="Bottom"
                         Orientation="Horizontal"
-                        Visibility="Collapsed">
+                        Visibility="Visible">
 
                         <ui:SymbolIcon
                             Width="14"
