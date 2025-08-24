@@ -48,7 +48,8 @@ namespace BarkFluff.Client.WPF.UserControls
         private string _chatId;
         private long _lastMessageId;
         private bool _isGroupChat;
-        public ChatItem(string imageUrl, string chatName, string lastMessageText, string time, ReadingStatus reading, List<long> readBy, long unReaded, string chatId, long lastMessageId, bool isGroupChat)
+        private long _userId;
+        public ChatItem(string imageUrl, string chatName, string lastMessageText, string time, ReadingStatus reading, List<long> readBy, long unReaded, string chatId, long lastMessageId, bool isGroupChat, long userId)
         {
             InitializeComponent();
             _chatId = chatId;
@@ -56,11 +57,11 @@ namespace BarkFluff.Client.WPF.UserControls
             _isGroupChat = isGroupChat;
             Title.Text = chatName;
             LastMessage.Text = lastMessageText;
+            _url = imageUrl;
+            _userId = userId;
             TimeMessage.Text = FormatDateTime(time.Length >= 2 ? time.Substring(1, time.Length - 2) : time);
-            
 
             Loaded += ChatItem_Loaded;
-            _url = imageUrl;
         }
 
         private async void ChatItem_Loaded(object sender, RoutedEventArgs e)
@@ -129,7 +130,7 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private void UserControl_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
-            App.Messenger.OpenChatById(_chatId, _lastMessageId, _isGroupChat);
+            App.Messenger.OpenChatById(_chatId, _lastMessageId, _isGroupChat, _userId);
         }
     }
 }

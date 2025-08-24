@@ -6,6 +6,7 @@ using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
 using System.ComponentModel;
 using System.Security.Cryptography;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -47,9 +48,14 @@ namespace BarkFluff.Client.WPF.Pages
         #region Обработчики событий
         private async void ChatIdbyUserId_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
+            if (ChatIdbyUserId.Value == 0) { return; } //если chatId пустой, то выходим из метода
             IsOpenChat.Value = true;
             IsOpenChatEmpty = true;
             IsGroup = false;
+            ChatId.Value = string.Empty;
+            App.ErideMessage.AddMessage($"Открытие чата с UserID: {ChatIdbyUserId.Value}", new Erida { Type = MType.Debug });
+            _openedLastMessageId = 0;
+            MessageArea.Children.Clear();
             GetChatInfo(ChatIdbyUserId.Value); // получаем информацию о чате для вывода в заголовке и аватара
 
         }
@@ -57,7 +63,9 @@ namespace BarkFluff.Client.WPF.Pages
         private async void ChatId_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (ChatId.Value == string.Empty) { return; } //если chatId пустой, то выходим из метода
-            if (IsOpenChatEmpty) { return; } // если открываемый чат имеет тег IsOpenChatEmpty, то выходим из метода
+            if (IsOpenChatEmpty || _openedLastMessageId == 0) { return; } // если открываемый чат имеет тег IsOpenChatEmpty или _openedLastMessageId равен 0, то выходим из метода
+
+            ChatIdbyUserId.Value = 0; // обнуляем chatIdbyUserId чтобы не мешал открытию других чатов
 
             App.ErideMessage.AddMessage($"Загрузка сообщений чата с ID: {ChatId.Value}", new Erida { Type = MType.Debug });
 
@@ -187,6 +195,7 @@ namespace BarkFluff.Client.WPF.Pages
         string tempMessage;
         private void SendMessage(object sender, RoutedEventArgs e)
         {
+            tempMessage = TextForMessage.Text;
             if (!string.IsNullOrEmpty(tempMessage))
             {
                 var messageControl = new MessageBubble(tempMessage);
@@ -197,11 +206,9 @@ namespace BarkFluff.Client.WPF.Pages
         {
             tempMessage = string.Empty;
             MessageArea.Children.Add(control);
-
             var animation = (Storyboard)FindResource("MessageAppearAnimation");
             Storyboard.SetTarget(animation, control);
             animation.Begin();
-
             MessageScrollViewer.ScrollToEnd();
         }
         private void TextBox_KeyDown(object sender, KeyEventArgs e)
@@ -214,11 +221,11 @@ namespace BarkFluff.Client.WPF.Pages
                 textBox.Text = string.Empty;
                 e.Handled = true;
             }
-            else if (e.Key == Key.Enter && Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+            else if (e.Key == Key.Enter)
             {
                 var textBox = sender as TextBox;
                 textBox.Text += Environment.NewLine;
-                textBox.CaretIndex = textBox.Text.Length;
+                textBox.CaretIndex = textBox.Text.Length; 
                 e.Handled = true;
             }
         }
@@ -240,22 +247,34 @@ namespace BarkFluff.Client.WPF.Pages
             }
             foreach (var item in response.chats)
             {
-                var avatar = item.Picture;
-                if (string.IsNullOrEmpty(avatar))
+                if (item.IsGroupChat)
                 {
-                    avatar = "pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png";
+                    //групповой чат
+
+                    App.ErideMessage.AddMessage($"Пропущен групповой чат {item.Title}", new Erida { Type = MType.Debug });
                 }
-                List<long> list = item.LastMessage.ReadBy.ToList();
-                var isRead = ChatItem.ReadingStatus.ForMe;
-                var title = item.Title;
-                if (App.GParam.UserId == item.Members[0].UserId && App.GParam.UserId == item.Members[1].UserId)
+                else
                 {
-                    isRead = ChatItem.ReadingStatus.My;
-                    title = "Избранное";
-                    avatar = "pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/savedplaceholder.png";
+                    var avatar = item.Picture;
+                    if (string.IsNullOrEmpty(avatar))
+                    {
+                        avatar = "pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png";
+                    }
+                    List<long> list = item.LastMessage.ReadBy.ToList();
+                    var isRead = ChatItem.ReadingStatus.ForMe;
+                    var title = item.Title;
+                    var membersId = item.Members.Select(m => m.UserId).ToList();
+                    if (App.GParam.UserId == item.Members[0].UserId && App.GParam.UserId == item.Members[1].UserId)
+                    {
+                        isRead = ChatItem.ReadingStatus.My;
+                        title = "Избранное";
+                        avatar = "pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/savedplaceholder.png";
+                    }
+                    membersId.Remove(App.GParam.UserId);
+                    var messageItem = new ChatItem(avatar, title, item.LastMessage.Content.Text, time: item.LastMessage.SentAt.ToString(), reading: isRead, list, item.CountUnread, chatId: item.Id, item.LastMessage.Id, item.IsGroupChat, userId: membersId.Count > 0 ? membersId[0] : throw new InvalidOperationException("List is empty after removal"));
+                    ChatList.Children.Add(messageItem);
                 }
-                var messageItem = new ChatItem(avatar, title, item.LastMessage.Content.Text, time: item.LastMessage.SentAt.ToString(), reading: isRead, list, item.CountUnread, chatId: item.Id, item.LastMessage.Id, item.IsGroupChat);
-                ChatList.Children.Add(messageItem);
+                    
             }
             AvatarTitleWindow.ImageSource = new BitmapImage(new Uri(App.GParam.PictureUrl, UriKind.RelativeOrAbsolute));
         }
@@ -296,8 +315,19 @@ namespace BarkFluff.Client.WPF.Pages
             {
                 avatar = "pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png";
             }
+
+            if (App.GParam.UserId == response.Data.Id)
+            {
+
+                ChatTitleUsername.Text = "Избранное";
+                avatar = "pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/savedplaceholder.png";
+            }
+            else
+            {
+                ChatTitleUsername.Text = $"{response.Data.FirstName} {response.Data.LastName}";
+            }
             ChatAvatar.ImageSource = new BitmapImage(new Uri(avatar, UriKind.RelativeOrAbsolute));
-            ChatTitleUsername.Text = $"{response.Data.FirstName} {response.Data.LastName}";
+            
         }
         #endregion
 
@@ -488,13 +518,15 @@ namespace BarkFluff.Client.WPF.Pages
 
         #region Чаты
 
-        public void OpenChatById(string chatId, long lastMessageId, bool isGroupChat)
+        public void OpenChatById(string chatId, long lastMessageId, bool isGroupChat, long userId)
         {
+            
             IsOpenChatEmpty = false;
             IsOpenChat.Value = true;
             _openedLastMessageId = lastMessageId;
             ChatId.Value = chatId;
             IsGroup = isGroupChat;
+            GetChatInfo(userId); // получаем информацию о чате для вывода в заголовке и аватара
             App.ErideMessage.AddMessage($"Открытие чата с ID: {ChatId.Value}", new Erida { Type = MType.Debug });
         }
 

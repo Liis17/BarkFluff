@@ -20,6 +20,14 @@ namespace BarkFluff.Client.WPF.UserControls
             }
             MessageText.Text = message.Text;
             MessageTime.Text = message.SentAt.ToDateTime().ToString("HH:mm");
+            if (owner == MessageOwner.Me)
+            {
+                MainGrid.HorizontalAlignment = System.Windows.HorizontalAlignment.Right;
+            }
+            else
+            {
+                MainGrid.HorizontalAlignment = System.Windows.HorizontalAlignment.Left;
+            }
         }
         public MessageBubble(string textMessage)
         {
@@ -27,6 +35,7 @@ namespace BarkFluff.Client.WPF.UserControls
             SenderName.Visibility = System.Windows.Visibility.Collapsed;
             MessageText.Text = textMessage;
             MessageTime.Text = System.DateTime.Now.ToString("HH:mm");
+            MainGrid.HorizontalAlignment = System.Windows.HorizontalAlignment.Right;
         }
 
         public enum MessageType
