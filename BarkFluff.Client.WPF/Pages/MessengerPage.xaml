@@ -419,13 +419,8 @@
                             </Grid.RowDefinitions>
 
                             <!--  Заголовок диалога  -->
-                            <Border
-                                Grid.Row="0"
-                                Margin="0,0,0,0"
-                                Padding="10,0,0,0"
-                                Background="#FF2D2D30"
-                                BorderBrush="#FF404040"
-                                CornerRadius="10,0,0,10">
+                            <Border Grid.Row="0">
+
 
                                 <Grid>
                                     <Grid.ColumnDefinitions>
@@ -433,7 +428,17 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="40" />
+                                    </Grid.RowDefinitions>
+                                    <Border
+                                        Grid.Row="0"
+                                        Grid.Column="1"
+                                        Margin="0,0,0,0"
+                                        Padding="10,0,0,0"
+                                        Background="#2a0f52"
+                                        CornerRadius="10,0,0,10"
+                                        Opacity="0.8" />
 
 
                                     <!--  Информация о собеседнике  -->
@@ -493,41 +498,7 @@
                                     <StackPanel
                                         Grid.Column="2"
                                         VerticalAlignment="Center"
-                                        Orientation="Horizontal">
-                                        <Button
-                                            Width="36"
-                                            Height="36"
-                                            Margin="4,0"
-                                            Padding="-5"
-                                            Background="Transparent"
-                                            BorderThickness="0"
-                                            Focusable="False"
-                                            FontSize="16">
-                                            <ui:SymbolIcon Foreground="#FF9E9E9E" Symbol="Call16" />
-                                        </Button>
-                                        <Button
-                                            Width="36"
-                                            Height="36"
-                                            Margin="4,0"
-                                            Padding="-5"
-                                            Background="Transparent"
-                                            BorderThickness="0"
-                                            Focusable="False"
-                                            FontSize="16">
-                                            <ui:SymbolIcon Foreground="#FF9E9E9E" Symbol="Video16" />
-                                        </Button>
-                                        <Button
-                                            Width="36"
-                                            Height="36"
-                                            Margin="4,0"
-                                            Padding="-5"
-                                            Background="Transparent"
-                                            BorderThickness="0"
-                                            Focusable="False"
-                                            FontSize="16">
-                                            <ui:SymbolIcon Foreground="#FF9E9E9E" Symbol="MoreHorizontal16" />
-                                        </Button>
-                                    </StackPanel>
+                                        Orientation="Horizontal" />
                                 </Grid>
                             </Border>
 
@@ -552,11 +523,9 @@
                             <Border
                                 Grid.Row="2"
                                 Margin="10,0,10,10"
-                                Background="Gray"
-                                BorderBrush="#FF404040"
-                                BorderThickness="1"
+                                Background="#7653b1"
                                 CornerRadius="15"
-                                Opacity="0.7">
+                                Opacity="0.8">
 
 
                                 <Grid>
@@ -597,14 +566,19 @@
                                             x:Name="TextForMessage"
                                             Height="35"
                                             VerticalAlignment="Center"
-                                            AcceptsReturn="True"
+                                            AcceptsReturn="False"
+                                            AcceptsTab="True"
                                             BorderThickness="0"
                                             ClearButtonEnabled="False"
                                             FontFamily="{DynamicResource AdwaitaSans}"
                                             FontSize="14"
                                             Foreground="White"
+                                            IsTabStop="True"
+                                            IsUndoEnabled="True"
                                             KeyDown="TextBox_KeyDown"
-                                            PlaceholderText="Сообщение" />
+                                            KeyUp="TextForMessage_KeyUp"
+                                            PlaceholderText="Сообщение"
+                                            VerticalScrollBarVisibility="Auto" />
                                     </Border>
 
                                     <!--  Кнопка отправки  -->

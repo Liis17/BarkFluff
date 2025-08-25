@@ -213,20 +213,32 @@ namespace BarkFluff.Client.WPF.Pages
         }
         private void TextBox_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Enter && !Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+            if (e.Key == Key.LeftShift || e.Key == Key.LeftCtrl)
+            {
+                var textBox = sender as TextBox;
+                textBox.AcceptsReturn = true;
+            }
+            if (e.Key == Key.Enter)
             {
                 var textBox = sender as TextBox;
                 tempMessage = textBox.Text;
+                var a = tempMessage.Replace(" ", "");
+                if (a == "")
+                {
+                    return;
+                }
                 SendMessage(sender, null);
                 textBox.Text = string.Empty;
-                e.Handled = true;
+                textBox.AcceptsReturn = false;
             }
-            else if (e.Key == Key.Enter)
+        }
+
+        private void TextForMessage_KeyUp(object sender, KeyEventArgs e)
+        {
+            var textBox = sender as TextBox;
+            if (e.Key == Key.LeftShift || e.Key == Key.LeftCtrl)
             {
-                var textBox = sender as TextBox;
-                textBox.Text += Environment.NewLine;
-                textBox.CaretIndex = textBox.Text.Length; 
-                e.Handled = true;
+                textBox.AcceptsReturn = false;
             }
         }
         #endregion
@@ -537,8 +549,7 @@ namespace BarkFluff.Client.WPF.Pages
             _openedLastMessageId = 0;   
             ChatId.Value = string.Empty;
         }
-        #endregion
 
-        
+        #endregion
     }
 }
