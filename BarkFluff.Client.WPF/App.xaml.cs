@@ -1,6 +1,7 @@
 ﻿using BarkFluff.Client.WPF.Pages;
 using BarkFluff.Client.WPF.Services;
 using BarkFluff.Client.WPF.Services.App.Caching;
+using BarkFluff.Client.WPF.Services.App.Update;
 using BarkFluff.Client.WPF.Services.Erida;
 using BarkFluff.Client.WPF.Services.Notification;
 using BarkFluff.Client.WPF.Services.Notification.System;
@@ -38,6 +39,8 @@ namespace BarkFluff.Client.WPF
         public static MessengerPage Messenger { get; set; } = null!;
         public static MessageCacheManager CacheManager { get; set; } = null!;
         public static DropMessage ErideMessage { get; set; } = null!;
+
+        private static UpdateService updateService { get; set; } = null!;
         public App()
         {
 
@@ -146,6 +149,9 @@ namespace BarkFluff.Client.WPF
         public static void CreateEridaMessage(StackPanel stack)
         {
             ErideMessage = new DropMessage(stack);
+
+            updateService = new UpdateService(AppVersion.Version, AppVersion.VersionType);
+            updateService.Start();
         }
         protected override void OnExit(ExitEventArgs e)
         {
