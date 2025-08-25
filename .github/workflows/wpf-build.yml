@@ -1,4 +1,4 @@
-name: WPF Build and Release
+name: WPF клиент - сборка и отправка в релиз билда 
 
 on:
   push:
@@ -7,6 +7,11 @@ on:
       - master
     paths:
       - 'BarkFluff.Client.WPF/**'
+      - '.github/workflows/wpf-build.yml'
+      - 'BarkFluff.Shared.Exceptions/**'
+      - 'Shared/BarkFluff.Shared.Auth/**'
+      - 'Shared/BarkFluff.Shared.SecurityUtilities/**'
+      - 'ClientComponents/BarkFluff.WebApi.Core/**'
 
 jobs:
   build:
