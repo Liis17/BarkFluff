@@ -407,7 +407,7 @@
                                     x:Name="BackgroundChatImage"
                                     AlignmentX="Center"
                                     AlignmentY="Top"
-                                    ImageSource="https://liquipedia.net/commons/images/d/d1/KC_anesilia.png"
+                                    ImageSource="https://image.barkfluff.com/vlc_bOFxnqoUWh.jpg"
                                     Stretch="UniformToFill" />
                             </Border.Background>
                         </Border>
