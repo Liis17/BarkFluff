@@ -100,7 +100,15 @@ jobs:
         GH_USER: ${{ secrets.OWNER_RELEASE_REPO }}
         REPO: ${{ secrets.RELEASE_REPO_NAME }}
         TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-        TG_CHANNEL: ${{ secrets.TELEGRAM_CHANNEL }} 
+        TG_CHANNEL: ${{ secrets.TELEGRAM_CHANNEL }}
         THIS_BRANCH: ${{ github.ref == 'refs/heads/dev' && 'Dev' || 'Master' }}
       run: |
-        C:\ProgramData\gituploader\GitReleaseUploader.exe ${{ env.GH_USER }} ${{ env.GH_TOKEN }} ${{ env.REPO }} "$env:GITHUB_WORKSPACE\wpf-build.zip" true ${{ env.TG_TOKEN }} ${{ env.TG_CHANNEL }} ${{ env.THIS_BRANCH }} WPF-Client
+        $versionFile = "$env:GITHUB_WORKSPACE\BarkFluff\BarkFluff.Client.WPF\Services\App\AppVersion.cs"
+        $content = Get-Content $versionFile -Raw
+        if ($content -match 'Version\s*\{\s*get;\s*set;\s*\}\s*=\s*"([^"]+)"') {
+            $version = $matches[1]
+        } else {
+            Write-Error "Версия не найдена"
+            exit 1
+        }
+        C:\ProgramData\gituploader\GitReleaseUploader.exe ${{ env.GH_USER }} ${{ env.GH_TOKEN }} ${{ env.REPO }} "$env:GITHUB_WORKSPACE\wpf-build.zip" true ${{ env.TG_TOKEN }} ${{ env.TG_CHANNEL }} ${{ env.THIS_BRANCH }} WPF-Client $version
