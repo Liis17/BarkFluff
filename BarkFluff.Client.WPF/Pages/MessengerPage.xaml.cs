@@ -59,6 +59,16 @@ namespace BarkFluff.Client.WPF.Pages
             GetChatInfo(ChatIdbyUserId.Value); // получаем информацию о чате для вывода в заголовке и аватара
 
         }
+        private void TextForMessage_LostFocus(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                //var textBox = sender as TextBox;
+                //textBox.Focus();
+            }
+            catch{ } // игнорируем ошибку если не получилось сфокусироваться на текстбоксе
+
+        }
 
         private async void ChatId_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
@@ -192,13 +202,34 @@ namespace BarkFluff.Client.WPF.Pages
         #endregion
 
         #region Сообщения
-        string tempMessage;
+        const int MESSAGE_LIMIT = 4096; // лимит символов в одном сообщении
+        string tempMessage; // временное хранение сообщения
+        List<string> attachedFiles { get; set; } = new List<string>(); //список ID прикрепленных файлов
         private void SendMessage(object sender, RoutedEventArgs e)
         {
             tempMessage = TextForMessage.Text;
-            if (!string.IsNullOrEmpty(tempMessage))
+            
+            if (string.IsNullOrEmpty(tempMessage)) return;
+
+            List<string> messageParts = SplitMessage(tempMessage, MESSAGE_LIMIT);
+            TextForMessage.Text = string.Empty;
+            foreach (var part in messageParts)
             {
-                var messageControl = new MessageBubble(tempMessage);
+                string resipientId = "0";
+                bool isUserId = false;
+                if (IsOpenChatEmpty)
+                {
+                    resipientId = ChatIdbyUserId.Value.ToString();
+                    isUserId = true;
+                }
+                else
+                {
+                    resipientId = ChatId.Value;
+                    isUserId = false;
+                }
+
+                (bool, bool, string) options = new (true, isUserId, resipientId);
+                var messageControl = new MessageBubble(part, options, attachedFiles);
                 AddMessage(messageControl);
             }
         }
@@ -245,6 +276,34 @@ namespace BarkFluff.Client.WPF.Pages
 
 
         #region Вспомогательные методы
+
+        private List<string> SplitMessage(string message, int maxLength)
+        {
+            List<string> parts = new List<string>();
+            int currentIndex = 0;
+
+            while (currentIndex < message.Length)
+            {
+                int length = Math.Min(maxLength, message.Length - currentIndex);
+                if (length == 0) break;
+
+                // Проверяем, чтобы не разрывать слово
+                if (currentIndex + length < message.Length)
+                {
+                    int lastSpace = message.LastIndexOf(' ', currentIndex + length - 1, length);
+                    if (lastSpace > currentIndex)
+                    {
+                        length = lastSpace - currentIndex;
+                    }
+                }
+
+                string part = message.Substring(currentIndex, length);
+                parts.Add(part.TrimEnd());
+                currentIndex += length;
+            }
+
+            return parts;
+        }
         public async void ChatUpdate()
         {
             var response = await App.ServerCommunication.GetChats(App.GParam);

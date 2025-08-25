@@ -919,42 +919,41 @@ namespace BarkFluff.WebApi.Core
             }
         }
 
-        public async Task<(ErrorReturner error, string)> SendMessage(GlobalParam globalParam, string chatId, long userid, MessageModel model)
+        public async Task<ErrorReturner> SendMessage(GlobalParam globalParam, (bool isUserId, string recipient) options, ForwardingLetter letter)
         {
             try
             {
                 return await SafeCallAsync(async () =>
                 {
-                    if (!string.IsNullOrEmpty(chatId))
+                    if (!options.isUserId)
                     {
                         var response = await MessagesAC.SendMessageAsync(new Proto.Messages.SendMessageRequest
                         {
-                            ChatId = chatId,
-                            Message = new Proto.Messages.OutgoingMessage { Text = model.Text },
+                            ChatId = options.recipient,
+                            Message = new Proto.Messages.OutgoingMessage { Text = letter.Text },
                         });
-                        var a = response;
                     }
-                    else if (userid != 0)
+                    else if (options.isUserId)
                     {
                         var response = await MessagesAC.SendMessageAsync(new Proto.Messages.SendMessageRequest
                         {
-                            UserId = userid,
-                            Message = new Proto.Messages.OutgoingMessage { Text = model.Text },
+                            UserId = long.Parse(options.recipient),
+                            Message = new Proto.Messages.OutgoingMessage { Text = letter.Text, FilesIds = { letter.FilesId } },
                         });
-                        var a = response;
+                        
                     }
 
 
-                    return (new ErrorReturner(true), string.Empty);
+                    return (new ErrorReturner(true));
                 }, globalParam);
             }
             catch (BarkFluff.Shared.Exceptions.Messages.ChatIdNotValidException)
             {
-                return (new ErrorReturner(false, "Неверный идентификатор чата."), null);
+                return (new ErrorReturner(false, "Неверный идентификатор чата."));
             }
             catch (Exception ex)
             {
-                return (new ErrorReturner(false, ex.Message), null);
+                return (new ErrorReturner(false, ex.Message));
             }
         }
 

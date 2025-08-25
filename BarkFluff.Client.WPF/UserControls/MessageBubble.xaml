@@ -6,17 +6,18 @@
     xmlns:local="clr-namespace:BarkFluff.Client.WPF.UserControls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    MaxWidth="600"
     HorizontalAlignment="Right"
     VerticalAlignment="Bottom"
     d:DesignHeight="130"
-    d:DesignWidth="600"
+    d:DesignWidth="700"
     mc:Ignorable="d">
     <UserControl.Resources>
         <!--  Стиль для входящих сообщений  -->
         <Style x:Key="IncomingMessageStyle" TargetType="Border">
             <Setter Property="Background" Value="#FF2D2D30" />
             <Setter Property="HorizontalAlignment" Value="Right" />
-            <Setter Property="MaxWidth" Value="500" />
+            <Setter Property="MaxWidth" Value="600" />
             <Setter Property="Margin" Value="0,2,0,2" />
             <Setter Property="CornerRadius" Value="15,15,15,4" />
         </Style>
@@ -25,7 +26,7 @@
         <Style x:Key="OutgoingMessageStyle" TargetType="Border">
             <Setter Property="Background" Value="#c87e5b" />
             <Setter Property="HorizontalAlignment" Value="Left" />
-            <Setter Property="MaxWidth" Value="500" />
+            <Setter Property="MaxWidth" Value="600" />
             <Setter Property="Margin" Value="0,2,0,2" />
             <Setter Property="CornerRadius" Value="20,20,4,20" />
         </Style>

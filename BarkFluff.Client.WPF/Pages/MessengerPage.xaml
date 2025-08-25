@@ -563,6 +563,7 @@
                                         Background="{StaticResource BlurredBackgroundBrush}"
                                         CornerRadius="20">
                                         <ui:TextBox
+                                            LostFocus="TextForMessage_LostFocus"
                                             x:Name="TextForMessage"
                                             Height="35"
                                             VerticalAlignment="Center"
