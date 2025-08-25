@@ -183,7 +183,7 @@ namespace BarkFluff.Client.WPF
             {
                 if (lines[i].Contains("public static string Version"))
                 {
-                    lines[i] = $"       public static string Version {{ get; set; }} = \"{AppVersion.Version}\";";
+                    lines[i] = $"        public static string Version {{ get; set; }} = \"{AppVersion.Version}\";";
                     break;
                 }
             }
