@@ -60,6 +60,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ExternalEnvironmentApplicat
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Barkfluff.SiteWebServer", "Barkfluff.SiteWebServer\Barkfluff.SiteWebServer.csproj", "{9F1A872F-9733-41C1-9C3C-C2E82AF7F48F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Barkfluff.Updater", "Barkfluff.Updater\Barkfluff.Updater.csproj", "{85A19711-EDC1-470E-A081-F251DD6EA965}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -236,6 +238,14 @@ Global
 		{9F1A872F-9733-41C1-9C3C-C2E82AF7F48F}.Release|Any CPU.Build.0 = Release|Any CPU
 		{9F1A872F-9733-41C1-9C3C-C2E82AF7F48F}.Release|x64.ActiveCfg = Release|Any CPU
 		{9F1A872F-9733-41C1-9C3C-C2E82AF7F48F}.Release|x64.Build.0 = Release|Any CPU
+		{85A19711-EDC1-470E-A081-F251DD6EA965}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{85A19711-EDC1-470E-A081-F251DD6EA965}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{85A19711-EDC1-470E-A081-F251DD6EA965}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{85A19711-EDC1-470E-A081-F251DD6EA965}.Debug|x64.Build.0 = Debug|Any CPU
+		{85A19711-EDC1-470E-A081-F251DD6EA965}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{85A19711-EDC1-470E-A081-F251DD6EA965}.Release|Any CPU.Build.0 = Release|Any CPU
+		{85A19711-EDC1-470E-A081-F251DD6EA965}.Release|x64.ActiveCfg = Release|Any CPU
+		{85A19711-EDC1-470E-A081-F251DD6EA965}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
