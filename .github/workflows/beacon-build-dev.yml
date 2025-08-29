@@ -30,6 +30,10 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       
+      - name: Convert username to lowercase
+        run: echo "LOWERCASE_ACTOR=$(${{ github.actor }}.ToLower())" >> $env:GITHUB_ENV
+        shell: powershell
+      
       - name: Build and Push
         uses: docker/build-push-action@v4
         with:
@@ -39,5 +43,5 @@ jobs:
           tags: |
             docker.barkfluff.com/barkfluff-beacon-dev:latest,
             docker.barkfluff.com/barkfluff-beacon-dev:${{ github.sha }},
-            ghcr.io/${{ toLowerCase(github.actor) }}/barkfluff/barkfluff-beacon-dev:latest,
-            ghcr.io/${{ toLowerCase(github.actor) }}/barkfluff/barkfluff-beacon-dev:${{ github.sha }}
+            ghcr.io/${{ env.LOWERCASE_ACTOR }}/barkfluff/barkfluff-beacon-dev:latest,
+            ghcr.io/${{ env.LOWERCASE_ACTOR }}/barkfluff/barkfluff-beacon-dev:${{ github.sha }}
