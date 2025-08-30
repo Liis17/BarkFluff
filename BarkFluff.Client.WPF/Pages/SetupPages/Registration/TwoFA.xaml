@@ -20,9 +20,7 @@
             <Setter Property="Margin" Value="0,0,0,30" />
         </Style>
     </UserControl.Resources>
-    <ScrollViewer>
-
-
+    <ScrollViewer VerticalScrollBarVisibility="Auto" VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
         <Grid Background="#1A1A1A">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*" />
@@ -31,7 +29,7 @@
 
             <StackPanel
                 Grid.Row="0"
-                Margin="0,0,0,30"
+                Margin="0,0,0,0"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Orientation="Vertical">
@@ -58,11 +56,11 @@
                     TextAlignment="Center" />
 
                 <Border
-                    Margin="0,0,0,20"
+                    Margin="0,0,0,10"
                     Background="#282828"
                     BorderThickness="0"
                     CornerRadius="12">
-                    <StackPanel Margin="20" Orientation="Vertical">
+                    <StackPanel Margin="10 10 10 0" Orientation="Vertical">
                         <TextBlock
                             Margin="0,0,0,15"
                             HorizontalAlignment="Center"
@@ -141,7 +139,7 @@
                 </Border>
 
                 <TextBlock
-                    Margin="0,5,0,10"
+                    Margin="0,0,0,10"
                     HorizontalAlignment="Center"
                     FontFamily="{DynamicResource AdwaitaSans}"
                     FontSize="18"
@@ -151,7 +149,7 @@
 
                 <StackPanel
                     x:Name="CodeContainer"
-                    Margin="0,0,0,15"
+                    Margin="0,0,0,0"
                     HorizontalAlignment="Center"
                     Orientation="Horizontal">
                     <TextBox
