@@ -41,11 +41,7 @@ namespace BarkFluff.Client.WPF
         public static DropMessage ErideMessage { get; set; } = null!;
 
         private static UpdateService updateService { get; set; } = null!;
-        public App()
-        {
-
-
-        }
+        public App(){}
         protected override void OnStartup(StartupEventArgs e)
         {
             #region
@@ -121,7 +117,8 @@ namespace BarkFluff.Client.WPF
             AppIdHelper.SetCurrentProcessExplicitAppUserModelID(AppUserModelId);
             ServerCommunication = new WebApi.Core.WebApi();
             ColorAnalyzer = new ImageColorAnalyzer();
-            string filePath = Path.Combine(Path.GetDirectoryName(targetPath), "GlobalParam.json");
+            Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(targetPath) ?? string.Empty, "datas"));
+            string filePath = Path.Combine(Path.GetDirectoryName(targetPath),"datas", "GlobalParam.json");
 
 #if (DEBUG)
             if (Debugger.IsAttached)
@@ -203,6 +200,16 @@ namespace BarkFluff.Client.WPF
         {
             ServerCommunication = null!;
             ServerCommunication = new WebApi.Core.WebApi();
+            var response = ServerCommunication.CreateAC(GParam, GParam.MachineName, SystemInfo.GetFriendlyWindowsVersion(), AppVersion.AppName, AppVersion.Version, GParam.IpAddress);
+            if (!response.IsSuccess)
+            {
+                App.ErideMessage.AddMessage(response.ErrorMessage ?? "Не удалось обновить API клиент", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
+                return;
+            }
+            else
+            {
+                App.ErideMessage.AddMessage("API клиент успешно обновлён", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Debug });
+            }
             var (error, serverInfo) = await ServerCommunication.GetServerInfo(GParam);
             if (!error.IsSuccess)
             {
@@ -217,27 +224,19 @@ namespace BarkFluff.Client.WPF
                 App.GParam.SocketUsers = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Users.Endpoint.Host + ":" + serverInfo.Users.Endpoint.Port);
                 App.GParam.SocketFiles = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Files.Endpoint.Host + ":" + serverInfo.Files.Endpoint.Port);
                 App.GParam.SocketMessages = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Messages.Endpoint.Host + ":" + serverInfo.Messages.Endpoint.Port);
+                App.GParam.SocketUpdates = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Updates.Endpoint.Host + ":" + serverInfo.Updates.Endpoint.Port);
                 App.GParam.Colors = new ClientColors()
                 {
                     LiteHex = serverInfo.Color.LiteHex,
                     MainHex = serverInfo.Color.MainHex,
                     HardHex = serverInfo.Color.HardHex,
                 };
-                string filePath = Path.Combine(SystemInfo.GetAppPath(), "GlobalParam.json");
+                string filePath = Path.Combine(AppContext.BaseDirectory, "datas", "GlobalParam.json");
                 if (App.GParam == null) { return; }
                 if (string.IsNullOrEmpty(App.GParam.AppPass) || string.IsNullOrEmpty(App.GParam.AppPath)) { return; }
                 GlobalParam.Save(App.GParam, filePath, App.GParam.AppPass);
             }
-            var response = ServerCommunication.CreateAC(GParam, GParam.MachineName, SystemInfo.GetFriendlyWindowsVersion(), AppVersion.AppName, AppVersion.Version, GParam.IpAddress);
-            if (!response.IsSuccess)
-            {
-                App.ErideMessage.AddMessage(response.ErrorMessage ?? "Не удалось обновить API клиент", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
-                return;
-            }
-            else
-            {
-                App.ErideMessage.AddMessage("API клиент успешно обновлён", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Debug });
-            }
+            
             
         }
 

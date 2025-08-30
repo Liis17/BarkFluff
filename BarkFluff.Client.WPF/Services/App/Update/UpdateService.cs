@@ -26,7 +26,7 @@ namespace BarkFluff.Client.WPF.Services.App.Update
             _httpClient.DefaultRequestHeaders.Add("User-Agent", "UpdateService");
             _currentVersion = currentVersion;
             _currentType = currentType;
-            _timer = new System.Timers.Timer(30000); // 5 минут = 300000 мс
+            _timer = new System.Timers.Timer(300000); // 5 минут = 300000 мс
             _timer.Elapsed += async (sender, e) => await CheckForUpdatesAsync();
             _timer.AutoReset = true;
         }

@@ -11,7 +11,7 @@ namespace BarkFluff.Client.WPF.UserControls
         public MessageBubble(MessageOwner owner, MessageType messageTypes, MessageModel message, bool IsGroup)
         {
             InitializeComponent();
-            if (IsGroup)
+            if (IsGroup && owner == MessageOwner.Interlocutor)
             {
                 SenderName.Visibility = System.Windows.Visibility.Visible;
             }
@@ -21,16 +21,9 @@ namespace BarkFluff.Client.WPF.UserControls
             }
             MessageText.Text = message.Text;
             MessageTime.Text = message.SentAt.ToDateTime().ToString("HH:mm");
-            if (owner == MessageOwner.Me)
-            {
-                MainGrid.HorizontalAlignment = System.Windows.HorizontalAlignment.Right;
-            }
-            else
-            {
-                MainGrid.HorizontalAlignment = System.Windows.HorizontalAlignment.Left;
-            }
             var sizeMessageWidth = CalculateLongestLineWidth(message.Text);
             this.MinWidth = sizeMessageWidth + 50;
+            ThemedConfirm(owner);
         }
         public MessageBubble(string textMessage, (bool sendingRequired , bool isUserId, string recipient) options, List<string> filesId)
         {
@@ -40,8 +33,7 @@ namespace BarkFluff.Client.WPF.UserControls
             SenderName.Visibility = System.Windows.Visibility.Collapsed;
             MessageText.Text = textMessage;
             MessageTime.Text = System.DateTime.Now.ToString("HH:mm");
-            MainGrid.HorizontalAlignment = System.Windows.HorizontalAlignment.Right;
-
+            ThemedConfirm(MessageOwner.Me);
             if (options.sendingRequired)
             {
                 SendMessage(options, textMessage, filesId);
@@ -57,6 +49,23 @@ namespace BarkFluff.Client.WPF.UserControls
                 App.ErideMessage.AddMessage(response.ErrorMessage, new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
             }
         }
+
+        private void ThemedConfirm(MessageOwner owner)
+        {
+            if (owner == MessageOwner.Me) // исходящее сообщение
+            {
+                this.HorizontalAlignment = System.Windows.HorizontalAlignment.Right;
+                MainGrid.HorizontalAlignment = System.Windows.HorizontalAlignment.Right;
+                MessageBorder.Style = (System.Windows.Style)FindResource("OutgoingMessageStyle");
+            }
+            else // входящее сообщение
+            {
+                this.HorizontalAlignment = System.Windows.HorizontalAlignment.Left;
+                MainGrid.HorizontalAlignment = System.Windows.HorizontalAlignment.Left;
+                MessageBorder.Style = (System.Windows.Style)FindResource("IncomingMessageStyle");
+            }
+        }
+
         private int CalculateLongestLineWidth(string textPart)
         {
             if (string.IsNullOrEmpty(textPart)) return 0;
@@ -67,6 +76,8 @@ namespace BarkFluff.Client.WPF.UserControls
 
             return (longestLineLength > 45 ? 45 : longestLineLength) * 12;
         }
+
+        #region Enums
         public enum MessageType
         {
             Text,
@@ -80,12 +91,12 @@ namespace BarkFluff.Client.WPF.UserControls
             Me,
             Interlocutor
         }
-
         public enum MessageContentType
         {
             Unknown,
             Generic,
             System,
         }
+        #endregion Enums
     }
 }

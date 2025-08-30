@@ -300,7 +300,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                             }
                             App.GParam.RefreshToken = response.RefreshToken;
                             await App.ServerCommunication.TokenUpdate(App.GParam);
-                            GlobalParam.Save(App.GParam, Path.Combine(App.GParam.AppPath, "GlobalParam.json"), App.GParam.AppPass);
+                            MainWindow.SaveSettings();
                             App.UpdateApiClient();
                             MainWindow.SaveSettings();
                         }

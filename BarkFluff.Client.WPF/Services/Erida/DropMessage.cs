@@ -31,7 +31,6 @@ namespace BarkFluff.Client.WPF.Services.Erida
                     Opacity = 0,
                     Margin = new Thickness(5)
                 };
-
                 _stackPanel.Children.Add(messageControl);
 
                 var fadeInAnimation = new DoubleAnimation
