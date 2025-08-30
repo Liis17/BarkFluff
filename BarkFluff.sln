@@ -60,6 +60,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Barkfluff.SiteWebServer", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Barkfluff.Updater", "Barkfluff.Updater\Barkfluff.Updater.csproj", "{85A19711-EDC1-470E-A081-F251DD6EA965}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DockerServerManagement", "DockerServerManagement\DockerServerManagement.csproj", "{54EF8205-4554-400A-A187-59E0813D1D6A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -236,6 +238,14 @@ Global
 		{85A19711-EDC1-470E-A081-F251DD6EA965}.Release|Any CPU.Build.0 = Release|Any CPU
 		{85A19711-EDC1-470E-A081-F251DD6EA965}.Release|x64.ActiveCfg = Release|Any CPU
 		{85A19711-EDC1-470E-A081-F251DD6EA965}.Release|x64.Build.0 = Release|Any CPU
+		{54EF8205-4554-400A-A187-59E0813D1D6A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{54EF8205-4554-400A-A187-59E0813D1D6A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{54EF8205-4554-400A-A187-59E0813D1D6A}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{54EF8205-4554-400A-A187-59E0813D1D6A}.Debug|x64.Build.0 = Debug|Any CPU
+		{54EF8205-4554-400A-A187-59E0813D1D6A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{54EF8205-4554-400A-A187-59E0813D1D6A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{54EF8205-4554-400A-A187-59E0813D1D6A}.Release|x64.ActiveCfg = Release|Any CPU
+		{54EF8205-4554-400A-A187-59E0813D1D6A}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -261,6 +271,7 @@ Global
 		{DD28DFCD-5588-4E7B-BF53-DDCACEE3C213} = {7E5A1AA1-A416-4D7E-B885-FC81F6CEBF07}
 		{9F1A872F-9733-41C1-9C3C-C2E82AF7F48F} = {C71695D9-DCBE-32C0-BF7A-7B5E62F77FEC}
 		{85A19711-EDC1-470E-A081-F251DD6EA965} = {C71695D9-DCBE-32C0-BF7A-7B5E62F77FEC}
+		{54EF8205-4554-400A-A187-59E0813D1D6A} = {C71695D9-DCBE-32C0-BF7A-7B5E62F77FEC}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B07C171A-90A2-41DB-A618-37C992F8D403}
