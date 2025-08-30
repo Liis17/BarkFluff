@@ -12,6 +12,7 @@ on:
       - 'Shared/BarkFluff.Shared.Auth/**'
       - 'Shared/BarkFluff.Shared.SecurityUtilities/**'
       - 'ClientComponents/BarkFluff.WebApi.Core/**'
+      - 'client-rebuild.trigger'
 
 jobs:
   build:

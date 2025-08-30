@@ -1,0 +1,8 @@
+изменить этот файл для тригера сборки всех микросервисов сервера
+
+udhfghdfsghdfsghisdfhg
+dfgsdfsgsdfgdsfgjkhdfg
+gsdfopgjiosdfhjgihsdfg
+dsfgdfslighkusdfhgkuhs
+dfgloihdfisughidfshgiu
+dfohgidfsgiudsgoidsfd0

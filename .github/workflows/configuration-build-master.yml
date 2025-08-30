@@ -9,6 +9,7 @@ on:
       - 'Backend/BarkFluff.Identity/**'
       - 'Backend/BarkFluff.GrpcServer/**'
       - '.github/workflows/configuration-build-master.yml'
+      - 'rebuild.trigger'
 
 jobs:
   build-configuration:

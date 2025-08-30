@@ -9,6 +9,7 @@ on:
       - 'BarkFluff.Shared.Queue/**'
       - 'Backend/BarkFluff.GrpcServer/**'
       - '.github/workflows/updates-build-master.yml'
+      - 'rebuild.trigger'
 
 jobs:
   build-updates:

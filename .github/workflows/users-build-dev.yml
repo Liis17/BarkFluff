@@ -10,6 +10,7 @@ on:
       - 'BarkFluff.Shared.Exceptions/**'
       - 'Backend/BarkFluff.GrpcServer/**'
       - '.github/workflows/users-build-dev.yml'
+      - 'rebuild.trigger'
 
 jobs:
   build-users:
