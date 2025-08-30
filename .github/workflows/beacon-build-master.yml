@@ -8,6 +8,7 @@ on:
       - 'Backend/BarkFluff.Beacon/**'
       - 'Backend/BarkFluff.GrpcServer/**'
       - '.github/workflows/beacon-build-master.yml'
+      - 'rebuild.trigger'
 
 jobs:
   build-beacon:

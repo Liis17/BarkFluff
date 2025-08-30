@@ -10,6 +10,7 @@ on:
       - 'Shared/BarkFluff.Shared.Auth/**'
       - 'Backend/BarkFluff.GrpcServer/**'
       - '.github/workflows/messages-build-master.yml'
+      - 'rebuild.trigger'
 
 jobs:
   build-messages:

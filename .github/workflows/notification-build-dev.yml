@@ -9,6 +9,7 @@ on:
       - 'BarkFluff.Shared.Queue/**'
       - 'Backend/BarkFluff.GrpcServer/**'
       - '.github/workflows/notification-build-dev.yml'
+      - 'rebuild.trigger'
 
 jobs:
   build-notification:

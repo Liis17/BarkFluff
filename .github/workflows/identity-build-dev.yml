@@ -11,6 +11,7 @@ on:
       - 'BarkFluff.Shared.Exceptions/**'
       - 'Backend/BarkFluff.GrpcServer/**'
       - '.github/workflows/identity-build-dev.yml'
+      - 'rebuild.trigger'
 
 jobs:
   build-identity:

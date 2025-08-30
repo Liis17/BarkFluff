@@ -8,6 +8,7 @@ on:
       - 'Backend/BarkFluff.Files/**'
       - 'Backend/BarkFluff.GrpcServer/**'
       - '.github/workflows/files-build-master.yml'
+      - 'rebuild.trigger'
 
 jobs:
   build-files:
