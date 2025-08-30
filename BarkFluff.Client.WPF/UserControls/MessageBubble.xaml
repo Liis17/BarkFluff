@@ -7,7 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     MaxWidth="600"
-    HorizontalAlignment="Right"
+    HorizontalAlignment="Left"
     VerticalAlignment="Bottom"
     d:DesignHeight="130"
     d:DesignWidth="700"
@@ -148,13 +148,13 @@
             </MenuItem>
         </ContextMenu>
     </UserControl.Resources>
-    <Grid x:Name="MainGrid" HorizontalAlignment="Right">
+    <Grid x:Name="MainGrid" HorizontalAlignment="Left">
         <!--  Основное облачко сообщения  -->
         <Border
             x:Name="MessageBorder"
             Padding="0,0,0,0"
             ContextMenu="{StaticResource MessageContextMenu}"
-            Style="{StaticResource OutgoingMessageStyle}">
+            Style="{StaticResource IncomingMessageStyle}">
 
             <Border.Effect>
                 <DropShadowEffect
@@ -234,8 +234,14 @@
                         FontFamily="{DynamicResource AdwaitaSans}"
                         FontSize="11"
                         Foreground="White"
-                        Text="14:30"
-                        TextWrapping="WrapWithOverflow" />
+                        Text="placeholder"
+                        TextWrapping="WrapWithOverflow">
+                        <TextBlock.ToolTip>
+                            <ToolTip x:Name="MessageTimeToolTip">
+                                <TextBlock Text="placeholder" />
+                            </ToolTip>
+                        </TextBlock.ToolTip>
+                    </TextBlock>
 
                     <!--  Статус прочтения (только для исходящих)  -->
                     <StackPanel

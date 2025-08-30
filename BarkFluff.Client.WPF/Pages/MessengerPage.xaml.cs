@@ -27,7 +27,6 @@ namespace BarkFluff.Client.WPF.Pages
         public ReactiveBool IsOpenChat { get; set; } = new ReactiveBool(false);
         public ReactiveString ChatId { get; set; } = new ReactiveString(string.Empty);
         private long _openedLastMessageId { get; set; } = 0;
-        private string _myId { get; set; } = string.Empty;
 
         public bool IsOpenChatEmpty { get; set; } = false;
         public ReactiveLong ChatIdbyUserId { get; set; } = new ReactiveLong(0);
@@ -35,7 +34,6 @@ namespace BarkFluff.Client.WPF.Pages
         public MessengerPage()
         {
             InitializeComponent();
-            _myId = App.GParam.UserId.ToString();
 
             Loaded += MessengerPage_Loaded;
             IsOpenChat.PropertyChanged += IsOpenChat_PropertyChanged;
@@ -152,6 +150,9 @@ namespace BarkFluff.Client.WPF.Pages
 
         private async void MessengerPage_Loaded(object sender, RoutedEventArgs e)
         {
+            //временное удаление аватарки-заглушки габена пока нет кеша 
+            ChatAvatar.ImageSource = null;
+            AvatarTitleWindow.ImageSource = null;
 
             OpenedChat.Visibility = Visibility.Collapsed;
             App.ServerCommunication.CreateOnlyBeaconAC(App.GParam);
@@ -171,6 +172,7 @@ namespace BarkFluff.Client.WPF.Pages
                 App.GParam.SocketUsers = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Users.Endpoint.Host + ":" + serverInfo.Users.Endpoint.Port);
                 App.GParam.SocketFiles = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Files.Endpoint.Host + ":" + serverInfo.Files.Endpoint.Port);
                 App.GParam.SocketMessages = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Messages.Endpoint.Host + ":" + serverInfo.Messages.Endpoint.Port);
+                App.GParam.SocketUpdates = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Updates.Endpoint.Host + ":" + serverInfo.Updates.Endpoint.Port);
                 App.GParam.Colors = new ClientColors()
                 {
                     LiteHex = serverInfo.Color.LiteHex,
@@ -178,10 +180,7 @@ namespace BarkFluff.Client.WPF.Pages
                     HardHex = serverInfo.Color.HardHex,
                 };
                 MainWindow.SaveSettings();
-
             }
-
-
 
             var response = App.ServerCommunication.CreateAC(App.GParam, App.GParam.MachineName, SystemInfo.GetFriendlyWindowsVersion(), AppVersion.AppName, AppVersion.Version, App.GParam.IpAddress);
             if (!response.IsSuccess)
@@ -198,6 +197,7 @@ namespace BarkFluff.Client.WPF.Pages
 
             UserInfoUpdate();
             ChatUpdate();
+            await Task.Run(() => ProcessMessages(App.GParam));
         }
         #endregion
 
@@ -442,6 +442,8 @@ namespace BarkFluff.Client.WPF.Pages
         }
         private void SearchTextBox_GotFocus(object sender, RoutedEventArgs e)
         {
+            SearchTextBox.PlaceholderText = "Введите минимум 3 символа для поиска";
+            SearchResultsHeader.Text = string.Empty;
             ExpandGrid();
         }
 
@@ -467,17 +469,35 @@ namespace BarkFluff.Client.WPF.Pages
 
         private void SearchTextBox_LostFocus(object sender, RoutedEventArgs e)
         {
+            SearchTextBox.PlaceholderText = "Поиск";
+
             // потом заменить на что то другое а то так хуева оставлять
             ClearSearchAndHideResults();
         }
         private async void SearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            var response = await App.ServerCommunication.SearchUser(App.GParam, SearchTextBox.Text);
-            SearchCollectin.Children.Clear();
-            foreach (var item in response.userList)
+            if (SearchTextBox.Text.Length >= 3)
             {
-                var a = new SearchElement(item);
-                SearchCollectin.Children.Add(a);
+                
+                var response = await App.ServerCommunication.SearchUser(App.GParam, SearchTextBox.Text);
+               SearchCollection.Children.Clear();
+               foreach (var item in response.userList)
+               {
+                   var a = new SearchElement(item);
+                   SearchCollection.Children.Add(a);
+               }
+                SearchResultsHeader.Text = "Найдено " + response.userList.Count + " результатов";
+            }
+            else if (SearchTextBox.Text.Length <= 2 && SearchTextBox.Text.Length >= 1)
+            {
+                SearchCollection.Children.Clear();
+                SearchTextBox.PlaceholderText = string.Empty;
+                SearchResultsHeader.Text = "Введите минимум 3 символа для поиска";
+            }
+            else if (SearchTextBox.Text.Length == 0)
+            {
+                SearchCollection.Children.Clear();
+                SearchResultsHeader.Text = string.Empty;
             }
         }
 
@@ -585,7 +605,33 @@ namespace BarkFluff.Client.WPF.Pages
 
         #endregion
 
-        
+        #region обновление
+
+        public async Task ProcessMessages(GlobalParam globalParam)
+        {
+            return; // отключено пока что, так как не до конца реализовано
+            App.ErideMessage.AddMessage("Запуск процесса получения обновлений...", new Erida { Type = MType.Debug });
+
+            var (error, stream) = await App.ServerCommunication.JustUpdate(globalParam);
+
+            if (!error.IsSuccess)
+            {
+                App.ErideMessage.AddMessage("Ошибка при подключении к потоку обновлений: " + error.ErrorMessage, new Erida { Type = MType.Error });
+                return;
+            }
+            if (stream == null)
+            {
+                App.ErideMessage.AddMessage("Поток обновлений недоступен.", new Erida { Type = MType.Error });
+                return;
+            }
+
+            await foreach (var message in stream)
+            {
+                App.ErideMessage.AddMessage("Получено обновление: " + message.Message, new Erida { Type = MType.Debug });
+            }
+        }
+
+        #endregion
 
         #region Чаты
 

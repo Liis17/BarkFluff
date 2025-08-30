@@ -5,6 +5,8 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="clr-namespace:BarkFluff.Client.WPF.Services.Erida"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    Height="45"
     d:DesignHeight="450"
     d:DesignWidth="800"
     mc:Ignorable="d">
@@ -14,12 +16,26 @@
             VerticalAlignment="Stretch"
             Background="#743e2c"
             CornerRadius="10">
-            <TextBlock
-                x:Name="Content"
-                Margin="15,5,15,5"
-                Foreground="Wheat"
-                Text="{Binding Text, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                TextWrapping="Wrap" />
+            <StackPanel
+                Margin="10"
+                VerticalAlignment="Center"
+                Orientation="Horizontal">
+                <ui:SymbolIcon
+                    x:Name="Icon"
+                    Width="20"
+                    Height="20"
+                    Margin="0,0,10,0"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    FontSize="20"
+                    Foreground="Wheat"
+                    Symbol="Warning12" />
+                <ui:TextBlock
+                    x:Name="Content"
+                    Foreground="Wheat"
+                    Text="{Binding Text, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                    TextWrapping="Wrap" />
+            </StackPanel>
         </Border>
     </Grid>
 </UserControl>

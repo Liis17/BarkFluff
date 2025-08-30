@@ -10,9 +10,9 @@
     HorizontalAlignment="Stretch"
     d:DesignHeight="150"
     d:DesignWidth="400"
+    Background="#00ffffff"
     Cursor="Hand"
     MouseLeftButtonUp="UserControl_MouseLeftButtonUp"
-    Background="#00ffffff"
     mc:Ignorable="d">
 
     <Border
@@ -92,7 +92,6 @@
                         BlurRadius="12"
                         Opacity="0.3"
                         ShadowDepth="0"
-                        
                         Color="#FF6B73FF" />
                 </Border.Effect>
             </Border>
@@ -117,6 +116,7 @@
                 <TextBlock
                     x:Name="LastMessage"
                     MaxWidth="280"
+                    HorizontalAlignment="Left"
                     FontFamily="{DynamicResource Neucha}"
                     FontSize="12"
                     FontStretch="Medium"

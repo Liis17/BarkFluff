@@ -209,17 +209,39 @@
                     <!--  Аватар пользователя  -->
                     <Border
                         Grid.Column="0"
-                        Width="25"
-                        Height="25"
+                        Width="23"
+                        Height="23"
                         Margin="30,0,0,0"
+                        HorizontalAlignment="Left"
                         VerticalAlignment="Center"
                         CornerRadius="15"
                         Cursor="Hand"
                         MouseLeftButtonUp="OpenCenterBlock"
                         ToolTip="Открыть мой профиль">
                         <Border.Background>
-                            <ImageBrush x:Name="AvatarTitleWindow" Stretch="UniformToFill" />
+                            <ImageBrush
+                                x:Name="AvatarTitleWindow"
+                                ImageSource="https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/The_International_2018_%2843263984845%29_%28cropped%29.jpg/960px-The_International_2018_%2843263984845%29_%28cropped%29.jpg"
+                                Stretch="UniformToFill" />
                         </Border.Background>
+                    </Border>
+
+                    <Border
+                        Grid.Column="0"
+                        Width="25"
+                        Height="25"
+                        Margin="58,0,0,0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        CornerRadius="15"
+                        Cursor="Hand"
+                        MouseLeftButtonUp="OpenCenterBlock"
+                        ToolTip="Открыть мой профиль">
+                        <ui:SymbolIcon
+                            FontSize="23"
+                            Foreground="#f8a644"
+                            Symbol="ArrowCircleUp16"
+                            ToolTip="Доступно обновление" />
                     </Border>
                 </Grid>
             </Border>
@@ -246,7 +268,7 @@
                         <!--  Панель поиска  -->
                         <Border Grid.Row="0">
                             <Border
-                                Padding="12,8"
+                                Margin="10,8"
                                 Background="Transparent"
                                 CornerRadius="8">
                                 <Grid>
@@ -255,13 +277,7 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
 
-                                    <ui:SymbolIcon
-                                        Grid.Column="0"
-                                        Margin="0,0,8,0"
-                                        VerticalAlignment="Center"
-                                        FontSize="16"
-                                        Foreground="#FF9E9E9E"
-                                        Symbol="Search16" />
+
 
                                     <ui:TextBox
                                         x:Name="SearchTextBox"
@@ -273,6 +289,7 @@
                                         FontSize="14"
                                         Foreground="White"
                                         GotFocus="SearchTextBox_GotFocus"
+                                        Icon="{ui:SymbolIcon ui:Symbol=Search48}"
                                         LostFocus="SearchTextBox_LostFocus"
                                         PlaceholderText="Поиск"
                                         TextChanged="SearchTextBox_TextChanged" />
@@ -341,7 +358,7 @@
                 <Grid
                     x:Name="SearchResultList"
                     Height="0"
-                    Margin="15,45,10,0"
+                    Margin="10,45,2,0"
                     HorizontalAlignment="Stretch"
                     VerticalAlignment="Top"
                     Panel.ZIndex="200">
@@ -349,12 +366,13 @@
                     <ScrollViewer>
                         <StackPanel>
                             <TextBlock
+                                x:Name="SearchResultsHeader"
                                 Margin="8,0"
                                 HorizontalAlignment="Center"
                                 FontWeight="Bold"
                                 Foreground="White"
                                 Text="Результаты поиска" />
-                            <StackPanel x:Name="SearchCollectin" Orientation="Vertical" />
+                            <StackPanel x:Name="SearchCollection" Orientation="Vertical" />
                         </StackPanel>
                     </ScrollViewer>
 
@@ -411,7 +429,10 @@
                                     Stretch="UniformToFill" />
                             </Border.Background>
                         </Border>
-                        <Grid x:Name="OpenedChat" Visibility="Visible">
+                        <Grid
+                            x:Name="OpenedChat"
+                            HorizontalAlignment="Stretch"
+                            Visibility="Visible">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="45" />
                                 <RowDefinition Height="*" />
@@ -468,7 +489,10 @@
                                             CornerRadius="30"
                                             Focusable="False">
                                             <ui:Button.Background>
-                                                <ImageBrush x:Name="ChatAvatar" Stretch="UniformToFill" />
+                                                <ImageBrush
+                                                    x:Name="ChatAvatar"
+                                                    ImageSource="https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/The_International_2018_%2843263984845%29_%28cropped%29.jpg/960px-The_International_2018_%2843263984845%29_%28cropped%29.jpg"
+                                                    Stretch="UniformToFill" />
                                             </ui:Button.Background>
                                         </ui:Button>
                                         <StackPanel Orientation="Vertical">
@@ -563,7 +587,6 @@
                                         Background="{StaticResource BlurredBackgroundBrush}"
                                         CornerRadius="20">
                                         <ui:TextBox
-                                            LostFocus="TextForMessage_LostFocus"
                                             x:Name="TextForMessage"
                                             Height="35"
                                             VerticalAlignment="Center"
@@ -578,6 +601,7 @@
                                             IsUndoEnabled="True"
                                             KeyDown="TextBox_KeyDown"
                                             KeyUp="TextForMessage_KeyUp"
+                                            LostFocus="TextForMessage_LostFocus"
                                             PlaceholderText="Сообщение"
                                             VerticalScrollBarVisibility="Auto" />
                                     </Border>

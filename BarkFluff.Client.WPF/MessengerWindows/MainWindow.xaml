@@ -17,7 +17,8 @@
     mc:Ignorable="d">
     <Grid>
         <ui:TitleBar
-            Margin="80,0,0,0"
+            Height="30"
+            Margin="100,0,0,0"
             HorizontalAlignment="Stretch"
             VerticalAlignment="Top"
             Panel.ZIndex="999" />

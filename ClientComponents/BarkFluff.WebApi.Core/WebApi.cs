@@ -1,4 +1,5 @@
-﻿using BarkFluff.WebApi.Core.MessengerData;
+﻿using BarkFluff.Proto.Updates;
+using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
 using Grpc.Core;
@@ -23,6 +24,7 @@ namespace BarkFluff.WebApi.Core
         private BarkFluff.Proto.Files.FilesApi.FilesApiClient? FilesAC;
         private BarkFluff.Proto.Messages.MessagesApi.MessagesApiClient? MessagesAC;
         private BarkFluff.Proto.Navigator.NavigatorApi.NavigatorApiClient? NavigatorAC;
+        private BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiClient? UpdatesAC;
         #endregion
 
         #region gRPC Channels
@@ -32,6 +34,7 @@ namespace BarkFluff.WebApi.Core
         private GrpcChannel? FilesChannel;
         private GrpcChannel? MessagesChannel;
         private GrpcChannel? NavigatorChannel;
+        private GrpcChannel? UpdatesChannel;
         #endregion
 
         #region На всякий случай, возможно переиспользование
@@ -46,7 +49,7 @@ namespace BarkFluff.WebApi.Core
         private InitializationParams? _initParams;
         #endregion
 
-        public bool ACisnull => UsersAC == null || BeaconAC == null || IdentityAC == null || FilesAC == null || MessagesAC == null;
+        public bool ACisnull => UsersAC == null || BeaconAC == null || IdentityAC == null || FilesAC == null || MessagesAC == null || UpdatesAC == null;
         public bool BeaconIsnull => BeaconAC == null;
 
         #region Создание клиентов (AC - Api Client)
@@ -156,16 +159,19 @@ namespace BarkFluff.WebApi.Core
                 IdentityChannel = GrpcChannel.ForAddress(_gParam.SocketIdentity);
                 BeaconChannel = GrpcChannel.ForAddress(_gParam.SocketBeacon);
                 UserChannel = GrpcChannel.ForAddress(_gParam.SocketUsers);
+                UpdatesChannel = GrpcChannel.ForAddress(EnsureHttpPrefix(_gParam.SocketUpdates));
 
                 var identityInvoker = IdentityChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
                 var userInvoker = UserChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
                 var filesInvoker = FilesChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
                 var messageInvoker = MessagesChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
+                var updatesInvoker = UpdatesChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
 
                 IdentityAC = new BarkFluff.Proto.Identity.IdentityApi.IdentityApiClient(identityInvoker);
                 UsersAC = new BarkFluff.Proto.Users.UsersApi.UsersApiClient(userInvoker);
                 FilesAC = new BarkFluff.Proto.Files.FilesApi.FilesApiClient(filesInvoker);
                 MessagesAC = new Proto.Messages.MessagesApi.MessagesApiClient(messageInvoker);
+                UpdatesAC = new Proto.Updates.UpdatesApi.UpdatesApiClient(updatesInvoker);
                 return new ErrorReturner(true);
             }
             catch (Exception ex)
@@ -1141,6 +1147,25 @@ namespace BarkFluff.WebApi.Core
                     response.FileUrls.ToList();
                     return (new ErrorReturner(true), new List<string>());
                 }, globalParam);
+            }
+            catch (Exception ex)
+            {
+                return (new ErrorReturner(false, ex.Message), null);
+            }
+        }
+
+        #endregion
+
+        #region реалтайм обновления
+
+        public async Task<(ErrorReturner error, IAsyncEnumerable<NewMessageEvent> stream)> JustUpdate(GlobalParam globalParam)
+        {
+            return (new ErrorReturner(true), null); // заглушка, пока не починят сервер
+            try
+            {
+                var call = UpdatesAC.SubscribeNewMessages(new Proto.Updates.SubscribeNewMessagesRequest());
+                call.ResponseHeadersAsync.Wait();
+                return (new ErrorReturner(true), call.ResponseStream.ReadAllAsync());
             }
             catch (Exception ex)
             {
