@@ -1,9 +1,0 @@
-﻿version: '3.8'
-services:
-  sql_server:
-    image: mcr.microsoft.com/mssql/server:2019-latest
-    environment:
-      - ACCEPT_EULA=Y
-      - SA_PASSWORD=YourStrong@Passw0rd
-    network_mode: host
-    container_name: sql_server

@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.13.35913.81
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Server.CLI", "BarkFluff.Server.CLI\BarkFluff.Server.CLI.csproj", "{AE4151EB-A456-4E9E-96DE-933E0567F0A3}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Client.WPF", "BarkFluff.Client.WPF\BarkFluff.Client.WPF.csproj", "{867B0465-D663-4751-87D1-1DA2ED41B125}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Backend", "Backend", "{7E5A1AA1-A416-4D7E-B885-FC81F6CEBF07}"
@@ -70,14 +68,6 @@ Global
 		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{AE4151EB-A456-4E9E-96DE-933E0567F0A3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{AE4151EB-A456-4E9E-96DE-933E0567F0A3}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{AE4151EB-A456-4E9E-96DE-933E0567F0A3}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{AE4151EB-A456-4E9E-96DE-933E0567F0A3}.Debug|x64.Build.0 = Debug|Any CPU
-		{AE4151EB-A456-4E9E-96DE-933E0567F0A3}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{AE4151EB-A456-4E9E-96DE-933E0567F0A3}.Release|Any CPU.Build.0 = Release|Any CPU
-		{AE4151EB-A456-4E9E-96DE-933E0567F0A3}.Release|x64.ActiveCfg = Release|Any CPU
-		{AE4151EB-A456-4E9E-96DE-933E0567F0A3}.Release|x64.Build.0 = Release|Any CPU
 		{867B0465-D663-4751-87D1-1DA2ED41B125}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{867B0465-D663-4751-87D1-1DA2ED41B125}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{867B0465-D663-4751-87D1-1DA2ED41B125}.Debug|x64.ActiveCfg = Debug|x64
@@ -270,6 +260,7 @@ Global
 		{3BC0D2B3-FF38-4F44-8276-F41BA8FE332D} = {7E5A1AA1-A416-4D7E-B885-FC81F6CEBF07}
 		{DD28DFCD-5588-4E7B-BF53-DDCACEE3C213} = {7E5A1AA1-A416-4D7E-B885-FC81F6CEBF07}
 		{9F1A872F-9733-41C1-9C3C-C2E82AF7F48F} = {C71695D9-DCBE-32C0-BF7A-7B5E62F77FEC}
+		{85A19711-EDC1-470E-A081-F251DD6EA965} = {C71695D9-DCBE-32C0-BF7A-7B5E62F77FEC}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B07C171A-90A2-41DB-A618-37C992F8D403}
