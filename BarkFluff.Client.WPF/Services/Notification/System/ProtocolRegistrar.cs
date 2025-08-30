@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.IO;
 using System.Reflection;
 using System.Windows;
 
@@ -8,11 +9,7 @@ namespace BarkFluff.Client.WPF.Services.Notification.System
     {
         public static void RegisterBFProtocol()
         {
-            string exePath = AppContext.BaseDirectory;
-            if (exePath.EndsWith(".dll"))
-            {
-                exePath = exePath.Replace(".dll", ".exe");
-            }
+            string exePath = Path.Combine(AppContext.BaseDirectory, "BarkFluff.Client.WPF.exe");
 
             var psi = new ProcessStartInfo
             {
