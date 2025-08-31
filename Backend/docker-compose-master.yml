@@ -7,7 +7,7 @@ x-common-variables: &common-variables
 services:
   # Основные
   beacon:
-    image: docker.barkfluff.com/barkfluff-beacon:latest 
+    image: docker.barkfluff.com:5000/barkfluff-beacon:latest 
     restart: always
     ports: ["7002:7002"]
     environment:
@@ -18,7 +18,7 @@ services:
       - configuration
 
   configuration:
-    image: docker.barkfluff.com/barkfluff-configuration:latest
+    image: docker.barkfluff.com:5000/barkfluff-configuration:latest
     restart: always
     ports: ["7003:7003"]
     environment:
@@ -27,7 +27,7 @@ services:
       - barkfluff-network
 
   files:
-    image: docker.barkfluff.com/barkfluff-files:latest
+    image: docker.barkfluff.com:5000/barkfluff-files:latest
     restart: always
     ports:
       - "7005:7005"
@@ -40,7 +40,7 @@ services:
       - configuration
 
   messages:
-    image: docker.barkfluff.com/barkfluff-messages:latest
+    image: docker.barkfluff.com:5000/barkfluff-messages:latest
     restart: always
     ports: ["7007:7007"]
     environment:
@@ -51,7 +51,7 @@ services:
       - configuration
 
   identity:
-    image: docker.barkfluff.com/barkfluff-identity:latest
+    image: docker.barkfluff.com:5000/barkfluff-identity:latest
     restart: always
     ports: ["7000:7000"]
     environment:
@@ -62,7 +62,7 @@ services:
       - configuration
 
   notification:
-    image: docker.barkfluff.com/barkfluff-notification:latest
+    image: docker.barkfluff.com:5000/barkfluff-notification:latest
     restart: always
     ports: ["7004:7004"]
     environment:
@@ -73,7 +73,7 @@ services:
       - configuration
 
   users:
-    image: docker.barkfluff.com/barkfluff-users:latest
+    image: docker.barkfluff.com:5000/barkfluff-users:latest
     restart: always
     ports: ["7001:7001"]
     environment:
@@ -84,7 +84,7 @@ services:
       - configuration
 
   fast-auth:
-    image: docker.barkfluff.com/barkfluff-fast-auth:latest
+    image: docker.barkfluff.com:5000/barkfluff-fast-auth:latest
     restart: always
     ports: ["7008:7008"]
     environment:
@@ -95,7 +95,7 @@ services:
       - configuration
 
   updates:
-    image: docker.barkfluff.com/barkfluff-updates:latest
+    image: docker.barkfluff.com:5000/barkfluff-updates:latest
     restart: always
     ports: ["7015:7015"]
     environment:
