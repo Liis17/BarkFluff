@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -98,28 +99,65 @@ namespace DockerServerManagement
             await botClient.SendMessage(chatId, "Главное меню", replyMarkup: inlineKeyboard);
         }
 
+
         static async Task HandleStatus(ITelegramBotClient botClient, long chatId)
         {
-            var process = new Process
+        var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
             {
-                StartInfo = new ProcessStartInfo
+                FileName = "docker",
+                Arguments = "compose -p barkfluff ps --format json",
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            }
+        };
+
+        process.Start();
+        string output = await process.StandardOutput.ReadToEndAsync();
+        process.WaitForExit();
+
+        // Проверка на пустой вывод
+        if (string.IsNullOrWhiteSpace(output))
+        {
+            await botClient.SendMessage(chatId, "Ошибка: вывод команды пустой.");
+            return;
+        }
+
+        try
+        {
+            // Разделяем вывод на отдельные JSON-объекты
+            var jsonObjects = output.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                                   .Where(line => !string.IsNullOrWhiteSpace(line))
+                                   .ToList();
+
+            if (!jsonObjects.Any())
+            {
+                await botClient.SendMessage(chatId, "Контейнеры не найдены.");
+                return;
+            }
+
+            var containers = new List<Dictionary<string, string>>();
+            foreach (var json in jsonObjects)
+            {
+                // Десериализация каждого JSON-объекта
+                var container = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
+                var flatContainer = new Dictionary<string, string>();
+                foreach (var kvp in container)
                 {
-                    FileName = "docker",
-                    Arguments = "compose -p barkfluff ps --format json",
-                    RedirectStandardOutput = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
+                    // Преобразуем JsonElement в строку
+                    flatContainer[kvp.Key] = kvp.Value.ValueKind switch
+                    {
+                        JsonValueKind.String => kvp.Value.GetString(),
+                        JsonValueKind.Number => kvp.Value.GetInt32().ToString(),
+                        JsonValueKind.Array => string.Join(",", kvp.Value.EnumerateArray().Select(e => e.ToString())),
+                        JsonValueKind.Object => kvp.Value.ToString(),
+                        _ => kvp.Value.ToString()
+                    };
                 }
-            };
-
-            process.Start();
-            string output = await process.StandardOutput.ReadToEndAsync();
-            process.WaitForExit();
-
-            var containers = output.Trim('[', ']').Split("},{")
-                .Select(s => s.Trim('{', '}', '"'))
-                .Select(s => s.Split(',').ToDictionary(kv => kv.Split(':')[0].Trim('"'), kv => kv.Split(':')[1].Trim('"')))
-                .ToList();
+                containers.Add(flatContainer);
+            }
 
             string statusMessage = "Статус контейнеров:\n";
             foreach (var container in containers)
@@ -129,8 +167,17 @@ namespace DockerServerManagement
 
             await botClient.SendMessage(chatId, statusMessage);
         }
+        catch (JsonException)
+        {
+            await botClient.SendMessage(chatId, "Ошибка: некорректный формат JSON в выводе команды.");
+        }
+        catch (Exception ex)
+        {
+            await botClient.SendMessage(chatId, $"Произошла ошибка: {ex.Message}");
+        }
+    }
 
-        static async Task HandleUpdate(ITelegramBotClient botClient, long chatId)
+    static async Task HandleUpdate(ITelegramBotClient botClient, long chatId)
         {
             var process = new Process
             {
