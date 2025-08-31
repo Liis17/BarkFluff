@@ -32,6 +32,6 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./Backend/BarkFluff.Identity/Dockerfile
+          file: ./Backend/BarkFluff.Messages/Dockerfile
           push: true
-          tags: docker.barkfluff.com:5000/barkfluff-identity-dev:latest,docker.barkfluff.com:5000/barkfluff-identity-dev:${{ github.sha }}
+          tags: docker.barkfluff.com:5000/barkfluff-messages-dev:latest,docker.barkfluff.com:5000/barkfluff-messages-dev:${{ github.sha }}
