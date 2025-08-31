@@ -84,7 +84,7 @@ jobs:
       - name: Login to Private Registry
         uses: docker/login-action@v2
         with:
-          registry: docker.barkfluff.com
+          registry: docker.barkfluff.com:5000
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
       
@@ -97,7 +97,7 @@ jobs:
           context: .
           file: ./Backend/BarkFluff.Beacon/Dockerfile
           push: true
-          tags: docker.barkfluff.com/barkfluff-beacon:latest,docker.barkfluff.com/barkfluff-beacon:${{ github.sha }}
+          tags: docker.barkfluff.com:5000/barkfluff-beacon:latest,docker.barkfluff.com:5000/barkfluff-beacon:${{ github.sha }}
   
   build-configuration:
     needs: detect-changes
@@ -109,7 +109,7 @@ jobs:
       - name: Login to Private Registry
         uses: docker/login-action@v2
         with:
-          registry: docker.barkfluff.com
+          registry: docker.barkfluff.com:5000
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
       
@@ -122,7 +122,7 @@ jobs:
           context: .
           file: ./Backend/BarkFluff.Configuration/Dockerfile
           push: true
-          tags: docker.barkfluff.com/barkfluff-configuration:latest,docker.barkfluff.com/barkfluff-configuration:${{ github.sha }}
+          tags: docker.barkfluff.com:5000/barkfluff-configuration:latest,docker.barkfluff.com:5000/barkfluff-configuration:${{ github.sha }}
 
   build-files:
     needs: detect-changes
@@ -134,7 +134,7 @@ jobs:
       - name: Login to Private Registry
         uses: docker/login-action@v2
         with:
-          registry: docker.barkfluff.com
+          registry: docker.barkfluff.com:5000
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
       
@@ -147,7 +147,7 @@ jobs:
           context: .
           file: ./Backend/BarkFluff.Files/Dockerfile
           push: true
-          tags: docker.barkfluff.com/barkfluff-files:latest,docker.barkfluff.com/barkfluff-files:${{ github.sha }}
+          tags: docker.barkfluff.com:5000/barkfluff-files:latest,docker.barkfluff.com:5000/barkfluff-files:${{ github.sha }}
 
   build-identity:
     needs: detect-changes
@@ -159,7 +159,7 @@ jobs:
       - name: Login to Private Registry
         uses: docker/login-action@v2
         with:
-          registry: docker.barkfluff.com
+          registry: docker.barkfluff.com:5000
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
       
@@ -172,7 +172,7 @@ jobs:
           context: .
           file: ./Backend/BarkFluff.Identity/Dockerfile
           push: true
-          tags: docker.barkfluff.com/barkfluff-identity:latest,docker.barkfluff.com/barkfluff-identity:${{ github.sha }}
+          tags: docker.barkfluff.com:5000/barkfluff-identity:latest,docker.barkfluff.com:5000/barkfluff-identity:${{ github.sha }}
 
   build-messages:
     needs: detect-changes
@@ -184,7 +184,7 @@ jobs:
       - name: Login to Private Registry
         uses: docker/login-action@v2
         with:
-          registry: docker.barkfluff.com
+          registry: docker.barkfluff.com:5000
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
       
@@ -197,7 +197,7 @@ jobs:
           context: .
           file: ./Backend/BarkFluff.Messages/Dockerfile
           push: true
-          tags: docker.barkfluff.com/barkfluff-messages:latest,docker.barkfluff.com/barkfluff-messages:${{ github.sha }}
+          tags: docker.barkfluff.com:5000/barkfluff-messages:latest,docker.barkfluff.com:5000/barkfluff-messages:${{ github.sha }}
 
   build-notification:
     needs: detect-changes
@@ -209,7 +209,7 @@ jobs:
       - name: Login to Private Registry
         uses: docker/login-action@v2
         with:
-          registry: docker.barkfluff.com
+          registry: docker.barkfluff.com:5000
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
       
@@ -222,7 +222,7 @@ jobs:
           context: .
           file: ./Backend/BarkFluff.Notification/Dockerfile
           push: true
-          tags: docker.barkfluff.com/barkfluff-notification:latest,docker.barkfluff.com/barkfluff-notification:${{ github.sha }}
+          tags: docker.barkfluff.com:5000/barkfluff-notification:latest,docker.barkfluff.com:5000/barkfluff-notification:${{ github.sha }}
 
   build-users:
     needs: detect-changes
@@ -234,7 +234,7 @@ jobs:
       - name: Login to Private Registry
         uses: docker/login-action@v2
         with:
-          registry: docker.barkfluff.com
+          registry: docker.barkfluff.com:5000
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
       
@@ -247,7 +247,7 @@ jobs:
           context: .
           file: ./Backend/BarkFluff.Users/Dockerfile
           push: true
-          tags: docker.barkfluff.com/barkfluff-users:latest,docker.barkfluff.com/barkfluff-users:${{ github.sha }}
+          tags: docker.barkfluff.com:5000/barkfluff-users:latest,docker.barkfluff.com:5000/barkfluff-users:${{ github.sha }}
 
   build-navigator:
     needs: detect-changes
@@ -259,7 +259,7 @@ jobs:
       - name: Login to Private Registry
         uses: docker/login-action@v2
         with:
-          registry: docker.barkfluff.com
+          registry: docker.barkfluff.com:5000
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
       
@@ -272,7 +272,7 @@ jobs:
           context: .
           file: ./Backend/BarkFluff.Navigator/Dockerfile
           push: true
-          tags: docker.barkfluff.com/barkfluff-navigator:latest,docker.barkfluff.com/barkfluff-navigator:${{ github.sha }}
+          tags: docker.barkfluff.com:5000/barkfluff-navigator:latest,docker.barkfluff.com:5000/barkfluff-navigator:${{ github.sha }}
     
   build-updates:
     needs: detect-changes
@@ -284,7 +284,7 @@ jobs:
       - name: Login to Private Registry
         uses: docker/login-action@v2
         with:
-          registry: docker.barkfluff.com
+          registry: docker.barkfluff.com:5000
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
       
@@ -297,7 +297,7 @@ jobs:
           context: .
           file: ./Backend/BarkFluff.Updates/Dockerfile
           push: true
-          tags: docker.barkfluff.com/barkfluff-updates:latest,docker.barkfluff.com/barkfluff-updates:${{ github.sha }}
+          tags: docker.barkfluff.com:5000/barkfluff-updates:latest,docker.barkfluff.com:5000/barkfluff-updates:${{ github.sha }}
 
   build-fast-auth:
     needs: detect-changes
@@ -309,7 +309,7 @@ jobs:
       - name: Login to Private Registry
         uses: docker/login-action@v2
         with:
-          registry: docker.barkfluff.com
+          registry: docker.barkfluff.com:5000
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
@@ -322,4 +322,4 @@ jobs:
           context: .
           file: ./Backend/BarkFluff.FastAuth/Dockerfile
           push: true
-          tags: docker.barkfluff.com/barkfluff-fast-auth:latest,docker.barkfluff.com/barkfluff-fast-auth:${{ github.sha }}
+          tags: docker.barkfluff.com:5000/barkfluff-fast-auth:latest,docker.barkfluff.com:5000/barkfluff-fast-auth:${{ github.sha }}
