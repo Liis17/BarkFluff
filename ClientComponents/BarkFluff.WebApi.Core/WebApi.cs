@@ -2,6 +2,9 @@
 using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
+using Google.Protobuf.Collections;
+using Google.Protobuf.WellKnownTypes;
+
 using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Grpc.Net.Client;
@@ -133,6 +136,7 @@ namespace BarkFluff.WebApi.Core
             UsersAC = null!;
             FilesAC = null!;
             MessagesAC = null!;
+            UpdatesAC = null!;
 
             try
             {
@@ -153,13 +157,14 @@ namespace BarkFluff.WebApi.Core
                 _gParam.SocketIdentity = EnsureHttpPrefix(_gParam.SocketIdentity);
                 _gParam.SocketBeacon = EnsureHttpPrefix(_gParam.SocketBeacon);
                 _gParam.SocketUsers = EnsureHttpPrefix(_gParam.SocketUsers);
+                _gParam.SocketUpdates = EnsureHttpPrefix(_gParam.SocketUpdates);
 
                 MessagesChannel = GrpcChannel.ForAddress(_gParam.SocketMessages);
                 FilesChannel = GrpcChannel.ForAddress(_gParam.SocketFiles);
                 IdentityChannel = GrpcChannel.ForAddress(_gParam.SocketIdentity);
                 BeaconChannel = GrpcChannel.ForAddress(_gParam.SocketBeacon);
                 UserChannel = GrpcChannel.ForAddress(_gParam.SocketUsers);
-                UpdatesChannel = GrpcChannel.ForAddress(EnsureHttpPrefix(_gParam.SocketUpdates));
+                UpdatesChannel = GrpcChannel.ForAddress(_gParam.SocketUpdates);
 
                 var identityInvoker = IdentityChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
                 var userInvoker = UserChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
@@ -1040,7 +1045,8 @@ namespace BarkFluff.WebApi.Core
                     }
                     return (new ErrorReturner(true), response.Messages.Select(m => new MessageModel
                     {
-                        Id = m.Id,
+                        MessageId = m.Id,
+                        ChatId = chatId,
                         Text = m.Content.Text,
                         Attachments = m.Content.Attachments.Select(a => new AttachmentsModel
                         {
@@ -1049,6 +1055,7 @@ namespace BarkFluff.WebApi.Core
                             PreviewUrl = a.PreviewUrl,
                             FileId = a.FileId,
                             PreviewFileId = "", //Славик блять отдавай мне тут PreviewFileId
+                            Size = a.AttachmentSize,
                         }).ToList(),
                         SenderId = m.SenderId,
                         SentAt = m.SentAt,
@@ -1066,6 +1073,30 @@ namespace BarkFluff.WebApi.Core
                 return (new ErrorReturner(false, ex.Message), null);
             }
             return (new ErrorReturner(false, "Не удалось получить сообщения"), null);
+        }
+
+        public async Task<ErrorReturner> MarkMessageAsRead(GlobalParam globalParam, List<long> messageId)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var response = await MessagesAC.MarkAsReadAsync(new Proto.Messages.MarkAsReadRequest { MessageIds = { messageId } });
+                    return (new ErrorReturner(true));
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.ChatIdNotValidException)
+            {
+                return new ErrorReturner(false, "Неверный идентификатор чата.");
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.MessageNotFoundException)
+            {
+                return new ErrorReturner(false, "Сообщение не найдено.");
+            }
+            catch (Exception ex)
+            {
+                return new ErrorReturner(false, ex.Message);
+            }
         }
 
         #endregion
@@ -1160,17 +1191,61 @@ namespace BarkFluff.WebApi.Core
 
         public async Task<(ErrorReturner error, IAsyncEnumerable<NewMessageEvent> stream)> JustUpdate(GlobalParam globalParam)
         {
-            return (new ErrorReturner(true), null); // заглушка, пока не починят сервер
-            try
+            return await SafeCallAsync(async () =>
             {
-                var call = UpdatesAC.SubscribeNewMessages(new Proto.Updates.SubscribeNewMessagesRequest());
-                call.ResponseHeadersAsync.Wait();
-                return (new ErrorReturner(true), call.ResponseStream.ReadAllAsync());
-            }
-            catch (Exception ex)
-            {
-                return (new ErrorReturner(false, ex.Message), null);
-            }
+                try
+                {
+                    // Подготовка заголовков с токеном (предполагается, что токен в globalParam)
+                    var headers = new Metadata();
+                    if (!string.IsNullOrEmpty(globalParam.AccessToken.Value)) // Замените на реальное поле токена
+                    {
+                        headers.Add("Authorization", $"Bearer {globalParam.AccessToken}");
+                    }
+
+                    // Вызов метода подписки с заголовками
+                    var response = UpdatesAC.SubscribeNewMessages(new SubscribeNewMessagesRequest { }, headers);
+
+                    // Создаём IAsyncEnumerable для стрима
+                    async IAsyncEnumerable<NewMessageEvent> GetMessageStream()
+                    {
+                        while (true)
+                        {
+                            bool hasNext;
+                            NewMessageEvent messageEvent;
+
+                            try
+                            {
+                                hasNext = await response.ResponseStream.MoveNext(CancellationToken.None);
+                                if (!hasNext)
+                                {
+                                    yield break; // Стрим завершён
+                                }
+                                messageEvent = response.ResponseStream.Current;
+                            }
+                            catch (RpcException ex) when (ex.StatusCode == StatusCode.Unauthenticated)
+                            {
+                                yield break;
+                            }
+                            catch (Exception ex)
+                            {
+                                yield break;
+                            }
+
+                            yield return messageEvent;
+                        }
+                    }
+
+                    return (new ErrorReturner(true, ""), GetMessageStream());
+                }
+                catch (RpcException ex) when (ex.StatusCode == StatusCode.Unauthenticated)
+                {
+                    return (new ErrorReturner(false, "Unauthenticated: Invalid or expired token"), null);
+                }
+                catch (Exception ex)
+                {
+                    return (new ErrorReturner(false, ex.Message), null);
+                }
+            }, globalParam);
         }
 
         #endregion

@@ -92,7 +92,9 @@ namespace BarkFluff.Client.WPF
         /// </summary>
         private void Bootstrap()
         {
-            CacheManager = new MessageCacheManager("cache.db", "temp");
+            Directory.CreateDirectory("temp");
+            Directory.CreateDirectory("datas");
+            CacheManager = new MessageCacheManager("datas\\cache.db", "temp");
 
             string targetPath = string.Empty;
             try
