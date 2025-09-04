@@ -1,5 +1,6 @@
 ﻿using BarkFluff.Client.WPF.Reactive;
 using BarkFluff.Client.WPF.UserControls;
+using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Shared;
 using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
@@ -26,6 +27,7 @@ namespace BarkFluff.Client.WPF.Pages
     {
         public ReactiveBool IsOpenChat { get; set; } = new ReactiveBool(false);
         public ReactiveString ChatId { get; set; } = new ReactiveString(string.Empty);
+        public string TitleChat { get; set; } = string.Empty;
         private long _openedLastMessageId { get; set; } = 0;
 
         public bool IsOpenChatEmpty { get; set; } = false;
@@ -241,6 +243,15 @@ namespace BarkFluff.Client.WPF.Pages
             Storyboard.SetTarget(animation, control);
             animation.Begin();
             MessageScrollViewer.ScrollToEnd();
+        }
+        private async void ReadMessage(List<long> messageIds)
+        {
+            var response = await App.ServerCommunication.MarkMessageAsRead(App.GParam, messageIds);
+            if (!response.IsSuccess)
+            {
+                App.ErideMessage.AddMessage("Ошибка при отметке сообщения как прочитанного: " + response.ErrorMessage, new Erida { Type = MType.Debug });
+                return;
+            }
         }
         private void TextBox_KeyDown(object sender, KeyEventArgs e)
         {
@@ -609,11 +620,8 @@ namespace BarkFluff.Client.WPF.Pages
 
         public async Task ProcessMessages(GlobalParam globalParam)
         {
-            return; // отключено пока что, так как не до конца реализовано
             App.ErideMessage.AddMessage("Запуск процесса получения обновлений...", new Erida { Type = MType.Debug });
-
             var (error, stream) = await App.ServerCommunication.JustUpdate(globalParam);
-
             if (!error.IsSuccess)
             {
                 App.ErideMessage.AddMessage("Ошибка при подключении к потоку обновлений: " + error.ErrorMessage, new Erida { Type = MType.Error });
@@ -625,9 +633,42 @@ namespace BarkFluff.Client.WPF.Pages
                 return;
             }
 
-            await foreach (var message in stream)
+            await foreach (var messageEvent in stream)
             {
-                App.ErideMessage.AddMessage("Получено обновление: " + message.Message, new Erida { Type = MType.Debug });
+                // Формируем сообщение для отладки
+                string messageInfo = $"Новое сообщение в чате {messageEvent.ChatId}: " +
+                                    $"ID={messageEvent.Message.Id}, " +
+                                    $"Отправитель={messageEvent.Message.SenderId}, " +
+                                    $"Текст={messageEvent.Message.Content.Text}, " +
+                                    $"Тип={(messageEvent.Message.Type == MessageContentType.System ? "Системное" : "Обычное")}, " +
+                                    $"Вложения={messageEvent.Message.Content.Attachments.Count}, " +
+                                    $"Отправлено={messageEvent.Message.SentAt.ToDateTime()}";
+
+                App.ErideMessage.AddMessage(messageInfo, new Erida { Type = MType.Debug });
+                var message = new MessageModel
+                {
+                    ChatId = messageEvent.ChatId,
+                    MessageId = messageEvent.Message.Id,
+                    SenderId = messageEvent.Message.SenderId,
+                    Text = messageEvent.Message.Content.Text,
+                    SentAt = messageEvent.Message.SentAt,
+                    Attachments = messageEvent.Message.Content.Attachments
+                            .Select(a => new AttachmentsModel
+                            {
+                                Id = a.Id,
+                                Type = a.Type,
+                                FileId = a.FileId,
+                                PreviewUrl = a.PreviewUrl,
+                                Size = a.AttachmentSize
+                            }).ToList(),
+                    IsSystemMessage = messageEvent.Message.Type == MessageContentType.System
+                };
+                App.CacheManager.SaveMessage(message.ChatId, TitleChat, message, Services.App.Caching.MessageOperation.Added);
+                // Обновляем UI в главном потоке
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                   // тут пока ничего нет, хз нужно ли вообще
+                });
             }
         }
 
@@ -635,11 +676,12 @@ namespace BarkFluff.Client.WPF.Pages
 
         #region Чаты
 
-        public void OpenChatById(string chatId, long lastMessageId, bool isGroupChat, long userId)
+        public void OpenChatById(string chatId, long lastMessageId, bool isGroupChat, long userId, string title)
         {
             
             IsOpenChatEmpty = false;
             IsOpenChat.Value = true;
+            TitleChat = title;
             _openedLastMessageId = lastMessageId;
             ChatId.Value = chatId;
             IsGroup = isGroupChat;

@@ -11,6 +11,7 @@ namespace BarkFluff.WebApi.Core.MessengerData.NonSavedData
         public string PreviewUrl { get; set; } = string.Empty;
         public string FileId { get; set; } = string.Empty;
         public string PreviewFileId { get; set; } = string.Empty;
+        public long Size { get; set; } = 0;
         public AttachmentsModel() { }
     }
 }
