@@ -1,6 +1,5 @@
-﻿using BarkFluff.Client.WPF.Pages;
+﻿using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
-using System.ComponentModel;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
@@ -9,8 +8,6 @@ using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
 
 using Color = System.Windows.Media.Color;
-using Erida = BarkFluff.Client.WPF.Services.Erida.MessageType;
-using MType = BarkFluff.Client.WPF.Services.Erida.MessageType.MessageTypeEnum;
 
 namespace BarkFluff.Client.WPF.UserControls
 {
@@ -44,8 +41,9 @@ namespace BarkFluff.Client.WPF.UserControls
             /// </summary>
             ForMe
         }
+        public MessageModel TransferMessage { get; set; } //объект класса MessageModel для обновления этого блока в списке чатов (после считывания делать пустым)
         private string _url;
-        private string _chatId;
+        public string ChatId = "";
         private long _lastMessageId;
         private bool _isGroupChat;
         private long _userId;
@@ -53,12 +51,12 @@ namespace BarkFluff.Client.WPF.UserControls
         public ChatItem(string imageUrl, string chatName, string lastMessageText, string time, ReadingStatus reading, List<long> readBy, long unReaded, string chatId, long lastMessageId, bool isGroupChat, long userId)
         {
             InitializeComponent();
-            _chatId = chatId;
+            ChatId = chatId;
             _lastMessageId = lastMessageId;
             _isGroupChat = isGroupChat;
             Title.Text = chatName;
             _title = chatName;
-            LastMessage.Text = lastMessageText;
+            LastMessage.Text = ProcessText(lastMessageText);
             _url = imageUrl;
             _userId = userId;
             TimeMessage.Text = FormatDateTime(time.Length >= 2 ? time.Substring(1, time.Length - 2) : time);
@@ -66,34 +64,58 @@ namespace BarkFluff.Client.WPF.UserControls
             Loaded += ChatItem_Loaded;
         }
 
+        public void UpdateMessage()
+        {
+            //_lastMessageId = TransferMessage.MessageId;
+            LastMessage.Text = ProcessText(TransferMessage.Text);
+            var time = TransferMessage.SentAt.ToString();
+            TimeMessage.Text = FormatDateTime(time.Length >= 2 ? time.Substring(1, time.Length - 2) : time);
+        }
+
         private async void ChatItem_Loaded(object sender, RoutedEventArgs e)
         {
+            BitmapImage bitmapImage = new BitmapImage();
+            bitmapImage.BeginInit();
+            bitmapImage.UriSource = new Uri(_url, UriKind.Absolute);
+            bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+            bitmapImage.EndInit();
+
             ImageBrush imageBrush = new ImageBrush
             {
-                ImageSource = new BitmapImage(new Uri(_url)),
-                Stretch = Stretch.UniformToFill
+                ImageSource = bitmapImage,
+                Stretch = Stretch.UniformToFill,
             };
             border.Background = imageBrush;
 
-            Color averageColor = await Task.Run(() =>
+            bitmapImage.DownloadCompleted += async (s, args) =>
             {
-                return App.ColorAnalyzer.GetAverageColorFromUrl(_url);
-            });
-
-            DropShadowEffect shadowEffect = new DropShadowEffect
-            {
-                BlurRadius = 10,
-                Opacity = 0.3,
-                ShadowDepth = 0,
-                Color = averageColor
+                Color averageColor = await App.ColorAnalyzer.GetAverageColorFromUrlAsync(_url);
+                DropShadowEffect shadowEffect = new DropShadowEffect
+                {
+                    BlurRadius = 12,
+                    Opacity = 0.9,
+                    ShadowDepth = 0,
+                    Color = averageColor
+                };
+                border.Effect = shadowEffect;
             };
-            border.Effect = shadowEffect;
+
+            bitmapImage.DownloadFailed += (s, args) =>
+            {
+                border.Effect = new DropShadowEffect
+                {
+                    BlurRadius = 10,
+                    Opacity = 0.3,
+                    ShadowDepth = 0,
+                    Color = Colors.Gray
+                };
+            };
         }
 
         private string FormatDateTime(string input)
         {
-            if (!DateTime.TryParseExact(input, "yyyy-MM-ddTHH:mm:ss.ffffffZ",
-                CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out DateTime dateTimeUtc))
+            if (!DateTime.TryParse(input, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out DateTime dateTimeUtc))
+
             {
                 return "Неверный формат даты";
             }
@@ -132,7 +154,16 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private void UserControl_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
-            App.Messenger.OpenChatById(_chatId, _lastMessageId, _isGroupChat, _userId, _title);
+            App.Messenger.OpenChatById(ChatId, _lastMessageId, _isGroupChat, _userId, _title);
+        }
+
+        private string ProcessText(string input)
+        {
+            if (string.IsNullOrEmpty(input))
+                return input;
+
+            string result = input.Replace("\r\n", " ").Replace("\n", " ").Trim();
+            return result.Length > 50 ? result.Substring(0, 50) : result;
         }
     }
 }

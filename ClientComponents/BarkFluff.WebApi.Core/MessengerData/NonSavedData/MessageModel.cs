@@ -1,8 +1,4 @@
-﻿using Google.Protobuf.Collections;
-
-using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using Google.Protobuf.WellKnownTypes;
 
 namespace BarkFluff.WebApi.Core.MessengerData.NonSavedData
 {
@@ -14,7 +10,7 @@ namespace BarkFluff.WebApi.Core.MessengerData.NonSavedData
         public List<AttachmentsModel> Attachments { get; set; } = new List<AttachmentsModel>();
         public long SenderId { get; set; } = 0;
         public List<long> ReadBy { get; set; } = new List<long>();
-        public Google.Protobuf.WellKnownTypes.Timestamp SentAt { get; set; } = new Google.Protobuf.WellKnownTypes.Timestamp();
+        public Timestamp SentAt { get; set; } = new Timestamp();
         public BarkFluff.Proto.Shared.MessageContentType Type { get; set; } = Proto.Shared.MessageContentType.Generic;
         public bool IsSystemMessage { get; set; } = false;
         public MessageModel() { }
