@@ -16,14 +16,16 @@ namespace BarkFluff.Client.WPF.Services.Erida
 
         public void AddMessage(string text, MessageType messageType)
         {
-            if (string.IsNullOrWhiteSpace(text))
+            if (text.Replace(" ", "") == string.Empty)
             {
                 return;
             }
+#if (!DEBUG)
             if (messageType.Type == MessageType.MessageTypeEnum.Debug)
             {
                 return;
             }
+#endif
             Application.Current.Dispatcher.Invoke(() =>
             {
                 var messageControl = new UserControl

@@ -1,13 +1,16 @@
 ﻿using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
+using Google.Protobuf.WellKnownTypes;
+
 using System.Windows.Controls;
-using System.Windows.Data;
 
 namespace BarkFluff.Client.WPF.UserControls
 {
-    
+
     public partial class MessageBubble : UserControl
     {
+        public string MessageId { get; set; } = "";
+        public Timestamp SentAt { get; set; } = new Timestamp();
         public MessageBubble(MessageOwner owner, MessageType messageTypes, MessageModel message, bool IsGroup)
         {
             InitializeComponent();
@@ -21,11 +24,12 @@ namespace BarkFluff.Client.WPF.UserControls
             }
             MessageText.Text = message.Text;
             MessageTime.Text = message.SentAt.ToDateTime().ToString("HH:mm");
+            MessageId = message.MessageId.ToString();
             var sizeMessageWidth = CalculateLongestLineWidth(message.Text);
             this.MinWidth = sizeMessageWidth + 50;
             ThemedConfirm(owner);
         }
-        public MessageBubble(string textMessage, (bool sendingRequired , bool isUserId, string recipient) options, List<string> filesId)
+        public MessageBubble(string textMessage, (bool sendingRequired, bool isUserId, string recipient) options, List<string> filesId)
         {
             InitializeComponent();
             var sizeMessageWidth = CalculateLongestLineWidth(textMessage);

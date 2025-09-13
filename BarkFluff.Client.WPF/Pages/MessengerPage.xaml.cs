@@ -1,18 +1,13 @@
 ﻿using BarkFluff.Client.WPF.Reactive;
 using BarkFluff.Client.WPF.UserControls;
-using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Shared;
 using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
 using System.ComponentModel;
-using System.Security.Cryptography;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 
@@ -66,78 +61,109 @@ namespace BarkFluff.Client.WPF.Pages
                 //var textBox = sender as TextBox;
                 //textBox.Focus();
             }
-            catch{ } // игнорируем ошибку если не получилось сфокусироваться на текстбоксе
+            catch { } // игнорируем ошибку если не получилось сфокусироваться на текстбоксе
 
+        }
+
+        private void TextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.LeftShift || e.Key == Key.LeftCtrl)
+            {
+                var textBox = sender as TextBox;
+                textBox.AcceptsReturn = true;
+            }
+            if (e.Key == Key.Enter)
+            {
+                var textBox = sender as TextBox;
+                tempMessage = textBox.Text;
+                var a = tempMessage.Replace(" ", "");
+                if (a == "")
+                {
+                    return;
+                }
+                SendMessage(sender, null);
+                textBox.Text = string.Empty;
+                textBox.AcceptsReturn = false;
+            }
+        }
+
+        private void TextForMessage_KeyUp(object sender, KeyEventArgs e)
+        {
+            var textBox = sender as TextBox;
+            if (e.Key == Key.LeftShift || e.Key == Key.LeftCtrl)
+            {
+                textBox.AcceptsReturn = false;
+            }
         }
 
         private async void ChatId_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (ChatId.Value == string.Empty) { return; } //если chatId пустой, то выходим из метода
-            if (IsOpenChatEmpty || _openedLastMessageId == 0) { return; } // если открываемый чат имеет тег IsOpenChatEmpty или _openedLastMessageId равен 0, то выходим из метода
-
-            ChatIdbyUserId.Value = 0; // обнуляем chatIdbyUserId чтобы не мешал открытию других чатов
-
-            App.ErideMessage.AddMessage($"Загрузка сообщений чата с ID: {ChatId.Value}", new Erida { Type = MType.Debug });
-
-            var response = await App.ServerCommunication.GetMessages(App.GParam, ChatId.Value, _openedLastMessageId);
-            if (!response.error.IsSuccess && response.error.ErrorCode != 1)
+            if (string.IsNullOrEmpty(ChatId.Value) || IsOpenChatEmpty || _openedLastMessageId == 0)
             {
-                App.ErideMessage.AddMessage("Ошибка при открытии чата" + response.error.ErrorMessage, new Erida { Type = MType.Error });
                 return;
             }
-            MessageArea.Children.Clear();
-            foreach (var item in response.messages)
+            ChatIdbyUserId.Value = 0;
+            App.ErideMessage.AddMessage($"Загрузка сообщений чата с ID: {ChatId.Value}", new Erida { Type = MType.Debug });
+            var response = await App.ServerCommunication.GetMessages(App.GParam, ChatId.Value, _openedLastMessageId);
+            if (!response.error.IsSuccess)
             {
-                var owner = MessageBubble.MessageOwner.Me;
-
-                if (item.SenderId != App.GParam.UserId)
+                if (response.error.ErrorCode != 1)
                 {
-                    owner = MessageBubble.MessageOwner.Interlocutor;
+                    App.ErideMessage.AddMessage($"Ошибка при открытии чата: {response.error.ErrorMessage}", new Erida { Type = MType.Error });
+                    return;
                 }
-                else
-                {
-                    owner = MessageBubble.MessageOwner.Me;
-                }
+            }
+            MessageArea.Children.Clear();
+            var sortedMessages = response.messages.OrderBy(m => m.SentAt.ToDateTime()).ToList();
 
-                var type = MessageBubble.MessageType.Text;
+            // Группировка по дням
+            var groupedMessages = sortedMessages.GroupBy(m => m.SentAt.ToDateTime().Date)
+                                              .OrderBy(g => g.Key); // От старых дат к новым
 
-                foreach (var messageType in item.Attachments)
+            foreach (var group in groupedMessages)
+            {
+                // Добавляем контрол с датой по центру
+                var dateHeader = GetDateHeader(group.Key);
+                var dateControl = new DateHeaderControl { Text = dateHeader };
+                dateControl.HorizontalAlignment = HorizontalAlignment.Center;
+                dateControl.Margin = new Thickness(0, 10, 0, 10); // Отступы
+                MessageArea.Children.Add(dateControl);
+
+                // Добавляем сообщения группы
+                foreach (var item in group)
                 {
-                    if (messageType.Type == MessageAttachmentType.Image)
+                    var owner = item.SenderId == App.GParam.UserId ? MessageBubble.MessageOwner.Me : MessageBubble.MessageOwner.Interlocutor;
+                    var type = item.Attachments.FirstOrDefault()?.Type switch
                     {
-                        type = MessageBubble.MessageType.Image;
-                    }
-                    else if (messageType.Type == MessageAttachmentType.Video)
+                        MessageAttachmentType.Image => MessageBubble.MessageType.Image,
+                        MessageAttachmentType.Video => MessageBubble.MessageType.Video,
+                        MessageAttachmentType.Gif => MessageBubble.MessageType.Gif,
+                        MessageAttachmentType.Document => MessageBubble.MessageType.Document,
+                        _ => MessageBubble.MessageType.Text
+                    };
+                    var messageContentType = item.Type switch
                     {
-                        type = MessageBubble.MessageType.Video;
-                    }
-                    else if (messageType.Type == MessageAttachmentType.Gif)
+                        MessageContentType.Generic => MessageBubble.MessageContentType.Generic,
+                        MessageContentType.System => MessageBubble.MessageContentType.System,
+                        _ => MessageBubble.MessageContentType.Unknown
+                    };
+                    var messageItem = new MessageBubble(owner, type, item, IsGroup);
+                    var message = new MessageModel
                     {
-                        type = MessageBubble.MessageType.Gif;
-                    }
-                    else if (messageType.Type == MessageAttachmentType.Document)
-                    {
-                        type = MessageBubble.MessageType.Document;
-                    }
+                        ChatId = ChatId.Value,
+                        SenderId = App.GParam.UserId,
+                        SentAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(DateTime.UtcNow)
+                    };
+                    AddMessage(messageItem);
                 }
-
-                var messageContentType = MessageBubble.MessageContentType.Unknown;
-
-                if (item.Type == MessageContentType.Generic)
-                {
-                    messageContentType = MessageBubble.MessageContentType.Generic;
-                }
-                else if (item.Type == MessageContentType.System)
-                {
-                    messageContentType = MessageBubble.MessageContentType.System;
-                }
-
-                var messageItem = new MessageBubble(owner, type, item, IsGroup);
-
-                AddMessage(messageItem);
             }
         }
-
+        private string GetDateHeader(DateTime date)
+        {
+            if (date.Date == DateTime.Today) return "Сегодня";
+            if (date.Date == DateTime.Today.AddDays(-1)) return "Вчера";
+            return date.ToString("dd.MM.yyyy");
+        }
         private void IsOpenChat_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             if (IsOpenChat.Value)
@@ -204,13 +230,13 @@ namespace BarkFluff.Client.WPF.Pages
         #endregion
 
         #region Сообщения
-        const int MESSAGE_LIMIT = 4096; // лимит символов в одном сообщении
-        string tempMessage; // временное хранение сообщения
-        List<string> attachedFiles { get; set; } = new List<string>(); //список ID прикрепленных файлов
+        private const int MESSAGE_LIMIT = 4096; // лимит символов в одном сообщении
+        private string tempMessage; // временное хранение сообщения
+        private List<string> attachedFiles { get; set; } = new List<string>(); //список ID прикрепленных файлов
         private void SendMessage(object sender, RoutedEventArgs e)
         {
             tempMessage = TextForMessage.Text;
-            
+
             if (string.IsNullOrEmpty(tempMessage)) return;
 
             List<string> messageParts = SplitMessage(tempMessage, MESSAGE_LIMIT);
@@ -230,9 +256,17 @@ namespace BarkFluff.Client.WPF.Pages
                     isUserId = false;
                 }
 
-                (bool, bool, string) options = new (true, isUserId, resipientId);
+                (bool, bool, string) options = new(true, isUserId, resipientId);
                 var messageControl = new MessageBubble(part, options, attachedFiles);
+                var message = new MessageModel
+                {
+                    Text = part,
+                    ChatId = ChatId.Value,
+                    SenderId = App.GParam.UserId,
+                    SentAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(DateTime.UtcNow)
+                };
                 AddMessage(messageControl);
+                UpdateChatWithMessage(message);
             }
         }
         private void AddMessage(UserControl control)
@@ -253,36 +287,49 @@ namespace BarkFluff.Client.WPF.Pages
                 return;
             }
         }
-        private void TextBox_KeyDown(object sender, KeyEventArgs e)
+
+        public void UpdateChatWithMessage(MessageModel message)
         {
-            if (e.Key == Key.LeftShift || e.Key == Key.LeftCtrl)
+            if (message == null || string.IsNullOrEmpty(message.ChatId))
             {
-                var textBox = sender as TextBox;
-                textBox.AcceptsReturn = true;
+                App.ErideMessage.AddMessage("Ошибка: MessageModel или ChatId пустые", new Erida { Type = MType.Error });
+                return;
             }
-            if (e.Key == Key.Enter)
+
+            // Находим ChatItem с совпадающим ChatId
+            ChatItem targetChatItem = null;
+            foreach (var child in ChatList.Children)
             {
-                var textBox = sender as TextBox;
-                tempMessage = textBox.Text;
-                var a = tempMessage.Replace(" ", "");
-                if (a == "")
+                if (child is ChatItem chatItem && chatItem.ChatId == message.ChatId)
                 {
-                    return;
+                    targetChatItem = chatItem;
+                    break;
                 }
-                SendMessage(sender, null);
-                textBox.Text = string.Empty;
-                textBox.AcceptsReturn = false;
+            }
+
+            if (targetChatItem == null)
+            {
+                App.ErideMessage.AddMessage($"Чат с ID {message.ChatId} не найден в ChatList", new Erida { Type = MType.Debug });
+                return;
+            }
+
+            // Передаем сообщение и обновляем
+            targetChatItem.TransferMessage = message;
+            targetChatItem.UpdateMessage();
+
+            // Сортировка ChatItem по времени последнего сообщения (новые сверху)
+            var sortedChatItems = ChatList.Children.OfType<ChatItem>()
+                .OrderByDescending(chatItem => chatItem.TransferMessage?.SentAt.ToDateTime() ?? DateTime.MinValue)
+                .ToList();
+
+            // Очищаем и перестраиваем ChatList
+            ChatList.Children.Clear();
+            foreach (var chatItem in sortedChatItems)
+            {
+                ChatList.Children.Add(chatItem);
             }
         }
 
-        private void TextForMessage_KeyUp(object sender, KeyEventArgs e)
-        {
-            var textBox = sender as TextBox;
-            if (e.Key == Key.LeftShift || e.Key == Key.LeftCtrl)
-            {
-                textBox.AcceptsReturn = false;
-            }
-        }
         #endregion
 
 
@@ -315,49 +362,74 @@ namespace BarkFluff.Client.WPF.Pages
 
             return parts;
         }
-        public async void ChatUpdate()
+        public async Task ChatUpdate()
         {
             var response = await App.ServerCommunication.GetChats(App.GParam);
+            ChatList.Children.Clear(); // Очищаем список перед добавлением
 
             if (response.chats.Count == 0)
             {
                 EmptyChatListBlock.Visibility = Visibility.Visible;
+                return;
             }
-            else
-            {
-                EmptyChatListBlock.Visibility = Visibility.Collapsed;
-            }
-            foreach (var item in response.chats)
+
+            EmptyChatListBlock.Visibility = Visibility.Collapsed;
+
+            // Сортировка чатов по времени последнего сообщения (новые выше)
+            var sortedChats = response.chats
+                .OrderByDescending(chat => chat.LastMessage?.SentAt.ToDateTime() ?? DateTime.MinValue)
+                .ToList();
+
+            foreach (var item in sortedChats)
             {
                 if (item.IsGroupChat)
                 {
-                    //групповой чат
-
                     App.ErideMessage.AddMessage($"Пропущен групповой чат {item.Title}", new Erida { Type = MType.Debug });
+                    continue;
                 }
-                else
+
+                // Определяем аватар
+                string avatar = string.IsNullOrEmpty(item.Picture)
+                    ? "pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png"
+                    : item.Picture;
+
+                // Определяем статус чтения и заголовок
+                var isRead = ChatItem.ReadingStatus.ForMe;
+                var title = item.Title;
+                var membersId = item.Members.Select(m => m.UserId).ToList();
+                if (App.GParam.UserId == item.Members[0].UserId && App.GParam.UserId == item.Members[1].UserId)
                 {
-                    var avatar = item.Picture;
-                    if (string.IsNullOrEmpty(avatar))
-                    {
-                        avatar = "pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png";
-                    }
-                    List<long> list = item.LastMessage.ReadBy.ToList();
-                    var isRead = ChatItem.ReadingStatus.ForMe;
-                    var title = item.Title;
-                    var membersId = item.Members.Select(m => m.UserId).ToList();
-                    if (App.GParam.UserId == item.Members[0].UserId && App.GParam.UserId == item.Members[1].UserId)
-                    {
-                        isRead = ChatItem.ReadingStatus.My;
-                        title = "Избранное";
-                        avatar = "pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/savedplaceholder.png";
-                    }
-                    membersId.Remove(App.GParam.UserId);
-                    var messageItem = new ChatItem(avatar, title, item.LastMessage.Content.Text, time: item.LastMessage.SentAt.ToString(), reading: isRead, list, item.CountUnread, chatId: item.Id, item.LastMessage.Id, item.IsGroupChat, userId: membersId.Count > 0 ? membersId[0] : throw new InvalidOperationException("List is empty after removal"));
-                    ChatList.Children.Add(messageItem);
+                    isRead = ChatItem.ReadingStatus.My;
+                    title = "Избранное";
+                    avatar = "pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/savedplaceholder.png";
                 }
-                    
+
+                membersId.Remove(App.GParam.UserId);
+                long userId = membersId.FirstOrDefault(); // Возвращаем 0, если список пуст
+
+                if (userId == 0)
+                {
+                    App.ErideMessage.AddMessage($"Ошибка: нет доступных userId для чата {item.Id}", new Erida { Type = MType.Error });
+                    continue;
+                }
+
+                var messageItem = new ChatItem(
+                    avatar,
+                    title,
+                    item.LastMessage?.Content.Text ?? string.Empty,
+                    time: item.LastMessage?.SentAt.ToString() ?? string.Empty,
+                    reading: isRead,
+                    readBy: item.LastMessage?.ReadBy.ToList() ?? new List<long>(),
+                    unReaded: item.CountUnread,
+                    chatId: item.Id,
+                    lastMessageId: item.LastMessage?.Id ?? 0,
+                    isGroupChat: item.IsGroupChat,
+                    userId: userId
+                );
+
+                ChatList.Children.Add(messageItem);
             }
+
             AvatarTitleWindow.ImageSource = new BitmapImage(new Uri(App.GParam.PictureUrl, UriKind.RelativeOrAbsolute));
         }
         public async void UserInfoUpdate()
@@ -409,7 +481,7 @@ namespace BarkFluff.Client.WPF.Pages
                 ChatTitleUsername.Text = $"{response.Data.FirstName} {response.Data.LastName}";
             }
             ChatAvatar.ImageSource = new BitmapImage(new Uri(avatar, UriKind.RelativeOrAbsolute));
-            
+
         }
         #endregion
 
@@ -489,14 +561,14 @@ namespace BarkFluff.Client.WPF.Pages
         {
             if (SearchTextBox.Text.Length >= 3)
             {
-                
+
                 var response = await App.ServerCommunication.SearchUser(App.GParam, SearchTextBox.Text);
-               SearchCollection.Children.Clear();
-               foreach (var item in response.userList)
-               {
-                   var a = new SearchElement(item);
-                   SearchCollection.Children.Add(a);
-               }
+                SearchCollection.Children.Clear();
+                foreach (var item in response.userList)
+                {
+                    var a = new SearchElement(item);
+                    SearchCollection.Children.Add(a);
+                }
                 SearchResultsHeader.Text = "Найдено " + response.userList.Count + " результатов";
             }
             else if (SearchTextBox.Text.Length <= 2 && SearchTextBox.Text.Length >= 1)
@@ -620,6 +692,7 @@ namespace BarkFluff.Client.WPF.Pages
 
         public async Task ProcessMessages(GlobalParam globalParam)
         {
+            return;
             App.ErideMessage.AddMessage("Запуск процесса получения обновлений...", new Erida { Type = MType.Debug });
             var (error, stream) = await App.ServerCommunication.JustUpdate(globalParam);
             if (!error.IsSuccess)
@@ -667,7 +740,7 @@ namespace BarkFluff.Client.WPF.Pages
                 // Обновляем UI в главном потоке
                 Application.Current.Dispatcher.Invoke(() =>
                 {
-                   // тут пока ничего нет, хз нужно ли вообще
+                    // тут пока ничего нет, хз нужно ли вообще
                 });
             }
         }
@@ -678,7 +751,7 @@ namespace BarkFluff.Client.WPF.Pages
 
         public void OpenChatById(string chatId, long lastMessageId, bool isGroupChat, long userId, string title)
         {
-            
+
             IsOpenChatEmpty = false;
             IsOpenChat.Value = true;
             TitleChat = title;
@@ -693,7 +766,7 @@ namespace BarkFluff.Client.WPF.Pages
         {
             App.ErideMessage.AddMessage($"Закрытие чата с ID: {ChatId.Value}", new Erida { Type = MType.Debug });
             IsOpenChat.Value = false;
-            _openedLastMessageId = 0;   
+            _openedLastMessageId = 0;
             ChatId.Value = string.Empty;
         }
 

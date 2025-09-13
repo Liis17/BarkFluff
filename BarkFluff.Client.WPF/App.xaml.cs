@@ -9,8 +9,6 @@ using BarkFluff.WebApi.Core.MessengerData;
 
 using System.Diagnostics;
 using System.IO;
-using System.Reflection;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -41,7 +39,7 @@ namespace BarkFluff.Client.WPF
         public static DropMessage ErideMessage { get; set; } = null!;
 
         private static UpdateService updateService { get; set; } = null!;
-        public App(){}
+        public App() { }
         protected override void OnStartup(StartupEventArgs e)
         {
             #region
@@ -99,7 +97,7 @@ namespace BarkFluff.Client.WPF
             string targetPath = string.Empty;
             try
             {
-                
+
 #if WINDOWS_UWP
                 folderPath = Windows.ApplicationModel.Package.Current.InstalledLocation.Path;
 #else
@@ -112,15 +110,12 @@ namespace BarkFluff.Client.WPF
                     ShortcutHelper.CreateShortcut(shortcutPath, targetPath, AppUserModelId);
                 }
             }
-            catch
-            {
-
-            }
+            catch { }
             AppIdHelper.SetCurrentProcessExplicitAppUserModelID(AppUserModelId);
             ServerCommunication = new WebApi.Core.WebApi();
             ColorAnalyzer = new ImageColorAnalyzer();
             Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(targetPath) ?? string.Empty, "datas"));
-            string filePath = Path.Combine(Path.GetDirectoryName(targetPath),"datas", "GlobalParam.json");
+            string filePath = Path.Combine(Path.GetDirectoryName(targetPath), "datas", "GlobalParam.json");
 
 #if (DEBUG)
             if (Debugger.IsAttached)
@@ -238,13 +233,13 @@ namespace BarkFluff.Client.WPF
                 if (string.IsNullOrEmpty(App.GParam.AppPass) || string.IsNullOrEmpty(App.GParam.AppPath)) { return; }
                 GlobalParam.Save(App.GParam, filePath, App.GParam.AppPass);
             }
-            
-            
+
+
         }
 
         public static void OpenMessengerPage()
         {
-            
+
             Application.Current.Dispatcher.Invoke(() =>
             {
                 Messenger = new MessengerPage();
