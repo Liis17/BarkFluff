@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
@@ -19,6 +16,14 @@ namespace BarkFluff.Client.WPF.Services.Erida
 
         public void AddMessage(string text, MessageType messageType)
         {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return;
+            }
+            if (messageType.Type == MessageType.MessageTypeEnum.Debug)
+            {
+                return;
+            }
             Application.Current.Dispatcher.Invoke(() =>
             {
                 var messageControl = new UserControl
