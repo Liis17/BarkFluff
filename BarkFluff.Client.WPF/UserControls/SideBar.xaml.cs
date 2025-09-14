@@ -13,7 +13,7 @@ namespace BarkFluff.Client.WPF.UserControls
             InitializeComponent();
         }
 
-        private void SidebarButtomClick(object sender, RoutedEventArgs e)
+        private void SidebarButtonClick(object sender, RoutedEventArgs e)
         {
 
         }
