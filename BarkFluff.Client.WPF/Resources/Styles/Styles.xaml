@@ -297,4 +297,186 @@
             </Setter.Value>
         </Setter>
     </Style>
+
+
+
+    <!--  новые стили для страницы профиля  -->
+
+    <!--  Цвета для темы  -->
+    <SolidColorBrush x:Key="SystemAccentColorSecondaryBrush" Color="#FF4C6EF5" />
+    <SolidColorBrush x:Key="SystemAccentColorLightBrush" Color="#E3F2FD" />
+    <SolidColorBrush x:Key="SystemAccentColorDarkBrush" Color="#1976D2" />
+
+    <!--  Фоны карточек  -->
+    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#FFFFFFFF" />
+
+    <!--  Темная тема  -->
+    <SolidColorBrush x:Key="CardBackgroundBrushDark" Color="#FF2D2D30" />
+
+    <!--  Текстовые кисти  -->
+    <SolidColorBrush x:Key="TextFillColorPrimaryBrush" Color="#FF000000" />
+    <SolidColorBrush x:Key="TextFillColorSecondaryBrush" Color="#FF666666" />
+
+    <!--  Темная тема для текста  -->
+    <SolidColorBrush x:Key="TextFillColorPrimaryBrushDark" Color="#FFFFFFFF" />
+    <SolidColorBrush x:Key="TextFillColorSecondaryBrushDark" Color="#FFAAAAAA" />
+
+    <!--  Контрольные кисти  -->
+    <SolidColorBrush x:Key="ControlStrokeColorDefaultBrush" Color="#FFE5E5E5" />
+    <SolidColorBrush x:Key="ControlStrokeColorDefaultBrushDark" Color="#FF404040" />
+
+    <!--  Динамические ресурсы с поддержкой темной темы  -->
+    <Style x:Key="DynamicCardBackground" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource CardBackgroundBrush}" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding Source={x:Static SystemParameters.GradientCaptions}}" Value="True">
+                <Setter Property="Background" Value="{StaticResource CardBackgroundBrushDark}" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="DynamicTextPrimary" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource TextFillColorPrimaryBrush}" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding Source={x:Static SystemParameters.HighContrast}}" Value="True">
+                <Setter Property="Foreground" Value="{StaticResource TextFillColorPrimaryBrushDark}" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="DynamicTextSecondary" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource TextFillColorSecondaryBrush}" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding Source={x:Static SystemParameters.HighContrast}}" Value="True">
+                <Setter Property="Foreground" Value="{StaticResource TextFillColorSecondaryBrushDark}" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <!--  Градиент для профиля  -->
+    <LinearGradientBrush x:Key="ProfileHeaderGradient" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Offset="0" Color="#FF6B73FF" />
+        <GradientStop Offset="1" Color="#FF9854FF" />
+    </LinearGradientBrush>
+
+    <!--  Альтернативные градиенты  -->
+    <LinearGradientBrush x:Key="ProfileHeaderGradientBlue" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Offset="0" Color="#FF667EEA" />
+        <GradientStop Offset="1" Color="#FF764BA2" />
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="ProfileHeaderGradientGreen" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Offset="0" Color="#FF11998E" />
+        <GradientStop Offset="1" Color="#FF38EF7D" />
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="ProfileHeaderGradientOrange" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Offset="0" Color="#FFFA709A" />
+        <GradientStop Offset="1" Color="#FFFEE140" />
+    </LinearGradientBrush>
+
+    <!--  Стиль для баджей  -->
+    <Style x:Key="BadgeStyle" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource SystemAccentColorSecondaryBrush}" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Width" Value="24" />
+        <Setter Property="Height" Value="24" />
+        <Setter Property="Margin" Value="2" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!--  Стили для разных типов баджей  -->
+    <Style
+        x:Key="VipBadgeStyle"
+        BasedOn="{StaticResource BadgeStyle}"
+        TargetType="Border">
+        <Setter Property="Background" Value="Gold" />
+    </Style>
+
+    <Style
+        x:Key="VerifiedBadgeStyle"
+        BasedOn="{StaticResource BadgeStyle}"
+        TargetType="Border">
+        <Setter Property="Background" Value="LightBlue" />
+    </Style>
+
+    <Style
+        x:Key="PopularBadgeStyle"
+        BasedOn="{StaticResource BadgeStyle}"
+        TargetType="Border">
+        <Setter Property="Background" Value="Orange" />
+    </Style>
+
+    <!--  Стиль для информационных карточек  -->
+    <Style x:Key="InfoCardStyle" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource CardBackgroundBrush}" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="16,12" />
+        <Setter Property="Margin" Value="0,4" />
+        <Setter Property="BorderBrush" Value="{StaticResource ControlStrokeColorDefaultBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Style.Triggers>
+            <!--  Hover эффект  -->
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{StaticResource SystemAccentColorLightBrush}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!--  Стиль для активной вкладки  -->
+    <Style x:Key="ActiveTabButtonStyle" TargetType="ui:Button">
+        <Setter Property="Background" Value="{StaticResource SystemAccentColorLightBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource SystemAccentColorDarkBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource SystemAccentColorSecondaryBrush}" />
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Padding" Value="12,8" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <!--  Стиль для неактивной вкладки  -->
+    <Style x:Key="InactiveTabButtonStyle" TargetType="ui:Button">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource TextFillColorSecondaryBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource ControlStrokeColorDefaultBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Padding" Value="12,8" />
+        <Setter Property="FontWeight" Value="Normal" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{StaticResource SystemAccentColorLightBrush}" />
+                <Setter Property="Foreground" Value="{StaticResource SystemAccentColorDarkBrush}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!--  Статус индикаторы  -->
+    <SolidColorBrush x:Key="OnlineStatusBrush" Color="#4CAF50" />
+    <SolidColorBrush x:Key="RecentStatusBrush" Color="#FFC107" />
+    <SolidColorBrush x:Key="OfflineStatusBrush" Color="#9E9E9E" />
+
+    <!--  Placeholder для аватара по умолчанию  -->
+    <DrawingImage x:Key="DefaultAvatarImage">
+        <DrawingImage.Drawing>
+            <DrawingGroup ClipGeometry="M0,0 V100 H100 V0 H0 Z">
+                <GeometryDrawing Brush="#FFE0E0E0" Geometry="F1 M100,100z M0,0z M0,0L100,0L100,100L0,100z" />
+                <GeometryDrawing Brush="#FF9E9E9E">
+                    <GeometryDrawing.Geometry>
+                        <EllipseGeometry
+                            Center="50,35"
+                            RadiusX="15"
+                            RadiusY="15" />
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#FF9E9E9E">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry Figures="M25,70 Q50,55 75,70 L75,100 L25,100 Z" />
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
+
 </ResourceDictionary>
