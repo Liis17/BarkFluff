@@ -63,7 +63,7 @@
                         HorizontalContentAlignment="Left"
                         Background="Transparent"
                         BorderThickness="0"
-                        Click="SidebarButtomClick"
+                        Click="SidebarButtonClick"
                         Content="Архив"
                         Cursor="No"
                         Foreground="White">
@@ -86,7 +86,7 @@
                         HorizontalContentAlignment="Left"
                         Background="Transparent"
                         BorderThickness="0"
-                        Click="SidebarButtomClick"
+                        Click="SidebarButtonClick"
                         Content="Избранное"
                         Cursor="No"
                         Foreground="White">
@@ -109,7 +109,7 @@
                         HorizontalContentAlignment="Left"
                         Background="Transparent"
                         BorderThickness="0"
-                        Click="SidebarButtomClick"
+                        Click="SidebarButtonClick"
                         Content="Мой профиль"
                         Cursor="No"
                         Foreground="White">
@@ -132,7 +132,7 @@
                         HorizontalContentAlignment="Left"
                         Background="Transparent"
                         BorderThickness="0"
-                        Click="SidebarButtomClick"
+                        Click="SidebarButtonClick"
                         Content="Статус"
                         Cursor="No"
                         Foreground="White">
@@ -155,7 +155,7 @@
                         HorizontalContentAlignment="Left"
                         Background="Transparent"
                         BorderThickness="0"
-                        Click="SidebarButtomClick"
+                        Click="SidebarButtonClick"
                         Content="Значки"
                         Cursor="No"
                         Foreground="White">
@@ -183,7 +183,7 @@
                         HorizontalContentAlignment="Left"
                         Background="Transparent"
                         BorderThickness="0"
-                        Click="SidebarButtomClick"
+                        Click="SidebarButtonClick"
                         Content="Создать группу"
                         Cursor="No"
                         Foreground="White">
@@ -206,7 +206,7 @@
                         HorizontalContentAlignment="Left"
                         Background="Transparent"
                         BorderThickness="0"
-                        Click="SidebarButtomClick"
+                        Click="SidebarButtonClick"
                         Content="Создать канал"
                         Cursor="No"
                         Foreground="White">
@@ -229,7 +229,7 @@
                         HorizontalContentAlignment="Left"
                         Background="Transparent"
                         BorderThickness="0"
-                        Click="SidebarButtomClick"
+                        Click="SidebarButtonClick"
                         Content="Чаты"
                         Cursor="No"
                         Foreground="White">
@@ -252,7 +252,7 @@
                         HorizontalContentAlignment="Left"
                         Background="Transparent"
                         BorderThickness="0"
-                        Click="SidebarButtomClick"
+                        Click="SidebarButtonClick"
                         Content="Контакты"
                         Cursor="No"
                         Foreground="White">
@@ -275,7 +275,7 @@
                         HorizontalContentAlignment="Left"
                         Background="Transparent"
                         BorderThickness="0"
-                        Click="SidebarButtomClick"
+                        Click="SidebarButtonClick"
                         Content="Звонки"
                         Cursor="No"
                         Foreground="White">
@@ -303,7 +303,7 @@
                         HorizontalContentAlignment="Left"
                         Background="Transparent"
                         BorderThickness="0"
-                        Click="SidebarButtomClick"
+                        Click="SidebarButtonClick"
                         Content="Настройки"
                         Cursor="No"
                         Foreground="White">
@@ -326,7 +326,7 @@
                         HorizontalContentAlignment="Left"
                         Background="Transparent"
                         BorderThickness="0"
-                        Click="SidebarButtomClick"
+                        Click="SidebarButtonClick"
                         Content="Возможности Barkfluff"
                         Cursor="No"
                         Foreground="White">
@@ -349,7 +349,7 @@
                         HorizontalContentAlignment="Left"
                         Background="Transparent"
                         BorderThickness="0"
-                        Click="SidebarButtomClick"
+                        Click="SidebarButtonClick"
                         Content="Помощь"
                         Cursor="No"
                         Foreground="White">
