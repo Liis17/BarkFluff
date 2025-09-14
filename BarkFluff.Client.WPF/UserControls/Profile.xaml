@@ -1,0 +1,371 @@
+﻿<UserControl
+    x:Class="BarkFluff.Client.WPF.UserControls.Profile"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:BarkFluff.Client.WPF.UserControls"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    d:DesignHeight="1200"
+    d:DesignWidth="500"
+    mc:Ignorable="d">
+    <UserControl.Resources>
+        <!--  Градиент для фона профиля  -->
+        <LinearGradientBrush x:Key="ProfileHeaderGradient" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Offset="0" Color="#FF6B73FF" />
+            <GradientStop Offset="1" Color="#FF9854FF" />
+        </LinearGradientBrush>
+
+        <!--  Стиль для баджей  -->
+        <Style x:Key="BadgeStyle" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource SystemAccentColorSecondaryBrush}" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="Margin" Value="2" />
+        </Style>
+
+        <!--  Стиль для информационных карточек  -->
+        <Style x:Key="InfoCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="16,12" />
+            <Setter Property="Margin" Value="0,4" />
+        </Style>
+
+        <!--  Стиль для активной вкладки  -->
+        <Style
+            x:Key="ActiveTabButtonStyle"
+            BasedOn="{StaticResource {x:Type ui:Button}}"
+            TargetType="ui:Button">
+            <Setter Property="Background" Value="{DynamicResource SystemAccentColorLightBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource SystemAccentColorDarkBrush}" />
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!--  Верхняя секция с градиентом и основной информацией  -->
+            <Border
+                Grid.Row="0"
+                Height="200"
+                Background="{StaticResource ProfileHeaderGradient}"
+                CornerRadius="0,0,16,16">
+
+                <Grid Margin="24">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!--  Аватар  -->
+                    <Border
+                        Grid.Column="0"
+                        Width="80"
+                        Height="80"
+                        Padding="2"
+                        Background="White"
+                        CornerRadius="40">
+                        <Border CornerRadius="38">
+                            <Border.Background>
+                                <ImageBrush
+                                    x:Name="AvatarBrush"
+                                    ImageSource="https://image.barkfluff.com/notanesilia.png"
+                                    Stretch="UniformToFill" />
+                            </Border.Background>
+                        </Border>
+                    </Border>
+
+                    <!--  Основная информация  -->
+                    <StackPanel
+                        Grid.Column="1"
+                        Margin="20,0,0,0"
+                        VerticalAlignment="Center">
+
+                        <!--  Публичное имя  -->
+                        <TextBlock
+                            x:Name="PublicNameTextBlock"
+                            Margin="0,0,0,4"
+                            FontSize="28"
+                            FontWeight="SemiBold"
+                            Foreground="White"
+                            Text="Alex D" />
+
+                        <!--  Username  -->
+                        <TextBlock
+                            x:Name="UsernameTextBlock"
+                            Margin="0,0,0,8"
+                            FontSize="16"
+                            Foreground="#E0FFFFFF"
+                            Text="@li_is" />
+
+                        <!--  Статус онлайн  -->
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse
+                                x:Name="OnlineStatusIndicator"
+                                Width="8"
+                                Height="8"
+                                Margin="0,0,6,0"
+                                Fill="#4CAF50" />
+                            <TextBlock
+                                x:Name="LastSeenTextBlock"
+                                FontSize="12"
+                                Foreground="#E0FFFFFF"
+                                Text="В сети" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!--  Баджи  -->
+                    <StackPanel
+                        Grid.Column="2"
+                        VerticalAlignment="Top"
+                        Orientation="Horizontal">
+                        <Border
+                            x:Name="Badge1"
+                            Style="{StaticResource BadgeStyle}"
+                            Visibility="Visible">
+                            <ui:SymbolIcon
+                                FontSize="12"
+                                Foreground="Gold"
+                                Symbol="Crown24" />
+                        </Border>
+                        <Border
+                            x:Name="Badge2"
+                            Style="{StaticResource BadgeStyle}"
+                            Visibility="Visible">
+                            <ui:SymbolIcon
+                                FontSize="12"
+                                Foreground="LightBlue"
+                                Symbol="Shield24" />
+                        </Border>
+                        <Border
+                            x:Name="Badge3"
+                            Style="{StaticResource BadgeStyle}"
+                            Visibility="Visible">
+                            <ui:SymbolIcon
+                                FontSize="12"
+                                Foreground="Orange"
+                                Symbol="Star24" />
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!--  Информационные карточки  -->
+            <StackPanel Grid.Row="1" Margin="24,16,24,0">
+
+                <!--  Email  -->
+                <Border Style="{StaticResource InfoCardStyle}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <ui:SymbolIcon
+                            Grid.Column="0"
+                            Margin="0,0,12,0"
+                            FontSize="16"
+                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                            Symbol="Mail24" />
+
+                        <StackPanel Grid.Column="1">
+                            <TextBlock
+                                Margin="0,0,0,2"
+                                FontSize="12"
+                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                Text="Email" />
+                            <TextBlock
+                                x:Name="EmailTextBlock"
+                                FontSize="14"
+                                Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                Text="me@li_is17.ru" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!--  User ID  -->
+                <Border Style="{StaticResource InfoCardStyle}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <ui:SymbolIcon
+                            Grid.Column="0"
+                            Margin="0,0,12,0"
+                            FontSize="16"
+                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                            Symbol="Person24" />
+
+                        <StackPanel Grid.Column="1">
+                            <TextBlock
+                                Margin="0,0,0,2"
+                                FontSize="12"
+                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                Text="User ID" />
+                            <TextBlock
+                                x:Name="UserIdTextBlock"
+                                FontSize="14"
+                                Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                Text="495716476" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!--  Дата регистрации  -->
+                <Border Style="{StaticResource InfoCardStyle}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <ui:SymbolIcon
+                            Grid.Column="0"
+                            Margin="0,0,12,0"
+                            FontSize="16"
+                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                            Symbol="Calendar24" />
+
+                        <StackPanel Grid.Column="1">
+                            <TextBlock
+                                Margin="0,0,0,2"
+                                FontSize="12"
+                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                Text="Дата регистрации" />
+                            <TextBlock
+                                x:Name="RegistrationDateTextBlock"
+                                FontSize="14"
+                                Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                Text="03 сен 2024" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </StackPanel>
+
+            <!--  Вкладки с медиа  -->
+            <Grid Grid.Row="2" Margin="24,24,24,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!--  Навигационные вкладки  -->
+                <Border
+                    Grid.Row="0"
+                    Margin="0,0,0,16"
+                    Padding="8"
+                    Background="{DynamicResource CardBackgroundBrush}"
+                    CornerRadius="12">
+
+                    <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                        <ui:Button
+                            x:Name="ImagesTabButton"
+                            MinWidth="100"
+                            Margin="4,0"
+                            Appearance="Primary"
+                            Click="OnTabButtonClick"
+                            Content="Изображения"
+                            Icon="{ui:SymbolIcon Image24}"
+                            Tag="images" />
+
+                        <ui:Button
+                            x:Name="VideosTabButton"
+                            MinWidth="100"
+                            Margin="4,0"
+                            Appearance="Secondary"
+                            Click="OnTabButtonClick"
+                            Content="Видео"
+                            Icon="{ui:SymbolIcon Video24}"
+                            Tag="videos" />
+
+                        <ui:Button
+                            x:Name="FilesTabButton"
+                            MinWidth="100"
+                            Margin="4,0"
+                            Appearance="Secondary"
+                            Click="OnTabButtonClick"
+                            Content="Файлы"
+                            Icon="{ui:SymbolIcon Document24}"
+                            Tag="files" />
+                    </StackPanel>
+                </Border>
+
+                <!--  Контент вкладок  -->
+                <Border
+                    Grid.Row="1"
+                    MinHeight="200"
+                    Background="{DynamicResource CardBackgroundBrush}"
+                    CornerRadius="12">
+
+                    <!--  Контейнер для контента разных вкладок  -->
+                    <Grid x:Name="TabContentGrid">
+
+                        <!--  Контент для изображений  -->
+                        <StackPanel
+                            x:Name="ImagesContent"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Visibility="Visible">
+                            <ui:SymbolIcon
+                                Margin="0,0,0,12"
+                                FontSize="48"
+                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                Symbol="Image24" />
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                FontSize="14"
+                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                Text="Изображения будут отображаться здесь" />
+                        </StackPanel>
+
+                        <!--  Контент для видео  -->
+                        <StackPanel
+                            x:Name="VideosContent"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Visibility="Collapsed">
+                            <ui:SymbolIcon
+                                Margin="0,0,0,12"
+                                FontSize="48"
+                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                Symbol="Video24" />
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                FontSize="14"
+                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                Text="Видео будут отображаться здесь" />
+                        </StackPanel>
+
+                        <!--  Контент для файлов  -->
+                        <StackPanel
+                            x:Name="FilesContent"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Visibility="Collapsed">
+                            <ui:SymbolIcon
+                                Margin="0,0,0,12"
+                                FontSize="48"
+                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                Symbol="Document24" />
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                FontSize="14"
+                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                Text="Файлы будут отображаться здесь" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+    </ScrollViewer>
+</UserControl>

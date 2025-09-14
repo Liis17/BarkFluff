@@ -5,29 +5,369 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="clr-namespace:BarkFluff.Client.WPF.UserControls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     d:DesignHeight="800"
     d:DesignWidth="300"
     mc:Ignorable="d">
-    <Grid>
-        <Border Background="#1e1e1e" CornerRadius="0 15 15 0" />
-        <StackPanel Orientation="Vertical">
-            <Grid>
-                <Border
-                    Width="Auto"
-                    Height="150"
-                    Margin="0,5,5,5"
-                    Background="#FF313131"
-                    CornerRadius="5 10 10 0" />
-                <Border
-                    Width="75"
-                    Height="75"
-                    Margin="10,0,0,0"
-                    HorizontalAlignment="Left"
-                    VerticalAlignment="Center"
-                    Background="AliceBlue"
-                    CornerRadius="64" />
-            </Grid>
+    <Grid Background="#1e1e1e">
+        <Border Background="Transparent" CornerRadius="0 15 15 0" />
+        <Ellipse
+            Width="256"
+            Height="256"
+            Margin="-128,-128,0,0"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top">
+            <Ellipse.Fill>
+                <ImageBrush ImageSource="https://image.barkfluff.com/notanesilia.png" />
+            </Ellipse.Fill>
+            <Ellipse.Effect>
+                <BlurEffect Radius="100" />
+            </Ellipse.Effect>
+        </Ellipse>
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="10" Orientation="Vertical">
+                <!--  Профиль  -->
+                <Grid Margin="10,15,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
 
-        </StackPanel>
+                    <Ellipse
+                        Grid.Column="0"
+                        Width="50"
+                        Height="50"
+                        Margin="0,0,10,0">
+                        <Ellipse.Fill>
+                            <ImageBrush ImageSource="https://image.barkfluff.com/notanesilia.png" />
+                        </Ellipse.Fill>
+                    </Ellipse>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock
+                            FontSize="14"
+                            FontWeight="Bold"
+                            Foreground="White"
+                            Text="username" />
+                        <TextBlock
+                            FontSize="12"
+                            Foreground="Gray"
+                            Text="email" />
+                    </StackPanel>
+                </Grid>
+
+                <!--  Меню  -->
+                <StackPanel Orientation="Vertical">
+                    <Button
+                        Padding="15,8"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Left"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Click="SidebarButtomClick"
+                        Content="Архив"
+                        Cursor="No"
+                        Foreground="White">
+                        <Button.ContentTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:SymbolIcon
+                                        Margin="0,0,10,0"
+                                        FontSize="20"
+                                        Foreground="White"
+                                        Symbol="Archive20" />
+                                    <TextBlock Foreground="White" Text="{Binding}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </Button.ContentTemplate>
+                    </Button>
+                    <Button
+                        Padding="15,8"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Left"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Click="SidebarButtomClick"
+                        Content="Избранное"
+                        Cursor="No"
+                        Foreground="White">
+                        <Button.ContentTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:SymbolIcon
+                                        Margin="0,0,10,0"
+                                        FontSize="20"
+                                        Foreground="White"
+                                        Symbol="Bookmark20" />
+                                    <TextBlock Foreground="White" Text="{Binding}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </Button.ContentTemplate>
+                    </Button>
+                    <Button
+                        Padding="15,8"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Left"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Click="SidebarButtomClick"
+                        Content="Мой профиль"
+                        Cursor="No"
+                        Foreground="White">
+                        <Button.ContentTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:SymbolIcon
+                                        Margin="0,0,10,0"
+                                        FontSize="20"
+                                        Foreground="White"
+                                        Symbol="PersonCircle20" />
+                                    <TextBlock Foreground="White" Text="{Binding}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </Button.ContentTemplate>
+                    </Button>
+                    <Button
+                        Padding="15,8"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Left"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Click="SidebarButtomClick"
+                        Content="Статус"
+                        Cursor="No"
+                        Foreground="White">
+                        <Button.ContentTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:SymbolIcon
+                                        Margin="0,0,10,0"
+                                        FontSize="20"
+                                        Foreground="White"
+                                        Symbol="Edit20" />
+                                    <TextBlock Foreground="White" Text="{Binding}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </Button.ContentTemplate>
+                    </Button>
+                    <Button
+                        Padding="15,8"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Left"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Click="SidebarButtomClick"
+                        Content="Значки"
+                        Cursor="No"
+                        Foreground="White">
+                        <Button.ContentTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:SymbolIcon
+                                        Margin="0,0,10,0"
+                                        FontSize="20"
+                                        Foreground="White"
+                                        Symbol="Badge20" />
+                                    <TextBlock Foreground="White" Text="{Binding}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </Button.ContentTemplate>
+                    </Button>
+                    <Border
+                        Height="1"
+                        Margin="5,1,15,1"
+                        Background="White"
+                        Opacity="0.1" />
+                    <Button
+                        Padding="15,8"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Left"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Click="SidebarButtomClick"
+                        Content="Создать группу"
+                        Cursor="No"
+                        Foreground="White">
+                        <Button.ContentTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:SymbolIcon
+                                        Margin="0,0,10,0"
+                                        FontSize="20"
+                                        Foreground="White"
+                                        Symbol="People20" />
+                                    <TextBlock Foreground="White" Text="{Binding}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </Button.ContentTemplate>
+                    </Button>
+                    <Button
+                        Padding="15,8"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Left"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Click="SidebarButtomClick"
+                        Content="Создать канал"
+                        Cursor="No"
+                        Foreground="White">
+                        <Button.ContentTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:SymbolIcon
+                                        Margin="0,0,10,0"
+                                        FontSize="20"
+                                        Foreground="White"
+                                        Symbol="Megaphone20" />
+                                    <TextBlock Foreground="White" Text="{Binding}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </Button.ContentTemplate>
+                    </Button>
+                    <Button
+                        Padding="15,8"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Left"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Click="SidebarButtomClick"
+                        Content="Чаты"
+                        Cursor="No"
+                        Foreground="White">
+                        <Button.ContentTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:SymbolIcon
+                                        Margin="0,0,10,0"
+                                        FontSize="20"
+                                        Foreground="White"
+                                        Symbol="ChatMultiple20" />
+                                    <TextBlock Foreground="White" Text="{Binding}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </Button.ContentTemplate>
+                    </Button>
+                    <Button
+                        Padding="15,8"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Left"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Click="SidebarButtomClick"
+                        Content="Контакты"
+                        Cursor="No"
+                        Foreground="White">
+                        <Button.ContentTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:SymbolIcon
+                                        Margin="0,0,10,0"
+                                        FontSize="20"
+                                        Foreground="White"
+                                        Symbol="Person20" />
+                                    <TextBlock Foreground="White" Text="{Binding}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </Button.ContentTemplate>
+                    </Button>
+                    <Button
+                        Padding="15,8"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Left"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Click="SidebarButtomClick"
+                        Content="Звонки"
+                        Cursor="No"
+                        Foreground="White">
+                        <Button.ContentTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:SymbolIcon
+                                        Margin="0,0,10,0"
+                                        FontSize="20"
+                                        Foreground="White"
+                                        Symbol="Call20" />
+                                    <TextBlock Foreground="White" Text="{Binding}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </Button.ContentTemplate>
+                    </Button>
+                    <Border
+                        Height="1"
+                        Margin="5,1,15,1"
+                        Background="White"
+                        Opacity="0.1" />
+                    <Button
+                        Padding="15,8"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Left"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Click="SidebarButtomClick"
+                        Content="Настройки"
+                        Cursor="No"
+                        Foreground="White">
+                        <Button.ContentTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:SymbolIcon
+                                        Margin="0,0,10,0"
+                                        FontSize="20"
+                                        Foreground="White"
+                                        Symbol="Settings20" />
+                                    <TextBlock Foreground="White" Text="{Binding}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </Button.ContentTemplate>
+                    </Button>
+                    <Button
+                        Padding="15,8"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Left"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Click="SidebarButtomClick"
+                        Content="Возможности Barkfluff"
+                        Cursor="No"
+                        Foreground="White">
+                        <Button.ContentTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:SymbolIcon
+                                        Margin="0,0,10,0"
+                                        FontSize="20"
+                                        Foreground="White"
+                                        Symbol="Star16" />
+                                    <TextBlock Foreground="White" Text="{Binding}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </Button.ContentTemplate>
+                    </Button>
+                    <Button
+                        Padding="15,8"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Left"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Click="SidebarButtomClick"
+                        Content="Помощь"
+                        Cursor="No"
+                        Foreground="White">
+                        <Button.ContentTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:SymbolIcon
+                                        Margin="0,0,10,0"
+                                        FontSize="20"
+                                        Foreground="White"
+                                        Symbol="QuestionCircle28" />
+                                    <TextBlock Foreground="White" Text="{Binding}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </Button.ContentTemplate>
+                    </Button>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
     </Grid>
 </UserControl>
