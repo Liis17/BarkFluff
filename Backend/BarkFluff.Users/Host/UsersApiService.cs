@@ -7,6 +7,7 @@ using BarkFluff.Users.Features.CheckExistEmail;
 using BarkFluff.Users.Features.CheckExistUsername;
 using BarkFluff.Users.Features.GetUser;
 using BarkFluff.Users.Features.SetProfilePicture;
+using BarkFluff.Users.Features.Badges.GetUserBadges;
 using Grpc.Core;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -100,9 +101,20 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
             Size = 10,
             Offset = 0
         };
-        
+
         var command = new SearchUsersQuery { Query = request.Query, Size = request.Pagination.Size, Skip = request.Pagination.Offset };
-        
+
         return _mediator.Send(command);
+    }
+
+    public override Task<GetUserBadgesResponse> GetUserBadges(GetUserBadgesRequest request, ServerCallContext context)
+    {
+        var query = new GetUserBadgesQuery
+        {
+            UserId = request.UserId,
+            Limit = request.Limit
+        };
+
+        return _mediator.Send(query);
     }
 }
