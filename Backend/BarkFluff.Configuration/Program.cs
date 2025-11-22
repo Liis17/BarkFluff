@@ -20,8 +20,21 @@ public class Program
 
         builder.Services.AddGrpcReflection();
 
-        builder.Services.AddDbContext<ConfigurationContext>(c
-            => c.UseNpgsql(builder.Configuration["ConfigurationDb"]));
+        var host = builder.Configuration["CONFIGURATION_HOST"];
+        var database = builder.Configuration["CONFIGURATION_DATABASE"];
+        var username = builder.Configuration["CONFIGURATION_USERNAME"];
+        var password = builder.Configuration["CONFIGURATION_PASSWORD"];
+
+        if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(database)
+            || string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+        {
+            throw new InvalidOperationException(
+                "Database settings are not configured. Set CONFIGURATION_HOST, CONFIGURATION_DATABASE, CONFIGURATION_USERNAME, CONFIGURATION_PASSWORD.");
+        }
+
+        var configurationDb = $"Host={host};Database={database};Username={username};Password={password}";
+
+        builder.Services.AddDbContext<ConfigurationContext>(c => c.UseNpgsql(configurationDb));
 
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
 
