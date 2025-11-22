@@ -29,9 +29,9 @@ public class Program
         // Регистрируем аутентификацию и авторизацию
         builder.Services.AddXAuth(builder.Configuration);
         
-        
         var app = builder.Build();
         
+        // Нет DbContext – миграции не нужны
         app.MapGrpcReflectionService();
         
         // Настраиваем middleware pipeline
