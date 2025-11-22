@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__github__get_issue",
+      "mcp__rider__list_directory_tree",
+      "mcp__rider__get_file_text_by_path",
+      "mcp__rider__find_files_by_glob",
+      "mcp__rider__create_new_file",
+      "mcp__rider__get_file_problems",
+      "Bash(dotnet ef migrations:*)",
+      "Bash(dotnet build:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
