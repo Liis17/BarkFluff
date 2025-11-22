@@ -42,6 +42,7 @@ builder.Services.AddMassTransit(x =>
 });
 
 var app = builder.Build();
+// Ќет DbContext Ц миграции не примен€ютс€
 app.MapGrpcReflectionService();
 app.UseRouting();
         
