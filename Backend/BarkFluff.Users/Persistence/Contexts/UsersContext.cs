@@ -8,8 +8,12 @@ public class UsersContext : DbContext
     public UsersContext(DbContextOptions<UsersContext> options)  : base(options) { }
 
     public DbSet<User> Users { get; set; }
-    
+
     public DbSet<UserContact> UserContacts { get; set; }
+
+    public DbSet<Badge> Badges { get; set; }
+
+    public DbSet<UserBadge> UserBadges { get; set; }
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -18,7 +22,25 @@ public class UsersContext : DbContext
             .WithOne(p => p.User)
             .HasForeignKey<UserContact>(p => p.UserId)
             .OnDelete(DeleteBehavior.Cascade);
-        
+
+        // Настройка связей для UserBadge
+        modelBuilder.Entity<UserBadge>()
+            .HasOne(ub => ub.User)
+            .WithMany()
+            .HasForeignKey(ub => ub.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<UserBadge>()
+            .HasOne(ub => ub.Badge)
+            .WithMany(b => b.UserBadges)
+            .HasForeignKey(ub => ub.BadgeId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Уникальный индекс для предотвращения дублирования назначения одного баджа пользователю
+        modelBuilder.Entity<UserBadge>()
+            .HasIndex(ub => new { ub.UserId, ub.BadgeId })
+            .IsUnique();
+
         base.OnModelCreating(modelBuilder);
     
         // Настройка функций полнотекстового поиска

@@ -255,9 +255,102 @@ public class UsersStorage
         {
             throw new UserNotFoundException();
         }
-        
+
         user.Bio = newBio;
-        
+
         await _usersContext.SaveChangesAsync();
+    }
+
+    // Методы для работы с баджами
+
+    public async Task<List<UserBadge>> GetUserBadgesAsync(long userId, int? limit = null)
+    {
+        var query = _usersContext.UserBadges
+            .Include(ub => ub.Badge)
+            .Where(ub => ub.UserId == userId && ub.Badge.IsActive)
+            .OrderBy(ub => ub.Priority)
+            .ThenBy(ub => ub.AssignedDate);
+
+        if (limit.HasValue)
+        {
+            query = (IOrderedQueryable<UserBadge>)query.Take(limit.Value);
+        }
+
+        return await query.ToListAsync();
+    }
+
+    public async Task<UserBadge> AssignBadgeToUserAsync(long userId, int badgeId, int priority)
+    {
+        var userBadge = new UserBadge
+        {
+            UserId = userId,
+            BadgeId = badgeId,
+            Priority = priority,
+            AssignedDate = DateTime.UtcNow
+        };
+
+        await _usersContext.UserBadges.AddAsync(userBadge);
+        await _usersContext.SaveChangesAsync();
+
+        // Загружаем связанный бадж для возврата
+        await _usersContext.Entry(userBadge).Reference(ub => ub.Badge).LoadAsync();
+
+        return userBadge;
+    }
+
+    public async Task<bool> RemoveBadgeFromUserAsync(long userId, int badgeId)
+    {
+        var userBadge = await _usersContext.UserBadges
+            .FirstOrDefaultAsync(ub => ub.UserId == userId && ub.BadgeId == badgeId);
+
+        if (userBadge == null)
+        {
+            return false;
+        }
+
+        _usersContext.UserBadges.Remove(userBadge);
+        await _usersContext.SaveChangesAsync();
+
+        return true;
+    }
+
+    public async Task<UserBadge?> UpdateUserBadgePriorityAsync(long userId, int badgeId, int newPriority)
+    {
+        var userBadge = await _usersContext.UserBadges
+            .Include(ub => ub.Badge)
+            .FirstOrDefaultAsync(ub => ub.UserId == userId && ub.BadgeId == badgeId);
+
+        if (userBadge == null)
+        {
+            return null;
+        }
+
+        userBadge.Priority = newPriority;
+        await _usersContext.SaveChangesAsync();
+
+        return userBadge;
+    }
+
+    public async Task<Badge> CreateBadgeAsync(Badge badge)
+    {
+        badge.CreatedDate = DateTime.UtcNow;
+        badge.IsActive = true;
+
+        await _usersContext.Badges.AddAsync(badge);
+        await _usersContext.SaveChangesAsync();
+
+        return badge;
+    }
+
+    public async Task<List<Badge>> GetAllBadgesAsync(bool includeInactive = false)
+    {
+        var query = _usersContext.Badges.AsQueryable();
+
+        if (!includeInactive)
+        {
+            query = query.Where(b => b.IsActive);
+        }
+
+        return await query.OrderBy(b => b.Name).ToListAsync();
     }
 }

@@ -33,6 +33,9 @@ service UsersApi {
   
   // Найти пользователей по имени/фамилии/юзернейму
   rpc SearchUsers(SearchUsersRequest) returns(SearchUsersResponse);
+
+  // Получить баджи пользователя
+  rpc GetUserBadges(GetUserBadgesRequest) returns(GetUserBadgesResponse);
 }
 
 service UsersServerApi {
@@ -63,6 +66,21 @@ service UsersServerApi {
   
   // Получить пользователей по id
   rpc ListByIds(ListByIdsRequest) returns(ListByIdsResponse);
+
+  // Назначить бадж пользователю
+  rpc AssignUserBadge(AssignUserBadgeRequest) returns(AssignUserBadgeResponse);
+
+  // Снять бадж с пользователя
+  rpc RemoveUserBadge(RemoveUserBadgeRequest) returns(RemoveUserBadgeResponse);
+
+  // Обновить приоритет баджа пользователя
+  rpc UpdateUserBadgePriority(UpdateUserBadgePriorityRequest) returns(UpdateUserBadgePriorityResponse);
+
+  // Создать новый бадж
+  rpc CreateBadge(CreateBadgeRequest) returns(CreateBadgeResponse);
+
+  // Получить все баджи
+  rpc GetAllBadges(GetAllBadgesRequest) returns(GetAllBadgesResponse);
 }
 
 message SearchUsersRequest {
@@ -201,5 +219,91 @@ message User{
   string profile_picture = 6; // ссылка на аватарку пользователя
   string bio = 7; // Био
   string profile_picture_preview = 8; // ссылка на превью аватарки
+  repeated UserBadge badges = 9; // баджи пользователя
+}
+
+// Сообщения для работы с баджами
+
+message Badge {
+  int32 id = 1; // идентификатор баджа
+  string name = 2; // название баджа
+  string description = 3; // описание баджа
+  string image_url = 4; // ссылка на изображение баджа
+  google.protobuf.Timestamp created_date = 5; // дата создания
+  bool is_active = 6; // активен ли бадж
+}
+
+message UserBadge {
+  Badge badge = 1; // информация о бадже
+  int32 priority = 2; // приоритет отображения (меньше = выше приоритет)
+  google.protobuf.Timestamp assigned_date = 3; // дата назначения
+}
+
+// Запросы и ответы для получения баджей пользователя
+
+message GetUserBadgesRequest {
+  int64 user_id = 1; // идентификатор пользователя
+  optional int32 limit = 2; // лимит количества баджей (1 для списков, 3 для профиля, null для всех)
+}
+
+message GetUserBadgesResponse {
+  repeated UserBadge badges = 1; // баджи пользователя, отсортированные по приоритету
+}
+
+// Запросы и ответы для назначения баджа
+
+message AssignUserBadgeRequest {
+  int64 user_id = 1; // идентификатор пользователя
+  int32 badge_id = 2; // идентификатор баджа
+  optional int32 priority = 3; // приоритет (по умолчанию 1000)
+}
+
+message AssignUserBadgeResponse {
+  UserBadge user_badge = 1; // назначенный бадж
+}
+
+// Запросы и ответы для снятия баджа
+
+message RemoveUserBadgeRequest {
+  int64 user_id = 1; // идентификатор пользователя
+  int32 badge_id = 2; // идентификатор баджа
+}
+
+message RemoveUserBadgeResponse {
+  bool success = 1; // успешность операции
+}
+
+// Запросы и ответы для обновления приоритета баджа
+
+message UpdateUserBadgePriorityRequest {
+  int64 user_id = 1; // идентификатор пользователя
+  int32 badge_id = 2; // идентификатор баджа
+  int32 new_priority = 3; // новый приоритет
+}
+
+message UpdateUserBadgePriorityResponse {
+  UserBadge user_badge = 1; // обновленный бадж
+}
+
+// Запросы и ответы для создания баджа
+
+message CreateBadgeRequest {
+  string name = 1; // название баджа
+  string description = 2; // описание баджа
+  string image_url = 3; // ссылка на изображение баджа
+}
+
+message CreateBadgeResponse {
+  Badge badge = 1; // созданный бадж
+}
+
+// Запросы и ответы для получения всех баджей
+
+message GetAllBadgesRequest {
+  bool include_inactive = 1; // включать ли неактивные баджи
+}
+
+message GetAllBadgesResponse {
+  repeated Badge badges = 1; // список всех баджей
 }
 
