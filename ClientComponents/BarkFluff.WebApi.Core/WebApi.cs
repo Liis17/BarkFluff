@@ -2,17 +2,9 @@
 using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
-using Google.Protobuf.Collections;
-using Google.Protobuf.WellKnownTypes;
-
 using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Grpc.Net.Client;
-
-using System.Diagnostics;
-using System.Xml.Linq;
-
-using Windows.Networking.NetworkOperators;
 
 namespace BarkFluff.WebApi.Core
 {
@@ -287,8 +279,16 @@ namespace BarkFluff.WebApi.Core
             }
             return await SafeCallAsync(async () =>
             {
-                var response = BeaconAC.GetServerInfo(new BarkFluff.Proto.Beacon.GetServerInfoRequest());
-                return (new ErrorReturner(true), response);
+                try
+                {
+                    var response = BeaconAC.GetServerInfo(new BarkFluff.Proto.Beacon.GetServerInfoRequest());
+                    return (new ErrorReturner(true), response);
+                }
+                catch (Exception ex)
+                {
+                    return (new ErrorReturner(false, ex.Message), null!);
+                }
+
             }, param);
         }
 
@@ -951,7 +951,7 @@ namespace BarkFluff.WebApi.Core
                             UserId = long.Parse(options.recipient),
                             Message = new Proto.Messages.OutgoingMessage { Text = letter.Text, FilesIds = { letter.FilesId } },
                         });
-                        
+
                     }
 
 
