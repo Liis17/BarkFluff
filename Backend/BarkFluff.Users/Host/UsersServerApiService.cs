@@ -9,6 +9,11 @@ using BarkFluff.Users.Features.GetUser;
 using BarkFluff.Users.Features.GetUserContacts;
 using BarkFluff.Users.Features.ListByIds;
 using BarkFluff.Users.Features.OverrideDraftUser;
+using BarkFluff.Users.Features.Badges.AssignUserBadge;
+using BarkFluff.Users.Features.Badges.RemoveUserBadge;
+using BarkFluff.Users.Features.Badges.UpdateUserBadgesPriority;
+using BarkFluff.Users.Features.Badges.Commands;
+using BarkFluff.Users.Features.Badges.Queries;
 using Grpc.Core;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -100,7 +105,66 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
         {
             Ids = request.Ids.ToList()
         };
-        
+
         return await _mediator.Send(command);
+    }
+
+    // Методы для работы с баджами
+
+    public override Task<AssignUserBadgeResponse> AssignUserBadge(AssignUserBadgeRequest request, ServerCallContext context)
+    {
+        var command = new AssignUserBadgeCommand
+        {
+            UserId = request.UserId,
+            BadgeId = request.BadgeId,
+            Priority = request.Priority
+        };
+
+        return _mediator.Send(command);
+    }
+
+    public override Task<RemoveUserBadgeResponse> RemoveUserBadge(RemoveUserBadgeRequest request, ServerCallContext context)
+    {
+        var command = new RemoveUserBadgeCommand
+        {
+            UserId = request.UserId,
+            BadgeId = request.BadgeId
+        };
+
+        return _mediator.Send(command);
+    }
+
+    public override Task<UpdateUserBadgePriorityResponse> UpdateUserBadgePriority(UpdateUserBadgePriorityRequest request, ServerCallContext context)
+    {
+        var command = new UpdateUserBadgePriorityCommand
+        {
+            UserId = request.UserId,
+            BadgeId = request.BadgeId,
+            NewPriority = request.NewPriority
+        };
+
+        return _mediator.Send(command);
+    }
+
+    public override Task<CreateBadgeResponse> CreateBadge(CreateBadgeRequest request, ServerCallContext context)
+    {
+        var command = new CreateBadgeCommand
+        {
+            Name = request.Name,
+            Description = request.Description,
+            ImageUrl = request.ImageUrl
+        };
+
+        return _mediator.Send(command);
+    }
+
+    public override Task<GetAllBadgesResponse> GetAllBadges(GetAllBadgesRequest request, ServerCallContext context)
+    {
+        var query = new GetAllBadgesQuery
+        {
+            IncludeInactive = request.IncludeInactive
+        };
+
+        return _mediator.Send(query);
     }
 }
