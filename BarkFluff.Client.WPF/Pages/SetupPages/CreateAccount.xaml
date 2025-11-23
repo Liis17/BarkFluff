@@ -13,65 +13,6 @@
     d:DesignWidth="720"
     mc:Ignorable="d">
 
-    <UserControl.Resources>
-        <Style x:Key="MinimalTextBox" TargetType="ui:TextBox">
-            <Setter Property="Background" Value="#282828" />
-            <Setter Property="Foreground" Value="White" />
-            <Setter Property="FontFamily" Value="AdwaitaSans" />
-            <Setter Property="FontSize" Value="16" />
-            <Setter Property="BorderBrush" Value="#404040" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Padding" Value="15,12" />
-        </Style>
-
-        <Style x:Key="MinimalPasswordBox" TargetType="ui:PasswordBox">
-            <Setter Property="Background" Value="#282828" />
-            <Setter Property="Foreground" Value="White" />
-            <Setter Property="FontFamily" Value="AdwaitaSans" />
-            <Setter Property="FontSize" Value="16" />
-            <Setter Property="BorderBrush" Value="#404040" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Padding" Value="15,12" />
-        </Style>
-
-        <Style x:Key="SecondaryButton" TargetType="ui:Button">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="#E0E0E0" />
-            <Setter Property="FontFamily" Value="AdwaitaSans" />
-            <Setter Property="FontSize" Value="14" />
-            <Setter Property="FontWeight" Value="Medium" />
-            <Setter Property="BorderBrush" Value="#404040" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="Padding" Value="15,10" />
-        </Style>
-
-        <Style x:Key="InfoTextStyle" TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="AdwaitaSans" />
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="FontWeight" Value="Normal" />
-            <Setter Property="Foreground" Value="#B0B0B0" />
-            <Setter Property="Margin" Value="0,2,0,0" />
-        </Style>
-
-        <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="AdwaitaSans" />
-            <Setter Property="FontSize" Value="24" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="White" />
-            <Setter Property="HorizontalAlignment" Value="Center" />
-            <Setter Property="Margin" Value="0,0,0,30" />
-        </Style>
-
-        <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="AdwaitaSans" />
-            <Setter Property="FontSize" Value="14" />
-            <Setter Property="FontWeight" Value="Medium" />
-            <Setter Property="Foreground" Value="#E0E0E0" />
-            <Setter Property="Margin" Value="0,0,0,8" />
-        </Style>
-    </UserControl.Resources>
-
     <Grid Background="#1A1A1A">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -153,7 +94,6 @@
                             Margin="0,0,0,20"
                             KeyDown="TextBox_KeyDown"
                             PlaceholderText="Апогея"
-                            Style="{StaticResource MinimalTextBox}"
                             Tag="Names"
                             TextChanged="Enter_TextChanged" />
 
@@ -164,7 +104,6 @@
                             Margin="0,0,0,25"
                             KeyDown="TextBox_KeyDown"
                             PlaceholderText="Тайнигейпиратовна"
-                            Style="{StaticResource MinimalTextBox}"
                             TextChanged="Enter_TextChanged" />
 
                         <!--  Информация  -->
@@ -202,7 +141,6 @@
                             Margin="0,0,0,25"
                             KeyDown="TextBox_KeyDown"
                             PlaceholderText="Apogee"
-                            Style="{StaticResource MinimalTextBox}"
                             TextChanged="Enter_TextChanged" />
 
                         <StackPanel>
@@ -251,7 +189,6 @@
                             KeyDown="TextBox_KeyDown"
                             Loaded="EmailEnter_Loaded"
                             PlaceholderText="apogee@barkfluff.ru"
-                            Style="{StaticResource MinimalTextBox}"
                             TextChanged="Enter_TextChanged" />
 
                         <StackPanel>
@@ -287,7 +224,6 @@
                             Margin="0,0,0,25"
                             KeyDown="TextBox_KeyDown"
                             PlaceholderText="123456"
-                            Style="{StaticResource MinimalTextBox}"
                             TextChanged="Enter_TextChanged" />
 
                         <StackPanel>
@@ -452,75 +388,26 @@
             HorizontalAlignment="Center"
             Orientation="Vertical">
 
-            <!--  Сообщение об ошибке  -->
-            <TextBlock
-                x:Name="ErrorMessageTextBlock"
-                Margin="0,0,0,15"
-                HorizontalAlignment="Center"
-                FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="14"
-                FontWeight="Medium"
-                Foreground="#FF4646"
-                Text="Текст ошибки"
-                TextAlignment="Center"
-                Visibility="Collapsed" />
-
             <!--  Кнопки навигации  -->
             <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
-                <ui:Button
-                    x:Name="BackButtonx"
-                    Margin="0,0,10,0"
-                    Click="BackButton_Click"
-                    Style="{StaticResource SecondaryButton}"
-                    Visibility="Collapsed">
-                    <StackPanel Orientation="Horizontal">
-                        <ui:SymbolIcon
-                            Margin="0,0,8,0"
-                            FontSize="16"
-                            Foreground="#E0E0E0"
-                            Symbol="ArrowLeft12" />
-                        <TextBlock Text="Назад" />
-                    </StackPanel>
-                </ui:Button>
 
                 <ui:Button
                     x:Name="NextButton"
-                    Height="45"
-                    Margin="10,0,0,0"
-                    HorizontalAlignment="Center"
-                    Background="#df5000"
                     Click="NextButton_Click"
-                    CornerRadius="22"
-                    MouseOverBackground="#FFC54700"
-                    PressedBackground="#FFAB3D00">
+                    Style="{StaticResource MainButton}">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Margin="5,0,5,0" Text="Далее" />
-                        <ui:SymbolIcon
-                            Margin="8,0,0,0"
-                            FontSize="16"
-                            Foreground="White"
-                            Symbol="ArrowRight12" />
+                        <ui:TextBlock Style="{StaticResource MainButtonTextLeft}" Text="Далее" />
+                        <ui:SymbolIcon Style="{StaticResource ButtonSymbolRight}" Symbol="ArrowRight12" />
                     </StackPanel>
                 </ui:Button>
 
                 <ui:Button
                     x:Name="CreateButton"
-                    Height="45"
-                    Margin="10,0,0,0"
-                    HorizontalAlignment="Center"
-                    Background="#df5000"
                     Click="Registration"
-                    CornerRadius="22"
-                    MouseOverBackground="#FFC54700"
-                    PressedBackground="#FFAB3D00"
-                    Visibility="Visible">
+                    Style="{StaticResource MainButton}">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Margin="5,0,5,0" Text="Создать аккаунт" />
-                        <ui:SymbolIcon
-                            Margin="8,0,0,0"
-                            FontSize="16"
-                            Foreground="White"
-                            Symbol="Add12" />
+                        <ui:TextBlock Style="{StaticResource MainButtonTextLeft}" Text="Создать аккаунт" />
+                        <ui:SymbolIcon Style="{StaticResource ButtonSymbolRight}" Symbol="Add12" />
                     </StackPanel>
                 </ui:Button>
             </StackPanel>

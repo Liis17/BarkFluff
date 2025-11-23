@@ -343,7 +343,6 @@
                                             Height="45"
                                             Margin="4"
                                             GotFocus="VerifyBox_GotFocus"
-                                            MaxLength="1"
                                             PreviewKeyDown="VerifyBox_PreviewKeyDown"
                                             PreviewTextInput="VerifyBox_PreviewTextInput"
                                             Style="{StaticResource VerificationTextBox}"
@@ -354,7 +353,7 @@
                                             Height="45"
                                             Margin="4"
                                             GotFocus="VerifyBox_GotFocus"
-                                            MaxLength="1"
+                                            
                                             PreviewKeyDown="VerifyBox_PreviewKeyDown"
                                             PreviewTextInput="VerifyBox_PreviewTextInput"
                                             Style="{StaticResource VerificationTextBox}"
@@ -462,12 +461,9 @@
                                         FontSize="12"
                                         FontWeight="Normal"
                                         Foreground="#666666"
-                                        Text="QR КОД"
+                                        Text="QR Код"
                                         TextAlignment="Center" />
-                                    <Image
-                                        x:Name="QrCodeImage"
-                                        Source="/Resources/Images/qrplaceholder.png"
-                                        Stretch="Uniform" />
+                                    <Image x:Name="QrCodeImage" Stretch="Uniform" />
                                 </Grid>
 
                             </Border>

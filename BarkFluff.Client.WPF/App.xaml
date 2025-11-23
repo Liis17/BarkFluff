@@ -5,14 +5,25 @@
     xmlns:local="clr-namespace:BarkFluff.Client.WPF"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
     <Application.Resources>
-
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Resources/Styles/Styles.xaml" />
                 <ui:ThemesDictionary Theme="Dark" />
                 <ui:ControlsDictionary />
             </ResourceDictionary.MergedDictionaries>
-            <!--  AdwaitaSans  -->
+            <!--  Шрифт  -->
             <FontFamily x:Key="AdwaitaSans">pack://application:,,,/;component/Fonts/AdwaitaSans-Regular.ttf</FontFamily>
+            <FontFamily x:Key="OpenSans">pack://application:,,,/;component/Fonts/OpenSans-VariableFont_wdth,wght.ttf</FontFamily>
+            <FontFamily x:Key="OpenSansItalic">pack://application:,,,/;component/Fonts/OpenSans-Italic-VariableFont_wdth,wght.ttf</FontFamily>
+            <FontFamily x:Key="Neucha">pack://application:,,,/;component/Fonts/Neucha-Regular.ttf</FontFamily>
+            <FontFamily x:Key="NotoSansDisplay">pack://application:,,,/;component/Fonts/NotoSansDisplay-VariableFont_wdth,wght.ttf</FontFamily>
+
+            <!--
+                Исправлено: VisualBrush не поддерживает свойство Effect напрямую.
+                Для размытия используйте отдельный элемент, например Border или Grid, и применяйте к нему BlurEffect.
+                Здесь просто определяем кисть без эффекта.
+            -->
+            <VisualBrush x:Key="BlurredBackgroundBrush" Visual="{Binding ElementName=BackgroundChatImage}" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

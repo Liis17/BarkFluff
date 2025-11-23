@@ -13,27 +13,27 @@
 
     <UserControl.Resources>
         <Storyboard x:Key="SlideDownAndFadeOut">
-            <!-- Анимация перемещения вниз -->
-            <DoubleAnimation 
+            <!--  Анимация перемещения вниз  -->
+            <DoubleAnimation
                 Storyboard.TargetName="MainGrid"
                 Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
-                From="0" 
-                To="100" 
+                From="0"
+                To="100"
                 Duration="0:0:0.2">
                 <DoubleAnimation.EasingFunction>
-                    <QuadraticEase EasingMode="EaseIn"/>
+                    <QuadraticEase EasingMode="EaseIn" />
                 </DoubleAnimation.EasingFunction>
             </DoubleAnimation>
 
-            <!-- Анимация исчезновения -->
-            <DoubleAnimation 
+            <!--  Анимация исчезновения  -->
+            <DoubleAnimation
                 Storyboard.TargetName="MainGrid"
                 Storyboard.TargetProperty="Opacity"
-                From="1" 
-                To="0" 
+                From="1"
+                To="0"
                 Duration="0:0:0.1">
                 <DoubleAnimation.EasingFunction>
-                    <QuadraticEase EasingMode="EaseIn"/>
+                    <QuadraticEase EasingMode="EaseIn" />
                 </DoubleAnimation.EasingFunction>
             </DoubleAnimation>
         </Storyboard>
@@ -41,7 +41,7 @@
 
     <Grid x:Name="MainGrid">
         <Grid.RenderTransform>
-            <TranslateTransform/>
+            <TranslateTransform />
         </Grid.RenderTransform>
 
         <StackPanel
@@ -62,72 +62,32 @@
                 Orientation="Horizontal">
                 <TextBox
                     x:Name="Box0"
-                    Width="40"
-                    Margin="5"
-                    HorizontalContentAlignment="Center"
-                    VerticalContentAlignment="Center"
-                    Background="#282828"
-                    BorderThickness="0"
-                    CaretBrush="White"
-                    FontSize="24"
-                    FontWeight="Medium"
-                    Foreground="White"
                     GotFocus="PinBox_GotFocus"
                     Loaded="FocusBoxZero"
-                    MaxLength="1"
                     PreviewKeyDown="PinBox_PreviewKeyDown"
                     PreviewTextInput="PinBox_PreviewTextInput"
+                    Style="{StaticResource VerificationTextBox}"
                     TextChanged="PinBox_TextChanged" />
                 <TextBox
                     x:Name="Box1"
-                    Width="40"
-                    Margin="5"
-                    HorizontalContentAlignment="Center"
-                    VerticalContentAlignment="Center"
-                    Background="#282828"
-                    BorderThickness="0"
-                    CaretBrush="White"
-                    FontSize="24"
-                    FontWeight="Medium"
-                    Foreground="White"
                     GotFocus="PinBox_GotFocus"
-                    MaxLength="1"
                     PreviewKeyDown="PinBox_PreviewKeyDown"
                     PreviewTextInput="PinBox_PreviewTextInput"
+                    Style="{StaticResource VerificationTextBox}"
                     TextChanged="PinBox_TextChanged" />
                 <TextBox
                     x:Name="Box2"
-                    Width="40"
-                    Margin="5"
-                    HorizontalContentAlignment="Center"
-                    VerticalContentAlignment="Center"
-                    Background="#282828"
-                    BorderThickness="0"
-                    CaretBrush="White"
-                    FontSize="24"
-                    FontWeight="Medium"
-                    Foreground="White"
                     GotFocus="PinBox_GotFocus"
-                    MaxLength="1"
                     PreviewKeyDown="PinBox_PreviewKeyDown"
                     PreviewTextInput="PinBox_PreviewTextInput"
+                    Style="{StaticResource VerificationTextBox}"
                     TextChanged="PinBox_TextChanged" />
                 <TextBox
                     x:Name="Box3"
-                    Width="40"
-                    Margin="5"
-                    HorizontalContentAlignment="Center"
-                    VerticalContentAlignment="Center"
-                    Background="#282828"
-                    BorderThickness="0"
-                    CaretBrush="White"
-                    FontSize="24"
-                    FontWeight="Medium"
-                    Foreground="White"
                     GotFocus="PinBox_GotFocus"
-                    MaxLength="1"
                     PreviewKeyDown="PinBox_PreviewKeyDown"
                     PreviewTextInput="PinBox_PreviewTextInput"
+                    Style="{StaticResource VerificationTextBox}"
                     TextChanged="PinBox_TextChanged" />
             </StackPanel>
             <StackPanel
@@ -181,29 +141,16 @@
                 Loaded="ButtonStack_Loaded"
                 Orientation="Vertical">
                 <ui:Button
-                    Width="200"
-                    Height="45"
-                    Margin="0,7,0,7"
-                    HorizontalAlignment="Center"
                     Background="#FFD20505"
                     Click="RemoveSettings"
-                    CornerRadius="22"
                     MouseOverBackground="#FFC54700"
                     Opacity="0.6"
-                    PressedBackground="#FFAB3D00">
+                    PressedBackground="#FFAB3D00"
+                    Style="{StaticResource MainButton}">
                     <ui:Button.Content>
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock
-                                VerticalAlignment="Center"
-                                FontFamily="{DynamicResource AdwaitaSans}"
-                                FontWeight="Medium"
-                                Foreground="#ffffff"
-                                Text="Сбросить приложение" />
-                            <ui:SymbolIcon
-                                Margin="5,0,0,0"
-                                FontSize="17"
-                                Foreground="#ffffff"
-                                Symbol="Delete28" />
+                            <ui:TextBlock Style="{StaticResource MainButtonTextLeft}" Text="Сбросить приложение" />
+                            <ui:SymbolIcon Style="{StaticResource ButtonSymbolRight}" Symbol="Delete28" />
                         </StackPanel>
 
                     </ui:Button.Content>

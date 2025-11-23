@@ -5,7 +5,9 @@ using BarkFluff.Proto.Configuration;
 using BarkFluff.Shared.Identity;
 
 namespace BarkFluff.Beacon;
-
+/// <summary>
+/// тест, потом можешь удалить
+/// </summary>
 public class Program
 {
     public static void Main(string[] args)
@@ -16,38 +18,27 @@ public class Program
         builder.SetRunningAddress(builder.Configuration);
 
         builder.Services.AddBarkFluffGrpc();
-        
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
-
         builder.Services.AddGrpcReflection();
-        
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
-        
         builder.Services.AddSettings<ServerColorSettings>(builder.Configuration, "ServerColor");
         builder.Services.AddSettings<ServerPropsSettings>(builder.Configuration, "ServerProps");
-        
         builder.Services.AddGrpcClient<BarkFluff.Proto.Navigator.NavigatorApi.NavigatorApiClient>(o =>
         {
-            o.Address = new Uri(builder.Configuration["NavigatorUrl"]); 
+            o.Address = new Uri(builder.Configuration["NavigatorUrl"]);
         });
-        
         builder.Services.AddGrpcClient<ConfigurationApi.ConfigurationApiClient>(o =>
         {
             o.Address = new Uri(builder.Configuration["ConfigurationServiceAddr"]);
         });
-        
-      
         builder.Services.AddHostedService<BarkFluff.Beacon.Features.RegisterServer.ServerRegistrationService>();
 
         var app = builder.Build();
 
+        // Нет собственного DbContext – миграции не применяются
         app.MapGrpcReflectionService();
-
         app.UseRouting();
-
         app.MapGrpcService<BeaconApiService>();
-
         app.Run();
-        
     }
 }
