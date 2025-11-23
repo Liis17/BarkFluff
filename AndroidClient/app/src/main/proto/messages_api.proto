@@ -1,0 +1,152 @@
+syntax = "proto3";
+
+option csharp_namespace = "BarkFluff.Proto.Messages";
+
+import "shared.proto";
+import "google/protobuf/timestamp.proto";
+
+package barkfluff.messages;
+
+service MessagesApi {
+  
+  // Получить список чатов
+  rpc ListChats(ListChatsRequest) returns(ListChatsResponse);
+  
+  // Получить список сообщений в чате
+  rpc ListMessages(ListMessagesRequest) returns(ListMessagesResponse);
+  
+  // Получить список участников в чате
+  rpc ListChatMembers(ListChatMembersRequest) returns(ListChatMembersResponse);
+  
+  // Отправить сообщение в чат
+  rpc SendMessage(SendMessageRequest) returns(SendMessageResponse);
+  
+  // Создать групповой чат
+  rpc CreateGroupChat(CreateGroupChatRequest) returns(CreateGroupChatResponse);
+  
+  // Убрать пользователя из группового чата
+  rpc KickUser(KickUserRequest) returns(KickUserResponse);
+  
+  // Отментить сообщения как прочитанные 
+  rpc MarkAsRead(MarkAsReadRequest) returns(MarkAsReadResponse);
+}
+
+message MarkAsReadRequest {
+  repeated int64 message_ids = 1; // Идентификаторы сообщений
+}
+
+message MarkAsReadResponse { }
+
+message KickUserRequest {
+  string chat_id = 1; // Идентификатор чата
+  int64 user_id = 2; // Пользователь которого необходимо кикнуть
+}
+
+message KickUserResponse { }
+
+message CreateGroupChatRequest {
+  
+  repeated int64 user_ids = 1; // Идентификаторы пользователей
+  
+  string title = 2; // Заголовок чата
+  
+  string picture_file_id = 3; // Идентификатор файла для обложки чата
+}
+
+message CreateGroupChatResponse {
+    Chat created_chat = 1; // Созданный чат
+}
+
+message SendMessageRequest {
+  
+  oneof source_id {
+    string chat_id = 1; // Идентификатор чата
+    
+    int64 user_id = 2; // Идентификатор пользователя (использовать, только если неизвестен id чата)
+  }
+  
+  OutgoingMessage message = 3; // Отправляемое сообщение
+  
+}
+
+message SendMessageResponse {
+  barkfluff.shared.Message message = 1; //Отправленное сообщение
+}
+
+message ListChatMembersRequest {
+  
+  barkfluff.shared.PageRequest pagination = 1; // Пагинация (макс 50 элементов)
+  
+  string chat_id = 2; // Идентификатор чата
+}
+
+message ListChatMembersResponse {
+  message DetailedChatMemberInfo {
+    ChatMember general_info = 1; // Основная информация об участнике
+    
+    string first_name = 2; // Имя
+    
+    string last_name = 3; // Фамилия
+  }
+  
+  repeated DetailedChatMemberInfo chat_members = 1; // Участники чата
+  
+  int32 total_count = 2; // Общее количество записей
+}
+
+message ListMessagesRequest {
+  
+  int64 from_message_id = 1; // Индетификатор сообщения от которого вести отчет
+  
+  int32 count = 2; // Количество запрашиваемых сообщений (максимум 50)
+  
+  string chat_id = 3; // Идентификатор чата
+}
+
+message ListMessagesResponse {
+  repeated barkfluff.shared.Message messages = 1; // Список сообщений
+}
+
+message ListChatsRequest {
+  barkfluff.shared.PageRequest pagination = 1; // Пагинация (макс 50 элементов)
+}
+
+message ListChatsResponse {
+  repeated Chat chats = 1; // Список чатов
+  
+  int32 total_count = 2; // Общее количество чатов
+}
+
+message Chat {
+  
+  string id = 1; // Идентификатор чата
+  
+  string title = 2; // Название чата
+  
+  string picture = 3; // Картиночка чата
+  
+  bool is_group_chat = 4; // Признак того что это групповой чат
+
+  barkfluff.shared.Message last_message = 5; // Последнее отправленное сообщение
+
+  repeated ChatMember members = 6; // Участники чата (возвращается только для ЛС)
+  
+  int64 count_unread = 7; // Количество непрочитанных сообщений
+  
+}
+
+message ChatMember {
+  
+  int64 user_id = 1; // Идетификатор пользователя
+  
+  google.protobuf.Timestamp joined_at = 4; // Когда присоеденился
+}
+
+message OutgoingMessage {
+  
+  string text = 1; //Текст сообщения
+  
+  repeated string files_ids = 2; // Идентификаторы файлов
+}
+
+
