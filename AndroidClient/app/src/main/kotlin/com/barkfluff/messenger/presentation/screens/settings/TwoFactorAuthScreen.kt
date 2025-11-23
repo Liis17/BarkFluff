@@ -32,8 +32,16 @@ fun TwoFactorAuthScreen(
     var setupInfo by remember { mutableStateOf<OtpSetupInfo?>(null) }
     var confirmCode by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var otpMethods by remember { mutableStateOf<List<com.barkfluff.messenger.data.repository.OtpMethod>>(emptyList()) }
 
     val state by viewModel.state.collectAsState()
+
+    // Load current 2FA status
+    LaunchedEffect(Unit) {
+        viewModel.getOtpMethods().onSuccess { methods ->
+            otpMethods = methods
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.events.collectLatest { event ->
@@ -71,6 +79,52 @@ fun TwoFactorAuthScreen(
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Display current 2FA status
+            if (otpMethods.isNotEmpty()) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 24.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "Текущий статус 2FA",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+
+                        otpMethods.forEach { method ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = when (method.type) {
+                                        OtpType.AUTHENTICATOR -> "Authenticator"
+                                        OtpType.EMAIL -> "Email"
+                                    },
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+
+                                Text(
+                                    text = if (method.isEnabled) "Включено ✓" else "Выключено",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = if (method.isEnabled)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Divider(modifier = Modifier.padding(vertical = 16.dp))
+            }
+
             if (setupInfo == null) {
                 // Step 1: Choose 2FA type
                 Text(

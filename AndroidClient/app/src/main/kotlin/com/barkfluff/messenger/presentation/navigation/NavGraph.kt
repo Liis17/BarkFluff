@@ -22,6 +22,7 @@ import com.barkfluff.messenger.presentation.screens.profile.MyProfileScreen
 import com.barkfluff.messenger.presentation.screens.profile.ProfileScreen
 import com.barkfluff.messenger.presentation.screens.settings.ActiveSessionsScreen
 import com.barkfluff.messenger.presentation.screens.settings.ChangePasswordScreen
+import com.barkfluff.messenger.presentation.screens.settings.ConnectedDevicesScreen
 import com.barkfluff.messenger.presentation.screens.settings.SettingsScreen
 import com.barkfluff.messenger.presentation.screens.settings.TwoFactorAuthScreen
 import com.barkfluff.messenger.presentation.screens.splash.SplashScreen
@@ -117,6 +118,10 @@ fun NavGraph(
 
         composable(Screen.ChangePassword.route) {
             ChangePasswordScreen(navController = navController)
+        }
+
+        composable(Screen.ConnectedDevices.route) {
+            ConnectedDevicesScreen(navController = navController)
         }
 
         composable(

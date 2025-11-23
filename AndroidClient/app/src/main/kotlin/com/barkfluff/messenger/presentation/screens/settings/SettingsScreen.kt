@@ -70,6 +70,12 @@ fun SettingsScreen(
             )
             Divider()
 
+            SettingsItem(
+                title = "Подключенные устройства",
+                onClick = { navController.navigate(Screen.ConnectedDevices.route) }
+            )
+            Divider()
+
             Spacer(modifier = Modifier.weight(1f))
 
             Button(

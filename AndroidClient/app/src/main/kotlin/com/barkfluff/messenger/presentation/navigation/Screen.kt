@@ -31,4 +31,5 @@ sealed class Screen(val route: String) {
     object ActiveSessions : Screen("active_sessions")
     object TwoFactorAuth : Screen("two_factor_auth")
     object ChangePassword : Screen("change_password")
+    object ConnectedDevices : Screen("connected_devices")
 }
