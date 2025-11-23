@@ -98,9 +98,6 @@ namespace BarkFluff.DBEditor.ViewModels
                     item.OriginalValue = item.Value;
                 }
 
-                MessageBox.Show("Data successfully saved!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
-
-                // Можно перезагрузить, чтобы увидеть новые EditedAt даты
                 await LoadDataAsync();
             }
             catch (Exception ex)
