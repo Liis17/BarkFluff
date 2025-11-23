@@ -1,5 +1,6 @@
 using Amazon.S3;
 using Amazon.S3.Model;
+
 using BarkFluff.Files.Domain;
 
 namespace BarkFluff.Files.Infrastructure;
@@ -51,13 +52,16 @@ public class S3BucketInitializer
     {
         try
         {
-            // Проверяем существование бакета
-            var bucketExists = await _s3Client.DoesS3BucketExistAsync(bucketName);
-
-            if (bucketExists)
+            // Проверяем существование бакета через попытку получить его локацию
+            try
             {
+                await _s3Client.GetBucketLocationAsync(bucketName);
                 _logger.LogInformation("Бакет {BucketName} уже существует", bucketName);
                 return;
+            }
+            catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                // Бакет не найден, продолжаем создание
             }
 
             // Создаем бакет
