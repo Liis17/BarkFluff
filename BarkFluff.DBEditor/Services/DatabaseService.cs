@@ -36,7 +36,6 @@ namespace BarkFluff.DBEditor.Services
 
             while (await reader.ReadAsync())
             {
-                // Индексы остаются теми же (0, 1, 2...), так как порядок в SELECT не менялся
                 string val = reader.IsDBNull(3) ? null : reader.GetString(3);
 
                 list.Add(new ConfigItem
@@ -60,7 +59,6 @@ namespace BarkFluff.DBEditor.Services
             using var conn = new NpgsqlConnection(_connectionString);
             await conn.OpenAsync();
 
-            // ИСПРАВЛЕНО: Здесь тоже все колонки в кавычках
             string sql = @"UPDATE ""Configurations"" 
                            SET ""Value"" = @val, ""EditedAt"" = @date, ""EditedBy"" = 'AppUser', ""EditedFrom"" = 'WPF-Client' 
                            WHERE ""Id"" = @id";

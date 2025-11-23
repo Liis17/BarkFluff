@@ -13,43 +13,105 @@
     mc:Ignorable="d">
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <ui:TitleBar Grid.Row="0" Title="System Configuration" />
+        <ui:TitleBar Title="System Configuration" Grid.Row="0" />
 
-        <ui:DataGrid Grid.Row="1" ItemsSource="{Binding Configs}" AutoGenerateColumns="False" 
-                     CanUserAddRows="False" CanUserDeleteRows="False" Margin="10">
+        <ui:DataGrid
+            Grid.Row="1"
+            Margin="10"
+            AutoGenerateColumns="False"
+            CanUserAddRows="False"
+            CanUserDeleteRows="False"
+            ItemsSource="{Binding Configs}">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="ID" Binding="{Binding Id}" IsReadOnly="True" Width="50"/>
-                <DataGridTextColumn Header="Section" Binding="{Binding Section}" IsReadOnly="True" Width="150"/>
-                <DataGridTextColumn Header="Key" Binding="{Binding Key}" IsReadOnly="True" Width="200"/>
-                <DataGridTemplateColumn Header="Value" Width="*">
+                <DataGridTextColumn
+                    Width="50"
+                    Binding="{Binding Id}"
+                    Header="ID"
+                    IsReadOnly="True" />
+                <DataGridTextColumn
+                    Width="150"
+                    Binding="{Binding Section}"
+                    Header="Section"
+                    IsReadOnly="True" />
+                <DataGridTextColumn
+                    Width="200"
+                    Binding="{Binding Key}"
+                    Header="Key"
+                    IsReadOnly="True" />
+                <DataGridTemplateColumn Width="*" Header="Value">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <ui:TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" 
-                                        BorderThickness="0" Background="Transparent"/>
+                            <ui:TextBox
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" />
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTextColumn Header="Edited At" Binding="{Binding EditedAt}" IsReadOnly="True" Width="180"/>
-                <DataGridTextColumn Header="Edited By" Binding="{Binding EditedBy}" IsReadOnly="True" Width="100"/>
-                <DataGridTextColumn Header="Service ID" Binding="{Binding ServiceId}" IsReadOnly="True" Width="80"/>
+                <DataGridTextColumn
+                    Width="180"
+                    Binding="{Binding EditedAt}"
+                    Header="Edited At"
+                    IsReadOnly="True" />
+                <DataGridTextColumn
+                    Width="100"
+                    Binding="{Binding EditedBy}"
+                    Header="Edited By"
+                    IsReadOnly="True" />
+                <DataGridTextColumn
+                    Width="80"
+                    Binding="{Binding ServiceId}"
+                    Header="Service ID"
+                    IsReadOnly="True" />
             </DataGrid.Columns>
         </ui:DataGrid>
 
-        <ProgressBar Grid.Row="1" IsIndeterminate="True" Width="200" Height="5" 
-                     Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+        <ProgressBar
+            Grid.Row="1"
+            Width="200"
+            Height="5"
+            IsIndeterminate="True"
+            Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
-        <Border Grid.Row="2" Background="{DynamicResource SolidBackgroundFillColorBaseBrush}" Padding="15"
-                Visibility="{Binding HasChanges, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <TextBlock Text="You have unsaved changes" VerticalAlignment="Center" Margin="0,0,10,0" Foreground="{DynamicResource SystemFillColorCautionBrush}"/>
-                <ui:Button Content="Revert" Icon="ArrowUndo24" Command="{Binding RevertCommand}" Appearance="Secondary"/>
-                <ui:Button Content="Save Changes" Icon="Save24" Command="{Binding SaveCommand}" Appearance="Primary"/>
-            </StackPanel>
+        <Border
+            Grid.Row="2"
+            Padding="15"
+            Background="{DynamicResource SolidBackgroundFillColorBaseBrush}">
+            <Grid>
+                <StackPanel
+                    HorizontalAlignment="Right"
+                    Orientation="Horizontal"
+                    Visibility="{Binding HasChanges, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <TextBlock
+                        Margin="0,0,10,0"
+                        VerticalAlignment="Center"
+                        Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                        Text="You have unsaved changes" />
+                    <ui:Button
+                        Appearance="Secondary"
+                        Command="{Binding RevertCommand}"
+                        Content="Revert"
+                        Icon="ArrowUndo24" />
+                    <ui:Button
+                        Appearance="Primary"
+                        Command="{Binding SaveCommand}"
+                        Content="Save Changes"
+                        Icon="Save24" />
+
+                </StackPanel>
+                <ui:Button
+                    HorizontalAlignment="Center"
+                    Appearance="Secondary"
+                    Command="{Binding LoadDataCommand}"
+                    Content="Refresh Data"
+                    Icon="ArrowSync24" />
+            </Grid>
         </Border>
     </Grid>
 </ui:FluentWindow>
