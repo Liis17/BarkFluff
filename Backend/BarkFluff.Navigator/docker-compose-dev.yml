@@ -3,7 +3,7 @@ x-common-variables: &common-variables
   ASPNETCORE_ENVIRONMENT: Production
 
 services:
-  navigator:
+  navigator-dev:
     image: docker.barkfluff.com:5000/barkfluff-navigator-dev:latest
     restart: always
     ports: [ "${NAVIGATOR_PORT}:${NAVIGATOR_PORT}" ]

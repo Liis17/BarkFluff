@@ -6,18 +6,11 @@ public class ServerInfo
 {
     [Key]
     public long Id { get; set; }
-
     public required string BeaconHost { get; set; }
-
     public int BeaconPort { get; set; }
-
     public required string Name { get; set; }
-
     public required string Description { get; set; }
-
     public string ServerPublicName { get; set; } = string.Empty;
-
     public DateTime CreatedAt { get; set; }
-
     public required string AddedBy { get; set; }
 }
