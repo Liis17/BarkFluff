@@ -10,6 +10,7 @@ import kotlinx.coroutines.withContext
 import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Named
+import kotlinx.coroutines.flow.first
 
 class AuthRepository @Inject constructor(
     @Named("identityChannel") private val identityChannel: ManagedChannel,
@@ -149,7 +150,181 @@ class AuthRepository @Inject constructor(
         }
     }
 
+    suspend fun resetPassword(email: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val stub = identity_api.IdentityApiGrpc.newBlockingStub(identityChannel)
+
+            val request = identity_api.IdentityApi.ResetPasswordRequest.newBuilder()
+                .setEmail(email)
+                .build()
+
+            stub.resetPassword(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun confirmResetPassword(email: String, code: String, newPassword: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val stub = identity_api.IdentityApiGrpc.newBlockingStub(identityChannel)
+
+            val request = identity_api.IdentityApi.ConfirmResetPasswordRequest.newBuilder()
+                .setEmail(email)
+                .setOtpCode(code)
+                .setNewPassword(newPassword)
+                .build()
+
+            stub.confirmResetPassword(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun setPassword(oldPassword: String, newPassword: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val stub = identity_api.IdentityApiGrpc.newBlockingStub(identityChannel)
+
+            val request = identity_api.IdentityApi.SetPasswordRequest.newBuilder()
+                .setOldPassword(oldPassword)
+                .setNewPassword(newPassword)
+                .build()
+
+            stub.setPassword(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getActiveSessions(): Result<List<ActiveSession>> = withContext(Dispatchers.IO) {
+        try {
+            val stub = identity_api.IdentityApiGrpc.newBlockingStub(identityChannel)
+
+            val request = identity_api.IdentityApi.GetActiveSessionsRequest.newBuilder().build()
+            val response = stub.getActiveSessions(request)
+
+            val sessions = response.sessionsList.map { session ->
+                ActiveSession(
+                    id = session.id,
+                    deviceName = session.deviceName,
+                    ip = session.ip,
+                    createdAt = Instant.ofEpochSecond(
+                        session.createdAt.seconds,
+                        session.createdAt.nanos.toLong()
+                    ),
+                    isCurrent = session.isCurrent
+                )
+            }
+
+            Result.success(sessions)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun removeActiveSession(sessionId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val stub = identity_api.IdentityApiGrpc.newBlockingStub(identityChannel)
+
+            val request = identity_api.IdentityApi.RemoveActiveSessionRequest.newBuilder()
+                .setSessionId(sessionId)
+                .build()
+
+            stub.removeActiveSession(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun enableOtp(otpType: OtpType): Result<OtpSetupInfo> = withContext(Dispatchers.IO) {
+        try {
+            val stub = identity_api.IdentityApiGrpc.newBlockingStub(identityChannel)
+
+            val typeProto = when (otpType) {
+                OtpType.AUTHENTICATOR -> identity_api.IdentityApi.OtpTypeId.AUTHENTICATOR
+                OtpType.EMAIL -> identity_api.IdentityApi.OtpTypeId.EMAIL
+            }
+
+            val request = identity_api.IdentityApi.EnableOtpVerificationRequest.newBuilder()
+                .setType(typeProto)
+                .build()
+
+            val response = stub.enableOtpVerification(request)
+
+            Result.success(
+                OtpSetupInfo(
+                    secret = response.secret,
+                    qrCodeUrl = response.qrCode.takeIf { it.isNotBlank() }
+                )
+            )
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun confirmOtp(otpType: OtpType, code: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val stub = identity_api.IdentityApiGrpc.newBlockingStub(identityChannel)
+
+            val typeProto = when (otpType) {
+                OtpType.AUTHENTICATOR -> identity_api.IdentityApi.OtpTypeId.AUTHENTICATOR
+                OtpType.EMAIL -> identity_api.IdentityApi.OtpTypeId.EMAIL
+            }
+
+            val request = identity_api.IdentityApi.ConfirmOtpVerificationRequest.newBuilder()
+                .setType(typeProto)
+                .setOtpCode(code)
+                .build()
+
+            stub.confirmOtpVerification(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun disableOtp(otpType: OtpType): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val stub = identity_api.IdentityApiGrpc.newBlockingStub(identityChannel)
+
+            val typeProto = when (otpType) {
+                OtpType.AUTHENTICATOR -> identity_api.IdentityApi.OtpTypeId.AUTHENTICATOR
+                OtpType.EMAIL -> identity_api.IdentityApi.OtpTypeId.EMAIL
+            }
+
+            val request = identity_api.IdentityApi.DisableOtpVerificationRequest.newBuilder()
+                .setType(typeProto)
+                .build()
+
+            stub.disableOtpVerification(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun logout() {
         sessionManager.clearSession()
     }
 }
+
+data class ActiveSession(
+    val id: String,
+    val deviceName: String,
+    val ip: String,
+    val createdAt: Instant,
+    val isCurrent: Boolean
+)
+
+enum class OtpType {
+    AUTHENTICATOR,
+    EMAIL
+}
+
+data class OtpSetupInfo(
+    val secret: String,
+    val qrCodeUrl: String?
+)

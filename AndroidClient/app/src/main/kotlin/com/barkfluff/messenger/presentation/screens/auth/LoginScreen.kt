@@ -139,7 +139,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             TextButton(
-                onClick = { /* TODO: Navigate to forgot password */ },
+                onClick = { navController.navigate(Screen.ForgotPassword.route) },
                 modifier = Modifier.align(Alignment.End)
             ) {
                 Text(stringResource(R.string.forgot_password))

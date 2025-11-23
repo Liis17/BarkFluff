@@ -6,19 +6,24 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.barkfluff.messenger.presentation.screens.auth.ForgotPasswordScreen
 import com.barkfluff.messenger.presentation.screens.auth.LoginScreen
 import com.barkfluff.messenger.presentation.screens.auth.RegisterScreen
 import com.barkfluff.messenger.presentation.screens.auth.SelectServerScreen
 import com.barkfluff.messenger.presentation.screens.auth.VerifyEmailScreen
 import com.barkfluff.messenger.presentation.screens.auth.WelcomeScreen
 import com.barkfluff.messenger.presentation.screens.chat.ChatListScreen
+import com.barkfluff.messenger.presentation.screens.chat.ChatMembersScreen
 import com.barkfluff.messenger.presentation.screens.chat.ChatScreen
 import com.barkfluff.messenger.presentation.screens.chat.NewChatScreen
 import com.barkfluff.messenger.presentation.screens.chat.NewGroupScreen
 import com.barkfluff.messenger.presentation.screens.profile.EditProfileScreen
 import com.barkfluff.messenger.presentation.screens.profile.MyProfileScreen
 import com.barkfluff.messenger.presentation.screens.profile.ProfileScreen
+import com.barkfluff.messenger.presentation.screens.settings.ActiveSessionsScreen
+import com.barkfluff.messenger.presentation.screens.settings.ChangePasswordScreen
 import com.barkfluff.messenger.presentation.screens.settings.SettingsScreen
+import com.barkfluff.messenger.presentation.screens.settings.TwoFactorAuthScreen
 import com.barkfluff.messenger.presentation.screens.splash.SplashScreen
 
 @Composable
@@ -96,6 +101,30 @@ fun NavGraph(
 
         composable(Screen.EditProfile.route) {
             EditProfileScreen(navController = navController)
+        }
+
+        composable(Screen.ForgotPassword.route) {
+            ForgotPasswordScreen(navController = navController)
+        }
+
+        composable(Screen.ActiveSessions.route) {
+            ActiveSessionsScreen(navController = navController)
+        }
+
+        composable(Screen.TwoFactorAuth.route) {
+            TwoFactorAuthScreen(navController = navController)
+        }
+
+        composable(Screen.ChangePassword.route) {
+            ChangePasswordScreen(navController = navController)
+        }
+
+        composable(
+            route = Screen.ChatMembers.route,
+            arguments = listOf(navArgument("chatId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val chatId = backStackEntry.arguments?.getString("chatId") ?: ""
+            ChatMembersScreen(navController = navController, chatId = chatId)
         }
     }
 }

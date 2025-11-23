@@ -280,4 +280,56 @@ class ChatRepository @Inject constructor(
             Result.failure(e)
         }
     }
+
+    suspend fun getChatMembers(
+        chatId: String,
+        offset: Int = 0,
+        limit: Int = 50
+    ): Result<List<ChatMember>> = withContext(Dispatchers.IO) {
+        try {
+            val stub = messages_api.MessagesApiGrpc.newBlockingStub(messagesChannel)
+
+            val request = messages_api.MessagesApi.ListChatMembersRequest.newBuilder()
+                .setChatId(chatId)
+                .setPage(
+                    shared.Shared.PageRequest.newBuilder()
+                        .setOffset(offset)
+                        .setSize(limit)
+                        .build()
+                )
+                .build()
+
+            val response = stub.listChatMembers(request)
+
+            val members = response.membersList.map { member ->
+                ChatMember(
+                    userId = member.userId,
+                    joinedAt = Instant.ofEpochSecond(
+                        member.joinedAt.seconds,
+                        member.joinedAt.nanos.toLong()
+                    )
+                )
+            }
+
+            Result.success(members)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun kickUser(chatId: String, userId: Long): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val stub = messages_api.MessagesApiGrpc.newBlockingStub(messagesChannel)
+
+            val request = messages_api.MessagesApi.KickUserRequest.newBuilder()
+                .setChatId(chatId)
+                .setUserId(userId)
+                .build()
+
+            stub.kickUser(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
