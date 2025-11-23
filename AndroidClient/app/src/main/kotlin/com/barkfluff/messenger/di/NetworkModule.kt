@@ -119,4 +119,22 @@ object NetworkModule {
             .intercept(authInterceptor)
             .build()
     }
+
+    @Provides
+    @Singleton
+    @Named("fastAuthChannel")
+    fun provideFastAuthChannel(
+        sessionManager: SessionManager,
+        authInterceptor: AuthInterceptor
+    ): ManagedChannel {
+        val serverInfo = runBlocking { sessionManager.serverInfo.first() }
+        val endpoint = serverInfo?.fastAuthEndpoint
+            ?: serverInfo?.identityEndpoint
+            ?: "localhost:5010"
+
+        return ManagedChannelBuilder.forTarget(endpoint)
+            .usePlaintext()
+            .intercept(authInterceptor)
+            .build()
+    }
 }
