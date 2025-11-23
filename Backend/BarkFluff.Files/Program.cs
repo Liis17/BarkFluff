@@ -52,6 +52,10 @@ public class Program
         {
             var ctx = scope.ServiceProvider.GetRequiredService<FilesContext>();
             ctx.Database.Migrate();
+
+            // Инициализируем S3 бакеты
+            var bucketInitializer = scope.ServiceProvider.GetRequiredService<S3BucketInitializer>();
+            bucketInitializer.InitializeBucketsAsync().GetAwaiter().GetResult();
         }
 
         app.MapGrpcReflectionService();
