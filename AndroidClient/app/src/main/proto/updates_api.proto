@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+option csharp_namespace = "BarkFluff.Proto.Updates";
+
+import "google/protobuf/timestamp.proto";
+import "shared.proto";
+
+package barkfluff.updates;
+
+service UpdatesApi {
+  
+  // Подписаться на новые сообщения
+  rpc SubscribeNewMessages(SubscribeNewMessagesRequest) returns (stream NewMessageEvent);
+}
+
+message SubscribeNewMessagesRequest {
+  
+}
+
+message NewMessageEvent {
+  barkfluff.shared.Message message = 1; //Отправленное сообщение
+  
+  string chat_id = 2; // Идентификатор чата на который пришло сообщение
+}
+
