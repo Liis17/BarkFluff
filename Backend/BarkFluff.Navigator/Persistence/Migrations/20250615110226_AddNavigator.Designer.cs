@@ -55,10 +55,6 @@ namespace BarkFluff.Navigator.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("ServerPublicName")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.HasKey("Id");
 
                     b.ToTable("Servers");
