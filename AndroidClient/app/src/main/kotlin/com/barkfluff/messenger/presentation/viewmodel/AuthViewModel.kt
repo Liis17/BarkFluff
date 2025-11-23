@@ -17,6 +17,10 @@ sealed class AuthEvent {
     data class LoginSuccess(val token: AuthToken) : AuthEvent()
     data class RegisterSuccess(val email: String) : AuthEvent()
     data class ConfirmSuccess(val token: AuthToken) : AuthEvent()
+    data class ResetPasswordSent(val email: String) : AuthEvent()
+    data class PasswordResetSuccess(val message: String) : AuthEvent()
+    data class OtpEnabled(val setupInfo: com.barkfluff.messenger.data.repository.OtpSetupInfo) : AuthEvent()
+    object OtpConfirmed : AuthEvent()
     data class Error(val message: String) : AuthEvent()
 }
 
@@ -90,6 +94,86 @@ class AuthViewModel @Inject constructor(
                 }
                 .onFailure { error ->
                     _events.emit(AuthEvent.Error(error.message ?: "Confirmation failed"))
+                }
+
+            _state.value = _state.value.copy(isLoading = false)
+        }
+    }
+
+    fun resetPassword(email: String) {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(isLoading = true)
+
+            authRepository.resetPassword(email)
+                .onSuccess {
+                    _events.emit(AuthEvent.ResetPasswordSent(email))
+                }
+                .onFailure { error ->
+                    _events.emit(AuthEvent.Error(error.message ?: "Failed to send reset code"))
+                }
+
+            _state.value = _state.value.copy(isLoading = false)
+        }
+    }
+
+    fun confirmResetPassword(email: String, code: String, newPassword: String) {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(isLoading = true)
+
+            authRepository.confirmResetPassword(email, code, newPassword)
+                .onSuccess {
+                    _events.emit(AuthEvent.PasswordResetSuccess("Password reset successfully"))
+                }
+                .onFailure { error ->
+                    _events.emit(AuthEvent.Error(error.message ?: "Failed to reset password"))
+                }
+
+            _state.value = _state.value.copy(isLoading = false)
+        }
+    }
+
+    fun setPassword(oldPassword: String, newPassword: String) {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(isLoading = true)
+
+            authRepository.setPassword(oldPassword, newPassword)
+                .onSuccess {
+                    _events.emit(AuthEvent.PasswordResetSuccess("Password changed successfully"))
+                }
+                .onFailure { error ->
+                    _events.emit(AuthEvent.Error(error.message ?: "Failed to change password"))
+                }
+
+            _state.value = _state.value.copy(isLoading = false)
+        }
+    }
+
+    fun enableOtp(otpType: com.barkfluff.messenger.data.repository.OtpType) {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(isLoading = true)
+
+            authRepository.enableOtp(otpType)
+                .onSuccess { setupInfo ->
+                    _events.emit(AuthEvent.OtpEnabled(setupInfo))
+                }
+                .onFailure { error ->
+                    _events.emit(AuthEvent.Error(error.message ?: "Failed to enable 2FA"))
+                }
+
+            _state.value = _state.value.copy(isLoading = false)
+        }
+    }
+
+    fun confirmOtp(otpType: com.barkfluff.messenger.data.repository.OtpType, code: String) {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(isLoading = true)
+
+            authRepository.confirmOtp(otpType, code)
+                .onSuccess {
+                    _events.emit(AuthEvent.OtpConfirmed)
+                }
+                .onFailure { error ->
+                    _events.emit(AuthEvent.Error(error.message ?: "Failed to confirm 2FA"))
                 }
 
             _state.value = _state.value.copy(isLoading = false)

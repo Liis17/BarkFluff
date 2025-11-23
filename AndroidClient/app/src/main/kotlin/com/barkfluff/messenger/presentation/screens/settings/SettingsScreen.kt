@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.barkfluff.messenger.R
+import com.barkfluff.messenger.presentation.navigation.Screen
 import com.barkfluff.messenger.presentation.viewmodel.AuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -52,20 +53,20 @@ fun SettingsScreen(
             Divider()
 
             SettingsItem(
-                title = stringResource(R.string.security),
-                onClick = { /* TODO */ }
+                title = "Изменить пароль",
+                onClick = { navController.navigate(Screen.ChangePassword.route) }
             )
             Divider()
 
             SettingsItem(
                 title = stringResource(R.string.two_factor_auth),
-                onClick = { /* TODO */ }
+                onClick = { navController.navigate(Screen.TwoFactorAuth.route) }
             )
             Divider()
 
             SettingsItem(
                 title = stringResource(R.string.active_sessions),
-                onClick = { /* TODO */ }
+                onClick = { navController.navigate(Screen.ActiveSessions.route) }
             )
             Divider()
 

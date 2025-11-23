@@ -11,7 +11,8 @@ import javax.inject.Inject
 import javax.inject.Named
 
 class UserRepository @Inject constructor(
-    @Named("usersChannel") private val usersChannel: ManagedChannel
+    @Named("usersChannel") private val usersChannel: ManagedChannel,
+    private val fileRepository: FileRepository
 ) {
 
     suspend fun getUser(userId: Long): Result<User> = withContext(Dispatchers.IO) {
@@ -170,6 +171,27 @@ class UserRepository @Inject constructor(
 
             val response = stub.checkExistEmail(request)
             Result.success(!response.isExist)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun setProfilePicture(uri: android.net.Uri): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            // Upload file to Files API
+            val uploadResult = fileRepository.uploadFile(uri, "USER_AVATAR")
+                .getOrElse { return@withContext Result.failure(it) }
+
+            // Set profile picture using Users API
+            val stub = users_api.UsersApiGrpc.newBlockingStub(usersChannel)
+
+            val request = users_api.UsersApi.SetProfilePictureRequest.newBuilder()
+                .setFileId(uploadResult.fileId)
+                .build()
+
+            stub.setProfilePicture(request)
+
+            Result.success(uploadResult.fileId)
         } catch (e: Exception) {
             Result.failure(e)
         }

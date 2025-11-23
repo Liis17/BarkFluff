@@ -1,5 +1,6 @@
 package com.barkfluff.messenger.presentation.viewmodel
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.barkfluff.messenger.data.repository.UserRepository
@@ -51,6 +52,16 @@ class UserViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             userRepository.updateProfile(firstName, lastName, username, bio)
+                .onSuccess {
+                    // Reload current user
+                    _currentUser.value?.let { loadUser(it.id) }
+                }
+        }
+    }
+
+    fun setProfilePicture(uri: Uri) {
+        viewModelScope.launch {
+            userRepository.setProfilePicture(uri)
                 .onSuccess {
                     // Reload current user
                     _currentUser.value?.let { loadUser(it.id) }
