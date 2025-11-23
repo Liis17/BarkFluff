@@ -82,7 +82,8 @@ namespace BarkFluff.Configuration.Persistence.Migrations
 
                     -- ServerProps
                     ('ServerProps', 'Name', '', NOW(), 'system', 'migration', 3),
-                    ('ServerProps', 'Description', '', NOW(), 'system', 'migration', 3);
+                    ('ServerProps', 'Description', '', NOW(), 'system', 'migration', 3),
+                    ('ServerProps', 'PublicName', '', NOW(), 'system', 'migration', 3);
             ");
         }
 
