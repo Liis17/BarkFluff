@@ -1,0 +1,34 @@
+﻿<ui:FluentWindow
+    x:Class="BarkFluff.DBEditor.Views.LoginWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:BarkFluff.DBEditor.Views"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    Title="Configuration Setup"
+    Width="800"
+    Height="450"
+    mc:Ignorable="d">
+    <Grid>
+        <ui:TitleBar Title="Connect to Database" HorizontalAlignment="Stretch" VerticalAlignment="Top" />
+        <Grid Margin="20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <TextBlock Margin="0,20,0,20" HorizontalAlignment="Center" FontSize="24" FontWeight="Bold" Text="Configuration Setup" />
+
+            <StackPanel Grid.Row="1" VerticalAlignment="Center">
+                <ui:TextBox x:Name="TbHost" ClearButtonEnabled="False" Icon="Server24" PlaceholderText="Host (e.g. 127.0.0.1:5432)" Margin="0,0,0,15" />
+                <ui:TextBox x:Name="TbDatabase" Icon="Database24" PlaceholderText="Database Name" Margin="0,0,0,15" />
+                <ui:TextBox x:Name="TbUser" Icon="Person24" PlaceholderText="Username" Margin="0,0,0,15" />
+                <ui:PasswordBox x:Name="PbPassword" Icon="Lock24" PlaceholderText="Password" />
+            </StackPanel>
+
+            <ui:Button Grid.Row="2" Margin="0,20,0,0" HorizontalAlignment="Stretch" Appearance="Primary" Click="BtnConnect_Click" Content="Connect &amp; Save" Icon="PlugConnected24" />
+        </Grid>
+    </Grid>
+</ui:FluentWindow>
