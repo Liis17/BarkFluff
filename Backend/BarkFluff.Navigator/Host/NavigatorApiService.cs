@@ -6,14 +6,17 @@ using MediatR;
 using Proto.Navigator;
 using BarkFluff.Navigator.Persistence;
 using Features.RegisterServer;
+using BarkFluff.GrpcServer.XAuth;
 
 public class NavigatorApiService : NavigatorApi.NavigatorApiBase
 {
     private readonly IMediator _mediator;
+    private readonly UserContext _userContext;
 
-    public NavigatorApiService(IMediator mediator)
+    public NavigatorApiService(IMediator mediator, UserContext userContext)
     {
         _mediator = mediator;
+        _userContext = userContext;
     }
 
     public override async Task<ListServersResponse> ListServers(ListServersRequest request, ServerCallContext context)
@@ -34,7 +37,7 @@ public class NavigatorApiService : NavigatorApi.NavigatorApiBase
             Description = protoServer?.Description ?? string.Empty,
             ServerPublicName = protoServer?.ServerPublicName ?? string.Empty,
             CreatedAt = DateTime.UtcNow,
-            AddedBy = string.Empty // Можно доработать, если появится автор
+            AddedBy = _userContext.IsAuthenticated ? _userContext.UserId.ToString() : "Anonymous"
         };
         var command = new Features.RegisterServer.RegisterServerCommand { Server = domainServer };
         return await _mediator.Send(command, context.CancellationToken);
