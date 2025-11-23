@@ -180,6 +180,21 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+    fun listOtpVerification(): List<com.barkfluff.messenger.data.repository.OtpMethod> {
+        var methods = emptyList<com.barkfluff.messenger.data.repository.OtpMethod>()
+        viewModelScope.launch {
+            authRepository.listOtpVerification()
+                .onSuccess { otpMethods ->
+                    methods = otpMethods
+                }
+        }
+        return methods
+    }
+
+    suspend fun getOtpMethods(): Result<List<com.barkfluff.messenger.data.repository.OtpMethod>> {
+        return authRepository.listOtpVerification()
+    }
+
     fun logout() {
         viewModelScope.launch {
             authRepository.logout()
