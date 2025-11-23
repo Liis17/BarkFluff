@@ -11,6 +11,11 @@ public class HtmlEmailTemplateParser
         { NotificationType.ConfirmationOtpEmail, "confirmation_otp_email.html"},
         { NotificationType.ConfirmationAuth, "confirmation_auth.html"},
         { NotificationType.ResetPassword, "reset_password.html"},
+        { NotificationType.FailedLogin, "failed_login.html"},
+        { NotificationType.SuccessfulRegistration, "successful_registration.html"},
+        { NotificationType.SuccessfulLogin, "successful_login.html"},
+        { NotificationType.PasswordChanged, "password_changed.html"},
+        { NotificationType.TwoFactorMethodChanged, "two_factor_method_changed.html"},
     };
     
     public async Task<string> Parse(NotificationType type, Dictionary<string, string> payload)
