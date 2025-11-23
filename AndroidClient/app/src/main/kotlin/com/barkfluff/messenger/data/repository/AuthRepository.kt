@@ -306,6 +306,29 @@ class AuthRepository @Inject constructor(
         }
     }
 
+    suspend fun listOtpVerification(): Result<List<OtpMethod>> = withContext(Dispatchers.IO) {
+        try {
+            val stub = identity_api.IdentityApiGrpc.newBlockingStub(identityChannel)
+            val request = identity_api.IdentityApi.ListOtpVerificationRequest.newBuilder().build()
+            val response = stub.listOtpVerification(request)
+
+            val methods = response.methodsList.map { methodProto ->
+                OtpMethod(
+                    type = when (methodProto.type) {
+                        identity_api.IdentityApi.OtpTypeId.AUTHENTICATOR -> OtpType.AUTHENTICATOR
+                        identity_api.IdentityApi.OtpTypeId.EMAIL -> OtpType.EMAIL
+                        else -> OtpType.EMAIL
+                    },
+                    isEnabled = methodProto.isEnabled
+                )
+            }
+
+            Result.success(methods)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun logout() {
         sessionManager.clearSession()
     }
@@ -327,4 +350,9 @@ enum class OtpType {
 data class OtpSetupInfo(
     val secret: String,
     val qrCodeUrl: String?
+)
+
+data class OtpMethod(
+    val type: OtpType,
+    val isEnabled: Boolean
 )

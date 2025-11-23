@@ -18,7 +18,8 @@ data class ServerInfo(
     val usersEndpoint: String,
     val filesEndpoint: String,
     val messagesEndpoint: String,
-    val updatesEndpoint: String
+    val updatesEndpoint: String,
+    val fastAuthEndpoint: String? = null
 )
 
 data class ServerColor(
