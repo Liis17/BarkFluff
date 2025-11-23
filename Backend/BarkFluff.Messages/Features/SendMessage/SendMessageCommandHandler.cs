@@ -134,12 +134,12 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
         };
         
         var members = await _chatsStorage.GetChatMembers(chatId.Value, 0, int.MaxValue);
-        
-        await _messagesStorage.AddMessage(message);
-        
+
+        message = await _messagesStorage.AddMessage(message);
+
         await _messageQueueSender.SendMessage(message, chatId.Value, members
             .Select(x => x.UserId).ToList());
-        
+
         return new SendMessageResponse() { Message = message.ToGrpc() };
     }
 }
