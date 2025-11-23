@@ -21,16 +21,18 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
     private readonly BarkFluff.Proto.Users.UsersServerApi.UsersServerApiClient _usersClient;
     private readonly NotificationQueueSender _notificationQueueSender;
     private readonly RequestContext _requestContext;
+    private readonly LocationClient _locationClient;
 
     public EnableOtpVerificationCommandHandler(UserContext userContext, AuthPropertiesStorage authPropertiesStorage, 
         UsersServerApi.UsersServerApiClient usersClient, NotificationQueueSender notificationQueueSender, 
-        RequestContext requestContext)
+        RequestContext requestContext, LocationClient locationClient)
     {
         _userContext = userContext;
         _authPropertiesStorage = authPropertiesStorage;
         _usersClient = usersClient;
         _notificationQueueSender = notificationQueueSender;
         _requestContext = requestContext;
+        _locationClient = locationClient;
     }
 
     public async Task<EnableOtpVerificationResponse> Handle(EnableOtpVerificationCommand request, CancellationToken cancellationToken)
@@ -88,6 +90,17 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
             
             await _authPropertiesStorage.UpdateOptType(Domain.OtpType.Email, userContactInfo.User.Id);
             
+            // Получаем данные о местоположении IP-адреса
+            string locationInfo = "-";
+            if (!string.IsNullOrEmpty(_requestContext.IpAddress))
+            {
+                var ipLocation = await _locationClient.GetLocation(_requestContext.IpAddress);
+                if (ipLocation != null)
+                {
+                    locationInfo = $"{ipLocation.Country}, {ipLocation.RegionName}, {ipLocation.City}";
+                }
+            }
+            
             var emailNotification = new EmailNotification()
             {
                 OwnerId = userInfo.User.Id,
@@ -100,7 +113,7 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
                     {"ip", _requestContext.IpAddress ?? string.Empty},
                     {"devicename", _requestContext.DeviceName},
                     {"os", _requestContext.OperationSystem},
-                    {"location", "-"},
+                    {"location", locationInfo},
                     {"app", $"{_requestContext.AppName} v.{_requestContext.AppVersion}"},
                     {"datetime", DateTime.UtcNow.ToString("D")}
                 },

@@ -19,16 +19,18 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
     private readonly UsersServerApi.UsersServerApiClient _usersClient;
     private readonly RequestContext _requestContext;
     private readonly NotificationQueueSender _notificationQueueSender;
+    private readonly LocationClient _locationClient;
 
     public ResetPasswordCommandHandler(ResetPasswordsStorage resetPasswordsStorage,
         AuthPropertiesStorage authPropertiesStorage, UsersServerApi.UsersServerApiClient usersApiClient,
-        RequestContext requestContext, NotificationQueueSender notificationQueueSender)
+        RequestContext requestContext, NotificationQueueSender notificationQueueSender, LocationClient locationClient)
     {
         _resetPasswordsStorage = resetPasswordsStorage;
         _authPropertiesStorage = authPropertiesStorage;
         _usersClient = usersApiClient;
         _requestContext = requestContext;
         _notificationQueueSender = notificationQueueSender;
+        _locationClient = locationClient;
     }
 
     public async Task<ResetPasswordResponse> Handle(ResetPasswordCommand request, CancellationToken cancellationToken)
@@ -99,6 +101,17 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
             CreatedAt = DateTime.UtcNow, OtpCode = code, IsApproved = false, OtpType = request.OtpType, UserId = user.User.Id
         };
         
+        // Получаем данные о местоположении IP-адреса
+        string locationInfo = "-";
+        if (!string.IsNullOrEmpty(_requestContext.IpAddress))
+        {
+            var ipLocation = await _locationClient.GetLocation(_requestContext.IpAddress);
+            if (ipLocation != null)
+            {
+                locationInfo = $"{ipLocation.Country}, {ipLocation.RegionName}, {ipLocation.City}";
+            }
+        }
+        
         var emailNotification = new EmailNotification()
         {
             OwnerId = user.User.Id,
@@ -111,7 +124,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
                 {"ip", _requestContext.IpAddress ?? string.Empty},
                 {"devicename", _requestContext.DeviceName},
                 {"os", _requestContext.OperationSystem},
-                {"location", "-"},
+                {"location", locationInfo},
                 {"app", $"{_requestContext.AppName} v.{_requestContext.AppVersion}"},
                 {"datetime", DateTime.UtcNow.ToString("D")}
             },

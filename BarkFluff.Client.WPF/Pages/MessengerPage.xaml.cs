@@ -1,9 +1,18 @@
-﻿using BarkFluff.Client.WPF.UserControls;
+﻿using BarkFluff.Client.WPF.Reactive;
+using BarkFluff.Client.WPF.UserControls;
+using BarkFluff.Proto.Shared;
+using BarkFluff.WebApi.Core.MessengerData;
+using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
 
+using Erida = BarkFluff.Client.WPF.Services.Erida.MessageType;
+using MType = BarkFluff.Client.WPF.Services.Erida.MessageType.MessageTypeEnum;
 namespace BarkFluff.Client.WPF.Pages
 {
     /// <summary>
@@ -11,51 +20,431 @@ namespace BarkFluff.Client.WPF.Pages
     /// </summary>
     public partial class MessengerPage : UserControl
     {
+        public ReactiveBool IsOpenChat { get; set; } = new ReactiveBool(false);
+        public ReactiveString ChatId { get; set; } = new ReactiveString(string.Empty);
+        public string TitleChat { get; set; } = string.Empty;
+        private long _openedLastMessageId { get; set; } = 0;
+
+        public bool IsOpenChatEmpty { get; set; } = false;
+        public ReactiveLong ChatIdbyUserId { get; set; } = new ReactiveLong(0);
+        public bool IsGroup { get; set; } = false;
         public MessengerPage()
         {
             InitializeComponent();
+
             Loaded += MessengerPage_Loaded;
+            IsOpenChat.PropertyChanged += IsOpenChat_PropertyChanged;
+            ChatId.PropertyChanged += ChatId_PropertyChanged;
+            ChatIdbyUserId.PropertyChanged += ChatIdbyUserId_PropertyChanged;
+
+            StartSlideDownAndFadeIn();
+        }
+
+        #region Обработчики событий
+        private async void ChatIdbyUserId_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (ChatIdbyUserId.Value == 0) { return; } //если chatId пустой, то выходим из метода
+            IsOpenChat.Value = true;
+            IsOpenChatEmpty = true;
+            IsGroup = false;
+            ChatId.Value = string.Empty;
+            App.ErideMessage.AddMessage($"Открытие чата с UserID: {ChatIdbyUserId.Value}", new Erida { Type = MType.Debug });
+            _openedLastMessageId = 0;
+            MessageArea.Children.Clear();
+            GetChatInfo(ChatIdbyUserId.Value); // получаем информацию о чате для вывода в заголовке и аватара
+
+        }
+        private void TextForMessage_LostFocus(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                //var textBox = sender as TextBox;
+                //textBox.Focus();
+            }
+            catch { } // игнорируем ошибку если не получилось сфокусироваться на текстбоксе
+
+        }
+
+        private void TextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.LeftShift || e.Key == Key.LeftCtrl)
+            {
+                var textBox = sender as TextBox;
+                textBox.AcceptsReturn = true;
+            }
+            if (e.Key == Key.Enter)
+            {
+                var textBox = sender as TextBox;
+                tempMessage = textBox.Text;
+                var a = tempMessage.Replace(" ", "");
+                if (a == "")
+                {
+                    return;
+                }
+                SendMessage(sender, null);
+                textBox.Text = string.Empty;
+                textBox.AcceptsReturn = false;
+            }
+        }
+
+        private void TextForMessage_KeyUp(object sender, KeyEventArgs e)
+        {
+            var textBox = sender as TextBox;
+            if (e.Key == Key.LeftShift || e.Key == Key.LeftCtrl)
+            {
+                textBox.AcceptsReturn = false;
+            }
+        }
+
+        private async void ChatId_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (string.IsNullOrEmpty(ChatId.Value) || IsOpenChatEmpty || _openedLastMessageId == 0)
+            {
+                return;
+            }
+            ChatIdbyUserId.Value = 0;
+            App.ErideMessage.AddMessage($"Загрузка сообщений чата с ID: {ChatId.Value}", new Erida { Type = MType.Debug });
+            var response = await App.ServerCommunication.GetMessages(App.GParam, ChatId.Value, _openedLastMessageId);
+            if (!response.error.IsSuccess)
+            {
+                if (response.error.ErrorCode != 1)
+                {
+                    App.ErideMessage.AddMessage($"Ошибка при открытии чата: {response.error.ErrorMessage}", new Erida { Type = MType.Error });
+                    return;
+                }
+            }
+            MessageArea.Children.Clear();
+            var sortedMessages = response.messages.OrderBy(m => m.SentAt.ToDateTime()).ToList();
+
+            // Группировка по дням
+            var groupedMessages = sortedMessages.GroupBy(m => m.SentAt.ToDateTime().Date)
+                                              .OrderBy(g => g.Key); // От старых дат к новым
+
+            foreach (var group in groupedMessages)
+            {
+                // Добавляем контрол с датой по центру
+                var dateHeader = GetDateHeader(group.Key);
+                var dateControl = new DateHeaderControl { Text = dateHeader };
+                dateControl.HorizontalAlignment = HorizontalAlignment.Center;
+                dateControl.Margin = new Thickness(0, 10, 0, 10); // Отступы
+                MessageArea.Children.Add(dateControl);
+
+                // Добавляем сообщения группы
+                foreach (var item in group)
+                {
+                    var owner = item.SenderId == App.GParam.UserId ? MessageBubble.MessageOwner.Me : MessageBubble.MessageOwner.Interlocutor;
+                    var type = item.Attachments.FirstOrDefault()?.Type switch
+                    {
+                        MessageAttachmentType.Image => MessageBubble.MessageType.Image,
+                        MessageAttachmentType.Video => MessageBubble.MessageType.Video,
+                        MessageAttachmentType.Gif => MessageBubble.MessageType.Gif,
+                        MessageAttachmentType.Document => MessageBubble.MessageType.Document,
+                        _ => MessageBubble.MessageType.Text
+                    };
+                    var messageContentType = item.Type switch
+                    {
+                        MessageContentType.Generic => MessageBubble.MessageContentType.Generic,
+                        MessageContentType.System => MessageBubble.MessageContentType.System,
+                        _ => MessageBubble.MessageContentType.Unknown
+                    };
+                    var messageItem = new MessageBubble(owner, type, item, IsGroup);
+                    var message = new MessageModel
+                    {
+                        ChatId = ChatId.Value,
+                        SenderId = App.GParam.UserId,
+                        SentAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(DateTime.UtcNow)
+                    };
+                    AddMessage(messageItem);
+                }
+            }
+        }
+        private string GetDateHeader(DateTime date)
+        {
+            if (date.Date == DateTime.Today) return "Сегодня";
+            if (date.Date == DateTime.Today.AddDays(-1)) return "Вчера";
+            return date.ToString("dd.MM.yyyy");
+        }
+        private void IsOpenChat_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (IsOpenChat.Value)
+            {
+                OpenedChat.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                OpenedChat.Visibility = Visibility.Collapsed;
+            }
         }
 
         private async void MessengerPage_Loaded(object sender, RoutedEventArgs e)
         {
-            StartSlideDownAndFadeIn();
-            App.ServerCommunication.CreateOnlyBeaconAC(App.GParam);
-            await App.ServerCommunication.GetServerInfo(App.GParam);
-            App.ServerCommunication.CreateAC(App.GParam, App.GParam.MachineName, SystemInfo.GetFriendlyWindowsVersion(), AppVersion.AppName, AppVersion.Version, App.GParam.IpAddress);
+            //временное удаление аватарки-заглушки габена пока нет кеша 
+            ChatAvatar.ImageSource = null;
+            AvatarTitleWindow.ImageSource = null;
 
+            OpenedChat.Visibility = Visibility.Collapsed;
+            App.ServerCommunication.CreateOnlyBeaconAC(App.GParam);
+            var (error, serverInfo) = await App.ServerCommunication.GetServerInfo(App.GParam);
+            if (!error.IsSuccess)
+            {
+                App.ErideMessage.AddMessage(error.ErrorMessage, new Erida { Type = MType.Error });
+                return;
+            }
+            else
+            {
+                App.ErideMessage.AddMessage("Получена информация о сервере", new Erida { Type = MType.Debug });
+
+                App.GParam.ServerName = serverInfo.Name;
+                App.GParam.ServerDescription = serverInfo.Description;
+                App.GParam.SocketIdentity = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Identity.Endpoint.Host + ":" + serverInfo.Identity.Endpoint.Port);
+                App.GParam.SocketUsers = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Users.Endpoint.Host + ":" + serverInfo.Users.Endpoint.Port);
+                App.GParam.SocketFiles = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Files.Endpoint.Host + ":" + serverInfo.Files.Endpoint.Port);
+                App.GParam.SocketMessages = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Messages.Endpoint.Host + ":" + serverInfo.Messages.Endpoint.Port);
+                App.GParam.SocketUpdates = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Updates.Endpoint.Host + ":" + serverInfo.Updates.Endpoint.Port);
+                App.GParam.Colors = new ClientColors()
+                {
+                    LiteHex = serverInfo.Color.LiteHex,
+                    MainHex = serverInfo.Color.MainHex,
+                    HardHex = serverInfo.Color.HardHex,
+                };
+                MainWindow.SaveSettings();
+            }
+
+            var response = App.ServerCommunication.CreateAC(App.GParam, App.GParam.MachineName, SystemInfo.GetFriendlyWindowsVersion(), AppVersion.AppName, AppVersion.Version, App.GParam.IpAddress);
+            if (!response.IsSuccess)
+            {
+                App.ErideMessage.AddMessage(response.ErrorMessage ?? "Неизвестная проблема", new Erida { Type = MType.Error });
+                return;
+            }
+            else
+            {
+                App.ErideMessage.AddMessage("API клиент успешно обновлён", new Erida { Type = MType.Debug });
+            }
 
             TitleWindow.Text = "Barkfluff";
 
-            ChatUpdate();
             UserInfoUpdate();
+            ChatUpdate();
+            await Task.Run(() => ProcessMessages(App.GParam));
         }
-        public async void ChatUpdate()
+        #endregion
+
+        #region Сообщения
+        private const int MESSAGE_LIMIT = 4096; // лимит символов в одном сообщении
+        private string tempMessage; // временное хранение сообщения
+        private List<string> attachedFiles { get; set; } = new List<string>(); //список ID прикрепленных файлов
+        private void SendMessage(object sender, RoutedEventArgs e)
+        {
+            tempMessage = TextForMessage.Text;
+
+            if (string.IsNullOrEmpty(tempMessage)) return;
+
+            List<string> messageParts = SplitMessage(tempMessage, MESSAGE_LIMIT);
+            TextForMessage.Text = string.Empty;
+            foreach (var part in messageParts)
+            {
+                string resipientId = "0";
+                bool isUserId = false;
+                if (IsOpenChatEmpty)
+                {
+                    resipientId = ChatIdbyUserId.Value.ToString();
+                    isUserId = true;
+                }
+                else
+                {
+                    resipientId = ChatId.Value;
+                    isUserId = false;
+                }
+
+                (bool, bool, string) options = new(true, isUserId, resipientId);
+                var messageControl = new MessageBubble(part, options, attachedFiles);
+                var message = new MessageModel
+                {
+                    Text = part,
+                    ChatId = ChatId.Value,
+                    SenderId = App.GParam.UserId,
+                    SentAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(DateTime.UtcNow)
+                };
+                AddMessage(messageControl);
+                UpdateChatWithMessage(message);
+            }
+        }
+        private void AddMessage(UserControl control)
+        {
+            tempMessage = string.Empty;
+            MessageArea.Children.Add(control);
+            var animation = (Storyboard)FindResource("MessageAppearAnimation");
+            Storyboard.SetTarget(animation, control);
+            animation.Begin();
+            MessageScrollViewer.ScrollToEnd();
+        }
+        private async void ReadMessage(List<long> messageIds)
+        {
+            var response = await App.ServerCommunication.MarkMessageAsRead(App.GParam, messageIds);
+            if (!response.IsSuccess)
+            {
+                App.ErideMessage.AddMessage("Ошибка при отметке сообщения как прочитанного: " + response.ErrorMessage, new Erida { Type = MType.Debug });
+                return;
+            }
+        }
+
+        public void UpdateChatWithMessage(MessageModel message)
+        {
+            if (message == null || string.IsNullOrEmpty(message.ChatId))
+            {
+                App.ErideMessage.AddMessage("Ошибка: MessageModel или ChatId пустые", new Erida { Type = MType.Error });
+                return;
+            }
+
+            // Находим ChatItem с совпадающим ChatId
+            ChatItem targetChatItem = null;
+            foreach (var child in ChatList.Children)
+            {
+                if (child is ChatItem chatItem && chatItem.ChatId == message.ChatId)
+                {
+                    targetChatItem = chatItem;
+                    break;
+                }
+            }
+
+            if (targetChatItem == null)
+            {
+                App.ErideMessage.AddMessage($"Чат с ID {message.ChatId} не найден в ChatList", new Erida { Type = MType.Debug });
+                return;
+            }
+
+            // Передаем сообщение и обновляем
+            targetChatItem.TransferMessage = message;
+            targetChatItem.UpdateMessage();
+
+            // Сортировка ChatItem по времени последнего сообщения (новые сверху)
+            var sortedChatItems = ChatList.Children.OfType<ChatItem>()
+                .OrderByDescending(chatItem => chatItem.TransferMessage?.SentAt.ToDateTime() ?? DateTime.MinValue)
+                .ToList();
+
+            // Очищаем и перестраиваем ChatList
+            ChatList.Children.Clear();
+            foreach (var chatItem in sortedChatItems)
+            {
+                ChatList.Children.Add(chatItem);
+            }
+        }
+
+        #endregion
+
+
+        #region Вспомогательные методы
+
+        private List<string> SplitMessage(string message, int maxLength)
+        {
+            List<string> parts = new List<string>();
+            int currentIndex = 0;
+
+            while (currentIndex < message.Length)
+            {
+                int length = Math.Min(maxLength, message.Length - currentIndex);
+                if (length == 0) break;
+
+                // Проверяем, чтобы не разрывать слово
+                if (currentIndex + length < message.Length)
+                {
+                    int lastSpace = message.LastIndexOf(' ', currentIndex + length - 1, length);
+                    if (lastSpace > currentIndex)
+                    {
+                        length = lastSpace - currentIndex;
+                    }
+                }
+
+                string part = message.Substring(currentIndex, length);
+                parts.Add(part.TrimEnd());
+                currentIndex += length;
+            }
+
+            return parts;
+        }
+        public async Task ChatUpdate()
         {
             var response = await App.ServerCommunication.GetChats(App.GParam);
+            ChatList.Children.Clear(); // Очищаем список перед добавлением
 
             if (response.chats.Count == 0)
             {
                 EmptyChatListBlock.Visibility = Visibility.Visible;
+                return;
             }
-            else
+
+            EmptyChatListBlock.Visibility = Visibility.Collapsed;
+
+            // Сортировка чатов по времени последнего сообщения (новые выше)
+            var sortedChats = response.chats
+                .OrderByDescending(chat => chat.LastMessage?.SentAt.ToDateTime() ?? DateTime.MinValue)
+                .ToList();
+
+            foreach (var item in sortedChats)
             {
-                EmptyChatListBlock.Visibility = Visibility.Collapsed;
-            }
-            foreach (var item in response.chats)
-            {
-                var avatar = item.Picture;
-                if (string.IsNullOrEmpty(avatar))
+                if (item.IsGroupChat)
                 {
-                    avatar = "https://charlie.liis17.ru/Photoshop_TmPl02VbWB.png";
+                    App.ErideMessage.AddMessage($"Пропущен групповой чат {item.Title}", new Erida { Type = MType.Debug });
+                    continue;
                 }
-                List<long> list = item.LastMessage.ReadBy.ToList();
-                var messageItem = new ChatItem(avatar, item.Title, item.LastMessage.Content.Text, time: item.LastMessage.SentAt.ToString(), reading: ChatItem.ReadingStatus.None, list);
+
+                // Определяем аватар
+                string avatar = string.IsNullOrEmpty(item.Picture)
+                    ? "pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png"
+                    : item.Picture;
+
+                // Определяем статус чтения и заголовок
+                var isRead = ChatItem.ReadingStatus.ForMe;
+                var title = item.Title;
+                var membersId = item.Members.Select(m => m.UserId).ToList();
+                if (App.GParam.UserId == item.Members[0].UserId && App.GParam.UserId == item.Members[1].UserId)
+                {
+                    isRead = ChatItem.ReadingStatus.My;
+                    title = "Избранное";
+                    avatar = "pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/savedplaceholder.png";
+                }
+
+                membersId.Remove(App.GParam.UserId);
+                long userId = membersId.FirstOrDefault(); // Возвращаем 0, если список пуст
+
+                if (userId == 0)
+                {
+                    App.ErideMessage.AddMessage($"Ошибка: нет доступных userId для чата {item.Id}", new Erida { Type = MType.Error });
+                    continue;
+                }
+
+                var messageItem = new ChatItem(
+                    avatar,
+                    title,
+                    item.LastMessage?.Content.Text ?? string.Empty,
+                    time: item.LastMessage?.SentAt.ToString() ?? string.Empty,
+                    reading: isRead,
+                    readBy: item.LastMessage?.ReadBy.ToList() ?? new List<long>(),
+                    unReaded: item.CountUnread,
+                    chatId: item.Id,
+                    lastMessageId: item.LastMessage?.Id ?? 0,
+                    isGroupChat: item.IsGroupChat,
+                    userId: userId
+                );
+
                 ChatList.Children.Add(messageItem);
             }
+
+            AvatarTitleWindow.ImageSource = new BitmapImage(new Uri(App.GParam.PictureUrl, UriKind.RelativeOrAbsolute));
         }
         public async void UserInfoUpdate()
         {
+            var response = await App.ServerCommunication.GetUserData(App.GParam);
+
+            App.GParam.UserId = response.Data.Id;
+            App.GParam.UserName = response.Data.Username;
+            App.GParam.FirstName = response.Data.FirstName;
+            App.GParam.LastName = response.Data.LastName;
+            App.GParam.Description = response.Data.Description;
+            App.GParam.PictureUrl = response.Data.ProfilePictureUrl;
+            // App.GParam.PictureId = response.Data.PictureId; // славик переделай
+            MainWindow.SaveSettings();
+
 
         }
         public void StartSlideDownAndFadeIn()
@@ -63,5 +452,324 @@ namespace BarkFluff.Client.WPF.Pages
             var storyboard = (Storyboard)this.Resources["SlideDownAndFadeIn"];
             storyboard.Begin();
         }
+
+        public async void GetChatInfo(long userId)
+        {
+            var response = await App.ServerCommunication.GetUserData(App.GParam, userId);
+            var avatar = string.Empty;
+            if (!string.IsNullOrEmpty(response.Data.ProfilePictureUrl))
+            {
+                avatar = response.Data.ProfilePictureUrl;
+            }
+            if (!string.IsNullOrEmpty(response.Data.ProfilePicturePreviewUrl))
+            {
+                avatar = response.Data.ProfilePicturePreviewUrl;
+            }
+            else
+            {
+                avatar = "pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png";
+            }
+
+            if (App.GParam.UserId == response.Data.Id)
+            {
+
+                ChatTitleUsername.Text = "Избранное";
+                avatar = "pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/savedplaceholder.png";
+            }
+            else
+            {
+                ChatTitleUsername.Text = $"{response.Data.FirstName} {response.Data.LastName}";
+            }
+            ChatAvatar.ImageSource = new BitmapImage(new Uri(avatar, UriKind.RelativeOrAbsolute));
+
+        }
+        #endregion
+
+
+        #region SearchBox
+
+        private void SearchBoxFocus(object sender, RoutedEventArgs e)
+        {
+
+        }
+        public void ChatListFadeIn()
+        {
+            var storyboard = new Storyboard();
+            var opacityAnimation = new DoubleAnimation
+            {
+                From = 0.0,
+                To = 1.0,
+                Duration = new Duration(TimeSpan.FromMilliseconds(500)),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
+            };
+            Storyboard.SetTarget(opacityAnimation, ChatList);
+            Storyboard.SetTargetProperty(opacityAnimation, new PropertyPath("Opacity"));
+            storyboard.Children.Add(opacityAnimation);
+            storyboard.Begin();
+        }
+
+        public void ChatListFadeOut()
+        {
+            var storyboard = new Storyboard();
+            var opacityAnimation = new DoubleAnimation
+            {
+                From = 1.0,
+                To = 0.0,
+                Duration = new Duration(TimeSpan.FromMilliseconds(150)),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
+            };
+            Storyboard.SetTarget(opacityAnimation, ChatList);
+            Storyboard.SetTargetProperty(opacityAnimation, new PropertyPath("Opacity"));
+            storyboard.Children.Add(opacityAnimation);
+            storyboard.Begin();
+        }
+        private void SearchTextBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            SearchTextBox.PlaceholderText = "Введите минимум 3 символа для поиска";
+            SearchResultsHeader.Text = string.Empty;
+            ExpandGrid();
+        }
+
+        private void ExpandGrid()
+        {
+            var expandAnimation = (Storyboard)FindResource("ExpandAnimation");
+            expandAnimation.Begin();
+            ChatListFadeOut();
+        }
+
+        private void CollapseGrid()
+        {
+            var collapseAnimation = (Storyboard)FindResource("CollapseAnimation");
+            collapseAnimation.Begin();
+            ChatListFadeIn();
+        }
+
+        public void ClearSearchAndHideResults()
+        {
+            SearchTextBox.Text = string.Empty;
+            CollapseGrid();
+        }
+
+        private void SearchTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            SearchTextBox.PlaceholderText = "Поиск";
+
+            // потом заменить на что то другое а то так хуева оставлять
+            ClearSearchAndHideResults();
+        }
+        private async void SearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (SearchTextBox.Text.Length >= 3)
+            {
+
+                var response = await App.ServerCommunication.SearchUser(App.GParam, SearchTextBox.Text);
+                SearchCollection.Children.Clear();
+                foreach (var item in response.userList)
+                {
+                    var a = new SearchElement(item);
+                    SearchCollection.Children.Add(a);
+                }
+                SearchResultsHeader.Text = "Найдено " + response.userList.Count + " результатов";
+            }
+            else if (SearchTextBox.Text.Length <= 2 && SearchTextBox.Text.Length >= 1)
+            {
+                SearchCollection.Children.Clear();
+                SearchTextBox.PlaceholderText = string.Empty;
+                SearchResultsHeader.Text = "Введите минимум 3 символа для поиска";
+            }
+            else if (SearchTextBox.Text.Length == 0)
+            {
+                SearchCollection.Children.Clear();
+                SearchResultsHeader.Text = string.Empty;
+            }
+        }
+
+        #endregion
+
+        #region боковая панель
+
+        private bool isOpenPanel = false;
+        private readonly CubicEase easingPanel = new CubicEase { EasingMode = EasingMode.EaseInOut };
+        private void SidePanel_Loaded(object sender, RoutedEventArgs e)
+        {
+            SidePanel.Children.Clear();
+            var sideBar = new SideBar();
+            SidePanel.Children.Add(sideBar);
+        }
+        private void OpenPanelClick(object sender, RoutedEventArgs e)
+        {
+            if (!isOpenPanel)
+                OpenPanel();
+            else
+                ClosePanel();
+        }
+        private void OverlayPanel_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            ClosePanel();
+        }
+        private void OpenPanel()
+        {
+            var anim = new ThicknessAnimation
+            {
+                From = new Thickness(-350, 0, 0, 0),
+                To = new Thickness(0, 0, 0, 0),
+                Duration = TimeSpan.FromSeconds(0.2),
+                EasingFunction = easingPanel
+            };
+            SidePanel.BeginAnimation(MarginProperty, anim);
+            OverlayPanel.Visibility = Visibility.Visible;
+            isOpenPanel = true;
+        }
+        private void ClosePanel()
+        {
+            var anim = new ThicknessAnimation
+            {
+                From = new Thickness(0, 0, 0, 0),
+                To = new Thickness(-350, 0, 0, 0),
+                Duration = TimeSpan.FromSeconds(0.2),
+                EasingFunction = easingPanel
+            };
+            SidePanel.BeginAnimation(MarginProperty, anim);
+            OverlayPanel.Visibility = Visibility.Collapsed;
+            isOpenPanel = false;
+        }
+        #endregion
+
+        #region Центральный блок контента
+
+        private bool isOpenCenter = false;
+        private readonly CubicEase easingCenter = new CubicEase { EasingMode = EasingMode.EaseInOut };
+
+        private void OpenCenterBlock(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (!isOpenCenter)
+                OpenCenterPanel();
+            else
+                CloseCenterPanel();
+        }
+        private void OpenCenterPanel()
+        {
+            CenterPanel.Visibility = Visibility.Visible;
+            OverlayCenter.Visibility = Visibility.Visible;
+
+            var anim = new DoubleAnimation
+            {
+                From = 0,
+                To = 1,
+                Duration = TimeSpan.FromSeconds(0.2),
+                EasingFunction = easingCenter
+            };
+            CenterPanel.BeginAnimation(OpacityProperty, anim);
+            isOpenCenter = true;
+        }
+
+        private void CloseCenterPanel()
+        {
+            var anim = new DoubleAnimation
+            {
+                From = 1,
+                To = 0,
+                Duration = TimeSpan.FromSeconds(0.2),
+                EasingFunction = easingCenter
+            };
+            anim.Completed += (s, e) =>
+            {
+                CenterPanel.Visibility = Visibility.Collapsed;
+                OverlayCenter.Visibility = Visibility.Collapsed;
+            };
+            CenterPanel.BeginAnimation(OpacityProperty, anim);
+            isOpenCenter = false;
+        }
+        private void OverlayCenter_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            CloseCenterPanel();
+        }
+
+
+        #endregion
+
+        #region обновление
+
+        public async Task ProcessMessages(GlobalParam globalParam)
+        {
+            return;
+            App.ErideMessage.AddMessage("Запуск процесса получения обновлений...", new Erida { Type = MType.Debug });
+            var (error, stream) = await App.ServerCommunication.JustUpdate(globalParam);
+            if (!error.IsSuccess)
+            {
+                App.ErideMessage.AddMessage("Ошибка при подключении к потоку обновлений: " + error.ErrorMessage, new Erida { Type = MType.Error });
+                return;
+            }
+            if (stream == null)
+            {
+                App.ErideMessage.AddMessage("Поток обновлений недоступен.", new Erida { Type = MType.Error });
+                return;
+            }
+
+            await foreach (var messageEvent in stream)
+            {
+                // Формируем сообщение для отладки
+                string messageInfo = $"Новое сообщение в чате {messageEvent.ChatId}: " +
+                                    $"ID={messageEvent.Message.Id}, " +
+                                    $"Отправитель={messageEvent.Message.SenderId}, " +
+                                    $"Текст={messageEvent.Message.Content.Text}, " +
+                                    $"Тип={(messageEvent.Message.Type == MessageContentType.System ? "Системное" : "Обычное")}, " +
+                                    $"Вложения={messageEvent.Message.Content.Attachments.Count}, " +
+                                    $"Отправлено={messageEvent.Message.SentAt.ToDateTime()}";
+
+                App.ErideMessage.AddMessage(messageInfo, new Erida { Type = MType.Debug });
+                var message = new MessageModel
+                {
+                    ChatId = messageEvent.ChatId,
+                    MessageId = messageEvent.Message.Id,
+                    SenderId = messageEvent.Message.SenderId,
+                    Text = messageEvent.Message.Content.Text,
+                    SentAt = messageEvent.Message.SentAt,
+                    Attachments = messageEvent.Message.Content.Attachments
+                            .Select(a => new AttachmentsModel
+                            {
+                                Id = a.Id,
+                                Type = a.Type,
+                                FileId = a.FileId,
+                                PreviewUrl = a.PreviewUrl,
+                                Size = a.AttachmentSize
+                            }).ToList(),
+                    IsSystemMessage = messageEvent.Message.Type == MessageContentType.System
+                };
+                App.CacheManager.SaveMessage(message.ChatId, TitleChat, message, Services.App.Caching.MessageOperation.Added);
+                // Обновляем UI в главном потоке
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    // тут пока ничего нет, хз нужно ли вообще
+                });
+            }
+        }
+
+        #endregion
+
+        #region Чаты
+
+        public void OpenChatById(string chatId, long lastMessageId, bool isGroupChat, long userId, string title)
+        {
+
+            IsOpenChatEmpty = false;
+            IsOpenChat.Value = true;
+            TitleChat = title;
+            _openedLastMessageId = lastMessageId;
+            ChatId.Value = chatId;
+            IsGroup = isGroupChat;
+            GetChatInfo(userId); // получаем информацию о чате для вывода в заголовке и аватара
+            App.ErideMessage.AddMessage($"Открытие чата с ID: {ChatId.Value}", new Erida { Type = MType.Debug });
+        }
+
+        private async void CloseChatButton(object sender, RoutedEventArgs e)
+        {
+            App.ErideMessage.AddMessage($"Закрытие чата с ID: {ChatId.Value}", new Erida { Type = MType.Debug });
+            IsOpenChat.Value = false;
+            _openedLastMessageId = 0;
+            ChatId.Value = string.Empty;
+        }
+
+        #endregion
     }
 }

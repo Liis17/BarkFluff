@@ -16,7 +16,7 @@ namespace BarkFluff.Identity.Features.CreateAccount;
 
 public class CreateAccountCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
     ConfirmationCodesStorage confirationCodesStorage, NotificationQueueSender notificationQueueSender,
-    RequestContext requestContext) 
+    RequestContext requestContext, LocationClient locationClient) 
     : IRequestHandler<CreateAccountCommand, CreateAccountResponse>
 {
     public async Task<CreateAccountResponse> Handle(CreateAccountCommand request, CancellationToken cancellationToken)
@@ -72,6 +72,17 @@ public class CreateAccountCommandHandler(UsersServerApi.UsersServerApiClient use
         
         confirmationCode = await confirationCodesStorage.AddCode(confirmationCode);
 
+        // Получаем данные о местоположении IP-адреса
+        string locationInfo = "-";
+        if (!string.IsNullOrEmpty(requestContext.IpAddress))
+        {
+            var ipLocation = await locationClient.GetLocation(requestContext.IpAddress);
+            if (ipLocation != null)
+            {
+                locationInfo = $"{ipLocation.Country}, {ipLocation.RegionName}, {ipLocation.City}";
+            }
+        }
+
         var payload = new Dictionary<string, string>()
         {
             { "confirmation_code", code },
@@ -79,7 +90,7 @@ public class CreateAccountCommandHandler(UsersServerApi.UsersServerApiClient use
             { "ip", requestContext.IpAddress ?? string.Empty },
             {"devicename", requestContext.DeviceName },
             {"os", requestContext.OperationSystem},
-            {"location", "-"},
+            {"location", locationInfo},
             {"app", $"{requestContext.AppName} v.{requestContext.AppVersion}"},
             {"datetime", DateTime.UtcNow.ToString("F")}
         };

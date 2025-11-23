@@ -6,6 +6,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 
+using Erida = BarkFluff.Client.WPF.Services.Erida.MessageType;
+using MType = BarkFluff.Client.WPF.Services.Erida.MessageType.MessageTypeEnum;
 namespace BarkFluff.Client.WPF.Pages.PinCode
 {
     /// <summary>
@@ -33,7 +35,6 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
             {
                 box.MaxLength = 1;
             }
-            ErrorTextBlockMessge.Text = string.Empty;
         }
 
         private void FirstPinBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -165,20 +166,20 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
 
                 if (firstPinCode != secondPinCode)
                 {
-                    ErrorTextBlockMessge.Text = "Пинкоды не совпадают";
+                    App.ErideMessage.AddMessage("Пинкоды не совпадают", new Erida { Type = MType.Warning });
                 }
                 else
                 {
                     App.GParam.AppPass = firstPinCode;
                     App.GParam.IpAddress = SystemInfo.GetExternalIp();
-                    string filePath = Path.Combine(App.GParam.AppPath, "GlobalParam.json");
+                    string filePath = Path.Combine(App.GParam.AppPath,"datas", "GlobalParam.json");
                     GlobalParam.Save(App.GParam, filePath, App.GParam.AppPass);
                     App.MessengerWindow.OpenServerListPage();
                 }
             }
             else
             {
-                ErrorTextBlockMessge.Text = "Заполните обе строки пинкода";
+                App.ErideMessage.AddMessage("Заполните обе строки пинкода", new Erida { Type = MType.Warning});
             }
         }
 

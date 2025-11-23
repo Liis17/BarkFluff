@@ -104,5 +104,12 @@ namespace BarkFluff.Client.WPF.Debugs
             HolaBolaGrid.Children.Clear();
             HolaBolaGrid.Children.Add(child);
         }
+
+        private void OpenVideoPlayer(object sender, RoutedEventArgs e)
+        {
+            var child = new VideoPlayer();
+            HolaBolaGrid.Children.Clear();
+            HolaBolaGrid.Children.Add(child);
+        }
     }
 }

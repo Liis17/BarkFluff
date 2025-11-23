@@ -3,7 +3,8 @@ using BarkFluff.Client.WPF.Pages;
 using BarkFluff.Client.WPF.Pages.PinCode;
 using BarkFluff.Client.WPF.Pages.SetupPages;
 using BarkFluff.WebApi.Core.MessengerData;
-
+using Erida = BarkFluff.Client.WPF.Services.Erida.MessageType;
+using MType = BarkFluff.Client.WPF.Services.Erida.MessageType.MessageTypeEnum;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
@@ -97,10 +98,11 @@ namespace BarkFluff.Client.WPF
         {
             try
             {
-                string filePath = Path.Combine(SystemInfo.GetAppPath(), "GlobalParam.json");
+                string filePath = Path.Combine(SystemInfo.GetAppPath(),"datas", "GlobalParam.json");
                 if (App.GParam == null) { return; }
                 if (string.IsNullOrEmpty(App.GParam.AppPass) || string.IsNullOrEmpty(App.GParam.AppPath)) { return; }
                 GlobalParam.Save(App.GParam, filePath, App.GParam.AppPass);
+                App.ErideMessage.AddMessage($"Сохранение настроек: {filePath}", new Erida { Type = MType.Debug });
             }
             catch
             {
@@ -117,7 +119,7 @@ namespace BarkFluff.Client.WPF
         public void FirstStart()
         {
             MainFrame.Children.Clear();
-            MainFrame.Children.Add(new WelcomPage());
+            MainFrame.Children.Add(new WelcomePage());
         }
         public void OpenCreatePinCodePage()
         {
@@ -144,7 +146,17 @@ namespace BarkFluff.Client.WPF
             MainFrame.Children.Clear();
             MainFrame.Children.Add(new Login());
 
-            App.ServerCommunication.CreateAC(App.GParam, App.GParam.MachineName, SystemInfo.GetFriendlyWindowsVersion(), AppVersion.AppName, AppVersion.Version, App.GParam.IpAddress);
+            var response = App.ServerCommunication.CreateAC(App.GParam, App.GParam.MachineName, SystemInfo.GetFriendlyWindowsVersion(), AppVersion.AppName, AppVersion.Version, App.GParam.IpAddress);
+            if (!response.IsSuccess)
+            {
+                App.ErideMessage.AddMessage(response.ErrorMessage ?? "Неизвестная проблема", new Erida{ Type = MType.Error });
+                return;
+            }
+            else
+            {
+                App.ErideMessage.AddMessage("API клиент успешно обновлён", new Erida { Type = MType.Debug });
+            }
+            
         }
         public void OpenPasswordRecoveryPage()
         {
@@ -157,7 +169,16 @@ namespace BarkFluff.Client.WPF
             {
                 if (App.GParam.SocketBeacon != "http://" && App.GParam.SocketBeacon != "https://" && App.GParam.SocketBeacon != string.Empty)
                 {
-                    App.ServerCommunication.CreateAC(App.GParam, App.GParam.MachineName, SystemInfo.GetFriendlyWindowsVersion(), AppVersion.AppName, AppVersion.Version, App.GParam.IpAddress);
+                    var response = App.ServerCommunication.CreateAC(App.GParam, App.GParam.MachineName, SystemInfo.GetFriendlyWindowsVersion(), AppVersion.AppName, AppVersion.Version, App.GParam.IpAddress);
+                    if (!response.IsSuccess)
+                    {
+                        App.ErideMessage.AddMessage(response.ErrorMessage ?? "Неизвестная проблема", new Erida{ Type = MType.Error });
+                        return;
+                    }
+                    else
+                    {
+                        App.ErideMessage.AddMessage("API клиент успешно обновлён", new Erida { Type = MType.Debug });
+                    }
                     OpenLoginPage();
                 }
                 else
@@ -174,8 +195,7 @@ namespace BarkFluff.Client.WPF
                 !string.IsNullOrEmpty(App.GParam.ServerName)
                 )
             {
-                MainFrame.Children.Clear();
-                MainFrame.Children.Add(new MessengerPage());
+                App.OpenMessengerPage();
             }
 
         }
@@ -226,6 +246,11 @@ namespace BarkFluff.Client.WPF
         {
             var resolution = this.ActualWidth + "x" + this.ActualHeight;
             ResolutionTextBlock.Text = resolution;
+        }
+
+        private void ContentPanel_Loaded(object sender, RoutedEventArgs e)
+        {
+            App.CreateEridaMessage(ContentPanel);
         }
     }
 }

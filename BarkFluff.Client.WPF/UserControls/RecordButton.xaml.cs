@@ -1,18 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
 
 namespace BarkFluff.Client.WPF.UserControls
 {
@@ -101,7 +94,7 @@ namespace BarkFluff.Client.WPF.UserControls
             ffmpegProcess.StartInfo.UseShellExecute = false;
             ffmpegProcess.StartInfo.CreateNoWindow = true;
             ffmpegProcess.StartInfo.RedirectStandardError = true;
-            ffmpegProcess.StartInfo.RedirectStandardInput = false; 
+            ffmpegProcess.StartInfo.RedirectStandardInput = false;
 
             try
             {
@@ -140,20 +133,20 @@ namespace BarkFluff.Client.WPF.UserControls
         }
 
         [DllImport("kernel32.dll", SetLastError = true)]
-        static extern bool GenerateConsoleCtrlEvent(CtrlTypes dwCtrlEvent, uint dwProcessGroupId);
+        private static extern bool GenerateConsoleCtrlEvent(CtrlTypes dwCtrlEvent, uint dwProcessGroupId);
 
         [DllImport("kernel32.dll", SetLastError = true)]
-        static extern bool AttachConsole(uint dwProcessId);
+        private static extern bool AttachConsole(uint dwProcessId);
 
         [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
-        static extern bool FreeConsole();
+        private static extern bool FreeConsole();
 
         [DllImport("kernel32.dll")]
-        static extern bool SetConsoleCtrlHandler(ConsoleCtrlDelegate handlerRoutine, bool add);
+        private static extern bool SetConsoleCtrlHandler(ConsoleCtrlDelegate handlerRoutine, bool add);
 
-        delegate bool ConsoleCtrlDelegate(CtrlTypes ctrlType);
+        private delegate bool ConsoleCtrlDelegate(CtrlTypes ctrlType);
 
-        enum CtrlTypes : uint
+        private enum CtrlTypes : uint
         {
             CTRL_C_EVENT = 0,
             CTRL_BREAK_EVENT = 1

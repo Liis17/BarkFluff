@@ -1,0 +1,8 @@
+изменить этот файл для тригера сборки клиента
+
+udhfghdfsghdfsghisdfhg
+dfgsdfsgsdfgdsfgjkhdfg
+gsdfopgjiosdfhjgihsdfg
+dsfgdfslighkusdfhgkuhs
+dfgloihdfisughidfshgiu
+dfohgidfsgiudsgoidsfd0

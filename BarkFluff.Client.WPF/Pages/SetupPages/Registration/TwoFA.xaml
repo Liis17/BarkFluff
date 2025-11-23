@@ -20,9 +20,7 @@
             <Setter Property="Margin" Value="0,0,0,30" />
         </Style>
     </UserControl.Resources>
-    <ScrollViewer>
-
-
+    <ScrollViewer VerticalScrollBarVisibility="Auto" VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
         <Grid Background="#1A1A1A">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*" />
@@ -31,7 +29,7 @@
 
             <StackPanel
                 Grid.Row="0"
-                Margin="0,0,0,30"
+                Margin="0,0,0,0"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Orientation="Vertical">
@@ -58,11 +56,11 @@
                     TextAlignment="Center" />
 
                 <Border
-                    Margin="0,0,0,20"
+                    Margin="0,0,0,10"
                     Background="#282828"
                     BorderThickness="0"
                     CornerRadius="12">
-                    <StackPanel Margin="20" Orientation="Vertical">
+                    <StackPanel Margin="10 10 10 0" Orientation="Vertical">
                         <TextBlock
                             Margin="0,0,0,15"
                             HorizontalAlignment="Center"
@@ -125,28 +123,15 @@
 
                         <ui:Button
                             x:Name="CopySecretButton"
-                            Width="120"
-                            Height="30"
-                            HorizontalAlignment="Center"
                             Background="#404040"
-                            BorderThickness="0"
                             Click="CopySecretButton_Click"
-                            CornerRadius="15"
                             MouseOverBackground="#505050"
-                            PressedBackground="#353535">
+                            PressedBackground="#353535"
+                            Style="{DynamicResource MainButton}">
                             <ui:Button.Content>
                                 <StackPanel Orientation="Horizontal">
-                                    <ui:SymbolIcon
-                                        FontSize="14"
-                                        Foreground="White"
-                                        Symbol="Copy24" />
-                                    <TextBlock
-                                        Margin="5,0,0,0"
-                                        FontFamily="{DynamicResource AdwaitaSans}"
-                                        FontSize="12"
-                                        FontWeight="Normal"
-                                        Foreground="White"
-                                        Text="Копировать" />
+                                    <ui:SymbolIcon Style="{StaticResource ButtonSymbolLeft}" Symbol="Copy24" />
+                                    <ui:TextBlock Style="{DynamicResource MainButtonTextRight}" Text="Копировать" />
                                 </StackPanel>
                             </ui:Button.Content>
                         </ui:Button>
@@ -154,7 +139,7 @@
                 </Border>
 
                 <TextBlock
-                    Margin="0,5,0,10"
+                    Margin="0,0,0,10"
                     HorizontalAlignment="Center"
                     FontFamily="{DynamicResource AdwaitaSans}"
                     FontSize="18"
@@ -164,115 +149,55 @@
 
                 <StackPanel
                     x:Name="CodeContainer"
-                    Margin="0,0,0,15"
+                    Margin="0,0,0,0"
                     HorizontalAlignment="Center"
                     Orientation="Horizontal">
                     <TextBox
                         x:Name="CodeBox0"
-                        Width="40"
-                        Margin="5"
-                        HorizontalContentAlignment="Center"
-                        VerticalContentAlignment="Center"
-                        Background="#282828"
-                        BorderThickness="0"
-                        CaretBrush="White"
-                        FontSize="24"
-                        FontWeight="Medium"
-                        Foreground="White"
                         GotFocus="CodeBox_GotFocus"
-                        MaxLength="1"
                         PreviewKeyDown="CodeBox_PreviewKeyDown"
                         PreviewTextInput="CodeBox_PreviewTextInput"
+                        Style="{StaticResource VerificationTextBox}"
                         TextChanged="CodeBox_TextChanged" />
 
                     <TextBox
                         x:Name="CodeBox1"
-                        Width="40"
-                        Margin="5"
-                        HorizontalContentAlignment="Center"
-                        VerticalContentAlignment="Center"
-                        Background="#282828"
-                        BorderThickness="0"
-                        CaretBrush="White"
-                        FontSize="24"
-                        FontWeight="Medium"
-                        Foreground="White"
                         GotFocus="CodeBox_GotFocus"
-                        MaxLength="1"
                         PreviewKeyDown="CodeBox_PreviewKeyDown"
                         PreviewTextInput="CodeBox_PreviewTextInput"
+                        Style="{StaticResource VerificationTextBox}"
                         TextChanged="CodeBox_TextChanged" />
 
                     <TextBox
                         x:Name="CodeBox2"
-                        Width="40"
-                        Margin="5"
-                        HorizontalContentAlignment="Center"
-                        VerticalContentAlignment="Center"
-                        Background="#282828"
-                        BorderThickness="0"
-                        CaretBrush="White"
-                        FontSize="24"
-                        FontWeight="Medium"
-                        Foreground="White"
                         GotFocus="CodeBox_GotFocus"
-                        MaxLength="1"
                         PreviewKeyDown="CodeBox_PreviewKeyDown"
                         PreviewTextInput="CodeBox_PreviewTextInput"
+                        Style="{StaticResource VerificationTextBox}"
                         TextChanged="CodeBox_TextChanged" />
 
                     <TextBox
                         x:Name="CodeBox3"
-                        Width="40"
-                        Margin="5"
-                        HorizontalContentAlignment="Center"
-                        VerticalContentAlignment="Center"
-                        Background="#282828"
-                        BorderThickness="0"
-                        CaretBrush="White"
-                        FontSize="24"
-                        FontWeight="Medium"
-                        Foreground="White"
                         GotFocus="CodeBox_GotFocus"
-                        MaxLength="1"
                         PreviewKeyDown="CodeBox_PreviewKeyDown"
                         PreviewTextInput="CodeBox_PreviewTextInput"
+                        Style="{StaticResource VerificationTextBox}"
                         TextChanged="CodeBox_TextChanged" />
 
                     <TextBox
                         x:Name="CodeBox4"
-                        Width="40"
-                        Margin="5"
-                        HorizontalContentAlignment="Center"
-                        VerticalContentAlignment="Center"
-                        Background="#282828"
-                        BorderThickness="0"
-                        CaretBrush="White"
-                        FontSize="24"
-                        FontWeight="Medium"
-                        Foreground="White"
                         GotFocus="CodeBox_GotFocus"
-                        MaxLength="1"
                         PreviewKeyDown="CodeBox_PreviewKeyDown"
                         PreviewTextInput="CodeBox_PreviewTextInput"
+                        Style="{StaticResource VerificationTextBox}"
                         TextChanged="CodeBox_TextChanged" />
 
                     <TextBox
                         x:Name="CodeBox5"
-                        Width="40"
-                        Margin="5"
-                        HorizontalContentAlignment="Center"
-                        VerticalContentAlignment="Center"
-                        Background="#282828"
-                        BorderThickness="0"
-                        CaretBrush="White"
-                        FontSize="24"
-                        FontWeight="Medium"
-                        Foreground="White"
                         GotFocus="CodeBox_GotFocus"
-                        MaxLength="1"
                         PreviewKeyDown="CodeBox_PreviewKeyDown"
                         PreviewTextInput="CodeBox_PreviewTextInput"
+                        Style="{StaticResource VerificationTextBox}"
                         TextChanged="CodeBox_TextChanged" />
                 </StackPanel>
 
@@ -295,50 +220,26 @@
 
                     <ui:Button
                         x:Name="SkipButton"
-                        Height="45"
-                        Margin="0,0,10,0"
-                        HorizontalAlignment="Center"
                         Background="#404040"
-                        BorderThickness="0"
                         Click="SkipButton_Click"
-                        CornerRadius="22"
                         MouseOverBackground="#505050"
-                        PressedBackground="#353535">
+                        PressedBackground="#353535"
+                        Style="{StaticResource MainButton}">
                         <ui:Button.Content>
-                            <TextBlock
-                                Margin="8,0,8,0"
-                                FontFamily="{DynamicResource AdwaitaSans}"
-                                FontSize="16"
-                                FontWeight="SemiBold"
-                                Foreground="White"
-                                Text="Пропустить" />
+                            <ui:TextBlock Style="{DynamicResource MainButtonTextSingle}" Text="Пропустить" />
                         </ui:Button.Content>
                     </ui:Button>
 
                     <ui:Button
                         x:Name="ConnectButton"
-                        Height="45"
-                        Margin="10,0,0,0"
-                        HorizontalAlignment="Center"
-                        Background="#df5000"
-                        BorderThickness="0"
                         Click="ConnectButton_Click"
-                        CornerRadius="22"
-                        MouseOverBackground="#FFC54700"
-                        PressedBackground="#FFAB3D00">
+                        Style="{StaticResource MainButton}">
                         <ui:Button.Content>
                             <StackPanel Orientation="Horizontal">
-                                <ui:SymbolIcon
-                                    FontSize="18"
-                                    Foreground="White"
-                                    Symbol="Shield24" />
-                                <TextBlock
+                                <ui:SymbolIcon Style="{StaticResource ButtonSymbolLeft}" Symbol="Shield24" />
+                                <ui:TextBlock
                                     x:Name="ConnectionText"
-                                    Margin="8,0,8,0"
-                                    FontFamily="{DynamicResource AdwaitaSans}"
-                                    FontSize="16"
-                                    FontWeight="SemiBold"
-                                    Foreground="White"
+                                    Style="{DynamicResource MainButtonTextRight}"
                                     Text="Подключить" />
                             </StackPanel>
                         </ui:Button.Content>
