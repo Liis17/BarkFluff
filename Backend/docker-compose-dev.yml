@@ -9,9 +9,10 @@ services:
   beacon:
     image: docker.barkfluff.com:5000/barkfluff-beacon-dev:latest 
     restart: always
-    ports: ["7002:7002"]
+    ports: ["${BEACON_PORT}:${BEACON_PORT}"]
     environment:
       <<: *common-variables
+      BEACON_PORT: ${BEACON_PORT}
     networks:
       - barkfluff-network
     depends_on:
@@ -20,9 +21,16 @@ services:
   configuration:
     image: docker.barkfluff.com:5000/barkfluff-configuration-dev:latest
     restart: always
-    ports: ["7003:7003"]
+    ports: ["${CONFIGURATION_PORT}:${CONFIGURATION_PORT}"]
+    env_file:
+    - .env
     environment:
       <<: *common-variables
+      CONFIGURATION_HOST: ${CONFIGURATION_HOST}
+      CONFIGURATION_DATABASE: ${CONFIGURATION_DATABASE}
+      CONFIGURATION_USERNAME: ${CONFIGURATION_USERNAME}
+      CONFIGURATION_PASSWORD: ${CONFIGURATION_PASSWORD}
+      CONFIGURATION_PORT: ${CONFIGURATION_PORT}
     networks:
       - barkfluff-network
 
@@ -30,8 +38,8 @@ services:
     image: docker.barkfluff.com:5000/barkfluff-files-dev:latest
     restart: always
     ports:
-      - "7005:7005"
-      - "7006:7006"
+      - "${FILES_PORT}:${FILES_PORT}"
+      - "${FILES_HTTP1PORT}:${FILES_HTTP1PORT}"
     environment:
       <<: *common-variables
     networks:
@@ -42,7 +50,7 @@ services:
   identity:
     image: docker.barkfluff.com:5000/barkfluff-identity-dev:latest
     restart: always
-    ports: ["7000:7000"]
+    ports: ["${IDENTITY_PORT}:${IDENTITY_PORT}"]
     environment:
       <<: *common-variables
     networks:
@@ -53,7 +61,7 @@ services:
   messages:
     image: docker.barkfluff.com:5000/barkfluff-messages-dev:latest
     restart: always
-    ports: ["7007:7007"]
+    ports: ["${MESSAGES_PORT}:${MESSAGES_PORT}"]
     environment:
       <<: *common-variables
     networks:
@@ -64,7 +72,7 @@ services:
   notification:
     image: docker.barkfluff.com:5000/barkfluff-notification-dev:latest
     restart: always
-    ports: ["7004:7004"]
+    ports: ["${NOTIFICATION_PORT}:${NOTIFICATION_PORT}"]
     environment:
       <<: *common-variables
     networks:
@@ -75,7 +83,7 @@ services:
   users:
     image: docker.barkfluff.com:5000/barkfluff-users-dev:latest
     restart: always
-    ports: ["7001:7001"]
+    ports: ["${USERS_PORT}:${USERS_PORT}"]
     environment:
       <<: *common-variables
     networks:
@@ -86,9 +94,10 @@ services:
   fast-auth:
     image: docker.barkfluff.com:5000/barkfluff-fast-auth-dev:latest
     restart: always
-    ports: ["7008:7008"]
+    ports: ["${FASTAUTH_PORT}:${FASTAUTH_PORT}"]
     environment:
       <<: *common-variables
+      FASTAUTH_PORT: ${FASTAUTH_PORT}
     networks:
       - barkfluff-network
     depends_on:
@@ -97,7 +106,7 @@ services:
   updates:
     image: docker.barkfluff.com:5000/barkfluff-updates-dev:latest
     restart: always
-    ports: ["7015:7015"]
+    ports: ["${UPDATES_PORT}:${UPDATES_PORT}"]
     environment:
       <<: *common-variables
     networks:
@@ -111,14 +120,14 @@ services:
     restart: always
     container_name: minio
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "${MINIO_PORT}:${MINIO_PORT}"
+      - "${MINIO_WEBPORT}:${MINIO_WEBPORT}"
     environment:
       MINIO_ROOT_USER: "${MINIO_ROOT_USER}"
       MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD}"
     volumes:
       - minio_data:/data
-    command: server /data --console-address ":9001"
+    command: server /data --console-address ":${MINIO_WEBPORT}"
     networks:
       - barkfluff-network
 
@@ -127,8 +136,8 @@ services:
     restart: always
     container_name: rabbitmq
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "${RABBITMQ_1PORT}:${RABBITMQ_1PORT}"
+      - "${RABBITMQ_2PORT}:${RABBITMQ_2PORT}"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     environment:
@@ -142,7 +151,7 @@ services:
     restart: always
     container_name: redis
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT}:${REDIS_PORT}"
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes
@@ -150,17 +159,18 @@ services:
       - barkfluff-network
 
   postgres:
-    image: postgres:latest
+    image: postgres:18
     container_name: postgres_barkfluff
     environment:
       POSTGRES_USER: "${POSTGRES_USER}"
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
       POSTGRES_DB: "${POSTGRES_DB}"
+      PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql
       - backup_volume:/backup
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
     restart: always
     networks:
       - barkfluff-network

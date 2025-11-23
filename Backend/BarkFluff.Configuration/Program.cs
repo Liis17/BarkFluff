@@ -1,7 +1,7 @@
 using BarkFluff.Configuration.Host;
 using BarkFluff.Configuration.Infrastructure;
 using BarkFluff.GrpcServer;
-
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
 
 namespace BarkFluff.Configuration;
@@ -11,7 +11,24 @@ public class Program
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
-        builder.SetRunningAddress(builder.Configuration);
+
+        var envPort = Environment.GetEnvironmentVariable("CONFIGURATION_PORT")
+                      ?? Environment.GetEnvironmentVariable("RunSettings__Port");
+
+        if (int.TryParse(envPort, out var dynamicPort))
+        {
+            builder.WebHost.ConfigureKestrel(options =>
+            {
+                options.ListenAnyIP(dynamicPort, o =>
+                {
+                    o.Protocols = HttpProtocols.Http2;
+                });
+            });
+        }
+        else
+        {
+            builder.SetRunningAddress(builder.Configuration);
+        }
 
         builder.Services.AddGrpc(options =>
         {

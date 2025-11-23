@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Порт можно задать через переменные окружения NAVIGATOR_PORT или RunSettings__Port
 var envPort = Environment.GetEnvironmentVariable("NAVIGATOR_PORT")
               ?? Environment.GetEnvironmentVariable("RunSettings__Port");
 
@@ -23,7 +22,6 @@ if (int.TryParse(envPort, out var dynamicPort))
 }
 else
 {
-    // fallback на конфигурацию (RunSettings секция)
     builder.SetRunningAddress(builder.Configuration);
 }
 
