@@ -32,6 +32,7 @@ public class NavigatorApiService : NavigatorApi.NavigatorApiBase
             BeaconPort = protoServer?.BeaconUri?.Port ?? 0,
             Name = protoServer?.Name ?? string.Empty,
             Description = protoServer?.Description ?? string.Empty,
+            ServerPublicName = protoServer?.ServerPublicName ?? string.Empty,
             CreatedAt = DateTime.UtcNow,
             AddedBy = string.Empty // Можно доработать, если появится автор
         };
