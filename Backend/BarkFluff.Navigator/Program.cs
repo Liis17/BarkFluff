@@ -3,11 +3,30 @@ using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Navigator.Host;
 using BarkFluff.Navigator.Persistence;
 
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.SetRunningAddress(builder.Configuration);
+// Порт можно задать через переменные окружения NAVIGATOR_PORT или RunSettings__Port
+var envPort = Environment.GetEnvironmentVariable("NAVIGATOR_PORT")
+              ?? Environment.GetEnvironmentVariable("RunSettings__Port");
+
+if (int.TryParse(envPort, out var dynamicPort))
+{
+    builder.WebHost.ConfigureKestrel(options =>
+    {
+        options.ListenAnyIP(dynamicPort, o =>
+        {
+            o.Protocols = HttpProtocols.Http2;
+        });
+    });
+}
+else
+{
+    // fallback на конфигурацию (RunSettings секция)
+    builder.SetRunningAddress(builder.Configuration);
+}
 
 builder.Services.AddBarkFluffGrpc();
 builder.Services.AddGrpcReflection();
