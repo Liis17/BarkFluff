@@ -12,18 +12,45 @@
     MaxHeight="600"
     d:DesignHeight="600"
     d:DesignWidth="500"
+    AllowDrop="True"
     mc:Ignorable="d">
+    <UserControl.Resources>
+        <Storyboard x:Key="FadeIn">
+            <DoubleAnimation
+                Storyboard.TargetProperty="Opacity"
+                From="0"
+                To="1"
+                Duration="0:0:0.25" />
+        </Storyboard>
+        <Storyboard x:Key="FadeOut">
+            <DoubleAnimation
+                Storyboard.TargetProperty="Opacity"
+                From="1"
+                To="0"
+                Duration="0:0:0.25" />
+        </Storyboard>
+    </UserControl.Resources>
     <Grid Background="#1e1e1e">
         <Grid x:Name="ButtonGrid">
-            <ui:Button
-                Click="LoadButton_Click"
-                Style="{StaticResource MainButton}"
-                ToolTip="Выбрать картинку для аватара в проводнике">
-                <StackPanel Orientation="Horizontal">
-                    <ui:TextBlock Style="{StaticResource MainButtonTextLeft}" Text="Выбрать аватар" />
-                    <ui:SymbolIcon Style="{StaticResource ButtonSymbolRight}" Symbol="ArrowDownload20" />
-                </StackPanel>
-            </ui:Button>
+            <StackPanel
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Orientation="Vertical">
+                <ui:Button
+                    Click="LoadButton_Click"
+                    Style="{StaticResource MainButton}"
+                    ToolTip="Выбрать картинку для аватара в проводнике">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:TextBlock Style="{StaticResource MainButtonTextLeft}" Text="Выбрать аватар" />
+                        <ui:SymbolIcon Style="{StaticResource ButtonSymbolRight}" Symbol="ArrowDownload20" />
+                    </StackPanel>
+                </ui:Button>
+                <TextBlock
+                    Margin="0,10,0,0"
+                    HorizontalAlignment="Center"
+                    Foreground="#888888"
+                    Text="или перетащите файл сюда" />
+            </StackPanel>
         </Grid>
         <Grid x:Name="CropGrid">
             <StackPanel
@@ -60,14 +87,22 @@
                             Style="{StaticResource ButtonSymbolSingle}"
                             Symbol="ImageArrowCounterclockwise20" />
                     </ui:Button>
+                    <ui:Button
+                        x:Name="CancelButton"
+                        Click="CancelButton_Click"
+                        Style="{StaticResource MainButton}"
+                        ToolTip="Отменить и вернуться к выбору файла">
+                        <ui:SymbolIcon
+                            Margin="25,0,25,0"
+                            Style="{StaticResource ButtonSymbolSingle}"
+                            Symbol="Dismiss20" />
+                    </ui:Button>
                 </StackPanel>
                 <Slider
                     x:Name="ZoomSlider"
                     Width="300"
                     Margin="10"
                     HorizontalAlignment="Center"
-                    Background="#FFCA2727"
-                    Foreground="#FF2481D2"
                     Maximum="2.5"
                     Minimum="0.5"
                     TickFrequency="0.05"
@@ -118,8 +153,7 @@
                     Height="400"
                     IsHitTestVisible="False"
                     Stroke="Transparent"
-                    StrokeThickness="2"
-                    Tag="Эта та самая рамка по которой идет обрезание хихихи" />
+                    StrokeThickness="2" />
             </Canvas>
         </Grid>
 
