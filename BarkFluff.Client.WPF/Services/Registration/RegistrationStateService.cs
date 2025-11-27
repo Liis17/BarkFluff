@@ -68,8 +68,12 @@ namespace BarkFluff.Client.WPF.Services.Registration
         }
 
         /// <summary>
-        /// Gets the password as string (use sparingly, clear after use)
+        /// Gets the password as string.
+        /// WARNING: The returned string is a managed object and cannot be securely erased from memory.
+        /// Use this method only when necessary (e.g., for API calls) and avoid storing the result.
+        /// The password is retrieved from SecureString and the intermediate BSTR is properly zeroed.
         /// </summary>
+        /// <returns>The password as a string, or empty if not set</returns>
         public string GetPassword()
         {
             if (_password == null) return string.Empty;
@@ -87,8 +91,12 @@ namespace BarkFluff.Client.WPF.Services.Registration
         }
 
         /// <summary>
-        /// Gets the confirm password as string (use sparingly, clear after use)
+        /// Gets the confirm password as string.
+        /// WARNING: The returned string is a managed object and cannot be securely erased from memory.
+        /// Use this method only when necessary (e.g., for API calls) and avoid storing the result.
+        /// The password is retrieved from SecureString and the intermediate BSTR is properly zeroed.
         /// </summary>
+        /// <returns>The confirm password as a string, or empty if not set</returns>
         public string GetConfirmPassword()
         {
             if (_confirmPassword == null) return string.Empty;

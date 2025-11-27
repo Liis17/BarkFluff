@@ -92,17 +92,4 @@ namespace BarkFluff.Client.WPF.Validators
             return new ValidationResult(true, "Логин доступен для проверки", ValidationState.Valid);
         }
     }
-
-    public enum ValidationState
-    {
-        Empty,
-        TooShort,
-        TooLong,
-        InvalidStart,
-        ContainsBotWord,
-        InvalidCharacters,
-        Valid
-    }
-
-    public record ValidationResult(bool IsValid, string Message, ValidationState State);
 }

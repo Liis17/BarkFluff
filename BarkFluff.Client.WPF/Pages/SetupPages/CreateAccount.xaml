@@ -330,8 +330,7 @@
                             Margin="0,0,0,8"
                             KeyDown="TextBox_KeyDown"
                             PasswordChanged="PasswordEnter_TextChanged"
-                            PlaceholderText="Введите пароль"
-                            TextChanged="PasswordEnter_TextChanged" />
+                            PlaceholderText="Введите пароль" />
 
                         <!--  Индикатор силы пароля  -->
                         <ProgressBar
@@ -395,8 +394,7 @@
                             Margin="0,0,0,5"
                             KeyDown="TextBox_KeyDown"
                             PasswordChanged="PasswordRepeatedEnter_TextChanged"
-                            PlaceholderText="Повторите пароль"
-                            TextChanged="PasswordRepeatedEnter_TextChanged" />
+                            PlaceholderText="Повторите пароль" />
                         <TextBlock
                             x:Name="PasswordMatchText"
                             Margin="0,0,0,20"
