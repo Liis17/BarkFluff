@@ -72,7 +72,7 @@ namespace BarkFluff.WebApi.Core
         {
             try
             {
-                NavigatorChannel = GrpcChannel.ForAddress(EnsureHttpPrefix("nl.liis17.ru:7010"));
+                NavigatorChannel = GrpcChannel.ForAddress(EnsureHttpPrefix("navigator.barkfluff.com:64645"));
                 NavigatorAC = new Proto.Navigator.NavigatorApi.NavigatorApiClient(NavigatorChannel);
                 return new ErrorReturner(true);
             }
