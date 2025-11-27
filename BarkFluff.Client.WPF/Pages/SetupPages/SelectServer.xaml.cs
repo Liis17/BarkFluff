@@ -2,6 +2,7 @@
 using BarkFluff.WebApi.Core.MessengerData;
 
 using System.Diagnostics;
+using System.Net;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
@@ -20,10 +21,6 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
         private static readonly Regex ServerAddressPattern = new(
             @"^([^:]+):(\d+)$",
             RegexOptions.Compiled);
-
-        private static readonly Regex HostValidationPattern = new(
-            @"^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?$|^(\d{1,3}\.){3}\d{1,3}$|^localhost$",
-            RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         private bool _isConnecting;
 
@@ -134,13 +131,31 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                 return false;
             }
 
-            if (!HostValidationPattern.IsMatch(host))
+            if (!IsValidHost(host))
             {
                 ShowError("Некорректный адрес сервера");
                 return false;
             }
 
             return true;
+        }
+
+        private static bool IsValidHost(string host)
+        {
+            if (string.IsNullOrWhiteSpace(host))
+            {
+                return false;
+            }
+
+            // Check if it's a valid IP address
+            if (IPAddress.TryParse(host, out _))
+            {
+                return true;
+            }
+
+            // Check if it's a valid DNS hostname using Uri.CheckHostName
+            var hostType = Uri.CheckHostName(host);
+            return hostType == UriHostNameType.Dns || hostType == UriHostNameType.Basic;
         }
 
         private void SetConnectingState(bool isConnecting)
@@ -181,9 +196,15 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                     UseShellExecute = true
                 });
             }
-            catch
+            catch (System.ComponentModel.Win32Exception)
             {
-                // Ignore errors when opening the browser
+                // Expected when no default browser is configured or the URL handler fails.
+                // This is a non-critical failure - the user can manually navigate to the URL.
+            }
+            catch (InvalidOperationException)
+            {
+                // Expected when the process cannot be started (e.g., file not found).
+                // This is a non-critical failure - the user can manually navigate to the URL.
             }
         }
 
