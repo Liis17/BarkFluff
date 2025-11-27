@@ -1,10 +1,10 @@
 ﻿using BarkFluff.Client.WPF.UserControls;
 using BarkFluff.WebApi.Core.MessengerData;
-using System.IO;
+
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+
 using Erida = BarkFluff.Client.WPF.Services.Erida.MessageType;
 using MType = BarkFluff.Client.WPF.Services.Erida.MessageType.MessageTypeEnum;
 
@@ -118,7 +118,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
 #if(DEBUG)
             if (sender is TextBox serverIp)
             {
-                serverIp.Text = "charlie.liis17.ru:7002";
+                serverIp.Text = "";
             }
 #endif
         }

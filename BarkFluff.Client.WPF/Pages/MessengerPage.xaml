@@ -191,7 +191,7 @@
                             CornerRadius="6"
                             Visibility="Collapsed">
                             <Border.Background>
-                                <ImageBrush ImageSource="https://charlie.liis17.ru/apogee.png" Stretch="UniformToFill" />
+                                <ImageBrush ImageSource="https://image.barkfluff.com/apogeeavatar.png" Stretch="UniformToFill" />
                             </Border.Background>
 
                         </Border>

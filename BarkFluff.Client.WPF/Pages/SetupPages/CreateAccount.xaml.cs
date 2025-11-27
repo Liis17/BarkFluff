@@ -2,7 +2,6 @@
 using BarkFluff.Client.WPF.Services.App;
 using BarkFluff.Client.WPF.UserControls;
 using BarkFluff.Shared.Exceptions.Identity;
-using BarkFluff.WebApi.Core.MessengerData;
 
 using System.IO;
 using System.Text.RegularExpressions;
@@ -394,7 +393,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                     var response = await App.ServerCommunication.GetUserData(App.GParam);
                     if (!response.Error.IsSuccess)
                     {
-                        App.ErideMessage.AddMessage(response.Error.ErrorMessage, new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error});
+                        App.ErideMessage.AddMessage(response.Error.ErrorMessage, new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
                         return;
                     }
                     var fullName = $@"{response.Data.FirstName} {response.Data.LastName}";
@@ -482,7 +481,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
 
         private void Enter_TextChanged(object sender, TextChangedEventArgs e)
         {
-            
+
         }
 
         private void PasswordEnter_TextChanged(object sender, RoutedEventArgs e)
@@ -535,7 +534,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
 #if (DEBUG)
             if (sender is TextBox serverIp)
             {
-                serverIp.Text = "me@liis17.ru";
+                serverIp.Text = "me@barkfluff.com";
             }
 #endif
         }
