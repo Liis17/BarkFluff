@@ -13,9 +13,10 @@ namespace BarkFluff.WebApi.Core
         #region Constants
         private const int DefaultPageSize = 50;
         private const string DefaultNavigatorUrl = "nl.liis17.ru:7010";
+        private static readonly TimeSpan DefaultHttpTimeout = TimeSpan.FromMinutes(5);
         #endregion
 
-        private static readonly HttpClient _httpClient = new HttpClient();
+        private static readonly HttpClient _httpClient = new HttpClient { Timeout = DefaultHttpTimeout };
         private bool _disposed = false;
         #region ApiClients
         private BarkFluff.Proto.Users.UsersApi.UsersApiClient? UsersAC;
@@ -104,6 +105,9 @@ namespace BarkFluff.WebApi.Core
 
         public ErrorReturner CreateNavigatorAC(string navigatorUrl = DefaultNavigatorUrl)
         {
+            if (string.IsNullOrWhiteSpace(navigatorUrl))
+                return new ErrorReturner(false, "URL навигатора не может быть пустым");
+
             try
             {
                 NavigatorChannel = GrpcChannel.ForAddress(EnsureHttpPrefix(navigatorUrl));
@@ -300,6 +304,14 @@ namespace BarkFluff.WebApi.Core
             return !_url.StartsWith("http://") && !_url.StartsWith("https://")
                    ? "http://" + _url
                    : _url;
+        }
+
+        /// <summary>
+        /// Проверяет, что список файловых URL не пуст.
+        /// </summary>
+        private static bool HasValidFileUrls(Google.Protobuf.Collections.RepeatedField<Proto.Files.GetTempDownloadUrlResponse.Types.DownloadFileData>? fileUrls)
+        {
+            return fileUrls != null && fileUrls.Count > 0;
         }
         #endregion
 
@@ -1188,7 +1200,7 @@ namespace BarkFluff.WebApi.Core
                 return await SafeCallAsync(async () =>
                 {
                     var response = await FilesAC!.GetTempDownloadUrlAsync(new Proto.Files.GetTempDownloadUrlRequest { FileIds = { fileId } });
-                    if (response.FileUrls == null || response.FileUrls.Count == 0)
+                    if (!HasValidFileUrls(response.FileUrls))
                         return (new ErrorReturner(false, "Файл не найден"), null);
                     return (new ErrorReturner(true), response.FileUrls[0].Url);
                 }, globalParam);
@@ -1206,7 +1218,7 @@ namespace BarkFluff.WebApi.Core
                 return await SafeCallAsync(async () =>
                 {
                     var response = await FilesAC!.GetTempDownloadUrlAsync(new Proto.Files.GetTempDownloadUrlRequest { FileIds = { fileId } });
-                    if (response.FileUrls == null || response.FileUrls.Count == 0)
+                    if (!HasValidFileUrls(response.FileUrls))
                         return (new ErrorReturner(false, "Файлы не найдены"), null);
                     var urls = response.FileUrls.Select(f => f.Url).ToList();
                     return (new ErrorReturner(true), urls);
