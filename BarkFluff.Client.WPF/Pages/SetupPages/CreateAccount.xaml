@@ -51,6 +51,33 @@
                 FontWeight="Normal"
                 Foreground="#B0B0B0"
                 Text="Создание нового аккаунта" />
+
+            <!--  Progress indicator  -->
+            <StackPanel
+                x:Name="ProgressIndicatorPanel"
+                Margin="0,15,0,0"
+                HorizontalAlignment="Center"
+                Orientation="Vertical">
+                <TextBlock
+                    x:Name="StepIndicatorText"
+                    HorizontalAlignment="Center"
+                    FontFamily="{DynamicResource AdwaitaSans}"
+                    FontSize="13"
+                    FontWeight="Normal"
+                    Foreground="#888888"
+                    Text="Шаг 1 из 9" />
+                <ProgressBar
+                    x:Name="StepProgressBar"
+                    Width="200"
+                    Height="4"
+                    Margin="0,8,0,0"
+                    Background="#333333"
+                    BorderThickness="0"
+                    Foreground="#df5000"
+                    Maximum="9"
+                    Minimum="0"
+                    Value="1" />
+            </StackPanel>
         </StackPanel>
 
         <!--  Основная область контента  -->
@@ -91,20 +118,34 @@
                         <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Имя *" />
                         <ui:TextBox
                             x:Name="FirstNameEnter"
-                            Margin="0,0,0,20"
+                            Margin="0,0,0,5"
                             KeyDown="TextBox_KeyDown"
                             PlaceholderText="Апогея"
                             Tag="Names"
-                            TextChanged="Enter_TextChanged" />
+                            TextChanged="FirstNameEnter_TextChanged" />
+                        <TextBlock
+                            x:Name="FirstNameValidationText"
+                            Margin="0,0,0,15"
+                            FontFamily="{DynamicResource AdwaitaSans}"
+                            FontSize="12"
+                            Foreground="#888888"
+                            Text="" />
 
                         <!--  Фамилия  -->
                         <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Фамилия" />
                         <ui:TextBox
                             x:Name="LastNameEnter"
-                            Margin="0,0,0,25"
+                            Margin="0,0,0,5"
                             KeyDown="TextBox_KeyDown"
                             PlaceholderText="Тайнигейпиратовна"
-                            TextChanged="Enter_TextChanged" />
+                            TextChanged="LastNameEnter_TextChanged" />
+                        <TextBlock
+                            x:Name="LastNameValidationText"
+                            Margin="0,0,0,20"
+                            FontFamily="{DynamicResource AdwaitaSans}"
+                            FontSize="12"
+                            Foreground="#888888"
+                            Text="" />
 
                         <!--  Информация  -->
                         <StackPanel>
@@ -138,10 +179,17 @@
                         <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Логин *" />
                         <ui:TextBox
                             x:Name="LoginEnter"
-                            Margin="0,0,0,25"
+                            Margin="0,0,0,5"
                             KeyDown="TextBox_KeyDown"
                             PlaceholderText="Apogee"
-                            TextChanged="Enter_TextChanged" />
+                            TextChanged="LoginEnter_TextChanged" />
+                        <TextBlock
+                            x:Name="LoginValidationText"
+                            Margin="0,0,0,20"
+                            FontFamily="{DynamicResource AdwaitaSans}"
+                            FontSize="12"
+                            Foreground="#888888"
+                            Text="" />
 
                         <StackPanel>
                             <TextBlock Style="{StaticResource InfoTextStyle}" Text="• Логин может содержать:" />
@@ -185,11 +233,17 @@
                         <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Почта *" />
                         <ui:TextBox
                             x:Name="EmailEnter"
-                            Margin="0,0,0,25"
+                            Margin="0,0,0,5"
                             KeyDown="TextBox_KeyDown"
-                            Loaded="EmailEnter_Loaded"
                             PlaceholderText="apogee@barkfluff.ru"
-                            TextChanged="Enter_TextChanged" />
+                            TextChanged="EmailEnter_TextChanged" />
+                        <TextBlock
+                            x:Name="EmailValidationText"
+                            Margin="0,0,0,20"
+                            FontFamily="{DynamicResource AdwaitaSans}"
+                            FontSize="12"
+                            Foreground="#888888"
+                            Text="" />
 
                         <StackPanel>
                             <TextBlock Style="{StaticResource InfoTextStyle}" Text="• Почта может использоваться для 2FA" />
@@ -221,10 +275,18 @@
                         <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Код подтверждения *" />
                         <ui:TextBox
                             x:Name="VerificationCodeEnter"
-                            Margin="0,0,0,25"
+                            Margin="0,0,0,5"
                             KeyDown="TextBox_KeyDown"
+                            MaxLength="6"
                             PlaceholderText="123456"
-                            TextChanged="Enter_TextChanged" />
+                            TextChanged="VerificationCodeEnter_TextChanged" />
+                        <TextBlock
+                            x:Name="VerificationCodeValidationText"
+                            Margin="0,0,0,20"
+                            FontFamily="{DynamicResource AdwaitaSans}"
+                            FontSize="12"
+                            Foreground="#888888"
+                            Text="" />
 
                         <StackPanel>
                             <TextBlock
@@ -232,6 +294,12 @@
                                 Style="{StaticResource InfoTextStyle}"
                                 Text="• Сообщение отправлено на вашу почту" />
                             <TextBlock Style="{StaticResource InfoTextStyle}" Text="• Проверьте папку со спамом" />
+                            <TextBlock
+                                x:Name="RemainingAttemptsText"
+                                Style="{StaticResource InfoTextStyle}"
+                                Foreground="#FF9800"
+                                Text=""
+                                Visibility="Collapsed" />
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -279,21 +347,63 @@
 
                         <TextBlock
                             x:Name="PasswordDifficultyIndicator"
-                            Margin="0,0,0,20"
+                            Margin="0,0,0,10"
                             FontFamily="{DynamicResource AdwaitaSans}"
                             FontSize="12"
                             FontWeight="Normal"
                             Foreground="#B0B0B0"
                             Text="Начните вводить пароль" />
 
+                        <!--  Password requirements checklist  -->
+                        <StackPanel x:Name="PasswordRequirementsPanel" Margin="0,0,0,15">
+                            <TextBlock
+                                x:Name="ReqMinLength"
+                                FontFamily="{DynamicResource AdwaitaSans}"
+                                FontSize="11"
+                                Foreground="#888888"
+                                Text="○ Минимум 8 символов" />
+                            <TextBlock
+                                x:Name="ReqUpperCase"
+                                FontFamily="{DynamicResource AdwaitaSans}"
+                                FontSize="11"
+                                Foreground="#888888"
+                                Text="○ Заглавные буквы" />
+                            <TextBlock
+                                x:Name="ReqLowerCase"
+                                FontFamily="{DynamicResource AdwaitaSans}"
+                                FontSize="11"
+                                Foreground="#888888"
+                                Text="○ Строчные буквы" />
+                            <TextBlock
+                                x:Name="ReqDigit"
+                                FontFamily="{DynamicResource AdwaitaSans}"
+                                FontSize="11"
+                                Foreground="#888888"
+                                Text="○ Цифры" />
+                            <TextBlock
+                                x:Name="ReqSpecialChar"
+                                FontFamily="{DynamicResource AdwaitaSans}"
+                                FontSize="11"
+                                Foreground="#888888"
+                                Text="○ Специальные символы" />
+                        </StackPanel>
+
                         <!--  Подтверждение пароля  -->
                         <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Подтвердите пароль *" />
                         <ui:PasswordBox
                             x:Name="PasswordRepeatedEnter"
-                            Margin="0,0,0,25"
+                            Margin="0,0,0,5"
                             KeyDown="TextBox_KeyDown"
+                            PasswordChanged="PasswordRepeatedEnter_TextChanged"
                             PlaceholderText="Повторите пароль"
-                            TextChanged="Enter_TextChanged" />
+                            TextChanged="PasswordRepeatedEnter_TextChanged" />
+                        <TextBlock
+                            x:Name="PasswordMatchText"
+                            Margin="0,0,0,20"
+                            FontFamily="{DynamicResource AdwaitaSans}"
+                            FontSize="12"
+                            Foreground="#888888"
+                            Text="" />
 
                         <StackPanel>
                             <TextBlock
@@ -403,7 +513,7 @@
 
                 <ui:Button
                     x:Name="CreateButton"
-                    Click="Registration"
+                    Click="NextButton_Click"
                     Style="{StaticResource MainButton}">
                     <StackPanel Orientation="Horizontal">
                         <ui:TextBlock Style="{StaticResource MainButtonTextLeft}" Text="Создать аккаунт" />
