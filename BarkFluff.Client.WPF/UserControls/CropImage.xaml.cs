@@ -137,7 +137,7 @@ namespace BarkFluff.Client.WPF.UserControls
                     }
                     else
                     {
-                        MessageBox.Show("Выбранный файл не является поддерживаемым изображением или слишком большой.",
+                        MessageBox.Show("Выбранный файл не является поддерживаемым изображением или слишком большой (макс. 50 МБ).",
                                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
                     }
                 }
