@@ -540,7 +540,7 @@ namespace BarkFluff.Client.WPF.Pages
             }
             else
             {
-                avatar = "pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png";
+                avatar = FileCacheService.DefaultPlaceholder;
             }
 
             if (App.GParam.UserId == response.Data.Id)

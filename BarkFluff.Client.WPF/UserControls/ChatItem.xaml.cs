@@ -64,7 +64,7 @@ namespace BarkFluff.Client.WPF.UserControls
             TimeMessage.Text = FormatDateTime(time.Length >= 2 ? time.Substring(1, time.Length - 2) : time);
 
             // Пытаемся извлечь fileId из URL если это не placeholder
-            if (!string.IsNullOrEmpty(imageUrl) && !imageUrl.StartsWith("pack://"))
+            if (!string.IsNullOrEmpty(imageUrl) && !FileCacheService.IsPlaceholder(imageUrl))
             {
                 _avatarFileId = FileCacheService.ExtractFileIdFromUrl(imageUrl);
             }

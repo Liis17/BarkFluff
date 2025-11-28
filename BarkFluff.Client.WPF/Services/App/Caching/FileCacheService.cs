@@ -21,11 +21,10 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
         private bool _disposed = false;
 
         // Placeholders для разных типов файлов
-        private const string AvatarPlaceholder = "pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png";
-        private const string ImagePlaceholder = "pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png";
-        private const string VideoPlaceholder = "pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png";
-        private const string GifPlaceholder = "pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png";
-        private const string DocumentPlaceholder = "pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png";
+        /// <summary>
+        /// Placeholder по умолчанию для всех типов файлов
+        /// </summary>
+        public const string DefaultPlaceholder = "pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png";
 
         /// <summary>
         /// Событие, вызываемое при успешном кешировании файла
@@ -79,17 +78,10 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
         /// <summary>
         /// Получает placeholder для указанного типа файла
         /// </summary>
-        private string GetPlaceholder(FileType fileType)
+        private static string GetPlaceholder(FileType fileType)
         {
-            return fileType switch
-            {
-                FileType.Avatar => AvatarPlaceholder,
-                FileType.Image => ImagePlaceholder,
-                FileType.Video => VideoPlaceholder,
-                FileType.Gif => GifPlaceholder,
-                FileType.Document => DocumentPlaceholder,
-                _ => AvatarPlaceholder
-            };
+            // В будущем можно добавить разные placeholders для разных типов файлов
+            return DefaultPlaceholder;
         }
 
         /// <summary>
@@ -164,13 +156,23 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
         }
 
         /// <summary>
+        /// Проверяет, является ли URL placeholder'ом (pack:// схема)
+        /// </summary>
+        /// <param name="url">URL для проверки</param>
+        /// <returns>True, если URL является placeholder'ом</returns>
+        public static bool IsPlaceholder(string? url)
+        {
+            return !string.IsNullOrEmpty(url) && url.StartsWith("pack://", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
         /// Извлекает fileId из URL если возможно
         /// </summary>
         /// <param name="url">URL для извлечения fileId</param>
         /// <returns>FileId или null, если не удалось извлечь</returns>
         public static string? ExtractFileIdFromUrl(string url)
         {
-            if (string.IsNullOrEmpty(url)) return null;
+            if (string.IsNullOrEmpty(url) || IsPlaceholder(url)) return null;
 
             try
             {
@@ -293,25 +295,15 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
                 var bytes = await _httpClient.GetByteArrayAsync(url);
                 await File.WriteAllBytesAsync(filePath, bytes);
 
-                // Сохраняем в базу данных
+                // Сохраняем в базу данных используя Upsert
                 lock (_lock)
                 {
-                    var existingFile = _files.FindOne(x => x.Hash == fileId);
-                    if (existingFile != null)
+                    _files.Upsert(new CachedFile
                     {
-                        existingFile.Path = filePath;
-                        existingFile.FileType = fileType;
-                        _files.Update(existingFile);
-                    }
-                    else
-                    {
-                        _files.Insert(new CachedFile
-                        {
-                            Hash = fileId,
-                            Path = filePath,
-                            FileType = fileType
-                        });
-                    }
+                        Hash = fileId,
+                        Path = filePath,
+                        FileType = fileType
+                    });
                 }
 
                 // Вызываем событие
