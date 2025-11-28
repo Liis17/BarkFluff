@@ -21,12 +21,14 @@ namespace BarkFluff.Client.WPF.UserControls
         private const int MIN_WIDTH_PADDING = 50;
         private const int IMAGE_MAX_WIDTH = 400;
         private const int IMAGE_MAX_HEIGHT = 300;
+        private const string DEFAULT_SEND_ERROR = "Ошибка отправки сообщения";
         #endregion Constants
 
         public string MessageId { get; set; } = string.Empty;
         public Timestamp SentAt { get; set; } = new Timestamp();
         private MessageType _messageType = MessageType.Text;
         private string? _attachmentFileId;
+        private bool _isSubscribedToFileCached;
 
         public MessageBubble(MessageOwner owner, MessageType messageType, MessageModel message, bool isGroup)
         {
@@ -62,6 +64,8 @@ namespace BarkFluff.Client.WPF.UserControls
 
             MessageId = message.MessageId.ToString();
             ThemedConfirm(owner);
+
+            Unloaded += MessageBubble_Unloaded;
         }
 
         public MessageBubble(string textMessage, (bool sendingRequired, bool isUserId, string recipient) options, List<string> filesId)
@@ -133,7 +137,7 @@ namespace BarkFluff.Client.WPF.UserControls
 
             LoadImage(imagePath);
 
-            App.FileCacheService.FileCached += OnFileCached;
+            SubscribeToFileCached();
 
             this.MinWidth = IMAGE_MAX_WIDTH;
         }
@@ -190,7 +194,7 @@ namespace BarkFluff.Client.WPF.UserControls
             {
                 var imagePath = App.FileCacheService.GetCachedFilePath(attachment.FileId, FileType.Video, attachment.PreviewUrl);
                 LoadImage(imagePath);
-                App.FileCacheService.FileCached += OnFileCached;
+                SubscribeToFileCached();
             }
             else
             {
@@ -198,6 +202,30 @@ namespace BarkFluff.Client.WPF.UserControls
             }
 
             this.MinWidth = IMAGE_MAX_WIDTH;
+        }
+
+        private void SubscribeToFileCached()
+        {
+            if (!_isSubscribedToFileCached)
+            {
+                App.FileCacheService.FileCached += OnFileCached;
+                _isSubscribedToFileCached = true;
+            }
+        }
+
+        private void UnsubscribeFromFileCached()
+        {
+            if (_isSubscribedToFileCached)
+            {
+                App.FileCacheService.FileCached -= OnFileCached;
+                _isSubscribedToFileCached = false;
+            }
+        }
+
+        private void MessageBubble_Unloaded(object sender, RoutedEventArgs e)
+        {
+            UnsubscribeFromFileCached();
+            Unloaded -= MessageBubble_Unloaded;
         }
 
         private void LoadImage(string imagePath)
@@ -234,7 +262,7 @@ namespace BarkFluff.Client.WPF.UserControls
                 LoadImage(filePath);
             });
 
-            App.FileCacheService.FileCached -= OnFileCached;
+            UnsubscribeFromFileCached();
         }
 
         private static string FormatFileSize(long bytes)
@@ -262,12 +290,21 @@ namespace BarkFluff.Client.WPF.UserControls
             var response = await App.ServerCommunication.SendMessage(App.GParam, type, letter);
             if (!response.error.IsSuccess)
             {
-                App.ErideMessage.AddMessage(response.error.ErrorMessage ?? "Ошибка отправки сообщения", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
+                var errorMsg = response.error.ErrorMessage ?? DEFAULT_SEND_ERROR;
+                var msgType = new Services.Erida.MessageType
+                {
+                    Type = Services.Erida.MessageType.MessageTypeEnum.Error
+                };
+                App.ErideMessage.AddMessage(errorMsg, msgType);
             }
             else if (response.message != null)
             {
                 MessageId = response.message.MessageId.ToString();
-                App.CacheManager.SaveMessage(response.message.ChatId, string.Empty, response.message, MessageOperation.Added);
+                App.CacheManager.SaveMessage(
+                    response.message.ChatId,
+                    string.Empty,
+                    response.message,
+                    MessageOperation.Added);
             }
         }
 
