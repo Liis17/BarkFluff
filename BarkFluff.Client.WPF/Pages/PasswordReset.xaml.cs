@@ -1,5 +1,4 @@
-﻿using BarkFluff.WebApi.Core;
-
+using BarkFluff.Client.WPF.Validators;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
@@ -9,10 +8,6 @@ using System.Windows.Media;
 using Erida = BarkFluff.Client.WPF.Services.Erida.MessageType;
 using MType = BarkFluff.Client.WPF.Services.Erida.MessageType.MessageTypeEnum;
 
-#pragma warning disable CS8600
-#pragma warning disable CS8604 
-#pragma warning disable CS8602 
-
 namespace BarkFluff.Client.WPF.Pages
 {
     /// <summary>
@@ -20,8 +15,27 @@ namespace BarkFluff.Client.WPF.Pages
     /// </summary>
     public partial class PasswordReset : UserControl
     {
-        private TextBox[]? codeBoxes;
+        private TextBox[] _codeBoxes = Array.Empty<TextBox>();
         private string _resetId = string.Empty;
+        private string _userEmail = string.Empty;
+        private string _userName = string.Empty;
+        private bool _isProcessing;
+
+        private static readonly Regex EmailPattern = new Regex(
+            @"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+        private static readonly Regex DigitOnlyPattern = new Regex(
+            @"^\d$",
+            RegexOptions.Compiled);
+
+        private static readonly BrushConverter BrushConverterInstance = new BrushConverter();
+
+        // Colors for validation feedback
+        private static readonly SolidColorBrush ValidColor = new(Color.FromRgb(0x4C, 0xAF, 0x50));
+        private static readonly SolidColorBrush InvalidColor = new(Color.FromRgb(0xFF, 0x46, 0x46));
+        private static readonly SolidColorBrush NeutralColor = new(Color.FromRgb(0x88, 0x88, 0x88));
+
         public PasswordReset()
         {
             InitializeComponent();
@@ -34,8 +48,11 @@ namespace BarkFluff.Client.WPF.Pages
             Step2Panel.Visibility = Visibility.Collapsed;
             Step3Panel.Visibility = Visibility.Collapsed;
             SuccessPanel.Visibility = Visibility.Collapsed;
-            codeBoxes = new[] { VerifyBox0, VerifyBox1, VerifyBox2, VerifyBox3, VerifyBox4, VerifyBox5 };
+            _codeBoxes = new[] { VerifyBox0, VerifyBox1, VerifyBox2, VerifyBox3, VerifyBox4, VerifyBox5 };
             EmailTextBox.Focus();
+
+            // Add paste handler to the first verification box
+            DataObject.AddPastingHandler(VerifyBox0, OnVerifyBoxPaste);
         }
 
         private void ShowStep2()
@@ -44,6 +61,8 @@ namespace BarkFluff.Client.WPF.Pages
             Step2Panel.Visibility = Visibility.Visible;
             StepLine1.Fill = new SolidColorBrush(Color.FromRgb(109, 144, 243));
             Step2Indicator.Style = (Style)FindResource("ActiveStepIndicator");
+            ClearVerificationCodeBoxes();
+            VerifyBox0.Focus();
         }
 
         private void ShowStep3()
@@ -52,7 +71,9 @@ namespace BarkFluff.Client.WPF.Pages
             Step3Panel.Visibility = Visibility.Visible;
             StepLine2.Fill = new SolidColorBrush(Color.FromRgb(109, 144, 243));
             Step3Indicator.Style = (Style)FindResource("ActiveStepIndicator");
+            PasswordEnter.Focus();
         }
+
         private void ShowStep4()
         {
             Step3Panel.Visibility = Visibility.Collapsed;
@@ -61,17 +82,43 @@ namespace BarkFluff.Client.WPF.Pages
             StepLine3.Fill = new SolidColorBrush(Color.FromRgb(109, 144, 243));
             BackToLoginTextBlock.Visibility = Visibility.Collapsed;
         }
+
         private void BackToLogin_Click(object sender, MouseButtonEventArgs e)
         {
             App.MessengerWindow.OpenLoginPage();
         }
 
+        private void SetButtonsEnabled(bool enabled)
+        {
+            SendCodeButton.IsEnabled = enabled;
+            VerifyCodeButton.IsEnabled = enabled;
+            ResetPasswordButton.IsEnabled = enabled;
+        }
+
+        private bool IsEmailFormat(string input)
+        {
+            return EmailPattern.IsMatch(input);
+        }
+
         private async void SendCodeButton_Click(object sender, RoutedEventArgs e)
         {
-            if (!string.IsNullOrEmpty(EmailTextBox.Text))
+            if (_isProcessing) return;
+
+            var inputText = EmailTextBox.Text?.Trim();
+
+            if (string.IsNullOrEmpty(inputText))
             {
-                var existEmail = await App.ServerCommunication.CheckEmail(EmailTextBox.Text, App.GParam);
-                var existLogin = await App.ServerCommunication.CheckUsername(EmailTextBox.Text, App.GParam);
+                App.ErideMessage.AddMessage("Введите email или имя пользователя", new Erida { Type = MType.Warning });
+                return;
+            }
+
+            _isProcessing = true;
+            SetButtonsEnabled(false);
+
+            try
+            {
+                var existEmail = await App.ServerCommunication.CheckEmail(inputText, App.GParam);
+                var existLogin = await App.ServerCommunication.CheckUsername(inputText, App.GParam);
 
                 if (!existEmail.error.IsSuccess || !existLogin.error.IsSuccess)
                 {
@@ -81,97 +128,138 @@ namespace BarkFluff.Client.WPF.Pages
 
                 if (existEmail.exists || existLogin.exists)
                 {
+                    _userEmail = string.Empty;
+                    _userName = string.Empty;
 
-                    bool ContainsEmail(string input)
+                    if (IsEmailFormat(inputText))
                     {
-                        string pattern = @"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}";
-                        return Regex.IsMatch(input, pattern);
-                    }
-
-                    string _email = string.Empty;
-                    string _username = string.Empty;
-                    if (ContainsEmail(EmailTextBox.Text))
-                    {
-                        _email = EmailTextBox.Text;
+                        _userEmail = inputText;
                     }
                     else
                     {
-                        _username = EmailTextBox.Text;
+                        _userName = inputText;
                     }
-                    var response = await App.ServerCommunication.ResetPassword(_email, _username, App.GParam);
-                    if (!response.error.IsSuccess) 
-                    { 
+
+                    var response = await App.ServerCommunication.ResetPassword(_userEmail, _userName, App.GParam);
+                    if (!response.error.IsSuccess)
+                    {
                         App.ErideMessage.AddMessage(response.error.ErrorMessage ?? "Неизвестная ошибка", new Erida { Type = MType.Error });
-                        return; 
+                        return;
                     }
-                    _resetId = response.resetId;
+
+                    _resetId = response.resetId ?? string.Empty;
                     ShowStep2();
                 }
                 else
                 {
                     App.ErideMessage.AddMessage("Пользователь не найден", new Erida { Type = MType.Warning });
                 }
+            }
+            catch (Exception ex)
+            {
+                App.ErideMessage.AddMessage($"Ошибка сети: {ex.Message}", new Erida { Type = MType.Error });
+            }
+            finally
+            {
+                _isProcessing = false;
+                SetButtonsEnabled(true);
+            }
+        }
 
+        private bool IsVerificationCodeComplete()
+        {
+            return _codeBoxes.All(b => b.Text.Length == 1);
+        }
+
+        private string GetVerificationCode()
+        {
+            return string.Concat(_codeBoxes.Select(b => b.Text));
+        }
+
+        private void ClearVerificationCodeBoxes()
+        {
+            foreach (var box in _codeBoxes)
+            {
+                box.Text = string.Empty;
             }
         }
 
         private async void VerifyCodeButton_Click(object sender, RoutedEventArgs e)
         {
-            if (codeBoxes.All(b => b.Text.Length == 1))
+            if (_isProcessing) return;
+
+            if (!IsVerificationCodeComplete())
             {
-                try
+                App.ErideMessage.AddMessage("Введите полный 6-значный код", new Erida { Type = MType.Warning });
+                return;
+            }
+
+            _isProcessing = true;
+            SetButtonsEnabled(false);
+
+            try
+            {
+                string code = GetVerificationCode();
+                var response = await App.ServerCommunication.ConfirmResetCode(_resetId, code, App.GParam);
+
+                if (response.refreshToken != null)
                 {
-                    string code = string.Concat(codeBoxes.Select(b => b.Text));
-                    var response = await App.ServerCommunication.ConfirmResetCode(_resetId, code, App.GParam);
                     App.GParam.RefreshToken = response.refreshToken;
-                    MainWindow.SaveSettings();
-                    App.UpdateApiClient();
-                    await App.ServerCommunication.TokenUpdate(App.GParam);
-                    MainWindow.SaveSettings();
                 }
-                catch (Exception ex)
-                {
-                    App.ErideMessage.AddMessage(ex.Message, new Erida { Type = MType.Error });
-                    return;
-                }
-                
+                MainWindow.SaveSettings();
+                App.UpdateApiClient();
+                await App.ServerCommunication.TokenUpdate(App.GParam);
+                MainWindow.SaveSettings();
 
                 ShowStep3();
+            }
+            catch (Exception ex)
+            {
+                App.ErideMessage.AddMessage(ex.Message, new Erida { Type = MType.Error });
+            }
+            finally
+            {
+                _isProcessing = false;
+                SetButtonsEnabled(true);
             }
         }
 
         private void VerifyBox_GotFocus(object sender, RoutedEventArgs e)
         {
-            TextBox current = sender as TextBox;
+            if (sender is not TextBox current) return;
+
             if (current.Text.Length == 1)
-                current.Select(1, 0); // Чтобы курсор не прыгал
+                current.Select(1, 0);
             else
                 current.SelectAll();
         }
+
         private void VerifyBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            TextBox current = sender as TextBox;
+            if (sender is not TextBox current) return;
+
             if (current.Text.Length == 1)
             {
-                int index = Array.IndexOf(codeBoxes, current);
-                if (index < codeBoxes.Length - 1)
-                    codeBoxes[index + 1].Focus();
+                int index = Array.IndexOf(_codeBoxes, current);
+                if (index >= 0 && index < _codeBoxes.Length - 1)
+                    _codeBoxes[index + 1].Focus();
                 else
-                    current.Select(1, 0); // Не прыгать в конец
+                    current.Select(1, 0);
             }
         }
+
         private void VerifyBox_PreviewKeyDown(object sender, KeyEventArgs e)
         {
-            TextBox current = sender as TextBox;
+            if (sender is not TextBox current) return;
 
             if (e.Key == Key.Back)
             {
                 if (current.Text.Length == 0)
                 {
-                    int index = Array.IndexOf(codeBoxes, current);
+                    int index = Array.IndexOf(_codeBoxes, current);
                     if (index > 0)
                     {
-                        TextBox prev = codeBoxes[index - 1];
+                        TextBox prev = _codeBoxes[index - 1];
                         prev.Focus();
                         prev.SelectAll();
                     }
@@ -181,39 +269,120 @@ namespace BarkFluff.Client.WPF.Pages
             if (e.Key == Key.Tab)
                 e.Handled = true;
         }
+
         private void VerifyBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
-            e.Handled = !Regex.IsMatch(e.Text, @"^\d$");
+            e.Handled = !DigitOnlyPattern.IsMatch(e.Text);
         }
 
-        private void ResendCode_Click(object sender, MouseButtonEventArgs e)
+        private void OnVerifyBoxPaste(object sender, DataObjectPastingEventArgs e)
         {
-            App.ErideMessage.AddMessage("Код подтверждения отправлен на ваш email.", new Erida { Type = MType.Info });
+            if (e.DataObject.GetDataPresent(DataFormats.Text))
+            {
+                var pastedText = e.DataObject.GetData(DataFormats.Text) as string;
+                if (!string.IsNullOrEmpty(pastedText))
+                {
+                    // Extract only digits from pasted text using StringBuilder for efficiency
+                    var digitsBuilder = new System.Text.StringBuilder();
+                    foreach (char c in pastedText)
+                    {
+                        if (char.IsDigit(c))
+                        {
+                            digitsBuilder.Append(c);
+                            if (digitsBuilder.Length >= _codeBoxes.Length) break;
+                        }
+                    }
+                    
+                    if (digitsBuilder.Length > 0)
+                    {
+                        // Cancel the default paste operation
+                        e.CancelCommand();
+                        
+                        var digits = digitsBuilder.ToString();
+                        
+                        // Fill the code boxes with digits
+                        for (int i = 0; i < digits.Length; i++)
+                        {
+                            _codeBoxes[i].Text = digits[i].ToString();
+                        }
+                        
+                        // Focus the appropriate box based on how many digits were pasted
+                        if (digits.Length >= _codeBoxes.Length)
+                        {
+                            // All boxes filled - focus the last one
+                            _codeBoxes[_codeBoxes.Length - 1].Focus();
+                            _codeBoxes[_codeBoxes.Length - 1].Select(1, 0);
+                        }
+                        else
+                        {
+                            // Focus the next empty box
+                            _codeBoxes[digits.Length].Focus();
+                        }
+                    }
+                }
+            }
         }
-        public bool IsValidPassword(string password)
+
+        private async void ResendCode_Click(object sender, MouseButtonEventArgs e)
         {
-            if (string.IsNullOrEmpty(password))
+            if (_isProcessing) return;
+
+            if (string.IsNullOrEmpty(_userEmail) && string.IsNullOrEmpty(_userName))
             {
-                App.ErideMessage.AddMessage("Пароль не должен быть пустым.", new Erida { Type = MType.Warning });
-                return false;
+                App.ErideMessage.AddMessage("Невозможно отправить код повторно. Начните заново.", new Erida { Type = MType.Error });
+                return;
             }
 
-            if (password.Length < 8)
-            {
-                App.ErideMessage.AddMessage("Пароль должен содержать не менее 8 символов.", new Erida { Type = MType.Warning });
-                return false;
-            }
+            _isProcessing = true;
+            SetButtonsEnabled(false);
 
-            if (password.Contains(" "))
+            try
             {
-                App.ErideMessage.AddMessage("Пароль не должен содержать пробелы.", new Erida { Type = MType.Warning });
-                return false;
+                var response = await App.ServerCommunication.ResetPassword(_userEmail, _userName, App.GParam);
+                if (!response.error.IsSuccess)
+                {
+                    App.ErideMessage.AddMessage(response.error.ErrorMessage ?? "Ошибка отправки кода", new Erida { Type = MType.Error });
+                    return;
+                }
+
+                _resetId = response.resetId ?? string.Empty;
+                ClearVerificationCodeBoxes();
+                VerifyBox0.Focus();
+                App.ErideMessage.AddMessage("Код подтверждения отправлен на ваш email.", new Erida { Type = MType.Info });
             }
-            return true;
+            catch (Exception ex)
+            {
+                App.ErideMessage.AddMessage($"Ошибка сети: {ex.Message}", new Erida { Type = MType.Error });
+            }
+            finally
+            {
+                _isProcessing = false;
+                SetButtonsEnabled(true);
+            }
         }
+
         private async void ResetPasswordButton_Click(object sender, RoutedEventArgs e)
         {
-            if (IsValidPassword(PasswordEnter.Password) && Shared.SecurityUtilities.SecurityUtilities.EvaluatePasswordStrength(PasswordEnter.Password) >= 60 && PasswordEnter.Password == PasswordRepeatedEnter.Password)
+            if (_isProcessing) return;
+
+            // Validate password using existing validator
+            if (!PasswordValidator.Validate(PasswordEnter.Password, out string passwordError))
+            {
+                App.ErideMessage.AddMessage(passwordError, new Erida { Type = MType.Warning });
+                return;
+            }
+
+            // Validate passwords match
+            if (!PasswordValidator.ValidateMatch(PasswordEnter.Password, PasswordRepeatedEnter.Password, out string matchError))
+            {
+                App.ErideMessage.AddMessage(matchError, new Erida { Type = MType.Warning });
+                return;
+            }
+
+            _isProcessing = true;
+            SetButtonsEnabled(false);
+
+            try
             {
                 var response = await App.ServerCommunication.SetPassword(PasswordEnter.Password, App.GParam);
                 if (!response.IsSuccess)
@@ -221,41 +390,88 @@ namespace BarkFluff.Client.WPF.Pages
                     App.ErideMessage.AddMessage(response.ErrorMessage ?? "Неизвестная ошибка", new Erida { Type = MType.Error });
                     return;
                 }
+
                 ShowStep4();
             }
-            else
+            catch (Exception ex)
             {
-                App.ErideMessage.AddMessage("Пароли не совпадают или не достаточно сильные.", new Erida { Type = MType.Error });
+                App.ErideMessage.AddMessage($"Ошибка сети: {ex.Message}", new Erida { Type = MType.Error });
+            }
+            finally
+            {
+                _isProcessing = false;
+                SetButtonsEnabled(true);
             }
         }
 
         private void BackToLoginButton_Click(object sender, RoutedEventArgs e)
         {
-
             App.MessengerWindow.OpenLoginPage();
         }
 
         private void NewPasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
         {
-            var a = 0;
-            PasswordStrengthBar.Value = a = BarkFluff.Shared.SecurityUtilities.SecurityUtilities.EvaluatePasswordStrength(PasswordEnter.Password);
-            var colors = BarkFluff.Shared.SecurityUtilities.SecurityUtilities.GetPasswordStrengthMessage(a);
-            PasswordDifficultyIndicator.Text = colors.message;
-            try
-            {
+            var password = PasswordEnter.Password;
+            int strengthScore = Shared.SecurityUtilities.SecurityUtilities.EvaluatePasswordStrength(password);
+            PasswordStrengthBar.Value = strengthScore;
 
-                PasswordStrengthBar.Foreground = (Brush)new BrushConverter().ConvertFromString(colors.colorHex);
-            }
-            catch(Exception ex)
+            var (message, colorHex) = Shared.SecurityUtilities.SecurityUtilities.GetPasswordStrengthMessage(strengthScore);
+            PasswordDifficultyIndicator.Text = message;
+
+            if (BrushConverterInstance.ConvertFromString(colorHex) is Brush brush)
             {
-                App.ErideMessage.AddMessage($"Ошибка при обновлении индикатора сложности пароля: {ex.Message}", new Erida { Type = MType.Error });
+                PasswordStrengthBar.Foreground = brush;
             }
-            
+
+            // Update requirements checklist
+            var requirements = PasswordValidator.GetRequirementsStatus(password);
+            UpdateRequirementText(ReqMinLength, requirements.HasMinLength, "Минимум 8 символов");
+            UpdateRequirementText(ReqUpperCase, requirements.HasUpperCase, "Заглавные буквы");
+            UpdateRequirementText(ReqLowerCase, requirements.HasLowerCase, "Строчные буквы");
+            UpdateRequirementText(ReqDigit, requirements.HasDigit, "Цифры");
+            UpdateRequirementText(ReqSpecialChar, requirements.HasSpecialChar, "Специальные символы");
+
+            // Update password match if confirm field has text
+            if (!string.IsNullOrEmpty(PasswordRepeatedEnter.Password))
+            {
+                UpdatePasswordMatchIndicator();
+            }
+        }
+
+        private void PasswordRepeatedEnter_PasswordChanged(object sender, RoutedEventArgs e)
+        {
+            UpdatePasswordMatchIndicator();
+        }
+
+        private void UpdatePasswordMatchIndicator()
+        {
+            if (string.IsNullOrEmpty(PasswordRepeatedEnter.Password))
+            {
+                PasswordMatchText.Text = "";
+                PasswordMatchText.Foreground = NeutralColor;
+                return;
+            }
+
+            if (PasswordEnter.Password == PasswordRepeatedEnter.Password)
+            {
+                PasswordMatchText.Text = "✓ Пароли совпадают";
+                PasswordMatchText.Foreground = ValidColor;
+            }
+            else
+            {
+                PasswordMatchText.Text = "✗ Пароли не совпадают";
+                PasswordMatchText.Foreground = InvalidColor;
+            }
+        }
+
+        private static void UpdateRequirementText(TextBlock textBlock, bool isMet, string text)
+        {
+            textBlock.Text = isMet ? $"✓ {text}" : $"○ {text}";
+            textBlock.Foreground = isMet ? ValidColor : NeutralColor;
         }
 
         private void NewPasswordBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-
         }
     }
 }
