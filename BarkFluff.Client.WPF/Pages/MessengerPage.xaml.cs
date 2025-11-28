@@ -33,11 +33,33 @@ namespace BarkFluff.Client.WPF.Pages
             InitializeComponent();
 
             Loaded += MessengerPage_Loaded;
+            Unloaded += MessengerPage_Unloaded;
+
+            SubscribeToReactiveProperties();
+            StartSlideDownAndFadeIn();
+        }
+
+        private void SubscribeToReactiveProperties()
+        {
             IsOpenChat.PropertyChanged += IsOpenChat_PropertyChanged;
             ChatId.PropertyChanged += ChatId_PropertyChanged;
             ChatIdbyUserId.PropertyChanged += ChatIdbyUserId_PropertyChanged;
+        }
 
-            StartSlideDownAndFadeIn();
+        private void UnsubscribeFromReactiveProperties()
+        {
+            IsOpenChat.PropertyChanged -= IsOpenChat_PropertyChanged;
+            ChatId.PropertyChanged -= ChatId_PropertyChanged;
+            ChatIdbyUserId.PropertyChanged -= ChatIdbyUserId_PropertyChanged;
+        }
+
+        private void MessengerPage_Unloaded(object sender, RoutedEventArgs e)
+        {
+            UnsubscribeFromReactiveProperties();
+
+            IsOpenChat?.Dispose();
+            ChatId?.Dispose();
+            ChatIdbyUserId?.Dispose();
         }
 
         #region Обработчики событий
