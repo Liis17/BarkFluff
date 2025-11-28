@@ -44,8 +44,8 @@ namespace BarkFluff.Client.WPF.UserControls
 
         // Zoom settings for mouse wheel
         private const double ZoomStep = 0.1;
-        private const double MinZoom = 0.5;
         private const double MaxZoom = 2.5;
+        private double _minZoom = 0.5; // Dynamic minimum zoom based on image size
 
         // Maximum file size in bytes (50 MB)
         private const long MaxFileSize = 50 * 1024 * 1024;
@@ -180,7 +180,7 @@ namespace BarkFluff.Client.WPF.UserControls
 
             double currentZoom = ZoomSlider.Value;
             double delta = e.Delta > 0 ? ZoomStep : -ZoomStep;
-            double newZoom = Math.Clamp(currentZoom + delta, MinZoom, MaxZoom);
+            double newZoom = Math.Clamp(currentZoom + delta, _minZoom, MaxZoom);
 
             ZoomSlider.Value = newZoom;
             e.Handled = true;
@@ -238,7 +238,12 @@ namespace BarkFluff.Client.WPF.UserControls
                 // Animate transition
                 AnimateGridTransition(ButtonGrid, CropGrid);
 
-                ResetImagePosition();
+                // Calculate minimum zoom after image is loaded and layout is updated
+                ImageControl.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    CalculateMinimumZoom();
+                    ResetImagePosition();
+                }), System.Windows.Threading.DispatcherPriority.Loaded);
             }
             catch (Exception ex)
             {
@@ -366,6 +371,40 @@ namespace BarkFluff.Client.WPF.UserControls
         }
 
         /// <summary>
+        /// Calculates the minimum zoom level required so that the image always covers the entire crop area.
+        /// </summary>
+        private void CalculateMinimumZoom()
+        {
+            if (ImageControl.Source == null || ImageControl.ActualWidth == 0 || ImageControl.ActualHeight == 0)
+            {
+                _minZoom = 0.5;
+                return;
+            }
+
+            double cropWidth = CropBorder.Width;
+            double cropHeight = CropBorder.Height;
+
+            // Calculate the minimum zoom needed to cover the crop area in both dimensions
+            double minZoomX = cropWidth / ImageControl.ActualWidth;
+            double minZoomY = cropHeight / ImageControl.ActualHeight;
+
+            // Use the larger of the two to ensure full coverage
+            _minZoom = Math.Max(minZoomX, minZoomY);
+
+            // Ensure _minZoom is at least a small positive value and not more than MaxZoom
+            _minZoom = Math.Clamp(_minZoom, 0.1, MaxZoom);
+
+            // Update slider minimum
+            ZoomSlider.Minimum = _minZoom;
+
+            // If current zoom is below minimum, adjust it
+            if (ZoomSlider.Value < _minZoom)
+            {
+                ZoomSlider.Value = _minZoom;
+            }
+        }
+
+        /// <summary>
         /// Constrains the image position so it cannot be moved completely outside the crop area.
         /// </summary>
         private void ConstrainImagePosition()
@@ -386,15 +425,32 @@ namespace BarkFluff.Client.WPF.UserControls
             double offsetX = ImageControl.ActualWidth * (1 - zoom) / 2;
             double offsetY = ImageControl.ActualHeight * (1 - zoom) / 2;
 
-            // Calculate bounds - ensure at least some part of the image covers the crop area
-            double minX = cropLeft + cropWidth - imageWidth - offsetX;
-            double maxX = cropLeft - offsetX;
-            double minY = cropTop + cropHeight - imageHeight - offsetY;
-            double maxY = cropTop - offsetY;
+            // Handle case when image is smaller than crop area (should not happen with proper minZoom)
+            if (imageWidth < cropWidth)
+            {
+                // Center horizontally
+                _imageTranslate.X = cropLeft + (cropWidth - imageWidth) / 2 - offsetX;
+            }
+            else
+            {
+                // Calculate bounds - ensure image covers the crop area
+                double minX = cropLeft + cropWidth - imageWidth - offsetX;
+                double maxX = cropLeft - offsetX;
+                _imageTranslate.X = Math.Clamp(_imageTranslate.X, minX, maxX);
+            }
 
-            // Clamp the translation
-            _imageTranslate.X = Math.Clamp(_imageTranslate.X, minX, maxX);
-            _imageTranslate.Y = Math.Clamp(_imageTranslate.Y, minY, maxY);
+            if (imageHeight < cropHeight)
+            {
+                // Center vertically
+                _imageTranslate.Y = cropTop + (cropHeight - imageHeight) / 2 - offsetY;
+            }
+            else
+            {
+                // Calculate bounds - ensure image covers the crop area
+                double minY = cropTop + cropHeight - imageHeight - offsetY;
+                double maxY = cropTop - offsetY;
+                _imageTranslate.Y = Math.Clamp(_imageTranslate.Y, minY, maxY);
+            }
         }
 
         private void Button_Click(object sender, RoutedEventArgs e)
@@ -436,12 +492,19 @@ namespace BarkFluff.Client.WPF.UserControls
         {
             _imageTranslate.X = 0;
             _imageTranslate.Y = 0;
-            _imageScale.ScaleX = 1.0;
-            _imageScale.ScaleY = 1.0;
+
+            // Set zoom to the minimum required (or 1.0 if larger)
+            double initialZoom = Math.Max(_minZoom, 1.0);
+            _imageScale.ScaleX = initialZoom;
+            _imageScale.ScaleY = initialZoom;
+
             if (ZoomSlider != null)
             {
-                ZoomSlider.Value = 1.0;
+                ZoomSlider.Value = initialZoom;
             }
+
+            // Constrain position after reset
+            ConstrainImagePosition();
         }
 
 
