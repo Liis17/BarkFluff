@@ -18,7 +18,7 @@
             HorizontalAlignment="Left"
             VerticalAlignment="Top">
             <Ellipse.Fill>
-                <ImageBrush ImageSource="https://image.barkfluff.com/notanesilia.png" />
+                <ImageBrush ImageSource="pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png" />
             </Ellipse.Fill>
             <Ellipse.Effect>
                 <BlurEffect Radius="100" />
@@ -39,7 +39,7 @@
                         Height="50"
                         Margin="0,0,10,0">
                         <Ellipse.Fill>
-                            <ImageBrush ImageSource="https://image.barkfluff.com/notanesilia.png" />
+                            <ImageBrush ImageSource="pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png" />
                         </Ellipse.Fill>
                     </Ellipse>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">

@@ -77,7 +77,7 @@
                             <Border.Background>
                                 <ImageBrush
                                     x:Name="AvatarBrush"
-                                    ImageSource="https://image.barkfluff.com/notanesilia.png"
+                                    ImageSource="pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png"
                                     Stretch="UniformToFill" />
                             </Border.Background>
                         </Border>
