@@ -279,8 +279,6 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
 
             try
             {
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-
                 var existEmail = await App.ServerCommunication.CheckEmail(UsernameTextBox.Text, App.GParam);
                 var existLogin = await App.ServerCommunication.CheckUsername(UsernameTextBox.Text, App.GParam);
 
@@ -293,12 +291,8 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
 
                 if (existEmail.exists || existLogin.exists)
                 {
-                    bool ContainsEmail(string input)
-                    {
-                        return EmailRegex.IsMatch(input);
-                    }
-
-                    if (ContainsEmail(UsernameTextBox.Text))
+                    // Use the pre-compiled EmailRegex to check if input is email
+                    if (EmailRegex.IsMatch(UsernameTextBox.Text))
                     {
                         _email = UsernameTextBox.Text;
                         _username = string.Empty;
@@ -309,7 +303,8 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                         _email = string.Empty;
                     }
 
-                    if (codeBoxes != null && codeBoxes.All(b => b.Text.Length == 1))
+                    // Only collect OTP code if we're in 2FA step and all boxes are filled
+                    if (_step2FA && codeBoxes != null && codeBoxes.All(b => b.Text.Length == 1))
                     {
                         _otpCode = string.Concat(codeBoxes.Select(b => b.Text));
                     }
