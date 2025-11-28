@@ -66,39 +66,10 @@ namespace BarkFluff.Client.WPF.UserControls
             // Пытаемся извлечь fileId из URL если это не placeholder
             if (!string.IsNullOrEmpty(imageUrl) && !imageUrl.StartsWith("pack://"))
             {
-                _avatarFileId = ExtractFileIdFromUrl(imageUrl);
+                _avatarFileId = FileCacheService.ExtractFileIdFromUrl(imageUrl);
             }
 
             Loaded += ChatItem_Loaded;
-        }
-
-        /// <summary>
-        /// Извлекает fileId из URL если возможно
-        /// </summary>
-        private string? ExtractFileIdFromUrl(string url)
-        {
-            try
-            {
-                var uri = new Uri(url);
-                var segments = uri.AbsolutePath.Split('/');
-                if (segments.Length > 0)
-                {
-                    var lastSegment = segments[^1];
-                    // Удаляем расширение если есть
-                    var dotIndex = lastSegment.LastIndexOf('.');
-                    if (dotIndex > 0)
-                    {
-                        lastSegment = lastSegment.Substring(0, dotIndex);
-                    }
-                    // Проверяем, является ли это GUID
-                    if (Guid.TryParse(lastSegment, out _))
-                    {
-                        return lastSegment;
-                    }
-                }
-            }
-            catch { }
-            return null;
         }
 
         public void UpdateMessage()
@@ -152,7 +123,9 @@ namespace BarkFluff.Client.WPF.UserControls
 
                 bitmapImage.DownloadCompleted += async (s, args) =>
                 {
-                    Color averageColor = await App.ColorAnalyzer.GetAverageColorFromUrlAsync(imagePath);
+                    // Use the original URL for color analysis if available, otherwise use the cached path
+                    var colorSourceUrl = !string.IsNullOrEmpty(_url) ? _url : imagePath;
+                    Color averageColor = await App.ColorAnalyzer.GetAverageColorFromUrlAsync(colorSourceUrl);
                     DropShadowEffect shadowEffect = new DropShadowEffect
                     {
                         BlurRadius = 12,

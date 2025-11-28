@@ -154,12 +154,46 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
         /// Асинхронно получает изображение из кеша или загружает его.
         /// </summary>
         /// <param name="fileId">Идентификатор файла</param>
+        /// <param name="fileType">Тип файла (по умолчанию Avatar)</param>
         /// <param name="providedUrl">Опциональный URL для прямой загрузки</param>
         /// <returns>ImageSource для использования в UI</returns>
-        public async Task<ImageSource> GetCachedImageAsync(string fileId, string? providedUrl = null)
+        public async Task<ImageSource> GetCachedImageAsync(string fileId, FileType fileType = FileType.Avatar, string? providedUrl = null)
         {
-            var path = await GetCachedFilePathAsync(fileId, FileType.Avatar, providedUrl);
+            var path = await GetCachedFilePathAsync(fileId, fileType, providedUrl);
             return CreateImageSource(path);
+        }
+
+        /// <summary>
+        /// Извлекает fileId из URL если возможно
+        /// </summary>
+        /// <param name="url">URL для извлечения fileId</param>
+        /// <returns>FileId или null, если не удалось извлечь</returns>
+        public static string? ExtractFileIdFromUrl(string url)
+        {
+            if (string.IsNullOrEmpty(url)) return null;
+
+            try
+            {
+                var uri = new Uri(url);
+                var segments = uri.AbsolutePath.Split('/');
+                if (segments.Length > 0)
+                {
+                    var lastSegment = segments[^1];
+                    // Удаляем расширение если есть
+                    var dotIndex = lastSegment.LastIndexOf('.');
+                    if (dotIndex > 0)
+                    {
+                        lastSegment = lastSegment.Substring(0, dotIndex);
+                    }
+                    // Проверяем, является ли это GUID
+                    if (Guid.TryParse(lastSegment, out _))
+                    {
+                        return lastSegment;
+                    }
+                }
+            }
+            catch { }
+            return null;
         }
 
         /// <summary>

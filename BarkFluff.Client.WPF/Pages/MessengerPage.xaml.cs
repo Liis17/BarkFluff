@@ -104,33 +104,6 @@ namespace BarkFluff.Client.WPF.Pages
             catch { }
         }
 
-        /// <summary>
-        /// Извлекает fileId из URL если возможно
-        /// </summary>
-        private string? ExtractFileIdFromUrl(string url)
-        {
-            try
-            {
-                var uri = new Uri(url);
-                var segments = uri.AbsolutePath.Split('/');
-                if (segments.Length > 0)
-                {
-                    var lastSegment = segments[^1];
-                    var dotIndex = lastSegment.LastIndexOf('.');
-                    if (dotIndex > 0)
-                    {
-                        lastSegment = lastSegment.Substring(0, dotIndex);
-                    }
-                    if (Guid.TryParse(lastSegment, out _))
-                    {
-                        return lastSegment;
-                    }
-                }
-            }
-            catch { }
-            return null;
-        }
-
         #region Обработчики событий
         private async void ChatIdbyUserId_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
@@ -527,7 +500,7 @@ namespace BarkFluff.Client.WPF.Pages
             // Загружаем аватар текущего пользователя через кеш-сервис
             if (!string.IsNullOrEmpty(App.GParam.PictureUrl))
             {
-                _currentUserAvatarFileId = ExtractFileIdFromUrl(App.GParam.PictureUrl);
+                _currentUserAvatarFileId = FileCacheService.ExtractFileIdFromUrl(App.GParam.PictureUrl);
                 var imagePath = App.FileCacheService.GetCachedFilePath(_currentUserAvatarFileId ?? string.Empty, FileType.Avatar, App.GParam.PictureUrl);
                 SetTitleWindowAvatarImage(imagePath);
             }
@@ -582,7 +555,7 @@ namespace BarkFluff.Client.WPF.Pages
             {
                 ChatTitleUsername.Text = $"{response.Data.FirstName} {response.Data.LastName}";
                 // Загружаем аватар через кеш-сервис
-                _currentChatAvatarFileId = ExtractFileIdFromUrl(avatar);
+                _currentChatAvatarFileId = FileCacheService.ExtractFileIdFromUrl(avatar);
                 var imagePath = App.FileCacheService.GetCachedFilePath(_currentChatAvatarFileId ?? string.Empty, FileType.Avatar, avatar);
                 SetChatAvatarImage(imagePath);
             }

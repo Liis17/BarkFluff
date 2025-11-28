@@ -44,7 +44,7 @@ namespace BarkFluff.Client.WPF.UserControls
             // Загружаем аватар через кеш-сервис
             if (!string.IsNullOrEmpty(App.GParam.PictureUrl))
             {
-                _avatarFileId = ExtractFileIdFromUrl(App.GParam.PictureUrl);
+                _avatarFileId = FileCacheService.ExtractFileIdFromUrl(App.GParam.PictureUrl);
                 var imagePath = App.FileCacheService.GetCachedFilePath(_avatarFileId ?? string.Empty, FileType.Avatar, App.GParam.PictureUrl);
                 SetAvatarImage(imagePath);
             }
@@ -65,33 +65,6 @@ namespace BarkFluff.Client.WPF.UserControls
                 UserAvatarBrush.ImageSource = new BitmapImage(new Uri(imagePath, UriKind.RelativeOrAbsolute));
             }
             catch { }
-        }
-
-        /// <summary>
-        /// Извлекает fileId из URL если возможно
-        /// </summary>
-        private string? ExtractFileIdFromUrl(string url)
-        {
-            try
-            {
-                var uri = new Uri(url);
-                var segments = uri.AbsolutePath.Split('/');
-                if (segments.Length > 0)
-                {
-                    var lastSegment = segments[^1];
-                    var dotIndex = lastSegment.LastIndexOf('.');
-                    if (dotIndex > 0)
-                    {
-                        lastSegment = lastSegment.Substring(0, dotIndex);
-                    }
-                    if (Guid.TryParse(lastSegment, out _))
-                    {
-                        return lastSegment;
-                    }
-                }
-            }
-            catch { }
-            return null;
         }
 
         private void SidebarButtonClick(object sender, RoutedEventArgs e)
