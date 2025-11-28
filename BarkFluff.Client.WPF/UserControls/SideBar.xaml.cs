@@ -1,5 +1,8 @@
-﻿using System.Windows;
+﻿using BarkFluff.Client.WPF.Services.App.Caching;
+
+using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media.Imaging;
 
 namespace BarkFluff.Client.WPF.UserControls
 {
@@ -8,9 +11,87 @@ namespace BarkFluff.Client.WPF.UserControls
     /// </summary>
     public partial class SideBar : UserControl
     {
+        private string? _avatarFileId;
+
         public SideBar()
         {
             InitializeComponent();
+            Loaded += SideBar_Loaded;
+        }
+
+        private void SideBar_Loaded(object sender, RoutedEventArgs e)
+        {
+            LoadCurrentUserData();
+
+            // Подписываемся на событие кеширования файла
+            App.FileCacheService.FileCached += OnFileCached;
+
+            // Отписываемся при выгрузке контрола
+            Unloaded += (s, args) =>
+            {
+                App.FileCacheService.FileCached -= OnFileCached;
+            };
+        }
+
+        private void LoadCurrentUserData()
+        {
+            if (App.GParam == null) return;
+
+            // Устанавливаем имя пользователя и email
+            UsernameText.Text = !string.IsNullOrEmpty(App.GParam.UserName) ? $"@{App.GParam.UserName}" : "username";
+            EmailText.Text = App.GParam.FirstName ?? "email";
+
+            // Загружаем аватар через кеш-сервис
+            if (!string.IsNullOrEmpty(App.GParam.PictureUrl))
+            {
+                _avatarFileId = ExtractFileIdFromUrl(App.GParam.PictureUrl);
+                var imagePath = App.FileCacheService.GetCachedFilePath(_avatarFileId ?? string.Empty, FileType.Avatar, App.GParam.PictureUrl);
+                SetAvatarImage(imagePath);
+            }
+        }
+
+        private void OnFileCached(string fileId, string filePath, FileType fileType)
+        {
+            if (fileId == _avatarFileId && fileType == FileType.Avatar)
+            {
+                Dispatcher.Invoke(() => SetAvatarImage(filePath));
+            }
+        }
+
+        private void SetAvatarImage(string imagePath)
+        {
+            try
+            {
+                UserAvatarBrush.ImageSource = new BitmapImage(new Uri(imagePath, UriKind.RelativeOrAbsolute));
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// Извлекает fileId из URL если возможно
+        /// </summary>
+        private string? ExtractFileIdFromUrl(string url)
+        {
+            try
+            {
+                var uri = new Uri(url);
+                var segments = uri.AbsolutePath.Split('/');
+                if (segments.Length > 0)
+                {
+                    var lastSegment = segments[^1];
+                    var dotIndex = lastSegment.LastIndexOf('.');
+                    if (dotIndex > 0)
+                    {
+                        lastSegment = lastSegment.Substring(0, dotIndex);
+                    }
+                    if (Guid.TryParse(lastSegment, out _))
+                    {
+                        return lastSegment;
+                    }
+                }
+            }
+            catch { }
+            return null;
         }
 
         private void SidebarButtonClick(object sender, RoutedEventArgs e)

@@ -1,4 +1,5 @@
-﻿using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
+﻿using BarkFluff.Client.WPF.Services.App.Caching;
+using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
 using System.Globalization;
 using System.Windows;
@@ -43,6 +44,7 @@ namespace BarkFluff.Client.WPF.UserControls
         }
         public MessageModel TransferMessage { get; set; } //объект класса MessageModel для обновления этого блока в списке чатов (после считывания делать пустым)
         private string _url;
+        private string? _avatarFileId;
         public string ChatId = "";
         private long _lastMessageId;
         private bool _isGroupChat;
@@ -61,7 +63,42 @@ namespace BarkFluff.Client.WPF.UserControls
             _userId = userId;
             TimeMessage.Text = FormatDateTime(time.Length >= 2 ? time.Substring(1, time.Length - 2) : time);
 
+            // Пытаемся извлечь fileId из URL если это не placeholder
+            if (!string.IsNullOrEmpty(imageUrl) && !imageUrl.StartsWith("pack://"))
+            {
+                _avatarFileId = ExtractFileIdFromUrl(imageUrl);
+            }
+
             Loaded += ChatItem_Loaded;
+        }
+
+        /// <summary>
+        /// Извлекает fileId из URL если возможно
+        /// </summary>
+        private string? ExtractFileIdFromUrl(string url)
+        {
+            try
+            {
+                var uri = new Uri(url);
+                var segments = uri.AbsolutePath.Split('/');
+                if (segments.Length > 0)
+                {
+                    var lastSegment = segments[^1];
+                    // Удаляем расширение если есть
+                    var dotIndex = lastSegment.LastIndexOf('.');
+                    if (dotIndex > 0)
+                    {
+                        lastSegment = lastSegment.Substring(0, dotIndex);
+                    }
+                    // Проверяем, является ли это GUID
+                    if (Guid.TryParse(lastSegment, out _))
+                    {
+                        return lastSegment;
+                    }
+                }
+            }
+            catch { }
+            return null;
         }
 
         public void UpdateMessage()
@@ -74,33 +111,70 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private async void ChatItem_Loaded(object sender, RoutedEventArgs e)
         {
-            BitmapImage bitmapImage = new BitmapImage();
-            bitmapImage.BeginInit();
-            bitmapImage.UriSource = new Uri(_url, UriKind.Absolute);
-            bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
-            bitmapImage.EndInit();
+            // Используем кеш-сервис для загрузки аватара
+            var imagePath = App.FileCacheService.GetCachedFilePath(_avatarFileId ?? string.Empty, FileType.Avatar, _url);
+            SetAvatarImage(imagePath);
 
-            ImageBrush imageBrush = new ImageBrush
+            // Подписываемся на событие кеширования файла
+            App.FileCacheService.FileCached += OnFileCached;
+
+            // Отписываемся при выгрузке контрола
+            Unloaded += (s, args) =>
             {
-                ImageSource = bitmapImage,
-                Stretch = Stretch.UniformToFill,
+                App.FileCacheService.FileCached -= OnFileCached;
             };
-            border.Background = imageBrush;
+        }
 
-            bitmapImage.DownloadCompleted += async (s, args) =>
+        private void OnFileCached(string fileId, string filePath, FileType fileType)
+        {
+            if (fileId == _avatarFileId && fileType == FileType.Avatar)
             {
-                Color averageColor = await App.ColorAnalyzer.GetAverageColorFromUrlAsync(_url);
-                DropShadowEffect shadowEffect = new DropShadowEffect
+                Dispatcher.Invoke(() => SetAvatarImage(filePath));
+            }
+        }
+
+        private async void SetAvatarImage(string imagePath)
+        {
+            try
+            {
+                BitmapImage bitmapImage = new BitmapImage();
+                bitmapImage.BeginInit();
+                bitmapImage.UriSource = new Uri(imagePath, UriKind.RelativeOrAbsolute);
+                bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                bitmapImage.EndInit();
+
+                ImageBrush imageBrush = new ImageBrush
                 {
-                    BlurRadius = 12,
-                    Opacity = 0.9,
-                    ShadowDepth = 0,
-                    Color = averageColor
+                    ImageSource = bitmapImage,
+                    Stretch = Stretch.UniformToFill,
                 };
-                border.Effect = shadowEffect;
-            };
+                border.Background = imageBrush;
 
-            bitmapImage.DownloadFailed += (s, args) =>
+                bitmapImage.DownloadCompleted += async (s, args) =>
+                {
+                    Color averageColor = await App.ColorAnalyzer.GetAverageColorFromUrlAsync(imagePath);
+                    DropShadowEffect shadowEffect = new DropShadowEffect
+                    {
+                        BlurRadius = 12,
+                        Opacity = 0.9,
+                        ShadowDepth = 0,
+                        Color = averageColor
+                    };
+                    border.Effect = shadowEffect;
+                };
+
+                bitmapImage.DownloadFailed += (s, args) =>
+                {
+                    border.Effect = new DropShadowEffect
+                    {
+                        BlurRadius = 10,
+                        Opacity = 0.3,
+                        ShadowDepth = 0,
+                        Color = Colors.Gray
+                    };
+                };
+            }
+            catch
             {
                 border.Effect = new DropShadowEffect
                 {
@@ -109,7 +183,7 @@ namespace BarkFluff.Client.WPF.UserControls
                     ShadowDepth = 0,
                     Color = Colors.Gray
                 };
-            };
+            }
         }
 
         private string FormatDateTime(string input)

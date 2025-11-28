@@ -1,4 +1,5 @@
-﻿using BarkFluff.Client.WPF.UserControls.Classes;
+﻿using BarkFluff.Client.WPF.Services.App.Caching;
+using BarkFluff.Client.WPF.UserControls.Classes;
 
 using System.ComponentModel;
 using System.Windows;
@@ -15,6 +16,8 @@ namespace BarkFluff.Client.WPF.UserControls
     /// </summary>
     public partial class Profile : UserControl
     {
+        private string? _avatarFileId;
+
         public Profile()
         {
             InitializeComponent();
@@ -316,7 +319,15 @@ namespace BarkFluff.Client.WPF.UserControls
             {
                 try
                 {
-                    AvatarSource = new BitmapImage(new Uri(userProfile.AvatarPath, UriKind.RelativeOrAbsolute));
+                    // Пытаемся извлечь fileId из URL
+                    _avatarFileId = ExtractFileIdFromUrl(userProfile.AvatarPath);
+
+                    // Используем кеш-сервис для загрузки аватара
+                    var imagePath = App.FileCacheService.GetCachedFilePath(_avatarFileId ?? string.Empty, FileType.Avatar, userProfile.AvatarPath);
+                    SetAvatarImage(imagePath);
+
+                    // Подписываемся на событие кеширования файла
+                    App.FileCacheService.FileCached += OnFileCached;
                 }
                 catch
                 {
@@ -326,6 +337,50 @@ namespace BarkFluff.Client.WPF.UserControls
 
             // Установка баджей
             SetBadges(userProfile.Badges);
+        }
+
+        private void OnFileCached(string fileId, string filePath, FileType fileType)
+        {
+            if (fileId == _avatarFileId && fileType == FileType.Avatar)
+            {
+                Dispatcher.Invoke(() => SetAvatarImage(filePath));
+            }
+        }
+
+        private void SetAvatarImage(string imagePath)
+        {
+            try
+            {
+                AvatarSource = new BitmapImage(new Uri(imagePath, UriKind.RelativeOrAbsolute));
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// Извлекает fileId из URL если возможно
+        /// </summary>
+        private string? ExtractFileIdFromUrl(string url)
+        {
+            try
+            {
+                var uri = new Uri(url);
+                var segments = uri.AbsolutePath.Split('/');
+                if (segments.Length > 0)
+                {
+                    var lastSegment = segments[^1];
+                    var dotIndex = lastSegment.LastIndexOf('.');
+                    if (dotIndex > 0)
+                    {
+                        lastSegment = lastSegment.Substring(0, dotIndex);
+                    }
+                    if (Guid.TryParse(lastSegment, out _))
+                    {
+                        return lastSegment;
+                    }
+                }
+            }
+            catch { }
+            return null;
         }
 
         public void SetBadges(BadgeInfo[] badges)
