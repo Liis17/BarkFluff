@@ -38,6 +38,12 @@ namespace BarkFluff.Client.WPF.UserControls
 
                 // Подписываемся на событие кеширования файла
                 App.FileCacheService.FileCached += OnFileCached;
+
+                // Отписываемся при выгрузке контрола
+                Unloaded += (s, e) =>
+                {
+                    App.FileCacheService.FileCached -= OnFileCached;
+                };
             }
         }
 
