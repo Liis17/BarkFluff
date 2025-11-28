@@ -96,7 +96,7 @@
                         BlurRadius="12"
                         Opacity="1"
                         ShadowDepth="0"
-                        Color="Pink" />
+                        Color="Blue" />
                 </Border.Effect>
             </Border>
 
@@ -114,7 +114,7 @@
                     FontSize="14"
                     FontWeight="SemiBold"
                     Foreground="White"
-                    Text="Apogee" />
+                    Text="#publicusername" />
 
                 <!--  Последнее сообщение  -->
                 <TextBlock
@@ -128,7 +128,7 @@
                     FontWeight="Normal"
                     Foreground="#9e9e9e"
                     Opacity="0.7"
-                    Text="Apogee хвост слишком пушистый ("
+                    Text="#sample message"
                     TextWrapping="Wrap" />
 
             </StackPanel>
