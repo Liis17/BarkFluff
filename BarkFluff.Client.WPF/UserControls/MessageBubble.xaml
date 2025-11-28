@@ -167,19 +167,22 @@
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <!--  Имя отправителя (для входящих сообщений)  -->
                 <TextBlock
                     x:Name="SenderName"
                     Grid.Row="0"
-                    Margin="20,0,10,1"
+                    Grid.ColumnSpan="2"
+                    Margin="12,8,12,4"
                     FontFamily="{DynamicResource AdwaitaSans}"
                     FontSize="12"
                     FontWeight="Medium"
@@ -187,11 +190,85 @@
                     Text="Apogee"
                     Visibility="Visible" />
 
+                <!--  Изображение (для Image, Gif, Video)  -->
+                <Border
+                    x:Name="ImageBorder"
+                    Grid.Row="1"
+                    Grid.ColumnSpan="2"
+                    Margin="4"
+                    CornerRadius="12">
+                    <Image
+                        x:Name="MessageImage"
+                        MaxWidth="400"
+                        MaxHeight="300"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        RenderOptions.BitmapScalingMode="HighQuality"
+                        Stretch="Uniform"
+                        Visibility="Collapsed" />
+                </Border>
+
+                <!--  Панель документа  -->
+                <Grid
+                    x:Name="DocumentPanel"
+                    Grid.Row="2"
+                    Grid.ColumnSpan="2"
+                    Margin="12,4"
+                    Visibility="Collapsed">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!--  Иконка документа  -->
+                    <Border
+                        Grid.RowSpan="2"
+                        Width="40"
+                        Height="40"
+                        Margin="0,0,10,0"
+                        Background="#4A9FD4"
+                        CornerRadius="8">
+                        <ui:SymbolIcon
+                            FontSize="20"
+                            Foreground="White"
+                            Symbol="Document16" />
+                    </Border>
+
+                    <!--  Имя файла  -->
+                    <TextBlock
+                        x:Name="DocumentFileName"
+                        Grid.Row="0"
+                        Grid.Column="1"
+                        FontFamily="{DynamicResource AdwaitaSans}"
+                        FontSize="13"
+                        FontWeight="SemiBold"
+                        Foreground="White"
+                        Text="document.pdf"
+                        TextTrimming="CharacterEllipsis" />
+
+                    <!--  Размер файла  -->
+                    <TextBlock
+                        x:Name="DocumentFileSize"
+                        Grid.Row="1"
+                        Grid.Column="1"
+                        FontFamily="{DynamicResource AdwaitaSans}"
+                        FontSize="11"
+                        Foreground="#AAFFFFFF"
+                        Text="2.5 MB"
+                        Visibility="Collapsed" />
+                </Grid>
+
                 <!--  Текст сообщения  -->
                 <TextBox
                     x:Name="MessageText"
-                    Grid.Row="1"
-                    Margin="0,0,-20,-10"
+                    Grid.Row="3"
+                    Grid.ColumnSpan="2"
+                    Margin="12,4,12,4"
+                    Padding="0"
                     AcceptsReturn="True"
                     Background="Transparent"
                     BorderThickness="0"
@@ -218,7 +295,10 @@
                 </TextBox>
 
                 <!--  Время и статус  -->
-                <Grid Grid.Row="2" Grid.Column="1">
+                <Grid
+                    Grid.Row="4"
+                    Grid.Column="1"
+                    Margin="4,0,8,6">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
@@ -228,7 +308,7 @@
                     <TextBlock
                         x:Name="MessageTime"
                         Grid.Column="0"
-                        Margin="0,0,-3,3"
+                        Margin="0,0,4,0"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Bottom"
                         FontFamily="{DynamicResource AdwaitaSans}"
@@ -255,7 +335,7 @@
                         <ui:SymbolIcon
                             Width="20"
                             Height="20"
-                            Margin="6,0,-14,0"
+                            Margin="0,0,-14,0"
                             FontSize="20"
                             Foreground="#FFFFC1A4"
                             Symbol="Checkmark12">

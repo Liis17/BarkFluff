@@ -218,7 +218,7 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
                 // Возвращаем placeholder при ошибке
                 var bitmapImage = new BitmapImage();
                 bitmapImage.BeginInit();
-                bitmapImage.UriSource = new Uri(AvatarPlaceholder, UriKind.RelativeOrAbsolute);
+                bitmapImage.UriSource = new Uri(DefaultPlaceholder, UriKind.RelativeOrAbsolute);
                 bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
                 bitmapImage.EndInit();
                 bitmapImage.Freeze();

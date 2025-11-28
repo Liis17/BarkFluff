@@ -168,6 +168,16 @@ namespace BarkFluff.Client.WPF.Pages
             }
             ChatIdbyUserId.Value = 0;
             App.ErideMessage.AddMessage($"Загрузка сообщений чата с ID: {ChatId.Value}", new Erida { Type = MType.Debug });
+
+            // Сначала показываем кешированные сообщения
+            var cachedMessages = App.CacheManager.GetMessages(ChatId.Value, _openedLastMessageId, 50);
+            if (cachedMessages != null && cachedMessages.Count > 0)
+            {
+                App.ErideMessage.AddMessage($"Показываем {cachedMessages.Count} кешированных сообщений", new Erida { Type = MType.Debug });
+                DisplayMessages(cachedMessages);
+            }
+
+            // Затем загружаем актуальные сообщения с сервера
             var response = await App.ServerCommunication.GetMessages(App.GParam, ChatId.Value, _openedLastMessageId);
             if (!response.error.IsSuccess)
             {
@@ -177,12 +187,32 @@ namespace BarkFluff.Client.WPF.Pages
                     return;
                 }
             }
+
+            if (response.messages != null && response.messages.Count > 0)
+            {
+                // Сохраняем сообщения в кеш
+                foreach (var msg in response.messages)
+                {
+                    App.CacheManager.SaveMessage(ChatId.Value, TitleChat, msg, MessageOperation.Added);
+                }
+
+                DisplayMessages(response.messages);
+            }
+        }
+
+        private void DisplayMessages(List<MessageModel> messages)
+        {
+            if (messages == null || messages.Count == 0)
+            {
+                return;
+            }
+
             MessageArea.Children.Clear();
-            var sortedMessages = response.messages.OrderBy(m => m.SentAt.ToDateTime()).ToList();
+            var sortedMessages = messages.OrderBy(m => m.SentAt.ToDateTime()).ToList();
 
             // Группировка по дням
             var groupedMessages = sortedMessages.GroupBy(m => m.SentAt.ToDateTime().Date)
-                                              .OrderBy(g => g.Key); // От старых дат к новым
+                                              .OrderBy(g => g.Key);
 
             foreach (var group in groupedMessages)
             {
@@ -190,38 +220,43 @@ namespace BarkFluff.Client.WPF.Pages
                 var dateHeader = GetDateHeader(group.Key);
                 var dateControl = new DateHeaderControl { Text = dateHeader };
                 dateControl.HorizontalAlignment = HorizontalAlignment.Center;
-                dateControl.Margin = new Thickness(0, 10, 0, 10); // Отступы
+                dateControl.Margin = new Thickness(0, 10, 0, 10);
                 MessageArea.Children.Add(dateControl);
 
                 // Добавляем сообщения группы
                 foreach (var item in group)
                 {
                     var owner = item.SenderId == App.GParam.UserId ? MessageBubble.MessageOwner.Me : MessageBubble.MessageOwner.Interlocutor;
-                    var type = item.Attachments.FirstOrDefault()?.Type switch
-                    {
-                        MessageAttachmentType.Image => MessageBubble.MessageType.Image,
-                        MessageAttachmentType.Video => MessageBubble.MessageType.Video,
-                        MessageAttachmentType.Gif => MessageBubble.MessageType.Gif,
-                        MessageAttachmentType.Document => MessageBubble.MessageType.Document,
-                        _ => MessageBubble.MessageType.Text
-                    };
-                    var messageContentType = item.Type switch
-                    {
-                        MessageContentType.Generic => MessageBubble.MessageContentType.Generic,
-                        MessageContentType.System => MessageBubble.MessageContentType.System,
-                        _ => MessageBubble.MessageContentType.Unknown
-                    };
+                    var type = GetMessageType(item);
                     var messageItem = new MessageBubble(owner, type, item, IsGroup);
-                    var message = new MessageModel
-                    {
-                        ChatId = ChatId.Value,
-                        SenderId = App.GParam.UserId,
-                        SentAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(DateTime.UtcNow)
-                    };
                     AddMessage(messageItem);
                 }
             }
         }
+
+        private static MessageBubble.MessageType GetMessageType(MessageModel message)
+        {
+            if (message.Attachments == null || message.Attachments.Count == 0)
+            {
+                return MessageBubble.MessageType.Text;
+            }
+
+            var firstAttachment = message.Attachments.FirstOrDefault();
+            if (firstAttachment == null)
+            {
+                return MessageBubble.MessageType.Text;
+            }
+
+            return firstAttachment.Type switch
+            {
+                MessageAttachmentType.Image => MessageBubble.MessageType.Image,
+                MessageAttachmentType.Video => MessageBubble.MessageType.Video,
+                MessageAttachmentType.Gif => MessageBubble.MessageType.Gif,
+                MessageAttachmentType.Document => MessageBubble.MessageType.Document,
+                _ => MessageBubble.MessageType.Text
+            };
+        }
+
         private string GetDateHeader(DateTime date)
         {
             if (date.Date == DateTime.Today) return "Сегодня";
