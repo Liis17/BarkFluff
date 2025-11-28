@@ -29,10 +29,6 @@ namespace BarkFluff.Client.WPF.Pages
             @"^\d$",
             RegexOptions.Compiled);
 
-        private static readonly Regex DigitsOnlyPattern = new Regex(
-            @"^\d+$",
-            RegexOptions.Compiled);
-
         private static readonly BrushConverter BrushConverterInstance = new BrushConverter();
 
         // Colors for validation feedback
@@ -286,26 +282,41 @@ namespace BarkFluff.Client.WPF.Pages
                 var pastedText = e.DataObject.GetData(DataFormats.Text) as string;
                 if (!string.IsNullOrEmpty(pastedText))
                 {
-                    // Extract only digits from pasted text
-                    var digits = new string(pastedText.Where(char.IsDigit).ToArray());
+                    // Extract only digits from pasted text using StringBuilder for efficiency
+                    var digitsBuilder = new System.Text.StringBuilder();
+                    foreach (char c in pastedText)
+                    {
+                        if (char.IsDigit(c))
+                        {
+                            digitsBuilder.Append(c);
+                            if (digitsBuilder.Length >= _codeBoxes.Length) break;
+                        }
+                    }
                     
-                    if (digits.Length > 0)
+                    if (digitsBuilder.Length > 0)
                     {
                         // Cancel the default paste operation
                         e.CancelCommand();
                         
+                        var digits = digitsBuilder.ToString();
+                        
                         // Fill the code boxes with digits
-                        for (int i = 0; i < Math.Min(digits.Length, _codeBoxes.Length); i++)
+                        for (int i = 0; i < digits.Length; i++)
                         {
                             _codeBoxes[i].Text = digits[i].ToString();
                         }
                         
-                        // Focus the next empty box or the last box if all filled
-                        int nextIndex = Math.Min(digits.Length, _codeBoxes.Length - 1);
-                        _codeBoxes[nextIndex].Focus();
-                        if (_codeBoxes[nextIndex].Text.Length == 1)
+                        // Focus the appropriate box based on how many digits were pasted
+                        if (digits.Length >= _codeBoxes.Length)
                         {
-                            _codeBoxes[nextIndex].Select(1, 0);
+                            // All boxes filled - focus the last one
+                            _codeBoxes[_codeBoxes.Length - 1].Focus();
+                            _codeBoxes[_codeBoxes.Length - 1].Select(1, 0);
+                        }
+                        else
+                        {
+                            // Focus the next empty box
+                            _codeBoxes[digits.Length].Focus();
                         }
                     }
                 }
