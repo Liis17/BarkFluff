@@ -490,11 +490,8 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private void ResetImagePosition()
         {
-            _imageTranslate.X = 0;
-            _imageTranslate.Y = 0;
-
-            // Set zoom to the minimum required (or 1.0 if larger)
-            double initialZoom = Math.Max(_minZoom, 1.0);
+            // Use minimum zoom to show as much of the image as possible
+            double initialZoom = _minZoom;
             _imageScale.ScaleX = initialZoom;
             _imageScale.ScaleY = initialZoom;
 
@@ -503,7 +500,40 @@ namespace BarkFluff.Client.WPF.UserControls
                 ZoomSlider.Value = initialZoom;
             }
 
-            // Constrain position after reset
+            // Center the image so the crop area is in the middle of the image
+            CenterImageOnCropArea(initialZoom);
+        }
+
+        /// <summary>
+        /// Centers the image so that the crop area is positioned at the center of the image.
+        /// </summary>
+        private void CenterImageOnCropArea(double zoom)
+        {
+            if (ImageControl.Source == null || ImageControl.ActualWidth == 0 || ImageControl.ActualHeight == 0)
+                return;
+
+            double imageWidth = ImageControl.ActualWidth * zoom;
+            double imageHeight = ImageControl.ActualHeight * zoom;
+
+            double cropLeft = Canvas.GetLeft(CropBorder);
+            double cropTop = Canvas.GetTop(CropBorder);
+            double cropWidth = CropBorder.Width;
+            double cropHeight = CropBorder.Height;
+
+            // Calculate the offset due to scaling from center
+            double offsetX = ImageControl.ActualWidth * (1 - zoom) / 2;
+            double offsetY = ImageControl.ActualHeight * (1 - zoom) / 2;
+
+            // Calculate the center of the crop area
+            double cropCenterX = cropLeft + cropWidth / 2;
+            double cropCenterY = cropTop + cropHeight / 2;
+
+            // Position the image so its center aligns with the crop area center
+            // The image center (after scaling) should be at cropCenterX, cropCenterY
+            _imageTranslate.X = cropCenterX - imageWidth / 2 - offsetX;
+            _imageTranslate.Y = cropCenterY - imageHeight / 2 - offsetY;
+
+            // Apply constraints to ensure the crop area doesn't go outside the image
             ConstrainImagePosition();
         }
 
