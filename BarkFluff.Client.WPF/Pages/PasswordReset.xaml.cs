@@ -29,6 +29,8 @@ namespace BarkFluff.Client.WPF.Pages
             @"^\d$",
             RegexOptions.Compiled);
 
+        private static readonly BrushConverter BrushConverterInstance = new BrushConverter();
+
         public PasswordReset()
         {
             InitializeComponent();
@@ -359,8 +361,7 @@ namespace BarkFluff.Client.WPF.Pages
             var (message, colorHex) = Shared.SecurityUtilities.SecurityUtilities.GetPasswordStrengthMessage(strengthScore);
             PasswordDifficultyIndicator.Text = message;
 
-            var brushConverter = new BrushConverter();
-            if (brushConverter.ConvertFromString(colorHex) is Brush brush)
+            if (BrushConverterInstance.ConvertFromString(colorHex) is Brush brush)
             {
                 PasswordStrengthBar.Foreground = brush;
             }
