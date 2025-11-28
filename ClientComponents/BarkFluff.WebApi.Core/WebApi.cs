@@ -980,41 +980,62 @@ namespace BarkFluff.WebApi.Core
             }
         }
 
-        public async Task<ErrorReturner> SendMessage(GlobalParam globalParam, (bool isUserId, string recipient) options, ForwardingLetter letter)
+        public async Task<(ErrorReturner error, MessageModel? message)> SendMessage(GlobalParam globalParam, (bool isUserId, string recipient) options, ForwardingLetter letter)
         {
             try
             {
                 return await SafeCallAsync(async () =>
                 {
+                    Proto.Messages.SendMessageResponse response;
+                    string chatId;
                     if (!options.isUserId)
                     {
-                        await MessagesAC!.SendMessageAsync(new Proto.Messages.SendMessageRequest
+                        chatId = options.recipient;
+                        response = await MessagesAC!.SendMessageAsync(new Proto.Messages.SendMessageRequest
                         {
                             ChatId = options.recipient,
                             Message = new Proto.Messages.OutgoingMessage { Text = letter.Text },
                         });
                     }
-                    else if (options.isUserId)
+                    else
                     {
-                        await MessagesAC!.SendMessageAsync(new Proto.Messages.SendMessageRequest
+                        chatId = string.Empty;
+                        response = await MessagesAC!.SendMessageAsync(new Proto.Messages.SendMessageRequest
                         {
                             UserId = long.Parse(options.recipient),
                             Message = new Proto.Messages.OutgoingMessage { Text = letter.Text, FilesIds = { letter.FilesId } },
                         });
-
                     }
 
+                    var sentMessage = new MessageModel
+                    {
+                        MessageId = response.Message.Id,
+                        ChatId = chatId,
+                        Text = response.Message.Content.Text,
+                        Attachments = response.Message.Content.Attachments.Select(a => new AttachmentsModel
+                        {
+                            Id = a.Id,
+                            Type = a.Type,
+                            PreviewUrl = a.PreviewUrl,
+                            FileId = a.FileId,
+                            Size = a.AttachmentSize,
+                        }).ToList(),
+                        SenderId = response.Message.SenderId,
+                        SentAt = response.Message.SentAt,
+                        Type = response.Message.Type,
+                        ReadBy = response.Message.ReadBy.ToList(),
+                    };
 
-                    return (new ErrorReturner(true));
+                    return (new ErrorReturner(true), sentMessage);
                 }, globalParam);
             }
             catch (BarkFluff.Shared.Exceptions.Messages.ChatIdNotValidException)
             {
-                return (new ErrorReturner(false, "Неверный идентификатор чата."));
+                return (new ErrorReturner(false, "Неверный идентификатор чата."), null);
             }
             catch (Exception)
             {
-                return (new ErrorReturner(false, "Ошибка отправки сообщения"));
+                return (new ErrorReturner(false, "Ошибка отправки сообщения"), null);
             }
         }
 
