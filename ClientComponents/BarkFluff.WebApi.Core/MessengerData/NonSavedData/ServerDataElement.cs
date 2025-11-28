@@ -9,7 +9,7 @@ namespace BarkFluff.WebApi.Core.MessengerData.NonSavedData
         public string Title { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public string Ip { get; set; } = string.Empty;
-        public string UserCount {  get; set; } = string.Empty;
-
+        public string UserCount { get; set; } = string.Empty;
+        public string PublicName { get; set; } = string.Empty;
     }
 }

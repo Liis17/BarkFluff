@@ -359,7 +359,8 @@ namespace BarkFluff.WebApi.Core
                             Ip = $"{item.BeaconUri.Host}:{item.BeaconUri.Port}",
                             Title = item.Name,
                             UserCount = item.AccountsCount.ToString(),
-                            Description = item.Description
+                            Description = item.Description,
+                            PublicName = item.ServerPublicName
                         })
                         .ToList();
 

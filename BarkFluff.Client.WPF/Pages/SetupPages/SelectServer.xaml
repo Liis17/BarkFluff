@@ -125,7 +125,7 @@
 
                             <!--  Описание с удивлением  -->
                             <TextBlock
-                                Margin="0,0,0,20"
+                                Margin="0,0,0,10"
                                 HorizontalAlignment="Center"
                                 FontFamily="{DynamicResource AdwaitaSans}"
                                 FontSize="13"
@@ -134,18 +134,7 @@
                                 TextAlignment="Center"
                                 TextWrapping="Wrap">
                                 <Run Text="Странно... Тут должны были быть серверы..." />
-
                             </TextBlock>
-
-                            <!--  Главная кнопка  -->
-                            <ui:Button Style="{StaticResource MainButton}">
-
-
-                                <StackPanel Orientation="Horizontal">
-                                    <ui:SymbolIcon Style="{StaticResource ButtonSymbolLeft}" Symbol="Add16" />
-                                    <ui:TextBlock Style="{StaticResource MainButtonTextRight}" Text="Поднять свой сервер" />
-                                </StackPanel>
-                            </ui:Button>
 
                         </StackPanel>
                     </Border>
@@ -172,7 +161,6 @@
                     x:Name="ServerAddressTextBox"
                     Margin="0,0,0,10"
                     Padding="12,10"
-                    GotFocus="ServerAddressTextBox_GotFocus"
                     Loaded="ServerAddressTextBox_Loaded"
                     PlaceholderEnabled="True"
                     PlaceholderText="myserver.com:8080" />
@@ -201,6 +189,36 @@
                 HorizontalAlignment="Center"
                 VerticalAlignment="Bottom"
                 Orientation="Vertical">
+
+                <!--  Информация о self-hosted  -->
+                <Border
+                    Margin="0,0,0,15"
+                    Padding="15,10"
+                    Background="#252525"
+                    CornerRadius="10">
+                    <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                        <ui:SymbolIcon
+                            Margin="0,0,8,0"
+                            FontSize="16"
+                            Foreground="#FFF39E6D"
+                            Symbol="Server20" />
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            FontFamily="{DynamicResource AdwaitaSans}"
+                            FontSize="13"
+                            Foreground="#B0B0B0">
+                            <Run Text="Хотите развернуть собственный сервер? " />
+                            <Hyperlink
+                                x:Name="SelfHostedLink"
+                                Click="SelfHostedLink_Click"
+                                Foreground="#FFF39E6D"
+                                TextDecorations="None">
+                                <Run Text="Узнайте больше" />
+                            </Hyperlink>
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+
                 <TextBlock
                     MaxWidth="600"
                     HorizontalAlignment="Center"
