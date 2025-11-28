@@ -29,7 +29,16 @@ namespace BarkFluff.Client.WPF.Pages
             @"^\d$",
             RegexOptions.Compiled);
 
+        private static readonly Regex DigitsOnlyPattern = new Regex(
+            @"^\d+$",
+            RegexOptions.Compiled);
+
         private static readonly BrushConverter BrushConverterInstance = new BrushConverter();
+
+        // Colors for validation feedback
+        private static readonly SolidColorBrush ValidColor = new(Color.FromRgb(0x4C, 0xAF, 0x50));
+        private static readonly SolidColorBrush InvalidColor = new(Color.FromRgb(0xFF, 0x46, 0x46));
+        private static readonly SolidColorBrush NeutralColor = new(Color.FromRgb(0x88, 0x88, 0x88));
 
         public PasswordReset()
         {
@@ -45,6 +54,9 @@ namespace BarkFluff.Client.WPF.Pages
             SuccessPanel.Visibility = Visibility.Collapsed;
             _codeBoxes = new[] { VerifyBox0, VerifyBox1, VerifyBox2, VerifyBox3, VerifyBox4, VerifyBox5 };
             EmailTextBox.Focus();
+
+            // Add paste handler to the first verification box
+            DataObject.AddPastingHandler(VerifyBox0, OnVerifyBoxPaste);
         }
 
         private void ShowStep2()
@@ -267,6 +279,39 @@ namespace BarkFluff.Client.WPF.Pages
             e.Handled = !DigitOnlyPattern.IsMatch(e.Text);
         }
 
+        private void OnVerifyBoxPaste(object sender, DataObjectPastingEventArgs e)
+        {
+            if (e.DataObject.GetDataPresent(DataFormats.Text))
+            {
+                var pastedText = e.DataObject.GetData(DataFormats.Text) as string;
+                if (!string.IsNullOrEmpty(pastedText))
+                {
+                    // Extract only digits from pasted text
+                    var digits = new string(pastedText.Where(char.IsDigit).ToArray());
+                    
+                    if (digits.Length > 0)
+                    {
+                        // Cancel the default paste operation
+                        e.CancelCommand();
+                        
+                        // Fill the code boxes with digits
+                        for (int i = 0; i < Math.Min(digits.Length, _codeBoxes.Length); i++)
+                        {
+                            _codeBoxes[i].Text = digits[i].ToString();
+                        }
+                        
+                        // Focus the next empty box or the last box if all filled
+                        int nextIndex = Math.Min(digits.Length, _codeBoxes.Length - 1);
+                        _codeBoxes[nextIndex].Focus();
+                        if (_codeBoxes[nextIndex].Text.Length == 1)
+                        {
+                            _codeBoxes[nextIndex].Select(1, 0);
+                        }
+                    }
+                }
+            }
+        }
+
         private async void ResendCode_Click(object sender, MouseButtonEventArgs e)
         {
             if (_isProcessing) return;
@@ -355,7 +400,8 @@ namespace BarkFluff.Client.WPF.Pages
 
         private void NewPasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
         {
-            int strengthScore = Shared.SecurityUtilities.SecurityUtilities.EvaluatePasswordStrength(PasswordEnter.Password);
+            var password = PasswordEnter.Password;
+            int strengthScore = Shared.SecurityUtilities.SecurityUtilities.EvaluatePasswordStrength(password);
             PasswordStrengthBar.Value = strengthScore;
 
             var (message, colorHex) = Shared.SecurityUtilities.SecurityUtilities.GetPasswordStrengthMessage(strengthScore);
@@ -365,6 +411,52 @@ namespace BarkFluff.Client.WPF.Pages
             {
                 PasswordStrengthBar.Foreground = brush;
             }
+
+            // Update requirements checklist
+            var requirements = PasswordValidator.GetRequirementsStatus(password);
+            UpdateRequirementText(ReqMinLength, requirements.HasMinLength, "Минимум 8 символов");
+            UpdateRequirementText(ReqUpperCase, requirements.HasUpperCase, "Заглавные буквы");
+            UpdateRequirementText(ReqLowerCase, requirements.HasLowerCase, "Строчные буквы");
+            UpdateRequirementText(ReqDigit, requirements.HasDigit, "Цифры");
+            UpdateRequirementText(ReqSpecialChar, requirements.HasSpecialChar, "Специальные символы");
+
+            // Update password match if confirm field has text
+            if (!string.IsNullOrEmpty(PasswordRepeatedEnter.Password))
+            {
+                UpdatePasswordMatchIndicator();
+            }
+        }
+
+        private void PasswordRepeatedEnter_PasswordChanged(object sender, RoutedEventArgs e)
+        {
+            UpdatePasswordMatchIndicator();
+        }
+
+        private void UpdatePasswordMatchIndicator()
+        {
+            if (string.IsNullOrEmpty(PasswordRepeatedEnter.Password))
+            {
+                PasswordMatchText.Text = "";
+                PasswordMatchText.Foreground = NeutralColor;
+                return;
+            }
+
+            if (PasswordEnter.Password == PasswordRepeatedEnter.Password)
+            {
+                PasswordMatchText.Text = "✓ Пароли совпадают";
+                PasswordMatchText.Foreground = ValidColor;
+            }
+            else
+            {
+                PasswordMatchText.Text = "✗ Пароли не совпадают";
+                PasswordMatchText.Foreground = InvalidColor;
+            }
+        }
+
+        private static void UpdateRequirementText(TextBlock textBlock, bool isMet, string text)
+        {
+            textBlock.Text = isMet ? $"✓ {text}" : $"○ {text}";
+            textBlock.Foreground = isMet ? ValidColor : NeutralColor;
         }
 
         private void NewPasswordBox_TextChanged(object sender, TextChangedEventArgs e)
