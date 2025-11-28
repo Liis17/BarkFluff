@@ -1,84 +1,304 @@
-﻿using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
+﻿using BarkFluff.Client.WPF.Services.App.Caching;
+using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
 using Google.Protobuf.WellKnownTypes;
 
+using System.IO;
+using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace BarkFluff.Client.WPF.UserControls
 {
-
     public partial class MessageBubble : UserControl
     {
-        public string MessageId { get; set; } = "";
+        #region Constants
+        private const int MAX_BUBBLE_WIDTH = 600;
+        private const int MAX_CHARS_PER_LINE = 45;
+        private const int CHAR_WIDTH_APPROX = 12;
+        private const int MESSAGE_LIMIT = 4096;
+        private const int MIN_WIDTH_PADDING = 50;
+        private const int IMAGE_MAX_WIDTH = 400;
+        private const int IMAGE_MAX_HEIGHT = 300;
+        #endregion Constants
+
+        public string MessageId { get; set; } = string.Empty;
         public Timestamp SentAt { get; set; } = new Timestamp();
-        public MessageBubble(MessageOwner owner, MessageType messageTypes, MessageModel message, bool IsGroup)
+        private MessageType _messageType = MessageType.Text;
+        private string? _attachmentFileId;
+
+        public MessageBubble(MessageOwner owner, MessageType messageType, MessageModel message, bool isGroup)
         {
             InitializeComponent();
-            if (IsGroup && owner == MessageOwner.Interlocutor)
+
+            if (message == null)
             {
-                SenderName.Visibility = System.Windows.Visibility.Visible;
+                return;
+            }
+
+            _messageType = messageType;
+
+            if (isGroup && owner == MessageOwner.Interlocutor)
+            {
+                SenderName.Visibility = Visibility.Visible;
             }
             else
             {
-                SenderName.Visibility = System.Windows.Visibility.Collapsed;
+                SenderName.Visibility = Visibility.Collapsed;
             }
-            MessageText.Text = message.Text;
-            MessageTime.Text = message.SentAt.ToDateTime().ToString("HH:mm");
+
+            SetupContent(message, messageType);
+
+            if (message.SentAt != null)
+            {
+                MessageTime.Text = message.SentAt.ToDateTime().ToString("HH:mm");
+                SentAt = message.SentAt;
+            }
+            else
+            {
+                MessageTime.Text = DateTime.Now.ToString("HH:mm");
+            }
+
             MessageId = message.MessageId.ToString();
-            var sizeMessageWidth = CalculateLongestLineWidth(message.Text);
-            this.MinWidth = sizeMessageWidth + 50;
             ThemedConfirm(owner);
         }
+
         public MessageBubble(string textMessage, (bool sendingRequired, bool isUserId, string recipient) options, List<string> filesId)
         {
             InitializeComponent();
+
             var sizeMessageWidth = CalculateLongestLineWidth(textMessage);
-            this.MinWidth = sizeMessageWidth + 50;
-            SenderName.Visibility = System.Windows.Visibility.Collapsed;
-            MessageText.Text = textMessage;
-            MessageTime.Text = System.DateTime.Now.ToString("HH:mm");
+            this.MinWidth = sizeMessageWidth + MIN_WIDTH_PADDING;
+            SenderName.Visibility = Visibility.Collapsed;
+            MessageText.Text = textMessage ?? string.Empty;
+            MessageTime.Text = DateTime.Now.ToString("HH:mm");
             ThemedConfirm(MessageOwner.Me);
+
             if (options.sendingRequired)
             {
-                SendMessage(options, textMessage, filesId);
+                SendMessage(options, textMessage ?? string.Empty, filesId ?? new List<string>());
             }
         }
+
+        private void SetupContent(MessageModel message, MessageType messageType)
+        {
+            switch (messageType)
+            {
+                case MessageType.Image:
+                case MessageType.Gif:
+                    SetupImageContent(message, messageType);
+                    break;
+                case MessageType.Document:
+                    SetupDocumentContent(message);
+                    break;
+                case MessageType.Video:
+                    SetupVideoContent(message);
+                    break;
+                case MessageType.Text:
+                default:
+                    SetupTextContent(message);
+                    break;
+            }
+        }
+
+        private void SetupTextContent(MessageModel message)
+        {
+            MessageText.Text = message.Text ?? string.Empty;
+            MessageText.Visibility = Visibility.Visible;
+            MessageImage.Visibility = Visibility.Collapsed;
+            DocumentPanel.Visibility = Visibility.Collapsed;
+
+            var sizeMessageWidth = CalculateLongestLineWidth(message.Text);
+            this.MinWidth = sizeMessageWidth + MIN_WIDTH_PADDING;
+        }
+
+        private void SetupImageContent(MessageModel message, MessageType messageType)
+        {
+            var attachment = message.Attachments?.FirstOrDefault();
+            if (attachment == null || string.IsNullOrEmpty(attachment.FileId))
+            {
+                SetupTextContent(message);
+                return;
+            }
+
+            _attachmentFileId = attachment.FileId;
+            MessageText.Visibility = string.IsNullOrEmpty(message.Text) ? Visibility.Collapsed : Visibility.Visible;
+            MessageText.Text = message.Text ?? string.Empty;
+            MessageImage.Visibility = Visibility.Visible;
+            DocumentPanel.Visibility = Visibility.Collapsed;
+
+            var fileType = messageType == MessageType.Gif ? FileType.Gif : FileType.Image;
+            var imagePath = App.FileCacheService.GetCachedFilePath(attachment.FileId, fileType, attachment.PreviewUrl);
+
+            LoadImage(imagePath);
+
+            App.FileCacheService.FileCached += OnFileCached;
+
+            this.MinWidth = IMAGE_MAX_WIDTH;
+        }
+
+        private void SetupDocumentContent(MessageModel message)
+        {
+            var attachment = message.Attachments?.FirstOrDefault();
+            if (attachment == null || string.IsNullOrEmpty(attachment.FileId))
+            {
+                SetupTextContent(message);
+                return;
+            }
+
+            _attachmentFileId = attachment.FileId;
+            MessageText.Visibility = string.IsNullOrEmpty(message.Text) ? Visibility.Collapsed : Visibility.Visible;
+            MessageText.Text = message.Text ?? string.Empty;
+            MessageImage.Visibility = Visibility.Collapsed;
+            DocumentPanel.Visibility = Visibility.Visible;
+
+            DocumentFileName.Text = !string.IsNullOrEmpty(attachment.PreviewUrl)
+                ? Path.GetFileName(attachment.PreviewUrl)
+                : $"Document_{attachment.FileId}";
+
+            if (attachment.Size > 0)
+            {
+                DocumentFileSize.Text = FormatFileSize(attachment.Size);
+                DocumentFileSize.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                DocumentFileSize.Visibility = Visibility.Collapsed;
+            }
+
+            var sizeMessageWidth = CalculateLongestLineWidth(message.Text);
+            this.MinWidth = Math.Max(sizeMessageWidth + MIN_WIDTH_PADDING, 200);
+        }
+
+        private void SetupVideoContent(MessageModel message)
+        {
+            var attachment = message.Attachments?.FirstOrDefault();
+            if (attachment == null || string.IsNullOrEmpty(attachment.FileId))
+            {
+                SetupTextContent(message);
+                return;
+            }
+
+            _attachmentFileId = attachment.FileId;
+            MessageText.Visibility = string.IsNullOrEmpty(message.Text) ? Visibility.Collapsed : Visibility.Visible;
+            MessageText.Text = message.Text ?? string.Empty;
+            MessageImage.Visibility = Visibility.Visible;
+            DocumentPanel.Visibility = Visibility.Collapsed;
+
+            if (!string.IsNullOrEmpty(attachment.PreviewUrl))
+            {
+                var imagePath = App.FileCacheService.GetCachedFilePath(attachment.FileId, FileType.Video, attachment.PreviewUrl);
+                LoadImage(imagePath);
+                App.FileCacheService.FileCached += OnFileCached;
+            }
+            else
+            {
+                MessageImage.Source = new BitmapImage(new Uri(FileCacheService.DefaultPlaceholder, UriKind.RelativeOrAbsolute));
+            }
+
+            this.MinWidth = IMAGE_MAX_WIDTH;
+        }
+
+        private void LoadImage(string imagePath)
+        {
+            try
+            {
+                var bitmapImage = new BitmapImage();
+                bitmapImage.BeginInit();
+                bitmapImage.UriSource = new Uri(imagePath, UriKind.RelativeOrAbsolute);
+                bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                bitmapImage.DecodePixelWidth = IMAGE_MAX_WIDTH;
+                bitmapImage.EndInit();
+                if (bitmapImage.CanFreeze)
+                {
+                    bitmapImage.Freeze();
+                }
+                MessageImage.Source = bitmapImage;
+            }
+            catch
+            {
+                MessageImage.Source = new BitmapImage(new Uri(FileCacheService.DefaultPlaceholder, UriKind.RelativeOrAbsolute));
+            }
+        }
+
+        private void OnFileCached(string fileId, string filePath, FileType fileType)
+        {
+            if (fileId != _attachmentFileId)
+            {
+                return;
+            }
+
+            Dispatcher.Invoke(() =>
+            {
+                LoadImage(filePath);
+            });
+
+            App.FileCacheService.FileCached -= OnFileCached;
+        }
+
+        private static string FormatFileSize(long bytes)
+        {
+            string[] sizes = { "B", "KB", "MB", "GB" };
+            int order = 0;
+            double size = bytes;
+            while (size >= 1024 && order < sizes.Length - 1)
+            {
+                order++;
+                size /= 1024;
+            }
+            return $"{size:0.##} {sizes[order]}";
+        }
+
         private async void SendMessage((bool sendingRequired, bool isUserId, string recipient) options, string textMessage, List<string> filesId)
         {
-            (bool, string) type = new(options.isUserId, options.recipient);
-            var message = new ForwardingLetter { Text = textMessage, FilesId = filesId };
-            var response = await App.ServerCommunication.SendMessage(App.GParam, type, message);
-            if (!response.IsSuccess)
+            if (string.IsNullOrEmpty(textMessage) && (filesId == null || filesId.Count == 0))
             {
-                App.ErideMessage.AddMessage(response.ErrorMessage, new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
+                return;
+            }
+
+            (bool, string) type = new(options.isUserId, options.recipient);
+            var letter = new ForwardingLetter { Text = textMessage, FilesId = filesId ?? new List<string>() };
+            var response = await App.ServerCommunication.SendMessage(App.GParam, type, letter);
+            if (!response.error.IsSuccess)
+            {
+                App.ErideMessage.AddMessage(response.error.ErrorMessage ?? "Ошибка отправки сообщения", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
+            }
+            else if (response.message != null)
+            {
+                MessageId = response.message.MessageId.ToString();
+                App.CacheManager.SaveMessage(response.message.ChatId, string.Empty, response.message, MessageOperation.Added);
             }
         }
 
         private void ThemedConfirm(MessageOwner owner)
         {
-            if (owner == MessageOwner.Me) // исходящее сообщение
+            if (owner == MessageOwner.Me)
             {
-                this.HorizontalAlignment = System.Windows.HorizontalAlignment.Right;
-                MainGrid.HorizontalAlignment = System.Windows.HorizontalAlignment.Right;
-                MessageBorder.Style = (System.Windows.Style)FindResource("OutgoingMessageStyle");
+                this.HorizontalAlignment = HorizontalAlignment.Right;
+                MainGrid.HorizontalAlignment = HorizontalAlignment.Right;
+                MessageBorder.Style = (Style)FindResource("OutgoingMessageStyle");
             }
-            else // входящее сообщение
+            else
             {
-                this.HorizontalAlignment = System.Windows.HorizontalAlignment.Left;
-                MainGrid.HorizontalAlignment = System.Windows.HorizontalAlignment.Left;
-                MessageBorder.Style = (System.Windows.Style)FindResource("IncomingMessageStyle");
+                this.HorizontalAlignment = HorizontalAlignment.Left;
+                MainGrid.HorizontalAlignment = HorizontalAlignment.Left;
+                MessageBorder.Style = (Style)FindResource("IncomingMessageStyle");
             }
         }
 
-        private int CalculateLongestLineWidth(string textPart)
+        private int CalculateLongestLineWidth(string? textPart)
         {
-            if (string.IsNullOrEmpty(textPart)) return 0;
+            if (string.IsNullOrEmpty(textPart))
+            {
+                return 0;
+            }
 
             string[] lines = textPart.Split(new[] { '\n' }, StringSplitOptions.None);
 
             int longestLineLength = lines.Max(line => line.Length);
 
-            return (longestLineLength > 45 ? 45 : longestLineLength) * 12;
+            return Math.Min(longestLineLength, MAX_CHARS_PER_LINE) * CHAR_WIDTH_APPROX;
         }
 
         #region Enums
@@ -90,11 +310,13 @@ namespace BarkFluff.Client.WPF.UserControls
             Gif,
             Document,
         }
+
         public enum MessageOwner
         {
             Me,
             Interlocutor
         }
+
         public enum MessageContentType
         {
             Unknown,
