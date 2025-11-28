@@ -1,4 +1,5 @@
-﻿using BarkFluff.Client.WPF.UserControls.Classes;
+﻿using BarkFluff.Client.WPF.Services.App.Caching;
+using BarkFluff.Client.WPF.UserControls.Classes;
 
 using System.ComponentModel;
 using System.Windows;
@@ -15,6 +16,8 @@ namespace BarkFluff.Client.WPF.UserControls
     /// </summary>
     public partial class Profile : UserControl
     {
+        private string? _avatarFileId;
+
         public Profile()
         {
             InitializeComponent();
@@ -316,7 +319,21 @@ namespace BarkFluff.Client.WPF.UserControls
             {
                 try
                 {
-                    AvatarSource = new BitmapImage(new Uri(userProfile.AvatarPath, UriKind.RelativeOrAbsolute));
+                    // Пытаемся извлечь fileId из URL
+                    _avatarFileId = FileCacheService.ExtractFileIdFromUrl(userProfile.AvatarPath);
+
+                    // Используем кеш-сервис для загрузки аватара
+                    var imagePath = App.FileCacheService.GetCachedFilePath(_avatarFileId ?? string.Empty, FileType.Avatar, userProfile.AvatarPath);
+                    SetAvatarImage(imagePath);
+
+                    // Подписываемся на событие кеширования файла
+                    App.FileCacheService.FileCached += OnFileCached;
+
+                    // Отписываемся при выгрузке контрола
+                    Unloaded += (s, e) =>
+                    {
+                        App.FileCacheService.FileCached -= OnFileCached;
+                    };
                 }
                 catch
                 {
@@ -326,6 +343,23 @@ namespace BarkFluff.Client.WPF.UserControls
 
             // Установка баджей
             SetBadges(userProfile.Badges);
+        }
+
+        private void OnFileCached(string fileId, string filePath, FileType fileType)
+        {
+            if (fileId == _avatarFileId && fileType == FileType.Avatar)
+            {
+                Dispatcher.Invoke(() => SetAvatarImage(filePath));
+            }
+        }
+
+        private void SetAvatarImage(string imagePath)
+        {
+            try
+            {
+                AvatarSource = new BitmapImage(new Uri(imagePath, UriKind.RelativeOrAbsolute));
+            }
+            catch { }
         }
 
         public void SetBadges(BadgeInfo[] badges)

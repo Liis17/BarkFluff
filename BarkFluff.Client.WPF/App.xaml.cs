@@ -36,6 +36,7 @@ namespace BarkFluff.Client.WPF
         public static MainWindow MessengerWindow { get; set; } = null!;
         public static MessengerPage Messenger { get; set; } = null!;
         public static MessageCacheManager CacheManager { get; set; } = null!;
+        public static FileCacheService FileCacheService { get; set; } = null!;
         public static DropMessage ErideMessage { get; set; } = null!;
 
         private static UpdateService updateService { get; set; } = null!;
@@ -92,7 +93,9 @@ namespace BarkFluff.Client.WPF
         {
             Directory.CreateDirectory("temp");
             Directory.CreateDirectory("datas");
+            Directory.CreateDirectory("datas\\cache");
             CacheManager = new MessageCacheManager("datas\\cache.db", "temp");
+            FileCacheService = new FileCacheService("datas\\file_cache.db", "datas\\cache");
 
             string targetPath = string.Empty;
             try

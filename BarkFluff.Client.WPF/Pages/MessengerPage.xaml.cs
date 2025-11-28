@@ -1,4 +1,5 @@
 ﻿using BarkFluff.Client.WPF.Reactive;
+using BarkFluff.Client.WPF.Services.App.Caching;
 using BarkFluff.Client.WPF.UserControls;
 using BarkFluff.Proto.Shared;
 using BarkFluff.WebApi.Core.MessengerData;
@@ -28,6 +29,9 @@ namespace BarkFluff.Client.WPF.Pages
         public bool IsOpenChatEmpty { get; set; } = false;
         public ReactiveLong ChatIdbyUserId { get; set; } = new ReactiveLong(0);
         public bool IsGroup { get; set; } = false;
+        private string? _currentChatAvatarFileId;
+        private string? _currentUserAvatarFileId;
+
         public MessengerPage()
         {
             InitializeComponent();
@@ -57,9 +61,47 @@ namespace BarkFluff.Client.WPF.Pages
         {
             UnsubscribeFromReactiveProperties();
 
+            // Отписываемся от событий кеширования
+            App.FileCacheService.FileCached -= OnFileCached;
+
             IsOpenChat?.Dispose();
             ChatId?.Dispose();
             ChatIdbyUserId?.Dispose();
+        }
+
+        private void OnFileCached(string fileId, string filePath, FileType fileType)
+        {
+            if (fileType != FileType.Avatar) return;
+
+            Dispatcher.Invoke(() =>
+            {
+                if (fileId == _currentChatAvatarFileId)
+                {
+                    SetChatAvatarImage(filePath);
+                }
+                if (fileId == _currentUserAvatarFileId)
+                {
+                    SetTitleWindowAvatarImage(filePath);
+                }
+            });
+        }
+
+        private void SetChatAvatarImage(string imagePath)
+        {
+            try
+            {
+                ChatAvatar.ImageSource = new BitmapImage(new Uri(imagePath, UriKind.RelativeOrAbsolute));
+            }
+            catch { }
+        }
+
+        private void SetTitleWindowAvatarImage(string imagePath)
+        {
+            try
+            {
+                AvatarTitleWindow.ImageSource = new BitmapImage(new Uri(imagePath, UriKind.RelativeOrAbsolute));
+            }
+            catch { }
         }
 
         #region Обработчики событий
@@ -200,7 +242,10 @@ namespace BarkFluff.Client.WPF.Pages
 
         private async void MessengerPage_Loaded(object sender, RoutedEventArgs e)
         {
-            //временное удаление аватарки-заглушки габена пока нет кеша 
+            // Подписываемся на события кеширования
+            App.FileCacheService.FileCached += OnFileCached;
+
+            // Устанавливаем placeholder для аватарок
             ChatAvatar.ImageSource = null;
             AvatarTitleWindow.ImageSource = null;
 
@@ -452,7 +497,13 @@ namespace BarkFluff.Client.WPF.Pages
                 ChatList.Children.Add(messageItem);
             }
 
-            AvatarTitleWindow.ImageSource = new BitmapImage(new Uri(App.GParam.PictureUrl, UriKind.RelativeOrAbsolute));
+            // Загружаем аватар текущего пользователя через кеш-сервис
+            if (!string.IsNullOrEmpty(App.GParam.PictureUrl))
+            {
+                _currentUserAvatarFileId = FileCacheService.ExtractFileIdFromUrl(App.GParam.PictureUrl);
+                var imagePath = App.FileCacheService.GetCachedFilePath(_currentUserAvatarFileId ?? string.Empty, FileType.Avatar, App.GParam.PictureUrl);
+                SetTitleWindowAvatarImage(imagePath);
+            }
         }
         public async void UserInfoUpdate()
         {
@@ -489,7 +540,7 @@ namespace BarkFluff.Client.WPF.Pages
             }
             else
             {
-                avatar = "pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png";
+                avatar = FileCacheService.DefaultPlaceholder;
             }
 
             if (App.GParam.UserId == response.Data.Id)
@@ -497,12 +548,17 @@ namespace BarkFluff.Client.WPF.Pages
 
                 ChatTitleUsername.Text = "Избранное";
                 avatar = "pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/savedplaceholder.png";
+                // Для избранного используем placeholder напрямую
+                ChatAvatar.ImageSource = new BitmapImage(new Uri(avatar, UriKind.RelativeOrAbsolute));
             }
             else
             {
                 ChatTitleUsername.Text = $"{response.Data.FirstName} {response.Data.LastName}";
+                // Загружаем аватар через кеш-сервис
+                _currentChatAvatarFileId = FileCacheService.ExtractFileIdFromUrl(avatar);
+                var imagePath = App.FileCacheService.GetCachedFilePath(_currentChatAvatarFileId ?? string.Empty, FileType.Avatar, avatar);
+                SetChatAvatarImage(imagePath);
             }
-            ChatAvatar.ImageSource = new BitmapImage(new Uri(avatar, UriKind.RelativeOrAbsolute));
 
         }
         #endregion

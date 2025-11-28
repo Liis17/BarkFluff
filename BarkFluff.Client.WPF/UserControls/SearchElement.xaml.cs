@@ -1,4 +1,5 @@
-﻿using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
+﻿using BarkFluff.Client.WPF.Services.App.Caching;
+using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
@@ -11,18 +12,34 @@ namespace BarkFluff.Client.WPF.UserControls
     public partial class SearchElement : UserControl
     {
         private long _userId = 0;
+        private string? _avatarFileId;
 
         public SearchElement(UserData userData)
         {
             InitializeComponent();
             _userId = userData.Id;
-            if (userData.ProfilePicturePreviewUrl != string.Empty)
+
+            // Загружаем аватар через кеш-сервис
+            string avatarUrl = !string.IsNullOrEmpty(userData.ProfilePictureUrl)
+                ? userData.ProfilePictureUrl
+                : (!string.IsNullOrEmpty(userData.ProfilePicturePreviewUrl)
+                    ? userData.ProfilePicturePreviewUrl
+                    : string.Empty);
+
+            if (!string.IsNullOrEmpty(avatarUrl))
             {
-                AvatarImage.ImageSource = new BitmapImage(new Uri(userData.ProfilePicturePreviewUrl));
-            }
-            if (userData.ProfilePictureUrl != string.Empty)
-            {
-                AvatarImage.ImageSource = new BitmapImage(new Uri(userData.ProfilePictureUrl));
+                _avatarFileId = FileCacheService.ExtractFileIdFromUrl(avatarUrl);
+                var imagePath = App.FileCacheService.GetCachedFilePath(_avatarFileId ?? string.Empty, FileType.Avatar, avatarUrl);
+                SetAvatarImage(imagePath);
+
+                // Подписываемся на событие кеширования файла
+                App.FileCacheService.FileCached += OnFileCached;
+
+                // Отписываемся при выгрузке контрола
+                Unloaded += (s, e) =>
+                {
+                    App.FileCacheService.FileCached -= OnFileCached;
+                };
             }
             else
             {
@@ -31,6 +48,23 @@ namespace BarkFluff.Client.WPF.UserControls
 
             UserName.Text = "@" + userData.Username;
             PublicName.Text = userData.FirstName + " " + userData.LastName;
+        }
+
+        private void OnFileCached(string fileId, string filePath, FileType fileType)
+        {
+            if (fileId == _avatarFileId && fileType == FileType.Avatar)
+            {
+                Dispatcher.Invoke(() => SetAvatarImage(filePath));
+            }
+        }
+
+        private void SetAvatarImage(string imagePath)
+        {
+            try
+            {
+                AvatarImage.ImageSource = new BitmapImage(new Uri(imagePath, UriKind.RelativeOrAbsolute));
+            }
+            catch { }
         }
 
         private void UserControl_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)

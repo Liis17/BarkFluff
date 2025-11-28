@@ -1,4 +1,5 @@
-﻿using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
+﻿using BarkFluff.Client.WPF.Services.App.Caching;
+using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
 using System.Globalization;
 using System.Windows;
@@ -43,6 +44,7 @@ namespace BarkFluff.Client.WPF.UserControls
         }
         public MessageModel TransferMessage { get; set; } //объект класса MessageModel для обновления этого блока в списке чатов (после считывания делать пустым)
         private string _url;
+        private string? _avatarFileId;
         public string ChatId = "";
         private long _lastMessageId;
         private bool _isGroupChat;
@@ -61,6 +63,12 @@ namespace BarkFluff.Client.WPF.UserControls
             _userId = userId;
             TimeMessage.Text = FormatDateTime(time.Length >= 2 ? time.Substring(1, time.Length - 2) : time);
 
+            // Пытаемся извлечь fileId из URL если это не placeholder
+            if (!string.IsNullOrEmpty(imageUrl) && !FileCacheService.IsPlaceholder(imageUrl))
+            {
+                _avatarFileId = FileCacheService.ExtractFileIdFromUrl(imageUrl);
+            }
+
             Loaded += ChatItem_Loaded;
         }
 
@@ -74,33 +82,72 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private async void ChatItem_Loaded(object sender, RoutedEventArgs e)
         {
-            BitmapImage bitmapImage = new BitmapImage();
-            bitmapImage.BeginInit();
-            bitmapImage.UriSource = new Uri(_url, UriKind.Absolute);
-            bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
-            bitmapImage.EndInit();
+            // Используем кеш-сервис для загрузки аватара
+            var imagePath = App.FileCacheService.GetCachedFilePath(_avatarFileId ?? string.Empty, FileType.Avatar, _url);
+            SetAvatarImage(imagePath);
 
-            ImageBrush imageBrush = new ImageBrush
+            // Подписываемся на событие кеширования файла
+            App.FileCacheService.FileCached += OnFileCached;
+
+            // Отписываемся при выгрузке контрола
+            Unloaded += (s, args) =>
             {
-                ImageSource = bitmapImage,
-                Stretch = Stretch.UniformToFill,
+                App.FileCacheService.FileCached -= OnFileCached;
             };
-            border.Background = imageBrush;
+        }
 
-            bitmapImage.DownloadCompleted += async (s, args) =>
+        private void OnFileCached(string fileId, string filePath, FileType fileType)
+        {
+            if (fileId == _avatarFileId && fileType == FileType.Avatar)
             {
-                Color averageColor = await App.ColorAnalyzer.GetAverageColorFromUrlAsync(_url);
-                DropShadowEffect shadowEffect = new DropShadowEffect
+                Dispatcher.Invoke(() => SetAvatarImage(filePath));
+            }
+        }
+
+        private async void SetAvatarImage(string imagePath)
+        {
+            try
+            {
+                BitmapImage bitmapImage = new BitmapImage();
+                bitmapImage.BeginInit();
+                bitmapImage.UriSource = new Uri(imagePath, UriKind.RelativeOrAbsolute);
+                bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                bitmapImage.EndInit();
+
+                ImageBrush imageBrush = new ImageBrush
                 {
-                    BlurRadius = 12,
-                    Opacity = 0.9,
-                    ShadowDepth = 0,
-                    Color = averageColor
+                    ImageSource = bitmapImage,
+                    Stretch = Stretch.UniformToFill,
                 };
-                border.Effect = shadowEffect;
-            };
+                border.Background = imageBrush;
 
-            bitmapImage.DownloadFailed += (s, args) =>
+                bitmapImage.DownloadCompleted += async (s, args) =>
+                {
+                    // Use the original URL for color analysis if available, otherwise use the cached path
+                    var colorSourceUrl = !string.IsNullOrEmpty(_url) ? _url : imagePath;
+                    Color averageColor = await App.ColorAnalyzer.GetAverageColorFromUrlAsync(colorSourceUrl);
+                    DropShadowEffect shadowEffect = new DropShadowEffect
+                    {
+                        BlurRadius = 12,
+                        Opacity = 0.9,
+                        ShadowDepth = 0,
+                        Color = averageColor
+                    };
+                    border.Effect = shadowEffect;
+                };
+
+                bitmapImage.DownloadFailed += (s, args) =>
+                {
+                    border.Effect = new DropShadowEffect
+                    {
+                        BlurRadius = 10,
+                        Opacity = 0.3,
+                        ShadowDepth = 0,
+                        Color = Colors.Gray
+                    };
+                };
+            }
+            catch
             {
                 border.Effect = new DropShadowEffect
                 {
@@ -109,7 +156,7 @@ namespace BarkFluff.Client.WPF.UserControls
                     ShadowDepth = 0,
                     Color = Colors.Gray
                 };
-            };
+            }
         }
 
         private string FormatDateTime(string input)
