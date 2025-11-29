@@ -11,16 +11,112 @@
     mc:Ignorable="d">
 
     <UserControl.Resources>
-        <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="AdwaitaSans" />
-            <Setter Property="FontSize" Value="24" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="White" />
-            <Setter Property="HorizontalAlignment" Value="Center" />
-            <Setter Property="Margin" Value="0,0,0,30" />
+        <!-- Windows 11 inspired color palette -->
+        <SolidColorBrush x:Key="Win11CardBackground" Color="#1F1F1F"/>
+        <SolidColorBrush x:Key="Win11CardBorder" Color="#2D2D2D"/>
+        <SolidColorBrush x:Key="Win11SurfaceBackground" Color="#141414"/>
+        <SolidColorBrush x:Key="Win11AccentBlue" Color="#60CDFF"/>
+        <SolidColorBrush x:Key="Win11AccentGreen" Color="#6CCB5F"/>
+        <SolidColorBrush x:Key="Win11TextPrimary" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="Win11TextSecondary" Color="#C5C5C5"/>
+        <SolidColorBrush x:Key="Win11TextTertiary" Color="#9D9D9D"/>
+        <SolidColorBrush x:Key="Win11Subtle" Color="#2A2A2A"/>
+        
+        <!-- Modern card style with subtle shadow effect -->
+        <Style x:Key="Win11CardStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource Win11CardBackground}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Win11CardBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect 
+                        BlurRadius="20" 
+                        Direction="270" 
+                        Opacity="0.25" 
+                        ShadowDepth="4" 
+                        Color="#000000"/>
+                </Setter.Value>
+            </Setter>
         </Style>
+        
+        <!-- Modern Section Header Style -->
+        <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
+            <Setter Property="FontSize" Value="28" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource Win11TextPrimary}" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,0,0,12" />
+        </Style>
+        
+        <!-- Modern Subtitle Style -->
+        <Style x:Key="SubtitleStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="Normal" />
+            <Setter Property="Foreground" Value="{StaticResource Win11TextSecondary}" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="TextAlignment" Value="Center" />
+        </Style>
+        
+        <!-- Modern Label Style -->
+        <Style x:Key="CardLabelStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Foreground" Value="{StaticResource Win11TextPrimary}" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+        </Style>
+        
+        <!-- Modern Secret Key TextBox Style -->
+        <Style x:Key="SecretKeyTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Background" Value="{StaticResource Win11Subtle}"/>
+            <Setter Property="Foreground" Value="{StaticResource Win11TextPrimary}"/>
+            <Setter Property="FontFamily" Value="Cascadia Code, Consolas, monospace"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Normal"/>
+            <Setter Property="Padding" Value="14,12"/>
+            <Setter Property="BorderBrush" Value="#3A3A3A"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CaretBrush" Value="White"/>
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border 
+                            x:Name="border"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="8">
+                            <ScrollViewer 
+                                x:Name="PART_ContentHost" 
+                                Padding="{TemplateBinding Padding}" 
+                                VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="#505050"/>
+                                <Setter TargetName="border" Property="Background" Value="#333333"/>
+                            </Trigger>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource Win11AccentBlue}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
     </UserControl.Resources>
-    <ScrollViewer VerticalScrollBarVisibility="Auto" VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
+    
+    <ScrollViewer 
+        VerticalScrollBarVisibility="Auto" 
+        VerticalAlignment="Stretch" 
+        HorizontalAlignment="Stretch"
+        Background="#1A1A1A">
         <Grid Background="#1A1A1A">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*" />
@@ -29,241 +125,378 @@
 
             <StackPanel
                 Grid.Row="0"
-                Margin="0,0,0,0"
+                Margin="0,20,0,20"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Orientation="Vertical">
 
-                <TextBlock
-                    Margin="0,0,0,5"
-                    HorizontalAlignment="Center"
-                    FontFamily="{DynamicResource AdwaitaSans}"
-                    FontWeight="SemiBold"
-                    Foreground="White"
-                    Style="{StaticResource SectionHeaderStyle}"
-                    Text="Двухфакторная аутентификация" />
+                <!-- Header Section with Shield Icon -->
+                <StackPanel 
+                    HorizontalAlignment="Center" 
+                    Orientation="Horizontal"
+                    Margin="0,0,0,8">
+                    <Border
+                        Width="40"
+                        Height="40"
+                        Margin="0,0,12,0"
+                        CornerRadius="10"
+                        VerticalAlignment="Center">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#2563EB" Offset="0"/>
+                                <GradientStop Color="#7C3AED" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <ui:SymbolIcon 
+                            Symbol="ShieldCheckmark24" 
+                            FontSize="22" 
+                            Foreground="White"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        FontFamily="{DynamicResource AdwaitaSans}"
+                        FontWeight="SemiBold"
+                        Foreground="{StaticResource Win11TextPrimary}"
+                        Style="{StaticResource SectionHeaderStyle}"
+                        Margin="0"
+                        Text="Двухфакторная аутентификация" />
+                </StackPanel>
 
                 <TextBlock
                     x:Name="statusText"
-                    Margin="0,0,0,25"
+                    Margin="0,0,0,28"
+                    MaxWidth="450"
                     HorizontalAlignment="Center"
-                    FontFamily="{DynamicResource AdwaitaSans}"
-                    FontSize="16"
-                    FontWeight="Normal"
-                    Foreground="#E0E0E0"
-                    Opacity="0.8"
+                    Style="{StaticResource SubtitleStyle}"
                     Text="Повысьте безопасность своего аккаунта с помощью Google Authenticator"
-                    TextAlignment="Center" />
+                    TextWrapping="Wrap" />
 
+                <!-- QR Code Card Section -->
                 <Border
-                    Margin="0,0,0,10"
-                    Background="#282828"
-                    BorderThickness="0"
-                    CornerRadius="12">
-                    <StackPanel Margin="10 10 10 0" Orientation="Vertical">
-                        <TextBlock
-                            Margin="0,0,0,15"
+                    Margin="0,0,0,24"
+                    Padding="28,24,28,20"
+                    Style="{StaticResource Win11CardStyle}">
+                    <StackPanel Orientation="Vertical">
+                        
+                        <!-- Card Header -->
+                        <StackPanel 
+                            Orientation="Horizontal" 
                             HorizontalAlignment="Center"
-                            FontFamily="{DynamicResource AdwaitaSans}"
-                            FontSize="18"
-                            FontWeight="Normal"
-                            Foreground="#E0E0E0"
-                            Text="Отсканируйте QR-код" />
+                            Margin="0,0,0,20">
+                            <ui:SymbolIcon 
+                                Symbol="QrCode24" 
+                                FontSize="18" 
+                                Foreground="{StaticResource Win11AccentBlue}"
+                                Margin="0,0,8,0"
+                                VerticalAlignment="Center"/>
+                            <TextBlock
+                                Style="{StaticResource CardLabelStyle}"
+                                Text="Отсканируйте QR-код" />
+                        </StackPanel>
 
+                        <!-- QR Code Container with modern styling -->
                         <Border
                             x:Name="QrCodeContainer"
-                            Width="250"
-                            Height="250"
-                            Margin="0,0,0,15"
-                            Padding="10"
+                            Width="220"
+                            Height="220"
+                            Margin="0,0,0,20"
+                            Padding="12"
                             HorizontalAlignment="Center"
                             Background="White"
-                            CornerRadius="16">
+                            CornerRadius="12">
+                            <Border.Effect>
+                                <DropShadowEffect 
+                                    BlurRadius="16" 
+                                    Direction="270" 
+                                    Opacity="0.2" 
+                                    ShadowDepth="3" 
+                                    Color="#000000"/>
+                            </Border.Effect>
                             <Grid>
                                 <TextBlock
                                     HorizontalAlignment="Center"
                                     VerticalAlignment="Center"
                                     FontFamily="{DynamicResource AdwaitaSans}"
-                                    FontSize="12"
-                                    FontWeight="Normal"
-                                    Foreground="#666666"
+                                    FontSize="11"
+                                    FontWeight="Medium"
+                                    Foreground="#888888"
                                     Text="QR КОД"
                                     TextAlignment="Center" />
                                 <Image x:Name="QrCodeImage" Stretch="Uniform" />
                             </Grid>
-
                         </Border>
 
-                        <TextBlock
-                            Margin="0,0,0,5"
-                            HorizontalAlignment="Center"
-                            FontFamily="{DynamicResource AdwaitaSans}"
-                            FontSize="14"
-                            FontWeight="Normal"
-                            Foreground="#B0B0B0"
-                            Text="Или введите ключ вручную:" />
-
-                        <Border>
-                            <TextBox
-                                x:Name="SecretKeyText"
-                                Margin="0,0,0,10"
-                                Padding="10,8"
-                                HorizontalAlignment="Stretch"
-                                Background="#1A1A1A"
-                                BorderBrush="#404040"
-                                BorderThickness="1"
-                                FontFamily="Consolas"
+                        <!-- Separator with "or" text -->
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border 
+                                Grid.Column="0" 
+                                Height="1" 
+                                Background="#3A3A3A" 
+                                VerticalAlignment="Center"
+                                Margin="0,0,12,0"/>
+                            <TextBlock 
+                                Grid.Column="1" 
+                                Text="или введите ключ вручную" 
+                                FontFamily="{DynamicResource AdwaitaSans}"
                                 FontSize="12"
-                                FontWeight="Normal"
-                                Foreground="#E0E0E0"
-                                IsReadOnly="True"
-                                Text="ABCD EFGH IJKL MNOP QRST UVWX"
-                                TextAlignment="Center" />
-                        </Border>
+                                Foreground="{StaticResource Win11TextTertiary}"
+                                VerticalAlignment="Center"/>
+                            <Border 
+                                Grid.Column="2" 
+                                Height="1" 
+                                Background="#3A3A3A" 
+                                VerticalAlignment="Center"
+                                Margin="12,0,0,0"/>
+                        </Grid>
 
+                        <!-- Secret Key TextBox -->
+                        <TextBox
+                            x:Name="SecretKeyText"
+                            Margin="0,0,0,16"
+                            HorizontalAlignment="Stretch"
+                            Style="{StaticResource SecretKeyTextBoxStyle}"
+                            Text="ABCD EFGH IJKL MNOP QRST UVWX" />
+
+                        <!-- Copy Button with modern styling -->
                         <ui:Button
                             x:Name="CopySecretButton"
-                            Background="#404040"
+                            HorizontalAlignment="Center"
+                            Background="#2A2A2A"
                             Click="CopySecretButton_Click"
-                            MouseOverBackground="#505050"
-                            PressedBackground="#353535"
-                            Style="{DynamicResource MainButton}">
+                            MouseOverBackground="#3A3A3A"
+                            PressedBackground="#252525"
+                            CornerRadius="8"
+                            Height="40"
+                            Padding="20,0"
+                            Margin="0,0,0,4">
                             <ui:Button.Content>
                                 <StackPanel Orientation="Horizontal">
-                                    <ui:SymbolIcon Style="{StaticResource ButtonSymbolLeft}" Symbol="Copy24" />
-                                    <ui:TextBlock Style="{DynamicResource MainButtonTextRight}" Text="Копировать" />
+                                    <ui:SymbolIcon 
+                                        Symbol="Copy24" 
+                                        FontSize="16" 
+                                        Foreground="{StaticResource Win11TextSecondary}"
+                                        Margin="0,0,8,0"
+                                        VerticalAlignment="Center"/>
+                                    <TextBlock 
+                                        Text="Копировать ключ" 
+                                        FontFamily="{DynamicResource AdwaitaSans}"
+                                        FontSize="13"
+                                        FontWeight="Medium"
+                                        Foreground="{StaticResource Win11TextSecondary}"
+                                        VerticalAlignment="Center"/>
                                 </StackPanel>
                             </ui:Button.Content>
                         </ui:Button>
                     </StackPanel>
                 </Border>
 
-                <TextBlock
-                    Margin="0,0,0,10"
-                    HorizontalAlignment="Center"
-                    FontFamily="{DynamicResource AdwaitaSans}"
-                    FontSize="18"
-                    FontWeight="Normal"
-                    Foreground="#E0E0E0"
-                    Text="Введите код из приложения" />
+                <!-- Code Entry Section -->
+                <Border
+                    Margin="0,0,0,16"
+                    Padding="28,24"
+                    Style="{StaticResource Win11CardStyle}">
+                    <StackPanel Orientation="Vertical">
+                        
+                        <!-- Section Header -->
+                        <StackPanel 
+                            Orientation="Horizontal" 
+                            HorizontalAlignment="Center"
+                            Margin="0,0,0,20">
+                            <ui:SymbolIcon 
+                                Symbol="Key24" 
+                                FontSize="18" 
+                                Foreground="{StaticResource Win11AccentGreen}"
+                                Margin="0,0,8,0"
+                                VerticalAlignment="Center"/>
+                            <TextBlock
+                                Style="{StaticResource CardLabelStyle}"
+                                Text="Введите код из приложения" />
+                        </StackPanel>
 
+                        <!-- Code Input Boxes -->
+                        <StackPanel
+                            x:Name="CodeContainer"
+                            HorizontalAlignment="Center"
+                            Orientation="Horizontal"
+                            Margin="0,0,0,8">
+                            <TextBox
+                                x:Name="CodeBox0"
+                                GotFocus="CodeBox_GotFocus"
+                                PreviewKeyDown="CodeBox_PreviewKeyDown"
+                                PreviewTextInput="CodeBox_PreviewTextInput"
+                                Style="{StaticResource VerificationTextBox}"
+                                TextChanged="CodeBox_TextChanged" />
+
+                            <TextBox
+                                x:Name="CodeBox1"
+                                GotFocus="CodeBox_GotFocus"
+                                PreviewKeyDown="CodeBox_PreviewKeyDown"
+                                PreviewTextInput="CodeBox_PreviewTextInput"
+                                Style="{StaticResource VerificationTextBox}"
+                                TextChanged="CodeBox_TextChanged" />
+
+                            <TextBox
+                                x:Name="CodeBox2"
+                                GotFocus="CodeBox_GotFocus"
+                                PreviewKeyDown="CodeBox_PreviewKeyDown"
+                                PreviewTextInput="CodeBox_PreviewTextInput"
+                                Style="{StaticResource VerificationTextBox}"
+                                TextChanged="CodeBox_TextChanged" />
+                            
+                            <!-- Visual separator between code groups -->
+                            <Border 
+                                Width="12" 
+                                Height="3" 
+                                Background="#404040" 
+                                CornerRadius="2"
+                                VerticalAlignment="Center"
+                                Margin="4,0"/>
+
+                            <TextBox
+                                x:Name="CodeBox3"
+                                GotFocus="CodeBox_GotFocus"
+                                PreviewKeyDown="CodeBox_PreviewKeyDown"
+                                PreviewTextInput="CodeBox_PreviewTextInput"
+                                Style="{StaticResource VerificationTextBox}"
+                                TextChanged="CodeBox_TextChanged" />
+
+                            <TextBox
+                                x:Name="CodeBox4"
+                                GotFocus="CodeBox_GotFocus"
+                                PreviewKeyDown="CodeBox_PreviewKeyDown"
+                                PreviewTextInput="CodeBox_PreviewTextInput"
+                                Style="{StaticResource VerificationTextBox}"
+                                TextChanged="CodeBox_TextChanged" />
+
+                            <TextBox
+                                x:Name="CodeBox5"
+                                GotFocus="CodeBox_GotFocus"
+                                PreviewKeyDown="CodeBox_PreviewKeyDown"
+                                PreviewTextInput="CodeBox_PreviewTextInput"
+                                Style="{StaticResource VerificationTextBox}"
+                                TextChanged="CodeBox_TextChanged" />
+                        </StackPanel>
+
+                        <!-- Error Message -->
+                        <TextBlock
+                            x:Name="ErrorTextBlockMessage"
+                            Margin="0,8,0,0"
+                            HorizontalAlignment="Center"
+                            Background="{x:Null}"
+                            FontFamily="{DynamicResource AdwaitaSans}"
+                            FontSize="13"
+                            FontWeight="Medium"
+                            Foreground="#FF6B6B"
+                            Text=""
+                            Visibility="Collapsed" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Action Buttons -->
                 <StackPanel
-                    x:Name="CodeContainer"
-                    Margin="0,0,0,0"
-                    HorizontalAlignment="Center"
-                    Orientation="Horizontal">
-                    <TextBox
-                        x:Name="CodeBox0"
-                        GotFocus="CodeBox_GotFocus"
-                        PreviewKeyDown="CodeBox_PreviewKeyDown"
-                        PreviewTextInput="CodeBox_PreviewTextInput"
-                        Style="{StaticResource VerificationTextBox}"
-                        TextChanged="CodeBox_TextChanged" />
-
-                    <TextBox
-                        x:Name="CodeBox1"
-                        GotFocus="CodeBox_GotFocus"
-                        PreviewKeyDown="CodeBox_PreviewKeyDown"
-                        PreviewTextInput="CodeBox_PreviewTextInput"
-                        Style="{StaticResource VerificationTextBox}"
-                        TextChanged="CodeBox_TextChanged" />
-
-                    <TextBox
-                        x:Name="CodeBox2"
-                        GotFocus="CodeBox_GotFocus"
-                        PreviewKeyDown="CodeBox_PreviewKeyDown"
-                        PreviewTextInput="CodeBox_PreviewTextInput"
-                        Style="{StaticResource VerificationTextBox}"
-                        TextChanged="CodeBox_TextChanged" />
-
-                    <TextBox
-                        x:Name="CodeBox3"
-                        GotFocus="CodeBox_GotFocus"
-                        PreviewKeyDown="CodeBox_PreviewKeyDown"
-                        PreviewTextInput="CodeBox_PreviewTextInput"
-                        Style="{StaticResource VerificationTextBox}"
-                        TextChanged="CodeBox_TextChanged" />
-
-                    <TextBox
-                        x:Name="CodeBox4"
-                        GotFocus="CodeBox_GotFocus"
-                        PreviewKeyDown="CodeBox_PreviewKeyDown"
-                        PreviewTextInput="CodeBox_PreviewTextInput"
-                        Style="{StaticResource VerificationTextBox}"
-                        TextChanged="CodeBox_TextChanged" />
-
-                    <TextBox
-                        x:Name="CodeBox5"
-                        GotFocus="CodeBox_GotFocus"
-                        PreviewKeyDown="CodeBox_PreviewKeyDown"
-                        PreviewTextInput="CodeBox_PreviewTextInput"
-                        Style="{StaticResource VerificationTextBox}"
-                        TextChanged="CodeBox_TextChanged" />
-                </StackPanel>
-
-                <TextBlock
-                    x:Name="ErrorTextBlockMessage"
-                    Margin="0,5,0,10"
-                    HorizontalAlignment="Center"
-                    Background="{x:Null}"
-                    FontFamily="{DynamicResource AdwaitaSans}"
-                    FontSize="16"
-                    FontWeight="Normal"
-                    Foreground="#FFE62F2F"
-                    Text=""
-                    Visibility="Collapsed" />
-
-                <StackPanel
-                    Margin="0,10,0,0"
+                    Margin="0,8,0,0"
                     HorizontalAlignment="Center"
                     Orientation="Horizontal">
 
                     <ui:Button
                         x:Name="SkipButton"
-                        Background="#404040"
+                        Background="#2A2A2A"
                         Click="SkipButton_Click"
-                        MouseOverBackground="#505050"
-                        PressedBackground="#353535"
-                        Style="{StaticResource MainButton}">
+                        MouseOverBackground="#3A3A3A"
+                        PressedBackground="#252525"
+                        CornerRadius="10"
+                        Height="48"
+                        Margin="0,0,12,0"
+                        Padding="0">
                         <ui:Button.Content>
-                            <ui:TextBlock Style="{DynamicResource MainButtonTextSingle}" Text="Пропустить" />
+                            <StackPanel Orientation="Horizontal" Margin="24,0">
+                                <ui:SymbolIcon 
+                                    Symbol="ArrowRight24" 
+                                    FontSize="16" 
+                                    Foreground="{StaticResource Win11TextSecondary}"
+                                    Margin="0,0,8,0"
+                                    VerticalAlignment="Center"/>
+                                <ui:TextBlock 
+                                    Text="Пропустить"
+                                    FontFamily="{DynamicResource AdwaitaSans}"
+                                    FontSize="14"
+                                    FontWeight="SemiBold"
+                                    Foreground="{StaticResource Win11TextSecondary}"
+                                    VerticalAlignment="Center"/>
+                            </StackPanel>
                         </ui:Button.Content>
                     </ui:Button>
 
                     <ui:Button
                         x:Name="ConnectButton"
                         Click="ConnectButton_Click"
-                        Style="{StaticResource MainButton}">
+                        Background="#df5000"
+                        MouseOverBackground="#FFC54700"
+                        PressedBackground="#FFAB3D00"
+                        CornerRadius="10"
+                        Height="48"
+                        Padding="0">
                         <ui:Button.Content>
-                            <StackPanel Orientation="Horizontal">
-                                <ui:SymbolIcon Style="{StaticResource ButtonSymbolLeft}" Symbol="Shield24" />
+                            <StackPanel Orientation="Horizontal" Margin="24,0">
+                                <ui:SymbolIcon 
+                                    Symbol="Shield24" 
+                                    FontSize="18" 
+                                    Foreground="White"
+                                    Margin="0,0,10,0"
+                                    VerticalAlignment="Center"/>
                                 <ui:TextBlock
                                     x:Name="ConnectionText"
-                                    Style="{DynamicResource MainButtonTextRight}"
-                                    Text="Подключить" />
+                                    Text="Подключить"
+                                    FontFamily="{DynamicResource AdwaitaSans}"
+                                    FontSize="14"
+                                    FontWeight="SemiBold"
+                                    Foreground="White"
+                                    VerticalAlignment="Center"/>
                             </StackPanel>
                         </ui:Button.Content>
                     </ui:Button>
                 </StackPanel>
             </StackPanel>
 
-            <StackPanel
+            <!-- Bottom Info Section -->
+            <Border
                 Grid.Row="1"
-                Margin="0,0,0,20"
+                Margin="24,0,24,24"
+                Padding="20,16"
                 HorizontalAlignment="Center"
-                VerticalAlignment="Bottom"
-                Orientation="Vertical">
-                <TextBlock
-                    MaxWidth="700"
-                    HorizontalAlignment="Center"
-                    FontFamily="{DynamicResource AdwaitaSans}"
-                    FontSize="14"
-                    FontWeight="Light"
-                    Foreground="#9E9E9E"
-                    Text="Двухфакторная аутентификация значительно повышает безопасность Вашего аккаунта. Для настройки установите приложение Google Authenticator на свой телефон и отсканируйте QR-код."
-                    TextAlignment="Center"
-                    TextWrapping="Wrap" />
-            </StackPanel>
+                Background="#141414"
+                BorderBrush="#252525"
+                BorderThickness="1"
+                CornerRadius="10"
+                MaxWidth="600">
+                <StackPanel 
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Center">
+                    <ui:SymbolIcon 
+                        Symbol="Info24" 
+                        FontSize="18" 
+                        Foreground="{StaticResource Win11AccentBlue}"
+                        Margin="0,0,14,0"
+                        VerticalAlignment="Top"/>
+                    <TextBlock
+                        MaxWidth="500"
+                        FontFamily="{DynamicResource AdwaitaSans}"
+                        FontSize="13"
+                        FontWeight="Normal"
+                        Foreground="{StaticResource Win11TextTertiary}"
+                        Text="Двухфакторная аутентификация значительно повышает безопасность Вашего аккаунта. Для настройки установите приложение Google Authenticator на свой телефон и отсканируйте QR-код."
+                        TextAlignment="Left"
+                        TextWrapping="Wrap"
+                        LineHeight="20"/>
+                </StackPanel>
+            </Border>
         </Grid>
     </ScrollViewer>
 </UserControl>
