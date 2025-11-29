@@ -755,11 +755,30 @@ namespace BarkFluff.Client.WPF.Pages
 
         private void OpenCenterBlock(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
+            var senderElement = sender as FrameworkElement;
             if (!isOpenCenter)
+            {
                 OpenCenterPanel();
+            }
             else
+            {
                 CloseCenterPanel();
+            }
+
+            if (senderElement != null && !string.IsNullOrEmpty(senderElement.Tag.ToString()))
+            {
+                if (senderElement.Tag.ToString() == "UserProfile")
+                {
+                    //тут открытие профиля пользователя
+                }
+                if (senderElement.Tag.ToString() == "UpdateBlock")
+                {
+
+                }
+            }
         }
+
+
         private void OpenCenterPanel()
         {
             CenterPanel.Visibility = Visibility.Visible;
