@@ -752,32 +752,86 @@ namespace BarkFluff.Client.WPF.Pages
 
         private bool isOpenCenter = false;
         private readonly CubicEase easingCenter = new CubicEase { EasingMode = EasingMode.EaseInOut };
+        private Profile? _currentProfile = null;
 
         private void OpenCenterBlock(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
             var senderElement = sender as FrameworkElement;
-            if (!isOpenCenter)
+
+            if (senderElement != null && !string.IsNullOrEmpty(senderElement.Tag?.ToString()))
             {
-                OpenCenterPanel();
+                var tag = senderElement.Tag.ToString();
+                
+                if (tag == "UserProfile")
+                {
+                    // Определяем, чей профиль открывать
+                    if (senderElement.Name == "AvatarTitleWindowButton")
+                    {
+                        // Клик на аватар в заголовке - открываем свой профиль
+                        ShowUserProfile(isCurrentUser: true);
+                    }
+                    else if (senderElement.Name == "ChatAvatarButton")
+                    {
+                        // Клик на аватар в чате - открываем профиль собеседника
+                        if (ChatIdbyUserId.Value > 0)
+                        {
+                            ShowUserProfile(userId: ChatIdbyUserId.Value);
+                        }
+                    }
+                    
+                    if (!isOpenCenter)
+                    {
+                        OpenCenterPanel();
+                    }
+                }
+                else if (tag == "UpdateBlock")
+                {
+                    if (!isOpenCenter)
+                    {
+                        OpenCenterPanel();
+                    }
+                    else
+                    {
+                        CloseCenterPanel();
+                    }
+                }
             }
             else
             {
-                CloseCenterPanel();
-            }
-
-            if (senderElement != null && !string.IsNullOrEmpty(senderElement.Tag.ToString()))
-            {
-                if (senderElement.Tag.ToString() == "UserProfile")
+                if (!isOpenCenter)
                 {
-                    //тут открытие профиля пользователя
+                    OpenCenterPanel();
                 }
-                if (senderElement.Tag.ToString() == "UpdateBlock")
+                else
                 {
-
+                    CloseCenterPanel();
                 }
             }
         }
 
+        /// <summary>
+        /// Показывает профиль пользователя в центральной панели
+        /// </summary>
+        /// <param name="isCurrentUser">Если true, загружает профиль текущего пользователя</param>
+        /// <param name="userId">ID пользователя для загрузки (если isCurrentUser = false)</param>
+        private void ShowUserProfile(bool isCurrentUser = false, long userId = 0)
+        {
+            // Очищаем предыдущий контент
+            CenterPanel.Child = null;
+            
+            // Создаем новый Profile контрол
+            _currentProfile = new Profile();
+            CenterPanel.Child = _currentProfile;
+
+            if (isCurrentUser)
+            {
+                _currentProfile.LoadCurrentUserProfile();
+            }
+            else if (userId > 0)
+            {
+                _currentProfile.LoadUserProfile(userId);
+            }
+        }
 
         private void OpenCenterPanel()
         {
@@ -808,6 +862,9 @@ namespace BarkFluff.Client.WPF.Pages
             {
                 CenterPanel.Visibility = Visibility.Collapsed;
                 OverlayCenter.Visibility = Visibility.Collapsed;
+                // Очищаем контент при закрытии
+                CenterPanel.Child = null;
+                _currentProfile = null;
             };
             CenterPanel.BeginAnimation(OpacityProperty, anim);
             isOpenCenter = false;

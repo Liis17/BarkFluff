@@ -112,17 +112,22 @@
 
         <Border
             x:Name="CenterPanel"
-            Width="500"
-            Height="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=Window}}"
+            Width="480"
+            MaxHeight="700"
             HorizontalAlignment="Center"
-            VerticalAlignment="Stretch"
+            VerticalAlignment="Center"
             Panel.ZIndex="1000"
-            Background="LightGreen"
+            CornerRadius="16"
             Visibility="Collapsed">
-            <TextBlock
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                Text="Центральный блок" />
+            <Border.Effect>
+                <DropShadowEffect
+                    BlurRadius="30"
+                    Direction="270"
+                    Opacity="0.5"
+                    ShadowDepth="10"
+                    Color="#000000" />
+            </Border.Effect>
+            <!--  Динамический контент будет добавляться программно  -->
         </Border>
 
         <!--  Основной грид  -->
