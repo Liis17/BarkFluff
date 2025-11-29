@@ -262,17 +262,17 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private void OnReplyClick(object sender, RoutedEventArgs e)
         {
-            // TODO: Implement
+            // TODO: Implement reply functionality
         }
 
         private void OnForwardClick(object sender, RoutedEventArgs e)
         {
-            // TODO: Implement
+            // TODO: Implement forward functionality
         }
 
         private void OnCopyClick(object sender, RoutedEventArgs e)
         {
-            // TODO: Implement
+            // TODO: Implement copy for other content types (images, documents, videos)
             if (_textContent != null)
             {
                 _textContent.CopySelectedText();
@@ -281,7 +281,7 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private void OnSelectAllTextClick(object sender, RoutedEventArgs e)
         {
-            // TODO: Implement
+            // TODO: Implement select all for other content types or disable for non-text messages
             if (_textContent != null)
             {
                 _textContent.SelectAll();
@@ -290,22 +290,22 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private void OnPinClick(object sender, RoutedEventArgs e)
         {
-            // TODO: Implement
+            // TODO: Implement pin functionality
         }
 
         private void OnAddToFavoritesClick(object sender, RoutedEventArgs e)
         {
-            // TODO: Implement
+            // TODO: Implement add to favorites functionality
         }
 
         private void OnEditClick(object sender, RoutedEventArgs e)
         {
-            // TODO: Implement
+            // TODO: Implement edit functionality
         }
 
         private void OnDeleteClick(object sender, RoutedEventArgs e)
         {
-            // TODO: Implement
+            // TODO: Implement delete functionality
         }
 
         #endregion Context Menu Handlers

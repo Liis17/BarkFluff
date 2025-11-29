@@ -11,7 +11,6 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
     public partial class ImageMessageContent : UserControl
     {
         private const int IMAGE_MAX_WIDTH = 400;
-        private const int IMAGE_MAX_HEIGHT = 300;
 
         private string? _fileId;
         private bool _isSubscribedToFileCached;

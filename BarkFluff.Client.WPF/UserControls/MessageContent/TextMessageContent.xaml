@@ -8,6 +8,7 @@
     d:DesignWidth="300"
     mc:Ignorable="d">
     <Grid>
+        <!--  TextBox with ContextMenu disabled so parent MessageBubble's custom context menu is shown  -->
         <TextBox
             x:Name="MessageText"
             Margin="0"
