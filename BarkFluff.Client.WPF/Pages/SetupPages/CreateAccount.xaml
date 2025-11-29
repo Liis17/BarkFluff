@@ -13,7 +13,7 @@
     d:DesignWidth="720"
     mc:Ignorable="d">
 
-    <Grid Background="#1A1A1A">
+    <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -296,8 +296,8 @@
                             <TextBlock Style="{StaticResource InfoTextStyle}" Text="• Проверьте папку со спамом" />
                             <TextBlock
                                 x:Name="RemainingAttemptsText"
-                                Style="{StaticResource InfoTextStyle}"
                                 Foreground="#FF9800"
+                                Style="{StaticResource InfoTextStyle}"
                                 Text=""
                                 Visibility="Collapsed" />
                         </StackPanel>
@@ -460,18 +460,13 @@
                 <preview:PreviewUser x:Name="PreviewUserElement" Loaded="PreviewUserElement_Loaded" />
             </StackPanel>
             <!--  Step 8: подключение 2fa  -->
-            <StackPanel
+            <ScrollViewer
                 x:Name="Step8"
                 Margin="0,0,0,0"
                 HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                Orientation="Vertical">
-                <TextBlock
-                    Style="{StaticResource SectionHeaderStyle}"
-                    Text="Двухфакторная аутентификация (2FA)"
-                    Visibility="Collapsed" />
+                VerticalAlignment="Center">
                 <twofa:TwoFA x:Name="OtpSuggestion" Loaded="OtpSuggestion_Loaded" />
-            </StackPanel>
+            </ScrollViewer>
             <!--  Step 9: Завершение регистрации  -->
             <StackPanel
                 x:Name="Step9"

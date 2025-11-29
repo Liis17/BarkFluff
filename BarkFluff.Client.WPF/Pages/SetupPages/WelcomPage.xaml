@@ -11,7 +11,7 @@
     mc:Ignorable="d">
 
     <UserControl.Resources>
-        <!-- Windows 11 style footer link with hover animation -->
+        <!--  Windows 11 style footer link with hover animation  -->
         <Style x:Key="FooterLinkStyle" TargetType="TextBlock">
             <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
             <Setter Property="FontSize" Value="12" />
@@ -27,7 +27,7 @@
             </Style.Triggers>
         </Style>
 
-        <!-- Footer separator style -->
+        <!--  Footer separator style  -->
         <Style x:Key="FooterSeparatorStyle" TargetType="TextBlock">
             <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
             <Setter Property="FontSize" Value="12" />
@@ -37,7 +37,7 @@
             <Setter Property="Margin" Value="12,0" />
         </Style>
 
-        <!-- Windows 11 style modern button -->
+        <!--  Windows 11 style modern button  -->
         <Style x:Key="Windows11AccentButton" TargetType="{x:Type ui:Button}">
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="MinWidth" Value="160" />
@@ -84,8 +84,8 @@
         </Style>
     </UserControl.Resources>
 
-    <Grid Background="#1A1A1A">
-        <!-- Main content card with subtle shadow -->
+    <Grid>
+        <!--  Main content card with subtle shadow  -->
         <Border
             x:Name="ContentCard"
             Margin="40"
@@ -112,7 +112,7 @@
                 VerticalAlignment="Center"
                 Orientation="Vertical">
 
-                <!-- Logo with fade-in animation -->
+                <!--  Logo with fade-in animation  -->
                 <Image
                     x:Name="LogoImage"
                     Width="120"
@@ -126,7 +126,7 @@
                     </Image.RenderTransform>
                 </Image>
 
-                <!-- Main title with larger font -->
+                <!--  Main title with larger font  -->
                 <TextBlock
                     x:Name="TitleText"
                     Margin="0,0,0,12"
@@ -142,7 +142,7 @@
                     </TextBlock.RenderTransform>
                 </TextBlock>
 
-                <!-- Subtitle with accent color -->
+                <!--  Subtitle with accent color  -->
                 <TextBlock
                     x:Name="SubtitleText"
                     Margin="0,0,0,24"
@@ -159,7 +159,7 @@
                     </TextBlock.RenderTransform>
                 </TextBlock>
 
-                <!-- Description text -->
+                <!--  Description text  -->
                 <TextBlock
                     x:Name="DescriptionText"
                     MaxWidth="420"
@@ -179,7 +179,7 @@
                     </TextBlock.RenderTransform>
                 </TextBlock>
 
-                <!-- Modern Windows 11 style button -->
+                <!--  Modern Windows 11 style button  -->
                 <ui:Button
                     x:Name="StartButton"
                     Click="Button_Click"
@@ -208,7 +208,7 @@
             </StackPanel>
         </Border>
 
-        <!-- Footer with interactive links -->
+        <!--  Footer with interactive links  -->
         <StackPanel
             x:Name="FooterPanel"
             Margin="0,0,0,30"
