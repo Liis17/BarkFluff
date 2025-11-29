@@ -95,6 +95,9 @@
             Background="#242424"
             CornerRadius="16"
             Opacity="0">
+            <Border.RenderTransform>
+                <TranslateTransform Y="20" />
+            </Border.RenderTransform>
             <Border.Effect>
                 <DropShadowEffect
                     BlurRadius="40"
