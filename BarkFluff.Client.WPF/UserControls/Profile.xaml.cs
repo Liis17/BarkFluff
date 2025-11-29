@@ -83,6 +83,7 @@ namespace BarkFluff.Client.WPF.UserControls
             {
                 var username = e.NewValue?.ToString() ?? string.Empty;
                 control.UsernameTextBlock.Text = string.IsNullOrEmpty(username) ? string.Empty : $"@{username}";
+                control.UsernameInfoTextBlock.Text = string.IsNullOrEmpty(username) ? string.Empty : $"@{username}";
             }
         }
 
@@ -137,7 +138,7 @@ namespace BarkFluff.Client.WPF.UserControls
             {
                 var description = e.NewValue?.ToString() ?? string.Empty;
                 control.DescriptionTextBlock.Text = description;
-                control.DescriptionCard.Visibility = string.IsNullOrWhiteSpace(description) 
+                control.DescriptionSection.Visibility = string.IsNullOrWhiteSpace(description) 
                     ? Visibility.Collapsed 
                     : Visibility.Visible;
             }
@@ -161,7 +162,7 @@ namespace BarkFluff.Client.WPF.UserControls
                 var email = e.NewValue?.ToString() ?? string.Empty;
                 control.EmailTextBlock.Text = email;
                 // Email показывается только для своего профиля и если он не пустой
-                control.EmailCard.Visibility = (control._isCurrentUser && !string.IsNullOrWhiteSpace(email))
+                control.EmailSection.Visibility = (control._isCurrentUser && !string.IsNullOrWhiteSpace(email))
                     ? Visibility.Visible 
                     : Visibility.Collapsed;
             }
@@ -203,11 +204,11 @@ namespace BarkFluff.Client.WPF.UserControls
                 if (date.HasValue)
                 {
                     control.RegistrationDateTextBlock.Text = date.Value.ToString("dd MMMM yyyy");
-                    control.RegistrationCard.Visibility = Visibility.Visible;
+                    control.RegistrationSection.Visibility = Visibility.Visible;
                 }
                 else
                 {
-                    control.RegistrationCard.Visibility = Visibility.Collapsed;
+                    control.RegistrationSection.Visibility = Visibility.Collapsed;
                 }
             }
         }
@@ -371,7 +372,7 @@ namespace BarkFluff.Client.WPF.UserControls
             UpdatePublicName();
 
             // Показываем email для своего профиля
-            EmailCard.Visibility = Visibility.Visible;
+            EmailSection.Visibility = Visibility.Visible;
 
             // Загружаем аватар через кеш
             LoadAvatar(App.GParam.PictureUrl);
@@ -414,7 +415,7 @@ namespace BarkFluff.Client.WPF.UserControls
                 UpdatePublicName();
 
                 // Скрываем email для чужого профиля
-                EmailCard.Visibility = Visibility.Collapsed;
+                EmailSection.Visibility = Visibility.Collapsed;
 
                 // Загружаем аватар
                 var avatarUrl = !string.IsNullOrEmpty(response.Data.ProfilePictureUrl)
@@ -458,6 +459,29 @@ namespace BarkFluff.Client.WPF.UserControls
             }
         }
 
+
+        #endregion
+
+        #region Attachment Tab Methods
+
+        private void OnAttachmentTabChecked(object sender, RoutedEventArgs e)
+        {
+            // Скрываем все контенты
+            ImagesContent.Visibility = Visibility.Collapsed;
+            VideosContent.Visibility = Visibility.Collapsed;
+            FilesContent.Visibility = Visibility.Collapsed;
+            VoiceContent.Visibility = Visibility.Collapsed;
+
+            // Показываем выбранный контент
+            if (sender == ImagesTab)
+                ImagesContent.Visibility = Visibility.Visible;
+            else if (sender == VideosTab)
+                VideosContent.Visibility = Visibility.Visible;
+            else if (sender == FilesTab)
+                FilesContent.Visibility = Visibility.Visible;
+            else if (sender == VoiceTab)
+                VoiceContent.Visibility = Visibility.Visible;
+        }
 
         #endregion
 

@@ -19,14 +19,44 @@
             <Setter Property="Margin" Value="3" />
         </Style>
 
-        <!--  Стиль для информационных карточек в стиле Windows 11  -->
-        <Style x:Key="FluentInfoCardStyle" TargetType="Border">
+        <!--  Стиль для разделителя  -->
+        <Style x:Key="InfoDividerStyle" TargetType="Border">
+            <Setter Property="Height" Value="1" />
             <Setter Property="Background" Value="#20FFFFFF" />
-            <Setter Property="CornerRadius" Value="10" />
-            <Setter Property="Padding" Value="16,14" />
-            <Setter Property="Margin" Value="0,6" />
-            <Setter Property="BorderBrush" Value="#15FFFFFF" />
-            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Margin" Value="0,12" />
+        </Style>
+
+        <!--  Стиль для кнопки вкладки  -->
+        <Style x:Key="AttachmentTabButtonStyle" TargetType="RadioButton">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#80FFFFFF" />
+            <Setter Property="Padding" Value="16,12" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border
+                            x:Name="border"
+                            Padding="{TemplateBinding Padding}"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="Transparent"
+                            BorderThickness="0,0,0,2">
+                            <ContentPresenter
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="#6B73FF" />
+                                <Setter Property="Foreground" Value="White" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#15FFFFFF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </UserControl.Resources>
 
@@ -40,6 +70,7 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <!--  Верхняя секция с аватаром и основной информацией  -->
@@ -50,7 +81,7 @@
                     CornerRadius="12,12,0,0">
 
                     <StackPanel HorizontalAlignment="Center">
-                        <!--  Аватар с тенью  -->
+                        <!--  Аватар с тенью (без обводки)  -->
                         <Border
                             Width="110"
                             Height="110"
@@ -59,26 +90,19 @@
                             CornerRadius="55">
                             <Border.Effect>
                                 <DropShadowEffect
-                                    BlurRadius="20"
+                                    BlurRadius="25"
                                     Direction="270"
-                                    Opacity="0.4"
-                                    ShadowDepth="4"
+                                    Opacity="0.5"
+                                    ShadowDepth="6"
                                     Color="#000000" />
                             </Border.Effect>
-                            <Border
-                                Width="110"
-                                Height="110"
-                                BorderBrush="#40FFFFFF"
-                                BorderThickness="3"
-                                CornerRadius="55">
-                                <Border CornerRadius="52">
-                                    <Border.Background>
-                                        <ImageBrush
-                                            x:Name="AvatarBrush"
-                                            ImageSource="pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png"
-                                            Stretch="UniformToFill" />
-                                    </Border.Background>
-                                </Border>
+                            <Border CornerRadius="55">
+                                <Border.Background>
+                                    <ImageBrush
+                                        x:Name="AvatarBrush"
+                                        ImageSource="pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png"
+                                        Stretch="UniformToFill" />
+                                </Border.Background>
                             </Border>
                         </Border>
 
@@ -162,16 +186,56 @@
                     </StackPanel>
                 </Border>
 
-                <!--  Информационные карточки  -->
-                <StackPanel
+                <!--  Единый блок информации с разделителями  -->
+                <Border
                     Grid.Row="1"
-                    Margin="20,20,20,0">
+                    Margin="20,16,20,0"
+                    Padding="16"
+                    Background="#20FFFFFF"
+                    BorderBrush="#15FFFFFF"
+                    BorderThickness="1"
+                    CornerRadius="10">
+                    <StackPanel>
+                        <!--  Описание пользователя  -->
+                        <StackPanel
+                            x:Name="DescriptionSection"
+                            Visibility="Collapsed">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
 
-                    <!--  Описание пользователя  -->
-                    <Border
-                        x:Name="DescriptionCard"
-                        Style="{StaticResource FluentInfoCardStyle}"
-                        Visibility="Collapsed">
+                                <ui:SymbolIcon
+                                    Grid.Column="0"
+                                    Margin="0,0,14,0"
+                                    VerticalAlignment="Top"
+                                    FontSize="18"
+                                    Foreground="#80FFFFFF"
+                                    Symbol="TextDescription24" />
+
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock
+                                        Margin="0,0,0,4"
+                                        FontFamily="{DynamicResource AdwaitaSans}"
+                                        FontSize="12"
+                                        Foreground="#60FFFFFF"
+                                        Text="О себе" />
+                                    <TextBlock
+                                        x:Name="DescriptionTextBlock"
+                                        FontFamily="{DynamicResource AdwaitaSans}"
+                                        FontSize="14"
+                                        Foreground="#E0FFFFFF"
+                                        Text=""
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Grid>
+                            <Border
+                                x:Name="DescriptionDivider"
+                                Style="{StaticResource InfoDividerStyle}" />
+                        </StackPanel>
+
+                        <!--  Username  -->
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
@@ -181,10 +245,9 @@
                             <ui:SymbolIcon
                                 Grid.Column="0"
                                 Margin="0,0,14,0"
-                                VerticalAlignment="Top"
                                 FontSize="18"
                                 Foreground="#80FFFFFF"
-                                Symbol="TextDescription24" />
+                                Symbol="PersonAccounts24" />
 
                             <StackPanel Grid.Column="1">
                                 <TextBlock
@@ -192,20 +255,19 @@
                                     FontFamily="{DynamicResource AdwaitaSans}"
                                     FontSize="12"
                                     Foreground="#60FFFFFF"
-                                    Text="О себе" />
+                                    Text="Имя пользователя" />
                                 <TextBlock
-                                    x:Name="DescriptionTextBlock"
+                                    x:Name="UsernameInfoTextBlock"
                                     FontFamily="{DynamicResource AdwaitaSans}"
                                     FontSize="14"
                                     Foreground="#E0FFFFFF"
-                                    Text=""
-                                    TextWrapping="Wrap" />
+                                    Text="" />
                             </StackPanel>
                         </Grid>
-                    </Border>
 
-                    <!--  User ID  -->
-                    <Border Style="{StaticResource FluentInfoCardStyle}">
+                        <Border Style="{StaticResource InfoDividerStyle}" />
+
+                        <!--  User ID  -->
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
@@ -234,78 +296,253 @@
                                     Text="" />
                             </StackPanel>
                         </Grid>
-                    </Border>
 
-                    <!--  Email (только для своего профиля)  -->
-                    <Border
-                        x:Name="EmailCard"
-                        Style="{StaticResource FluentInfoCardStyle}"
-                        Visibility="Collapsed">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
+                        <!--  Email (только для своего профиля)  -->
+                        <StackPanel
+                            x:Name="EmailSection"
+                            Visibility="Collapsed">
+                            <Border Style="{StaticResource InfoDividerStyle}" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
 
-                            <ui:SymbolIcon
-                                Grid.Column="0"
-                                Margin="0,0,14,0"
-                                FontSize="18"
-                                Foreground="#80FFFFFF"
-                                Symbol="Mail24" />
+                                <ui:SymbolIcon
+                                    Grid.Column="0"
+                                    Margin="0,0,14,0"
+                                    FontSize="18"
+                                    Foreground="#80FFFFFF"
+                                    Symbol="Mail24" />
 
-                            <StackPanel Grid.Column="1">
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock
+                                        Margin="0,0,0,4"
+                                        FontFamily="{DynamicResource AdwaitaSans}"
+                                        FontSize="12"
+                                        Foreground="#60FFFFFF"
+                                        Text="Email" />
+                                    <TextBlock
+                                        x:Name="EmailTextBlock"
+                                        FontFamily="{DynamicResource AdwaitaSans}"
+                                        FontSize="14"
+                                        Foreground="#E0FFFFFF"
+                                        Text="" />
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+
+                        <!--  Дата регистрации  -->
+                        <StackPanel
+                            x:Name="RegistrationSection"
+                            Visibility="Collapsed">
+                            <Border Style="{StaticResource InfoDividerStyle}" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <ui:SymbolIcon
+                                    Grid.Column="0"
+                                    Margin="0,0,14,0"
+                                    FontSize="18"
+                                    Foreground="#80FFFFFF"
+                                    Symbol="Calendar24" />
+
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock
+                                        Margin="0,0,0,4"
+                                        FontFamily="{DynamicResource AdwaitaSans}"
+                                        FontSize="12"
+                                        Foreground="#60FFFFFF"
+                                        Text="Дата регистрации" />
+                                    <TextBlock
+                                        x:Name="RegistrationDateTextBlock"
+                                        FontFamily="{DynamicResource AdwaitaSans}"
+                                        FontSize="14"
+                                        Foreground="#E0FFFFFF"
+                                        Text="" />
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!--  Блок вложений чата с горизонтальными вкладками  -->
+                <Border
+                    Grid.Row="2"
+                    Margin="20,16,20,0"
+                    Background="#20FFFFFF"
+                    BorderBrush="#15FFFFFF"
+                    BorderThickness="1"
+                    CornerRadius="10">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <!--  Горизонтальные вкладки  -->
+                        <Border
+                            Grid.Row="0"
+                            BorderBrush="#15FFFFFF"
+                            BorderThickness="0,0,0,1">
+                            <StackPanel
+                                x:Name="AttachmentTabs"
+                                HorizontalAlignment="Center"
+                                Orientation="Horizontal">
+                                <RadioButton
+                                    x:Name="ImagesTab"
+                                    Checked="OnAttachmentTabChecked"
+                                    GroupName="AttachmentTabs"
+                                    IsChecked="True"
+                                    Style="{StaticResource AttachmentTabButtonStyle}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <ui:SymbolIcon
+                                            Margin="0,0,6,0"
+                                            FontSize="16"
+                                            Symbol="Image24" />
+                                        <TextBlock
+                                            FontFamily="{DynamicResource AdwaitaSans}"
+                                            FontSize="13"
+                                            Text="Фото" />
+                                    </StackPanel>
+                                </RadioButton>
+                                <RadioButton
+                                    x:Name="VideosTab"
+                                    Checked="OnAttachmentTabChecked"
+                                    GroupName="AttachmentTabs"
+                                    Style="{StaticResource AttachmentTabButtonStyle}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <ui:SymbolIcon
+                                            Margin="0,0,6,0"
+                                            FontSize="16"
+                                            Symbol="Video24" />
+                                        <TextBlock
+                                            FontFamily="{DynamicResource AdwaitaSans}"
+                                            FontSize="13"
+                                            Text="Видео" />
+                                    </StackPanel>
+                                </RadioButton>
+                                <RadioButton
+                                    x:Name="FilesTab"
+                                    Checked="OnAttachmentTabChecked"
+                                    GroupName="AttachmentTabs"
+                                    Style="{StaticResource AttachmentTabButtonStyle}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <ui:SymbolIcon
+                                            Margin="0,0,6,0"
+                                            FontSize="16"
+                                            Symbol="Document24" />
+                                        <TextBlock
+                                            FontFamily="{DynamicResource AdwaitaSans}"
+                                            FontSize="13"
+                                            Text="Файлы" />
+                                    </StackPanel>
+                                </RadioButton>
+                                <RadioButton
+                                    x:Name="VoiceTab"
+                                    Checked="OnAttachmentTabChecked"
+                                    GroupName="AttachmentTabs"
+                                    Style="{StaticResource AttachmentTabButtonStyle}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <ui:SymbolIcon
+                                            Margin="0,0,6,0"
+                                            FontSize="16"
+                                            Symbol="Mic24" />
+                                        <TextBlock
+                                            FontFamily="{DynamicResource AdwaitaSans}"
+                                            FontSize="13"
+                                            Text="Голос" />
+                                    </StackPanel>
+                                </RadioButton>
+                            </StackPanel>
+                        </Border>
+
+                        <!--  Контент вкладок  -->
+                        <Grid
+                            x:Name="AttachmentContent"
+                            Grid.Row="1"
+                            MinHeight="150">
+                            <!--  Контент для изображений  -->
+                            <StackPanel
+                                x:Name="ImagesContent"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Visibility="Visible">
+                                <ui:SymbolIcon
+                                    Margin="0,0,0,12"
+                                    FontSize="40"
+                                    Foreground="#40FFFFFF"
+                                    Symbol="Image24" />
                                 <TextBlock
-                                    Margin="0,0,0,4"
+                                    HorizontalAlignment="Center"
                                     FontFamily="{DynamicResource AdwaitaSans}"
-                                    FontSize="12"
+                                    FontSize="13"
                                     Foreground="#60FFFFFF"
-                                    Text="Email" />
+                                    Text="Нет изображений" />
+                            </StackPanel>
+
+                            <!--  Контент для видео  -->
+                            <StackPanel
+                                x:Name="VideosContent"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Visibility="Collapsed">
+                                <ui:SymbolIcon
+                                    Margin="0,0,0,12"
+                                    FontSize="40"
+                                    Foreground="#40FFFFFF"
+                                    Symbol="Video24" />
                                 <TextBlock
-                                    x:Name="EmailTextBlock"
+                                    HorizontalAlignment="Center"
                                     FontFamily="{DynamicResource AdwaitaSans}"
-                                    FontSize="14"
-                                    Foreground="#E0FFFFFF"
-                                    Text="" />
+                                    FontSize="13"
+                                    Foreground="#60FFFFFF"
+                                    Text="Нет видео" />
+                            </StackPanel>
+
+                            <!--  Контент для файлов  -->
+                            <StackPanel
+                                x:Name="FilesContent"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Visibility="Collapsed">
+                                <ui:SymbolIcon
+                                    Margin="0,0,0,12"
+                                    FontSize="40"
+                                    Foreground="#40FFFFFF"
+                                    Symbol="Document24" />
+                                <TextBlock
+                                    HorizontalAlignment="Center"
+                                    FontFamily="{DynamicResource AdwaitaSans}"
+                                    FontSize="13"
+                                    Foreground="#60FFFFFF"
+                                    Text="Нет файлов" />
+                            </StackPanel>
+
+                            <!--  Контент для голосовых  -->
+                            <StackPanel
+                                x:Name="VoiceContent"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Visibility="Collapsed">
+                                <ui:SymbolIcon
+                                    Margin="0,0,0,12"
+                                    FontSize="40"
+                                    Foreground="#40FFFFFF"
+                                    Symbol="Mic24" />
+                                <TextBlock
+                                    HorizontalAlignment="Center"
+                                    FontFamily="{DynamicResource AdwaitaSans}"
+                                    FontSize="13"
+                                    Foreground="#60FFFFFF"
+                                    Text="Нет голосовых сообщений" />
                             </StackPanel>
                         </Grid>
-                    </Border>
-
-                    <!--  Дата регистрации  -->
-                    <Border
-                        x:Name="RegistrationCard"
-                        Style="{StaticResource FluentInfoCardStyle}"
-                        Visibility="Collapsed">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-
-                            <ui:SymbolIcon
-                                Grid.Column="0"
-                                Margin="0,0,14,0"
-                                FontSize="18"
-                                Foreground="#80FFFFFF"
-                                Symbol="Calendar24" />
-
-                            <StackPanel Grid.Column="1">
-                                <TextBlock
-                                    Margin="0,0,0,4"
-                                    FontFamily="{DynamicResource AdwaitaSans}"
-                                    FontSize="12"
-                                    Foreground="#60FFFFFF"
-                                    Text="Дата регистрации" />
-                                <TextBlock
-                                    x:Name="RegistrationDateTextBlock"
-                                    FontFamily="{DynamicResource AdwaitaSans}"
-                                    FontSize="14"
-                                    Foreground="#E0FFFFFF"
-                                    Text="" />
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-                </StackPanel>
+                    </Grid>
+                </Border>
             </Grid>
         </ScrollViewer>
     </Border>
