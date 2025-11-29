@@ -54,14 +54,17 @@ public class MessagesStorage
     /// <returns>List of messages ordered by sent time</returns>
     public async Task<List<Message>> GetChatMessagesWithOffset(Guid chatId, long? fromMessageId, int offsetBefore, int offsetAfter)
     {
+        const int MaxOffset = 50;
+        
         if (fromMessageId == null)
         {
-            // If no reference message, return the latest messages (use offsetBefore as count)
+            // If no reference message, return the latest messages (use offsetBefore as count, capped at MaxOffset)
+            var count = offsetBefore > 0 ? Math.Min(offsetBefore, MaxOffset) : MaxOffset;
             var latestMessages = await _context
                 .Messages
                 .Where(x => x.ChatId == chatId)
                 .OrderByDescending(m => m.SentAt)
-                .Take(Math.Max(offsetBefore, 50))
+                .Take(count)
                 .ToListAsync();
 
             return latestMessages.OrderBy(m => m.SentAt).ToList();

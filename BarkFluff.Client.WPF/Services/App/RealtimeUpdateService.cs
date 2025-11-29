@@ -200,10 +200,15 @@ namespace BarkFluff.Client.WPF.Services.App
                 };
 
                 // Log the received message
+                var textPreview = messageEvent.Message.Content.Text;
+                if (!string.IsNullOrEmpty(textPreview) && textPreview.Length > 50)
+                {
+                    textPreview = textPreview.Substring(0, 50) + "...";
+                }
                 string messageInfo = $"New message in chat {messageEvent.ChatId}: " +
                                     $"ID={messageEvent.Message.Id}, " +
                                     $"Sender={messageEvent.Message.SenderId}, " +
-                                    $"Text={messageEvent.Message.Content.Text?.Substring(0, Math.Min(50, messageEvent.Message.Content.Text?.Length ?? 0))}...";
+                                    $"Text={textPreview ?? "(no text)"}";
 
                 WPF.App.ErideMessage.AddMessage(messageInfo, new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
 
