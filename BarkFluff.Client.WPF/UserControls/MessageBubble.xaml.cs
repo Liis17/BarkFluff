@@ -1,13 +1,11 @@
 ﻿using BarkFluff.Client.WPF.Services.App.Caching;
+using BarkFluff.Client.WPF.UserControls.MessageContent;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
 using Google.Protobuf.WellKnownTypes;
 
-using System.IO;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 
 namespace BarkFluff.Client.WPF.UserControls
 {
@@ -27,8 +25,7 @@ namespace BarkFluff.Client.WPF.UserControls
         public string MessageId { get; set; } = string.Empty;
         public Timestamp SentAt { get; set; } = new Timestamp();
         private MessageType _messageType = MessageType.Text;
-        private string? _attachmentFileId;
-        private bool _isSubscribedToFileCached;
+        private TextMessageContent? _textContent;
 
         public MessageBubble(MessageOwner owner, MessageType messageType, MessageModel message, bool isGroup)
         {
@@ -64,8 +61,6 @@ namespace BarkFluff.Client.WPF.UserControls
 
             MessageId = message.MessageId.ToString();
             ThemedConfirm(owner);
-
-            Unloaded += MessageBubble_Unloaded;
         }
 
         public MessageBubble(string textMessage, (bool sendingRequired, bool isUserId, string recipient) options, List<string> filesId)
@@ -75,7 +70,11 @@ namespace BarkFluff.Client.WPF.UserControls
             var sizeMessageWidth = CalculateLongestLineWidth(textMessage);
             this.MinWidth = sizeMessageWidth + MIN_WIDTH_PADDING;
             SenderName.Visibility = Visibility.Collapsed;
-            MessageText.Text = textMessage ?? string.Empty;
+
+            // Create text content control
+            _textContent = new TextMessageContent(textMessage);
+            TextContentPresenter.Content = _textContent;
+
             MessageTime.Text = DateTime.Now.ToString("HH:mm");
             ThemedConfirm(MessageOwner.Me);
 
@@ -108,10 +107,9 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private void SetupTextContent(MessageModel message)
         {
-            MessageText.Text = message.Text ?? string.Empty;
-            MessageText.Visibility = Visibility.Visible;
-            MessageImage.Visibility = Visibility.Collapsed;
-            DocumentPanel.Visibility = Visibility.Collapsed;
+            _textContent = new TextMessageContent(message.Text);
+            TextContentPresenter.Content = _textContent;
+            MediaContentPresenter.Content = null;
 
             var sizeMessageWidth = CalculateLongestLineWidth(message.Text);
             this.MinWidth = sizeMessageWidth + MIN_WIDTH_PADDING;
@@ -126,18 +124,21 @@ namespace BarkFluff.Client.WPF.UserControls
                 return;
             }
 
-            _attachmentFileId = attachment.FileId;
-            MessageText.Visibility = string.IsNullOrEmpty(message.Text) ? Visibility.Collapsed : Visibility.Visible;
-            MessageText.Text = message.Text ?? string.Empty;
-            MessageImage.Visibility = Visibility.Visible;
-            DocumentPanel.Visibility = Visibility.Collapsed;
+            // Set up text content if present
+            if (!string.IsNullOrEmpty(message.Text))
+            {
+                _textContent = new TextMessageContent(message.Text);
+                TextContentPresenter.Content = _textContent;
+            }
+            else
+            {
+                TextContentPresenter.Content = null;
+            }
 
+            // Set up image content
             var fileType = messageType == MessageType.Gif ? FileType.Gif : FileType.Image;
-            var imagePath = App.FileCacheService.GetCachedFilePath(attachment.FileId, fileType, attachment.PreviewUrl);
-
-            LoadImage(imagePath);
-
-            SubscribeToFileCached();
+            var imageContent = new ImageMessageContent(attachment.FileId, attachment.PreviewUrl, fileType);
+            MediaContentPresenter.Content = imageContent;
 
             this.MinWidth = IMAGE_MAX_WIDTH;
         }
@@ -151,25 +152,20 @@ namespace BarkFluff.Client.WPF.UserControls
                 return;
             }
 
-            _attachmentFileId = attachment.FileId;
-            MessageText.Visibility = string.IsNullOrEmpty(message.Text) ? Visibility.Collapsed : Visibility.Visible;
-            MessageText.Text = message.Text ?? string.Empty;
-            MessageImage.Visibility = Visibility.Collapsed;
-            DocumentPanel.Visibility = Visibility.Visible;
-
-            DocumentFileName.Text = !string.IsNullOrEmpty(attachment.PreviewUrl)
-                ? Path.GetFileName(attachment.PreviewUrl)
-                : $"Document_{attachment.FileId}";
-
-            if (attachment.Size > 0)
+            // Set up text content if present
+            if (!string.IsNullOrEmpty(message.Text))
             {
-                DocumentFileSize.Text = FormatFileSize(attachment.Size);
-                DocumentFileSize.Visibility = Visibility.Visible;
+                _textContent = new TextMessageContent(message.Text);
+                TextContentPresenter.Content = _textContent;
             }
             else
             {
-                DocumentFileSize.Visibility = Visibility.Collapsed;
+                TextContentPresenter.Content = null;
             }
+
+            // Set up document content
+            var documentContent = new DocumentMessageContent(attachment.FileId, attachment.PreviewUrl, attachment.Size);
+            MediaContentPresenter.Content = documentContent;
 
             var sizeMessageWidth = CalculateLongestLineWidth(message.Text);
             this.MinWidth = Math.Max(sizeMessageWidth + MIN_WIDTH_PADDING, 200);
@@ -184,98 +180,22 @@ namespace BarkFluff.Client.WPF.UserControls
                 return;
             }
 
-            _attachmentFileId = attachment.FileId;
-            MessageText.Visibility = string.IsNullOrEmpty(message.Text) ? Visibility.Collapsed : Visibility.Visible;
-            MessageText.Text = message.Text ?? string.Empty;
-            MessageImage.Visibility = Visibility.Visible;
-            DocumentPanel.Visibility = Visibility.Collapsed;
-
-            if (!string.IsNullOrEmpty(attachment.PreviewUrl))
+            // Set up text content if present
+            if (!string.IsNullOrEmpty(message.Text))
             {
-                var imagePath = App.FileCacheService.GetCachedFilePath(attachment.FileId, FileType.Video, attachment.PreviewUrl);
-                LoadImage(imagePath);
-                SubscribeToFileCached();
+                _textContent = new TextMessageContent(message.Text);
+                TextContentPresenter.Content = _textContent;
             }
             else
             {
-                MessageImage.Source = new BitmapImage(new Uri(FileCacheService.DefaultPlaceholder, UriKind.RelativeOrAbsolute));
+                TextContentPresenter.Content = null;
             }
+
+            // Set up video content
+            var videoContent = new VideoMessageContent(attachment.FileId, attachment.PreviewUrl);
+            MediaContentPresenter.Content = videoContent;
 
             this.MinWidth = IMAGE_MAX_WIDTH;
-        }
-
-        private void SubscribeToFileCached()
-        {
-            if (!_isSubscribedToFileCached)
-            {
-                App.FileCacheService.FileCached += OnFileCached;
-                _isSubscribedToFileCached = true;
-            }
-        }
-
-        private void UnsubscribeFromFileCached()
-        {
-            if (_isSubscribedToFileCached)
-            {
-                App.FileCacheService.FileCached -= OnFileCached;
-                _isSubscribedToFileCached = false;
-            }
-        }
-
-        private void MessageBubble_Unloaded(object sender, RoutedEventArgs e)
-        {
-            UnsubscribeFromFileCached();
-            Unloaded -= MessageBubble_Unloaded;
-        }
-
-        private void LoadImage(string imagePath)
-        {
-            try
-            {
-                var bitmapImage = new BitmapImage();
-                bitmapImage.BeginInit();
-                bitmapImage.UriSource = new Uri(imagePath, UriKind.RelativeOrAbsolute);
-                bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
-                bitmapImage.DecodePixelWidth = IMAGE_MAX_WIDTH;
-                bitmapImage.EndInit();
-                if (bitmapImage.CanFreeze)
-                {
-                    bitmapImage.Freeze();
-                }
-                MessageImage.Source = bitmapImage;
-            }
-            catch
-            {
-                MessageImage.Source = new BitmapImage(new Uri(FileCacheService.DefaultPlaceholder, UriKind.RelativeOrAbsolute));
-            }
-        }
-
-        private void OnFileCached(string fileId, string filePath, FileType fileType)
-        {
-            if (fileId != _attachmentFileId)
-            {
-                return;
-            }
-
-            Dispatcher.Invoke(() =>
-            {
-                LoadImage(filePath);
-            });
-
-            UnsubscribeFromFileCached();
-        }
-
-        private static string FormatFileSize(long bytes)
-        {
-            string[] sizes = { "B", "KB", "MB", "GB" };
-            int order = 0;
-            double size = bytes;
-            while (size >= 1024 && order < sizes.Length - 1)
-            {
-                order++;
-                size /= 1024;
-            }
-            return $"{size:0.##} {sizes[order]}";
         }
 
         private async void SendMessage((bool sendingRequired, bool isUserId, string recipient) options, string textMessage, List<string> filesId)
@@ -337,6 +257,58 @@ namespace BarkFluff.Client.WPF.UserControls
 
             return Math.Min(longestLineLength, MAX_CHARS_PER_LINE) * CHAR_WIDTH_APPROX;
         }
+
+        #region Context Menu Handlers
+
+        private void OnReplyClick(object sender, RoutedEventArgs e)
+        {
+            // TODO: Implement reply functionality
+        }
+
+        private void OnForwardClick(object sender, RoutedEventArgs e)
+        {
+            // TODO: Implement forward functionality
+        }
+
+        private void OnCopyClick(object sender, RoutedEventArgs e)
+        {
+            // TODO: Implement copy for other content types (images, documents, videos)
+            if (_textContent != null)
+            {
+                _textContent.CopySelectedText();
+            }
+        }
+
+        private void OnSelectAllTextClick(object sender, RoutedEventArgs e)
+        {
+            // TODO: Implement select all for other content types or disable for non-text messages
+            if (_textContent != null)
+            {
+                _textContent.SelectAll();
+            }
+        }
+
+        private void OnPinClick(object sender, RoutedEventArgs e)
+        {
+            // TODO: Implement pin functionality
+        }
+
+        private void OnAddToFavoritesClick(object sender, RoutedEventArgs e)
+        {
+            // TODO: Implement add to favorites functionality
+        }
+
+        private void OnEditClick(object sender, RoutedEventArgs e)
+        {
+            // TODO: Implement edit functionality
+        }
+
+        private void OnDeleteClick(object sender, RoutedEventArgs e)
+        {
+            // TODO: Implement delete functionality
+        }
+
+        #endregion Context Menu Handlers
 
         #region Enums
         public enum MessageType
