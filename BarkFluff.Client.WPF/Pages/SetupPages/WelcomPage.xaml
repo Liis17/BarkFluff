@@ -9,103 +9,226 @@
     d:DesignHeight="720"
     d:DesignWidth="1280"
     mc:Ignorable="d">
-    <Grid>
-        <StackPanel
+
+    <UserControl.Resources>
+        <!-- Windows 11 style footer link with hover animation -->
+        <Style x:Key="FooterLinkStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="Normal" />
+            <Setter Property="Foreground" Value="#FFF39E6D" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Opacity" Value="0.85" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Foreground" Value="#FFFFB088" />
+                    <Setter Property="Opacity" Value="1" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Footer separator style -->
+        <Style x:Key="FooterSeparatorStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="Light" />
+            <Setter Property="Foreground" Value="#FFF39E6D" />
+            <Setter Property="Opacity" Value="0.5" />
+            <Setter Property="Margin" Value="12,0" />
+        </Style>
+
+        <!-- Windows 11 style modern button -->
+        <Style x:Key="Windows11AccentButton" TargetType="{x:Type ui:Button}">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="MinWidth" Value="160" />
+            <Setter Property="Height" Value="48" />
+            <Setter Property="Padding" Value="24,0" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Background" Value="#df5000" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="MouseOverBackground" Value="#FFC54700" />
+            <Setter Property="PressedBackground" Value="#FFAB3D00" />
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect
+                        BlurRadius="16"
+                        Direction="270"
+                        Opacity="0.3"
+                        ShadowDepth="4"
+                        Color="#df5000" />
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ui:Button}">
+                        <Border
+                            x:Name="Border"
+                            Background="{TemplateBinding Background}"
+                            BorderThickness="0"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="{Binding MouseOverBackground, RelativeSource={RelativeSource TemplatedParent}}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="{Binding PressedBackground, RelativeSource={RelativeSource TemplatedParent}}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="UseLayoutRounding" Value="True" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Background="#1A1A1A">
+        <!-- Main content card with subtle shadow -->
+        <Border
+            x:Name="ContentCard"
+            Margin="40"
+            Padding="60,50"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
-            Orientation="Vertical">
-            <Image
-                Width="100"
-                Height="100"
-                Margin="0,0,0,30"
-                Source="/BarkFluff.Client.WPF;component/Resources/Images/barkfluff_logo.png" />
-            <TextBlock
-                Margin="0,0,0,20"
+            Background="#242424"
+            CornerRadius="16"
+            Opacity="0">
+            <Border.RenderTransform>
+                <TranslateTransform Y="20" />
+            </Border.RenderTransform>
+            <Border.Effect>
+                <DropShadowEffect
+                    BlurRadius="40"
+                    Direction="270"
+                    Opacity="0.25"
+                    ShadowDepth="8"
+                    Color="Black" />
+            </Border.Effect>
+
+            <StackPanel
                 HorizontalAlignment="Center"
-                FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="36"
-                FontWeight="Black"
-                Foreground="White"
-                Text="BarkFluff" />
-            <TextBlock
-                Margin="0,0,0,40"
-                HorizontalAlignment="Center"
-                FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="16"
-                FontWeight="Medium"
-                Foreground="White"
-                Opacity="0.8"
-                Text="Мессенджер для твоей стаи"
-                TextAlignment="Center" />
-            <TextBlock
-                MaxWidth="400"
-                Margin="0,0,0,50"
-                HorizontalAlignment="Center"
-                FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="14"
-                FontWeight="Light"
-                Foreground="White"
-                Opacity="0.7"
-                Text="Общайтесь с друзьями, делитесь моментами и оставайтесь на связи с теми, кто важен"
-                TextAlignment="Center"
-                TextWrapping="Wrap" />
-            <ui:Button Click="Button_Click" Style="{StaticResource MainButton}">
-                <ui:Button.Content>
-                    <StackPanel Orientation="Horizontal">
-                        <ui:TextBlock Style="{StaticResource MainButtonTextLeft}" Text="Начать" />
-                        <ui:SymbolIcon Style="{StaticResource ButtonSymbolRight}" Symbol="ArrowRight24" />
-                    </StackPanel>
+                VerticalAlignment="Center"
+                Orientation="Vertical">
 
+                <!-- Logo with fade-in animation -->
+                <Image
+                    x:Name="LogoImage"
+                    Width="120"
+                    Height="120"
+                    Margin="0,0,0,32"
+                    Opacity="0"
+                    RenderTransformOrigin="0.5,0.5"
+                    Source="/BarkFluff.Client.WPF;component/Resources/Images/barkfluff_logo.png">
+                    <Image.RenderTransform>
+                        <TranslateTransform Y="20" />
+                    </Image.RenderTransform>
+                </Image>
 
-                </ui:Button.Content>
-            </ui:Button>
+                <!-- Main title with larger font -->
+                <TextBlock
+                    x:Name="TitleText"
+                    Margin="0,0,0,12"
+                    HorizontalAlignment="Center"
+                    FontFamily="{DynamicResource AdwaitaSans}"
+                    FontSize="42"
+                    FontWeight="Bold"
+                    Foreground="White"
+                    Opacity="0"
+                    Text="BarkFluff">
+                    <TextBlock.RenderTransform>
+                        <TranslateTransform Y="20" />
+                    </TextBlock.RenderTransform>
+                </TextBlock>
 
+                <!-- Subtitle with accent color -->
+                <TextBlock
+                    x:Name="SubtitleText"
+                    Margin="0,0,0,24"
+                    HorizontalAlignment="Center"
+                    FontFamily="{DynamicResource AdwaitaSans}"
+                    FontSize="18"
+                    FontWeight="Medium"
+                    Foreground="#FFF39E6D"
+                    Opacity="0"
+                    Text="Мессенджер для твоей стаи"
+                    TextAlignment="Center">
+                    <TextBlock.RenderTransform>
+                        <TranslateTransform Y="20" />
+                    </TextBlock.RenderTransform>
+                </TextBlock>
 
-        </StackPanel>
+                <!-- Description text -->
+                <TextBlock
+                    x:Name="DescriptionText"
+                    MaxWidth="420"
+                    Margin="0,0,0,40"
+                    HorizontalAlignment="Center"
+                    FontFamily="{DynamicResource AdwaitaSans}"
+                    FontSize="14"
+                    FontWeight="Normal"
+                    Foreground="#B0B0B0"
+                    LineHeight="22"
+                    Opacity="0"
+                    Text="Общайтесь с друзьями, делитесь моментами и оставайтесь на связи с теми, кто важен"
+                    TextAlignment="Center"
+                    TextWrapping="Wrap">
+                    <TextBlock.RenderTransform>
+                        <TranslateTransform Y="20" />
+                    </TextBlock.RenderTransform>
+                </TextBlock>
+
+                <!-- Modern Windows 11 style button -->
+                <ui:Button
+                    x:Name="StartButton"
+                    Click="Button_Click"
+                    Opacity="0"
+                    Style="{StaticResource Windows11AccentButton}">
+                    <ui:Button.RenderTransform>
+                        <TranslateTransform Y="20" />
+                    </ui:Button.RenderTransform>
+                    <ui:Button.Content>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                FontFamily="{DynamicResource AdwaitaSans}"
+                                FontSize="15"
+                                FontWeight="SemiBold"
+                                Foreground="White"
+                                Text="Начать" />
+                            <ui:SymbolIcon
+                                Margin="12,0,0,0"
+                                FontSize="16"
+                                Foreground="White"
+                                Symbol="ArrowRight24" />
+                        </StackPanel>
+                    </ui:Button.Content>
+                </ui:Button>
+            </StackPanel>
+        </Border>
+
+        <!-- Footer with interactive links -->
         <StackPanel
+            x:Name="FooterPanel"
             Margin="0,0,0,30"
             HorizontalAlignment="Center"
             VerticalAlignment="Bottom"
+            Opacity="0"
             Orientation="Horizontal">
             <TextBlock
-                Margin="0,0,15,0"
-                Cursor="Hand"
-                FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="12"
-                FontWeight="Light"
-                Foreground="#FFF39E6D"
                 MouseLeftButtonDown="ClickFooter"
+                Style="{StaticResource FooterLinkStyle}"
                 Text="О проекте" />
+            <TextBlock Style="{StaticResource FooterSeparatorStyle}" Text="•" />
             <TextBlock
-                Margin="0,0,15,0"
-                FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="12"
-                FontWeight="Light"
-                Foreground="#FFF39E6D"
-                Text="•" />
-            <TextBlock
-                Margin="0,0,15,0"
-                Cursor="Hand"
-                FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="12"
-                FontWeight="Light"
-                Foreground="#FFF39E6D"
                 MouseLeftButtonDown="ClickPrivacyPolicyAndTermsOfUse"
-                Text="Политика конфиденциальности и условия использования" />
+                Style="{StaticResource FooterLinkStyle}"
+                Text="Политика конфиденциальности" />
+            <TextBlock Style="{StaticResource FooterSeparatorStyle}" Text="•" />
             <TextBlock
-                Margin="0,0,15,0"
-                FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="12"
-                FontWeight="Light"
-                Foreground="#FFF39E6D"
-                Text="•" />
-            <TextBlock
-                Cursor="Hand"
-                FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="12"
-                FontWeight="Light"
-                Foreground="#FFF39E6D"
                 MouseLeftButtonDown="ClickFooter"
+                Style="{StaticResource FooterLinkStyle}"
                 Text="Справка" />
         </StackPanel>
     </Grid>
