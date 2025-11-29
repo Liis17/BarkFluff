@@ -27,7 +27,6 @@ namespace BarkFluff.Client.WPF
         private const string AppUserModelId = "com.barkfluff.messenger";
         private const string MutexName = "BarkFluffMutex";
 #endif
-
         public static BarkFluff.WebApi.Core.WebApi ServerCommunication { get; set; } = null!;
         public static BarkFluff.WebApi.Core.MessengerData.GlobalParam GParam { get; set; } = null!;
         public static ImageColorAnalyzer ColorAnalyzer { get; set; } = null!;
@@ -91,7 +90,7 @@ namespace BarkFluff.Client.WPF
         /// </summary>
         private void Bootstrap()
         {
-            Directory.CreateDirectory("temp");
+
             Directory.CreateDirectory("datas");
             Directory.CreateDirectory("datas\\cache");
             CacheManager = new MessageCacheManager("datas\\cache.db", "temp");
@@ -203,17 +202,17 @@ namespace BarkFluff.Client.WPF
             var response = ServerCommunication.CreateAC(GParam, GParam.MachineName, SystemInfo.GetFriendlyWindowsVersion(), AppVersion.AppName, AppVersion.Version, GParam.IpAddress);
             if (!response.IsSuccess)
             {
-                App.ErideMessage.AddMessage(response.ErrorMessage ?? "Не удалось обновить API клиент", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
+                App.ErideMessage.AddMessage(response.ErrorMessage ?? "Не удалось обновить API клиент", new BarkFluff.Client.WPF.Services.Erida.MessageType { Type = BarkFluff.Client.WPF.Services.Erida.MessageType.MessageTypeEnum.Error });
                 return;
             }
             else
             {
-                App.ErideMessage.AddMessage("API клиент успешно обновлён", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Debug });
+                App.ErideMessage.AddMessage("API клиент успешно обновлён", new BarkFluff.Client.WPF.Services.Erida.MessageType { Type = BarkFluff.Client.WPF.Services.Erida.MessageType.MessageTypeEnum.Debug });
             }
             var (error, serverInfo) = await ServerCommunication.GetServerInfo(GParam);
             if (!error.IsSuccess)
             {
-                App.ErideMessage.AddMessage(error.ErrorMessage ?? "Не удалось получить информацию о сервере", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
+                App.ErideMessage.AddMessage(error.ErrorMessage ?? "Не удалось получить информацию о сервере", new BarkFluff.Client.WPF.Services.Erida.MessageType { Type = BarkFluff.Client.WPF.Services.Erida.MessageType.MessageTypeEnum.Error });
                 return;
             }
             else
@@ -251,5 +250,7 @@ namespace BarkFluff.Client.WPF
             });
 
         }
+
+        public static string AppUserModelIdPublic => AppUserModelId; // переместили выше чтобы не ругалось на отсутствие свойства
     }
 }
