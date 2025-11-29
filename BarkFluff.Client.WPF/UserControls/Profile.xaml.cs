@@ -400,6 +400,8 @@ namespace BarkFluff.Client.WPF.UserControls
 
                 if (response.Data == null)
                 {
+                    App.ErideMessage?.AddMessage($"Не удалось загрузить профиль пользователя {userId}: данные не получены", 
+                        new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Warning });
                     return;
                 }
 
@@ -424,9 +426,10 @@ namespace BarkFluff.Client.WPF.UserControls
                 // Скрываем баджи по умолчанию
                 SetBadges(null);
             }
-            catch
+            catch (Exception ex)
             {
-                // Обработка ошибки загрузки профиля
+                App.ErideMessage?.AddMessage($"Ошибка загрузки профиля пользователя {userId}: {ex.Message}", 
+                    new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
             }
         }
 
@@ -447,11 +450,14 @@ namespace BarkFluff.Client.WPF.UserControls
                     avatarUrl);
                 SetAvatarImage(imagePath);
             }
-            catch
+            catch (Exception ex)
             {
+                App.ErideMessage?.AddMessage($"Ошибка загрузки аватара: {ex.Message}", 
+                    new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Debug });
                 SetAvatarImage(FileCacheService.DefaultPlaceholder);
             }
         }
+
 
         #endregion
 
