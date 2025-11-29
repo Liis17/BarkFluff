@@ -36,6 +36,23 @@ public class ListMessagesCommandHandler : IRequestHandler<ListMessagesCommand, L
         {
             long? messageId = request.FromMessageId == 0 ? null : request.FromMessageId;
 
+            // Check if new bi-directional pagination is requested
+            if (request.OffsetBefore > 0 || request.OffsetAfter > 0)
+            {
+                // Clamp offsets to maximum of 50
+                var offsetBefore = Math.Min(request.OffsetBefore, 50);
+                var offsetAfter = Math.Min(request.OffsetAfter, 50);
+
+                var messagesWithOffset = await _messagesStorage.GetChatMessagesWithOffset(
+                    request.ChatId, messageId, offsetBefore, offsetAfter);
+
+                return new ListMessagesResponse()
+                {
+                    Messages = { messagesWithOffset.Select(x => x.ToGrpc()) }
+                };
+            }
+
+            // Legacy behavior for backward compatibility
             if (request.Count is 0 or > 50)
             {
                 request.Count = 50;
