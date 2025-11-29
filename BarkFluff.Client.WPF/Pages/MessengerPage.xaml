@@ -208,6 +208,7 @@
 
                     <!--  Аватар пользователя  -->
                     <Border
+                        x:Name="AvatarTitleWindowButton"
                         Grid.Column="0"
                         Width="23"
                         Height="23"
@@ -217,11 +218,12 @@
                         CornerRadius="15"
                         Cursor="Hand"
                         MouseLeftButtonUp="OpenCenterBlock"
+                        Tag="UserProfile"
                         ToolTip="Открыть мой профиль">
                         <Border.Background>
                             <ImageBrush
                                 x:Name="AvatarTitleWindow"
-                                ImageSource="https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/The_International_2018_%2843263984845%29_%28cropped%29.jpg/960px-The_International_2018_%2843263984845%29_%28cropped%29.jpg"
+                                ImageSource="pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png"
                                 Stretch="UniformToFill" />
                         </Border.Background>
                     </Border>
@@ -235,7 +237,8 @@
                         VerticalAlignment="Center"
                         CornerRadius="15"
                         Cursor="Hand"
-                        MouseLeftButtonUp="OpenCenterBlock"
+                        MouseLeftButtonUp="OpenUpdateBlock"
+                        Tag="UpdateBlock"
                         ToolTip="Открыть мой профиль">
                         <ui:SymbolIcon
                             FontSize="23"
@@ -481,20 +484,24 @@
                                                 Foreground="Wheat"
                                                 Symbol="ChevronLeft12" />
                                         </ui:Button>
-                                        <ui:Button
+                                        <Border
+                                            x:Name="ChatAvatarButton"
                                             Width="35"
                                             Height="35"
-                                            Padding="-5"
                                             BorderBrush="Transparent"
                                             CornerRadius="30"
-                                            Focusable="False">
-                                            <ui:Button.Background>
+                                            Cursor="Hand"
+                                            Focusable="False"
+                                            ToolTip="Открыть профиль"
+                                            MouseLeftButtonUp="OpenCenterBlock"
+                                            Tag="UserProfile">
+                                            <Border.Background>
                                                 <ImageBrush
                                                     x:Name="ChatAvatar"
-                                                    ImageSource="https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/The_International_2018_%2843263984845%29_%28cropped%29.jpg/960px-The_International_2018_%2843263984845%29_%28cropped%29.jpg"
+                                                    ImageSource="pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png"
                                                     Stretch="UniformToFill" />
-                                            </ui:Button.Background>
-                                        </ui:Button>
+                                            </Border.Background>
+                                        </Border>
                                         <StackPanel Orientation="Vertical">
                                             <TextBlock
                                                 x:Name="ChatTitleUsername"
