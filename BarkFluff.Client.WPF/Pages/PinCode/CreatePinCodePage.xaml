@@ -10,7 +10,7 @@
     d:DesignWidth="1280"
     mc:Ignorable="d">
 
-    <Grid Background="#1C1C1C">
+    <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
@@ -23,28 +23,6 @@
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             Orientation="Vertical">
-
-            <!--  Иконка безопасности  -->
-            <Border
-                Width="80"
-                Height="80"
-                Margin="0,0,0,24"
-                HorizontalAlignment="Center"
-                Background="#2D2D2D"
-                CornerRadius="40">
-                <Border.Effect>
-                    <DropShadowEffect
-                        BlurRadius="20"
-                        Direction="270"
-                        Opacity="0.3"
-                        ShadowDepth="4"
-                        Color="Black" />
-                </Border.Effect>
-                <ui:SymbolIcon
-                    FontSize="36"
-                    Foreground="#df5000"
-                    Symbol="ShieldLock24" />
-            </Border>
 
             <!--  Заголовок  -->
             <TextBlock

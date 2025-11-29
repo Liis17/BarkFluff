@@ -10,7 +10,7 @@
     d:DesignWidth="1280"
     mc:Ignorable="d">
     <UserControl.Resources>
-        <!-- Windows 11 style section header -->
+        <!--  Windows 11 style section header  -->
         <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
             <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
             <Setter Property="FontSize" Value="28" />
@@ -22,21 +22,14 @@
 
     </UserControl.Resources>
 
-    <!-- Main background with subtle gradient -->
+    <!--  Main background with subtle gradient  -->
     <Grid>
-        <Grid.Background>
-            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                <GradientStop Offset="0" Color="#1A1A2E" />
-                <GradientStop Offset="1" Color="#16162A" />
-            </LinearGradientBrush>
-        </Grid.Background>
-
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Section header -->
+        <!--  Section header  -->
         <TextBlock
             Margin="0,-480,0,0"
             HorizontalAlignment="Center"
@@ -47,7 +40,7 @@
             Style="{StaticResource SectionHeaderStyle}"
             Text="Настройка профиля" />
 
-        <!-- Main card with Windows 11 Mica-like effect -->
+        <!--  Main card with Windows 11 Mica-like effect  -->
         <Border
             Padding="40,32"
             HorizontalAlignment="Center"
@@ -83,13 +76,13 @@
                     VerticalAlignment="Center"
                     Orientation="Vertical">
 
-                    <!-- User info section with avatar -->
+                    <!--  User info section with avatar  -->
                     <StackPanel
                         Margin="0,0,0,32"
                         HorizontalAlignment="Center"
                         Orientation="Horizontal">
 
-                        <!-- Avatar with glow effect -->
+                        <!--  Avatar with glow effect  -->
                         <Border
                             Width="110"
                             Height="110"
@@ -103,20 +96,10 @@
                                     ShadowDepth="4"
                                     Color="#000000" />
                             </Border.Effect>
-                            <!-- Subtle gradient ring around avatar -->
-                            <Border
-                                Padding="3"
-                                CornerRadius="55">
-                                <Border.Background>
-                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                        <GradientStop Offset="0" Color="#3060CDFF" />
-                                        <GradientStop Offset="0.5" Color="#200078D4" />
-                                        <GradientStop Offset="1" Color="#3060CDFF" />
-                                    </LinearGradientBrush>
-                                </Border.Background>
-                                <Border
-                                    Background="#2A2A40"
-                                    CornerRadius="52">
+                            <!--  Subtle gradient ring around avatar  -->
+                            <Border Padding="3" CornerRadius="55">
+
+                                <Border Background="#2A2A40" CornerRadius="52">
                                     <Grid>
                                         <Ellipse
                                             x:Name="AvatarImage"
@@ -127,7 +110,7 @@
                                             </Ellipse.Fill>
                                         </Ellipse>
 
-                                        <!-- Placeholder icon with modern styling -->
+                                        <!--  Placeholder icon with modern styling  -->
                                         <ui:SymbolIcon
                                             x:Name="AvatarPlaceholder"
                                             Panel.ZIndex="-1"
@@ -139,10 +122,8 @@
                             </Border>
                         </Border>
 
-                        <!-- Name and username -->
-                        <StackPanel
-                            VerticalAlignment="Center"
-                            Orientation="Vertical">
+                        <!--  Name and username  -->
+                        <StackPanel VerticalAlignment="Center" Orientation="Vertical">
 
                             <TextBlock
                                 x:Name="FullNameText"
@@ -170,7 +151,7 @@
                         </StackPanel>
                     </StackPanel>
 
-                    <!-- Description label -->
+                    <!--  Description label  -->
                     <TextBlock
                         Margin="0,0,0,12"
                         HorizontalAlignment="Center"
@@ -180,7 +161,7 @@
                         Foreground="#B0FFFFFF"
                         Text="Расскажите немного о себе для других пользователей" />
 
-                    <!-- About TextBox with Windows 11 styling -->
+                    <!--  About TextBox with Windows 11 styling  -->
                     <Border
                         Width="480"
                         Height="130"
@@ -192,9 +173,7 @@
                             <SolidColorBrush Color="#20FFFFFF" />
                         </Border.BorderBrush>
                         <Border.BorderThickness>1</Border.BorderThickness>
-                        <ScrollViewer
-                            HorizontalScrollBarVisibility="Disabled"
-                            VerticalScrollBarVisibility="Auto">
+                        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                             <ui:TextBox
                                 x:Name="AboutTextBox"
                                 Padding="16,14"
@@ -213,7 +192,7 @@
                         </ScrollViewer>
                     </Border>
 
-                    <!-- Error message -->
+                    <!--  Error message  -->
                     <TextBlock
                         x:Name="ErrorTextBlockMessage"
                         Margin="0,12,0,0"
@@ -225,9 +204,10 @@
                         Text=""
                         Visibility="Collapsed" />
 
-                    <!-- Windows 11 style accent save button -->
+                    <!--  Windows 11 style accent save button  -->
                     <ui:Button
                         x:Name="SaveButton"
+                        Margin="0,8,0,10"
                         Click="SaveButton_Click"
                         Style="{StaticResource MainButton}">
                         <ui:Button.Content>
@@ -239,7 +219,7 @@
                     </ui:Button>
                 </StackPanel>
 
-                <!-- Footer hint text -->
+                <!--  Footer hint text  -->
                 <StackPanel
                     Grid.Row="1"
                     Margin="0,0,0,0"

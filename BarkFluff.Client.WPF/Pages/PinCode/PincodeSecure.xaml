@@ -40,9 +40,7 @@
 
         <!--  Анимация тряски при неправильном вводе  -->
         <Storyboard x:Key="ShakeAnimation">
-            <DoubleAnimationUsingKeyFrames
-                Storyboard.TargetName="PinContainer"
-                Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)">
+            <DoubleAnimationUsingKeyFrames Storyboard.TargetName="PinContainer" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)">
                 <EasingDoubleKeyFrame KeyTime="0:0:0.05" Value="-10" />
                 <EasingDoubleKeyFrame KeyTime="0:0:0.1" Value="10" />
                 <EasingDoubleKeyFrame KeyTime="0:0:0.15" Value="-8" />
@@ -54,7 +52,7 @@
         </Storyboard>
     </UserControl.Resources>
 
-    <Grid x:Name="MainGrid" Background="#1C1C1C">
+    <Grid x:Name="MainGrid">
         <Grid.RenderTransform>
             <TranslateTransform />
         </Grid.RenderTransform>
@@ -70,28 +68,6 @@
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             Orientation="Vertical">
-
-            <!--  Иконка безопасности  -->
-            <Border
-                Width="80"
-                Height="80"
-                Margin="0,0,0,24"
-                HorizontalAlignment="Center"
-                Background="#2D2D2D"
-                CornerRadius="40">
-                <Border.Effect>
-                    <DropShadowEffect
-                        BlurRadius="20"
-                        Direction="270"
-                        Opacity="0.3"
-                        ShadowDepth="4"
-                        Color="Black" />
-                </Border.Effect>
-                <ui:SymbolIcon
-                    FontSize="36"
-                    Foreground="#df5000"
-                    Symbol="LockClosed24" />
-            </Border>
 
             <!--  Заголовок  -->
             <TextBlock
@@ -231,9 +207,7 @@
                     FontWeight="Normal"
                     Foreground="#9E9E9E"
                     Text="Проблемы со входом? Попробуйте сбросить приложение." />
-                <ui:Button
-                    Click="RemoveSettings"
-                    Style="{StaticResource Win11DangerButton}">
+                <ui:Button Click="RemoveSettings" Style="{StaticResource Win11DangerButton}">
                     <ui:Button.Content>
                         <StackPanel Orientation="Horizontal">
                             <ui:SymbolIcon
