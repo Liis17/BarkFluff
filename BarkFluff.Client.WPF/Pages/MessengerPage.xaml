@@ -237,7 +237,7 @@
                         VerticalAlignment="Center"
                         CornerRadius="15"
                         Cursor="Hand"
-                        MouseLeftButtonUp="OpenUpdateBlock"
+                        MouseLeftButtonUp="OpenCenterBlock"
                         Tag="UpdateBlock"
                         ToolTip="Открыть мой профиль">
                         <ui:SymbolIcon
@@ -492,9 +492,9 @@
                                             CornerRadius="30"
                                             Cursor="Hand"
                                             Focusable="False"
-                                            ToolTip="Открыть профиль"
                                             MouseLeftButtonUp="OpenCenterBlock"
-                                            Tag="UserProfile">
+                                            Tag="UserProfile"
+                                            ToolTip="Открыть профиль">
                                             <Border.Background>
                                                 <ImageBrush
                                                     x:Name="ChatAvatar"
