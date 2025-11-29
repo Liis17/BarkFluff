@@ -9,7 +9,7 @@
     xmlns:setupPages="clr-namespace:BarkFluff.Client.WPF.Pages.SetupPages"
     xmlns:twofa="clr-namespace:BarkFluff.Client.WPF.Pages.SetupPages.Registration"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-    d:DesignHeight="3980"
+    d:DesignHeight="4380"
     d:DesignWidth="720"
     mc:Ignorable="d">
 
