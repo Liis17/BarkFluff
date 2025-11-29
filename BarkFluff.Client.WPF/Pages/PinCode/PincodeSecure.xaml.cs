@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 
 namespace BarkFluff.Client.WPF.Pages.PinCode
@@ -74,6 +75,7 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
                         {
                             attempts--;
                             KeysIconUpdate();
+                            PlayShakeAnimation();
                             ClearAll();
                             GetBox(0).Focus();
                         }
@@ -94,11 +96,36 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
                 }
             }
         }
+
+        private void PlayShakeAnimation()
+        {
+            var storyboard = (Storyboard)this.Resources["ShakeAnimation"];
+            storyboard.Begin();
+        }
+
         private void KeysIconUpdate()
         {
+            // Update visibility based on remaining attempts
             key3.Visibility = attempts >= 3 ? Visibility.Visible : Visibility.Collapsed;
             key2.Visibility = attempts >= 2 ? Visibility.Visible : Visibility.Collapsed;
             key1.Visibility = attempts >= 1 ? Visibility.Visible : Visibility.Collapsed;
+
+            // Update the color of the key indicators based on attempts used
+            UpdateKeyIndicatorStyle(key3, attempts >= 3);
+            UpdateKeyIndicatorStyle(key2, attempts >= 2);
+            UpdateKeyIndicatorStyle(key1, attempts >= 1);
+        }
+
+        private void UpdateKeyIndicatorStyle(Border keyBorder, bool isActive)
+        {
+            if (isActive)
+            {
+                keyBorder.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2D4A20"));
+            }
+            else
+            {
+                keyBorder.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4A2020"));
+            }
         }
 
         private void PinBox_PreviewKeyDown(object sender, KeyEventArgs e)
