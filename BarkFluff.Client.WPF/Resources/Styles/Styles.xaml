@@ -196,6 +196,224 @@
         </Setter>
     </Style>
 
+    <!--  Windows 11 style PIN code input field  -->
+    <Style x:Key="PinCodeTextBoxWin11" TargetType="TextBox">
+        <Setter Property="Background" Value="#2D2D2D" />
+        <Setter Property="Width" Value="64" />
+        <Setter Property="Height" Value="64" />
+        <Setter Property="Margin" Value="8" />
+        <Setter Property="MaxLength" Value="1" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
+        <Setter Property="FontSize" Value="26" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="BorderBrush" Value="#3D3D3D" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CaretBrush" Value="#df5000" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Grid>
+                        <!--  Shadow effect layer  -->
+                        <Border
+                            x:Name="ShadowBorder"
+                            Background="Transparent"
+                            CornerRadius="14">
+                            <Border.Effect>
+                                <DropShadowEffect
+                                    BlurRadius="12"
+                                    Direction="270"
+                                    Opacity="0.2"
+                                    ShadowDepth="4"
+                                    Color="Black" />
+                            </Border.Effect>
+                        </Border>
+                        <!--  Main content border  -->
+                        <Border
+                            x:Name="ContentBorder"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="14">
+                            <Grid>
+                                <ScrollViewer
+                                    x:Name="PART_ContentHost"
+                                    Margin="0"
+                                    Padding="0"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <!--  Focus glow effect  -->
+                        <Border
+                            x:Name="FocusGlow"
+                            Background="Transparent"
+                            BorderBrush="#df5000"
+                            BorderThickness="2"
+                            CornerRadius="14"
+                            Opacity="0">
+                            <Border.Effect>
+                                <DropShadowEffect
+                                    BlurRadius="15"
+                                    Direction="0"
+                                    Opacity="0.6"
+                                    ShadowDepth="0"
+                                    Color="#df5000" />
+                            </Border.Effect>
+                        </Border>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsFocused" Value="True">
+                            <Setter TargetName="ContentBorder" Property="BorderBrush" Value="#df5000" />
+                            <Setter TargetName="ContentBorder" Property="BorderThickness" Value="2" />
+                            <Setter TargetName="ContentBorder" Property="Background" Value="#363636" />
+                            <Setter TargetName="FocusGlow" Property="Opacity" Value="0.4" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="ContentBorder" Property="BorderBrush" Value="#505050" />
+                            <Setter TargetName="ContentBorder" Property="Background" Value="#333333" />
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsFocused" Value="False" />
+                                <Condition Property="Text" Value="" />
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="ContentBorder" Property="Background" Value="#2D2D2D" />
+                        </MultiTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!--  Windows 11 style card container  -->
+    <Style x:Key="Win11CardStyle" TargetType="Border">
+        <Setter Property="Background" Value="#2D2D2D" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Padding" Value="24" />
+        <Setter Property="BorderBrush" Value="#3D3D3D" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect
+                    BlurRadius="20"
+                    Direction="270"
+                    Opacity="0.3"
+                    ShadowDepth="6"
+                    Color="Black" />
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!--  Windows 11 style accent button for PIN code pages  -->
+    <Style x:Key="Win11AccentButton" TargetType="{x:Type ui:Button}">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="MinWidth" Value="200" />
+        <Setter Property="Height" Value="48" />
+        <Setter Property="Margin" Value="0,24,0,0" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="Background" Value="#df5000" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="MouseOverBackground" Value="#FF6B1A" />
+        <Setter Property="PressedBackground" Value="#C44700" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ui:Button}">
+                    <Grid>
+                        <Border
+                            x:Name="ShadowBorder"
+                            Background="Transparent"
+                            CornerRadius="{TemplateBinding CornerRadius}">
+                            <Border.Effect>
+                                <DropShadowEffect
+                                    BlurRadius="12"
+                                    Direction="270"
+                                    Opacity="0.4"
+                                    ShadowDepth="3"
+                                    Color="#df5000" />
+                            </Border.Effect>
+                        </Border>
+                        <Border
+                            x:Name="Border"
+                            Background="{TemplateBinding Background}"
+                            BorderThickness="0"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Border" Property="Background" Value="{Binding MouseOverBackground, RelativeSource={RelativeSource TemplatedParent}}" />
+                            <Setter TargetName="ShadowBorder" Property="Effect">
+                                <Setter.Value>
+                                    <DropShadowEffect
+                                        BlurRadius="16"
+                                        Direction="270"
+                                        Opacity="0.5"
+                                        ShadowDepth="4"
+                                        Color="#df5000" />
+                                </Setter.Value>
+                            </Setter>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Border" Property="Background" Value="{Binding PressedBackground, RelativeSource={RelativeSource TemplatedParent}}" />
+                            <Setter TargetName="ShadowBorder" Property="Effect">
+                                <Setter.Value>
+                                    <DropShadowEffect
+                                        BlurRadius="8"
+                                        Direction="270"
+                                        Opacity="0.3"
+                                        ShadowDepth="2"
+                                        Color="#df5000" />
+                                </Setter.Value>
+                            </Setter>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="UseLayoutRounding" Value="True" />
+    </Style>
+
+    <!--  Windows 11 style danger button  -->
+    <Style x:Key="Win11DangerButton" TargetType="{x:Type ui:Button}">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="MinWidth" Value="180" />
+        <Setter Property="Height" Value="40" />
+        <Setter Property="Margin" Value="0,8,0,0" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="Background" Value="#D42020" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="MouseOverBackground" Value="#E63030" />
+        <Setter Property="PressedBackground" Value="#B01818" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ui:Button}">
+                    <Border
+                        x:Name="Border"
+                        Background="{TemplateBinding Background}"
+                        BorderThickness="0"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Border" Property="Background" Value="{Binding MouseOverBackground, RelativeSource={RelativeSource TemplatedParent}}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Border" Property="Background" Value="{Binding PressedBackground, RelativeSource={RelativeSource TemplatedParent}}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="UseLayoutRounding" Value="True" />
+    </Style>
+
     <Style x:Key="LinkTextBlock" TargetType="TextBlock">
         <Setter Property="Foreground" Value="#6D90F3" />
         <Setter Property="FontFamily" Value="AdwaitaSans" />
