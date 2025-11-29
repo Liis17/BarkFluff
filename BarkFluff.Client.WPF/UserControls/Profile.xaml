@@ -109,7 +109,7 @@
                         <!--  Публичное имя (FirstName + LastName)  -->
                         <TextBlock
                             x:Name="PublicNameTextBlock"
-                            Margin="0,0,0,4"
+                            Margin="0,0,0,8"
                             HorizontalAlignment="Center"
                             FontFamily="{DynamicResource AdwaitaSans}"
                             FontSize="24"
@@ -118,41 +118,9 @@
                             Text="Имя пользователя"
                             TextAlignment="Center" />
 
-                        <!--  Username  -->
-                        <TextBlock
-                            x:Name="UsernameTextBlock"
-                            Margin="0,0,0,12"
-                            HorizontalAlignment="Center"
-                            FontFamily="{DynamicResource AdwaitaSans}"
-                            FontSize="14"
-                            Foreground="#80FFFFFF"
-                            Text="@username" />
-
-                        <!--  Статус онлайн  -->
-                        <Border
-                            Padding="12,6"
-                            HorizontalAlignment="Center"
-                            Background="#20FFFFFF"
-                            CornerRadius="12">
-                            <StackPanel Orientation="Horizontal">
-                                <Ellipse
-                                    x:Name="OnlineStatusIndicator"
-                                    Width="8"
-                                    Height="8"
-                                    Margin="0,0,8,0"
-                                    Fill="#4CAF50" />
-                                <TextBlock
-                                    x:Name="LastSeenTextBlock"
-                                    FontFamily="{DynamicResource AdwaitaSans}"
-                                    FontSize="12"
-                                    Foreground="#B0FFFFFF"
-                                    Text="В сети" />
-                            </StackPanel>
-                        </Border>
-
                         <!--  Баджи  -->
                         <StackPanel
-                            Margin="0,16,0,0"
+                            Margin="0,8,0,0"
                             HorizontalAlignment="Center"
                             Orientation="Horizontal">
                             <Border
@@ -333,9 +301,7 @@
                         </StackPanel>
 
                         <!--  Дата регистрации  -->
-                        <StackPanel
-                            x:Name="RegistrationSection"
-                            Visibility="Collapsed">
+                        <StackPanel x:Name="RegistrationSection">
                             <Border Style="{StaticResource InfoDividerStyle}" />
                             <Grid>
                                 <Grid.ColumnDefinitions>

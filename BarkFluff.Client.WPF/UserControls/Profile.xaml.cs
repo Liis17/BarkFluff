@@ -82,7 +82,6 @@ namespace BarkFluff.Client.WPF.UserControls
             if (d is Profile control)
             {
                 var username = e.NewValue?.ToString() ?? string.Empty;
-                control.UsernameTextBlock.Text = string.IsNullOrEmpty(username) ? string.Empty : $"@{username}";
                 control.UsernameInfoTextBlock.Text = string.IsNullOrEmpty(username) ? string.Empty : $"@{username}";
             }
         }
@@ -204,11 +203,10 @@ namespace BarkFluff.Client.WPF.UserControls
                 if (date.HasValue)
                 {
                     control.RegistrationDateTextBlock.Text = date.Value.ToString("dd MMMM yyyy");
-                    control.RegistrationSection.Visibility = Visibility.Visible;
                 }
                 else
                 {
-                    control.RegistrationSection.Visibility = Visibility.Collapsed;
+                    control.RegistrationDateTextBlock.Text = "Неизвестно";
                 }
             }
         }
@@ -246,8 +244,7 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private static void OnLastSeenChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            if (d is Profile control)
-                control.UpdateLastSeenText();
+            // Online status UI has been removed, keeping property for compatibility
         }
 
         // Онлайн статус
@@ -263,8 +260,7 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private static void OnIsOnlineChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            if (d is Profile control)
-                control.UpdateLastSeenText();
+            // Online status UI has been removed, keeping property for compatibility
         }
 
         #endregion
@@ -412,6 +408,12 @@ namespace BarkFluff.Client.WPF.UserControls
                 LastName = response.Data.LastName;
                 Description = response.Data.Description;
 
+                // Конвертируем Timestamp в DateTime
+                if (response.Data.RegistrationDate != null)
+                {
+                    RegistrationDate = response.Data.RegistrationDate.ToDateTime();
+                }
+
                 UpdatePublicName();
 
                 // Скрываем email для чужого профиля
@@ -466,6 +468,11 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private void OnAttachmentTabChecked(object sender, RoutedEventArgs e)
         {
+            // Проверяем, что все элементы контента инициализированы
+            // (это событие может сработать до полной инициализации при IsChecked="True")
+            if (ImagesContent == null || VideosContent == null || FilesContent == null || VoiceContent == null)
+                return;
+
             // Скрываем все контенты
             ImagesContent.Visibility = Visibility.Collapsed;
             VideosContent.Visibility = Visibility.Collapsed;
@@ -484,45 +491,6 @@ namespace BarkFluff.Client.WPF.UserControls
         }
 
         #endregion
-
-        private void UpdateLastSeenText()
-        {
-            if (IsOnline)
-            {
-                LastSeenTextBlock.Text = "В сети";
-                OnlineStatusIndicator.Fill = new SolidColorBrush(Color.FromRgb(76, 175, 80)); // Green
-            }
-            else if (LastSeen.HasValue)
-            {
-                var timeAgo = DateTime.Now - LastSeen.Value;
-
-                if (timeAgo.TotalMinutes < 1)
-                {
-                    LastSeenTextBlock.Text = "Только что";
-                    OnlineStatusIndicator.Fill = new SolidColorBrush(Color.FromRgb(76, 175, 80)); // Green
-                }
-                else if (timeAgo.TotalHours < 1)
-                {
-                    LastSeenTextBlock.Text = $"{(int)timeAgo.TotalMinutes} мин назад";
-                    OnlineStatusIndicator.Fill = new SolidColorBrush(Color.FromRgb(255, 193, 7)); // Yellow
-                }
-                else if (timeAgo.TotalDays < 1)
-                {
-                    LastSeenTextBlock.Text = $"{(int)timeAgo.TotalHours} ч назад";
-                    OnlineStatusIndicator.Fill = new SolidColorBrush(Color.FromRgb(255, 152, 0)); // Orange
-                }
-                else
-                {
-                    LastSeenTextBlock.Text = LastSeen.Value.ToString("dd.MM.yyyy");
-                    OnlineStatusIndicator.Fill = new SolidColorBrush(Color.FromRgb(158, 158, 158)); // Gray
-                }
-            }
-            else
-            {
-                LastSeenTextBlock.Text = "Неизвестно";
-                OnlineStatusIndicator.Fill = new SolidColorBrush(Color.FromRgb(158, 158, 158)); // Gray
-            }
-        }
 
         // Методы для установки данных пользователя (совместимость с существующим кодом)
         public void SetUserData(UserProfile userProfile)
