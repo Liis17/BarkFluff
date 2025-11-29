@@ -110,44 +110,6 @@
             </Setter>
         </Style>
         
-        <!-- Modern Code Input TextBox Style -->
-        <Style x:Key="ModernVerificationTextBox" TargetType="TextBox" BasedOn="{StaticResource VerificationTextBox}">
-            <Setter Property="Width" Value="52"/>
-            <Setter Property="Height" Value="60"/>
-            <Setter Property="Margin" Value="5"/>
-            <Setter Property="FontSize" Value="24"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Background" Value="{StaticResource Win11Subtle}"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="TextBox">
-                        <Border 
-                            x:Name="border"
-                            Background="{TemplateBinding Background}"
-                            BorderBrush="#3A3A3A"
-                            BorderThickness="1.5"
-                            CornerRadius="10">
-                            <ScrollViewer 
-                                x:Name="PART_ContentHost" 
-                                Padding="0,0,0,2"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="BorderBrush" Value="#606060"/>
-                                <Setter TargetName="border" Property="Background" Value="#353535"/>
-                            </Trigger>
-                            <Trigger Property="IsFocused" Value="True">
-                                <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource Win11AccentBlue}"/>
-                                <Setter TargetName="border" Property="BorderThickness" Value="2"/>
-                                <Setter TargetName="border" Property="Background" Value="#303030"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
     </UserControl.Resources>
     
     <ScrollViewer 
