@@ -17,6 +17,11 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
     {
         private char[] pinDigits = new char[4];
         private int attempts = 3;
+
+        // Cached brushes for key indicators
+        private static readonly SolidColorBrush ActiveKeyBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2D4A20"));
+        private static readonly SolidColorBrush InactiveKeyBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4A2020"));
+
         public PincodeSecure()
         {
             InitializeComponent();
@@ -105,12 +110,11 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
 
         private void KeysIconUpdate()
         {
-            // Update visibility based on remaining attempts
+            // Update visibility and color based on remaining attempts
             key3.Visibility = attempts >= 3 ? Visibility.Visible : Visibility.Collapsed;
             key2.Visibility = attempts >= 2 ? Visibility.Visible : Visibility.Collapsed;
             key1.Visibility = attempts >= 1 ? Visibility.Visible : Visibility.Collapsed;
 
-            // Update the color of the key indicators based on attempts used
             UpdateKeyIndicatorStyle(key3, attempts >= 3);
             UpdateKeyIndicatorStyle(key2, attempts >= 2);
             UpdateKeyIndicatorStyle(key1, attempts >= 1);
@@ -118,14 +122,7 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
 
         private void UpdateKeyIndicatorStyle(Border keyBorder, bool isActive)
         {
-            if (isActive)
-            {
-                keyBorder.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2D4A20"));
-            }
-            else
-            {
-                keyBorder.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4A2020"));
-            }
+            keyBorder.Background = isActive ? ActiveKeyBrush : InactiveKeyBrush;
         }
 
         private void PinBox_PreviewKeyDown(object sender, KeyEventArgs e)
