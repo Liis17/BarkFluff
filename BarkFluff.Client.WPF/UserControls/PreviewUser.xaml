@@ -10,22 +10,35 @@
     d:DesignWidth="1280"
     mc:Ignorable="d">
     <UserControl.Resources>
+        <!-- Windows 11 style section header -->
         <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="AdwaitaSans" />
-            <Setter Property="FontSize" Value="24" />
+            <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
+            <Setter Property="FontSize" Value="28" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Foreground" Value="White" />
             <Setter Property="HorizontalAlignment" Value="Center" />
-            <Setter Property="Margin" Value="0,0,0,30" />
+            <Setter Property="Margin" Value="0,0,0,24" />
         </Style>
+
     </UserControl.Resources>
-    <Grid Background="#1A1A1A">
+
+    <!-- Main background with subtle gradient -->
+    <Grid>
+        <Grid.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                <GradientStop Offset="0" Color="#1A1A2E" />
+                <GradientStop Offset="1" Color="#16162A" />
+            </LinearGradientBrush>
+        </Grid.Background>
+
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
+
+        <!-- Section header -->
         <TextBlock
-            Margin="0,-520,0,0"
+            Margin="0,-480,0,0"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             FontFamily="{DynamicResource AdwaitaSans}"
@@ -33,122 +46,164 @@
             Foreground="White"
             Style="{StaticResource SectionHeaderStyle}"
             Text="Настройка профиля" />
+
+        <!-- Main card with Windows 11 Mica-like effect -->
         <Border
-            Padding="30,25"
+            Padding="40,32"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
-            Background="#1F1F1F"
-            BorderBrush="#333333"
-            BorderThickness="1"
             CornerRadius="12">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Offset="0" Color="#22252540" />
+                    <GradientStop Offset="1" Color="#1A1F2937" />
+                </LinearGradientBrush>
+            </Border.Background>
+            <Border.BorderBrush>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Offset="0" Color="#25FFFFFF" />
+                    <GradientStop Offset="1" Color="#10FFFFFF" />
+                </LinearGradientBrush>
+            </Border.BorderBrush>
+            <Border.BorderThickness>1</Border.BorderThickness>
+            <Border.Effect>
+                <DropShadowEffect
+                    BlurRadius="32"
+                    Direction="270"
+                    Opacity="0.35"
+                    ShadowDepth="8"
+                    Color="#000000" />
+            </Border.Effect>
+
             <Grid>
                 <StackPanel
                     Grid.Row="0"
-                    Margin="0,0,0,30"
+                    Margin="0,0,0,24"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
                     Orientation="Vertical">
 
-
-
+                    <!-- User info section with avatar -->
                     <StackPanel
-                        Margin="0,0,0,30"
+                        Margin="0,0,0,32"
                         HorizontalAlignment="Center"
                         Orientation="Horizontal">
 
+                        <!-- Avatar with glow effect -->
                         <Border
-                            Width="100"
-                            Height="100"
-                            Margin="0,0,25,0"
-                            Background="#282828"
-                            CornerRadius="50">
+                            Width="110"
+                            Height="110"
+                            Margin="0,0,28,0"
+                            CornerRadius="55">
                             <Border.Effect>
                                 <DropShadowEffect
-                                    BlurRadius="8"
-                                    Opacity="0.3"
-                                    ShadowDepth="2"
-                                    Color="Black" />
+                                    BlurRadius="20"
+                                    Direction="270"
+                                    Opacity="0.4"
+                                    ShadowDepth="4"
+                                    Color="#000000" />
                             </Border.Effect>
-                            <Grid>
-                                <Ellipse
-                                    x:Name="AvatarImage"
-                                    Width="100"
-                                    Height="100">
-                                    <Ellipse.Fill>
-                                        <ImageBrush x:Name="AvatarBrush" Stretch="UniformToFill" />
-                                    </Ellipse.Fill>
-                                </Ellipse>
+                            <!-- Subtle gradient ring around avatar -->
+                            <Border
+                                Padding="3"
+                                CornerRadius="55">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Offset="0" Color="#3060CDFF" />
+                                        <GradientStop Offset="0.5" Color="#200078D4" />
+                                        <GradientStop Offset="1" Color="#3060CDFF" />
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <Border
+                                    Background="#2A2A40"
+                                    CornerRadius="52">
+                                    <Grid>
+                                        <Ellipse
+                                            x:Name="AvatarImage"
+                                            Width="104"
+                                            Height="104">
+                                            <Ellipse.Fill>
+                                                <ImageBrush x:Name="AvatarBrush" Stretch="UniformToFill" />
+                                            </Ellipse.Fill>
+                                        </Ellipse>
 
-                                <ui:SymbolIcon
-                                    x:Name="AvatarPlaceholder"
-                                    Panel.ZIndex="-1"
-                                    FontSize="40"
-                                    Foreground="#FF505050"
-                                    Symbol="Person24" />
-                            </Grid>
+                                        <!-- Placeholder icon with modern styling -->
+                                        <ui:SymbolIcon
+                                            x:Name="AvatarPlaceholder"
+                                            Panel.ZIndex="-1"
+                                            FontSize="44"
+                                            Foreground="#40FFFFFF"
+                                            Symbol="Person24" />
+                                    </Grid>
+                                </Border>
+                            </Border>
                         </Border>
 
-                        <StackPanel VerticalAlignment="Center" Orientation="Vertical">
+                        <!-- Name and username -->
+                        <StackPanel
+                            VerticalAlignment="Center"
+                            Orientation="Vertical">
 
                             <TextBlock
                                 x:Name="FullNameText"
-                                Margin="0,0,0,5"
+                                Margin="0,0,0,6"
                                 FontFamily="{DynamicResource AdwaitaSans}"
-                                FontSize="24"
+                                FontSize="26"
                                 FontWeight="SemiBold"
                                 Foreground="White"
                                 Text="Загрузка..." />
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock
                                     FontFamily="{DynamicResource AdwaitaSans}"
-                                    FontSize="16"
+                                    FontSize="15"
                                     FontWeight="Normal"
-                                    Foreground="#9E9E9E"
+                                    Foreground="#80FFFFFF"
                                     Text="@" />
                                 <TextBlock
                                     x:Name="UsernameText"
                                     FontFamily="{DynamicResource AdwaitaSans}"
-                                    FontSize="16"
+                                    FontSize="15"
                                     FontWeight="Normal"
-                                    Foreground="#9E9E9E"
+                                    Foreground="#80FFFFFF"
                                     Text="" />
                             </StackPanel>
-
                         </StackPanel>
                     </StackPanel>
 
+                    <!-- Description label -->
                     <TextBlock
-                        Margin="0,0,0,15"
+                        Margin="0,0,0,12"
                         HorizontalAlignment="Center"
                         FontFamily="{DynamicResource AdwaitaSans}"
-                        FontSize="15"
+                        FontSize="14"
                         FontWeight="Normal"
-                        Foreground="#E0E0E0"
+                        Foreground="#B0FFFFFF"
                         Text="Расскажите немного о себе для других пользователей" />
 
-
+                    <!-- About TextBox with Windows 11 styling -->
                     <Border
-                        Width="450"
-                        Height="120"
-                        Background="#282828"
+                        Width="480"
+                        Height="130"
                         CornerRadius="8">
-                        <Border.Effect>
-                            <DropShadowEffect
-                                BlurRadius="5"
-                                Opacity="0.2"
-                                ShadowDepth="1"
-                                Color="Black" />
-                        </Border.Effect>
-                        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                        <Border.Background>
+                            <SolidColorBrush Color="#0AFFFFFF" />
+                        </Border.Background>
+                        <Border.BorderBrush>
+                            <SolidColorBrush Color="#20FFFFFF" />
+                        </Border.BorderBrush>
+                        <Border.BorderThickness>1</Border.BorderThickness>
+                        <ScrollViewer
+                            HorizontalScrollBarVisibility="Disabled"
+                            VerticalScrollBarVisibility="Auto">
                             <ui:TextBox
                                 x:Name="AboutTextBox"
-                                Padding="15"
+                                Padding="16,14"
                                 AcceptsReturn="True"
                                 Background="Transparent"
                                 BorderThickness="0"
                                 CaretBrush="White"
                                 FontFamily="{DynamicResource AdwaitaSans}"
-                                FontSize="15"
+                                FontSize="14"
                                 FontWeight="Normal"
                                 Foreground="White"
                                 PlaceholderText="О себе, работе, хобби... или оставьте пустым"
@@ -158,17 +213,19 @@
                         </ScrollViewer>
                     </Border>
 
+                    <!-- Error message -->
                     <TextBlock
                         x:Name="ErrorTextBlockMessage"
-                        Margin="0,15,0,0"
+                        Margin="0,12,0,0"
                         HorizontalAlignment="Center"
                         FontFamily="{DynamicResource AdwaitaSans}"
-                        FontSize="16"
+                        FontSize="14"
                         FontWeight="Normal"
-                        Foreground="#FFE62F2F"
+                        Foreground="#FFEF4444"
                         Text=""
                         Visibility="Collapsed" />
 
+                    <!-- Windows 11 style accent save button -->
                     <ui:Button
                         x:Name="SaveButton"
                         Click="SaveButton_Click"
@@ -182,26 +239,25 @@
                     </ui:Button>
                 </StackPanel>
 
+                <!-- Footer hint text -->
                 <StackPanel
                     Grid.Row="1"
-                    Margin="0,0,0,5"
+                    Margin="0,0,0,0"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Bottom"
                     Orientation="Vertical">
                     <TextBlock
-                        MaxWidth="400"
+                        MaxWidth="420"
                         HorizontalAlignment="Center"
                         FontFamily="{DynamicResource AdwaitaSans}"
-                        FontSize="14"
+                        FontSize="13"
                         FontWeight="Light"
-                        Foreground="#9E9E9E"
+                        Foreground="#60FFFFFF"
                         Text="Информация о себе будет видна другим пользователям. Вы можете изменить её в любое время в настройках."
                         TextAlignment="Center"
                         TextWrapping="WrapWithOverflow" />
                 </StackPanel>
             </Grid>
-
         </Border>
-
     </Grid>
 </UserControl>
