@@ -1,0 +1,41 @@
+<UserControl
+    x:Class="BarkFluff.Client.WPF.UserControls.MessageContent.TextMessageContent"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    d:DesignHeight="50"
+    d:DesignWidth="300"
+    mc:Ignorable="d">
+    <Grid>
+        <!--  TextBox with ContextMenu disabled so parent MessageBubble's custom context menu is shown  -->
+        <TextBox
+            x:Name="MessageText"
+            Margin="0"
+            Padding="0"
+            AcceptsReturn="True"
+            Background="Transparent"
+            BorderThickness="0"
+            ContextMenu="{x:Null}"
+            Cursor="IBeam"
+            FontFamily="{DynamicResource AdwaitaSans}"
+            FontSize="14"
+            Foreground="White"
+            HorizontalScrollBarVisibility="Disabled"
+            IsReadOnly="True"
+            SelectionBrush="#0c0620"
+            TextWrapping="Wrap"
+            VerticalScrollBarVisibility="Disabled">
+            <TextBox.Template>
+                <ControlTemplate TargetType="TextBox">
+                    <ScrollViewer
+                        x:Name="PART_ContentHost"
+                        Background="Transparent"
+                        Focusable="false"
+                        HorizontalScrollBarVisibility="Hidden"
+                        VerticalScrollBarVisibility="Hidden" />
+                </ControlTemplate>
+            </TextBox.Template>
+        </TextBox>
+    </Grid>
+</UserControl>
