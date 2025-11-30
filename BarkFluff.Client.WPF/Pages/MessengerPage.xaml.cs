@@ -761,7 +761,7 @@ namespace BarkFluff.Client.WPF.Pages
             if (senderElement != null && !string.IsNullOrEmpty(senderElement.Tag?.ToString()))
             {
                 var tag = senderElement.Tag.ToString();
-                
+
                 if (tag == "UserProfile")
                 {
                     // Определяем, чей профиль открывать
@@ -778,7 +778,7 @@ namespace BarkFluff.Client.WPF.Pages
                             ShowUserProfile(userId: ChatIdbyUserId.Value);
                         }
                     }
-                    
+
                     if (!isOpenCenter)
                     {
                         OpenCenterPanel();
@@ -818,7 +818,7 @@ namespace BarkFluff.Client.WPF.Pages
         {
             // Очищаем предыдущий контент
             CenterPanel.Child = null;
-            
+
             // Создаем новый Profile контрол
             _currentProfile = new Profile();
             CenterPanel.Child = _currentProfile;
