@@ -113,11 +113,11 @@
     </UserControl.Resources>
 
     <ScrollViewer
+        Padding="30,0,30,0"
         HorizontalAlignment="Stretch"
         VerticalAlignment="Stretch"
-        Background="#1A1A1A"
         VerticalScrollBarVisibility="Auto">
-        <Grid Background="#1A1A1A">
+        <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
@@ -125,9 +125,8 @@
 
             <StackPanel
                 Grid.Row="0"
-                Margin="0,20,0,20"
                 HorizontalAlignment="Center"
-                VerticalAlignment="Center"
+                VerticalAlignment="Stretch"
                 Orientation="Vertical">
 
                 <!--  Header Section with Shield Icon  -->
@@ -463,7 +462,7 @@
             <Border
                 Grid.Row="1"
                 MaxWidth="600"
-                Margin="24,0,24,24"
+                Margin="24,14,24,24"
                 Padding="20,16"
                 HorizontalAlignment="Center"
                 Background="#141414"
@@ -478,7 +477,7 @@
                         Foreground="{StaticResource Win11AccentBlue}"
                         Symbol="Info24" />
                     <TextBlock
-                        MaxWidth="500"
+                        MaxWidth="400"
                         FontFamily="{DynamicResource AdwaitaSans}"
                         FontSize="13"
                         FontWeight="Normal"

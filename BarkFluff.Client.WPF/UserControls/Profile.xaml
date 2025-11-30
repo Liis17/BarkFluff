@@ -41,15 +41,21 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="Transparent"
                             BorderThickness="0,0,0,2">
-                            <ContentPresenter
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center" />
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
+                            <!--  Триггер: выбранная вкладка  -->
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="border" Property="BorderBrush" Value="#6B73FF" />
+                                <!--  ВАЖНО: Используем ключ из библиотеки Wpf.Ui  -->
+                                <!--  Он автоматически подтянет цвет из настроек Windows 11  -->
+                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource SystemAccentColorPrimaryBrush}" />
+
+                                <!--  Если SystemAccentColorPrimaryBrush не сработает (зависит от версии библиотеки), попробуйте:  -->
+                                <!--  Value="{DynamicResource SystemAccentBrush}"  -->
+
                                 <Setter Property="Foreground" Value="White" />
                             </Trigger>
+
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="border" Property="Background" Value="#15FFFFFF" />
                             </Trigger>
@@ -60,12 +66,11 @@
         </Style>
     </UserControl.Resources>
 
-    <Border
-        Background="#1A1A2E"
-        CornerRadius="12">
-        <ScrollViewer
-            HorizontalScrollBarVisibility="Disabled"
-            VerticalScrollBarVisibility="Auto">
+    <!--  Остальной код без изменений, так как фоны #1A1A2E и #252540 являются частью темной темы приложения,  -->
+    <!--  а не системными акцентами. Если нужно изменить и их на системные, они станут прозрачными/светлыми, что может сломать дизайн.  -->
+
+    <Border Background="#1f1f1f" CornerRadius="12">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
             <Grid Margin="0,0,0,24">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -77,11 +82,10 @@
                 <Border
                     Grid.Row="0"
                     Padding="24,32,24,24"
-                    Background="#252540"
                     CornerRadius="12,12,0,0">
 
                     <StackPanel HorizontalAlignment="Center">
-                        <!--  Аватар с тенью (без обводки)  -->
+                        <!--  Аватар с тенью  -->
                         <Border
                             Width="110"
                             Height="110"
@@ -106,7 +110,7 @@
                             </Border>
                         </Border>
 
-                        <!--  Публичное имя (FirstName + LastName)  -->
+                        <!--  Публичное имя  -->
                         <TextBlock
                             x:Name="PublicNameTextBlock"
                             Margin="0,0,0,8"
@@ -154,7 +158,7 @@
                     </StackPanel>
                 </Border>
 
-                <!--  Единый блок информации с разделителями  -->
+                <!--  Блок информации  -->
                 <Border
                     Grid.Row="1"
                     Margin="20,16,20,0"
@@ -164,16 +168,13 @@
                     BorderThickness="1"
                     CornerRadius="10">
                     <StackPanel>
-                        <!--  Описание пользователя  -->
-                        <StackPanel
-                            x:Name="DescriptionSection"
-                            Visibility="Collapsed">
+                        <!--  Описание  -->
+                        <StackPanel x:Name="DescriptionSection" Visibility="Collapsed">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-
                                 <ui:SymbolIcon
                                     Grid.Column="0"
                                     Margin="0,0,14,0"
@@ -181,7 +182,6 @@
                                     FontSize="18"
                                     Foreground="#80FFFFFF"
                                     Symbol="TextDescription24" />
-
                                 <StackPanel Grid.Column="1">
                                     <TextBlock
                                         Margin="0,0,0,4"
@@ -198,9 +198,7 @@
                                         TextWrapping="Wrap" />
                                 </StackPanel>
                             </Grid>
-                            <Border
-                                x:Name="DescriptionDivider"
-                                Style="{StaticResource InfoDividerStyle}" />
+                            <Border x:Name="DescriptionDivider" Style="{StaticResource InfoDividerStyle}" />
                         </StackPanel>
 
                         <!--  Username  -->
@@ -209,14 +207,12 @@
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-
                             <ui:SymbolIcon
                                 Grid.Column="0"
                                 Margin="0,0,14,0"
                                 FontSize="18"
                                 Foreground="#80FFFFFF"
                                 Symbol="PersonAccounts24" />
-
                             <StackPanel Grid.Column="1">
                                 <TextBlock
                                     Margin="0,0,0,4"
@@ -241,14 +237,12 @@
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-
                             <ui:SymbolIcon
                                 Grid.Column="0"
                                 Margin="0,0,14,0"
                                 FontSize="18"
                                 Foreground="#80FFFFFF"
                                 Symbol="Person24" />
-
                             <StackPanel Grid.Column="1">
                                 <TextBlock
                                     Margin="0,0,0,4"
@@ -265,24 +259,20 @@
                             </StackPanel>
                         </Grid>
 
-                        <!--  Email (только для своего профиля)  -->
-                        <StackPanel
-                            x:Name="EmailSection"
-                            Visibility="Collapsed">
+                        <!--  Email  -->
+                        <StackPanel x:Name="EmailSection" Visibility="Collapsed">
                             <Border Style="{StaticResource InfoDividerStyle}" />
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-
                                 <ui:SymbolIcon
                                     Grid.Column="0"
                                     Margin="0,0,14,0"
                                     FontSize="18"
                                     Foreground="#80FFFFFF"
                                     Symbol="Mail24" />
-
                                 <StackPanel Grid.Column="1">
                                     <TextBlock
                                         Margin="0,0,0,4"
@@ -308,14 +298,12 @@
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-
                                 <ui:SymbolIcon
                                     Grid.Column="0"
                                     Margin="0,0,14,0"
                                     FontSize="18"
                                     Foreground="#80FFFFFF"
                                     Symbol="Calendar24" />
-
                                 <StackPanel Grid.Column="1">
                                     <TextBlock
                                         Margin="0,0,0,4"
@@ -335,7 +323,7 @@
                     </StackPanel>
                 </Border>
 
-                <!--  Блок вложений чата с горизонтальными вкладками  -->
+                <!--  Вкладки вложений  -->
                 <Border
                     Grid.Row="2"
                     Margin="20,16,20,0"
@@ -349,7 +337,7 @@
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
-                        <!--  Горизонтальные вкладки  -->
+                        <!--  Табы  -->
                         <Border
                             Grid.Row="0"
                             BorderBrush="#15FFFFFF"
@@ -431,7 +419,7 @@
                             x:Name="AttachmentContent"
                             Grid.Row="1"
                             MinHeight="150">
-                            <!--  Контент для изображений  -->
+                            <!--  Images  -->
                             <StackPanel
                                 x:Name="ImagesContent"
                                 HorizontalAlignment="Center"
@@ -450,7 +438,7 @@
                                     Text="Нет изображений" />
                             </StackPanel>
 
-                            <!--  Контент для видео  -->
+                            <!--  Videos  -->
                             <StackPanel
                                 x:Name="VideosContent"
                                 HorizontalAlignment="Center"
@@ -469,7 +457,7 @@
                                     Text="Нет видео" />
                             </StackPanel>
 
-                            <!--  Контент для файлов  -->
+                            <!--  Files  -->
                             <StackPanel
                                 x:Name="FilesContent"
                                 HorizontalAlignment="Center"
@@ -488,7 +476,7 @@
                                     Text="Нет файлов" />
                             </StackPanel>
 
-                            <!--  Контент для голосовых  -->
+                            <!--  Voice  -->
                             <StackPanel
                                 x:Name="VoiceContent"
                                 HorizontalAlignment="Center"

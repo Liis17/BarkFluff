@@ -500,7 +500,7 @@ namespace BarkFluff.WebApi.Core
                         LastName = getUser.User.LastName,
                         Email = "Почта не установлена",
                         Username = getUser.User.Username,
-                        RegistrationDate = getUser.User.RegistrationDate,
+                        RegistrationDate = getUser.User.RegistrationDate.ToDateTime(),
                         Id = getUser.User.Id,
                         ProfilePictureUrl = getUser.User.ProfilePicture,
                         Description = getUser.User.Bio,
@@ -1060,7 +1060,7 @@ namespace BarkFluff.WebApi.Core
             }
             catch (Exception)
             {
-                return (false, "Ошибка создания группового чата");
+                return (false, "Ошибка создания Gruppового чата");
             }
         }
 
@@ -1250,9 +1250,11 @@ namespace BarkFluff.WebApi.Core
                             LastName = item.LastName,
                             Email = "Почта скрыта",
                             Username = item.Username,
-                            RegistrationDate = item.RegistrationDate,
+                            RegistrationDate = item.RegistrationDate.ToDateTime(),
                             Id = item.Id,
+                            Badges = item.Badges.ToString(),
                             ProfilePictureUrl = item.ProfilePicture,
+                            ProfilePicturePreviewUrl = item.ProfilePicturePreview,
                         })
                         .ToList();
 
