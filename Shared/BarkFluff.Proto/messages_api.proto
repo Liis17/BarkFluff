@@ -96,11 +96,15 @@ message ListChatMembersResponse {
 
 message ListMessagesRequest {
   
-  int64 from_message_id = 1; // Индетификатор сообщения от которого вести отчет
+  int64 from_message_id = 1; // Message ID from which to start
   
-  int32 count = 2; // Количество запрашиваемых сообщений (максимум 50)
+  int32 count = 2; // Number of messages to retrieve (max 50) - deprecated, use offset_before for backward pagination
   
-  string chat_id = 3; // Идентификатор чата
+  string chat_id = 3; // Chat identifier
+  
+  int32 offset_before = 4; // Number of messages before the reference message (older), max 50
+  
+  int32 offset_after = 5; // Number of messages after the reference message (newer), max 50
 }
 
 message ListMessagesResponse {

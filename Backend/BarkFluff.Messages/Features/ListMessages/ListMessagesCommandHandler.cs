@@ -10,7 +10,8 @@ namespace BarkFluff.Messages.Features.ListMessages;
 
 public class ListMessagesCommandHandler : IRequestHandler<ListMessagesCommand, ListMessagesResponse>
 {
-
+    private const int MaxMessagesPerRequest = 50;
+    
     private readonly UserContext _userContext;
     private readonly ChatsStorage _chatsStorage;
     private readonly MessagesStorage _messagesStorage;
@@ -36,9 +37,26 @@ public class ListMessagesCommandHandler : IRequestHandler<ListMessagesCommand, L
         {
             long? messageId = request.FromMessageId == 0 ? null : request.FromMessageId;
 
-            if (request.Count is 0 or > 50)
+            // Check if new bi-directional pagination is requested
+            if (request.OffsetBefore > 0 || request.OffsetAfter > 0)
             {
-                request.Count = 50;
+                // Clamp offsets to maximum
+                var offsetBefore = Math.Min(request.OffsetBefore, MaxMessagesPerRequest);
+                var offsetAfter = Math.Min(request.OffsetAfter, MaxMessagesPerRequest);
+
+                var messagesWithOffset = await _messagesStorage.GetChatMessagesWithOffset(
+                    request.ChatId, messageId, offsetBefore, offsetAfter);
+
+                return new ListMessagesResponse()
+                {
+                    Messages = { messagesWithOffset.Select(x => x.ToGrpc()) }
+                };
+            }
+
+            // Legacy behavior for backward compatibility
+            if (request.Count is 0 or > MaxMessagesPerRequest)
+            {
+                request.Count = MaxMessagesPerRequest;
             }
 
             var messages = await _messagesStorage.GetChatMessages(request.ChatId, messageId, request.Count);

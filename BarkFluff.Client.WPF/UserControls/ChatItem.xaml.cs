@@ -74,7 +74,8 @@ namespace BarkFluff.Client.WPF.UserControls
 
         public void UpdateMessage()
         {
-            //_lastMessageId = TransferMessage.MessageId;
+            // Update the last message ID so pagination works correctly
+            _lastMessageId = TransferMessage.MessageId;
             LastMessage.Text = ProcessText(TransferMessage.Text);
             var time = TransferMessage.SentAt.ToString();
             TimeMessage.Text = FormatDateTime(time.Length >= 2 ? time.Substring(1, time.Length - 2) : time);

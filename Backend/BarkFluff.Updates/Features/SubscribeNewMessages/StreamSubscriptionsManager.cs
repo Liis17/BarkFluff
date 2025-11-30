@@ -6,42 +6,48 @@ using Grpc.Core;
 
 public class StreamSubscriptionsManager
 {
-    private readonly ConcurrentDictionary<long, ConcurrentBag<IServerStreamWriter<NewMessageEvent>>> _userSubscriptions = new();
+    private readonly ConcurrentDictionary<long, HashSet<IServerStreamWriter<NewMessageEvent>>> _userSubscriptions = new();
+    private readonly object _lock = new();
 
     public void RegisterSubscription(long userId, IServerStreamWriter<NewMessageEvent> responseStream)
     {
-        _userSubscriptions.AddOrUpdate(
-            userId,
-            new ConcurrentBag<IServerStreamWriter<NewMessageEvent>>(new[] { responseStream }),
-            (_, bag) =>
+        lock (_lock)
+        {
+            if (!_userSubscriptions.TryGetValue(userId, out var streams))
             {
-                bag.Add(responseStream);
-                return bag;
-            });
+                streams = new HashSet<IServerStreamWriter<NewMessageEvent>>();
+                _userSubscriptions[userId] = streams;
+            }
+            streams.Add(responseStream);
+        }
     }
 
     public void RemoveSubscription(long userId, IServerStreamWriter<NewMessageEvent> responseStream)
     {
-        if (_userSubscriptions.TryGetValue(userId, out var streams))
+        lock (_lock)
         {
-            var updatedStreams = new ConcurrentBag<IServerStreamWriter<NewMessageEvent>>(
-                streams.Where(s => s != responseStream));
-            
-            if (updatedStreams.IsEmpty)
+            if (_userSubscriptions.TryGetValue(userId, out var streams))
             {
-                _userSubscriptions.TryRemove(userId, out _);
-            }
-            else
-            {
-                _userSubscriptions[userId] = updatedStreams;
+                streams.Remove(responseStream);
+                
+                if (streams.Count == 0)
+                {
+                    _userSubscriptions.TryRemove(userId, out _);
+                }
             }
         }
     }
 
     public IEnumerable<IServerStreamWriter<NewMessageEvent>> GetUserStreams(long userId)
     {
-        return _userSubscriptions.TryGetValue(userId, out var streams) 
-            ? streams 
-            : Enumerable.Empty<IServerStreamWriter<NewMessageEvent>>();
+        lock (_lock)
+        {
+            if (_userSubscriptions.TryGetValue(userId, out var streams))
+            {
+                // Return a copy of the list to avoid collection modification during enumeration
+                return streams.ToList();
+            }
+            return Enumerable.Empty<IServerStreamWriter<NewMessageEvent>>();
+        }
     }
 }

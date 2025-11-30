@@ -59,6 +59,8 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
             ChatId = chatId,
             Count = request.Count,
             FromMessageId = request.FromMessageId,
+            OffsetBefore = request.OffsetBefore,
+            OffsetAfter = request.OffsetAfter,
         };
 
         return await _mediator.Send(command);
