@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
-VisualStudioVersion = 18.3.11218.70 d18.3
+VisualStudioVersion = 18.3.11218.70
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Client.WPF", "BarkFluff.Client.WPF\BarkFluff.Client.WPF.csproj", "{867B0465-D663-4751-87D1-1DA2ED41B125}"
 EndProject
@@ -63,6 +63,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DockerServerManagement", "DockerServerManagement\DockerServerManagement.csproj", "{54EF8205-4554-400A-A187-59E0813D1D6A}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.DBEditor", "BarkFluff.DBEditor\BarkFluff.DBEditor.csproj", "{71ECCD49-6FEE-467C-ACF5-90BCA69D975A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Barkfluff.UsersRedirector", "Barkfluff.UsersRedirector\Barkfluff.UsersRedirector.csproj", "{77746B17-F6FC-483C-9BDE-24C170A42F4F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -256,6 +258,14 @@ Global
 		{71ECCD49-6FEE-467C-ACF5-90BCA69D975A}.Release|Any CPU.Build.0 = Release|Any CPU
 		{71ECCD49-6FEE-467C-ACF5-90BCA69D975A}.Release|x64.ActiveCfg = Release|Any CPU
 		{71ECCD49-6FEE-467C-ACF5-90BCA69D975A}.Release|x64.Build.0 = Release|Any CPU
+		{77746B17-F6FC-483C-9BDE-24C170A42F4F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{77746B17-F6FC-483C-9BDE-24C170A42F4F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{77746B17-F6FC-483C-9BDE-24C170A42F4F}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{77746B17-F6FC-483C-9BDE-24C170A42F4F}.Debug|x64.Build.0 = Debug|Any CPU
+		{77746B17-F6FC-483C-9BDE-24C170A42F4F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{77746B17-F6FC-483C-9BDE-24C170A42F4F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{77746B17-F6FC-483C-9BDE-24C170A42F4F}.Release|x64.ActiveCfg = Release|Any CPU
+		{77746B17-F6FC-483C-9BDE-24C170A42F4F}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -283,6 +293,7 @@ Global
 		{85A19711-EDC1-470E-A081-F251DD6EA965} = {C71695D9-DCBE-32C0-BF7A-7B5E62F77FEC}
 		{54EF8205-4554-400A-A187-59E0813D1D6A} = {C71695D9-DCBE-32C0-BF7A-7B5E62F77FEC}
 		{71ECCD49-6FEE-467C-ACF5-90BCA69D975A} = {C71695D9-DCBE-32C0-BF7A-7B5E62F77FEC}
+		{77746B17-F6FC-483C-9BDE-24C170A42F4F} = {C71695D9-DCBE-32C0-BF7A-7B5E62F77FEC}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B07C171A-90A2-41DB-A618-37C992F8D403}
