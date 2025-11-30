@@ -607,6 +607,8 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
             App.GParam.FirstName = response.Data.FirstName;
             App.GParam.LastName = response.Data.LastName;
             App.GParam.Description = response.Data.Description;
+            App.GParam.RegistrationDate = response.Data.RegistrationDate;
+            App.GParam.Email = response.Data.Email;
 
             MainWindow.SaveSettings();
         }

@@ -364,6 +364,9 @@ namespace BarkFluff.Client.WPF.UserControls
             FirstName = App.GParam.FirstName;
             LastName = App.GParam.LastName;
             Description = App.GParam.Description;
+            Email = App.GParam.Email;
+
+            RegistrationDate = App.GParam.RegistrationDate;
 
             UpdatePublicName();
 

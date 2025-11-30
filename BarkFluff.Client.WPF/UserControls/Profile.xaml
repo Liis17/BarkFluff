@@ -169,7 +169,7 @@
                     CornerRadius="10">
                     <StackPanel>
                         <!--  Описание  -->
-                        <StackPanel x:Name="DescriptionSection" Visibility="Collapsed">
+                        <StackPanel x:Name="DescriptionSection" Visibility="Visible">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
@@ -212,7 +212,8 @@
                                 Margin="0,0,14,0"
                                 FontSize="18"
                                 Foreground="#80FFFFFF"
-                                Symbol="PersonAccounts24" />
+                                Symbol="NumberSymbolSquare20"
+                                ToolTip="Заменить потом тут иконку" />
                             <StackPanel Grid.Column="1">
                                 <TextBlock
                                     Margin="0,0,0,4"
@@ -242,7 +243,8 @@
                                 Margin="0,0,14,0"
                                 FontSize="18"
                                 Foreground="#80FFFFFF"
-                                Symbol="Person24" />
+                                Symbol="NumberSymbolSquare20"
+                                ToolTip="Заменить потом тут иконку" />
                             <StackPanel Grid.Column="1">
                                 <TextBlock
                                     Margin="0,0,0,4"
@@ -260,7 +262,7 @@
                         </Grid>
 
                         <!--  Email  -->
-                        <StackPanel x:Name="EmailSection" Visibility="Collapsed">
+                        <StackPanel x:Name="EmailSection" Visibility="Visible">
                             <Border Style="{StaticResource InfoDividerStyle}" />
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -300,10 +302,10 @@
                                 </Grid.ColumnDefinitions>
                                 <ui:SymbolIcon
                                     Grid.Column="0"
-                                    Margin="0,0,14,0"
+                                    Margin="0,0,15,0"
                                     FontSize="18"
                                     Foreground="#80FFFFFF"
-                                    Symbol="Calendar24" />
+                                    Symbol="CalendarLtr28" />
                                 <StackPanel Grid.Column="1">
                                     <TextBlock
                                         Margin="0,0,0,4"
