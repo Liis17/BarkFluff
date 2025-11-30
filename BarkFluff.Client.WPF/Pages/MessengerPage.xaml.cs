@@ -64,6 +64,9 @@ namespace BarkFluff.Client.WPF.Pages
             // Отписываемся от событий кеширования
             App.FileCacheService.FileCached -= OnFileCached;
 
+            // Cleanup realtime service subscriptions
+            CleanupRealtimeService();
+
             IsOpenChat?.Dispose();
             ChatId?.Dispose();
             ChatIdbyUserId?.Dispose();
@@ -881,57 +884,58 @@ namespace BarkFluff.Client.WPF.Pages
 
         public async Task ProcessMessages(GlobalParam globalParam)
         {
-            return;
             App.ErideMessage.AddMessage("Запуск процесса получения обновлений...", new Erida { Type = MType.Debug });
-            var (error, stream) = await App.ServerCommunication.JustUpdate(globalParam);
-            if (!error.IsSuccess)
-            {
-                App.ErideMessage.AddMessage("Ошибка при подключении к потоку обновлений: " + error.ErrorMessage, new Erida { Type = MType.Error });
-                return;
-            }
-            if (stream == null)
-            {
-                App.ErideMessage.AddMessage("Поток обновлений недоступен.", new Erida { Type = MType.Error });
-                return;
-            }
+            
+            // Subscribe to the RealtimeUpdateService events
+            Services.App.RealtimeUpdateService.Instance.NewMessageReceived += OnNewMessageReceived;
+            Services.App.RealtimeUpdateService.Instance.ConnectionStatusChanged += OnConnectionStatusChanged;
+            
+            // Start the realtime update service
+            Services.App.RealtimeUpdateService.Instance.Start(globalParam);
+        }
 
-            await foreach (var messageEvent in stream)
+        private void OnNewMessageReceived(string chatId, MessageModel message)
+        {
+            // Update UI on the main thread
+            Application.Current.Dispatcher.Invoke(() =>
             {
-                // Формируем сообщение для отладки
-                string messageInfo = $"Новое сообщение в чате {messageEvent.ChatId}: " +
-                                    $"ID={messageEvent.Message.Id}, " +
-                                    $"Отправитель={messageEvent.Message.SenderId}, " +
-                                    $"Текст={messageEvent.Message.Content.Text}, " +
-                                    $"Тип={(messageEvent.Message.Type == MessageContentType.System ? "Системное" : "Обычное")}, " +
-                                    $"Вложения={messageEvent.Message.Content.Attachments.Count}, " +
-                                    $"Отправлено={messageEvent.Message.SentAt.ToDateTime()}";
+                // Update the chat list with the new message
+                UpdateChatWithMessage(message);
 
-                App.ErideMessage.AddMessage(messageInfo, new Erida { Type = MType.Debug });
-                var message = new MessageModel
+                // If this message is for the currently open chat, add it to the message area
+                if (!string.IsNullOrEmpty(ChatId.Value) && chatId == ChatId.Value)
                 {
-                    ChatId = messageEvent.ChatId,
-                    MessageId = messageEvent.Message.Id,
-                    SenderId = messageEvent.Message.SenderId,
-                    Text = messageEvent.Message.Content.Text,
-                    SentAt = messageEvent.Message.SentAt,
-                    Attachments = messageEvent.Message.Content.Attachments
-                            .Select(a => new AttachmentsModel
-                            {
-                                Id = a.Id,
-                                Type = a.Type,
-                                FileId = a.FileId,
-                                PreviewUrl = a.PreviewUrl,
-                                Size = a.AttachmentSize
-                            }).ToList(),
-                    IsSystemMessage = messageEvent.Message.Type == MessageContentType.System
-                };
-                App.CacheManager.SaveMessage(message.ChatId, TitleChat, message, Services.App.Caching.MessageOperation.Added);
-                // Обновляем UI в главном потоке
-                Application.Current.Dispatcher.Invoke(() =>
+                    // Don't add messages we sent ourselves (they're already shown)
+                    if (message.SenderId != App.GParam.UserId)
+                    {
+                        var owner = MessageBubble.MessageOwner.Interlocutor;
+                        var type = GetMessageType(message);
+                        var messageItem = new MessageBubble(owner, type, message, IsGroup);
+                        AddMessage(messageItem);
+                    }
+                }
+            });
+        }
+
+        private void OnConnectionStatusChanged(bool isConnected)
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                if (isConnected)
                 {
-                    // тут пока ничего нет, хз нужно ли вообще
-                });
-            }
+                    App.ErideMessage.AddMessage("Подключено к потоку обновлений", new Erida { Type = MType.Debug });
+                }
+                else
+                {
+                    App.ErideMessage.AddMessage("Отключено от потока обновлений", new Erida { Type = MType.Warning });
+                }
+            });
+        }
+
+        private void CleanupRealtimeService()
+        {
+            Services.App.RealtimeUpdateService.Instance.NewMessageReceived -= OnNewMessageReceived;
+            Services.App.RealtimeUpdateService.Instance.ConnectionStatusChanged -= OnConnectionStatusChanged;
         }
 
         #endregion

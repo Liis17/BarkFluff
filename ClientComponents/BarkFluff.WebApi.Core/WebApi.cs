@@ -1141,6 +1141,64 @@ namespace BarkFluff.WebApi.Core
             }
         }
 
+        /// <summary>
+        /// Метод для получения сообщений из чата с двусторонней пагинацией.
+        /// Возвращает сообщения до и после указанного сообщения.
+        /// </summary>
+        /// <param name="globalParam">Параметры приложения</param>
+        /// <param name="chatId">Идентификатор чата</param>
+        /// <param name="fromMessageId">Идентификатор сообщения, относительно которого загружать</param>
+        /// <param name="offsetBefore">Количество сообщений до указанного (в прошлое)</param>
+        /// <param name="offsetAfter">Количество сообщений после указанного (в будущее)</param>
+        /// <returns></returns>
+        public async Task<(ErrorReturner error, List<MessageModel>? messages)> GetMessagesWithOffset(GlobalParam globalParam, string chatId, long fromMessageId, int offsetBefore, int offsetAfter)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var response = await MessagesAC!.ListMessagesAsync(new Proto.Messages.ListMessagesRequest 
+                    { 
+                        ChatId = chatId, 
+                        FromMessageId = fromMessageId,
+                        OffsetBefore = offsetBefore,
+                        OffsetAfter = offsetAfter
+                    });
+                    if (response.Messages.Count == 0)
+                    {
+                        return (new ErrorReturner(false, "Нет сообщений в этом чате", 1), null);
+                    }
+                    return (new ErrorReturner(true), response.Messages.Select(m => new MessageModel
+                    {
+                        MessageId = m.Id,
+                        ChatId = chatId,
+                        Text = m.Content.Text,
+                        Attachments = m.Content.Attachments.Select(a => new AttachmentsModel
+                        {
+                            Id = a.Id,
+                            Type = a.Type,
+                            PreviewUrl = a.PreviewUrl,
+                            FileId = a.FileId,
+                            PreviewFileId = string.Empty,
+                            Size = a.AttachmentSize,
+                        }).ToList(),
+                        SenderId = m.SenderId,
+                        SentAt = m.SentAt,
+                        Type = m.Type,
+                        ReadBy = m.ReadBy.ToList(),
+                    }).ToList());
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.ChatIdNotValidException)
+            {
+                return (new ErrorReturner(false, "Неверный идентификатор чата"), null);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка получения сообщений"), null);
+            }
+        }
+
         public async Task<ErrorReturner> MarkMessageAsRead(GlobalParam globalParam, List<long> messageId)
         {
             try
