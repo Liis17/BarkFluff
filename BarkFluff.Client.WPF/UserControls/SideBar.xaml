@@ -18,7 +18,7 @@
             HorizontalAlignment="Left"
             VerticalAlignment="Top">
             <Ellipse.Fill>
-                <ImageBrush ImageSource="pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png" />
+                <ImageBrush x:Name="BluredUserAvatarBrush" ImageSource="pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png" />
             </Ellipse.Fill>
             <Ellipse.Effect>
                 <BlurEffect Radius="100" />

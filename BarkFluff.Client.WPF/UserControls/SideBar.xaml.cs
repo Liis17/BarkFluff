@@ -63,6 +63,7 @@ namespace BarkFluff.Client.WPF.UserControls
             try
             {
                 UserAvatarBrush.ImageSource = new BitmapImage(new Uri(imagePath, UriKind.RelativeOrAbsolute));
+                BluredUserAvatarBrush.ImageSource = new BitmapImage(new Uri(imagePath, UriKind.RelativeOrAbsolute));
             }
             catch { }
         }

@@ -9,7 +9,7 @@
     xmlns:setupPages="clr-namespace:BarkFluff.Client.WPF.Pages.SetupPages"
     xmlns:twofa="clr-namespace:BarkFluff.Client.WPF.Pages.SetupPages.Registration"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-    d:DesignHeight="4380"
+    d:DesignHeight="4600"
     d:DesignWidth="720"
     mc:Ignorable="d">
 
@@ -85,12 +85,12 @@
             x:Name="MainGrid"
             Grid.Row="1"
             HorizontalAlignment="Center"
-            VerticalAlignment="Center" />
+            VerticalAlignment="Stretch" />
 
         <StackPanel
             x:Name="MainContainer"
-            Grid.Row="1"
-            Margin="0,40,0,40"
+            Grid.Row="0"
+            Margin="0,0,0,0"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             Loaded="MainContainer_Loaded"
@@ -462,10 +462,10 @@
             <!--  Step 8: подключение 2fa  -->
             <ScrollViewer
                 x:Name="Step8"
-                Margin="0,0,0,0"
+                Margin="-30,-30,-30,-30"
                 HorizontalAlignment="Center"
-                VerticalAlignment="Center">
-                <twofa:TwoFA x:Name="OtpSuggestion" Loaded="OtpSuggestion_Loaded" />
+                VerticalAlignment="Stretch">
+                <twofa:TwoFA x:Name="OtpSuggestion" VerticalAlignment="Stretch" Loaded="OtpSuggestion_Loaded" />
             </ScrollViewer>
             <!--  Step 9: Завершение регистрации  -->
             <StackPanel
@@ -474,10 +474,6 @@
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Orientation="Vertical">
-                <TextBlock
-                    Style="{StaticResource SectionHeaderStyle}"
-                    Text="Двухфакторная аутентификация (2FA)"
-                    Visibility="Collapsed" />
                 <setupPages:CompletionRegistration x:Name="CompletionRegistrationElement" />
             </StackPanel>
 

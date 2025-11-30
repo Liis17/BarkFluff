@@ -331,7 +331,73 @@ namespace BarkFluff.Client.WPF.Pages
             UserInfoUpdate();
             ChatUpdate();
             await Task.Run(() => ProcessMessages(App.GParam));
+
+            // Выполнение задачи от протокола
+
+            App.MessagerTask.PropertyChanged += MessagerTask_PropertyChanged;
+
+            var task = App.MessagerTask.Value;
+
+
+            if (!string.IsNullOrEmpty(task))
+            {
+                App.MessagerTask.Value = string.Empty;
+                OpenChatViaProtocol(task);
+            }
         }
+
+        private async void MessagerTask_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            var task = App.MessagerTask.Value;
+            if (!string.IsNullOrEmpty(task))
+            {
+                App.MessagerTask.Value = string.Empty;
+                OpenChatViaProtocol(task);
+            }
+            else
+            {
+                return;
+            }
+
+
+
+
+        }
+        #endregion
+
+        #region Обработчка аргументов из протокола
+
+        private async void OpenChatViaProtocol(string task)
+        {
+            try
+            {
+                var temp1 = task.Split("//");
+                var temp2 = temp1[1].Replace("/", "");
+                var command = temp2.Split("=")[0];
+                var arg = temp2.Split("=")[1];
+                if (command == "user-username")
+                {
+                    var result = await App.ServerCommunication.SearchUser(App.GParam, arg);
+                    if (result.userList.Count > 0)
+                    {
+                        var user = result.userList[0];
+                        IsOpenChatEmpty = true;
+                        IsOpenChat.Value = true;
+                        ChatIdbyUserId.Value = user.Id;
+                    }
+                    else
+                    {
+                        MessageBox.Show("Пользователь не найден");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                var a = ex.Message;
+                MessageBox.Show("Ошибка при выполнении задачи из протокола");
+            }
+        }
+
         #endregion
 
         #region Сообщения
@@ -885,11 +951,11 @@ namespace BarkFluff.Client.WPF.Pages
         public async Task ProcessMessages(GlobalParam globalParam)
         {
             App.ErideMessage.AddMessage("Запуск процесса получения обновлений...", new Erida { Type = MType.Debug });
-            
+
             // Subscribe to the RealtimeUpdateService events
             Services.App.RealtimeUpdateService.Instance.NewMessageReceived += OnNewMessageReceived;
             Services.App.RealtimeUpdateService.Instance.ConnectionStatusChanged += OnConnectionStatusChanged;
-            
+
             // Start the realtime update service
             Services.App.RealtimeUpdateService.Instance.Start(globalParam);
         }
@@ -951,7 +1017,10 @@ namespace BarkFluff.Client.WPF.Pages
             _openedLastMessageId = lastMessageId;
             ChatId.Value = chatId;
             IsGroup = isGroupChat;
-            GetChatInfo(userId); // получаем информацию о чате для вывода в заголовке и аватара
+
+            GetChatInfo(userId);
+            ChatIdbyUserId.Dispose();
+            ChatIdbyUserId = new ReactiveLong(userId);
             App.ErideMessage.AddMessage($"Открытие чата с ID: {ChatId.Value}", new Erida { Type = MType.Debug });
         }
 
@@ -961,6 +1030,8 @@ namespace BarkFluff.Client.WPF.Pages
             IsOpenChat.Value = false;
             _openedLastMessageId = 0;
             ChatId.Value = string.Empty;
+            ChatIdbyUserId.Dispose();
+            ChatIdbyUserId = new ReactiveLong(0);
         }
 
         #endregion

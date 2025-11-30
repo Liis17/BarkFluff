@@ -8,9 +8,15 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="Resources/Styles/Styles.xaml" />
-                <ui:ThemesDictionary Theme="Dark" />
+                <ui:ThemesDictionary Theme="Unknown" />
                 <ui:ControlsDictionary />
             </ResourceDictionary.MergedDictionaries>
+
+            <!--  ==================================================================  -->
+            <SolidColorBrush x:Key="SystemAccentColorPrimaryBrush" Color="{Binding Source={x:Static SystemParameters.WindowGlassColor}}" />
+
+            <!--  Для надежности перезапишем и другие вариации имен кистей библиотеки  -->
+            <SolidColorBrush x:Key="SystemAccentBrush" Color="{Binding Source={x:Static SystemParameters.WindowGlassColor}}" />
             <!--  Шрифт  -->
             <FontFamily x:Key="AdwaitaSans">pack://application:,,,/;component/Fonts/AdwaitaSans-Regular.ttf</FontFamily>
             <FontFamily x:Key="OpenSans">pack://application:,,,/;component/Fonts/OpenSans-VariableFont_wdth,wght.ttf</FontFamily>
@@ -18,11 +24,6 @@
             <FontFamily x:Key="Neucha">pack://application:,,,/;component/Fonts/Neucha-Regular.ttf</FontFamily>
             <FontFamily x:Key="NotoSansDisplay">pack://application:,,,/;component/Fonts/NotoSansDisplay-VariableFont_wdth,wght.ttf</FontFamily>
 
-            <!--
-                Исправлено: VisualBrush не поддерживает свойство Effect напрямую.
-                Для размытия используйте отдельный элемент, например Border или Grid, и применяйте к нему BlurEffect.
-                Здесь просто определяем кисть без эффекта.
-            -->
             <VisualBrush x:Key="BlurredBackgroundBrush" Visual="{Binding ElementName=BackgroundChatImage}" />
         </ResourceDictionary>
     </Application.Resources>
