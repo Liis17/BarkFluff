@@ -21,7 +21,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
     public partial class CreateAccount : UserControl, IDisposable
     {
         private int currentStep = 0;
-        private List<StackPanel>? steps;
+        private List<FrameworkElement>? steps;
         private readonly RegistrationStateService _registrationState = new();
         public AvatarImageHolder AvatarHolder { get; set; } = new AvatarImageHolder();
 
@@ -55,7 +55,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
 
         private void Register_Loaded(object sender, RoutedEventArgs e)
         {
-            steps = new List<StackPanel> { Step1, Step2, Step3, Step4, Step5, Step6, Step7, Step8, Step9 };
+            steps = new List<FrameworkElement> { Step1, Step2, Step3, Step4, Step5, Step6, Step7, Step8, Step9 };
 
             foreach (var item in steps)
             {
