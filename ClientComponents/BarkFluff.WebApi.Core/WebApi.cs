@@ -1157,9 +1157,9 @@ namespace BarkFluff.WebApi.Core
             {
                 return await SafeCallAsync(async () =>
                 {
-                    var response = await MessagesAC!.ListMessagesAsync(new Proto.Messages.ListMessagesRequest 
-                    { 
-                        ChatId = chatId, 
+                    var response = await MessagesAC!.ListMessagesAsync(new Proto.Messages.ListMessagesRequest
+                    {
+                        ChatId = chatId,
                         FromMessageId = fromMessageId,
                         OffsetBefore = offsetBefore,
                         OffsetAfter = offsetAfter
@@ -1324,7 +1324,7 @@ namespace BarkFluff.WebApi.Core
                     var headers = new Metadata();
                     if (!string.IsNullOrEmpty(globalParam.AccessToken?.Value))
                     {
-                        headers.Add("Authorization", $"Bearer {globalParam.AccessToken}");
+                        headers.Add("Authorization", $"Bearer {globalParam.AccessToken.Value}");
                     }
 
                     // Вызов метода подписки с заголовками
@@ -1347,8 +1347,9 @@ namespace BarkFluff.WebApi.Core
                                 }
                                 messageEvent = response.ResponseStream.Current;
                             }
-                            catch (RpcException)
+                            catch (RpcException ex)
                             {
+                                var a = ex;
                                 yield break;
                             }
                             catch (Exception)
