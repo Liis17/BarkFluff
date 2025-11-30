@@ -1,4 +1,5 @@
 ﻿using BarkFluff.Client.WPF.Pages;
+using BarkFluff.Client.WPF.Reactive;
 using BarkFluff.Client.WPF.Services;
 using BarkFluff.Client.WPF.Services.App.Caching;
 using BarkFluff.Client.WPF.Services.App.Update;
@@ -12,10 +13,6 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 
-using MessageBox = System.Windows.MessageBox;
-using MessageBoxButton = System.Windows.MessageBoxButton;
-using MessageBoxResult = System.Windows.MessageBoxResult;
-
 namespace BarkFluff.Client.WPF
 {
     public partial class App : Application
@@ -27,6 +24,7 @@ namespace BarkFluff.Client.WPF
         private const string AppUserModelId = "com.barkfluff.messenger";
         private const string MutexName = "BarkFluffMutex";
 #endif
+        public static ReactiveString MessagerTask = new ReactiveString(); //задача для мессенджера, которая будет выполнена при запуске через протокол или при запуске нового экземпляра
         public static BarkFluff.WebApi.Core.WebApi ServerCommunication { get; set; } = null!;
         public static BarkFluff.WebApi.Core.MessengerData.GlobalParam GParam { get; set; } = null!;
         public static ImageColorAnalyzer ColorAnalyzer { get; set; } = null!;
@@ -66,23 +64,72 @@ namespace BarkFluff.Client.WPF
 
             base.OnStartup(e);
 
+            // Проверяем регистрацию (используем ваш ProtocolHelper)
             if (!ProtocolHelper.IsBFProtocolRegistered())
             {
-                var result = MessageBox.Show("Протокол bf:// не зарегистрирован. Зарегистрировать?", "Регистрация протокола", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                // === БЛОК КРАСИВОГО УВЕДОМЛЕНИЯ ===
 
-                if (result == MessageBoxResult.Yes)
+                // Создаем временное невидимое окно, чтобы Wpf.Ui MessageBox имел владельца
+                // и корректно отрисовал тему/стили
+                var dummyWindow = new Window
                 {
-                    ProtocolRegistrar.RegisterBFProtocol();
-                    MessageBox.Show("Готово. Перезапустите приложение через bf:// ссылку.");
-                    Shutdown();
-                    return;
-                }
+                    Topmost = true,
+                    WindowStyle = WindowStyle.None,
+                    AllowsTransparency = true,
+                    Background = System.Windows.Media.Brushes.Transparent,
+                    Width = 0,
+                    Height = 0,
+                    ShowInTaskbar = false,
+                    Visibility = Visibility.Visible
+                };
+                dummyWindow.Show();
+
+                // Используем Wpf.Ui MessageBox
+                var messageBox = new Wpf.Ui.Controls.MessageBox
+                {
+                    Title = "Настройка системы",
+                    Content = "",
+                    CloseButtonText = "Понятно",
+                    Owner = dummyWindow // Привязываем к невидимому окну
+                };
+                var tb = new Wpf.Ui.Controls.TextBlock();
+#if (DEBUG)
+                tb.Text = "Для корректной работы приложения необходимо зарегистрировать системный протокол (bfdev://).\n\nСейчас будут запрошены права администратора. Пожалуйста, подтвердите действие.";
+#else
+                tb.Text = "Для корректной работы приложения необходимо зарегистрировать системный протокол (bf://).\n\nСейчас будут запрошены права администратора. Пожалуйста, подтвердите действие.";
+#endif
+                tb.TextWrapping = TextWrapping.Wrap;
+                tb.HorizontalAlignment = HorizontalAlignment.Left;
+                messageBox.Content = tb;
+
+                // Убираем лишние кнопки, оставляем только подтверждение
+                messageBox.PrimaryButtonText = string.Empty;
+                messageBox.SecondaryButtonText = string.Empty;
+
+                // Показываем диалог и ждем закрытия
+                messageBox.ShowDialogAsync();
+                // регистрируем протокол
+#if (DEBUG)
+                ProtocolRegistrar.RegisterDevBFProtocol();
+#else
+                ProtocolRegistrar.RegisterBFProtocol();
+#endif
+                // Продолжаем нормальный запуск
+                NormalBoot();
+                // Закрываем временное окно
+                dummyWindow.Close();
+
+                return;
             }
 
-            string[] args = e.Args;
-            ProcessArguments(args);
+            // === ПРОДОЛЖЕНИЕ ЗАПУСКА ===
+            NormalBoot();
 
-            Bootstrap();
+            void NormalBoot()
+            {
+                Bootstrap();
+            }
+
         }
 
         /// <summary>
@@ -90,9 +137,12 @@ namespace BarkFluff.Client.WPF
         /// </summary>
         private void Bootstrap()
         {
+            if (!Directory.Exists("datas") || !Directory.Exists("datas\\cache"))
+            {
+                Directory.CreateDirectory("datas");
+                Directory.CreateDirectory("datas\\cache");
+            }
 
-            Directory.CreateDirectory("datas");
-            Directory.CreateDirectory("datas\\cache");
             CacheManager = new MessageCacheManager("datas\\cache.db", "temp");
             FileCacheService = new FileCacheService("datas\\file_cache.db", "datas\\cache");
 
@@ -155,22 +205,13 @@ namespace BarkFluff.Client.WPF
             base.OnExit(e);
         }
 
-        private void OnBFUriReceived(string uri)
+        private void OnBFUriReceived(string task)
         {
             Application.Current.Dispatcher.Invoke(() =>
             {
-                MessageBox.Show("Получен bf:// URI: " + uri);
+                App.MessagerTask.Value = task;
             });
         }
-
-        private void ProcessArguments(string[] args)
-        {
-            foreach (string arg in args)
-            {
-
-            }
-
-        } //обработка аргументов
         private void IncrementVersion()
         {
             var versionParts = AppVersion.Version.Split('.');

@@ -3,16 +3,18 @@ using BarkFluff.Client.WPF.Pages;
 using BarkFluff.Client.WPF.Pages.PinCode;
 using BarkFluff.Client.WPF.Pages.SetupPages;
 using BarkFluff.WebApi.Core.MessengerData;
-using Erida = BarkFluff.Client.WPF.Services.Erida.MessageType;
-using MType = BarkFluff.Client.WPF.Services.Erida.MessageType.MessageTypeEnum;
+
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
 
+using Erida = BarkFluff.Client.WPF.Services.Erida.MessageType;
 using Login = BarkFluff.Client.WPF.Pages.SetupPages.Login;
+using MType = BarkFluff.Client.WPF.Services.Erida.MessageType.MessageTypeEnum;
 
 namespace BarkFluff.Client.WPF
 {
@@ -26,7 +28,6 @@ namespace BarkFluff.Client.WPF
 
             MainWindowBootstrap();
 
-            ApplicationThemeManager.Apply(this);
             MouseDown += MainWindow_MouseDown;
             Closing += MainWindow_Closing;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
@@ -37,6 +38,21 @@ namespace BarkFluff.Client.WPF
 #if DEBUG
             DebugBootstap();
 #endif
+
+            //применение темы
+            ThemeLoader();
+        }
+        private void ThemeLoader()
+        {
+            ApplicationThemeManager.ApplySystemTheme();
+            var systemAccentColor = SystemParameters.WindowGlassColor;
+            var accentBrush = new SolidColorBrush(systemAccentColor);
+            accentBrush.Freeze(); // Для производительности
+
+            // Перезаписываем ресурсы библиотеки Wpf.Ui на системный цвет
+            Application.Current.Resources["SystemAccentColorPrimaryBrush"] = accentBrush;
+            Application.Current.Resources["SystemAccentBrush"] = accentBrush; // Для совместимости
+            Application.Current.Resources["AccentTextFillColorPrimaryBrush"] = accentBrush; // Для текста
         }
 
 #if DEBUG
@@ -98,7 +114,7 @@ namespace BarkFluff.Client.WPF
         {
             try
             {
-                string filePath = Path.Combine(SystemInfo.GetAppPath(),"datas", "GlobalParam.json");
+                string filePath = Path.Combine(SystemInfo.GetAppPath(), "datas", "GlobalParam.json");
                 if (App.GParam == null) { return; }
                 if (string.IsNullOrEmpty(App.GParam.AppPass) || string.IsNullOrEmpty(App.GParam.AppPath)) { return; }
                 GlobalParam.Save(App.GParam, filePath, App.GParam.AppPass);
@@ -149,14 +165,14 @@ namespace BarkFluff.Client.WPF
             var response = App.ServerCommunication.CreateAC(App.GParam, App.GParam.MachineName, SystemInfo.GetFriendlyWindowsVersion(), AppVersion.AppName, AppVersion.Version, App.GParam.IpAddress);
             if (!response.IsSuccess)
             {
-                App.ErideMessage.AddMessage(response.ErrorMessage ?? "Неизвестная проблема", new Erida{ Type = MType.Error });
+                App.ErideMessage.AddMessage(response.ErrorMessage ?? "Неизвестная проблема", new Erida { Type = MType.Error });
                 return;
             }
             else
             {
                 App.ErideMessage.AddMessage("API клиент успешно обновлён", new Erida { Type = MType.Debug });
             }
-            
+
         }
         public void OpenPasswordRecoveryPage()
         {
@@ -172,7 +188,7 @@ namespace BarkFluff.Client.WPF
                     var response = App.ServerCommunication.CreateAC(App.GParam, App.GParam.MachineName, SystemInfo.GetFriendlyWindowsVersion(), AppVersion.AppName, AppVersion.Version, App.GParam.IpAddress);
                     if (!response.IsSuccess)
                     {
-                        App.ErideMessage.AddMessage(response.ErrorMessage ?? "Неизвестная проблема", new Erida{ Type = MType.Error });
+                        App.ErideMessage.AddMessage(response.ErrorMessage ?? "Неизвестная проблема", new Erida { Type = MType.Error });
                         return;
                     }
                     else

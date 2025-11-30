@@ -137,8 +137,8 @@ namespace BarkFluff.Client.WPF.UserControls
             {
                 var description = e.NewValue?.ToString() ?? string.Empty;
                 control.DescriptionTextBlock.Text = description;
-                control.DescriptionSection.Visibility = string.IsNullOrWhiteSpace(description) 
-                    ? Visibility.Collapsed 
+                control.DescriptionSection.Visibility = string.IsNullOrWhiteSpace(description)
+                    ? Visibility.Collapsed
                     : Visibility.Visible;
             }
         }
@@ -162,7 +162,7 @@ namespace BarkFluff.Client.WPF.UserControls
                 control.EmailTextBlock.Text = email;
                 // Email показывается только для своего профиля и если он не пустой
                 control.EmailSection.Visibility = (control._isCurrentUser && !string.IsNullOrWhiteSpace(email))
-                    ? Visibility.Visible 
+                    ? Visibility.Visible
                     : Visibility.Collapsed;
             }
         }
@@ -397,7 +397,7 @@ namespace BarkFluff.Client.WPF.UserControls
 
                 if (response.Data == null)
                 {
-                    App.ErideMessage?.AddMessage($"Не удалось загрузить профиль пользователя {userId}: данные не получены", 
+                    App.ErideMessage?.AddMessage($"Не удалось загрузить профиль пользователя {userId}: данные не получены",
                         new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Warning });
                     return;
                 }
@@ -409,10 +409,7 @@ namespace BarkFluff.Client.WPF.UserControls
                 Description = response.Data.Description;
 
                 // Конвертируем Timestamp в DateTime
-                if (response.Data.RegistrationDate != null)
-                {
-                    RegistrationDate = response.Data.RegistrationDate.ToDateTime();
-                }
+                RegistrationDate = response.Data.RegistrationDate;
 
                 UpdatePublicName();
 
@@ -431,7 +428,7 @@ namespace BarkFluff.Client.WPF.UserControls
             }
             catch (Exception ex)
             {
-                App.ErideMessage?.AddMessage($"Ошибка загрузки профиля пользователя {userId}: {ex.Message}", 
+                App.ErideMessage?.AddMessage($"Ошибка загрузки профиля пользователя {userId}: {ex.Message}",
                     new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
             }
         }
@@ -448,14 +445,14 @@ namespace BarkFluff.Client.WPF.UserControls
             {
                 _avatarFileId = FileCacheService.ExtractFileIdFromUrl(avatarUrl);
                 var imagePath = App.FileCacheService.GetCachedFilePath(
-                    _avatarFileId ?? string.Empty, 
-                    FileType.Avatar, 
+                    _avatarFileId ?? string.Empty,
+                    FileType.Avatar,
                     avatarUrl);
                 SetAvatarImage(imagePath);
             }
             catch (Exception ex)
             {
-                App.ErideMessage?.AddMessage($"Ошибка загрузки аватара: {ex.Message}", 
+                App.ErideMessage?.AddMessage($"Ошибка загрузки аватара: {ex.Message}",
                     new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Debug });
                 SetAvatarImage(FileCacheService.DefaultPlaceholder);
             }
