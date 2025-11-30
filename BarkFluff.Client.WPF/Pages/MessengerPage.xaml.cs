@@ -619,7 +619,9 @@ namespace BarkFluff.Client.WPF.Pages
             App.GParam.LastName = response.Data.LastName;
             App.GParam.Description = response.Data.Description;
             App.GParam.PictureUrl = response.Data.ProfilePictureUrl;
-            // App.GParam.PictureId = response.Data.PictureId; // славик переделай
+            App.GParam.RegistrationDate = response.Data.RegistrationDate;
+            App.GParam.Email = response.Data.Email;
+            //App.GParam.PictureId = response.Data.PictureId; // славик переделай //хз зачем оно нужно
             MainWindow.SaveSettings();
 
 

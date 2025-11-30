@@ -13,8 +13,8 @@ namespace BarkFluff.WebApi.Core.MessengerData
         public string SocketUsers { get; set; } = string.Empty;
         public string SocketIdentity { get; set; } = string.Empty;
         public string SocketFiles { get; set; } = string.Empty;
-        public string SocketMessages {  get; set; } = string.Empty;
-        public string SocketUpdates {  get; set; } = string.Empty;
+        public string SocketMessages { get; set; } = string.Empty;
+        public string SocketUpdates { get; set; } = string.Empty;
         public string AppPath { get; set; } = string.Empty;
         public string ServerName { get; set; } = string.Empty;
         public string ServerDescription { get; set; } = string.Empty;
@@ -36,6 +36,8 @@ namespace BarkFluff.WebApi.Core.MessengerData
         public string Description { get; set; } = string.Empty;
         public string PictureId { get; set; } = string.Empty;
         public string PictureUrl { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public DateTime RegistrationDate { get; set; } = DateTime.MinValue;
 
         #endregion
         #region Сохранение/загрузка настроек

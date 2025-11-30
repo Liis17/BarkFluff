@@ -341,6 +341,8 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                     App.GParam.FirstName = responseUserData.Data.FirstName;
                     App.GParam.LastName = responseUserData.Data.LastName;
                     App.GParam.Description = responseUserData.Data.Description;
+                    App.GParam.RegistrationDate = responseUserData.Data.RegistrationDate;
+                    App.GParam.Email = responseUserData.Data.Email;
                     MainWindow.SaveSettings();
 
                     App.OpenMessengerPage();

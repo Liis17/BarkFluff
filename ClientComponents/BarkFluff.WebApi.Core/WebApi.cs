@@ -498,7 +498,6 @@ namespace BarkFluff.WebApi.Core
                     {
                         FirstName = getUser.User.FirstName,
                         LastName = getUser.User.LastName,
-                        Email = "Почта не установлена",
                         Username = getUser.User.Username,
                         RegistrationDate = getUser.User.RegistrationDate.ToDateTime(),
                         Id = getUser.User.Id,
