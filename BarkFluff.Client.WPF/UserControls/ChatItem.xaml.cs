@@ -2,6 +2,7 @@
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
 using System.Globalization;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -50,6 +51,11 @@ namespace BarkFluff.Client.WPF.UserControls
         private bool _isGroupChat;
         private long _userId;
         private string _title;
+        private long _currentUserId;
+        private List<long> _lastMessageReadBy = new List<long>();
+        private long _lastMessageSenderId;
+        private int _unreadCount;
+
         public ChatItem(string imageUrl, string chatName, string lastMessageText, string time, ReadingStatus reading, List<long> readBy, long unReaded, string chatId, long lastMessageId, bool isGroupChat, long userId)
         {
             InitializeComponent();
@@ -61,6 +67,10 @@ namespace BarkFluff.Client.WPF.UserControls
             LastMessage.Text = ProcessText(lastMessageText);
             _url = imageUrl;
             _userId = userId;
+            _currentUserId = App.GParam.UserId;
+            _lastMessageReadBy = readBy ?? new List<long>();
+            _lastMessageSenderId = 0; // Will be set later via TransferMessage
+            _unreadCount = (int)unReaded;
             TimeMessage.Text = FormatDateTime(time.Length >= 2 ? time.Substring(1, time.Length - 2) : time);
 
             // Пытаемся извлечь fileId из URL если это не placeholder
@@ -70,6 +80,7 @@ namespace BarkFluff.Client.WPF.UserControls
             }
 
             Loaded += ChatItem_Loaded;
+            UpdateUnreadBadge();
         }
 
         public void UpdateMessage()
@@ -79,6 +90,86 @@ namespace BarkFluff.Client.WPF.UserControls
             LastMessage.Text = ProcessText(TransferMessage.Text);
             var time = TransferMessage.SentAt.ToString();
             TimeMessage.Text = FormatDateTime(time.Length >= 2 ? time.Substring(1, time.Length - 2) : time);
+            
+            // Update read status
+            _lastMessageReadBy = TransferMessage.ReadBy ?? new List<long>();
+            _lastMessageSenderId = TransferMessage.SenderId;
+            UpdateReadStatusIndicator();
+        }
+
+        /// <summary>
+        /// Updates the unread badge visibility and count
+        /// </summary>
+        public void UpdateUnreadBadge()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                if (_unreadCount > 0)
+                {
+                    UnreadBadge.Visibility = Visibility.Visible;
+                    UnreadCountText.Text = _unreadCount > 99 ? "99+" : _unreadCount.ToString();
+                }
+                else
+                {
+                    UnreadBadge.Visibility = Visibility.Collapsed;
+                }
+            });
+        }
+
+        /// <summary>
+        /// Sets the unread count for this chat
+        /// </summary>
+        public void SetUnreadCount(int count)
+        {
+            _unreadCount = count;
+            UpdateUnreadBadge();
+        }
+
+        /// <summary>
+        /// Increments the unread count
+        /// </summary>
+        public void IncrementUnreadCount()
+        {
+            _unreadCount++;
+            UpdateUnreadBadge();
+        }
+
+        /// <summary>
+        /// Resets the unread count to zero
+        /// </summary>
+        public void ResetUnreadCount()
+        {
+            _unreadCount = 0;
+            UpdateUnreadBadge();
+        }
+
+        /// <summary>
+        /// Updates the read status checkmarks based on the last message
+        /// </summary>
+        private void UpdateReadStatusIndicator()
+        {
+            // Only show read status for messages sent by current user
+            if (_lastMessageSenderId != _currentUserId)
+            {
+                ReadStatusPanel.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            ReadStatusPanel.Visibility = Visibility.Visible;
+
+            // Check if message has been read by others
+            var readByOthers = _lastMessageReadBy.Any(id => id != _currentUserId);
+
+            if (readByOthers)
+            {
+                // Double checkmark - message read
+                ReadStatusPanel.Opacity = 1.0;
+            }
+            else
+            {
+                // Single/faded checkmark - message sent but not read
+                ReadStatusPanel.Opacity = 0.5;
+            }
         }
 
         private async void ChatItem_Loaded(object sender, RoutedEventArgs e)

@@ -25,6 +25,15 @@ namespace BarkFluff.Client.WPF.Pages
         public ReactiveString ChatId { get; set; } = new ReactiveString(string.Empty);
         public string TitleChat { get; set; } = string.Empty;
         private long _openedLastMessageId { get; set; } = 0;
+        private long _oldestLoadedMessageId { get; set; } = 0;
+        private bool _isLoadingHistory = false;
+        private bool _hasMoreHistory = true;
+        
+        // Constants for message handling
+        private const int HISTORY_PAGE_SIZE = 30;
+        private const int SCROLL_TOP_THRESHOLD = 100;
+        private const int MARK_AS_READ_DEBOUNCE_MS = 1000;
+        private const int INITIAL_MARK_DELAY_MS = 500;
 
         public bool IsOpenChatEmpty { get; set; } = false;
         public ReactiveLong ChatIdbyUserId { get; set; } = new ReactiveLong(0);
@@ -41,6 +50,158 @@ namespace BarkFluff.Client.WPF.Pages
 
             SubscribeToReactiveProperties();
             StartSlideDownAndFadeIn();
+            
+            // Subscribe to scroll changed event for history loading
+            MessageScrollViewer.ScrollChanged += MessageScrollViewer_ScrollChanged;
+        }
+
+        private async void MessageScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
+        {
+            var scrollViewer = sender as ScrollViewer;
+            if (scrollViewer == null) return;
+
+            // Check if scrolled to top (with threshold)
+            if (scrollViewer.VerticalOffset < SCROLL_TOP_THRESHOLD && !_isLoadingHistory && _hasMoreHistory && !string.IsNullOrEmpty(ChatId.Value))
+            {
+                await LoadHistoryMessages();
+            }
+        }
+
+        /// <summary>
+        /// Loads older messages when scrolling to top
+        /// </summary>
+        private async Task LoadHistoryMessages()
+        {
+            if (_isLoadingHistory || !_hasMoreHistory || _oldestLoadedMessageId == 0) return;
+
+            _isLoadingHistory = true;
+
+            try
+            {
+                App.ErideMessage.AddMessage($"Загрузка истории сообщений (from ID: {_oldestLoadedMessageId})", new Erida { Type = MType.Debug });
+
+                // First, try to load from cache
+                var cachedMessages = App.CacheManager.GetMessages(ChatId.Value, _oldestLoadedMessageId, HISTORY_PAGE_SIZE);
+                var hasLoadedFromCache = false;
+
+                if (cachedMessages != null && cachedMessages.Count > 0)
+                {
+                    App.ErideMessage.AddMessage($"Загружено {cachedMessages.Count} сообщений из кеша", new Erida { Type = MType.Debug });
+                    await InsertHistoryMessages(cachedMessages);
+                    hasLoadedFromCache = true;
+                }
+
+                // Then fetch from server
+                var response = await App.ServerCommunication.GetMessagesWithOffset(
+                    App.GParam, 
+                    ChatId.Value, 
+                    _oldestLoadedMessageId, 
+                    HISTORY_PAGE_SIZE, 
+                    0);
+
+                if (response.error.IsSuccess && response.messages != null && response.messages.Count > 0)
+                {
+                    App.ErideMessage.AddMessage($"Загружено {response.messages.Count} сообщений с сервера", new Erida { Type = MType.Debug });
+
+                    // Save to cache
+                    foreach (var msg in response.messages)
+                    {
+                        App.CacheManager.SaveMessage(ChatId.Value, TitleChat, msg, MessageOperation.Added);
+                    }
+
+                    // Insert into UI (will deduplicate)
+                    await InsertHistoryMessages(response.messages);
+
+                    // Check if we got fewer messages than requested - means we reached the end
+                    if (response.messages.Count < HISTORY_PAGE_SIZE)
+                    {
+                        _hasMoreHistory = false;
+                        App.ErideMessage.AddMessage("Достигнут конец истории сообщений", new Erida { Type = MType.Debug });
+                    }
+                }
+                else if (response.error.ErrorCode == 1)
+                {
+                    // No more messages
+                    _hasMoreHistory = false;
+                    App.ErideMessage.AddMessage("Нет больше сообщений для загрузки", new Erida { Type = MType.Debug });
+                }
+                else if (!hasLoadedFromCache)
+                {
+                    App.ErideMessage.AddMessage($"Ошибка загрузки истории: {response.error.ErrorMessage}", new Erida { Type = MType.Error });
+                }
+            }
+            catch (Exception ex)
+            {
+                App.ErideMessage.AddMessage($"Исключение при загрузке истории: {ex.Message}", new Erida { Type = MType.Error });
+            }
+            finally
+            {
+                _isLoadingHistory = false;
+            }
+        }
+
+        /// <summary>
+        /// Inserts history messages at the top of the message area with deduplication
+        /// </summary>
+        private async Task InsertHistoryMessages(List<MessageModel> messages)
+        {
+            if (messages == null || messages.Count == 0) return;
+
+            await Dispatcher.InvokeAsync(() =>
+            {
+                // Remember current scroll position
+                var scrollViewer = MessageScrollViewer;
+                var oldScrollHeight = scrollViewer.ScrollableHeight;
+                var oldOffset = scrollViewer.VerticalOffset;
+
+                // Get existing message IDs for deduplication
+                var existingMessageIds = new HashSet<long>();
+                foreach (var child in MessageArea.Children)
+                {
+                    if (child is MessageBubble bubble && long.TryParse(bubble.MessageId, out long id))
+                    {
+                        existingMessageIds.Add(id);
+                    }
+                }
+
+                // Sort messages by time (oldest first for proper insertion)
+                var sortedMessages = messages.OrderBy(m => m.SentAt.ToDateTime()).ToList();
+                var insertedCount = 0;
+
+                foreach (var message in sortedMessages)
+                {
+                    // Skip duplicates
+                    if (existingMessageIds.Contains(message.MessageId))
+                    {
+                        continue;
+                    }
+
+                    // Update oldest loaded ID
+                    if (message.MessageId < _oldestLoadedMessageId || _oldestLoadedMessageId == 0)
+                    {
+                        _oldestLoadedMessageId = message.MessageId;
+                    }
+
+                    var owner = message.SenderId == App.GParam.UserId ? MessageBubble.MessageOwner.Me : MessageBubble.MessageOwner.Interlocutor;
+                    var type = GetMessageType(message);
+                    var messageItem = new MessageBubble(owner, type, message, IsGroup);
+
+                    // Insert at the beginning (oldest messages first)
+                    MessageArea.Children.Insert(insertedCount, messageItem);
+                    insertedCount++;
+                }
+
+                if (insertedCount > 0)
+                {
+                    // Restore scroll position (adjust for new content)
+                    scrollViewer.UpdateLayout();
+                    var newScrollHeight = scrollViewer.ScrollableHeight;
+                    var scrollDifference = newScrollHeight - oldScrollHeight;
+                    scrollViewer.ScrollToVerticalOffset(oldOffset + scrollDifference);
+
+                    App.ErideMessage.AddMessage($"Добавлено {insertedCount} сообщений в историю", new Erida { Type = MType.Debug });
+                }
+            });
         }
 
         private void SubscribeToReactiveProperties()
@@ -117,6 +278,8 @@ namespace BarkFluff.Client.WPF.Pages
             ChatId.Value = string.Empty;
             App.ErideMessage.AddMessage($"Открытие чата с UserID: {ChatIdbyUserId.Value}", new Erida { Type = MType.Debug });
             _openedLastMessageId = 0;
+            _oldestLoadedMessageId = 0;
+            _hasMoreHistory = true;
             MessageArea.Children.Clear();
             GetChatInfo(ChatIdbyUserId.Value); // получаем информацию о чате для вывода в заголовке и аватара
 
@@ -212,6 +375,13 @@ namespace BarkFluff.Client.WPF.Pages
 
             MessageArea.Children.Clear();
             var sortedMessages = messages.OrderBy(m => m.SentAt.ToDateTime()).ToList();
+
+            // Track the oldest message ID for pagination
+            if (sortedMessages.Count > 0)
+            {
+                _oldestLoadedMessageId = sortedMessages.First().MessageId;
+                _hasMoreHistory = true; // Reset history flag when opening a new chat
+            }
 
             // Группировка по дням
             var groupedMessages = sortedMessages.GroupBy(m => m.SentAt.ToDateTime().Date)
@@ -448,6 +618,98 @@ namespace BarkFluff.Client.WPF.Pages
             Storyboard.SetTarget(animation, control);
             animation.Begin();
             MessageScrollViewer.ScrollToEnd();
+            
+            // Mark visible messages as read after a short delay
+            System.Windows.Threading.DispatcherTimer delayTimer = new System.Windows.Threading.DispatcherTimer();
+            delayTimer.Interval = TimeSpan.FromMilliseconds(INITIAL_MARK_DELAY_MS);
+            delayTimer.Tick += (s, args) =>
+            {
+                delayTimer.Stop();
+                MarkVisibleMessagesAsRead();
+            };
+            delayTimer.Start();
+        }
+
+        private System.Windows.Threading.DispatcherTimer? _markAsReadDebounceTimer;
+        private HashSet<long> _pendingMarkAsRead = new HashSet<long>();
+
+        /// <summary>
+        /// Marks visible incoming messages as read with debouncing
+        /// </summary>
+        private void MarkVisibleMessagesAsRead()
+        {
+            if (string.IsNullOrEmpty(ChatId.Value)) return;
+
+            var messagesToMark = new List<long>();
+
+            foreach (var child in MessageArea.Children)
+            {
+                if (child is MessageBubble bubble)
+                {
+                    // Only mark incoming messages (not from current user)
+                    if (bubble.SenderId != App.GParam.UserId && 
+                        !bubble.ReadBy.Contains(App.GParam.UserId) &&
+                        long.TryParse(bubble.MessageId, out long messageId))
+                    {
+                        messagesToMark.Add(messageId);
+                    }
+                }
+            }
+
+            if (messagesToMark.Count > 0)
+            {
+                foreach (var id in messagesToMark)
+                {
+                    _pendingMarkAsRead.Add(id);
+                }
+
+                // Debounce the API call
+                if (_markAsReadDebounceTimer == null)
+                {
+                    _markAsReadDebounceTimer = new System.Windows.Threading.DispatcherTimer();
+                    _markAsReadDebounceTimer.Interval = TimeSpan.FromMilliseconds(MARK_AS_READ_DEBOUNCE_MS);
+                    _markAsReadDebounceTimer.Tick += async (s, args) =>
+                    {
+                        _markAsReadDebounceTimer.Stop();
+                        
+                        if (_pendingMarkAsRead.Count > 0)
+                        {
+                            var idsToMark = _pendingMarkAsRead.ToList();
+                            _pendingMarkAsRead.Clear();
+
+                            // Call API to mark as read
+                            await ReadMessage(idsToMark);
+
+                            // Update local UI
+                            foreach (var child in MessageArea.Children)
+                            {
+                                if (child is MessageBubble bubble && long.TryParse(bubble.MessageId, out long mid) && idsToMark.Contains(mid))
+                                {
+                                    var newReadBy = bubble.ReadBy.ToList();
+                                    if (!newReadBy.Contains(App.GParam.UserId))
+                                    {
+                                        newReadBy.Add(App.GParam.UserId);
+                                        bubble.UpdateReadByList(newReadBy);
+                                    }
+                                }
+                            }
+
+                            // Reset unread count for current chat
+                            foreach (var child in ChatList.Children)
+                            {
+                                if (child is ChatItem chatItem && chatItem.ChatId == ChatId.Value)
+                                {
+                                    chatItem.ResetUnreadCount();
+                                    break;
+                                }
+                            }
+                        }
+                    };
+                }
+
+                _markAsReadDebounceTimer.Stop();
+                _markAsReadDebounceTimer.Start();
+            }
         }
         private async void ReadMessage(List<long> messageIds)
         {
@@ -597,6 +859,20 @@ namespace BarkFluff.Client.WPF.Pages
                     isGroupChat: item.IsGroupChat,
                     userId: userId
                 );
+
+                // Set the sender ID for the last message to enable proper read status display
+                if (item.LastMessage != null)
+                {
+                    messageItem.TransferMessage = new MessageModel
+                    {
+                        MessageId = item.LastMessage.Id,
+                        SenderId = item.LastMessage.SenderId,
+                        ReadBy = item.LastMessage.ReadBy.ToList(),
+                        Text = item.LastMessage.Content.Text,
+                        SentAt = item.LastMessage.SentAt,
+                        ChatId = item.Id
+                    };
+                }
 
                 ChatList.Children.Add(messageItem);
             }
@@ -967,22 +1243,136 @@ namespace BarkFluff.Client.WPF.Pages
             // Update UI on the main thread
             Application.Current.Dispatcher.Invoke(() =>
             {
+                // Check if chat exists in chat list
+                ChatItem? existingChatItem = null;
+                foreach (var child in ChatList.Children)
+                {
+                    if (child is ChatItem chatItem && chatItem.ChatId == chatId)
+                    {
+                        existingChatItem = chatItem;
+                        break;
+                    }
+                }
+
+                if (existingChatItem != null)
+                {
+                    // Update existing chat
+                    existingChatItem.TransferMessage = message;
+                    existingChatItem.UpdateMessage();
+
+                    // Increment unread count if message is not from current user and chat is not open
+                    if (message.SenderId != App.GParam.UserId && ChatId.Value != chatId)
+                    {
+                        existingChatItem.IncrementUnreadCount();
+                    }
+                }
+                else
+                {
+                    // New chat - need to add to list
+                    AddNewChatToList(chatId, message);
+                }
+
                 // Update the chat list with the new message
                 UpdateChatWithMessage(message);
 
                 // If this message is for the currently open chat, add it to the message area
                 if (!string.IsNullOrEmpty(ChatId.Value) && chatId == ChatId.Value)
                 {
-                    // Don't add messages we sent ourselves (they're already shown)
-                    if (message.SenderId != App.GParam.UserId)
+                    // Check if we already have this message (e.g., our own sent message)
+                    bool messageExists = false;
+                    MessageBubble? existingBubble = null;
+                    
+                    foreach (var child in MessageArea.Children)
                     {
+                        if (child is MessageBubble bubble && bubble.MessageId == message.MessageId.ToString())
+                        {
+                            messageExists = true;
+                            existingBubble = bubble;
+                            break;
+                        }
+                    }
+
+                    if (messageExists && existingBubble != null)
+                    {
+                        // Update existing message (e.g., ReadBy list changed)
+                        existingBubble.UpdateReadByList(message.ReadBy);
+                    }
+                    else if (message.SenderId != App.GParam.UserId)
+                    {
+                        // Add new incoming message
                         var owner = MessageBubble.MessageOwner.Interlocutor;
                         var type = GetMessageType(message);
                         var messageItem = new MessageBubble(owner, type, message, IsGroup);
                         AddMessage(messageItem);
+
+                        // Auto-mark as read if chat is open and visible
+                        MarkVisibleMessagesAsRead();
                     }
                 }
             });
+        }
+
+        /// <summary>
+        /// Adds a new chat to the chat list when first message arrives
+        /// </summary>
+        private async void AddNewChatToList(string chatId, MessageModel message)
+        {
+            try
+            {
+                // Fetch full chat info from server
+                var response = await App.ServerCommunication.GetChats(App.GParam);
+                if (response.error.IsSuccess && response.chats != null)
+                {
+                    var newChat = response.chats.FirstOrDefault(c => c.Id == chatId);
+                    if (newChat != null)
+                    {
+                        // Determine avatar and title
+                        string avatar = string.IsNullOrEmpty(newChat.Picture)
+                            ? "pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png"
+                            : newChat.Picture;
+
+                        var title = newChat.Title;
+                        var membersId = newChat.Members.Select(m => m.UserId).ToList();
+                        membersId.Remove(App.GParam.UserId);
+                        long userId = membersId.FirstOrDefault();
+
+                        if (userId == 0)
+                        {
+                            // Try to get userId from message sender
+                            userId = message.SenderId != App.GParam.UserId ? message.SenderId : 0;
+                        }
+
+                        var messageItem = new ChatItem(
+                            avatar,
+                            title,
+                            message.Text,
+                            time: message.SentAt.ToString(),
+                            reading: ChatItem.ReadingStatus.ForMe,
+                            readBy: message.ReadBy,
+                            unReaded: message.SenderId != App.GParam.UserId ? 1 : 0,
+                            chatId: chatId,
+                            lastMessageId: message.MessageId,
+                            isGroupChat: newChat.IsGroupChat,
+                            userId: userId
+                        );
+
+                        messageItem.TransferMessage = message;
+
+                        // Insert at the top of the list (most recent)
+                        ChatList.Children.Insert(0, messageItem);
+                        
+                        // Show chat list if it was empty
+                        if (EmptyChatListBlock.Visibility == Visibility.Visible)
+                        {
+                            EmptyChatListBlock.Visibility = Visibility.Collapsed;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                App.ErideMessage.AddMessage($"Ошибка добавления нового чата: {ex.Message}", new Erida { Type = MType.Error });
+            }
         }
 
         private void OnConnectionStatusChanged(bool isConnected)
@@ -1017,6 +1407,8 @@ namespace BarkFluff.Client.WPF.Pages
             IsOpenChat.Value = true;
             TitleChat = title;
             _openedLastMessageId = lastMessageId;
+            _oldestLoadedMessageId = 0;
+            _hasMoreHistory = true;
             ChatId.Value = chatId;
             IsGroup = isGroupChat;
 
