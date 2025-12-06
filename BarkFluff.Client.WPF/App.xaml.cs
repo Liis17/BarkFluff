@@ -133,10 +133,24 @@ namespace BarkFluff.Client.WPF
         }
 
         /// <summary>
+        /// Устанавливает рабочую директорию приложения в папку исполняемого файла.
+        /// </summary>
+        private void SetWorkingDirectoryToExecutablePath()
+        {
+            var exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+            var exeDir = Path.GetDirectoryName(exePath);
+            if (!string.IsNullOrEmpty(exeDir))
+            {
+                Environment.CurrentDirectory = exeDir;
+            }
+        }
+
+        /// <summary>
         /// Главный метод инициализации приложения.
         /// </summary>
         private void Bootstrap()
         {
+            SetWorkingDirectoryToExecutablePath();
             if (!Directory.Exists("datas") || !Directory.Exists("datas\\cache"))
             {
                 Directory.CreateDirectory("datas");
