@@ -26,6 +26,9 @@ namespace BarkFluff.Client.WPF.UserControls
         public Timestamp SentAt { get; set; } = new Timestamp();
         private MessageType _messageType = MessageType.Text;
         private TextMessageContent? _textContent;
+        private MessageOwner _owner;
+        public List<long> ReadBy { get; private set; } = new List<long>();
+        public long SenderId { get; private set; }
 
         public MessageBubble(MessageOwner owner, MessageType messageType, MessageModel message, bool isGroup)
         {
@@ -60,7 +63,11 @@ namespace BarkFluff.Client.WPF.UserControls
             }
 
             MessageId = message.MessageId.ToString();
+            SenderId = message.SenderId;
+            ReadBy = message.ReadBy ?? new List<long>();
+            _owner = owner;
             ThemedConfirm(owner);
+            UpdateReadStatus();
         }
 
         public MessageBubble(string textMessage, (bool sendingRequired, bool isUserId, string recipient) options, List<string> filesId)
@@ -76,7 +83,9 @@ namespace BarkFluff.Client.WPF.UserControls
             TextContentPresenter.Content = _textContent;
 
             MessageTime.Text = DateTime.Now.ToString("HH:mm");
+            _owner = MessageOwner.Me;
             ThemedConfirm(MessageOwner.Me);
+            UpdateReadStatus();
 
             if (options.sendingRequired)
             {
@@ -226,6 +235,47 @@ namespace BarkFluff.Client.WPF.UserControls
                     response.message,
                     MessageOperation.Added);
             }
+        }
+
+        /// <summary>
+        /// Updates the read status indicator based on current ReadBy list
+        /// </summary>
+        private void UpdateReadStatus()
+        {
+            // Only show read status for own messages (outgoing)
+            if (_owner != MessageOwner.Me)
+            {
+                ReadStatus.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            ReadStatus.Visibility = Visibility.Visible;
+
+            // Check if message has been read by others (anyone besides the sender)
+            var readByOthers = ReadBy.Any(id => id != SenderId);
+
+            // Update checkmark style based on read status
+            if (readByOthers)
+            {
+                // Double checkmark - message read
+                ReadStatus.Opacity = 1.0;
+            }
+            else
+            {
+                // Single/faded checkmark - message sent but not read
+                ReadStatus.Opacity = 0.5;
+            }
+        }
+
+        /// <summary>
+        /// Updates the ReadBy list and refreshes the UI
+        /// </summary>
+        public void UpdateReadByList(List<long> newReadBy)
+        {
+            if (newReadBy == null) return;
+            
+            ReadBy = newReadBy;
+            Dispatcher.Invoke(() => UpdateReadStatus());
         }
 
         private void ThemedConfirm(MessageOwner owner)
