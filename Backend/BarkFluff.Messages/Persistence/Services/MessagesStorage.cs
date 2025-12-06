@@ -1,6 +1,7 @@
 using BarkFluff.Messages.Domain;
 using BarkFluff.Messages.Persistence.Exceptions;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace BarkFluff.Messages.Persistence.Services;
 
@@ -130,9 +131,15 @@ public class MessagesStorage
 
     public async Task MarkMessagesAsRead(List<long> messageIds, long userId)
     {
-        await _context.Messages
-            .Where(m => messageIds.Contains(m.Id))
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(m => m.ReadBy, m => m.ReadBy.Contains(userId) ? m.ReadBy : m.ReadBy.Append(userId).ToList()));
+        // Use PostgreSQL-specific array operations for optimal performance
+        await _context.Database.ExecuteSqlRawAsync(@"
+            UPDATE ""Messages""
+            SET ""ReadBy"" = CASE
+                WHEN ""ReadBy"" @> ARRAY[@userId]::bigint[] THEN ""ReadBy""
+                ELSE array_append(""ReadBy"", @userId)
+            END
+            WHERE ""Id"" = ANY(@messageIds)",
+            new NpgsqlParameter("@userId", userId),
+            new NpgsqlParameter("@messageIds", messageIds.ToArray()));
     }
 }
