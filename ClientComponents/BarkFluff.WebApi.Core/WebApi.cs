@@ -1216,7 +1216,7 @@ namespace BarkFluff.WebApi.Core
             {
                 return new ErrorReturner(false, "Сообщение не найдено.");
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 return new ErrorReturner(false, "Ошибка отметки сообщения как прочитанного");
             }
