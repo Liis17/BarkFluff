@@ -28,7 +28,7 @@ namespace BarkFluff.Client.WPF.Pages
         private long _oldestLoadedMessageId { get; set; } = 0;
         private bool _isLoadingHistory = false;
         private bool _hasMoreHistory = true;
-        
+
         // Constants for message handling
         private const int HISTORY_PAGE_SIZE = 30;
         private const int SCROLL_TOP_THRESHOLD = 100;
@@ -50,7 +50,7 @@ namespace BarkFluff.Client.WPF.Pages
 
             SubscribeToReactiveProperties();
             StartSlideDownAndFadeIn();
-            
+
             // Subscribe to scroll changed event for history loading
             MessageScrollViewer.ScrollChanged += MessageScrollViewer_ScrollChanged;
         }
@@ -93,10 +93,10 @@ namespace BarkFluff.Client.WPF.Pages
 
                 // Then fetch from server
                 var response = await App.ServerCommunication.GetMessagesWithOffset(
-                    App.GParam, 
-                    ChatId.Value, 
-                    _oldestLoadedMessageId, 
-                    HISTORY_PAGE_SIZE, 
+                    App.GParam,
+                    ChatId.Value,
+                    _oldestLoadedMessageId,
+                    HISTORY_PAGE_SIZE,
                     0);
 
                 if (response.error.IsSuccess && response.messages != null && response.messages.Count > 0)
@@ -618,7 +618,7 @@ namespace BarkFluff.Client.WPF.Pages
             Storyboard.SetTarget(animation, control);
             animation.Begin();
             MessageScrollViewer.ScrollToEnd();
-            
+
             // Mark visible messages as read after a short delay
             System.Windows.Threading.DispatcherTimer delayTimer = new System.Windows.Threading.DispatcherTimer();
             delayTimer.Interval = TimeSpan.FromMilliseconds(INITIAL_MARK_DELAY_MS);
@@ -636,7 +636,7 @@ namespace BarkFluff.Client.WPF.Pages
         /// <summary>
         /// Marks visible incoming messages as read with debouncing
         /// </summary>
-        private void MarkVisibleMessagesAsRead()
+        private async void MarkVisibleMessagesAsRead()
         {
             if (string.IsNullOrEmpty(ChatId.Value)) return;
 
@@ -647,7 +647,7 @@ namespace BarkFluff.Client.WPF.Pages
                 if (child is MessageBubble bubble)
                 {
                     // Only mark incoming messages (not from current user)
-                    if (bubble.SenderId != App.GParam.UserId && 
+                    if (bubble.SenderId != App.GParam.UserId &&
                         !bubble.ReadBy.Contains(App.GParam.UserId) &&
                         long.TryParse(bubble.MessageId, out long messageId))
                     {
@@ -671,7 +671,7 @@ namespace BarkFluff.Client.WPF.Pages
                     _markAsReadDebounceTimer.Tick += async (s, args) =>
                     {
                         _markAsReadDebounceTimer.Stop();
-                        
+
                         if (_pendingMarkAsRead.Count > 0)
                         {
                             var idsToMark = _pendingMarkAsRead.ToList();
@@ -711,7 +711,7 @@ namespace BarkFluff.Client.WPF.Pages
                 _markAsReadDebounceTimer.Start();
             }
         }
-        private async void ReadMessage(List<long> messageIds)
+        private async Task ReadMessage(List<long> messageIds)
         {
             var response = await App.ServerCommunication.MarkMessageAsRead(App.GParam, messageIds);
             if (!response.IsSuccess)
@@ -1281,7 +1281,7 @@ namespace BarkFluff.Client.WPF.Pages
                     // Check if we already have this message (e.g., our own sent message)
                     bool messageExists = false;
                     MessageBubble? existingBubble = null;
-                    
+
                     foreach (var child in MessageArea.Children)
                     {
                         if (child is MessageBubble bubble && bubble.MessageId == message.MessageId.ToString())
@@ -1360,7 +1360,7 @@ namespace BarkFluff.Client.WPF.Pages
 
                         // Insert at the top of the list (most recent)
                         ChatList.Children.Insert(0, messageItem);
-                        
+
                         // Show chat list if it was empty
                         if (EmptyChatListBlock.Visibility == Visibility.Visible)
                         {
