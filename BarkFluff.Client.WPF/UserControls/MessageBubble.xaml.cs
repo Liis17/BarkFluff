@@ -4,6 +4,7 @@ using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
 using Google.Protobuf.WellKnownTypes;
 
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 
