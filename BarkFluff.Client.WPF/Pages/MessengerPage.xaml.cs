@@ -28,7 +28,12 @@ namespace BarkFluff.Client.WPF.Pages
         private long _oldestLoadedMessageId { get; set; } = 0;
         private bool _isLoadingHistory = false;
         private bool _hasMoreHistory = true;
+        
+        // Constants for message handling
         private const int HISTORY_PAGE_SIZE = 30;
+        private const int SCROLL_TOP_THRESHOLD = 100;
+        private const int MARK_AS_READ_DEBOUNCE_MS = 1000;
+        private const int INITIAL_MARK_DELAY_MS = 500;
 
         public bool IsOpenChatEmpty { get; set; } = false;
         public ReactiveLong ChatIdbyUserId { get; set; } = new ReactiveLong(0);
@@ -55,8 +60,8 @@ namespace BarkFluff.Client.WPF.Pages
             var scrollViewer = sender as ScrollViewer;
             if (scrollViewer == null) return;
 
-            // Check if scrolled to top (with small threshold)
-            if (scrollViewer.VerticalOffset < 100 && !_isLoadingHistory && _hasMoreHistory && !string.IsNullOrEmpty(ChatId.Value))
+            // Check if scrolled to top (with threshold)
+            if (scrollViewer.VerticalOffset < SCROLL_TOP_THRESHOLD && !_isLoadingHistory && _hasMoreHistory && !string.IsNullOrEmpty(ChatId.Value))
             {
                 await LoadHistoryMessages();
             }
@@ -616,7 +621,7 @@ namespace BarkFluff.Client.WPF.Pages
             
             // Mark visible messages as read after a short delay
             System.Windows.Threading.DispatcherTimer delayTimer = new System.Windows.Threading.DispatcherTimer();
-            delayTimer.Interval = TimeSpan.FromMilliseconds(500);
+            delayTimer.Interval = TimeSpan.FromMilliseconds(INITIAL_MARK_DELAY_MS);
             delayTimer.Tick += (s, args) =>
             {
                 delayTimer.Stop();
@@ -662,7 +667,7 @@ namespace BarkFluff.Client.WPF.Pages
                 if (_markAsReadDebounceTimer == null)
                 {
                     _markAsReadDebounceTimer = new System.Windows.Threading.DispatcherTimer();
-                    _markAsReadDebounceTimer.Interval = TimeSpan.FromMilliseconds(1000);
+                    _markAsReadDebounceTimer.Interval = TimeSpan.FromMilliseconds(MARK_AS_READ_DEBOUNCE_MS);
                     _markAsReadDebounceTimer.Tick += async (s, args) =>
                     {
                         _markAsReadDebounceTimer.Stop();
