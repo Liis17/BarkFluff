@@ -1565,14 +1565,14 @@ namespace BarkFluff.Client.WPF.Pages
                 // Determine message type from first attachment
                 var messageType = attachments.Count > 0 ? GetMessageTypeFromAttachment(attachments[0].FileType) : MessageBubble.MessageType.Text;
                 
+                // Add date separator if needed (BEFORE adding message)
+                AddDateSeparatorIfNeeded();
+                
                 // Create message bubble with pending state
                 var messageControl = new MessageBubble(MessageBubble.MessageOwner.Me, messageType, pendingMessage, IsGroup);
                 
                 // Add to UI immediately (shows with clock icon)
                 AddMessage(messageControl);
-                
-                // Add date separator if needed
-                AddDateSeparatorIfNeeded();
 
                 // Upload files and get file IDs
                 var fileIds = new List<string>();
