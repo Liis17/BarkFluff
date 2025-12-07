@@ -30,6 +30,8 @@ namespace BarkFluff.Client.WPF.UserControls
         private MessageOwner _owner;
         public List<long> ReadBy { get; private set; } = new List<long>();
         public long SenderId { get; private set; }
+        public bool IsPending { get; private set; } = false;
+        private List<string> _pendingFileIds = new List<string>();
 
         public MessageBubble(MessageOwner owner, MessageType messageType, MessageModel message, bool isGroup)
         {
@@ -88,6 +90,11 @@ namespace BarkFluff.Client.WPF.UserControls
             ReadBy = new List<long>();
             _owner = MessageOwner.Me;
             ThemedConfirm(MessageOwner.Me);
+            
+            // Set pending state if files need to be uploaded
+            IsPending = filesId != null && filesId.Count > 0;
+            _pendingFileIds = filesId ?? new List<string>();
+            
             UpdateReadStatus();
 
             if (options.sendingRequired)
@@ -232,6 +239,10 @@ namespace BarkFluff.Client.WPF.UserControls
             else if (response.message != null)
             {
                 MessageId = response.message.MessageId.ToString();
+                
+                // Mark as sent (no longer pending)
+                MarkAsSent();
+                
                 App.CacheManager.SaveMessage(
                     response.message.ChatId,
                     string.Empty,
@@ -254,6 +265,19 @@ namespace BarkFluff.Client.WPF.UserControls
 
             ReadStatus.Visibility = Visibility.Visible;
 
+            // Show pending indicator (clock icon) if message is still uploading
+            if (IsPending)
+            {
+                // Show clock icon - message is being uploaded
+                PendingIcon.Visibility = Visibility.Visible;
+                SingleCheckmark.Visibility = Visibility.Collapsed;
+                DoubleCheckmark.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            // Hide pending icon once upload completes
+            PendingIcon.Visibility = Visibility.Collapsed;
+
             // Check if message has been read by others (anyone besides the sender)
             var readByOthers = ReadBy.Any(id => id != SenderId);
 
@@ -261,12 +285,35 @@ namespace BarkFluff.Client.WPF.UserControls
             if (readByOthers)
             {
                 // Double checkmark - message read
-                ReadStatus.Opacity = 1.0;
+                SingleCheckmark.Visibility = Visibility.Visible;
+                DoubleCheckmark.Visibility = Visibility.Visible;
+                SingleCheckmark.Opacity = 1.0;
+                DoubleCheckmark.Opacity = 1.0;
+            }
+            else if (!string.IsNullOrEmpty(MessageId))
+            {
+                // Single checkmark - message sent but not read
+                SingleCheckmark.Visibility = Visibility.Visible;
+                DoubleCheckmark.Visibility = Visibility.Collapsed;
+                SingleCheckmark.Opacity = 0.7;
             }
             else
             {
-                // Single/faded checkmark - message sent but not read
-                ReadStatus.Opacity = 0.5;
+                // No checkmark - message not sent yet
+                SingleCheckmark.Visibility = Visibility.Collapsed;
+                DoubleCheckmark.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        /// <summary>
+        /// Marks message as sent (no longer pending) and updates UI
+        /// </summary>
+        public void MarkAsSent()
+        {
+            if (IsPending)
+            {
+                IsPending = false;
+                Dispatcher.Invoke(() => UpdateReadStatus());
             }
         }
 
