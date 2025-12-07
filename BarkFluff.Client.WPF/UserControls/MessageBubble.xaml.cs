@@ -439,13 +439,7 @@ namespace BarkFluff.Client.WPF.UserControls
                 return;
 
             _uploadingItems[index].MarkAsUploaded(fileId);
-
-            // Check if all attachments are uploaded
-            if (_uploadingItems.All(item => item.Status == UploadStatus.Uploaded))
-            {
-                // All uploads complete - we can mark message as sent once server confirms
-                // The actual message sending happens in MessengerPage
-            }
+            // Note: Message sending happens in MessengerPage after all files are uploaded
         }
 
         /// <summary>
