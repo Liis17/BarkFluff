@@ -1,6 +1,7 @@
 ﻿using BarkFluff.Client.WPF.Pages;
 using BarkFluff.Client.WPF.Reactive;
 using BarkFluff.Client.WPF.Services;
+using BarkFluff.Client.WPF.Services.App;
 using BarkFluff.Client.WPF.Services.App.Caching;
 using BarkFluff.Client.WPF.Services.App.Update;
 using BarkFluff.Client.WPF.Services.Erida;
@@ -35,6 +36,7 @@ namespace BarkFluff.Client.WPF
         public static MessageCacheManager CacheManager { get; set; } = null!;
         public static FileCacheService FileCacheService { get; set; } = null!;
         public static DropMessage ErideMessage { get; set; } = null!;
+        public static WindowStateService WindowStateService { get; set; } = null!;
 
         private static UpdateService updateService { get; set; } = null!;
         public App() { }
@@ -159,6 +161,7 @@ namespace BarkFluff.Client.WPF
 
             CacheManager = new MessageCacheManager("datas\\cache.db", "temp");
             FileCacheService = new FileCacheService("datas\\file_cache.db", "datas\\cache");
+            WindowStateService = new WindowStateService();
 
             string targetPath = string.Empty;
             try
@@ -192,6 +195,7 @@ namespace BarkFluff.Client.WPF
 #endif
             MessengerWindow = new MainWindow();
             MessengerWindow.Show();
+            WindowStateService.Initialize(MessengerWindow);
 
             if (!File.Exists(filePath))
             {
@@ -216,6 +220,7 @@ namespace BarkFluff.Client.WPF
         protected override void OnExit(ExitEventArgs e)
         {
             cts.Cancel();
+            WindowStateService?.Dispose();
             base.OnExit(e);
         }
 

@@ -1286,7 +1286,7 @@ namespace BarkFluff.WebApi.Core
                     return (new ErrorReturner(true), response.FileUrls[0].Url);
                 }, globalParam);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 return (new ErrorReturner(false, "Ошибка получения файла"), null);
             }
