@@ -1,7 +1,6 @@
 ﻿using BarkFluff.Client.WPF.Reactive;
 using BarkFluff.Client.WPF.Services.App.Caching;
 using BarkFluff.Client.WPF.UserControls;
-using BarkFluff.Proto.Shared;
 using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
@@ -14,8 +13,8 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 
 using Erida = BarkFluff.Client.WPF.Services.Erida.MessageType;
+using MessageAttachmentType = BarkFluff.Proto.Shared.MessageAttachmentType;
 using MType = BarkFluff.Client.WPF.Services.Erida.MessageType.MessageTypeEnum;
-using MessageAttachmentType = BarkFluff.Proto.Messages.MessageAttachmentType;
 namespace BarkFluff.Client.WPF.Pages
 {
     /// <summary>
@@ -615,10 +614,10 @@ namespace BarkFluff.Client.WPF.Pages
                     SenderId = App.GParam.UserId,
                     SentAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(DateTime.UtcNow)
                 };
-                
+
                 // Check and add date separator before adding message
                 AddDateSeparatorIfNeeded();
-                
+
                 AddMessage(messageControl);
                 UpdateChatWithMessage(message);
             }
@@ -1314,7 +1313,7 @@ namespace BarkFluff.Client.WPF.Pages
                     {
                         // Add date separator if needed before adding incoming message
                         AddDateSeparatorIfNeeded();
-                        
+
                         // Add new incoming message
                         var owner = MessageBubble.MessageOwner.Interlocutor;
                         var type = GetMessageType(message);
@@ -1564,13 +1563,13 @@ namespace BarkFluff.Client.WPF.Pages
 
                 // Determine message type from first attachment
                 var messageType = attachments.Count > 0 ? GetMessageTypeFromAttachment(attachments[0].FileType) : MessageBubble.MessageType.Text;
-                
+
                 // Add date separator if needed (BEFORE adding message)
                 AddDateSeparatorIfNeeded();
-                
+
                 // Create message bubble with pending state
                 var messageControl = new MessageBubble(MessageBubble.MessageOwner.Me, messageType, pendingMessage, IsGroup);
-                
+
                 // Add to UI immediately (shows with clock icon)
                 AddMessage(messageControl);
 
@@ -1579,7 +1578,7 @@ namespace BarkFluff.Client.WPF.Pages
                 for (int i = 0; i < attachments.Count; i++)
                 {
                     var attachment = attachments[i];
-                    
+
                     // Create progress reporter
                     var progress = new Progress<double>(percent =>
                     {
@@ -1604,7 +1603,7 @@ namespace BarkFluff.Client.WPF.Pages
                     }
 
                     fileIds.Add(fileId);
-                    
+
                     // Update attachment with actual fileId
                     if (i < pendingMessage.Attachments.Count)
                     {
@@ -1636,7 +1635,7 @@ namespace BarkFluff.Client.WPF.Pages
                 (bool, string) type = new(isUserId, recipientId);
                 var letter = new ForwardingLetter { Text = text, FilesId = fileIds };
                 var response = await App.ServerCommunication.SendMessage(App.GParam, type, letter);
-                
+
                 if (!response.error.IsSuccess)
                 {
                     App.ErideMessage.AddMessage(
@@ -1648,14 +1647,14 @@ namespace BarkFluff.Client.WPF.Pages
                     // Update message control with real message ID and mark as sent
                     messageControl.MessageId = response.message.MessageId.ToString();
                     messageControl.MarkAsSent();
-                    
+
                     // Save to cache
                     App.CacheManager.SaveMessage(
                         response.message.ChatId,
                         TitleChat,
                         response.message,
                         MessageOperation.Added);
-                    
+
                     // Update chat list
                     UpdateChatWithMessage(response.message);
                 }
@@ -1698,13 +1697,13 @@ namespace BarkFluff.Client.WPF.Pages
 
             // Get the last message in the area (skip if last item is already a date header)
             var lastChild = MessageArea.Children[MessageArea.Children.Count - 1];
-            
+
             if (lastChild is DateHeaderControl)
             {
                 // If last item is already a date header, don't add another
                 return;
             }
-            
+
             if (lastChild is MessageBubble lastBubble && lastBubble.SentAt != null)
             {
                 var lastMessageDate = lastBubble.SentAt.ToDateTime().Date;
