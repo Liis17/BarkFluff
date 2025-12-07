@@ -87,7 +87,7 @@
 
 
 
-    <Style x:Key="MinimalTextBox" TargetType="TextBox">
+    <Style x:Key="MinimalTextBox" TargetType="ui:TextBox">
         <Setter Property="Background" Value="#282828" />
         <Setter Property="Foreground" Value="White" />
         <Setter Property="FontFamily" Value="AdwaitaSans" />
@@ -96,15 +96,45 @@
         <Setter Property="BorderBrush" Value="#404040" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CaretBrush" Value="White" />
+        <Setter Property="PlaceholderEnabled" Value="True" />
         <Setter Property="Template">
             <Setter.Value>
-                <ControlTemplate TargetType="TextBox">
+                <ControlTemplate TargetType="ui:TextBox">
                     <Border
                         Background="{TemplateBinding Background}"
                         BorderBrush="{TemplateBinding BorderBrush}"
                         BorderThickness="{TemplateBinding BorderThickness}"
                         CornerRadius="8">
-                        <ScrollViewer x:Name="PART_ContentHost" Padding="{TemplateBinding Padding}" />
+                        <Grid>
+                            <ScrollViewer 
+                                x:Name="PART_ContentHost" 
+                                Margin="{TemplateBinding Padding}"
+                                Focusable="False"
+                                HorizontalScrollBarVisibility="Hidden"
+                                VerticalScrollBarVisibility="Hidden" />
+                            <TextBlock
+                                x:Name="PlaceholderTextBlock"
+                                Margin="{TemplateBinding Padding}"
+                                VerticalAlignment="Center"
+                                Foreground="#FF9E9E9E"
+                                Text="{TemplateBinding PlaceholderText}"
+                                IsHitTestVisible="False">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding Text, RelativeSource={RelativeSource TemplatedParent}}" Value="" />
+                                                    <Condition Binding="{Binding PlaceholderEnabled, RelativeSource={RelativeSource TemplatedParent}}" Value="True" />
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </MultiDataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsFocused" Value="True">
@@ -117,6 +147,14 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <!--  Стиль для текстового поля ввода сообщения (прозрачный фон, без рамки)  -->
+    <Style x:Key="MessageInputTextBox" TargetType="ui:TextBox" BasedOn="{StaticResource MinimalTextBox}">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="8,10" />
+        <Setter Property="Foreground" Value="White" />
     </Style>
 
     <Style x:Key="InfoTextStyle" TargetType="TextBlock">
