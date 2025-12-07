@@ -167,7 +167,7 @@ namespace BarkFluff.Client.WPF.UserControls
                 return UploadFileType.MessageAttachmentDocument;
         }
 
-        private void CancelButton_Click(object sender, RoutedEventArgs e)
+        public void Clear()
         {
             // Clean up temp files from clipboard
             foreach (var item in _attachments.Where(a => a.IsFromClipboard))
@@ -180,6 +180,12 @@ namespace BarkFluff.Client.WPF.UserControls
                 catch { }
             }
 
+            _attachments.Clear();
+            PreviewItemsControl.Items.Clear();
+        }
+
+        private void CancelButton_Click(object sender, RoutedEventArgs e)
+        {
             OnCancel?.Invoke(this, EventArgs.Empty);
         }
 

@@ -94,7 +94,7 @@
 
         <!--  Грид затенения центрального блока  -->
         <Grid
-            x:name="OverlayCenter"
+            x:Name="OverlayCenter"
             Margin="-30"
             Panel.ZIndex="999"
             Background="#80000000"

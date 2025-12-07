@@ -1491,14 +1491,7 @@ namespace BarkFluff.Client.WPF.Pages
         private void AttachmentPreview_OnCancel(object? sender, EventArgs e)
         {
             AttachmentOverlay.Visibility = Visibility.Collapsed;
-            // Clear the preview control for next use
-            var previewControl = new UserControls.AttachmentPreviewOverlay();
-            previewControl.OnCancel += AttachmentPreview_OnCancel;
-            previewControl.OnSend += AttachmentPreview_OnSend;
-            AttachmentOverlay.Children.Clear();
-            AttachmentOverlay.Children.Add(previewControl);
-            ((Grid)AttachmentOverlay.Children[0]).HorizontalAlignment = HorizontalAlignment.Center;
-            ((Grid)AttachmentOverlay.Children[0]).VerticalAlignment = VerticalAlignment.Center;
+            AttachmentPreview.Clear();
         }
 
         private async void AttachmentPreview_OnSend(object? sender, UserControls.SendAttachmentsEventArgs e)
@@ -1519,12 +1512,7 @@ namespace BarkFluff.Client.WPF.Pages
                 await SendMessageWithAttachments(string.Empty, e.Attachments);
             }
 
-            // Clear the preview control for next use
-            var previewControl = new UserControls.AttachmentPreviewOverlay();
-            previewControl.OnCancel += AttachmentPreview_OnCancel;
-            previewControl.OnSend += AttachmentPreview_OnSend;
-            AttachmentOverlay.Children.Clear();
-            AttachmentOverlay.Children.Add(previewControl);
+            AttachmentPreview.Clear();
         }
 
         private async Task SendMessageWithAttachments(string text, List<UserControls.AttachmentPreviewItem> attachments)
@@ -1628,13 +1616,7 @@ namespace BarkFluff.Client.WPF.Pages
                 var image = (BitmapSource)e.DataObject.GetData(DataFormats.Bitmap);
                 if (image != null)
                 {
-                    var previewControl = new UserControls.AttachmentPreviewOverlay();
-                    previewControl.OnCancel += AttachmentPreview_OnCancel;
-                    previewControl.OnSend += AttachmentPreview_OnSend;
-                    previewControl.AddImageFromClipboard(image);
-                    
-                    AttachmentOverlay.Children.Clear();
-                    AttachmentOverlay.Children.Add(previewControl);
+                    AttachmentPreview.AddImageFromClipboard(image);
                     AttachmentOverlay.Visibility = Visibility.Visible;
                 }
             }
