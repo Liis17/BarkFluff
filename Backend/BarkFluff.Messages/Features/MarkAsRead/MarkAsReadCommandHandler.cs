@@ -56,10 +56,8 @@ public class MarkAsReadCommandHandler : IRequestHandler<MarkAsReadCommand>
         // Обновляем ReadBy для сообщений
         await _messagesStorage.MarkMessagesAsRead(request.MessageIds, _userContext.UserId);
 
-        // Получаем обновлённые сообщения одним запросом вместо N запросов
-        var updatedMessages = await _messagesStorage.GetMessagesByIds(request.MessageIds);
-
         // Публикуем события об обновлении статуса прочтения
+        // Используем уже загруженные сообщения и добавляем текущего пользователя к списку ReadBy
         foreach (var chatId in chatIds)
         {
             var chatMessages = messages.Where(m => m.ChatId == chatId).ToList();
@@ -77,12 +75,11 @@ public class MarkAsReadCommandHandler : IRequestHandler<MarkAsReadCommand>
 
             foreach (var message in chatMessages)
             {
-                // Находим обновлённое сообщение в списке
-                var updatedMessage = updatedMessages.FirstOrDefault(m => m.Id == message.Id);
-                
-                if (updatedMessage == null)
+                // Обновляем ReadBy локально - добавляем текущего пользователя если его ещё нет
+                var updatedReadBy = message.ReadBy.ToList();
+                if (!updatedReadBy.Contains(_userContext.UserId))
                 {
-                    continue;
+                    updatedReadBy.Add(_userContext.UserId);
                 }
                 
                 var isLastMessage = lastMessage != null && lastMessage.Id == message.Id;
@@ -90,7 +87,7 @@ public class MarkAsReadCommandHandler : IRequestHandler<MarkAsReadCommand>
                 await _messageQueueSender.SendReadReceipt(
                     chatId,
                     message.Id,
-                    updatedMessage.ReadBy,
+                    updatedReadBy,
                     chatMembers,
                     isLastMessage);
             }
