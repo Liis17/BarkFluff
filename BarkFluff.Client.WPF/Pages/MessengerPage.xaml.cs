@@ -6,6 +6,7 @@ using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
 using System.ComponentModel;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -53,6 +54,13 @@ namespace BarkFluff.Client.WPF.Pages
 
             // Subscribe to scroll changed event for history loading
             MessageScrollViewer.ScrollChanged += MessageScrollViewer_ScrollChanged;
+
+            // Subscribe to attachment preview events
+            AttachmentPreview.OnCancel += AttachmentPreview_OnCancel;
+            AttachmentPreview.OnSend += AttachmentPreview_OnSend;
+
+            // Subscribe to paste event for TextForMessage
+            DataObject.AddPastingHandler(TextForMessage, OnTextForMessagePaste);
         }
 
         private async void MessageScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
@@ -1426,6 +1434,185 @@ namespace BarkFluff.Client.WPF.Pages
             ChatId.Value = string.Empty;
             ChatIdbyUserId.Dispose();
             ChatIdbyUserId = new ReactiveLong(0);
+        }
+
+        #endregion
+
+        #region Attachments
+
+        private void AttachFileButton_Click(object sender, RoutedEventArgs e)
+        {
+            AttachmentMenuPopup.IsOpen = !AttachmentMenuPopup.IsOpen;
+        }
+
+        private void AttachMediaButton_Click(object sender, RoutedEventArgs e)
+        {
+            AttachmentMenuPopup.IsOpen = false;
+            OpenFileDialog("фото или видео");
+        }
+
+        private void AttachDocumentButton_Click(object sender, RoutedEventArgs e)
+        {
+            AttachmentMenuPopup.IsOpen = false;
+            OpenFileDialog("файл");
+        }
+
+        private void OpenFileDialog(string fileType)
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Multiselect = true
+            };
+
+            if (fileType == "фото или видео")
+            {
+                dialog.Filter = "Изображения и видео|*.jpg;*.jpeg;*.png;*.gif;*.bmp;*.webp;*.mp4;*.avi;*.mov;*.mkv;*.webm|Все файлы (*.*)|*.*";
+                dialog.Title = "Выберите фото или видео";
+            }
+            else
+            {
+                dialog.Filter = "Все файлы (*.*)|*.*";
+                dialog.Title = "Выберите файл";
+            }
+
+            if (dialog.ShowDialog() == true)
+            {
+                ShowAttachmentPreview(dialog.FileNames.ToList());
+            }
+        }
+
+        private void ShowAttachmentPreview(List<string> filePaths)
+        {
+            AttachmentPreview.AddAttachments(filePaths);
+            AttachmentOverlay.Visibility = Visibility.Visible;
+        }
+
+        private void AttachmentPreview_OnCancel(object? sender, EventArgs e)
+        {
+            AttachmentOverlay.Visibility = Visibility.Collapsed;
+            AttachmentPreview.Clear();
+        }
+
+        private async void AttachmentPreview_OnSend(object? sender, UserControls.SendAttachmentsEventArgs e)
+        {
+            AttachmentOverlay.Visibility = Visibility.Collapsed;
+
+            if (e.SendSeparately)
+            {
+                // Send each file as a separate message
+                foreach (var attachment in e.Attachments)
+                {
+                    await SendMessageWithAttachments(string.Empty, new List<UserControls.AttachmentPreviewItem> { attachment });
+                }
+            }
+            else
+            {
+                // Send all files in one message
+                await SendMessageWithAttachments(string.Empty, e.Attachments);
+            }
+
+            AttachmentPreview.Clear();
+        }
+
+        private async Task SendMessageWithAttachments(string text, List<UserControls.AttachmentPreviewItem> attachments)
+        {
+            try
+            {
+                // Upload files and get file IDs
+                var fileIds = new List<string>();
+                foreach (var attachment in attachments)
+                {
+                    var (error, fileId) = await App.ServerCommunication.UploadFileAsync(
+                        App.GParam,
+                        attachment.FilePath,
+                        attachment.FileType);
+
+                    if (!error.IsSuccess || string.IsNullOrEmpty(fileId))
+                    {
+                        App.ErideMessage.AddMessage(
+                            $"Ошибка загрузки файла {attachment.FileName}: {error.ErrorMessage}",
+                            new Erida { Type = MType.Error });
+                        continue;
+                    }
+
+                    fileIds.Add(fileId);
+
+                    // Clean up temp file if from clipboard
+                    if (attachment.IsFromClipboard)
+                    {
+                        try
+                        {
+                            if (File.Exists(attachment.FilePath))
+                                File.Delete(attachment.FilePath);
+                        }
+                        catch
+                        {
+                            // Ignore errors deleting temp files - they will be cleaned up by OS eventually
+                        }
+                    }
+                }
+
+                if (fileIds.Count == 0)
+                {
+                    App.ErideMessage.AddMessage("Не удалось загрузить ни один файл", new Erida { Type = MType.Error });
+                    return;
+                }
+
+                // Send message with attachments
+                string recipientId = "0";
+                bool isUserId = false;
+                if (IsOpenChatEmpty)
+                {
+                    recipientId = ChatIdbyUserId.Value.ToString();
+                    isUserId = true;
+                }
+                else
+                {
+                    recipientId = ChatId.Value;
+                    isUserId = false;
+                }
+
+                (bool, bool, string) options = new(true, isUserId, recipientId);
+                var messageControl = new MessageBubble(text, options, fileIds);
+                var message = new MessageModel
+                {
+                    Text = text,
+                    ChatId = ChatId.Value,
+                    SenderId = App.GParam.UserId,
+                    SentAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(DateTime.UtcNow)
+                };
+                AddMessage(messageControl);
+                UpdateChatWithMessage(message);
+            }
+            catch (Exception ex)
+            {
+                App.ErideMessage.AddMessage($"Ошибка отправки сообщения с вложениями: {ex.Message}", new Erida { Type = MType.Error });
+            }
+        }
+
+        private void OnTextForMessagePaste(object sender, DataObjectPastingEventArgs e)
+        {
+            if (e.DataObject.GetDataPresent(DataFormats.FileDrop))
+            {
+                // Files pasted from Explorer
+                e.CancelCommand();
+                var files = (string[])e.DataObject.GetData(DataFormats.FileDrop);
+                if (files != null && files.Length > 0)
+                {
+                    ShowAttachmentPreview(files.ToList());
+                }
+            }
+            else if (e.DataObject.GetDataPresent(DataFormats.Bitmap))
+            {
+                // Image pasted from clipboard (screenshot)
+                e.CancelCommand();
+                var image = (BitmapSource)e.DataObject.GetData(DataFormats.Bitmap);
+                if (image != null)
+                {
+                    AttachmentPreview.AddImageFromClipboard(image);
+                    AttachmentOverlay.Visibility = Visibility.Visible;
+                }
+            }
         }
 
         #endregion
