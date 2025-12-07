@@ -36,6 +36,7 @@ namespace BarkFluff.Client.WPF.UserControls
         public long SenderId { get; private set; }
         public bool IsPending { get; private set; } = false;
         private List<string> _pendingFileIds = new List<string>();
+        private List<UploadingAttachmentItem> _uploadingItems = new List<UploadingAttachmentItem>();
 
         public MessageBubble(MessageOwner owner, MessageType messageType, MessageModel message, bool isGroup)
         {
@@ -109,23 +110,88 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private void SetupContent(MessageModel message, MessageType messageType)
         {
-            switch (messageType)
+            var attachments = message.Attachments?.ToList() ?? new List<AttachmentsModel>();
+
+            // Handle multiple attachments
+            if (attachments.Count > 1)
             {
-                case MessageType.Image:
-                case MessageType.Gif:
-                    SetupImageContent(message, messageType);
-                    break;
-                case MessageType.Document:
-                    SetupDocumentContent(message);
-                    break;
-                case MessageType.Video:
-                    SetupVideoContent(message);
-                    break;
-                case MessageType.Text:
-                default:
-                    SetupTextContent(message);
-                    break;
+                SetupMultipleAttachments(message, attachments);
             }
+            else
+            {
+                // Single attachment or text-only message - use existing logic
+                switch (messageType)
+                {
+                    case MessageType.Image:
+                    case MessageType.Gif:
+                        SetupImageContent(message, messageType);
+                        break;
+                    case MessageType.Document:
+                        SetupDocumentContent(message);
+                        break;
+                    case MessageType.Video:
+                        SetupVideoContent(message);
+                        break;
+                    case MessageType.Text:
+                    default:
+                        SetupTextContent(message);
+                        break;
+                }
+            }
+        }
+
+        private void SetupMultipleAttachments(MessageModel message, List<AttachmentsModel> attachments)
+        {
+            // Set up text content if present
+            if (!string.IsNullOrEmpty(message.Text))
+            {
+                _textContent = new TextMessageContent(message.Text);
+                TextContentPresenter.Content = _textContent;
+            }
+            else
+            {
+                TextContentPresenter.Content = null;
+            }
+
+            // Determine type of first attachment
+            var firstAttachment = attachments[0];
+            var isImage = IsImageType(firstAttachment);
+            var isDocument = IsDocumentType(firstAttachment);
+
+            if (isImage)
+            {
+                // Filter to only image/gif attachments
+                var imageAttachments = attachments.Where(a => IsImageType(a)).ToList();
+                var grid = new MultiImageGrid();
+                grid.SetImages(imageAttachments);
+                MediaContentPresenter.Content = grid;
+                this.MinWidth = IMAGE_MAX_WIDTH;
+            }
+            else if (isDocument)
+            {
+                // All attachments as documents
+                var list = new MultiDocumentList();
+                list.SetDocuments(attachments);
+                MediaContentPresenter.Content = list;
+                var sizeMessageWidth = CalculateLongestLineWidth(message.Text);
+                this.MinWidth = Math.Max(sizeMessageWidth + MIN_WIDTH_PADDING, 250);
+            }
+            else
+            {
+                // Fallback to single attachment view for videos or other types
+                SetupVideoContent(message);
+            }
+        }
+
+        private bool IsImageType(AttachmentsModel attachment)
+        {
+            return attachment.Type == Proto.Shared.MessageAttachmentType.Image ||
+                   attachment.Type == Proto.Shared.MessageAttachmentType.Gif;
+        }
+
+        private bool IsDocumentType(AttachmentsModel attachment)
+        {
+            return attachment.Type == Proto.Shared.MessageAttachmentType.Document;
         }
 
         private void SetupTextContent(MessageModel message)
@@ -330,6 +396,70 @@ namespace BarkFluff.Client.WPF.UserControls
             
             ReadBy = newReadBy;
             Dispatcher.Invoke(() => UpdateReadStatus());
+        }
+
+        /// <summary>
+        /// Sets up uploading attachment items for pending uploads
+        /// </summary>
+        public void SetupUploadingAttachments(List<string> localFilePaths)
+        {
+            if (localFilePaths == null || localFilePaths.Count == 0)
+                return;
+
+            _uploadingItems.Clear();
+            var uploadingPanel = new StackPanel();
+
+            foreach (var filePath in localFilePaths)
+            {
+                var item = new UploadingAttachmentItem(filePath);
+                _uploadingItems.Add(item);
+                uploadingPanel.Children.Add(item);
+            }
+
+            MediaContentPresenter.Content = uploadingPanel;
+        }
+
+        /// <summary>
+        /// Updates the upload progress for a specific attachment by index
+        /// </summary>
+        public void UpdateAttachmentProgress(int index, double progress)
+        {
+            if (index < 0 || index >= _uploadingItems.Count)
+                return;
+
+            _uploadingItems[index].UpdateProgress(progress);
+        }
+
+        /// <summary>
+        /// Marks a specific attachment as uploaded
+        /// </summary>
+        public void MarkAttachmentUploaded(int index, string fileId)
+        {
+            if (index < 0 || index >= _uploadingItems.Count)
+                return;
+
+            _uploadingItems[index].MarkAsUploaded(fileId);
+            // Note: Message sending happens in MessengerPage after all files are uploaded
+        }
+
+        /// <summary>
+        /// Marks a specific attachment as failed
+        /// </summary>
+        public void MarkAttachmentFailed(int index, string errorMessage)
+        {
+            if (index < 0 || index >= _uploadingItems.Count)
+                return;
+
+            _uploadingItems[index].MarkAsFailed(errorMessage);
+        }
+
+        /// <summary>
+        /// Replaces the uploading panel with the actual content after successful upload
+        /// </summary>
+        public void ReplaceUploadingWithContent(MessageModel message, MessageType messageType)
+        {
+            _uploadingItems.Clear();
+            SetupContent(message, messageType);
         }
 
         private void ThemedConfirm(MessageOwner owner)
