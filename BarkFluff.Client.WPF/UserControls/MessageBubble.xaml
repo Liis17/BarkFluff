@@ -271,13 +271,51 @@
                         Orientation="Horizontal"
                         Visibility="Visible">
 
+                        <!--  Pending/Loading icon (clock)  -->
                         <ui:SymbolIcon
+                            x:Name="PendingIcon"
+                            Width="16"
+                            Height="16"
+                            FontSize="16"
+                            Foreground="#FFFFC1A4"
+                            Symbol="Clock12"
+                            Visibility="Collapsed">
+                            <ui:SymbolIcon.Effect>
+                                <DropShadowEffect
+                                    BlurRadius="3"
+                                    Opacity="0.8"
+                                    ShadowDepth="0"
+                                    Color="#FF353535" />
+                            </ui:SymbolIcon.Effect>
+                            <ui:SymbolIcon.RenderTransform>
+                                <RotateTransform x:Name="PendingRotation" CenterX="8" CenterY="8" />
+                            </ui:SymbolIcon.RenderTransform>
+                            <ui:SymbolIcon.Triggers>
+                                <EventTrigger RoutedEvent="Loaded">
+                                    <BeginStoryboard>
+                                        <Storyboard RepeatBehavior="Forever">
+                                            <DoubleAnimation
+                                                Storyboard.TargetName="PendingRotation"
+                                                Storyboard.TargetProperty="Angle"
+                                                From="0"
+                                                To="360"
+                                                Duration="0:0:2" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </EventTrigger>
+                            </ui:SymbolIcon.Triggers>
+                        </ui:SymbolIcon>
+
+                        <!--  First checkmark (always shown when message is sent)  -->
+                        <ui:SymbolIcon
+                            x:Name="SingleCheckmark"
                             Width="20"
                             Height="20"
                             Margin="0,0,-14,0"
                             FontSize="20"
                             Foreground="#FFFFC1A4"
-                            Symbol="Checkmark12">
+                            Symbol="Checkmark12"
+                            Visibility="Collapsed">
                             <ui:SymbolIcon.Effect>
                                 <DropShadowEffect
                                     BlurRadius="3"
@@ -286,13 +324,17 @@
                                     Color="#FF353535" />
                             </ui:SymbolIcon.Effect>
                         </ui:SymbolIcon>
+
+                        <!--  Second checkmark (shown when message is read)  -->
                         <ui:SymbolIcon
+                            x:Name="DoubleCheckmark"
                             Width="20"
                             Height="20"
                             Panel.ZIndex="-1"
                             FontSize="20"
                             Foreground="#FFFFC1A4"
-                            Symbol="Checkmark12">
+                            Symbol="Checkmark12"
+                            Visibility="Collapsed">
                             <ui:SymbolIcon.Effect>
                                 <DropShadowEffect
                                     BlurRadius="3"
