@@ -1548,9 +1548,11 @@ namespace BarkFluff.Client.WPF.Pages
             if (e.SendSeparately)
             {
                 // Send each file as a separate message
-                foreach (var attachment in e.Attachments)
+                // Only send text with the first attachment to avoid duplicates
+                for (int i = 0; i < e.Attachments.Count; i++)
                 {
-                    await SendMessageWithAttachments(e.MessageText, new List<UserControls.AttachmentPreviewItem> { attachment });
+                    var textToSend = i == 0 ? e.MessageText : string.Empty;
+                    await SendMessageWithAttachments(textToSend, new List<UserControls.AttachmentPreviewItem> { e.Attachments[i] });
                 }
             }
             else

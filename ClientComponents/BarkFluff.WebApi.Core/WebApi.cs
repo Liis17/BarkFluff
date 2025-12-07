@@ -1526,9 +1526,8 @@ namespace BarkFluff.WebApi.Core
                                 }
                                 update = response.ResponseStream.Current;
                             }
-                            catch (RpcException ex)
+                            catch (RpcException)
                             {
-                                var a = ex;
                                 yield break;
                             }
                             catch (Exception)

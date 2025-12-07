@@ -56,6 +56,9 @@ public class MarkAsReadCommandHandler : IRequestHandler<MarkAsReadCommand>
         // Обновляем ReadBy для сообщений
         await _messagesStorage.MarkMessagesAsRead(request.MessageIds, _userContext.UserId);
 
+        // Получаем обновлённые сообщения одним запросом вместо N запросов
+        var updatedMessages = await _messagesStorage.GetMessagesByIds(request.MessageIds);
+
         // Публикуем события об обновлении статуса прочтения
         foreach (var chatId in chatIds)
         {
@@ -74,8 +77,8 @@ public class MarkAsReadCommandHandler : IRequestHandler<MarkAsReadCommand>
 
             foreach (var message in chatMessages)
             {
-                // Получаем обновленный список прочитавших
-                var updatedMessage = await _messagesStorage.GetMessageById(message.Id);
+                // Находим обновлённое сообщение в списке
+                var updatedMessage = updatedMessages.FirstOrDefault(m => m.Id == message.Id);
                 
                 if (updatedMessage == null)
                 {

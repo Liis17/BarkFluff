@@ -7,11 +7,14 @@ using Grpc.Core;
 public class ReadReceiptSubscriptionsManager
 {
     // Subscriptions for all chats (last message only) - used for chat list
+    // Note: HashSet is not thread-safe, but all access is synchronized via _lock
     private readonly ConcurrentDictionary<long, HashSet<IServerStreamWriter<ReadReceiptUpdate>>> _globalSubscriptions = new();
     
     // Subscriptions for specific chat - used for open chat
+    // Note: HashSet is not thread-safe, but all access is synchronized via _lock
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<long, HashSet<IServerStreamWriter<ReadReceiptUpdate>>>> _chatSubscriptions = new();
     
+    // Lock object to ensure thread-safe access to HashSet collections
     private readonly object _lock = new();
 
     /// <summary>
