@@ -15,6 +15,7 @@ using System.Windows.Media.Imaging;
 
 using Erida = BarkFluff.Client.WPF.Services.Erida.MessageType;
 using MType = BarkFluff.Client.WPF.Services.Erida.MessageType.MessageTypeEnum;
+using MessageAttachmentType = BarkFluff.Proto.Messages.MessageAttachmentType;
 namespace BarkFluff.Client.WPF.Pages
 {
     /// <summary>
@@ -614,6 +615,10 @@ namespace BarkFluff.Client.WPF.Pages
                     SenderId = App.GParam.UserId,
                     SentAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(DateTime.UtcNow)
                 };
+                
+                // Check and add date separator before adding message
+                AddDateSeparatorIfNeeded();
+                
                 AddMessage(messageControl);
                 UpdateChatWithMessage(message);
             }
@@ -1307,6 +1312,9 @@ namespace BarkFluff.Client.WPF.Pages
                     }
                     else if (message.SenderId != App.GParam.UserId)
                     {
+                        // Add date separator if needed before adding incoming message
+                        AddDateSeparatorIfNeeded();
+                        
                         // Add new incoming message
                         var owner = MessageBubble.MessageOwner.Interlocutor;
                         var type = GetMessageType(message);
@@ -1518,47 +1526,7 @@ namespace BarkFluff.Client.WPF.Pages
         {
             try
             {
-                // Upload files and get file IDs
-                var fileIds = new List<string>();
-                foreach (var attachment in attachments)
-                {
-                    var (error, fileId) = await App.ServerCommunication.UploadFileAsync(
-                        App.GParam,
-                        attachment.FilePath,
-                        attachment.FileType);
-
-                    if (!error.IsSuccess || string.IsNullOrEmpty(fileId))
-                    {
-                        App.ErideMessage.AddMessage(
-                            $"Ошибка загрузки файла {attachment.FileName}: {error.ErrorMessage}",
-                            new Erida { Type = MType.Error });
-                        continue;
-                    }
-
-                    fileIds.Add(fileId);
-
-                    // Clean up temp file if from clipboard
-                    if (attachment.IsFromClipboard)
-                    {
-                        try
-                        {
-                            if (File.Exists(attachment.FilePath))
-                                File.Delete(attachment.FilePath);
-                        }
-                        catch
-                        {
-                            // Ignore errors deleting temp files - they will be cleaned up by OS eventually
-                        }
-                    }
-                }
-
-                if (fileIds.Count == 0)
-                {
-                    App.ErideMessage.AddMessage("Не удалось загрузить ни один файл", new Erida { Type = MType.Error });
-                    return;
-                }
-
-                // Send message with attachments
+                // Determine recipient
                 string recipientId = "0";
                 bool isUserId = false;
                 if (IsOpenChatEmpty)
@@ -1572,21 +1540,185 @@ namespace BarkFluff.Client.WPF.Pages
                     isUserId = false;
                 }
 
-                (bool, bool, string) options = new(true, isUserId, recipientId);
-                var messageControl = new MessageBubble(text, options, fileIds);
-                var message = new MessageModel
+                // Create pending message model for UI
+                var pendingMessage = new MessageModel
                 {
                     Text = text,
                     ChatId = ChatId.Value,
                     SenderId = App.GParam.UserId,
-                    SentAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(DateTime.UtcNow)
+                    SentAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(DateTime.UtcNow),
+                    Attachments = new List<AttachmentsModel>()
                 };
+
+                // Create temporary attachment models for preview
+                foreach (var attachment in attachments)
+                {
+                    pendingMessage.Attachments.Add(new AttachmentsModel
+                    {
+                        Type = DetermineAttachmentType(attachment.FileType),
+                        FileId = string.Empty, // Will be filled after upload
+                        PreviewUrl = attachment.FilePath, // Use local path as preview
+                        Size = new FileInfo(attachment.FilePath).Length
+                    });
+                }
+
+                // Determine message type from first attachment
+                var messageType = attachments.Count > 0 ? GetMessageTypeFromAttachment(attachments[0].FileType) : MessageBubble.MessageType.Text;
+                
+                // Add date separator if needed (BEFORE adding message)
+                AddDateSeparatorIfNeeded();
+                
+                // Create message bubble with pending state
+                var messageControl = new MessageBubble(MessageBubble.MessageOwner.Me, messageType, pendingMessage, IsGroup);
+                
+                // Add to UI immediately (shows with clock icon)
                 AddMessage(messageControl);
-                UpdateChatWithMessage(message);
+
+                // Upload files and get file IDs
+                var fileIds = new List<string>();
+                for (int i = 0; i < attachments.Count; i++)
+                {
+                    var attachment = attachments[i];
+                    
+                    // Create progress reporter
+                    var progress = new Progress<double>(percent =>
+                    {
+                        // Could update UI with progress bar if desired
+                        App.ErideMessage.AddMessage(
+                            $"Загрузка {attachment.FileName}: {(int)(percent * 100)}%",
+                            new Erida { Type = MType.Debug });
+                    });
+
+                    var (error, fileId) = await App.ServerCommunication.UploadFileAsync(
+                        App.GParam,
+                        attachment.FilePath,
+                        attachment.FileType,
+                        progress);
+
+                    if (!error.IsSuccess || string.IsNullOrEmpty(fileId))
+                    {
+                        App.ErideMessage.AddMessage(
+                            $"Ошибка загрузки файла {attachment.FileName}: {error.ErrorMessage}",
+                            new Erida { Type = MType.Error });
+                        continue;
+                    }
+
+                    fileIds.Add(fileId);
+                    
+                    // Update attachment with actual fileId
+                    if (i < pendingMessage.Attachments.Count)
+                    {
+                        pendingMessage.Attachments[i].FileId = fileId;
+                    }
+
+                    // Clean up temp file if from clipboard
+                    if (attachment.IsFromClipboard)
+                    {
+                        try
+                        {
+                            if (File.Exists(attachment.FilePath))
+                                File.Delete(attachment.FilePath);
+                        }
+                        catch
+                        {
+                            // Ignore errors deleting temp files
+                        }
+                    }
+                }
+
+                if (fileIds.Count == 0)
+                {
+                    App.ErideMessage.AddMessage("Не удалось загрузить ни один файл", new Erida { Type = MType.Error });
+                    return;
+                }
+
+                // Send message with uploaded file IDs
+                (bool, string) type = new(isUserId, recipientId);
+                var letter = new ForwardingLetter { Text = text, FilesId = fileIds };
+                var response = await App.ServerCommunication.SendMessage(App.GParam, type, letter);
+                
+                if (!response.error.IsSuccess)
+                {
+                    App.ErideMessage.AddMessage(
+                        $"Ошибка отправки сообщения: {response.error.ErrorMessage}",
+                        new Erida { Type = MType.Error });
+                }
+                else if (response.message != null)
+                {
+                    // Update message control with real message ID and mark as sent
+                    messageControl.MessageId = response.message.MessageId.ToString();
+                    messageControl.MarkAsSent();
+                    
+                    // Save to cache
+                    App.CacheManager.SaveMessage(
+                        response.message.ChatId,
+                        TitleChat,
+                        response.message,
+                        MessageOperation.Added);
+                    
+                    // Update chat list
+                    UpdateChatWithMessage(response.message);
+                }
             }
             catch (Exception ex)
             {
                 App.ErideMessage.AddMessage($"Ошибка отправки сообщения с вложениями: {ex.Message}", new Erida { Type = MType.Error });
+            }
+        }
+
+        private MessageAttachmentType DetermineAttachmentType(Proto.Files.UploadFileType fileType)
+        {
+            return fileType switch
+            {
+                Proto.Files.UploadFileType.MessageAttachmentImage => MessageAttachmentType.Image,
+                Proto.Files.UploadFileType.MessageAttachmentVideo => MessageAttachmentType.Video,
+                Proto.Files.UploadFileType.MessageAttachmentGif => MessageAttachmentType.Gif,
+                Proto.Files.UploadFileType.MessageAttachmentDocument => MessageAttachmentType.Document,
+                _ => MessageAttachmentType.Document
+            };
+        }
+
+        private MessageBubble.MessageType GetMessageTypeFromAttachment(Proto.Files.UploadFileType fileType)
+        {
+            return fileType switch
+            {
+                Proto.Files.UploadFileType.MessageAttachmentImage => MessageBubble.MessageType.Image,
+                Proto.Files.UploadFileType.MessageAttachmentVideo => MessageBubble.MessageType.Video,
+                Proto.Files.UploadFileType.MessageAttachmentGif => MessageBubble.MessageType.Gif,
+                Proto.Files.UploadFileType.MessageAttachmentDocument => MessageBubble.MessageType.Document,
+                _ => MessageBubble.MessageType.Document
+            };
+        }
+
+        private void AddDateSeparatorIfNeeded()
+        {
+            // Check if we need to add a date separator
+            if (MessageArea.Children.Count == 0)
+                return;
+
+            // Get the last message in the area (skip if last item is already a date header)
+            var lastChild = MessageArea.Children[MessageArea.Children.Count - 1];
+            
+            if (lastChild is DateHeaderControl)
+            {
+                // If last item is already a date header, don't add another
+                return;
+            }
+            
+            if (lastChild is MessageBubble lastBubble && lastBubble.SentAt != null)
+            {
+                var lastMessageDate = lastBubble.SentAt.ToDateTime().Date;
+                var currentDate = DateTime.Now.Date;
+
+                // Add separator if dates differ
+                if (lastMessageDate != currentDate)
+                {
+                    var dateHeader = GetDateHeader(currentDate);
+                    var dateControl = new DateHeaderControl { Text = dateHeader };
+                    dateControl.HorizontalAlignment = HorizontalAlignment.Center;
+                    dateControl.Margin = new Thickness(0, 10, 0, 10);
+                    MessageArea.Children.Add(dateControl);
+                }
             }
         }
 
