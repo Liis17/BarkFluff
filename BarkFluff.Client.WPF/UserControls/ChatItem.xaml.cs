@@ -157,28 +157,35 @@ namespace BarkFluff.Client.WPF.UserControls
         /// </summary>
         private void UpdateReadStatusIndicator()
         {
-            // Only show read status for messages sent by current user
-            if (_lastMessageSenderId != _currentUserId)
+            Dispatcher.Invoke(() =>
             {
-                ReadStatusPanel.Visibility = Visibility.Collapsed;
-                return;
-            }
+                // Only show read status for messages sent by current user
+                if (_lastMessageSenderId != _currentUserId)
+                {
+                    ReadStatusPanel.Visibility = Visibility.Collapsed;
+                    return;
+                }
 
-            ReadStatusPanel.Visibility = Visibility.Visible;
+                ReadStatusPanel.Visibility = Visibility.Visible;
 
-            // Check if message has been read by others
-            var readByOthers = _lastMessageReadBy.Any(id => id != _currentUserId);
+                // Check if message has been read by others
+                var readByOthers = _lastMessageReadBy.Any(id => id != _currentUserId);
 
-            if (readByOthers)
-            {
-                // Double checkmark - message read
-                ReadStatusPanel.Opacity = 1.0;
-            }
-            else
-            {
-                // Single/faded checkmark - message sent but not read
-                ReadStatusPanel.Opacity = 0.5;
-            }
+                if (readByOthers)
+                {
+                    // Double checkmark - message read
+                    FirstCheckmark.Visibility = Visibility.Visible;
+                    SecondCheckmark.Visibility = Visibility.Visible;
+                    ReadStatusPanel.Opacity = 1.0;
+                }
+                else
+                {
+                    // Single checkmark - message sent but not read
+                    FirstCheckmark.Visibility = Visibility.Visible;
+                    SecondCheckmark.Visibility = Visibility.Collapsed;
+                    ReadStatusPanel.Opacity = 1.0;
+                }
+            });
         }
 
         private async void ChatItem_Loaded(object sender, RoutedEventArgs e)
