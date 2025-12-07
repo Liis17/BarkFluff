@@ -617,40 +617,10 @@ namespace BarkFluff.Client.WPF.Pages
                 };
                 
                 // Check and add date separator before adding message
-                AddDateSeparatorIfNeededSync();
+                AddDateSeparatorIfNeeded();
                 
                 AddMessage(messageControl);
                 UpdateChatWithMessage(message);
-            }
-        }
-
-        private void AddDateSeparatorIfNeededSync()
-        {
-            // Check if we need to add a date separator
-            if (MessageArea.Children.Count == 0)
-                return;
-
-            // Get the last message in the area
-            var lastMessage = MessageArea.Children[MessageArea.Children.Count - 1];
-            if (lastMessage is MessageBubble lastBubble && lastBubble.SentAt != null)
-            {
-                var lastMessageDate = lastBubble.SentAt.ToDateTime().Date;
-                var currentDate = DateTime.Now.Date;
-
-                // Add separator if dates differ
-                if (lastMessageDate != currentDate)
-                {
-                    var dateHeader = GetDateHeader(currentDate);
-                    var dateControl = new DateHeaderControl { Text = dateHeader };
-                    dateControl.HorizontalAlignment = HorizontalAlignment.Center;
-                    dateControl.Margin = new Thickness(0, 10, 0, 10);
-                    MessageArea.Children.Add(dateControl);
-                }
-            }
-            else if (lastMessage is DateHeaderControl)
-            {
-                // If last item is already a date header, don't add another
-                return;
             }
         }
         private void AddMessage(UserControl control)
@@ -1342,6 +1312,9 @@ namespace BarkFluff.Client.WPF.Pages
                     }
                     else if (message.SenderId != App.GParam.UserId)
                     {
+                        // Add date separator if needed before adding incoming message
+                        AddDateSeparatorIfNeeded();
+                        
                         // Add new incoming message
                         var owner = MessageBubble.MessageOwner.Interlocutor;
                         var type = GetMessageType(message);
@@ -1717,15 +1690,22 @@ namespace BarkFluff.Client.WPF.Pages
             };
         }
 
-        private async Task AddDateSeparatorIfNeeded()
+        private void AddDateSeparatorIfNeeded()
         {
             // Check if we need to add a date separator
             if (MessageArea.Children.Count == 0)
                 return;
 
-            // Get the last message in the area
-            var lastMessage = MessageArea.Children[MessageArea.Children.Count - 1];
-            if (lastMessage is MessageBubble lastBubble && lastBubble.SentAt != null)
+            // Get the last message in the area (skip if last item is already a date header)
+            var lastChild = MessageArea.Children[MessageArea.Children.Count - 1];
+            
+            if (lastChild is DateHeaderControl)
+            {
+                // If last item is already a date header, don't add another
+                return;
+            }
+            
+            if (lastChild is MessageBubble lastBubble && lastBubble.SentAt != null)
             {
                 var lastMessageDate = lastBubble.SentAt.ToDateTime().Date;
                 var currentDate = DateTime.Now.Date;
