@@ -1613,7 +1613,11 @@ namespace BarkFluff.Client.WPF.Pages
                 // Create message bubble with pending state
                 var messageControl = new MessageBubble(MessageBubble.MessageOwner.Me, messageType, pendingMessage, IsGroup);
 
-                // Add to UI immediately (shows with clock icon)
+                // Set up uploading attachment items to show individual progress
+                var localFilePaths = attachments.Select(a => a.FilePath).ToList();
+                messageControl.SetupUploadingAttachments(localFilePaths);
+
+                // Add to UI immediately (shows uploading items with progress)
                 AddMessage(messageControl);
 
                 // Upload files and get file IDs
@@ -1622,13 +1626,11 @@ namespace BarkFluff.Client.WPF.Pages
                 {
                     var attachment = attachments[i];
 
-                    // Create progress reporter
+                    // Create progress reporter for this specific attachment
                     var progress = new Progress<double>(percent =>
                     {
-                        // Could update UI with progress bar if desired
-                        App.ErideMessage.AddMessage(
-                            $"Загрузка {attachment.FileName}: {(int)(percent * 100)}%",
-                            new Erida { Type = MType.Debug });
+                        // Update individual attachment progress
+                        messageControl.UpdateAttachmentProgress(i, percent);
                     });
 
                     var (error, fileId) = await App.ServerCommunication.UploadFileAsync(
@@ -1639,6 +1641,7 @@ namespace BarkFluff.Client.WPF.Pages
 
                     if (!error.IsSuccess || string.IsNullOrEmpty(fileId))
                     {
+                        messageControl.MarkAttachmentFailed(i, error.ErrorMessage ?? "Неизвестная ошибка");
                         App.ErideMessage.AddMessage(
                             $"Ошибка загрузки файла {attachment.FileName}: {error.ErrorMessage}",
                             new Erida { Type = MType.Error });
@@ -1646,6 +1649,7 @@ namespace BarkFluff.Client.WPF.Pages
                     }
 
                     fileIds.Add(fileId);
+                    messageControl.MarkAttachmentUploaded(i, fileId);
 
                     // Update attachment with actual fileId
                     if (i < pendingMessage.Attachments.Count)
@@ -1689,6 +1693,11 @@ namespace BarkFluff.Client.WPF.Pages
                 {
                     // Update message control with real message ID and mark as sent
                     messageControl.MessageId = response.message.MessageId.ToString();
+                    
+                    // Replace uploading panel with actual content
+                    messageControl.ReplaceUploadingWithContent(response.message, messageType);
+                    
+                    // Mark as sent (changes clock to checkmark)
                     messageControl.MarkAsSent();
 
                     // Save to cache
