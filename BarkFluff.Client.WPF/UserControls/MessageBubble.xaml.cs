@@ -21,6 +21,10 @@ namespace BarkFluff.Client.WPF.UserControls
         private const int IMAGE_MAX_WIDTH = 400;
         private const int IMAGE_MAX_HEIGHT = 300;
         private const string DEFAULT_SEND_ERROR = "Ошибка отправки сообщения";
+        
+        // Status indicator opacity values
+        private const double STATUS_READ_OPACITY = 1.0;
+        private const double STATUS_SENT_OPACITY = 0.7;
         #endregion Constants
 
         public string MessageId { get; set; } = string.Empty;
@@ -287,15 +291,15 @@ namespace BarkFluff.Client.WPF.UserControls
                 // Double checkmark - message read
                 SingleCheckmark.Visibility = Visibility.Visible;
                 DoubleCheckmark.Visibility = Visibility.Visible;
-                SingleCheckmark.Opacity = 1.0;
-                DoubleCheckmark.Opacity = 1.0;
+                SingleCheckmark.Opacity = STATUS_READ_OPACITY;
+                DoubleCheckmark.Opacity = STATUS_READ_OPACITY;
             }
             else if (!string.IsNullOrEmpty(MessageId))
             {
                 // Single checkmark - message sent but not read
                 SingleCheckmark.Visibility = Visibility.Visible;
                 DoubleCheckmark.Visibility = Visibility.Collapsed;
-                SingleCheckmark.Opacity = 0.7;
+                SingleCheckmark.Opacity = STATUS_SENT_OPACITY;
             }
             else
             {

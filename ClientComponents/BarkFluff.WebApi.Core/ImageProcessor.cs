@@ -1,5 +1,7 @@
+using System;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.IO;
 using System.Linq;
 
 namespace BarkFluff.WebApi.Core
@@ -105,6 +107,9 @@ namespace BarkFluff.WebApi.Core
         /// <returns>Path to processed file (may be same as input if no conversion needed)</returns>
         public static async Task<string> ProcessImageForUploadAsync(string filePath)
         {
+            if (string.IsNullOrWhiteSpace(filePath))
+                throw new ArgumentNullException(nameof(filePath), "File path cannot be null or empty");
+
             if (!File.Exists(filePath))
                 throw new FileNotFoundException("Source file not found", filePath);
 
