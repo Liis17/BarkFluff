@@ -547,7 +547,14 @@ namespace BarkFluff.WebApi.Core
                 // Clean up processed file if it was created
                 if (processedFilePath != null && processedFilePath != filePath && File.Exists(processedFilePath))
                 {
-                    try { File.Delete(processedFilePath); } catch { }
+                    try 
+                    { 
+                        File.Delete(processedFilePath); 
+                    } 
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"WebApi: Failed to delete temp file: {ex.Message}");
+                    }
                 }
             }
         }

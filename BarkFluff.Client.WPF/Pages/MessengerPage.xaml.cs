@@ -1572,7 +1572,7 @@ namespace BarkFluff.Client.WPF.Pages
                 AddMessage(messageControl);
                 
                 // Add date separator if needed
-                await AddDateSeparatorIfNeeded();
+                AddDateSeparatorIfNeeded();
 
                 // Upload files and get file IDs
                 var fileIds = new List<string>();

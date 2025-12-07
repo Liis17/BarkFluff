@@ -4,11 +4,24 @@ using System.Drawing.Imaging;
 namespace BarkFluff.WebApi.Core
 {
     /// <summary>
-    /// Provides image processing utilities for optimizing images before upload
+    /// Provides image processing utilities for optimizing images before upload.
+    /// 
+    /// NOTE: This currently uses System.Drawing.Common which has limitations:
+    /// - Not recommended for server-side applications
+    /// - May have thread safety issues
+    /// - Only supported on Windows (with limited Linux support)
+    /// 
+    /// For future improvements, consider migrating to:
+    /// - ImageSharp (cross-platform, modern API)
+    /// - SkiaSharp (cross-platform, performant)
+    /// 
+    /// However, for a WPF client application, System.Drawing.Common is acceptable.
     /// </summary>
     public static class ImageProcessor
     {
         private const int JPEG_QUALITY = 85;
+        private const long MAX_IMAGE_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB limit
+        
         private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
         {
             ".jpg", ".jpeg", ".png", ".bmp", ".webp"
@@ -49,6 +62,14 @@ namespace BarkFluff.WebApi.Core
         {
             try
             {
+                // Check file size before loading
+                var fileInfo = new FileInfo(sourcePath);
+                if (fileInfo.Length > MAX_IMAGE_SIZE_BYTES)
+                {
+                    System.Diagnostics.Debug.WriteLine($"ImageProcessor: Image too large ({fileInfo.Length} bytes), skipping conversion");
+                    return false;
+                }
+
                 return await Task.Run(() =>
                 {
                     using (var image = Image.FromFile(sourcePath))
@@ -68,8 +89,10 @@ namespace BarkFluff.WebApi.Core
                     }
                 });
             }
-            catch
+            catch (Exception ex)
             {
+                // Log error but don't throw - caller will handle by using original file
+                System.Diagnostics.Debug.WriteLine($"ImageProcessor: Failed to convert image: {ex.Message}");
                 return false;
             }
         }
@@ -99,7 +122,14 @@ namespace BarkFluff.WebApi.Core
                 // If conversion failed, return original file
                 if (File.Exists(tempPath))
                 {
-                    try { File.Delete(tempPath); } catch { }
+                    try 
+                    { 
+                        File.Delete(tempPath); 
+                    } 
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"ImageProcessor: Failed to delete temp file: {ex.Message}");
+                    }
                 }
                 return filePath;
             }
