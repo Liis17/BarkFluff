@@ -459,23 +459,55 @@ namespace BarkFluff.WebApi.Core
         /// <returns>File ID if successful, or error</returns>
         public async Task<(ErrorReturner error, string? fileId)> UploadFileAsync(GlobalParam globalParam, string filePath, Proto.Files.UploadFileType fileType)
         {
+            return await UploadFileAsync(globalParam, filePath, fileType, null);
+        }
+
+        /// <summary>
+        /// Uploads a file to the server with progress reporting and automatic image optimization.
+        /// </summary>
+        /// <param name="globalParam">Application parameters</param>
+        /// <param name="filePath">Path to the file to upload</param>
+        /// <param name="fileType">Type of file being uploaded</param>
+        /// <param name="progress">Progress callback (0.0 to 1.0)</param>
+        /// <returns>File ID if successful, or error</returns>
+        public async Task<(ErrorReturner error, string? fileId)> UploadFileAsync(
+            GlobalParam globalParam, 
+            string filePath, 
+            Proto.Files.UploadFileType fileType, 
+            IProgress<double>? progress)
+        {
+            string? processedFilePath = null;
             try
             {
                 return await SafeCallAsync(async () =>
                 {
+                    // Report initial progress
+                    progress?.Report(0.1);
+
+                    // Process image if needed (convert to JPEG with compression)
+                    string fileToUpload = filePath;
+                    if (fileType == Proto.Files.UploadFileType.MessageAttachmentImage)
+                    {
+                        processedFilePath = await ImageProcessor.ProcessImageForUploadAsync(filePath);
+                        fileToUpload = processedFilePath;
+                        progress?.Report(0.2);
+                    }
+
                     var getLinkUpload = await FilesAC!.GetUploadUrlAsync(new Proto.Files.GetUploadUrlRequest
                     {
                         FileType = fileType
                     });
+                    progress?.Report(0.3);
 
                     using var formData = new MultipartFormDataContent();
 
                     // Note: Reading entire file into memory. For large files, consider streaming approach.
-                    var fileBytes = await File.ReadAllBytesAsync(filePath);
+                    var fileBytes = await File.ReadAllBytesAsync(fileToUpload);
                     var fileContent = new ByteArrayContent(fileBytes);
+                    progress?.Report(0.5);
                     
                     // Determine content type based on file extension
-                    var extension = Path.GetExtension(filePath).ToLowerInvariant();
+                    var extension = Path.GetExtension(fileToUpload).ToLowerInvariant();
                     var contentType = extension switch
                     {
                         ".jpg" or ".jpeg" => "image/jpeg",
@@ -493,9 +525,11 @@ namespace BarkFluff.WebApi.Core
                     fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
 
                     formData.Add(fileContent, "file", Path.GetFileName(filePath));
+                    progress?.Report(0.7);
 
                     var response = await _httpClient.PostAsync(getLinkUpload.Url, formData);
                     response.EnsureSuccessStatusCode();
+                    progress?.Report(1.0);
 
                     return (new ErrorReturner(true), getLinkUpload.FileId);
                 }, globalParam);
@@ -507,6 +541,21 @@ namespace BarkFluff.WebApi.Core
             catch (Exception ex)
             {
                 return (new ErrorReturner(false, $"Ошибка загрузки файла: {ex.Message}"), null);
+            }
+            finally
+            {
+                // Clean up processed file if it was created
+                if (processedFilePath != null && processedFilePath != filePath && File.Exists(processedFilePath))
+                {
+                    try 
+                    { 
+                        File.Delete(processedFilePath); 
+                    } 
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"WebApi: Failed to delete temp file: {ex.Message}");
+                    }
+                }
             }
         }
 
