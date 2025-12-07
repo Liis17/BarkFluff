@@ -3,6 +3,7 @@ namespace BarkFluff.Updates.Host;
 using System.Threading;
 using System.Threading.Tasks;
 using Features.SubscribeNewMessages;
+using Features.SubscribeReadReceipts;
 using Grpc.Core;
 using GrpcServer.XAuth;
 using Microsoft.AspNetCore.Authorization;
@@ -14,13 +15,16 @@ public class UpdatesApiService : BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiBa
 {
     private readonly UserContext _userContext;
     private readonly StreamSubscriptionsManager _subscriptionsManager;
+    private readonly ReadReceiptSubscriptionsManager _readReceiptSubscriptionsManager;
 
     public UpdatesApiService(
         UserContext userContext,
-        StreamSubscriptionsManager subscriptionsManager)
+        StreamSubscriptionsManager subscriptionsManager,
+        ReadReceiptSubscriptionsManager readReceiptSubscriptionsManager)
     {
         _userContext = userContext;
         _subscriptionsManager = subscriptionsManager;
+        _readReceiptSubscriptionsManager = readReceiptSubscriptionsManager;
     }
     
     public override async Task SubscribeNewMessages(
@@ -47,6 +51,48 @@ public class UpdatesApiService : BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiBa
         {
             // Удаляем подписку при завершении
             _subscriptionsManager.RemoveSubscription(userId, responseStream);
+        }
+    }
+
+    public override async Task SubscribeToReadReceipts(
+        SubscribeReadReceiptsRequest request,
+        IServerStreamWriter<ReadReceiptUpdate> responseStream,
+        ServerCallContext context)
+    {
+        long userId = _userContext.UserId;
+
+        // Регистрируем подписку
+        if (string.IsNullOrEmpty(request.ChatId) || request.LastMessageOnly)
+        {
+            // Global subscription for chat list (last message only)
+            _readReceiptSubscriptionsManager.RegisterGlobalSubscription(userId, responseStream);
+        }
+        else
+        {
+            // Chat-specific subscription for open chat
+            _readReceiptSubscriptionsManager.RegisterChatSubscription(userId, request.ChatId, responseStream);
+        }
+
+        try
+        {
+            // Ждем отмены запроса (например, при отключении клиента)
+            await Task.Delay(Timeout.Infinite, context.CancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // Нормальное завершение при отмене запроса
+        }
+        finally
+        {
+            // Удаляем подписку при завершении
+            if (string.IsNullOrEmpty(request.ChatId) || request.LastMessageOnly)
+            {
+                _readReceiptSubscriptionsManager.RemoveGlobalSubscription(userId, responseStream);
+            }
+            else
+            {
+                _readReceiptSubscriptionsManager.RemoveChatSubscription(userId, request.ChatId, responseStream);
+            }
         }
     }
 }
