@@ -470,6 +470,7 @@ namespace BarkFluff.WebApi.Core
 
                     using var formData = new MultipartFormDataContent();
 
+                    // Note: Reading entire file into memory. For large files, consider streaming approach.
                     var fileBytes = await File.ReadAllBytesAsync(filePath);
                     var fileContent = new ByteArrayContent(fileBytes);
                     

@@ -60,7 +60,6 @@ namespace BarkFluff.Client.WPF.Pages
             AttachmentPreview.OnSend += AttachmentPreview_OnSend;
 
             // Subscribe to paste event for TextForMessage
-            TextForMessage.PreviewKeyDown += TextForMessage_PreviewKeyDown;
             DataObject.AddPastingHandler(TextForMessage, OnTextForMessagePaste);
         }
 
@@ -1546,7 +1545,10 @@ namespace BarkFluff.Client.WPF.Pages
                             if (File.Exists(attachment.FilePath))
                                 File.Delete(attachment.FilePath);
                         }
-                        catch { }
+                        catch
+                        {
+                            // Ignore errors deleting temp files - they will be cleaned up by OS eventually
+                        }
                     }
                 }
 
@@ -1585,15 +1587,6 @@ namespace BarkFluff.Client.WPF.Pages
             catch (Exception ex)
             {
                 App.ErideMessage.AddMessage($"Ошибка отправки сообщения с вложениями: {ex.Message}", new Erida { Type = MType.Error });
-            }
-        }
-
-        private void TextForMessage_PreviewKeyDown(object sender, KeyEventArgs e)
-        {
-            // Handle Ctrl+V for paste
-            if (e.Key == Key.V && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
-            {
-                // Paste will be handled by OnTextForMessagePaste
             }
         }
 

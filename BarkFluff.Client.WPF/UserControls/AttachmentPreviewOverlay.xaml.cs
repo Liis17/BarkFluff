@@ -76,77 +76,64 @@ namespace BarkFluff.Client.WPF.UserControls
                 item.FileType == UploadFileType.MessageAttachmentGif)
             {
                 // Show image preview
-                var image = new Image
+                try
                 {
-                    Source = new BitmapImage(new Uri(item.FilePath)),
-                    Stretch = System.Windows.Media.Stretch.UniformToFill
-                };
-                previewBorder.Child = image;
+                    var image = new Image
+                    {
+                        Source = new BitmapImage(new Uri(Path.GetFullPath(item.FilePath))),
+                        Stretch = System.Windows.Media.Stretch.UniformToFill
+                    };
+                    previewBorder.Child = image;
+                }
+                catch
+                {
+                    // Fallback to file icon if image can't be loaded
+                    ShowFileIcon(previewBorder, item);
+                }
             }
             else if (item.FileType == UploadFileType.MessageAttachmentVideo)
             {
                 // Show video icon with file name
-                var stackPanel = new StackPanel
-                {
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center
-                };
-
-                var icon = new Wpf.Ui.Controls.SymbolIcon
-                {
-                    Symbol = Wpf.Ui.Controls.SymbolRegular.Video24,
-                    FontSize = 48,
-                    Foreground = System.Windows.Media.Brushes.White
-                };
-
-                var text = new TextBlock
-                {
-                    Text = item.FileName,
-                    Foreground = System.Windows.Media.Brushes.White,
-                    FontSize = 10,
-                    TextWrapping = TextWrapping.Wrap,
-                    TextAlignment = TextAlignment.Center,
-                    MaxWidth = 110,
-                    Margin = new Thickness(0, 8, 0, 0)
-                };
-
-                stackPanel.Children.Add(icon);
-                stackPanel.Children.Add(text);
-                previewBorder.Child = stackPanel;
+                ShowFileIcon(previewBorder, item, Wpf.Ui.Controls.SymbolRegular.Video24);
             }
             else
             {
                 // Show document icon with file name
-                var stackPanel = new StackPanel
-                {
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center
-                };
-
-                var icon = new Wpf.Ui.Controls.SymbolIcon
-                {
-                    Symbol = Wpf.Ui.Controls.SymbolRegular.Document24,
-                    FontSize = 48,
-                    Foreground = System.Windows.Media.Brushes.White
-                };
-
-                var text = new TextBlock
-                {
-                    Text = item.FileName,
-                    Foreground = System.Windows.Media.Brushes.White,
-                    FontSize = 10,
-                    TextWrapping = TextWrapping.Wrap,
-                    TextAlignment = TextAlignment.Center,
-                    MaxWidth = 110,
-                    Margin = new Thickness(0, 8, 0, 0)
-                };
-
-                stackPanel.Children.Add(icon);
-                stackPanel.Children.Add(text);
-                previewBorder.Child = stackPanel;
+                ShowFileIcon(previewBorder, item, Wpf.Ui.Controls.SymbolRegular.Document24);
             }
 
             PreviewItemsControl.Items.Add(previewBorder);
+        }
+
+        private void ShowFileIcon(Border previewBorder, AttachmentPreviewItem item, Wpf.Ui.Controls.SymbolRegular symbol = Wpf.Ui.Controls.SymbolRegular.Document24)
+        {
+            var stackPanel = new StackPanel
+            {
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            var icon = new Wpf.Ui.Controls.SymbolIcon
+            {
+                Symbol = symbol,
+                FontSize = 48,
+                Foreground = System.Windows.Media.Brushes.White
+            };
+
+            var text = new TextBlock
+            {
+                Text = item.FileName,
+                Foreground = System.Windows.Media.Brushes.White,
+                FontSize = 10,
+                TextWrapping = TextWrapping.Wrap,
+                TextAlignment = TextAlignment.Center,
+                MaxWidth = 110,
+                Margin = new Thickness(0, 8, 0, 0)
+            };
+
+            stackPanel.Children.Add(icon);
+            stackPanel.Children.Add(text);
+            previewBorder.Child = stackPanel;
         }
 
         private UploadFileType DetermineFileType(string filePath)
@@ -177,7 +164,10 @@ namespace BarkFluff.Client.WPF.UserControls
                     if (File.Exists(item.FilePath))
                         File.Delete(item.FilePath);
                 }
-                catch { }
+                catch
+                {
+                    // Ignore errors deleting temp files - they will be cleaned up by OS eventually
+                }
             }
 
             _attachments.Clear();
