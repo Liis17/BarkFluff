@@ -2,6 +2,7 @@
 using BarkFluff.Client.WPF.Pages;
 using BarkFluff.Client.WPF.Pages.PinCode;
 using BarkFluff.Client.WPF.Pages.SetupPages;
+using BarkFluff.Client.WPF.Services.App;
 using BarkFluff.WebApi.Core.MessengerData;
 
 using System.IO;
@@ -30,9 +31,20 @@ namespace BarkFluff.Client.WPF
 
             MouseDown += MainWindow_MouseDown;
             Closing += MainWindow_Closing;
+            Loaded += MainWindow_Loaded;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
             //ExecuteComboAction();
         }
+
+        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            App.WindowStateService.IsApplicationActive.PropertyChanged += (s, e) =>
+            {
+                bool isActive = App.WindowStateService.IsApplicationActive.Value;
+                BarkFluff.Client.WPF.App.ErideMessage.AddMessage($"Окно теперь: {isActive}", new BarkFluff.Client.WPF.Services.Erida.MessageType { Type = BarkFluff.Client.WPF.Services.Erida.MessageType.MessageTypeEnum.Error });
+            };
+        }
+
         private void MainWindowBootstrap()
         {
 #if DEBUG
@@ -41,6 +53,13 @@ namespace BarkFluff.Client.WPF
 
             //применение темы
             ThemeLoader();
+            
+            // Пример использования WindowStateService:
+            // App.WindowStateService.IsApplicationActive.PropertyChanged += (s, e) =>
+            // {
+            //     bool isActive = App.WindowStateService.IsApplicationActive.Value;
+            //     // Здесь можно обновлять статус онлайн пользователя
+            // };
         }
         private void ThemeLoader()
         {
