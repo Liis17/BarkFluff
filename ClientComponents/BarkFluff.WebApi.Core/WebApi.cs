@@ -451,6 +451,65 @@ namespace BarkFluff.WebApi.Core
         }
 
         /// <summary>
+        /// Uploads a file to the server and returns the file ID.
+        /// </summary>
+        /// <param name="globalParam">Application parameters</param>
+        /// <param name="filePath">Path to the file to upload</param>
+        /// <param name="fileType">Type of file being uploaded</param>
+        /// <returns>File ID if successful, or error</returns>
+        public async Task<(ErrorReturner error, string? fileId)> UploadFileAsync(GlobalParam globalParam, string filePath, Proto.Files.UploadFileType fileType)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var getLinkUpload = await FilesAC!.GetUploadUrlAsync(new Proto.Files.GetUploadUrlRequest
+                    {
+                        FileType = fileType
+                    });
+
+                    using var formData = new MultipartFormDataContent();
+
+                    var fileBytes = await File.ReadAllBytesAsync(filePath);
+                    var fileContent = new ByteArrayContent(fileBytes);
+                    
+                    // Determine content type based on file extension
+                    var extension = Path.GetExtension(filePath).ToLowerInvariant();
+                    var contentType = extension switch
+                    {
+                        ".jpg" or ".jpeg" => "image/jpeg",
+                        ".png" => "image/png",
+                        ".gif" => "image/gif",
+                        ".webp" => "image/webp",
+                        ".mp4" => "video/mp4",
+                        ".webm" => "video/webm",
+                        ".avi" => "video/x-msvideo",
+                        ".mov" => "video/quicktime",
+                        ".mkv" => "video/x-matroska",
+                        _ => "application/octet-stream"
+                    };
+
+                    fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
+
+                    formData.Add(fileContent, "file", Path.GetFileName(filePath));
+
+                    var response = await _httpClient.PostAsync(getLinkUpload.Url, formData);
+                    response.EnsureSuccessStatusCode();
+
+                    return (new ErrorReturner(true), getLinkUpload.FileId);
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Files.NotValidFileIdException)
+            {
+                return (new ErrorReturner(false, "Неверный формат идентификатора файла. Он должен быть guid"), null);
+            }
+            catch (Exception ex)
+            {
+                return (new ErrorReturner(false, $"Ошибка загрузки файла: {ex.Message}"), null);
+            }
+        }
+
+        /// <summary>
         /// Получает ссылку на аватар пользователя по его ID.
         /// </summary>
         /// <param name="globalParam">Параметры приложения</param>
@@ -993,7 +1052,7 @@ namespace BarkFluff.WebApi.Core
                         response = await MessagesAC!.SendMessageAsync(new Proto.Messages.SendMessageRequest
                         {
                             ChatId = options.recipient,
-                            Message = new Proto.Messages.OutgoingMessage { Text = letter.Text },
+                            Message = new Proto.Messages.OutgoingMessage { Text = letter.Text, FilesIds = { letter.FilesId } },
                         });
                     }
                     else
