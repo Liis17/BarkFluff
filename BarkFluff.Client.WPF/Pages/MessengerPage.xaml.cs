@@ -1509,13 +1509,13 @@ namespace BarkFluff.Client.WPF.Pages
                 // Send each file as a separate message
                 foreach (var attachment in e.Attachments)
                 {
-                    await SendMessageWithAttachments(string.Empty, new List<UserControls.AttachmentPreviewItem> { attachment });
+                    await SendMessageWithAttachments(e.MessageText, new List<UserControls.AttachmentPreviewItem> { attachment });
                 }
             }
             else
             {
                 // Send all files in one message
-                await SendMessageWithAttachments(string.Empty, e.Attachments);
+                await SendMessageWithAttachments(e.MessageText, e.Attachments);
             }
 
             AttachmentPreview.Clear();
