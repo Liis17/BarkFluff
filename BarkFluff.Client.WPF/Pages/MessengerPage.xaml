@@ -557,6 +557,7 @@
 
                             <!--  Панель ввода сообщения  -->
                             <Border
+                                x:Name="TFMBackground"
                                 Grid.Row="2"
                                 Margin="10,0,10,10"
                                 Background="#7653b1"
@@ -580,6 +581,7 @@
                                     </Rectangle>
                                     <!--  Кнопка прикрепления  -->
                                     <Button
+                                        x:Name="AttachFileButton"
                                         Grid.Column="0"
                                         Width="50"
                                         Height="50"
