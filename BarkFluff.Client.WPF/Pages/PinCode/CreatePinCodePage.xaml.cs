@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 
 using Erida = BarkFluff.Client.WPF.Services.Erida.MessageType;
 using MType = BarkFluff.Client.WPF.Services.Erida.MessageType.MessageTypeEnum;
@@ -55,6 +56,7 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
             }
 
             UpdateFirstPinCode();
+            UpdateStepIndicator();
         }
 
         private void SecondPinBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -68,6 +70,7 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
             }
 
             UpdateSecondPinCode();
+            UpdateStepIndicator();
         }
 
         private void PinBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
@@ -152,6 +155,8 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
                     }
                 }
             }
+
+            UpdateStepIndicator();
         }
 
         private void FocusFirstBoxZero(object sender, RoutedEventArgs e)
@@ -198,6 +203,42 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
             foreach (var box in secondBoxes)
             {
                 secondPinCode += box.Text;
+            }
+        }
+
+        private void UpdateStepIndicator()
+        {
+            bool isFirstStepComplete = firstPinCode.Length == 4;
+            bool isSecondStepActive = !string.IsNullOrEmpty(secondPinCode) || isFirstStepComplete;
+
+            if (isSecondStepActive)
+            {
+                // Активируем шаг 2
+                Step2Circle.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#C87E5B"));
+                Step2CircleText.Foreground = Brushes.White;
+                Step2Text.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#D0D0D0"));
+                Step2Text.FontWeight = FontWeights.Medium;
+
+                // Делаем шаг 1 завершенным
+                if (isFirstStepComplete)
+                {
+                    Step1Circle.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#5DBE6A"));
+                    Step1Text.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#B0B0B0"));
+                    Step1Text.FontWeight = FontWeights.Normal;
+                }
+            }
+            else
+            {
+                // Активен шаг 1
+                Step1Circle.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#C87E5B"));
+                Step1Text.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#D0D0D0"));
+                Step1Text.FontWeight = FontWeights.Medium;
+
+                // Шаг 2 неактивен
+                Step2Circle.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#404040"));
+                Step2CircleText.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#808080"));
+                Step2Text.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#808080"));
+                Step2Text.FontWeight = FontWeights.Normal;
             }
         }
     }
