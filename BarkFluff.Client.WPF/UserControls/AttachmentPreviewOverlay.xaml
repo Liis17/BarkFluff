@@ -31,6 +31,7 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <!--  Header  -->
@@ -46,7 +47,7 @@
             <!--  Preview Area  -->
             <ScrollViewer
                 Grid.Row="1"
-                MaxHeight="450"
+                MaxHeight="400"
                 VerticalScrollBarVisibility="Auto"
                 HorizontalScrollBarVisibility="Disabled">
                 <ItemsControl x:Name="PreviewItemsControl">
@@ -58,8 +59,66 @@
                 </ItemsControl>
             </ScrollViewer>
 
+            <!--  Message Text Input  -->
+            <Grid Grid.Row="2" Margin="0,12,0,0">
+                <TextBox
+                    x:Name="MessageTextBox"
+                    MinHeight="40"
+                    MaxHeight="80"
+                    Padding="12,8"
+                    Background="#FF3C3C3C"
+                    BorderBrush="#FF505050"
+                    BorderThickness="1"
+                    FontFamily="{DynamicResource AdwaitaSans}"
+                    FontSize="14"
+                    Foreground="White"
+                    TextWrapping="Wrap"
+                    AcceptsReturn="True"
+                    VerticalScrollBarVisibility="Auto"
+                    VerticalContentAlignment="Top">
+                    <TextBox.Style>
+                        <Style TargetType="TextBox">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="TextBox">
+                                        <Border
+                                            Background="{TemplateBinding Background}"
+                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                            BorderThickness="{TemplateBinding BorderThickness}"
+                                            CornerRadius="8">
+                                            <ScrollViewer
+                                                x:Name="PART_ContentHost"
+                                                Margin="{TemplateBinding Padding}"
+                                                VerticalScrollBarVisibility="{TemplateBinding VerticalScrollBarVisibility}" />
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                            <Style.Triggers>
+                                <Trigger Property="Text" Value="">
+                                    <Setter Property="Background">
+                                        <Setter.Value>
+                                            <VisualBrush Stretch="None" AlignmentX="Left" AlignmentY="Center">
+                                                <VisualBrush.Visual>
+                                                    <TextBlock
+                                                        Text="Добавить подпись..."
+                                                        FontFamily="{DynamicResource AdwaitaSans}"
+                                                        FontSize="14"
+                                                        Foreground="#FF8A8A8A"
+                                                        Margin="12,0,0,0" />
+                                                </VisualBrush.Visual>
+                                            </VisualBrush>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBox.Style>
+                </TextBox>
+            </Grid>
+
             <!--  Footer with buttons  -->
-            <Grid Grid.Row="2" Margin="0,16,0,0">
+            <Grid Grid.Row="3" Margin="0,16,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />

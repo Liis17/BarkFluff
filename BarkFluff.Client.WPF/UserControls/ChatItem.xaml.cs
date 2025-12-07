@@ -144,6 +144,15 @@ namespace BarkFluff.Client.WPF.UserControls
         }
 
         /// <summary>
+        /// Updates the read status for the last message (called when read receipt is received)
+        /// </summary>
+        public void UpdateLastMessageReadStatus(List<long> readBy)
+        {
+            _lastMessageReadBy = readBy;
+            UpdateReadStatusIndicator();
+        }
+
+        /// <summary>
         /// Updates the read status checkmarks based on the last message
         /// </summary>
         private void UpdateReadStatusIndicator()
