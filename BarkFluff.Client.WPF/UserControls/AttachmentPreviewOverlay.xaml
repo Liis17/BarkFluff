@@ -10,13 +10,13 @@
     d:DesignWidth="500"
     mc:Ignorable="d">
     <Border
+        MaxWidth="600"
+        MaxHeight="700"
         Padding="20"
         HorizontalAlignment="Center"
         VerticalAlignment="Center"
         Background="#FF2D2D30"
-        CornerRadius="16"
-        MaxWidth="600"
-        MaxHeight="700">
+        CornerRadius="16">
         <Border.Effect>
             <DropShadowEffect
                 BlurRadius="30"
@@ -47,8 +47,8 @@
             <ScrollViewer
                 Grid.Row="1"
                 MaxHeight="450"
-                VerticalScrollBarVisibility="Auto"
-                HorizontalScrollBarVisibility="Disabled">
+                HorizontalScrollBarVisibility="Disabled"
+                VerticalScrollBarVisibility="Auto">
                 <ItemsControl x:Name="PreviewItemsControl">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -102,6 +102,7 @@
                         x:Name="SendOptionsButton"
                         Grid.Column="1"
                         Width="30"
+                        Height="30"
                         Padding="0"
                         Background="#FFCE6432"
                         Click="SendOptionsButton_Click"

@@ -71,12 +71,12 @@
 
             <!--  Заголовок  -->
             <TextBlock
-                Margin="0,0,0,32"
+                Margin="0,0,0,40"
                 HorizontalAlignment="Center"
                 FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="28"
+                FontSize="26"
                 FontWeight="SemiBold"
-                Foreground="White"
+                Foreground="#E8E8E8"
                 Text="Введите код приложения" />
 
             <!--  Карточка с полями ввода  -->
@@ -123,50 +123,51 @@
 
                     <!--  Индикатор попыток  -->
                     <StackPanel
-                        Margin="0,20,0,0"
+                        Margin="0,24,0,0"
                         HorizontalAlignment="Center"
                         Orientation="Horizontal">
                         <TextBlock
-                            Margin="0,0,12,0"
+                            Margin="0,0,14,0"
                             VerticalAlignment="Center"
                             FontFamily="{DynamicResource AdwaitaSans}"
                             FontSize="13"
-                            Foreground="#9E9E9E"
+                            FontWeight="Medium"
+                            Foreground="#A0A0A0"
                             Text="Попытки:" />
                         <Border
                             x:Name="key3"
-                            Width="28"
-                            Height="28"
-                            Margin="4,0"
+                            Width="30"
+                            Height="30"
+                            Margin="5,0"
                             Background="#2D4A20"
-                            CornerRadius="14">
+                            CornerRadius="15">
                             <ui:SymbolIcon
-                                FontSize="14"
-                                Foreground="#4CAF50"
+                                FontSize="15"
+                                Foreground="#5DBE6A"
                                 Symbol="Checkmark24" />
                         </Border>
                         <Border
                             x:Name="key2"
-                            Width="28"
-                            Height="28"
-                            Margin="4,0"
+                            Width="30"
+                            Height="30"
+                            Margin="5,0"
                             Background="#2D4A20"
-                            CornerRadius="14">
+                            CornerRadius="15">
                             <ui:SymbolIcon
-                                FontSize="14"
-                                Foreground="#4CAF50"
+                                FontSize="15"
+                                Foreground="#5DBE6A"
                                 Symbol="Checkmark24" />
                         </Border>
                         <Border
                             x:Name="key1"
-                            Width="28"
-                            Height="28"
-                            Margin="4,0"
+                            Width="30"
+                            Height="30"
+                            Margin="5,0"
                             Background="#2D4A20"
-                            CornerRadius="14">
+                            CornerRadius="15">
                             <ui:SymbolIcon
-                                FontSize="14"
-                                Foreground="#4CAF50"
+                                FontSize="15"
+                                Foreground="#5DBE6A"
                                 Symbol="Checkmark24" />
                         </Border>
                     </StackPanel>
@@ -174,12 +175,12 @@
                     <!--  Текст подсказки  -->
                     <TextBlock
                         x:Name="helper"
-                        Margin="0,16,0,0"
+                        Margin="0,20,0,0"
                         HorizontalAlignment="Center"
                         FontFamily="{DynamicResource AdwaitaSans}"
-                        FontSize="14"
+                        FontSize="13"
                         FontWeight="Normal"
-                        Foreground="#FFAB00"
+                        Foreground="#E8A870"
                         Text=""
                         TextAlignment="Center" />
                 </StackPanel>
@@ -189,29 +190,29 @@
         <!--  Нижняя панель  -->
         <Border
             Grid.Row="1"
-            Margin="40,0,40,24"
-            Padding="20,16"
+            Margin="40,0,40,32"
+            Padding="24,18"
             HorizontalAlignment="Center"
-            Background="#242424"
-            CornerRadius="10">
+            Background="#2A2A2A"
+            CornerRadius="12">
             <StackPanel
                 x:Name="ButtonStack"
                 HorizontalAlignment="Center"
                 Loaded="ButtonStack_Loaded"
                 Orientation="Vertical">
                 <TextBlock
-                    Margin="0,0,0,12"
+                    Margin="0,0,0,14"
                     HorizontalAlignment="Center"
                     FontFamily="{DynamicResource AdwaitaSans}"
                     FontSize="13"
                     FontWeight="Normal"
-                    Foreground="#9E9E9E"
+                    Foreground="#A8A8A8"
                     Text="Проблемы со входом? Попробуйте сбросить приложение." />
                 <ui:Button Click="RemoveSettings" Style="{StaticResource Win11DangerButton}">
                     <ui:Button.Content>
                         <StackPanel Orientation="Horizontal">
                             <ui:SymbolIcon
-                                Margin="0,0,8,0"
+                                Margin="0,0,10,0"
                                 FontSize="16"
                                 Foreground="White"
                                 Symbol="Delete24" />

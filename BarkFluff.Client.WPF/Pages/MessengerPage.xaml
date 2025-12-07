@@ -619,11 +619,11 @@
                                         PlacementTarget="{Binding ElementName=AttachFileButton}"
                                         StaysOpen="False">
                                         <Border
+                                            Padding="4"
                                             Background="#FF3C3C3C"
                                             BorderBrush="#FF505050"
                                             BorderThickness="1"
-                                            CornerRadius="8"
-                                            Padding="4">
+                                            CornerRadius="8">
                                             <StackPanel>
                                                 <Button
                                                     x:Name="AttachMediaButton"
@@ -636,10 +636,10 @@
                                                     Foreground="White">
                                                     <StackPanel Orientation="Horizontal">
                                                         <ui:SymbolIcon
-                                                            FontSize="18"
                                                             Margin="0,0,8,0"
+                                                            FontSize="18"
                                                             Symbol="Image20" />
-                                                        <TextBlock Text="фото или видео" VerticalAlignment="Center" />
+                                                        <TextBlock VerticalAlignment="Center" Text="фото или видео" />
                                                     </StackPanel>
                                                     <Button.Style>
                                                         <Style TargetType="Button">
@@ -675,10 +675,10 @@
                                                     Foreground="White">
                                                     <StackPanel Orientation="Horizontal">
                                                         <ui:SymbolIcon
-                                                            FontSize="18"
                                                             Margin="0,0,8,0"
+                                                            FontSize="18"
                                                             Symbol="Document20" />
-                                                        <TextBlock Text="файл" VerticalAlignment="Center" />
+                                                        <TextBlock VerticalAlignment="Center" Text="файл" />
                                                     </StackPanel>
                                                     <Button.Style>
                                                         <Style TargetType="Button">
@@ -711,22 +711,21 @@
                                     <ui:TextBox
                                         x:Name="TextForMessage"
                                         Grid.Column="1"
-                                        Height="35"
+                                        MinHeight="45"
                                         VerticalAlignment="Center"
                                         AcceptsReturn="False"
                                         AcceptsTab="True"
-                                        Background="Transparent"
-                                        BorderThickness="0"
                                         ClearButtonEnabled="False"
                                         FontFamily="{DynamicResource AdwaitaSans}"
-                                        FontSize="14"
-                                        Foreground="White"
+                                        FontSize="15"
                                         IsTabStop="True"
                                         IsUndoEnabled="True"
                                         KeyDown="TextBox_KeyDown"
                                         KeyUp="TextForMessage_KeyUp"
                                         LostFocus="TextForMessage_LostFocus"
+                                        PlaceholderEnabled="True"
                                         PlaceholderText="Сообщение"
+                                        Style="{StaticResource MessageInputTextBox}"
                                         VerticalScrollBarVisibility="Auto" />
 
                                     <!--  Кнопка отправки  -->
