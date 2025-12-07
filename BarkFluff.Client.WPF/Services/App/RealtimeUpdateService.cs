@@ -28,10 +28,22 @@ namespace BarkFluff.Client.WPF.Services.App
         private const int MaxReconnectAttempts = 5;
         private const int ReconnectDelayMs = 5000;
 
+        // Read receipt streaming
+        private CancellationTokenSource? _readReceiptCancellationTokenSource;
+        private Task? _readReceiptStreamingTask;
+        private CancellationTokenSource? _chatReadReceiptCancellationTokenSource;
+        private Task? _chatReadReceiptStreamingTask;
+        private string? _currentChatId;
+
         /// <summary>
         /// Event raised when a new message is received
         /// </summary>
         public event Action<string, MessageModel>? NewMessageReceived;
+
+        /// <summary>
+        /// Event raised when a read receipt update is received
+        /// </summary>
+        public event Action<ReadReceiptUpdate>? ReadReceiptReceived;
 
         /// <summary>
         /// Event raised when connection status changes
@@ -234,11 +246,133 @@ namespace BarkFluff.Client.WPF.Services.App
             Start(globalParam);
         }
 
+        /// <summary>
+        /// Starts the global read receipt subscription (for chat list - last messages only)
+        /// </summary>
+        public void StartGlobalReadReceiptSubscription(GlobalParam globalParam)
+        {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(RealtimeUpdateService));
+
+            if (_readReceiptStreamingTask != null && !_readReceiptStreamingTask.IsCompleted)
+            {
+                WPF.App.ErideMessage.AddMessage("Global read receipt subscription is already running", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
+                return;
+            }
+
+            _readReceiptCancellationTokenSource = new CancellationTokenSource();
+            _readReceiptStreamingTask = Task.Run(() => StreamReadReceiptsAsync(globalParam, null, true, _readReceiptCancellationTokenSource.Token));
+
+            WPF.App.ErideMessage.AddMessage("Global read receipt subscription started", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
+        }
+
+        /// <summary>
+        /// Stops the global read receipt subscription
+        /// </summary>
+        public void StopGlobalReadReceiptSubscription()
+        {
+            if (_readReceiptCancellationTokenSource != null)
+            {
+                _readReceiptCancellationTokenSource.Cancel();
+                _readReceiptCancellationTokenSource.Dispose();
+                _readReceiptCancellationTokenSource = null;
+            }
+
+            WPF.App.ErideMessage.AddMessage("Global read receipt subscription stopped", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
+        }
+
+        /// <summary>
+        /// Starts chat-specific read receipt subscription (for open chat)
+        /// </summary>
+        public void StartChatReadReceiptSubscription(GlobalParam globalParam, string chatId)
+        {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(RealtimeUpdateService));
+
+            // Stop previous chat subscription if exists
+            StopChatReadReceiptSubscription();
+
+            _currentChatId = chatId;
+            _chatReadReceiptCancellationTokenSource = new CancellationTokenSource();
+            _chatReadReceiptStreamingTask = Task.Run(() => StreamReadReceiptsAsync(globalParam, chatId, false, _chatReadReceiptCancellationTokenSource.Token));
+
+            WPF.App.ErideMessage.AddMessage($"Chat read receipt subscription started for chat {chatId}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
+        }
+
+        /// <summary>
+        /// Stops the chat-specific read receipt subscription
+        /// </summary>
+        public void StopChatReadReceiptSubscription()
+        {
+            if (_chatReadReceiptCancellationTokenSource != null)
+            {
+                _chatReadReceiptCancellationTokenSource.Cancel();
+                _chatReadReceiptCancellationTokenSource.Dispose();
+                _chatReadReceiptCancellationTokenSource = null;
+            }
+
+            if (!string.IsNullOrEmpty(_currentChatId))
+            {
+                WPF.App.ErideMessage.AddMessage($"Chat read receipt subscription stopped for chat {_currentChatId}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
+                _currentChatId = null;
+            }
+        }
+
+        private async Task StreamReadReceiptsAsync(GlobalParam globalParam, string? chatId, bool lastMessageOnly, CancellationToken cancellationToken)
+        {
+            try
+            {
+                WPF.App.ErideMessage.AddMessage($"Connecting to read receipts stream (chatId: {chatId ?? "all"}, lastMessageOnly: {lastMessageOnly})...", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
+
+                var (error, stream) = await WPF.App.ServerCommunication.SubscribeToReadReceipts(globalParam, chatId, lastMessageOnly);
+                
+                if (!error.IsSuccess || stream == null)
+                {
+                    WPF.App.ErideMessage.AddMessage($"Failed to connect to read receipts stream: {error.ErrorMessage}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Error });
+                    return;
+                }
+
+                WPF.App.ErideMessage.AddMessage("Connected to read receipts stream", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
+
+                await foreach (var update in stream.WithCancellation(cancellationToken))
+                {
+                    ProcessReadReceiptUpdate(update);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Normal cancellation
+            }
+            catch (Exception ex)
+            {
+                WPF.App.ErideMessage.AddMessage($"Error in read receipts stream: {ex.Message}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Error });
+            }
+        }
+
+        private void ProcessReadReceiptUpdate(ReadReceiptUpdate update)
+        {
+            try
+            {
+                WPF.App.ErideMessage.AddMessage(
+                    $"Read receipt update: Chat={update.ChatId}, Message={update.MessageId}, ReadBy={string.Join(",", update.ReadBy)}",
+                    new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
+
+                // Raise event for UI updates
+                ReadReceiptReceived?.Invoke(update);
+            }
+            catch (Exception ex)
+            {
+                WPF.App.ErideMessage.AddMessage($"Error processing read receipt update: {ex.Message}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Error });
+            }
+        }
+
         public void Dispose()
         {
             if (_disposed) return;
             
             Stop();
+            StopGlobalReadReceiptSubscription();
+            StopChatReadReceiptSubscription();
             _disposed = true;
         }
     }

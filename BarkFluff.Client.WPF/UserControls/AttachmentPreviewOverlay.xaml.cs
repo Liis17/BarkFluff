@@ -172,6 +172,7 @@ namespace BarkFluff.Client.WPF.UserControls
 
             _attachments.Clear();
             PreviewItemsControl.Items.Clear();
+            MessageTextBox.Clear();
         }
 
         private void CancelButton_Click(object sender, RoutedEventArgs e)
@@ -184,7 +185,8 @@ namespace BarkFluff.Client.WPF.UserControls
             var args = new SendAttachmentsEventArgs
             {
                 Attachments = _attachments,
-                SendSeparately = false
+                SendSeparately = false,
+                MessageText = MessageTextBox.Text ?? string.Empty
             };
             OnSend?.Invoke(this, args);
         }
@@ -195,7 +197,8 @@ namespace BarkFluff.Client.WPF.UserControls
             var args = new SendAttachmentsEventArgs
             {
                 Attachments = _attachments,
-                SendSeparately = true
+                SendSeparately = true,
+                MessageText = MessageTextBox.Text ?? string.Empty
             };
             OnSend?.Invoke(this, args);
         }
@@ -218,5 +221,6 @@ namespace BarkFluff.Client.WPF.UserControls
     {
         public List<AttachmentPreviewItem> Attachments { get; set; } = new List<AttachmentPreviewItem>();
         public bool SendSeparately { get; set; }
+        public string MessageText { get; set; } = string.Empty;
     }
 }

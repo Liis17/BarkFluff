@@ -11,6 +11,9 @@ service UpdatesApi {
   
   // Подписаться на новые сообщения
   rpc SubscribeNewMessages(SubscribeNewMessagesRequest) returns (stream NewMessageEvent);
+  
+  // Подписаться на обновления статуса прочтения
+  rpc SubscribeToReadReceipts(SubscribeReadReceiptsRequest) returns (stream ReadReceiptUpdate);
 }
 
 message SubscribeNewMessagesRequest {
@@ -21,5 +24,18 @@ message NewMessageEvent {
   barkfluff.shared.Message message = 1; //Отправленное сообщение
   
   string chat_id = 2; // Идентификатор чата на который пришло сообщение
+}
+
+// Подписка на статус прочтения
+message SubscribeReadReceiptsRequest {
+  string chat_id = 1;  // Опционально, для конкретного чата (если пустой - для всех чатов, только последние сообщения)
+  bool last_message_only = 2;  // true для списка чатов (только последнее сообщение в каждом чате)
+}
+
+message ReadReceiptUpdate {
+  string chat_id = 1; // Идентификатор чата
+  int64 message_id = 2; // Идентификатор сообщения
+  repeated int64 read_by = 3; // Список пользователей, прочитавших сообщение
+  google.protobuf.Timestamp read_at = 4; // Время последнего прочтения
 }
 
