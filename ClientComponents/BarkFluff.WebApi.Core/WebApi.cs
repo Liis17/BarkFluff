@@ -1484,6 +1484,74 @@ namespace BarkFluff.WebApi.Core
             }, globalParam);
         }
 
+        public async Task<(ErrorReturner error, IAsyncEnumerable<ReadReceiptUpdate>? stream)> SubscribeToReadReceipts(
+            GlobalParam globalParam, 
+            string? chatId = null, 
+            bool lastMessageOnly = false)
+        {
+            return await SafeCallAsync(async () =>
+            {
+                try
+                {
+                    // Подготовка заголовков с токеном
+                    var headers = new Metadata();
+                    if (!string.IsNullOrEmpty(globalParam.AccessToken?.Value))
+                    {
+                        headers.Add("Authorization", $"Bearer {globalParam.AccessToken.Value}");
+                    }
+
+                    var request = new SubscribeReadReceiptsRequest 
+                    { 
+                        ChatId = chatId ?? string.Empty,
+                        LastMessageOnly = lastMessageOnly 
+                    };
+
+                    // Вызов метода подписки с заголовками
+                    var response = UpdatesAC!.SubscribeToReadReceipts(request, headers);
+
+                    // Создаём IAsyncEnumerable для стрима
+                    async IAsyncEnumerable<ReadReceiptUpdate> GetReadReceiptStream()
+                    {
+                        while (true)
+                        {
+                            bool hasNext;
+                            ReadReceiptUpdate update;
+
+                            try
+                            {
+                                hasNext = await response.ResponseStream.MoveNext(CancellationToken.None);
+                                if (!hasNext)
+                                {
+                                    yield break; // Стрим завершён
+                                }
+                                update = response.ResponseStream.Current;
+                            }
+                            catch (RpcException)
+                            {
+                                yield break;
+                            }
+                            catch (Exception)
+                            {
+                                yield break;
+                            }
+
+                            yield return update;
+                        }
+                    }
+
+                    return (new ErrorReturner(true, ""), GetReadReceiptStream());
+                }
+                catch (RpcException)
+                {
+                    return (new ErrorReturner(false, "Ошибка аутентификации"), null);
+                }
+                catch (Exception)
+                {
+                    return (new ErrorReturner(false, "Ошибка подключения к обновлениям"), null);
+                }
+            }, globalParam);
+        }
+
         #endregion
     }
 }

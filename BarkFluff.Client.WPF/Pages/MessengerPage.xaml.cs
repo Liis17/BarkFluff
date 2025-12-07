@@ -372,6 +372,9 @@ namespace BarkFluff.Client.WPF.Pages
 
                 DisplayMessages(response.messages);
             }
+
+            // Start chat-specific read receipt subscription
+            Services.App.RealtimeUpdateService.Instance.StartChatReadReceiptSubscription(App.GParam, ChatId.Value);
         }
 
         private void DisplayMessages(List<MessageModel> messages)
@@ -1245,9 +1248,13 @@ namespace BarkFluff.Client.WPF.Pages
             // Subscribe to the RealtimeUpdateService events
             Services.App.RealtimeUpdateService.Instance.NewMessageReceived += OnNewMessageReceived;
             Services.App.RealtimeUpdateService.Instance.ConnectionStatusChanged += OnConnectionStatusChanged;
+            Services.App.RealtimeUpdateService.Instance.ReadReceiptReceived += OnReadReceiptReceived;
 
             // Start the realtime update service
             Services.App.RealtimeUpdateService.Instance.Start(globalParam);
+            
+            // Start global read receipt subscription (for chat list)
+            Services.App.RealtimeUpdateService.Instance.StartGlobalReadReceiptSubscription(globalParam);
         }
 
         private void OnNewMessageReceived(string chatId, MessageModel message)
@@ -1409,6 +1416,40 @@ namespace BarkFluff.Client.WPF.Pages
         {
             Services.App.RealtimeUpdateService.Instance.NewMessageReceived -= OnNewMessageReceived;
             Services.App.RealtimeUpdateService.Instance.ConnectionStatusChanged -= OnConnectionStatusChanged;
+            Services.App.RealtimeUpdateService.Instance.ReadReceiptReceived -= OnReadReceiptReceived;
+            Services.App.RealtimeUpdateService.Instance.StopChatReadReceiptSubscription();
+        }
+
+        private void OnReadReceiptReceived(BarkFluff.Proto.Updates.ReadReceiptUpdate update)
+        {
+            // Update UI on the main thread
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                // Update message bubbles in the currently open chat
+                if (ChatId.Value == update.ChatId)
+                {
+                    foreach (var child in MessageArea.Children)
+                    {
+                        if (child is MessageBubble bubble && bubble.MessageId == update.MessageId.ToString())
+                        {
+                            bubble.UpdateReadByList(update.ReadBy.ToList());
+                            break;
+                        }
+                    }
+                }
+
+                // Update last message status in chat list if it's the last message
+                foreach (var child in ChatList.Children)
+                {
+                    if (child is ChatItem chatItem && chatItem.ChatId == update.ChatId)
+                    {
+                        // This will update the read status if this is the last message
+                        // ChatItem should handle this internally based on its last message
+                        chatItem.UpdateLastMessageReadStatus(update.ReadBy.ToList());
+                        break;
+                    }
+                }
+            });
         }
 
         #endregion
@@ -1507,15 +1548,17 @@ namespace BarkFluff.Client.WPF.Pages
             if (e.SendSeparately)
             {
                 // Send each file as a separate message
-                foreach (var attachment in e.Attachments)
+                // Only send text with the first attachment to avoid duplicates
+                for (int i = 0; i < e.Attachments.Count; i++)
                 {
-                    await SendMessageWithAttachments(string.Empty, new List<UserControls.AttachmentPreviewItem> { attachment });
+                    var textToSend = i == 0 ? e.MessageText : string.Empty;
+                    await SendMessageWithAttachments(textToSend, new List<UserControls.AttachmentPreviewItem> { e.Attachments[i] });
                 }
             }
             else
             {
                 // Send all files in one message
-                await SendMessageWithAttachments(string.Empty, e.Attachments);
+                await SendMessageWithAttachments(e.MessageText, e.Attachments);
             }
 
             AttachmentPreview.Clear();
