@@ -84,6 +84,8 @@ namespace BarkFluff.Client.WPF.UserControls
             TextContentPresenter.Content = _textContent;
 
             MessageTime.Text = DateTime.Now.ToString("HH:mm");
+            SenderId = App.GParam.UserId;
+            ReadBy = new List<long>();
             _owner = MessageOwner.Me;
             ThemedConfirm(MessageOwner.Me);
             UpdateReadStatus();

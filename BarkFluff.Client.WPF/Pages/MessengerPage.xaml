@@ -100,6 +100,20 @@
             Background="#80000000"
             MouseDown="OverlayCenter_MouseDown"
             Visibility="Collapsed" />
+
+        <!--  Attachment Preview Overlay  -->
+        <Grid
+            x:Name="AttachmentOverlay"
+            Margin="-30"
+            Panel.ZIndex="1001"
+            Background="#80000000"
+            Visibility="Collapsed">
+            <uc:AttachmentPreviewOverlay
+                x:Name="AttachmentPreview"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center" />
+        </Grid>
+
         <!--  Боковая панель  -->
         <Grid
             x:Name="SidePanel"
@@ -588,37 +602,132 @@
                                         Margin="5,0,12,0"
                                         Padding="5"
                                         Background="Transparent"
-                                        BorderThickness="0">
+                                        BorderThickness="0"
+                                        Click="AttachFileButton_Click">
                                         <ui:SymbolIcon
                                             FontSize="40"
                                             Foreground="#FF9E9E9E"
                                             Symbol="Attach16" />
                                     </Button>
 
+                                    <!--  Attachment Menu Popup  -->
+                                    <Popup
+                                        x:Name="AttachmentMenuPopup"
+                                        Grid.Column="0"
+                                        AllowsTransparency="True"
+                                        Placement="Top"
+                                        PlacementTarget="{Binding ElementName=AttachFileButton}"
+                                        StaysOpen="False">
+                                        <Border
+                                            Background="#FF3C3C3C"
+                                            BorderBrush="#FF505050"
+                                            BorderThickness="1"
+                                            CornerRadius="8"
+                                            Padding="4">
+                                            <StackPanel>
+                                                <Button
+                                                    x:Name="AttachMediaButton"
+                                                    Padding="12,10"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    Click="AttachMediaButton_Click"
+                                                    FontFamily="{DynamicResource AdwaitaSans}"
+                                                    FontSize="13"
+                                                    Foreground="White">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <ui:SymbolIcon
+                                                            FontSize="18"
+                                                            Margin="0,0,8,0"
+                                                            Symbol="Image20" />
+                                                        <TextBlock Text="фото или видео" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                    <Button.Style>
+                                                        <Style TargetType="Button">
+                                                            <Setter Property="Background" Value="Transparent" />
+                                                            <Setter Property="Template">
+                                                                <Setter.Value>
+                                                                    <ControlTemplate TargetType="Button">
+                                                                        <Border
+                                                                            Padding="{TemplateBinding Padding}"
+                                                                            Background="{TemplateBinding Background}"
+                                                                            CornerRadius="6">
+                                                                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center" />
+                                                                        </Border>
+                                                                    </ControlTemplate>
+                                                                </Setter.Value>
+                                                            </Setter>
+                                                            <Style.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter Property="Background" Value="#FF505050" />
+                                                                </Trigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
+                                                <Button
+                                                    x:Name="AttachDocumentButton"
+                                                    Padding="12,10"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    Click="AttachDocumentButton_Click"
+                                                    FontFamily="{DynamicResource AdwaitaSans}"
+                                                    FontSize="13"
+                                                    Foreground="White">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <ui:SymbolIcon
+                                                            FontSize="18"
+                                                            Margin="0,0,8,0"
+                                                            Symbol="Document20" />
+                                                        <TextBlock Text="файл" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                    <Button.Style>
+                                                        <Style TargetType="Button">
+                                                            <Setter Property="Background" Value="Transparent" />
+                                                            <Setter Property="Template">
+                                                                <Setter.Value>
+                                                                    <ControlTemplate TargetType="Button">
+                                                                        <Border
+                                                                            Padding="{TemplateBinding Padding}"
+                                                                            Background="{TemplateBinding Background}"
+                                                                            CornerRadius="6">
+                                                                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center" />
+                                                                        </Border>
+                                                                    </ControlTemplate>
+                                                                </Setter.Value>
+                                                            </Setter>
+                                                            <Style.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter Property="Background" Value="#FF505050" />
+                                                                </Trigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
+                                            </StackPanel>
+                                        </Border>
+                                    </Popup>
+
                                     <!--  Поле ввода  -->
-                                    <Border
+                                    <ui:TextBox
+                                        x:Name="TextForMessage"
                                         Grid.Column="1"
-                                        Background="{StaticResource BlurredBackgroundBrush}"
-                                        CornerRadius="20">
-                                        <ui:TextBox
-                                            x:Name="TextForMessage"
-                                            Height="35"
-                                            VerticalAlignment="Center"
-                                            AcceptsReturn="False"
-                                            AcceptsTab="True"
-                                            BorderThickness="0"
-                                            ClearButtonEnabled="False"
-                                            FontFamily="{DynamicResource AdwaitaSans}"
-                                            FontSize="14"
-                                            Foreground="White"
-                                            IsTabStop="True"
-                                            IsUndoEnabled="True"
-                                            KeyDown="TextBox_KeyDown"
-                                            KeyUp="TextForMessage_KeyUp"
-                                            LostFocus="TextForMessage_LostFocus"
-                                            PlaceholderText="Сообщение"
-                                            VerticalScrollBarVisibility="Auto" />
-                                    </Border>
+                                        Height="35"
+                                        VerticalAlignment="Center"
+                                        AcceptsReturn="False"
+                                        AcceptsTab="True"
+                                        Background="Transparent"
+                                        BorderThickness="0"
+                                        ClearButtonEnabled="False"
+                                        FontFamily="{DynamicResource AdwaitaSans}"
+                                        FontSize="14"
+                                        Foreground="White"
+                                        IsTabStop="True"
+                                        IsUndoEnabled="True"
+                                        KeyDown="TextBox_KeyDown"
+                                        KeyUp="TextForMessage_KeyUp"
+                                        LostFocus="TextForMessage_LostFocus"
+                                        PlaceholderText="Сообщение"
+                                        VerticalScrollBarVisibility="Auto" />
 
                                     <!--  Кнопка отправки  -->
                                     <Button
