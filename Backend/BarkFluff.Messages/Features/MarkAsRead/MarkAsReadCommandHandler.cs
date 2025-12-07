@@ -60,7 +60,13 @@ public class MarkAsReadCommandHandler : IRequestHandler<MarkAsReadCommand>
         foreach (var chatId in chatIds)
         {
             var chatMessages = messages.Where(m => m.ChatId == chatId).ToList();
-            var chat = await _chatsStorage.GetChatById(chatId);
+            var chat = await _chatsStorage.GetChat(chatId);
+            
+            if (chat == null)
+            {
+                continue;
+            }
+            
             var chatMembers = chat.Members.Select(m => m.UserId).ToList();
 
             // Получаем последнее сообщение в чате для определения IsLastMessage
@@ -70,6 +76,12 @@ public class MarkAsReadCommandHandler : IRequestHandler<MarkAsReadCommand>
             {
                 // Получаем обновленный список прочитавших
                 var updatedMessage = await _messagesStorage.GetMessageById(message.Id);
+                
+                if (updatedMessage == null)
+                {
+                    continue;
+                }
+                
                 var isLastMessage = lastMessage != null && lastMessage.Id == message.Id;
 
                 await _messageQueueSender.SendReadReceipt(
