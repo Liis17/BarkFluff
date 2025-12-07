@@ -38,11 +38,14 @@ namespace BarkFluff.Client.WPF
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            App.WindowStateService.IsApplicationActive.PropertyChanged += (s, e) =>
-            {
-                bool isActive = App.WindowStateService.IsApplicationActive.Value;
-                BarkFluff.Client.WPF.App.ErideMessage.AddMessage($"Окно теперь: {isActive}", new BarkFluff.Client.WPF.Services.Erida.MessageType { Type = BarkFluff.Client.WPF.Services.Erida.MessageType.MessageTypeEnum.Error });
-            };
+            App.WindowStateService.IsApplicationActive.PropertyChanged += OnApplicationActiveChanged;
+        }
+
+        private void OnApplicationActiveChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            bool isActive = App.WindowStateService.IsApplicationActive.Value;
+            string statusText = isActive ? "активно (в фокусе и развернуто)" : "неактивно (свернуто или не в фокусе)";
+            App.ErideMessage?.AddMessage($"Состояние окна: {statusText}", new Erida { Type = MType.Debug });
         }
 
         private void MainWindowBootstrap()
@@ -53,13 +56,6 @@ namespace BarkFluff.Client.WPF
 
             //применение темы
             ThemeLoader();
-            
-            // Пример использования WindowStateService:
-            // App.WindowStateService.IsApplicationActive.PropertyChanged += (s, e) =>
-            // {
-            //     bool isActive = App.WindowStateService.IsApplicationActive.Value;
-            //     // Здесь можно обновлять статус онлайн пользователя
-            // };
         }
         private void ThemeLoader()
         {
@@ -122,6 +118,7 @@ namespace BarkFluff.Client.WPF
         {
             try
             {
+                App.WindowStateService.IsApplicationActive.PropertyChanged -= OnApplicationActiveChanged;
                 SaveSettings();
             }
             catch
