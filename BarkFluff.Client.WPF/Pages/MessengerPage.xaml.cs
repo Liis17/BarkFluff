@@ -394,8 +394,8 @@ namespace BarkFluff.Client.WPF.Pages
                 _hasMoreHistory = true; // Reset history flag when opening a new chat
             }
 
-            // Группировка по дням
-            var groupedMessages = sortedMessages.GroupBy(m => m.SentAt.ToDateTime().Date)
+            // Группировка по дням (используем ЛОКАЛЬНОЕ время для правильного отображения)
+            var groupedMessages = sortedMessages.GroupBy(m => m.SentAt.ToDateTime().ToLocalTime().Date)
                                               .OrderBy(g => g.Key);
 
             foreach (var group in groupedMessages)
@@ -619,7 +619,7 @@ namespace BarkFluff.Client.WPF.Pages
                 };
 
                 // Check and add date separator before adding message
-                AddDateSeparatorIfNeeded();
+                AddDateSeparatorIfNeeded(DateTime.Now);
 
                 AddMessage(messageControl);
                 UpdateChatWithMessage(message);
@@ -1131,15 +1131,15 @@ namespace BarkFluff.Client.WPF.Pages
                     {
                         // Клик на аватар в заголовке - открываем свой профиль
                         ShowUserProfile(isCurrentUser: true);
-                    }
-                    else if (senderElement.Name == "ChatAvatarButton")
-                    {
+                      }
+                      else if (senderElement.Name == "ChatAvatarButton")
+                      {
                         // Клик на аватар в чате - открываем профиль собеседника
                         if (ChatIdbyUserId.Value > 0)
                         {
                             ShowUserProfile(userId: ChatIdbyUserId.Value);
                         }
-                    }
+                      }
 
                     if (!isOpenCenter)
                     {
@@ -1319,7 +1319,7 @@ namespace BarkFluff.Client.WPF.Pages
                     else if (message.SenderId != App.GParam.UserId)
                     {
                         // Add date separator if needed before adding incoming message
-                        AddDateSeparatorIfNeeded();
+                        AddDateSeparatorIfNeeded(message.SentAt.ToDateTime());
 
                         // Add new incoming message
                         var owner = MessageBubble.MessageOwner.Interlocutor;
@@ -1608,7 +1608,7 @@ namespace BarkFluff.Client.WPF.Pages
                 var messageType = attachments.Count > 0 ? GetMessageTypeFromAttachment(attachments[0].FileType) : MessageBubble.MessageType.Text;
 
                 // Add date separator if needed (BEFORE adding message)
-                AddDateSeparatorIfNeeded();
+                AddDateSeparatorIfNeeded(DateTime.Now);
 
                 // Create message bubble with pending state
                 var messageControl = new MessageBubble(MessageBubble.MessageOwner.Me, messageType, pendingMessage, IsGroup);
@@ -1741,11 +1741,38 @@ namespace BarkFluff.Client.WPF.Pages
             };
         }
 
-        private void AddDateSeparatorIfNeeded()
+        private void AddDateSeparatorIfNeeded(DateTime newMessageLocalDate)
         {
+            // Используем только локальную дату для сравнения
+            var newDate = newMessageLocalDate.Date;
+
             // Check if we need to add a date separator
             if (MessageArea.Children.Count == 0)
+            {
+                // Если это первое сообщение, добавляем заголовок даты
+                var dateHeader = GetDateHeader(newDate);
+                var dateControl = new DateHeaderControl { Text = dateHeader };
+                dateControl.HorizontalAlignment = HorizontalAlignment.Center;
+                dateControl.Margin = new Thickness(0, 10, 0, 10);
+                MessageArea.Children.Add(dateControl);
                 return;
+            }
+
+            // Проверяем, есть ли уже разделитель с такой же датой
+            foreach (var child in MessageArea.Children)
+            {
+                if (child is DateHeaderControl existingHeader)
+                {
+                    var headerText = existingHeader.Text;
+                    var expectedText = GetDateHeader(newDate);
+                    
+                    // Если уже есть разделитель с нужной датой - не добавляем новый
+                    if (headerText == expectedText)
+                    {
+                        return;
+                    }
+                }
+            }
 
             // Get the last message in the area (skip if last item is already a date header)
             var lastChild = MessageArea.Children[MessageArea.Children.Count - 1];
@@ -1758,13 +1785,13 @@ namespace BarkFluff.Client.WPF.Pages
 
             if (lastChild is MessageBubble lastBubble && lastBubble.SentAt != null)
             {
-                var lastMessageDate = lastBubble.SentAt.ToDateTime().Date;
-                var currentDate = DateTime.Now.Date;
+                // Конвертируем UTC время сообщения в локальное для корректного сравнения
+                var lastMessageLocalDate = lastBubble.SentAt.ToDateTime().ToLocalTime().Date;
 
                 // Add separator if dates differ
-                if (lastMessageDate != currentDate)
+                if (lastMessageLocalDate != newDate)
                 {
-                    var dateHeader = GetDateHeader(currentDate);
+                    var dateHeader = GetDateHeader(newDate);
                     var dateControl = new DateHeaderControl { Text = dateHeader };
                     dateControl.HorizontalAlignment = HorizontalAlignment.Center;
                     dateControl.Margin = new Thickness(0, 10, 0, 10);
