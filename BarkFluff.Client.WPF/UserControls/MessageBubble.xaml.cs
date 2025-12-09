@@ -62,7 +62,7 @@ namespace BarkFluff.Client.WPF.UserControls
 
             if (message.SentAt != null)
             {
-                MessageTime.Text = message.SentAt.ToDateTime().ToString("HH:mm");
+                MessageTime.Text = message.SentAt.ToDateTime().ToLocalTime().ToString("HH:mm");
                 SentAt = message.SentAt;
             }
             else
