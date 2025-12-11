@@ -1420,32 +1420,35 @@ namespace BarkFluff.Client.WPF.Pages
             Services.App.RealtimeUpdateService.Instance.StopChatReadReceiptSubscription();
         }
 
-        private void OnReadReceiptReceived(BarkFluff.Proto.Updates.ReadReceiptUpdate update)
+        private void OnReadReceiptReceived(BarkFluff.Proto.Updates.MessageReadEvent update)
         {
             // Update UI on the main thread
             Application.Current.Dispatcher.Invoke(() =>
             {
-                // Update message bubbles in the currently open chat
-                if (ChatId.Value == update.ChatId)
+                var chatId = update.ChatId;
+                var messageId = update.MessageId;
+                var newReadBy = update.NewReadBy.ToList();
+
+                // Update message bubble in the currently open chat
+                if (ChatId.Value == chatId)
                 {
                     foreach (var child in MessageArea.Children)
                     {
-                        if (child is MessageBubble bubble && bubble.MessageId == update.MessageId.ToString())
+                        if (child is MessageBubble bubble && bubble.MessageId == messageId.ToString())
                         {
-                            bubble.UpdateReadByList(update.ReadBy.ToList());
+                            bubble.UpdateReadByList(newReadBy);
                             break;
                         }
                     }
                 }
 
-                // Update last message status in chat list if it's the last message
+                // Update ChatItem in chat list
                 foreach (var child in ChatList.Children)
                 {
-                    if (child is ChatItem chatItem && chatItem.ChatId == update.ChatId)
+                    if (child is ChatItem chatItem && chatItem.ChatId == chatId)
                     {
-                        // This will update the read status if this is the last message
-                        // ChatItem should handle this internally based on its last message
-                        chatItem.UpdateLastMessageReadStatus(update.ReadBy.ToList());
+                        // Update the last message read status using messageId overload
+                        chatItem.UpdateLastMessageReadStatus(messageId, newReadBy);
                         break;
                     }
                 }

@@ -1484,10 +1484,8 @@ namespace BarkFluff.WebApi.Core
             }, globalParam);
         }
 
-        public async Task<(ErrorReturner error, IAsyncEnumerable<ReadReceiptUpdate>? stream)> SubscribeToReadReceipts(
-            GlobalParam globalParam, 
-            string? chatId = null, 
-            bool lastMessageOnly = false)
+        public async Task<(ErrorReturner error, IAsyncEnumerable<MessageReadEvent>? stream)> SubscribeToReadReceipts(
+            GlobalParam globalParam)
         {
             return await SafeCallAsync(async () =>
             {
@@ -1500,22 +1498,18 @@ namespace BarkFluff.WebApi.Core
                         headers.Add("Authorization", $"Bearer {globalParam.AccessToken.Value}");
                     }
 
-                    var request = new SubscribeReadReceiptsRequest 
-                    { 
-                        ChatId = chatId ?? string.Empty,
-                        LastMessageOnly = lastMessageOnly 
-                    };
+                    var request = new SubscribeMessagesReadRequest();
 
                     // Вызов метода подписки с заголовками
-                    var response = UpdatesAC!.SubscribeToReadReceipts(request, headers);
+                    var response = UpdatesAC!.SubscribeMessagesRead(request, headers);
 
                     // Создаём IAsyncEnumerable для стрима
-                    async IAsyncEnumerable<ReadReceiptUpdate> GetReadReceiptStream()
+                    async IAsyncEnumerable<MessageReadEvent> GetReadReceiptStream()
                     {
                         while (true)
                         {
                             bool hasNext;
-                            ReadReceiptUpdate update;
+                            MessageReadEvent update;
 
                             try
                             {
