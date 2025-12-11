@@ -142,18 +142,4 @@ public class MessagesStorage
             new NpgsqlParameter("@userId", userId),
             new NpgsqlParameter("@messageIds", messageIds.ToArray()));
     }
-
-    public async Task<Message?> GetMessageById(long messageId)
-    {
-        return await _context.Messages
-            .FirstOrDefaultAsync(m => m.Id == messageId);
-    }
-
-    public async Task<Message?> GetLastMessageInChat(Guid chatId)
-    {
-        return await _context.Messages
-            .Where(m => m.ChatId == chatId)
-            .OrderByDescending(m => m.SentAt)
-            .FirstOrDefaultAsync();
-    }
 }
