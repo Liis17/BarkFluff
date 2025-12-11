@@ -22,6 +22,7 @@ builder.Services.AddGrpcReflection();
 // Register Updates services including StreamSubscriptionsManager as Singleton
 builder.Services.AddUpdatesServices();
 
+builder.Services.AddUpdatesServices();
 builder.Services.AddXAuth(builder.Configuration);
 
 builder.Services.AddMassTransit(x =>
@@ -44,7 +45,6 @@ builder.Services.AddMassTransit(x =>
 });
 
 var app = builder.Build();
-// ��� DbContext � �������� �� �����������
 app.MapGrpcReflectionService();
 app.UseRouting();
         
