@@ -2,6 +2,7 @@ using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Shared.Identity;
 using BarkFluff.Shared.Queue.Messages;
+using BarkFluff.Updates;
 using BarkFluff.Updates.Consumers;
 using BarkFluff.Updates.Host;
 using MassTransit;
@@ -20,6 +21,7 @@ builder.Services.AddGrpcReflection();
 
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
 
+builder.Services.AddUpdatesServices();
 builder.Services.AddXAuth(builder.Configuration);
 
 builder.Services.AddMassTransit(x =>
@@ -42,7 +44,6 @@ builder.Services.AddMassTransit(x =>
 });
 
 var app = builder.Build();
-// Ќет DbContext Ц миграции не примен€ютс€
 app.MapGrpcReflectionService();
 app.UseRouting();
         
