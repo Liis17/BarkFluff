@@ -27,7 +27,6 @@ builder.Services.AddXAuth(builder.Configuration);
 builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<NewMessageConsumer>();
-    x.AddConsumer<ReadReceiptConsumer>();
     
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -40,11 +39,6 @@ builder.Services.AddMassTransit(x =>
         cfg.ReceiveEndpoint("new-messages-updates-handler", e =>
         {
             e.ConfigureConsumer<NewMessageConsumer>(context);
-        });
-
-        cfg.ReceiveEndpoint("read-receipts-updates-handler", e =>
-        {
-            e.ConfigureConsumer<ReadReceiptConsumer>(context);
         });
     });
 });

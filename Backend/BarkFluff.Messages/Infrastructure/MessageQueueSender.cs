@@ -26,24 +26,4 @@ public class MessageQueueSender
         
         await _publishEndpoint.Publish(newMessageEvent);
     }
-
-    public async Task SendReadReceipt(
-        Guid chatId,
-        long messageId,
-        List<long> readBy,
-        List<long> chatMembers,
-        bool isLastMessage)
-    {
-        var readReceiptEvent = new ReadReceiptEvent
-        {
-            ChatId = chatId,
-            MessageId = messageId,
-            ReadBy = readBy,
-            ChatMembers = chatMembers,
-            IsLastMessage = isLastMessage,
-            ReadAt = DateTime.UtcNow
-        };
-        
-        await _publishEndpoint.Publish(readReceiptEvent);
-    }
 }
