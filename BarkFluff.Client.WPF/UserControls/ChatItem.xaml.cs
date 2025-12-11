@@ -144,6 +144,19 @@ namespace BarkFluff.Client.WPF.UserControls
         }
 
         /// <summary>
+        /// Updates the read status for a specific message by ID (called when read receipt is received)
+        /// </summary>
+        public void UpdateLastMessageReadStatus(long messageId, List<long> readBy)
+        {
+            // Only update if this is the last message in the chat
+            if (_lastMessageId == messageId)
+            {
+                _lastMessageReadBy = readBy;
+                UpdateReadStatusIndicator();
+            }
+        }
+
+        /// <summary>
         /// Updates the read status for the last message (called when read receipt is received)
         /// </summary>
         public void UpdateLastMessageReadStatus(List<long> readBy)
