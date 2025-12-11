@@ -4,9 +4,11 @@ using BarkFluff.GrpcServer;
 using BarkFluff.Proto.Configuration;
 using BarkFluff.Shared.Identity;
 
+using Microsoft.AspNetCore.Server.Kestrel.Core;
+
 namespace BarkFluff.Beacon;
 /// <summary>
-/// тест, потом можешь удалить
+/// Точка входа в приложение
 /// </summary>
 public class Program
 {
@@ -15,7 +17,24 @@ public class Program
         var builder = WebApplication.CreateBuilder(args);
 
         builder.LoadConfiguration(ServiceId.Beacon);
-        builder.SetRunningAddress(builder.Configuration);
+
+        var envPort = Environment.GetEnvironmentVariable("BEACON_PORT")
+                      ?? Environment.GetEnvironmentVariable("RunSettings__Port");
+
+        if (int.TryParse(envPort, out var dynamicPort))
+        {
+            builder.WebHost.ConfigureKestrel(options =>
+            {
+                options.ListenAnyIP(dynamicPort, o =>
+                {
+                    o.Protocols = HttpProtocols.Http2;
+                });
+            });
+        }
+        else
+        {
+            builder.SetRunningAddress(builder.Configuration);
+        }
 
         builder.Services.AddBarkFluffGrpc();
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());

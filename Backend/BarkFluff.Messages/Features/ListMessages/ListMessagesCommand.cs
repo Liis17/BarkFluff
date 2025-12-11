@@ -10,4 +10,14 @@ public class ListMessagesCommand : IRequest<ListMessagesResponse>
     public long FromMessageId { get; set; }
     
     public int Count { get; set; }
+    
+    /// <summary>
+    /// Количество сообщений до указанного (в прошлое)
+    /// </summary>
+    public int OffsetBefore { get; set; }
+    
+    /// <summary>
+    /// Количество сообщений после указанного (в будущее)
+    /// </summary>
+    public int OffsetAfter { get; set; }
 }

@@ -1,0 +1,218 @@
+syntax = "proto3";
+
+option csharp_namespace = "BarkFluff.Proto.FastAuth";
+
+
+import "google/protobuf/timestamp.proto";
+
+package barkfluff.fast.auth;
+
+service FastAuthApi {
+  
+  // Сгенерировать токен для подключения устройства 
+  // Authorization: xAuth access токен
+  rpc GenerateConnectDeviceToken(GenerateConnectDeviceTokenRequest) returns(GenerateConnectDeviceTokenResponse);
+  
+  // Подключить устройство для быстрого входа 
+  // Authorization: fastAuth токен
+  rpc ConnectDevice(ConnectDeviceRequest) returns(ConnectDeviceResponse);
+  
+  // Подтвердить подключение устройства
+  // Authorization: xAuth access токен
+  rpc AcceptConnectDevice(AcceptConnectDeviceRequest) returns (AcceptConnectDeviceResponse);
+  
+  // Подписаться на измение статуса подключенного устройства
+  // Authorization: fastAuth токен
+  rpc SubscribeConnectDeviceStatus(SubscribeConnectDeviceStatusRequest) returns (stream ConnectDeviceStatus);
+  
+  // Получить список устройств подключенных к аккаунту
+  // Authorization: xAuth access токен
+  rpc ListConnectedDevices(ListConnectedDevicesRequest) returns (ListConnectedDevicesResponse);
+  
+  // Сгенерировать токен для быстрого входа
+  // Authorization: без авторизации
+  rpc GenerateFastAuthToken(GenerateFastAuthTokenRequest) returns(GenerateFastAuthTokenResponse);
+  
+  // Подтвердить быстрый вход
+  // Authorization: fastAuth токен
+  rpc AcceptFastAuth(AcceptFastAuthRequest) returns(AcceptFastAuthResponse);
+  
+  // Подписаться на запросы быстрого входа
+  // Authorization: fastAuth токен
+  rpc SubscribeFastAuthRequests(SubscribeFastAuthRequestsRequest) returns (stream FastAuthRequest);
+  
+  // Подписаться на результат быстрой авторизации
+  // Authorization: без авторизации
+  rpc SubscribeFastAuthResult(SubscribeFastAuthResultRequest) returns (stream FastAuthResult);
+  
+  // Проверить, есть ли возможность быстрого входа
+  // Authorization: без авторизации
+  rpc CheckFastAuth(CheckFastAuthRequest) returns (CheckFastAuthResponse);
+  
+  // Создать запрос на быстрый вход по логину
+  // Authorization: без авторизации
+  rpc CreateFastAuth(CreateFastAuthRequest) returns (CreateFastAuthResponse);
+  
+  // Удалить подключенное устройство
+  // Authorization: xAuth access токен
+  rpc RemoveConnectedDevice(RemoveConnectedDeviceRequest) returns(RemoveConnectedDeviceResponse);
+} 
+
+service FastAuthServerApi {
+  
+  // Получить инфу о токене
+  // Authorization: xAuth server токен
+  rpc GetFastAuthInfo(GetFastAuthInfoRequest) returns (GetFastAuthInfoResponse);
+}
+
+message RemoveConnectedDeviceRequest {
+  string connected_device_id = 1; // Подключенное устройство
+}
+
+message RemoveConnectedDeviceResponse { }
+
+message CreateFastAuthResponse {
+  string fast_auth_id = 1; // Идентификатор быстрого входа
+}
+
+message CreateFastAuthRequest {
+  oneof login {
+    string username = 1; // имя пользователя
+    string email = 2; // емейл
+  }
+  
+  repeated string device_ids = 3; // Устройства на которые нужно кинуть запрос
+}
+
+message CheckFastAuthRequest {
+  oneof login {
+    string username = 1; // имя пользователя
+    string email = 2; // емейл
+  }
+}
+
+message CheckFastAuthResponse {
+  
+  bool is_available = 1; // Доступен ли быстрый вход для этого логина
+  
+  repeated ConnectedDevice devices = 2; // Доступные устройства
+}
+
+message GetFastAuthInfoRequest {
+  string fast_auth_id = 1; // Индентификатор быстрого входа
+}
+
+message GetFastAuthInfoResponse { }
+
+message FastAuthResult {
+  FastAuthStatus status = 1; // Статус
+}
+
+message SubscribeFastAuthResultRequest {
+  string fast_auth_id = 1; // Идентификатор быстрого входа
+}
+
+message SubscribeFastAuthRequestsRequest { }
+
+message FastAuthRequest {
+  string fast_auth_id = 1; // Идентификатор быстрого входа
+  google.protobuf.Timestamp die_at = 2; // Время до которого он будет жив
+  string device_name = 3; // Имя устройства
+  string os_name = 4; // Имя ОС
+  string ip = 5; // Айпишник
+}
+
+message AcceptFastAuthRequest {
+  string fast_auth_id = 1; // Идентификатор быстрого входа
+}
+
+message AcceptFastAuthResponse { }
+
+message GenerateFastAuthTokenRequest {
+  TokenFormat format = 1; // формат кода
+}
+
+message GenerateFastAuthTokenResponse {
+  FastAuthToken token = 1; // Токен
+  
+  string fast_auth_id = 2; // Идентификатор быстрого входа
+}
+
+message ListConnectedDevicesRequest { }
+
+message ListConnectedDevicesResponse {
+  repeated ConnectedDevice connected_devices = 1; // Подключенные устройства
+}
+
+message SubscribeConnectDeviceStatusRequest {
+  string connect_id = 1; // Идентификатор подключения
+}
+
+message ConnectDeviceStatus {
+
+  ConnectedDeviceStatus status = 1; // Статус подключения устройства
+  
+  ConnectedDevice device = 2; // устройство (придет если статус - Accepted)
+  
+  string fast_token = 3; 
+}
+
+message ConnectDeviceRequest { }
+
+message AcceptConnectDeviceRequest {
+  string connect_id = 1; // Идентификатор привязки устройства
+}
+
+message AcceptConnectDeviceResponse {
+  ConnectedDevice device = 1; // подключенное устройство
+}
+
+message ConnectDeviceResponse {
+  string connect_id = 1; // Индентификатор привязки устройства
+}
+
+message GenerateConnectDeviceTokenRequest {
+  TokenFormat format = 1;
+}
+
+message GenerateConnectDeviceTokenResponse {
+  FastAuthToken token = 1; // токен
+}
+
+message ConnectedDevice {
+  string id = 1; // Идентификатор подключенного устройтва 
+  string name = 2; // Имя устройства
+  string ip = 3; // Айпишник устройства
+  google.protobuf.Timestamp connected_at = 4; // Время подключения
+}
+
+message FastAuthToken {
+  TokenFormat format = 1;
+  string value = 2;
+}
+
+message FastAuthInfo {
+  int64 user_id = 1; // Идентификатор пользователя
+  FastAuthStatus status = 2; // Статус
+  google.protobuf.Timestamp die_at = 3; // Время до скольки он доступен
+}
+
+enum ConnectedDeviceStatus {
+  CONNECTED_DEVICE_STATUS_UNKNOWN = 0;
+  CONNECTED_DEVICE_STATUS_ACCEPTED = 1;
+  CONNECTED_DEVICE_STATUS_REJECTED = 2;
+  CONNECTED_DEVICE_STATUS_PENDING = 3;
+}
+
+enum FastAuthStatus {
+  FAST_AUTH_STATUS_UNKNOWN = 0;
+  FAST_AUTH_STATUS_ACCEPTED = 1;
+  FAST_AUTH_STATUS_REJECTED = 2;
+  FAST_AUTH_STATUS_PENDING = 3;
+}
+
+enum TokenFormat {
+  TOKEN_FORMAT_UNKNOWN = 0;
+  TOKEN_FORMAT_QR = 1;
+  TOKEN_FORMAT_TEXT = 2;
+}

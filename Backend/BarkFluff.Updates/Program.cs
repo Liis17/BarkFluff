@@ -19,7 +19,8 @@ builder.Services.AddGrpc(options =>
 
 builder.Services.AddGrpcReflection();
 
-builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
+// Register Updates services including StreamSubscriptionsManager as Singleton
+builder.Services.AddUpdatesServices();
 
 builder.Services.AddUpdatesServices();
 builder.Services.AddXAuth(builder.Configuration);

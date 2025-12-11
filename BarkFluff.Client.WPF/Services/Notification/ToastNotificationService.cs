@@ -1,8 +1,10 @@
 ﻿using Microsoft.Toolkit.Uwp.Notifications;
 
+using System;
 using System.IO;
 using System.Net.Http;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 
 using Windows.UI.Notifications;
 
@@ -13,60 +15,69 @@ namespace BarkFluff.Client.WPF.Services.Notification
         [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         private static extern int SetCurrentProcessExplicitAppUserModelID(string AppID);
 
-        private const string AppId = "com.barkfluff.messenger";
-
         public ToastNotificationService()
         {
-            SetCurrentProcessExplicitAppUserModelID(AppId);
+            SetCurrentProcessExplicitAppUserModelID(BarkFluff.Client.WPF.App.AppUserModelIdPublic);
         }
 
-        public async void ShowToast(string title, string message, string avatarUrl)
+        public async Task ShowToastAsync(string title, string message, string? avatarUrl = null)
         {
-            using var client = new HttpClient();
-            var bytes = await client.GetByteArrayAsync(avatarUrl);
-            var tempPath = Path.Combine(Path.GetTempPath(), "avatar_barkfluff_messenger.png");
-            await File.WriteAllBytesAsync(tempPath, bytes);
-            string localUri = new Uri(tempPath).AbsoluteUri;
+            try
+            {
+                var builder = new ToastContentBuilder();
 
-            var toastContent = new ToastContentBuilder()
-                 .AddAppLogoOverride(new Uri(localUri), ToastGenericAppLogoCrop.Circle)
-                .AddText(title)
-                .AddText(message)
-                .GetToastContent();
+                if (!string.IsNullOrWhiteSpace(avatarUrl))
+                {
+                    var localUri = await DownloadTempImageAsync(avatarUrl, "avatar_barkfluff_messenger.png");
+                    if (localUri != null)
+                        builder.AddAppLogoOverride(new Uri(localUri), ToastGenericAppLogoCrop.Circle);
+                }
 
-            var toast = new ToastNotification(toastContent.GetXml());
+                builder.AddText(title).AddText(message);
 
-            var notifier = ToastNotificationManager.CreateToastNotifier(AppId);
-            notifier.Show(toast);
+                var toastContent = builder.GetToastContent();
+                var toast = new ToastNotification(toastContent.GetXml());
+                ToastNotificationManager.CreateToastNotifier(BarkFluff.Client.WPF.App.AppUserModelIdPublic).Show(toast);
+            }
+            catch { }
         }
 
-        public async void ShowToastWithImage(string userName, string message, string avatarUrl, string imageUrl)
+        public async Task ShowToastWithImageAsync(string userName, string message, string avatarUrl, string imageUrl)
         {
-            using var client = new HttpClient();
+            try
+            {
+                var builder = new ToastContentBuilder();
+                var avatarLocal = await DownloadTempImageAsync(avatarUrl, "avatar_temp.png");
+                if (avatarLocal != null)
+                    builder.AddAppLogoOverride(new Uri(avatarLocal), ToastGenericAppLogoCrop.Circle);
 
-            // Скачиваем аватар
-            var avatarBytes = await client.GetByteArrayAsync(avatarUrl);
-            var avatarPath = Path.Combine(Path.GetTempPath(), "avatar_temp.png");
-            await File.WriteAllBytesAsync(avatarPath, avatarBytes);
-            string avatarUri = new Uri(avatarPath).AbsoluteUri;
+                var imageLocal = await DownloadTempImageAsync(imageUrl, "image_temp.png");
+                if (imageLocal != null)
+                    builder.AddInlineImage(new Uri(imageLocal));
 
-            // Скачиваем вложенное изображение (контент) 
-            var imageBytes = await client.GetByteArrayAsync(imageUrl);
-            var imagePath = Path.Combine(Path.GetTempPath(), "image_temp.png");
-            await File.WriteAllBytesAsync(imagePath, imageBytes);
-            string imageUri = new Uri(imagePath).AbsoluteUri;
+                builder.AddText(userName).AddText(message);
 
-            // Собираем уведомление
-            var toastContent = new ToastContentBuilder()
-                .AddAppLogoOverride(new Uri(avatarUri), ToastGenericAppLogoCrop.Circle)
-                .AddText(userName)
-                .AddText(message)
-                .AddInlineImage(new Uri(imageUri))
-                .GetToastContent();
+                var toastContent = builder.GetToastContent();
+                var toast = new ToastNotification(toastContent.GetXml());
+                ToastNotificationManager.CreateToastNotifier(BarkFluff.Client.WPF.App.AppUserModelIdPublic).Show(toast);
+            }
+            catch { }
+        }
 
-            var toast = new ToastNotification(toastContent.GetXml());
-            var notifier = ToastNotificationManager.CreateToastNotifier(AppId);
-            notifier.Show(toast);
+        private static async Task<string?> DownloadTempImageAsync(string url, string fileName)
+        {
+            try
+            {
+                using var client = new HttpClient();
+                var bytes = await client.GetByteArrayAsync(url);
+                var tempPath = Path.Combine(Path.GetTempPath(), fileName);
+                await File.WriteAllBytesAsync(tempPath, bytes);
+                return new Uri(tempPath).AbsoluteUri;
+            }
+            catch
+            {
+                return null;
+            }
         }
     }
 }
