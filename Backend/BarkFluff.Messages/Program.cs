@@ -62,6 +62,7 @@ public class Program
         builder.Services.AddScoped<ChatCache>();
         builder.Services.AddTransient<MessagesStorage>();
         builder.Services.AddTransient<MessageQueueSender>();
+        builder.Services.AddTransient<ReadByQueueSender>();
 
         builder.Services.AddMassTransit(x =>
         {
