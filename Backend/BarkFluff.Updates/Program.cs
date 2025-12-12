@@ -22,12 +22,12 @@ builder.Services.AddGrpcReflection();
 // Register Updates services including StreamSubscriptionsManager as Singleton
 builder.Services.AddUpdatesServices();
 
-builder.Services.AddUpdatesServices();
 builder.Services.AddXAuth(builder.Configuration);
 
 builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<NewMessageConsumer>();
+    x.AddConsumer<ReadByConsumer>();
     
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -40,6 +40,11 @@ builder.Services.AddMassTransit(x =>
         cfg.ReceiveEndpoint("new-messages-updates-handler", e =>
         {
             e.ConfigureConsumer<NewMessageConsumer>(context);
+        });
+        
+        cfg.ReceiveEndpoint("read-receipts-updates-handler", e =>
+        {
+            e.ConfigureConsumer<ReadByConsumer>(context);
         });
     });
 });

@@ -1,6 +1,8 @@
-using System.Collections.Concurrent;
 using BarkFluff.Proto.Updates;
+
 using Grpc.Core;
+
+using System.Collections.Concurrent;
 
 namespace BarkFluff.Updates.Features.SubscribeMessagesRead;
 
