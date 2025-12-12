@@ -3,12 +3,6 @@ using BarkFluff.Proto.Shared;
 using BarkFluff.Proto.Updates;
 using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Windows;
 
 namespace BarkFluff.Client.WPF.Services.App
 {
@@ -31,7 +25,6 @@ namespace BarkFluff.Client.WPF.Services.App
         // Read receipt streaming - только одна глобальная подписка
         private CancellationTokenSource? _readReceiptCancellationTokenSource;
         private Task? _readReceiptStreamingTask;
-        private string? _currentChatId;
 
         // Дедупликация сообщений
         private readonly HashSet<long> _processedMessageIds = new();
@@ -128,7 +121,7 @@ namespace BarkFluff.Client.WPF.Services.App
                     WPF.App.ErideMessage.AddMessage("Connecting to real-time updates stream...", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
 
                     var (error, stream) = await WPF.App.ServerCommunication.JustUpdate(globalParam);
-                    
+
                     if (!error.IsSuccess || stream == null)
                     {
                         WPF.App.ErideMessage.AddMessage($"Failed to connect to updates stream: {error.ErrorMessage}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Error });
@@ -156,7 +149,7 @@ namespace BarkFluff.Client.WPF.Services.App
                     WPF.App.ErideMessage.AddMessage($"Error in updates stream: {ex.Message}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Error });
                     _isConnected = false;
                     ConnectionStatusChanged?.Invoke(false);
-                    
+
                     if (!cancellationToken.IsCancellationRequested)
                     {
                         await HandleReconnectionAsync(cancellationToken);
@@ -178,7 +171,7 @@ namespace BarkFluff.Client.WPF.Services.App
             _reconnectAttempts++;
             var delay = ReconnectDelayMs * _reconnectAttempts;
             WPF.App.ErideMessage.AddMessage($"Reconnection attempt {_reconnectAttempts}/{MaxReconnectAttempts} in {delay / 1000} seconds", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
-            
+
             try
             {
                 await Task.Delay(delay, cancellationToken);
@@ -272,7 +265,7 @@ namespace BarkFluff.Client.WPF.Services.App
         }
 
         /// <summary>
-        /// Starts the global read receipt subscription
+        /// Запускает глобальную подписку на подтверждение о прочтении
         /// </summary>
         public void StartGlobalReadReceiptSubscription(GlobalParam globalParam)
         {
@@ -306,27 +299,6 @@ namespace BarkFluff.Client.WPF.Services.App
             WPF.App.ErideMessage.AddMessage("Global read receipt subscription stopped", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
         }
 
-        /// <summary>
-        /// Sets the current chat ID for tracking (no separate subscription created)
-        /// </summary>
-        public void StartChatReadReceiptSubscription(GlobalParam globalParam, string chatId)
-        {
-            _currentChatId = chatId;
-            WPF.App.ErideMessage.AddMessage($"Chat read receipt tracking set for chat {chatId}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
-        }
-
-        /// <summary>
-        /// Clears the current chat ID tracking
-        /// </summary>
-        public void StopChatReadReceiptSubscription()
-        {
-            if (!string.IsNullOrEmpty(_currentChatId))
-            {
-                WPF.App.ErideMessage.AddMessage($"Chat read receipt tracking stopped for chat {_currentChatId}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
-                _currentChatId = null;
-            }
-        }
-
         private async Task StreamReadReceiptsAsync(GlobalParam globalParam, CancellationToken cancellationToken)
         {
             while (!cancellationToken.IsCancellationRequested)
@@ -336,7 +308,7 @@ namespace BarkFluff.Client.WPF.Services.App
                     WPF.App.ErideMessage.AddMessage("Connecting to read receipts stream...", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
 
                     var (error, stream) = await WPF.App.ServerCommunication.SubscribeToReadReceipts(globalParam);
-                    
+
                     if (!error.IsSuccess || stream == null)
                     {
                         WPF.App.ErideMessage.AddMessage($"Failed to connect to read receipts stream: {error.ErrorMessage}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Error });
@@ -359,7 +331,7 @@ namespace BarkFluff.Client.WPF.Services.App
                 catch (Exception ex)
                 {
                     WPF.App.ErideMessage.AddMessage($"Error in read receipts stream: {ex.Message}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Error });
-                    
+
                     if (!cancellationToken.IsCancellationRequested)
                     {
                         await Task.Delay(ReconnectDelayMs, cancellationToken);
@@ -387,7 +359,7 @@ namespace BarkFluff.Client.WPF.Services.App
         public void Dispose()
         {
             if (_disposed) return;
-            
+
             Stop();
             StopGlobalReadReceiptSubscription();
             _disposed = true;

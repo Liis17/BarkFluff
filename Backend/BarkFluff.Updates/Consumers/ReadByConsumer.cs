@@ -1,11 +1,11 @@
 using BarkFluff.Shared.Queue.Messages;
 using BarkFluff.Updates.Features.SubscribeMessagesRead;
 using MassTransit;
-using MassTransit.Mediator;
+using MediatR;
 
 namespace BarkFluff.Updates.Consumers;
 
-public class ReadByConsumer :  IConsumer<MessageReadEvent>
+public class ReadByConsumer : IConsumer<MessageReadEvent>
 {
     private readonly IMediator _mediator;
 
