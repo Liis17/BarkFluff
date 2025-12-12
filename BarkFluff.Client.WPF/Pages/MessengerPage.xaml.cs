@@ -42,6 +42,10 @@ namespace BarkFluff.Client.WPF.Pages
         private string? _currentChatAvatarFileId;
         private string? _currentUserAvatarFileId;
 
+        // Буфер для хранения chatId -> lastMessageId для быстрого обновления статуса прочтения
+        private readonly Dictionary<string, long> _chatLastMessageBuffer = new();
+        private readonly object _chatBufferLock = new();
+
         public MessengerPage()
         {
             InitializeComponent();
@@ -373,8 +377,7 @@ namespace BarkFluff.Client.WPF.Pages
                 DisplayMessages(response.messages);
             }
 
-            // Start chat-specific read receipt subscription
-            Services.App.RealtimeUpdateService.Instance.StartChatReadReceiptSubscription(App.GParam, ChatId.Value);
+            // Глобальная подписка на уведомления о прочтении уже запущена в ProcessMessages
         }
 
         private void DisplayMessages(List<MessageModel> messages)
@@ -744,6 +747,12 @@ namespace BarkFluff.Client.WPF.Pages
                 return;
             }
 
+            // Обновляем буфер с новым последним сообщением
+            lock (_chatBufferLock)
+            {
+                _chatLastMessageBuffer[message.ChatId] = message.MessageId;
+            }
+
             // Находим ChatItem с совпадающим ChatId
             ChatItem targetChatItem = null;
             foreach (var child in ChatList.Children)
@@ -814,6 +823,12 @@ namespace BarkFluff.Client.WPF.Pages
         {
             var response = await App.ServerCommunication.GetChats(App.GParam);
             ChatList.Children.Clear(); // Очищаем список перед добавлением
+
+            // Очищаем буфер последних сообщений чатов
+            lock (_chatBufferLock)
+            {
+                _chatLastMessageBuffer.Clear();
+            }
 
             if (response.chats.Count == 0)
             {
@@ -887,6 +902,12 @@ namespace BarkFluff.Client.WPF.Pages
                         SentAt = item.LastMessage.SentAt,
                         ChatId = item.Id
                     };
+
+                    // Добавляем в буфер для быстрого поиска при обновлении статуса прочтения
+                    lock (_chatBufferLock)
+                    {
+                        _chatLastMessageBuffer[item.Id] = item.LastMessage.Id;
+                    }
                 }
 
                 ChatList.Children.Add(messageItem);
@@ -1128,7 +1149,7 @@ namespace BarkFluff.Client.WPF.Pages
                 {
                     // Определяем, чей профиль открывать
                     if (senderElement.Name == "AvatarTitleWindowButton")
-                    {
+                      {
                         // Клик на аватар в заголовке - открываем свой профиль
                         ShowUserProfile(isCurrentUser: true);
                       }
@@ -1380,6 +1401,12 @@ namespace BarkFluff.Client.WPF.Pages
 
                         messageItem.TransferMessage = message;
 
+                        // Добавляем в буфер для отслеживания последнего сообщения
+                        lock (_chatBufferLock)
+                        {
+                            _chatLastMessageBuffer[chatId] = message.MessageId;
+                        }
+
                         // Insert at the top of the list (most recent)
                         ChatList.Children.Insert(0, messageItem);
 
@@ -1417,7 +1444,7 @@ namespace BarkFluff.Client.WPF.Pages
             Services.App.RealtimeUpdateService.Instance.NewMessageReceived -= OnNewMessageReceived;
             Services.App.RealtimeUpdateService.Instance.ConnectionStatusChanged -= OnConnectionStatusChanged;
             Services.App.RealtimeUpdateService.Instance.ReadReceiptReceived -= OnReadReceiptReceived;
-            Services.App.RealtimeUpdateService.Instance.StopChatReadReceiptSubscription();
+            // Глобальная подписка остается активной - она управляется самим RealtimeUpdateService
         }
 
         private void OnReadReceiptReceived(BarkFluff.Proto.Updates.MessageReadEvent update)
@@ -1425,32 +1452,51 @@ namespace BarkFluff.Client.WPF.Pages
             // Update UI on the main thread
             Application.Current.Dispatcher.Invoke(() =>
             {
-                var chatId = update.ChatId;
-                var messageId = update.MessageId;
-                var newReadBy = update.NewReadBy.ToList();
-
-                // Update message bubble in the currently open chat
-                if (ChatId.Value == chatId)
+                try
                 {
-                    foreach (var child in MessageArea.Children)
+                    var chatId = update.ChatId;
+                    var messageId = update.MessageId;
+                    var newReadBy = update.NewReadBy.ToList();
+
+                    // Быстрая проверка через буфер - нужно ли обновлять галочки в списке чатов
+                    bool shouldUpdateChatList = false;
+                    lock (_chatBufferLock)
                     {
-                        if (child is MessageBubble bubble && bubble.MessageId == messageId.ToString())
+                        if (_chatLastMessageBuffer.TryGetValue(chatId, out long lastMessageId))
                         {
-                            bubble.UpdateReadByList(newReadBy);
-                            break;
+                            shouldUpdateChatList = (lastMessageId == messageId);
+                        }
+                    }
+
+                    // Update message bubble in the currently open chat
+                    if (!string.IsNullOrEmpty(ChatId.Value) && ChatId.Value == chatId)
+                    {
+                        foreach (var child in MessageArea.Children)
+                        {
+                            if (child is MessageBubble bubble && bubble.MessageId == messageId.ToString())
+                            {
+                                bubble.UpdateReadByList(newReadBy);
+                                break;
+                            }
+                        }
+                    }
+
+                    // Update ChatItem in chat list only if this is the last message
+                    if (shouldUpdateChatList)
+                    {
+                        foreach (var child in ChatList.Children)
+                        {
+                            if (child is ChatItem chatItem && chatItem.ChatId == chatId)
+                            {
+                                chatItem.UpdateLastMessageReadStatus(messageId, newReadBy);
+                                break;
+                            }
                         }
                     }
                 }
-
-                // Update ChatItem in chat list
-                foreach (var child in ChatList.Children)
+                catch (Exception ex)
                 {
-                    if (child is ChatItem chatItem && chatItem.ChatId == chatId)
-                    {
-                        // Update the last message read status using messageId overload
-                        chatItem.UpdateLastMessageReadStatus(messageId, newReadBy);
-                        break;
-                    }
+                    App.ErideMessage.AddMessage($"Ошибка обработки уведомления о прочтении: {ex.Message}", new Erida { Type = MType.Error });
                 }
             });
         }
