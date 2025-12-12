@@ -1,8 +1,10 @@
 namespace BarkFluff.Updates.Features.SubscribeNewMessages;
 
-using System.Collections.Concurrent;
 using BarkFluff.Proto.Updates;
+
 using Grpc.Core;
+
+using System.Collections.Concurrent;
 
 public class StreamSubscriptionsManager
 {
