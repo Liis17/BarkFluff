@@ -89,9 +89,9 @@
                         HorizontalContentAlignment="Left"
                         Background="Transparent"
                         BorderThickness="0"
-                        Click="SidebarButtonClick"
+                        Click="OpenFavorites"
                         Content="Избранное"
-                        Cursor="No"
+                        Cursor="Hand"
                         Foreground="White">
                         <Button.ContentTemplate>
                             <DataTemplate>
