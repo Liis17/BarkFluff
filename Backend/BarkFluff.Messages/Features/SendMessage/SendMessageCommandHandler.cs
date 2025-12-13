@@ -113,6 +113,8 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             attachments = filesInfo.FilesInfos.Select(x => new Domain.MessageAttachment { FileId = x.Id, 
                 FileSize = x.FileSize, 
                 PreviewUrl = x.PreviewUrl,
+                PreviewFileId = string.IsNullOrEmpty(x.PreviewFileId) ? null : x.PreviewFileId,
+                FileName = string.IsNullOrEmpty(x.FileName) ? null : x.FileName,
                 Type = _attachmentMap[x.Type]}).ToList();
 
             if (!attachments.Any())

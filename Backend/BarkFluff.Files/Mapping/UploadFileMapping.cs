@@ -21,7 +21,8 @@ public static class UploadFileMapping
             UploadedAt = Timestamp.FromDateTime(file.UploadedAt ?? DateTime.MinValue), Uploader = file.Uploader, 
             FileSize = file.Size,
             PreviewUrl = runSettings is null || file.PreviewId is null ? string.Empty : FileUrlHelper.GenerateDownloadUrl(runSettings.Host, runSettings.Http1Port, file.PreviewId!.Value),
-            FileUrl = runSettings is null ? string.Empty : FileUrlHelper.GenerateDownloadUrl(runSettings.Host, runSettings.Http1Port, file.Id)
+            FileUrl = runSettings is null ? string.Empty : FileUrlHelper.GenerateDownloadUrl(runSettings.Host, runSettings.Http1Port, file.Id),
+            PreviewFileId = file.PreviewId?.ToString() ?? string.Empty
         };
     }
 }
