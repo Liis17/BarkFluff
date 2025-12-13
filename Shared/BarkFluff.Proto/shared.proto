@@ -48,6 +48,10 @@ message MessageAttachment {
   string preview_url = 4; // Ссылка на превью файла (может быть пустым)
   
   int64 attachment_size = 5; // Размер файла в байтах
+  
+  string preview_file_id = 6; // Идентификатор файла превью (может быть пустым)
+  
+  string file_name = 7; // Оригинальное имя файла
 }
 
 enum MessageAttachmentType {

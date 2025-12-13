@@ -162,11 +162,17 @@ namespace BarkFluff.Messages.Persistence.Migrations
                                         .IsRequired()
                                         .HasColumnType("text");
 
+                                    b2.Property<string>("FileName")
+                                        .HasColumnType("text");
+
                                     b2.Property<long>("FileSize")
                                         .HasColumnType("bigint");
 
                                     b2.Property<long>("MessageId")
                                         .HasColumnType("bigint");
+
+                                    b2.Property<string>("PreviewFileId")
+                                        .HasColumnType("text");
 
                                     b2.Property<string>("PreviewUrl")
                                         .HasColumnType("text");

@@ -1,4 +1,3 @@
-
 namespace BarkFluff.Messages.Mapping;
 
 using Proto.Shared;
@@ -24,6 +23,8 @@ public static class MessageContentMapping
             {
                 FileId = attachment.FileId,
                 PreviewUrl = attachment.PreviewUrl ?? string.Empty,
+                PreviewFileId = attachment.PreviewFileId ?? string.Empty,
+                FileName = attachment.FileName ?? string.Empty,
                 AttachmentSize = attachment.FileSize,
                 Id = attachment.Id,
                 Type = (MessageAttachmentType)(int)attachment.Type

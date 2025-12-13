@@ -13,5 +13,9 @@ public class MessageAttachment
     
     public string? PreviewUrl { get; set; }
     
+    public string? PreviewFileId { get; set; }
+    
+    public string? FileName { get; set; }
+    
     public long FileSize { get; set; }
 }
