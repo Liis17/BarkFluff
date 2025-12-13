@@ -45,13 +45,13 @@
                     </Ellipse>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock
-                            x:Name="UsernameText"
+                            x:Name="EmailText"
                             FontSize="14"
                             FontWeight="Bold"
                             Foreground="White"
                             Text="username" />
                         <TextBlock
-                            x:Name="EmailText"
+                            x:Name="UsernameText"
                             FontSize="12"
                             Foreground="Gray"
                             Text="email" />

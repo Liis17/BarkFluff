@@ -197,7 +197,7 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="15" />
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -222,7 +222,7 @@
                     x:Name="MediaContentPresenter"
                     Grid.Row="1"
                     Grid.ColumnSpan="2"
-                    Margin="5"
+                    Margin="0 0 0 5"
                     Content="{x:Null}" />
 
                 <!--  Текстовое содержимое сообщения  -->
@@ -230,14 +230,16 @@
                     x:Name="TextContentPresenter"
                     Grid.Row="2"
                     Grid.ColumnSpan="2"
-                    Margin="14,4,14,4"
+                    Margin="14,0,14,0"
                     Content="{x:Null}" />
 
                 <!--  Время и статус  -->
                 <Grid
                     Grid.Row="3"
                     Grid.Column="1"
-                    Margin="6,0,10,8">
+                    Margin="0,0,0,0"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Bottom">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
@@ -247,7 +249,7 @@
                     <TextBlock
                         x:Name="MessageTime"
                         Grid.Column="0"
-                        Margin="0,0,4,0"
+                        Margin="0,0,4,3"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Bottom"
                         FontFamily="{DynamicResource AdwaitaSans}"
@@ -266,6 +268,7 @@
                     <StackPanel
                         x:Name="ReadStatus"
                         Grid.Column="1"
+                        Margin="0,-5,5,0"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Bottom"
                         Orientation="Horizontal"
@@ -311,7 +314,7 @@
                             x:Name="SingleCheckmark"
                             Width="20"
                             Height="20"
-                            Margin="0,0,-14,0"
+                            Margin="0,0,0,0"
                             FontSize="20"
                             Foreground="#FFFFC1A4"
                             Symbol="Checkmark12"
@@ -330,6 +333,7 @@
                             x:Name="DoubleCheckmark"
                             Width="20"
                             Height="20"
+                            Margin="-15,0,0,0"
                             Panel.ZIndex="-1"
                             FontSize="20"
                             Foreground="#FFFFC1A4"

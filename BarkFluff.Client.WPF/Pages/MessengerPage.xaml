@@ -556,7 +556,7 @@
                             <ScrollViewer
                                 x:Name="MessageScrollViewer"
                                 Grid.Row="1"
-                                Padding="20"
+                                Padding="5,0,15,0"
                                 HorizontalAlignment="Stretch"
                                 VerticalAlignment="Bottom"
                                 HorizontalScrollBarVisibility="Disabled"
