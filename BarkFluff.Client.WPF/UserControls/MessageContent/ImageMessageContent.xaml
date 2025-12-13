@@ -11,12 +11,12 @@
         <Border
             x:Name="ImageBorder"
             Margin="0"
-            CornerRadius="12">
+            CornerRadius="18">
             <Border.Clip>
                 <RectangleGeometry
                     x:Name="ClipGeometry"
-                    RadiusX="12"
-                    RadiusY="12" />
+                    RadiusX="18"
+                    RadiusY="18" />
             </Border.Clip>
             <Image
                 x:Name="ContentImage"
