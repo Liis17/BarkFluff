@@ -1,6 +1,7 @@
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Messages.Mapping;
 using BarkFluff.Messages.Persistence.Services;
+using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
 using MediatR;
@@ -15,14 +16,16 @@ public class ListChatsCommandHandler : IRequestHandler<ListChatsCommand, ListCha
     private readonly ChatsStorage _chatsStorage;
     private readonly ChatCache _chatCache;
     private readonly UsersServerApi.UsersServerApiClient _usersServerApiClient;
+    private readonly FilesServerApi.FilesServerApiClient _filesServerApiClient;
 
     public ListChatsCommandHandler(UserContext userContext, ChatsStorage chatsStorage, IDistributedCache cache, 
-        ChatCache chatCache, UsersServerApi.UsersServerApiClient usersServerApiClient)
+        ChatCache chatCache, UsersServerApi.UsersServerApiClient usersServerApiClient, FilesServerApi.FilesServerApiClient filesServerApiClient)
     {
         _userContext = userContext;
         _chatsStorage = chatsStorage;
         _chatCache = chatCache;
         _usersServerApiClient = usersServerApiClient;
+        _filesServerApiClient = filesServerApiClient;
     }
 
     public async Task<ListChatsResponse> Handle(ListChatsCommand request, CancellationToken cancellationToken)
@@ -58,7 +61,22 @@ public class ListChatsCommandHandler : IRequestHandler<ListChatsCommand, ListCha
         
         var totalCount = await _chatsStorage.GetTotalUserChats(_userContext.UserId);
 
-        return new ListChatsResponse { Chats = { chats.Select(x => x.ToGrpc()) }, TotalCount = totalCount};
+        // Получаем информацию о файлах для обогащения вложений в последних сообщениях
+        var fileIds = chats
+            .Where(c => c.LastMessage?.Content?.Attachments != null)
+            .SelectMany(c => c.LastMessage!.Content!.Attachments!)
+            .Select(a => a.FileId)
+            .Distinct()
+            .ToList();
+
+        Dictionary<string, UploadFileInfo> filesInfoMap = new();
+        if (fileIds.Any())
+        {
+            var filesInfo = await _filesServerApiClient.GetFilesDataAsync(new GetFilesDataRequest { FileIds = { fileIds } });
+            filesInfoMap = filesInfo.FilesInfos.ToDictionary(f => f.Id, f => f);
+        }
+
+        return new ListChatsResponse { Chats = { chats.Select(x => x.ToGrpc(filesInfoMap)) }, TotalCount = totalCount};
     }
 
     private async Task LoadNameAndImageChat(Chat chat)

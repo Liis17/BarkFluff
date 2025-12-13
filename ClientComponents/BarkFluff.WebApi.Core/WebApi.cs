@@ -927,7 +927,7 @@ namespace BarkFluff.WebApi.Core
             {
                 return (new ErrorReturner(false, "Пользователь не подтвержден."), null);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 return (new ErrorReturner(false, "Ошибка получения чатов"), null);
             }
