@@ -933,6 +933,13 @@ namespace BarkFluff.WebApi.Core
             }
         }
 
+        /// <summary>
+        /// Отправка сообщения в чат
+        /// </summary>
+        /// <param name="globalParam"></param>
+        /// <param name="options"></param>
+        /// <param name="letter"></param>
+        /// <returns></returns>
         public async Task<(ErrorReturner error, MessageModel? message)> SendMessage(GlobalParam globalParam, (bool isUserId, string recipient) options, ForwardingLetter letter)
         {
             try
