@@ -30,7 +30,7 @@ namespace BarkFluff.Client.WPF.Pages
         private bool _isLoadingHistory = false;
         private bool _hasMoreHistory = true;
 
-        // Constants for message handling
+        // Константы для обработки сообщений
         private const int HISTORY_PAGE_SIZE = 30;
         private const int SCROLL_TOP_THRESHOLD = 100;
         private const int MARK_AS_READ_DEBOUNCE_MS = 1000;
@@ -56,14 +56,14 @@ namespace BarkFluff.Client.WPF.Pages
             SubscribeToReactiveProperties();
             StartSlideDownAndFadeIn();
 
-            // Subscribe to scroll changed event for history loading
+            // Подписываемся на событие прокрутки для загрузки истории
             MessageScrollViewer.ScrollChanged += MessageScrollViewer_ScrollChanged;
 
-            // Subscribe to attachment preview events
+            // Подписываемся на события превью вложений
             AttachmentPreview.OnCancel += AttachmentPreview_OnCancel;
             AttachmentPreview.OnSend += AttachmentPreview_OnSend;
 
-            // Subscribe to paste event for TextForMessage
+            // Подписываемся на событие вставки в TextForMessage
             DataObject.AddPastingHandler(TextForMessage, OnTextForMessagePaste);
         }
 
@@ -72,7 +72,7 @@ namespace BarkFluff.Client.WPF.Pages
             var scrollViewer = sender as ScrollViewer;
             if (scrollViewer == null) return;
 
-            // Check if scrolled to top (with threshold)
+            // Проверяем, прокручено ли до верха (с порогом)
             if (scrollViewer.VerticalOffset < SCROLL_TOP_THRESHOLD && !_isLoadingHistory && _hasMoreHistory && !string.IsNullOrEmpty(ChatId.Value))
             {
                 await LoadHistoryMessages();
@@ -80,7 +80,7 @@ namespace BarkFluff.Client.WPF.Pages
         }
 
         /// <summary>
-        /// Loads older messages when scrolling to top
+        /// Загружает более старые сообщения при прокрутке к верху
         /// </summary>
         private async Task LoadHistoryMessages()
         {
@@ -92,7 +92,7 @@ namespace BarkFluff.Client.WPF.Pages
             {
                 App.ErideMessage.AddMessage($"Загрузка истории сообщений (from ID: {_oldestLoadedMessageId})", new Erida { Type = MType.Debug });
 
-                // First, try to load from cache
+                // Сначала пробуем загрузить из кеша
                 var cachedMessages = App.CacheManager.GetMessages(ChatId.Value, _oldestLoadedMessageId, HISTORY_PAGE_SIZE);
                 var hasLoadedFromCache = false;
 
@@ -103,7 +103,7 @@ namespace BarkFluff.Client.WPF.Pages
                     hasLoadedFromCache = true;
                 }
 
-                // Then fetch from server
+                // Затем загружаем с сервера
                 var response = await App.ServerCommunication.GetMessagesWithOffset(
                     App.GParam,
                     ChatId.Value,
@@ -115,16 +115,16 @@ namespace BarkFluff.Client.WPF.Pages
                 {
                     App.ErideMessage.AddMessage($"Загружено {response.messages.Count} сообщений с сервера", new Erida { Type = MType.Debug });
 
-                    // Save to cache
+                    // Сохраняем в кеш
                     foreach (var msg in response.messages)
                     {
                         App.CacheManager.SaveMessage(ChatId.Value, TitleChat, msg, MessageOperation.Added);
                     }
 
-                    // Insert into UI (will deduplicate)
+                    // Вставляем в UI (будет удаление дубликатов)
                     await InsertHistoryMessages(response.messages);
 
-                    // Check if we got fewer messages than requested - means we reached the end
+                    // Если получено меньше сообщений, чем запрашивали - значит достигнут конец
                     if (response.messages.Count < HISTORY_PAGE_SIZE)
                     {
                         _hasMoreHistory = false;
@@ -133,7 +133,7 @@ namespace BarkFluff.Client.WPF.Pages
                 }
                 else if (response.error.ErrorCode == 1)
                 {
-                    // No more messages
+                    // Нет больше сообщений
                     _hasMoreHistory = false;
                     App.ErideMessage.AddMessage("Нет больше сообщений для загрузки", new Erida { Type = MType.Debug });
                 }
@@ -153,7 +153,7 @@ namespace BarkFluff.Client.WPF.Pages
         }
 
         /// <summary>
-        /// Inserts history messages at the top of the message area with deduplication
+        /// Вставляет сообщения истории в начало области сообщений с удалением дубликатов
         /// </summary>
         private async Task InsertHistoryMessages(List<MessageModel> messages)
         {
@@ -161,12 +161,12 @@ namespace BarkFluff.Client.WPF.Pages
 
             await Dispatcher.InvokeAsync(() =>
             {
-                // Remember current scroll position
+                // Запоминаем текущую позицию прокрутки
                 var scrollViewer = MessageScrollViewer;
                 var oldScrollHeight = scrollViewer.ScrollableHeight;
                 var oldOffset = scrollViewer.VerticalOffset;
 
-                // Get existing message IDs for deduplication
+                // Получаем существующие ID сообщений для удаления дубликатов
                 var existingMessageIds = new HashSet<long>();
                 foreach (var child in MessageArea.Children)
                 {
@@ -176,19 +176,19 @@ namespace BarkFluff.Client.WPF.Pages
                     }
                 }
 
-                // Sort messages by time (oldest first for proper insertion)
+                // Сортируем сообщения по времени (сначала старые для корректной вставки)
                 var sortedMessages = messages.OrderBy(m => m.SentAt.ToDateTime()).ToList();
                 var insertedCount = 0;
 
                 foreach (var message in sortedMessages)
                 {
-                    // Skip duplicates
+                    // Пропускаем дубликаты
                     if (existingMessageIds.Contains(message.MessageId))
                     {
                         continue;
                     }
 
-                    // Update oldest loaded ID
+                    // Обновляем ID самого старого загруженного сообщения
                     if (message.MessageId < _oldestLoadedMessageId || _oldestLoadedMessageId == 0)
                     {
                         _oldestLoadedMessageId = message.MessageId;
@@ -198,14 +198,14 @@ namespace BarkFluff.Client.WPF.Pages
                     var type = GetMessageType(message);
                     var messageItem = new MessageBubble(owner, type, message, IsGroup);
 
-                    // Insert at the beginning (oldest messages first)
+                    // Вставляем в начало (сначала самые старые сообщения)
                     MessageArea.Children.Insert(insertedCount, messageItem);
                     insertedCount++;
                 }
 
                 if (insertedCount > 0)
                 {
-                    // Restore scroll position (adjust for new content)
+                    // Восстанавливаем позицию прокрутки (с учётом нового содержимого)
                     scrollViewer.UpdateLayout();
                     var newScrollHeight = scrollViewer.ScrollableHeight;
                     var scrollDifference = newScrollHeight - oldScrollHeight;
@@ -237,7 +237,7 @@ namespace BarkFluff.Client.WPF.Pages
             // Отписываемся от событий кеширования
             App.FileCacheService.FileCached -= OnFileCached;
 
-            // Cleanup realtime service subscriptions
+            // Отписываемся от подписок сервиса реального времени
             CleanupRealtimeService();
 
             IsOpenChat?.Dispose();
@@ -621,7 +621,7 @@ namespace BarkFluff.Client.WPF.Pages
                     SentAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(DateTime.UtcNow)
                 };
 
-                // Check and add date separator before adding message
+                // Проверяем и добавляем разделитель даты перед добавлением сообщения
                 AddDateSeparatorIfNeeded(DateTime.Now);
 
                 AddMessage(messageControl);
@@ -637,7 +637,7 @@ namespace BarkFluff.Client.WPF.Pages
             animation.Begin();
             MessageScrollViewer.ScrollToEnd();
 
-            // Mark visible messages as read after a short delay
+            // Отметить видимые сообщения как прочитанные с небольшой задержкой
             System.Windows.Threading.DispatcherTimer delayTimer = new System.Windows.Threading.DispatcherTimer();
             delayTimer.Interval = TimeSpan.FromMilliseconds(INITIAL_MARK_DELAY_MS);
             delayTimer.Tick += (s, args) =>
@@ -652,7 +652,7 @@ namespace BarkFluff.Client.WPF.Pages
         private HashSet<long> _pendingMarkAsRead = new HashSet<long>();
 
         /// <summary>
-        /// Marks visible incoming messages as read with debouncing
+        /// Отмечает видимые входящие сообщения как прочитанные с дебаунсом
         /// </summary>
         private async void MarkVisibleMessagesAsRead()
         {
@@ -664,7 +664,7 @@ namespace BarkFluff.Client.WPF.Pages
             {
                 if (child is MessageBubble bubble)
                 {
-                    // Only mark incoming messages (not from current user)
+                    // Отмечаем только входящие сообщения (не от текущего пользователя)
                     if (bubble.SenderId != App.GParam.UserId &&
                         !bubble.ReadBy.Contains(App.GParam.UserId) &&
                         long.TryParse(bubble.MessageId, out long messageId))
@@ -681,7 +681,7 @@ namespace BarkFluff.Client.WPF.Pages
                     _pendingMarkAsRead.Add(id);
                 }
 
-                // Debounce the API call
+                // Дебаунс вызова API
                 if (_markAsReadDebounceTimer == null)
                 {
                     _markAsReadDebounceTimer = new System.Windows.Threading.DispatcherTimer();
@@ -695,10 +695,10 @@ namespace BarkFluff.Client.WPF.Pages
                             var idsToMark = _pendingMarkAsRead.ToList();
                             _pendingMarkAsRead.Clear();
 
-                            // Call API to mark as read
+                            // Вызвать API для отметки как прочитано
                             await ReadMessage(idsToMark);
 
-                            // Update local UI
+                            // Обновить локальный UI
                             foreach (var child in MessageArea.Children)
                             {
                                 if (child is MessageBubble bubble && long.TryParse(bubble.MessageId, out long mid) && idsToMark.Contains(mid))
@@ -712,7 +712,7 @@ namespace BarkFluff.Client.WPF.Pages
                                 }
                             }
 
-                            // Reset unread count for current chat
+                            // Сбросить счётчик непрочитанных для текущего чата
                             foreach (var child in ChatList.Children)
                             {
                                 if (child is ChatItem chatItem && chatItem.ChatId == ChatId.Value)
@@ -1149,18 +1149,18 @@ namespace BarkFluff.Client.WPF.Pages
                 {
                     // Определяем, чей профиль открывать
                     if (senderElement.Name == "AvatarTitleWindowButton")
-                      {
+                    {
                         // Клик на аватар в заголовке - открываем свой профиль
                         ShowUserProfile(isCurrentUser: true);
-                      }
-                      else if (senderElement.Name == "ChatAvatarButton")
-                      {
+                    }
+                    else if (senderElement.Name == "ChatAvatarButton")
+                    {
                         // Клик на аватар в чате - открываем профиль собеседника
                         if (ChatIdbyUserId.Value > 0)
                         {
                             ShowUserProfile(userId: ChatIdbyUserId.Value);
                         }
-                      }
+                    }
 
                     if (!isOpenCenter)
                     {
@@ -1266,24 +1266,24 @@ namespace BarkFluff.Client.WPF.Pages
         {
             App.ErideMessage.AddMessage("Запуск процесса получения обновлений...", new Erida { Type = MType.Debug });
 
-            // Subscribe to the RealtimeUpdateService events
+            // Подписываемся на события RealtimeUpdateService
             Services.App.RealtimeUpdateService.Instance.NewMessageReceived += OnNewMessageReceived;
             Services.App.RealtimeUpdateService.Instance.ConnectionStatusChanged += OnConnectionStatusChanged;
             Services.App.RealtimeUpdateService.Instance.ReadReceiptReceived += OnReadReceiptReceived;
 
             // Start the realtime update service
             Services.App.RealtimeUpdateService.Instance.Start(globalParam);
-            
+
             // Start global read receipt subscription (for chat list)
             Services.App.RealtimeUpdateService.Instance.StartGlobalReadReceiptSubscription(globalParam);
         }
 
         private void OnNewMessageReceived(string chatId, MessageModel message)
         {
-            // Update UI on the main thread
+            // Обновляем UI в основном потоке
             Application.Current.Dispatcher.Invoke(() =>
             {
-                // Check if chat exists in chat list
+                // Проверяем, существует ли чат в списке чатов
                 ChatItem? existingChatItem = null;
                 foreach (var child in ChatList.Children)
                 {
@@ -1296,11 +1296,11 @@ namespace BarkFluff.Client.WPF.Pages
 
                 if (existingChatItem != null)
                 {
-                    // Update existing chat
+                    // Обновляем существующий чат
                     existingChatItem.TransferMessage = message;
                     existingChatItem.UpdateMessage();
 
-                    // Increment unread count if message is not from current user and chat is not open
+                    // Увеличиваем счётчик непрочитанных, если сообщение не от текущего пользователя и чат не открыт
                     if (message.SenderId != App.GParam.UserId && ChatId.Value != chatId)
                     {
                         existingChatItem.IncrementUnreadCount();
@@ -1308,17 +1308,17 @@ namespace BarkFluff.Client.WPF.Pages
                 }
                 else
                 {
-                    // New chat - need to add to list
+                    // Новый чат - нужно добавить в список
                     AddNewChatToList(chatId, message);
                 }
 
-                // Update the chat list with the new message
+                // Обновляем список чатов новым сообщением
                 UpdateChatWithMessage(message);
 
-                // If this message is for the currently open chat, add it to the message area
+                // Если это сообщение для открытого чата, добавляем его в область сообщений
                 if (!string.IsNullOrEmpty(ChatId.Value) && chatId == ChatId.Value)
                 {
-                    // Check if we already have this message (e.g., our own sent message)
+                    // Проверяем, есть ли у нас уже это сообщение (например, наше отправленное сообщение)
                     bool messageExists = false;
                     MessageBubble? existingBubble = null;
 
@@ -1334,21 +1334,21 @@ namespace BarkFluff.Client.WPF.Pages
 
                     if (messageExists && existingBubble != null)
                     {
-                        // Update existing message (e.g., ReadBy list changed)
+                        // Обновляем существующее сообщение (например, изменился список ReadBy)
                         existingBubble.UpdateReadByList(message.ReadBy);
                     }
                     else if (message.SenderId != App.GParam.UserId)
                     {
-                        // Add date separator if needed before adding incoming message
+                        // Добавляем разделитель даты при необходимости перед добавлением входящего сообщения
                         AddDateSeparatorIfNeeded(message.SentAt.ToDateTime());
 
-                        // Add new incoming message
+                        // Добавляем новое входящее сообщение
                         var owner = MessageBubble.MessageOwner.Interlocutor;
                         var type = GetMessageType(message);
                         var messageItem = new MessageBubble(owner, type, message, IsGroup);
                         AddMessage(messageItem);
 
-                        // Auto-mark as read if chat is open and visible
+                        // Автоматически отмечаем как прочитанное, если чат открыт и видим
                         MarkVisibleMessagesAsRead();
                     }
                 }
@@ -1362,7 +1362,7 @@ namespace BarkFluff.Client.WPF.Pages
         {
             try
             {
-                // Fetch full chat info from server
+                // Получаем полную информацию о чате с сервера
                 var response = await App.ServerCommunication.GetChats(App.GParam);
                 if (response.error.IsSuccess && response.chats != null)
                 {
@@ -1407,10 +1407,10 @@ namespace BarkFluff.Client.WPF.Pages
                             _chatLastMessageBuffer[chatId] = message.MessageId;
                         }
 
-                        // Insert at the top of the list (most recent)
+                        // Вставляем в начало списка (самые свежие сверху)
                         ChatList.Children.Insert(0, messageItem);
 
-                        // Show chat list if it was empty
+                        // Показываем список чатов, если он был пуст
                         if (EmptyChatListBlock.Visibility == Visibility.Visible)
                         {
                             EmptyChatListBlock.Visibility = Visibility.Collapsed;
@@ -1428,6 +1428,7 @@ namespace BarkFluff.Client.WPF.Pages
         {
             Application.Current.Dispatcher.Invoke(() =>
             {
+                // Обновляем UI в основном потоке
                 if (isConnected)
                 {
                     App.ErideMessage.AddMessage("Подключено к потоку обновлений", new Erida { Type = MType.Debug });
@@ -1596,8 +1597,8 @@ namespace BarkFluff.Client.WPF.Pages
 
             if (e.SendSeparately)
             {
-                // Send each file as a separate message
-                // Only send text with the first attachment to avoid duplicates
+                // Отправить каждый файл как отдельное сообщение
+                // Отправлять текст только с первым вложением, чтобы избежать дубликатов
                 for (int i = 0; i < e.Attachments.Count; i++)
                 {
                     var textToSend = i == 0 ? e.MessageText : string.Empty;
@@ -1606,7 +1607,7 @@ namespace BarkFluff.Client.WPF.Pages
             }
             else
             {
-                // Send all files in one message
+                // Отправить все файлы в одном сообщении
                 await SendMessageWithAttachments(e.MessageText, e.Attachments);
             }
 
@@ -1617,7 +1618,7 @@ namespace BarkFluff.Client.WPF.Pages
         {
             try
             {
-                // Determine recipient
+                // Определяем получателя
                 string recipientId = "0";
                 bool isUserId = false;
                 if (IsOpenChatEmpty)
@@ -1641,7 +1642,7 @@ namespace BarkFluff.Client.WPF.Pages
                     Attachments = new List<AttachmentsModel>()
                 };
 
-                // Create temporary attachment models for preview
+                // Создаём временные модели вложений для превью
                 foreach (var attachment in attachments)
                 {
                     pendingMessage.Attachments.Add(new AttachmentsModel
@@ -1653,32 +1654,32 @@ namespace BarkFluff.Client.WPF.Pages
                     });
                 }
 
-                // Determine message type from first attachment
+                // Определяем тип сообщения по первому вложению
                 var messageType = attachments.Count > 0 ? GetMessageTypeFromAttachment(attachments[0].FileType) : MessageBubble.MessageType.Text;
 
-                // Add date separator if needed (BEFORE adding message)
+                // Добавляем разделитель даты при необходимости (ПЕРЕД добавлением сообщения)
                 AddDateSeparatorIfNeeded(DateTime.Now);
 
-                // Create message bubble with pending state
+                // Создаём пузырь сообщения в состоянии ожидания
                 var messageControl = new MessageBubble(MessageBubble.MessageOwner.Me, messageType, pendingMessage, IsGroup);
 
-                // Set up uploading attachment items to show individual progress
+                // Настраиваем элементы загружаемых вложений для отображения индивидуального прогресса
                 var localFilePaths = attachments.Select(a => a.FilePath).ToList();
                 messageControl.SetupUploadingAttachments(localFilePaths);
 
-                // Add to UI immediately (shows uploading items with progress)
+                // Немедленно добавляем в UI (показывает загружаемые файлы с прогрессом)
                 AddMessage(messageControl);
 
-                // Upload files and get file IDs
+                // Загружаем файлы и получаем их ID
                 var fileIds = new List<string>();
                 for (int i = 0; i < attachments.Count; i++)
                 {
                     var attachment = attachments[i];
 
-                    // Create progress reporter for this specific attachment
+                    // Создаём прогресс-репортер для конкретного вложения
                     var progress = new Progress<double>(percent =>
                     {
-                        // Update individual attachment progress
+                        // Обновляем прогресс конкретного вложения
                         messageControl.UpdateAttachmentProgress(i, percent);
                     });
 
@@ -1700,7 +1701,7 @@ namespace BarkFluff.Client.WPF.Pages
                     fileIds.Add(fileId);
                     messageControl.MarkAttachmentUploaded(i, fileId);
 
-                    // Update attachment with actual fileId
+                    // Обновляем вложение реальным fileId
                     if (i < pendingMessage.Attachments.Count)
                     {
                         pendingMessage.Attachments[i].FileId = fileId;
@@ -1727,7 +1728,7 @@ namespace BarkFluff.Client.WPF.Pages
                     return;
                 }
 
-                // Send message with uploaded file IDs
+                // Отправляем сообщение с загруженными ID файлов
                 (bool, string) type = new(isUserId, recipientId);
                 var letter = new ForwardingLetter { Text = text, FilesId = fileIds };
                 var response = await App.ServerCommunication.SendMessage(App.GParam, type, letter);
@@ -1740,23 +1741,23 @@ namespace BarkFluff.Client.WPF.Pages
                 }
                 else if (response.message != null)
                 {
-                    // Update message control with real message ID and mark as sent
+                    // Обновляем контрол сообщения реальным ID и отмечаем как отправленное
                     messageControl.MessageId = response.message.MessageId.ToString();
-                    
-                    // Replace uploading panel with actual content
+
+                    // Заменяем панель загрузки реальным содержимым
                     messageControl.ReplaceUploadingWithContent(response.message, messageType);
-                    
-                    // Mark as sent (changes clock to checkmark)
+
+                    // Отмечаем как отправленное (меняет иконку часов на галочку)
                     messageControl.MarkAsSent();
 
-                    // Save to cache
+                    // Сохраняем в кеш
                     App.CacheManager.SaveMessage(
                         response.message.ChatId,
                         TitleChat,
                         response.message,
                         MessageOperation.Added);
 
-                    // Update chat list
+                    // Обновляем список чатов
                     UpdateChatWithMessage(response.message);
                 }
             }
@@ -1814,7 +1815,7 @@ namespace BarkFluff.Client.WPF.Pages
                 {
                     var headerText = existingHeader.Text;
                     var expectedText = GetDateHeader(newDate);
-                    
+
                     // Если уже есть разделитель с нужной датой - не добавляем новый
                     if (headerText == expectedText)
                     {
@@ -1853,7 +1854,7 @@ namespace BarkFluff.Client.WPF.Pages
         {
             if (e.DataObject.GetDataPresent(DataFormats.FileDrop))
             {
-                // Files pasted from Explorer
+                // Файлы, вставленные из Проводника
                 e.CancelCommand();
                 var files = (string[])e.DataObject.GetData(DataFormats.FileDrop);
                 if (files != null && files.Length > 0)
@@ -1863,7 +1864,7 @@ namespace BarkFluff.Client.WPF.Pages
             }
             else if (e.DataObject.GetDataPresent(DataFormats.Bitmap))
             {
-                // Image pasted from clipboard (screenshot)
+                // Изображение, вставленное из буфера обмена (скриншот)
                 e.CancelCommand();
                 var image = (BitmapSource)e.DataObject.GetData(DataFormats.Bitmap);
                 if (image != null)

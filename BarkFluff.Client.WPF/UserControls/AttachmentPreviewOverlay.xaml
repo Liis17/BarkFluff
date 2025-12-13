@@ -10,19 +10,21 @@
     d:DesignWidth="500"
     mc:Ignorable="d">
     <Border
-        MaxWidth="600"
+        MaxWidth="800"
         MaxHeight="700"
-        Padding="20"
+        Padding="24"
         HorizontalAlignment="Center"
         VerticalAlignment="Center"
-        Background="#FF2D2D30"
-        CornerRadius="16">
+        Background="#FF202020"
+        BorderBrush="#30FFFFFF"
+        BorderThickness="1"
+        CornerRadius="12">
         <Border.Effect>
             <DropShadowEffect
-                BlurRadius="30"
+                BlurRadius="40"
                 Direction="270"
-                Opacity="0.5"
-                ShadowDepth="10"
+                Opacity="0.4"
+                ShadowDepth="12"
                 Color="#000000" />
         </Border.Effect>
 
@@ -36,10 +38,11 @@
 
             <!--  Header  -->
             <TextBlock
+                x:Name="HeaderTextBlock"
                 Grid.Row="0"
-                Margin="0,0,0,16"
+                Margin="0,0,0,20"
                 FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="16"
+                FontSize="20"
                 FontWeight="SemiBold"
                 Foreground="White"
                 Text="Предпросмотр вложений" />
@@ -48,8 +51,8 @@
             <ScrollViewer
                 Grid.Row="1"
                 MaxHeight="400"
-                VerticalScrollBarVisibility="Auto"
-                HorizontalScrollBarVisibility="Disabled">
+                HorizontalScrollBarVisibility="Disabled"
+                VerticalScrollBarVisibility="Auto">
                 <ItemsControl x:Name="PreviewItemsControl">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -61,60 +64,24 @@
 
             <!--  Message Text Input  -->
             <Grid Grid.Row="2" Margin="0,12,0,0">
-                <TextBox
+                <ui:TextBox
                     x:Name="MessageTextBox"
                     MinHeight="40"
                     MaxHeight="80"
                     Padding="12,8"
+                    VerticalContentAlignment="Top"
+                    AcceptsReturn="True"
                     Background="#FF3C3C3C"
                     BorderBrush="#FF505050"
                     BorderThickness="1"
                     FontFamily="{DynamicResource AdwaitaSans}"
                     FontSize="14"
                     Foreground="White"
+                    PlaceholderEnabled="True"
+                    PlaceholderText="Сообщение"
+                    Style="{StaticResource MessageInputTextBox}"
                     TextWrapping="Wrap"
-                    AcceptsReturn="True"
-                    VerticalScrollBarVisibility="Auto"
-                    VerticalContentAlignment="Top">
-                    <TextBox.Style>
-                        <Style TargetType="TextBox">
-                            <Setter Property="Template">
-                                <Setter.Value>
-                                    <ControlTemplate TargetType="TextBox">
-                                        <Border
-                                            Background="{TemplateBinding Background}"
-                                            BorderBrush="{TemplateBinding BorderBrush}"
-                                            BorderThickness="{TemplateBinding BorderThickness}"
-                                            CornerRadius="8">
-                                            <ScrollViewer
-                                                x:Name="PART_ContentHost"
-                                                Margin="{TemplateBinding Padding}"
-                                                VerticalScrollBarVisibility="{TemplateBinding VerticalScrollBarVisibility}" />
-                                        </Border>
-                                    </ControlTemplate>
-                                </Setter.Value>
-                            </Setter>
-                            <Style.Triggers>
-                                <Trigger Property="Text" Value="">
-                                    <Setter Property="Background">
-                                        <Setter.Value>
-                                            <VisualBrush Stretch="None" AlignmentX="Left" AlignmentY="Center">
-                                                <VisualBrush.Visual>
-                                                    <TextBlock
-                                                        Text="Добавить подпись..."
-                                                        FontFamily="{DynamicResource AdwaitaSans}"
-                                                        FontSize="14"
-                                                        Foreground="#FF8A8A8A"
-                                                        Margin="12,0,0,0" />
-                                                </VisualBrush.Visual>
-                                            </VisualBrush>
-                                        </Setter.Value>
-                                    </Setter>
-                                </Trigger>
-                            </Style.Triggers>
-                        </Style>
-                    </TextBox.Style>
-                </TextBox>
+                    VerticalScrollBarVisibility="Auto" />
             </Grid>
 
             <!--  Footer with buttons  -->

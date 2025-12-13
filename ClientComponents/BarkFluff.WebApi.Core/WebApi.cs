@@ -223,6 +223,26 @@ namespace BarkFluff.WebApi.Core
         #region Работа с токенами и безопасными вызовами API
 
         /// <summary>
+        /// Обновляет токен доступа для приложения.
+        /// </summary>
+        /// <param name="globalParam">Параметры приложения</param>
+        /// <returns>Возвращает новый токен доступа</returns>
+        public async Task<(ErrorReturner, string)> TokenUpdate(GlobalParam globalParam)
+        {
+            try
+            {
+                var response = await IdentityAC!.CreateTokenAsync(new BarkFluff.Proto.Identity.CreateTokenRequest { RefreshToken = globalParam.RefreshToken.Value });
+                globalParam.AccessToken = response.AccessToken;
+                return (new ErrorReturner(true), response.AccessToken.Value);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка обновления токена"), "");
+            }
+
+        }
+
+        /// <summary>
         /// Вызов API с обработкой возможных ошибок, связанных с токеном.
         /// </summary>
         /// <typeparam name="T"></typeparam>
@@ -315,6 +335,8 @@ namespace BarkFluff.WebApi.Core
         }
         #endregion
 
+        #region Получение информации о сервере и списке серверов
+
         /// <summary>
         /// Получает информацию о сервере
         /// </summary>
@@ -374,445 +396,9 @@ namespace BarkFluff.WebApi.Core
 
         }
 
-        /// <summary>
-        /// Обновляет токен доступа для приложения.
-        /// </summary>
-        /// <param name="globalParam">Параметры приложения</param>
-        /// <returns>Возвращает новый токен доступа</returns>
-        public async Task<(ErrorReturner, string)> TokenUpdate(GlobalParam globalParam)
-        {
-            try
-            {
-                var response = await IdentityAC!.CreateTokenAsync(new BarkFluff.Proto.Identity.CreateTokenRequest { RefreshToken = globalParam.RefreshToken.Value });
-                globalParam.AccessToken = response.AccessToken;
-                return (new ErrorReturner(true), response.AccessToken.Value);
-            }
-            catch (Exception)
-            {
-                return (new ErrorReturner(false, "Ошибка обновления токена"), "");
-            }
-
-        }
-
-        #region Работа с пользователями и аватарками
-
-        /// <summary>
-        /// Отправляет аватар пользователя на сервер в формате JPEG.
-        /// </summary>
-        /// <param name="globalParam">Параметры приложения</param>
-        /// <param name="jpegImageBytes">Картинка в виде байтов</param>
-        /// <returns></returns>
-        /// <exception cref="Exception"></exception>
-        public async Task<ErrorReturner> UploadUserAvatarAsync(GlobalParam globalParam, byte[] jpegImageBytes)
-        {
-            try
-            {
-                await SafeCallAsync<ErrorReturner>(async () =>
-                {
-                    var getLinkUpload = await FilesAC!.GetUploadUrlAsync(new Proto.Files.GetUploadUrlRequest
-                    {
-                        FileType = Proto.Files.UploadFileType.UserAvatar
-                    });
-
-                    using var formData = new MultipartFormDataContent();
-
-                    var fileContent = new ByteArrayContent(jpegImageBytes);
-                    fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
-
-                    formData.Add(fileContent, "file", "avatar.jpg");
-
-                    var response = await _httpClient.PostAsync(getLinkUpload.Url, formData);
-                    response.EnsureSuccessStatusCode();
-
-                    try
-                    {
-                        await UsersAC!.SetProfilePictureAsync(new Proto.Users.SetProfilePictureRequest
-                        {
-                            FileId = getLinkUpload.FileId
-                        });
-                    }
-                    catch (BarkFluff.Shared.Exceptions.Users.ProfilePictureHasNotValidType)
-                    {
-                        return new ErrorReturner(false, "Переданный file-id содержит файл не с типом Изображение профиля пользователя");
-                    }
-                    catch (BarkFluff.Shared.Exceptions.Files.NotValidFileIdException)
-                    {
-                        return new ErrorReturner(false, "Неверный формат идентификатора файла. Он должен быть guid");
-                    }
-
-                    return new ErrorReturner(true);
-                }, globalParam);
-            }
-            catch (BarkFluff.Shared.Exceptions.Files.NotValidFileIdException)
-            {
-                return new ErrorReturner(false, "Неверный формат идентификатора файла. Он должен быть guid");
-            }
-            return new ErrorReturner(true);
-        }
-
-        /// <summary>
-        /// Uploads a file to the server and returns the file ID.
-        /// </summary>
-        /// <param name="globalParam">Application parameters</param>
-        /// <param name="filePath">Path to the file to upload</param>
-        /// <param name="fileType">Type of file being uploaded</param>
-        /// <returns>File ID if successful, or error</returns>
-        public async Task<(ErrorReturner error, string? fileId)> UploadFileAsync(GlobalParam globalParam, string filePath, Proto.Files.UploadFileType fileType)
-        {
-            return await UploadFileAsync(globalParam, filePath, fileType, null);
-        }
-
-        /// <summary>
-        /// Uploads a file to the server with progress reporting and automatic image optimization.
-        /// </summary>
-        /// <param name="globalParam">Application parameters</param>
-        /// <param name="filePath">Path to the file to upload</param>
-        /// <param name="fileType">Type of file being uploaded</param>
-        /// <param name="progress">Progress callback (0.0 to 1.0)</param>
-        /// <returns>File ID if successful, or error</returns>
-        public async Task<(ErrorReturner error, string? fileId)> UploadFileAsync(
-            GlobalParam globalParam, 
-            string filePath, 
-            Proto.Files.UploadFileType fileType, 
-            IProgress<double>? progress)
-        {
-            string? processedFilePath = null;
-            try
-            {
-                return await SafeCallAsync(async () =>
-                {
-                    // Report initial progress
-                    progress?.Report(0.1);
-
-                    // Process image if needed (convert to JPEG with compression)
-                    string fileToUpload = filePath;
-                    if (fileType == Proto.Files.UploadFileType.MessageAttachmentImage)
-                    {
-                        processedFilePath = await ImageProcessor.ProcessImageForUploadAsync(filePath);
-                        fileToUpload = processedFilePath;
-                        progress?.Report(0.2);
-                    }
-
-                    var getLinkUpload = await FilesAC!.GetUploadUrlAsync(new Proto.Files.GetUploadUrlRequest
-                    {
-                        FileType = fileType
-                    });
-                    progress?.Report(0.3);
-
-                    using var formData = new MultipartFormDataContent();
-
-                    // Note: Reading entire file into memory. For large files, consider streaming approach.
-                    var fileBytes = await File.ReadAllBytesAsync(fileToUpload);
-                    var fileContent = new ByteArrayContent(fileBytes);
-                    progress?.Report(0.5);
-                    
-                    // Determine content type based on file extension
-                    var extension = Path.GetExtension(fileToUpload).ToLowerInvariant();
-                    var contentType = extension switch
-                    {
-                        ".jpg" or ".jpeg" => "image/jpeg",
-                        ".png" => "image/png",
-                        ".gif" => "image/gif",
-                        ".webp" => "image/webp",
-                        ".mp4" => "video/mp4",
-                        ".webm" => "video/webm",
-                        ".avi" => "video/x-msvideo",
-                        ".mov" => "video/quicktime",
-                        ".mkv" => "video/x-matroska",
-                        _ => "application/octet-stream"
-                    };
-
-                    fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
-
-                    formData.Add(fileContent, "file", Path.GetFileName(filePath));
-                    progress?.Report(0.7);
-
-                    var response = await _httpClient.PostAsync(getLinkUpload.Url, formData);
-                    response.EnsureSuccessStatusCode();
-                    progress?.Report(1.0);
-
-                    return (new ErrorReturner(true), getLinkUpload.FileId);
-                }, globalParam);
-            }
-            catch (BarkFluff.Shared.Exceptions.Files.NotValidFileIdException)
-            {
-                return (new ErrorReturner(false, "Неверный формат идентификатора файла. Он должен быть guid"), null);
-            }
-            catch (Exception ex)
-            {
-                return (new ErrorReturner(false, $"Ошибка загрузки файла: {ex.Message}"), null);
-            }
-            finally
-            {
-                // Clean up processed file if it was created
-                if (processedFilePath != null && processedFilePath != filePath && File.Exists(processedFilePath))
-                {
-                    try 
-                    { 
-                        File.Delete(processedFilePath); 
-                    } 
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"WebApi: Failed to delete temp file: {ex.Message}");
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Получает ссылку на аватар пользователя по его ID.
-        /// </summary>
-        /// <param name="globalParam">Параметры приложения</param>
-        /// <param name="userId">[НЕОБЯЗАТЕЛЬНО] ID пользователя, аватар которого нужно получить</param>
-        /// <returns>Возвращает URL аватара или null, если аватар не найден</returns>
-        public async Task<(ErrorReturner, string?)> GetUserAvatar(GlobalParam globalParam, long userId = 0)
-        {
-            try
-            {
-                return await SafeCallAsync(async () =>
-                {
-                    var getLinkUpload = await GetUserData(globalParam, userId);
-                    return (new ErrorReturner(true), getLinkUpload.Data?.ProfilePictureUrl);
-                }, globalParam);
-            }
-            catch (BarkFluff.Shared.Exceptions.Users.ProfilePictureHasNotValidType)
-            {
-                return (new ErrorReturner(false, "Переданный file-id содержит файл не с типом Изображение профиля пользователя"), null);
-            }
-            catch (BarkFluff.Shared.Exceptions.Users.UserIsDraftException)
-            {
-                return (new ErrorReturner(false, "Пользователь не подтвержден"), null);
-            }
-        }
         #endregion
 
-        /// <summary>
-        /// Получает данные пользователя по его ID.
-        /// </summary>
-        /// <param name="globalParam">Параметры приложения</param>
-        /// <param name="userId">[НЕОБЯЗАТЕЛЬНО] ID пользователя, данные которого нужно получить</param>
-        /// <returns>Объект данных пользователя</returns>
-        public async Task<(ErrorReturner Error, UserData? Data)> GetUserData(GlobalParam globalParam, long userId = 0)
-        {
-            if (globalParam == null)
-                return (new ErrorReturner(false, "Параметры приложения не могут быть null"), null);
-
-            try
-            {
-                return await SafeCallAsync(async () =>
-                {
-                    var getUser = await UsersAC!.GetUserAsync(new Proto.Users.GetUserRequest { UserId = userId });
-
-                    return (new ErrorReturner(true), new UserData
-                    {
-                        FirstName = getUser.User.FirstName,
-                        LastName = getUser.User.LastName,
-                        Username = getUser.User.Username,
-                        RegistrationDate = getUser.User.RegistrationDate.ToDateTime(),
-                        Id = getUser.User.Id,
-                        ProfilePictureUrl = getUser.User.ProfilePicture,
-                        Description = getUser.User.Bio,
-                        ProfilePicturePreviewUrl = getUser.User.ProfilePicturePreview
-                    });
-                }, globalParam);
-            }
-            catch (BarkFluff.Shared.Exceptions.Users.ProfilePictureHasNotValidType)
-            {
-                return (new ErrorReturner(false, "Переданный file-id содержит файл не с типом Изображение профиля пользователя."), null);
-            }
-        }
-
-        /// <summary>
-        /// Выполняет авторизацию пользователя с использованием электронной почты или имени пользователя, пароля и кода двухфакторной аутентификации (OTP).
-        /// </summary>
-        /// <param name="_email"></param>
-        /// <param name="_username"></param>
-        /// <param name="_password"></param>
-        /// <param name="_otpCode"></param>
-        /// <param name="global"></param>
-        /// <returns>Токены refreshToken и accessToken</returns>
-        public async Task<(ErrorReturner Error, Proto.Identity.Token? refreshToken, Proto.Identity.Token? accessToken, bool getMeOtpCode)> Authorizations(string _email, string _username, string _password, string _otpCode, GlobalParam global)
-        {
-            try
-            {
-                return await SafeCallAsync(async () =>
-                {
-                    var response = await IdentityAC!.AuthAsync(new Proto.Identity.AuthRequest
-                    {
-                        Email = _email,
-                        Username = _username,
-                        Password = _password,
-                        OtpCode = _otpCode
-                    });
-                    return (new ErrorReturner(true), response.RefreshToken, response.AccessToken, false);
-                }, global);
-            }
-            catch (BarkFluff.Shared.Exceptions.Identity.InvalidLoginOrPasswordException)
-            {
-                return (new ErrorReturner(false, "Неверный логин или пароль"), null, null, false);
-            }
-            catch (BarkFluff.Shared.Exceptions.Identity.NotSetUsernameOrEmailException)
-            {
-                return (new ErrorReturner(false, "Не передан логин или почта"), null, null, false);
-            }
-            catch (BarkFluff.Shared.Exceptions.Identity.UsernameOrEmailIsEmptyException)
-            {
-                return (new ErrorReturner(false, "Логин или почта пустые"), null, null, false);
-            }
-            catch (BarkFluff.Shared.Exceptions.Identity.UserNotFoundException)
-            {
-                return (new ErrorReturner(false, "Пользователь не найден"), null, null, false);
-            }
-            catch (BarkFluff.Shared.Exceptions.Identity.OtpCodeNeedException)
-            {
-                return (new ErrorReturner(false, "Необходимо ввести код двухфакторной аутентификации (OTP)"), null, null, true);
-            }
-            catch (BarkFluff.Shared.Exceptions.Identity.OtpNotCreatedException)
-            {
-                return (new ErrorReturner(false, "Двухфакторная аутентификация не настроена. Пожалуйста, настройте её в настройках аккаунта."), null, null, false);
-            }
-            catch (BarkFluff.Shared.Exceptions.Identity.NotValidOtpCodeException)
-            {
-                return (new ErrorReturner(false, "Неверный код двухфакторной аутентификации (OTP)"), null, null, true);
-            }
-        }
-
-
-        #region Настройка двухфакторной аутентификации
-
-        /// <summary>
-        /// Запрашивает QR-код для настройки двухфакторной аутентификации (OTP) и возвращает его в виде base64 строки.
-        /// </summary>
-        /// <param name="globalParam">Параметры приложения</param>
-        /// <returns>Кортеж, содержащий QR-код в формате base64 и код для ручного ввода.</returns>
-        public async Task<(ErrorReturner error, string? qrBase64, string? justCode)> OtpReceipt(GlobalParam globalParam)
-        {
-            try
-            {
-                return await SafeCallAsync(async () =>
-                {
-                    var response = await IdentityAC!.EnableOtpVerificationAsync(new Proto.Identity.EnableOtpVerificationRequest
-                    {
-                        OtpType = Proto.Identity.OtpTypeId.Authenticator
-                    });
-
-                    return (new ErrorReturner(true), response.OtpQr, response.OtpCode);
-                }, globalParam);
-            }
-            catch (Exception)
-            {
-                return (new ErrorReturner(false, "Ошибка настройки двухфакторной аутентификации"), null, null);
-            }
-        }
-
-        /// <summary>
-        /// Подтверждает двухфакторную аутентификацию (OTP) с использованием предоставленного кода.
-        /// </summary>
-        /// <param name="globalParam">Параметры приложения</param>
-        /// <param name="code">Код который необходимо ввести для подтверждения из Google Authenticator</param>
-        public async Task<ErrorReturner> OtpAccept(GlobalParam globalParam, string code)
-        {
-            try
-            {
-                return await SafeCallAsync(async () =>
-                {
-                    await IdentityAC!.ConfirmOtpVerificationAsync(new Proto.Identity.ConfirmOtpVerificationRequest
-                    {
-                        OtpCode = code
-                    });
-
-                    return new ErrorReturner(true);
-                }, globalParam);
-            }
-            catch (Exception)
-            {
-                return new ErrorReturner(false, "Ошибка подтверждения двухфакторной аутентификации");
-            }
-
-        }
-        #endregion
-
-        /// <summary>
-        /// Вызывает создание аккаунта с предоставленными данными.
-        /// </summary>
-        /// <param name="firstName">Имя</param>
-        /// <param name="lastName">Фамилия</param>
-        /// <param name="email">Почта</param>
-        /// <param name="login">Username</param>
-        /// <param name="global">Глобальный параметр конфигурации</param>
-        /// <returns>Кортеж, состоящий из статуса создания аккаунта и идентификатора кода</returns>
-        public async Task<(ErrorReturner error, string? userid)> CreateAccount(string firstName, string lastName, string email, string login, GlobalParam global)
-        {
-            try
-            {
-                return await SafeCallAsync(async () =>
-                {
-                    var createAccount = await IdentityAC!.CreateAccountAsync(new Proto.Identity.CreateAccountRequest
-                    {
-                        FirstName = firstName,
-                        LastName = lastName,
-                        Email = email,
-                        Username = login
-                    });
-                    return (new ErrorReturner(true), createAccount.CodeId);
-                }, global);
-            }
-            catch (BarkFluff.Shared.Exceptions.Identity.UsernameExistException)
-            {
-                return (new ErrorReturner(false, "Имя пользователя уже существует"), null);
-            }
-            catch (BarkFluff.Shared.Exceptions.Identity.EmailExistException)
-            {
-                return (new ErrorReturner(false, "Почта уже существует"), null);
-            }
-            catch (BarkFluff.Shared.Exceptions.Identity.UsernameOrEmailIsEmptyException)
-            {
-                return (new ErrorReturner(false, "Имя пользователя или почта не могут быть пустыми"), null);
-            }
-            catch (BarkFluff.Shared.Exceptions.Identity.NotSetUsernameOrEmailException)
-            {
-                return (new ErrorReturner(false, "Имя пользователя или почта не установлены"), null);
-            }
-        }
-
-        /// <summary>
-        /// Подтверждает аккаунт по коду и значению кода подтверждения.
-        /// </summary>
-        /// <param name="code">Код подтверждения который получен при создании аккаунта</param>
-        /// <param name="verifyCode">Значение кода подтверждения из почты/аутентификатора</param>
-        /// <param name="global">Глобальный параметр конфигурации.</param>
-        /// <returns>Кортеж, содержащий статус подтверждения и токен обновления.</returns>
-        public async Task<(ErrorReturner error, BarkFluff.Proto.Identity.Token? RefreshToken)> ConfirmAccount(string code, string verifyCode, GlobalParam global)
-        {
-            try
-            {
-                return await SafeCallAsync(async () =>
-                {
-                    var confirmAccount = await IdentityAC!.ConfirmAccountAsync(new Proto.Identity.ConfirmAccountRequest
-                    {
-                        CodeId = code,
-                        CodeValue = verifyCode
-                    });
-                    return (new ErrorReturner(true), confirmAccount.RefreshToken);
-                }, global);
-            }
-            catch (BarkFluff.Shared.Exceptions.Identity.ConfirmationCodeExpiredException)
-            {
-                return (new ErrorReturner(false, "Код подтверждения больше недействителен"), null);
-            }
-            catch (BarkFluff.Shared.Exceptions.Identity.ConfirmationCodeIncorrectException)
-            {
-                return (new ErrorReturner(false, "Неверный код подтверждения"), null);
-            }
-            catch (BarkFluff.Shared.Exceptions.Identity.ConfirmationCodeNotFoundException)
-            {
-                return (new ErrorReturner(false, "Код подтверждения не найден"), null);
-            }
-            catch (Exception)
-            {
-                return (new ErrorReturner(false, "Ошибка подтверждения аккаунта"), null);
-            }
-        }
+        #region Работа с пользователями
 
         /// <summary>
         /// Изменяет биографию пользователя.
@@ -911,6 +497,293 @@ namespace BarkFluff.WebApi.Core
                 return (new ErrorReturner(false, "Ошибка проверки имени пользователя"), false);
             }
         }
+
+
+        /// <summary>
+        /// Возвращает список активных устройств пользователя.
+        /// </summary>
+        /// <param name="globalParam"></param>
+        /// <returns>Возвращает List<string> устройств</returns>
+        public async Task<(ErrorReturner error, List<string>? devicesList)> GetDevicesList(GlobalParam globalParam)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var response = await IdentityAC!.GetActiveSessionsAsync(new Proto.Identity.GetActiveSessionsRequest { });
+                    var devicesList = response.Sessions
+                        .Select(session => session.DeviceName ?? "Неизвестное устройство")
+                        .ToList();
+                    return (new ErrorReturner(true), devicesList);
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.InvalidRefreshTokenException)
+            {
+                return (new ErrorReturner(false, "Неверный токен обновления."), null);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка получения списка устройств"), null);
+            }
+        }
+
+        /// <summary>
+        /// Получает ссылку на аватар пользователя по его ID.
+        /// </summary>
+        /// <param name="globalParam">Параметры приложения</param>
+        /// <param name="userId">[НЕОБЯЗАТЕЛЬНО] ID пользователя, аватар которого нужно получить</param>
+        /// <returns>Возвращает URL аватара или null, если аватар не найден</returns>
+        public async Task<(ErrorReturner, string?)> GetUserAvatar(GlobalParam globalParam, long userId = 0)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var getLinkUpload = await GetUserData(globalParam, userId);
+                    return (new ErrorReturner(true), getLinkUpload.Data?.ProfilePictureUrl);
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Users.ProfilePictureHasNotValidType)
+            {
+                return (new ErrorReturner(false, "Переданный file-id содержит файл не с типом Изображение профиля пользователя"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Users.UserIsDraftException)
+            {
+                return (new ErrorReturner(false, "Пользователь не подтвержден"), null);
+            }
+        }
+
+        /// <summary>
+        /// Получает данные пользователя по его ID.
+        /// </summary>
+        /// <param name="globalParam">Параметры приложения</param>
+        /// <param name="userId">[НЕОБЯЗАТЕЛЬНО] ID пользователя, данные которого нужно получить</param>
+        /// <returns>Объект данных пользователя</returns>
+        public async Task<(ErrorReturner Error, UserData? Data)> GetUserData(GlobalParam globalParam, long userId = 0)
+        {
+            if (globalParam == null)
+                return (new ErrorReturner(false, "Параметры приложения не могут быть null"), null);
+
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var getUser = await UsersAC!.GetUserAsync(new Proto.Users.GetUserRequest { UserId = userId });
+
+                    return (new ErrorReturner(true), new UserData
+                    {
+                        FirstName = getUser.User.FirstName,
+                        LastName = getUser.User.LastName,
+                        Username = getUser.User.Username,
+                        RegistrationDate = getUser.User.RegistrationDate.ToDateTime(),
+                        Id = getUser.User.Id,
+                        ProfilePictureUrl = getUser.User.ProfilePicture,
+                        Description = getUser.User.Bio,
+                        ProfilePicturePreviewUrl = getUser.User.ProfilePicturePreview
+                    });
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Users.ProfilePictureHasNotValidType)
+            {
+                return (new ErrorReturner(false, "Переданный file-id содержит файл не с типом Изображение профиля пользователя."), null);
+            }
+        }
+
+        /// <summary>
+        /// Выполняет авторизацию пользователя с использованием электронной почты или имени пользователя, пароля и кода двухфакторной аутентификации (OTP).
+        /// </summary>
+        /// <param name="_email"></param>
+        /// <param name="_username"></param>
+        /// <param name="_password"></param>
+        /// <param name="_otpCode"></param>
+        /// <param name="global"></param>
+        /// <returns>Токены refreshToken и accessToken</returns>
+        public async Task<(ErrorReturner Error, Proto.Identity.Token? refreshToken, Proto.Identity.Token? accessToken, bool getMeOtpCode)> Authorizations(string _email, string _username, string _password, string _otpCode, GlobalParam global)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var response = await IdentityAC!.AuthAsync(new Proto.Identity.AuthRequest
+                    {
+                        Email = _email,
+                        Username = _username,
+                        Password = _password,
+                        OtpCode = _otpCode
+                    });
+                    return (new ErrorReturner(true), response.RefreshToken, response.AccessToken, false);
+                }, global);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.InvalidLoginOrPasswordException)
+            {
+                return (new ErrorReturner(false, "Неверный логин или пароль"), null, null, false);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.NotSetUsernameOrEmailException)
+            {
+                return (new ErrorReturner(false, "Не передан логин или почта"), null, null, false);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.UsernameOrEmailIsEmptyException)
+            {
+                return (new ErrorReturner(false, "Логин или почта пустые"), null, null, false);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.UserNotFoundException)
+            {
+                return (new ErrorReturner(false, "Пользователь не найден"), null, null, false);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.OtpCodeNeedException)
+            {
+                return (new ErrorReturner(false, "Необходимо ввести код двухфакторной аутентификации (OTP)"), null, null, true);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.OtpNotCreatedException)
+            {
+                return (new ErrorReturner(false, "Двухфакторная аутентификация не настроена. Пожалуйста, настройте её в настройках аккаунта."), null, null, false);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.NotValidOtpCodeException)
+            {
+                return (new ErrorReturner(false, "Неверный код двухфакторной аутентификации (OTP)"), null, null, true);
+            }
+        }
+        #endregion
+
+        #region Настройка двухфакторной аутентификации
+
+        /// <summary>
+        /// Запрашивает QR-код для настройки двухфакторной аутентификации (OTP) и возвращает его в виде base64 строки.
+        /// </summary>
+        /// <param name="globalParam">Параметры приложения</param>
+        /// <returns>Кортеж, содержащий QR-код в формате base64 и код для ручного ввода.</returns>
+        public async Task<(ErrorReturner error, string? qrBase64, string? justCode)> OtpReceipt(GlobalParam globalParam)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var response = await IdentityAC!.EnableOtpVerificationAsync(new Proto.Identity.EnableOtpVerificationRequest
+                    {
+                        OtpType = Proto.Identity.OtpTypeId.Authenticator
+                    });
+
+                    return (new ErrorReturner(true), response.OtpQr, response.OtpCode);
+                }, globalParam);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка настройки двухфакторной аутентификации"), null, null);
+            }
+        }
+
+        /// <summary>
+        /// Подтверждает двухфакторную аутентификацию (OTP) с использованием предоставленного кода.
+        /// </summary>
+        /// <param name="globalParam">Параметры приложения</param>
+        /// <param name="code">Код который необходимо ввести для подтверждения из Google Authenticator</param>
+        public async Task<ErrorReturner> OtpAccept(GlobalParam globalParam, string code)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    await IdentityAC!.ConfirmOtpVerificationAsync(new Proto.Identity.ConfirmOtpVerificationRequest
+                    {
+                        OtpCode = code
+                    });
+
+                    return new ErrorReturner(true);
+                }, globalParam);
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка подтверждения двухфакторной аутентификации");
+            }
+
+        }
+        #endregion
+
+        #region Регистрация
+
+        /// <summary>
+        /// Вызывает создание аккаунта с предоставленными данными.
+        /// </summary>
+        /// <param name="firstName">Имя</param>
+        /// <param name="lastName">Фамилия</param>
+        /// <param name="email">Почта</param>
+        /// <param name="login">Username</param>
+        /// <param name="global">Глобальный параметр конфигурации</param>
+        /// <returns>Кортеж, состоящий из статуса создания аккаунта и идентификатора кода</returns>
+        public async Task<(ErrorReturner error, string? userid)> CreateAccount(string firstName, string lastName, string email, string login, GlobalParam global)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var createAccount = await IdentityAC!.CreateAccountAsync(new Proto.Identity.CreateAccountRequest
+                    {
+                        FirstName = firstName,
+                        LastName = lastName,
+                        Email = email,
+                        Username = login
+                    });
+                    return (new ErrorReturner(true), createAccount.CodeId);
+                }, global);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.UsernameExistException)
+            {
+                return (new ErrorReturner(false, "Имя пользователя уже существует"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.EmailExistException)
+            {
+                return (new ErrorReturner(false, "Почта уже существует"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.UsernameOrEmailIsEmptyException)
+            {
+                return (new ErrorReturner(false, "Имя пользователя или почта не могут быть пустыми"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.NotSetUsernameOrEmailException)
+            {
+                return (new ErrorReturner(false, "Имя пользователя или почта не установлены"), null);
+            }
+        }
+
+        /// <summary>
+        /// Подтверждает аккаунт по коду и значению кода подтверждения.
+        /// </summary>
+        /// <param name="code">Код подтверждения который получен при создании аккаунта</param>
+        /// <param name="verifyCode">Значение кода подтверждения из почты/аутентификатора</param>
+        /// <param name="global">Глобальный параметр конфигурации.</param>
+        /// <returns>Кортеж, содержащий статус подтверждения и токен обновления.</returns>
+        public async Task<(ErrorReturner error, BarkFluff.Proto.Identity.Token? RefreshToken)> ConfirmAccount(string code, string verifyCode, GlobalParam global)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var confirmAccount = await IdentityAC!.ConfirmAccountAsync(new Proto.Identity.ConfirmAccountRequest
+                    {
+                        CodeId = code,
+                        CodeValue = verifyCode
+                    });
+                    return (new ErrorReturner(true), confirmAccount.RefreshToken);
+                }, global);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.ConfirmationCodeExpiredException)
+            {
+                return (new ErrorReturner(false, "Код подтверждения больше недействителен"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.ConfirmationCodeIncorrectException)
+            {
+                return (new ErrorReturner(false, "Неверный код подтверждения"), null);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.ConfirmationCodeNotFoundException)
+            {
+                return (new ErrorReturner(false, "Код подтверждения не найден"), null);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка подтверждения аккаунта"), null);
+            }
+        }
+
+        #endregion
 
         #region Сброс пароля и установка нового пароля
         /// <summary>
@@ -1031,34 +904,6 @@ namespace BarkFluff.WebApi.Core
             }
         }
         #endregion
-
-        /// <summary>
-        /// Возвращает список активных устройств пользователя.
-        /// </summary>
-        /// <param name="globalParam"></param>
-        /// <returns>Возвращает List<string> устройств</returns>
-        public async Task<(ErrorReturner error, List<string>? devicesList)> GetDevicesList(GlobalParam globalParam)
-        {
-            try
-            {
-                return await SafeCallAsync(async () =>
-                {
-                    var response = await IdentityAC!.GetActiveSessionsAsync(new Proto.Identity.GetActiveSessionsRequest { });
-                    var devicesList = response.Sessions
-                        .Select(session => session.DeviceName ?? "Неизвестное устройство")
-                        .ToList();
-                    return (new ErrorReturner(true), devicesList);
-                }, globalParam);
-            }
-            catch (BarkFluff.Shared.Exceptions.Identity.InvalidRefreshTokenException)
-            {
-                return (new ErrorReturner(false, "Неверный токен обновления."), null);
-            }
-            catch (Exception)
-            {
-                return (new ErrorReturner(false, "Ошибка получения списка устройств"), null);
-            }
-        }
 
         #region Работа с сообщениями
 
@@ -1382,6 +1227,169 @@ namespace BarkFluff.WebApi.Core
         #endregion
 
         #region Файлы
+
+        /// <summary>
+        /// Uploads a file to the server and returns the file ID.
+        /// </summary>
+        /// <param name="globalParam">Application parameters</param>
+        /// <param name="filePath">Path to the file to upload</param>
+        /// <param name="fileType">Type of file being uploaded</param>
+        /// <returns>File ID if successful, or error</returns>
+        public async Task<(ErrorReturner error, string? fileId)> UploadFileAsync(GlobalParam globalParam, string filePath, Proto.Files.UploadFileType fileType)
+        {
+            return await UploadFileAsync(globalParam, filePath, fileType, null);
+        }
+
+        /// <summary>
+        /// Uploads a file to the server with progress reporting and automatic image optimization.
+        /// </summary>
+        /// <param name="globalParam">Application parameters</param>
+        /// <param name="filePath">Path to the file to upload</param>
+        /// <param name="fileType">Type of file being uploaded</param>
+        /// <param name="progress">Progress callback (0.0 to 1.0)</param>
+        /// <returns>File ID if successful, or error</returns>
+        public async Task<(ErrorReturner error, string? fileId)> UploadFileAsync(
+            GlobalParam globalParam,
+            string filePath,
+            Proto.Files.UploadFileType fileType,
+            IProgress<double>? progress)
+        {
+            string? processedFilePath = null;
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    // Report initial progress
+                    progress?.Report(0.1);
+
+                    // Process image if needed (convert to JPEG with compression)
+                    string fileToUpload = filePath;
+                    if (fileType == Proto.Files.UploadFileType.MessageAttachmentImage)
+                    {
+                        processedFilePath = await ImageProcessor.ProcessImageForUploadAsync(filePath);
+                        fileToUpload = processedFilePath;
+                        progress?.Report(0.2);
+                    }
+
+                    var getLinkUpload = await FilesAC!.GetUploadUrlAsync(new Proto.Files.GetUploadUrlRequest
+                    {
+                        FileType = fileType
+                    });
+                    progress?.Report(0.3);
+
+                    using var formData = new MultipartFormDataContent();
+
+                    // Note: Reading entire file into memory. For large files, consider streaming approach.
+                    var fileBytes = await File.ReadAllBytesAsync(fileToUpload);
+                    var fileContent = new ByteArrayContent(fileBytes);
+                    progress?.Report(0.5);
+
+                    // Determine content type based on file extension
+                    var extension = Path.GetExtension(fileToUpload).ToLowerInvariant();
+                    var contentType = extension switch
+                    {
+                        ".jpg" or ".jpeg" => "image/jpeg",
+                        ".png" => "image/png",
+                        ".gif" => "image/gif",
+                        ".webp" => "image/webp",
+                        ".mp4" => "video/mp4",
+                        ".webm" => "video/webm",
+                        ".avi" => "video/x-msvideo",
+                        ".mov" => "video/quicktime",
+                        ".mkv" => "video/x-matroska",
+                        _ => "application/octet-stream"
+                    };
+
+                    fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
+
+                    formData.Add(fileContent, "file", Path.GetFileName(filePath));
+                    progress?.Report(0.7);
+
+                    var response = await _httpClient.PostAsync(getLinkUpload.Url, formData);
+                    response.EnsureSuccessStatusCode();
+                    progress?.Report(1.0);
+
+                    return (new ErrorReturner(true), getLinkUpload.FileId);
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Files.NotValidFileIdException)
+            {
+                return (new ErrorReturner(false, "Неверный формат идентификатора файла. Он должен быть guid"), null);
+            }
+            catch (Exception ex)
+            {
+                return (new ErrorReturner(false, $"Ошибка загрузки файла: {ex.Message}"), null);
+            }
+            finally
+            {
+                // Clean up processed file if it was created
+                if (processedFilePath != null && processedFilePath != filePath && File.Exists(processedFilePath))
+                {
+                    try
+                    {
+                        File.Delete(processedFilePath);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"WebApi: Failed to delete temp file: {ex.Message}");
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Отправляет аватар пользователя на сервер в формате JPEG.
+        /// </summary>
+        /// <param name="globalParam">Параметры приложения</param>
+        /// <param name="jpegImageBytes">Картинка в виде байтов</param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
+        public async Task<ErrorReturner> UploadUserAvatarAsync(GlobalParam globalParam, byte[] jpegImageBytes)
+        {
+            try
+            {
+                await SafeCallAsync<ErrorReturner>(async () =>
+                {
+                    var getLinkUpload = await FilesAC!.GetUploadUrlAsync(new Proto.Files.GetUploadUrlRequest
+                    {
+                        FileType = Proto.Files.UploadFileType.UserAvatar
+                    });
+
+                    using var formData = new MultipartFormDataContent();
+
+                    var fileContent = new ByteArrayContent(jpegImageBytes);
+                    fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
+
+                    formData.Add(fileContent, "file", "avatar.jpg");
+
+                    var response = await _httpClient.PostAsync(getLinkUpload.Url, formData);
+                    response.EnsureSuccessStatusCode();
+
+                    try
+                    {
+                        await UsersAC!.SetProfilePictureAsync(new Proto.Users.SetProfilePictureRequest
+                        {
+                            FileId = getLinkUpload.FileId
+                        });
+                    }
+                    catch (BarkFluff.Shared.Exceptions.Users.ProfilePictureHasNotValidType)
+                    {
+                        return new ErrorReturner(false, "Переданный file-id содержит файл не с типом Изображение профиля пользователя");
+                    }
+                    catch (BarkFluff.Shared.Exceptions.Files.NotValidFileIdException)
+                    {
+                        return new ErrorReturner(false, "Неверный формат идентификатора файла. Он должен быть guid");
+                    }
+
+                    return new ErrorReturner(true);
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Files.NotValidFileIdException)
+            {
+                return new ErrorReturner(false, "Неверный формат идентификатора файла. Он должен быть guid");
+            }
+            return new ErrorReturner(true);
+        }
 
         public async Task<(ErrorReturner error, string? url)> GetFile(GlobalParam globalParam, string fileId)
         {
