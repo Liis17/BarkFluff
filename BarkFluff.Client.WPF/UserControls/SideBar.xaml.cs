@@ -72,5 +72,15 @@ namespace BarkFluff.Client.WPF.UserControls
         {
 
         }
+
+        /// <summary>
+        /// Открытие чата с самим собой (избранное)
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void OpenFavorites(object sender, RoutedEventArgs e)
+        {
+
+        }
     }
 }
