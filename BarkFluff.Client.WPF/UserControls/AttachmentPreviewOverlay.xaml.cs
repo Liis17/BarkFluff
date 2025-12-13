@@ -1,7 +1,9 @@
 using BarkFluff.Proto.Files;
+using Microsoft.Win32;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Media.Imaging;
 
 namespace BarkFluff.Client.WPF.UserControls
@@ -15,6 +17,7 @@ namespace BarkFluff.Client.WPF.UserControls
         public event EventHandler<SendAttachmentsEventArgs>? OnSend;
 
         private List<AttachmentPreviewItem> _attachments = new List<AttachmentPreviewItem>();
+        private const int MaxAttachments = 10;
 
         public AttachmentPreviewOverlay()
         {
@@ -23,8 +26,15 @@ namespace BarkFluff.Client.WPF.UserControls
 
         public void AddAttachments(List<string> filePaths)
         {
+            bool added = false;
             foreach (var filePath in filePaths)
             {
+                if (_attachments.Count >= MaxAttachments) break;
+
+                // Check for duplicates
+                if (_attachments.Any(a => a.FilePath.Equals(filePath, StringComparison.OrdinalIgnoreCase)))
+                    continue;
+
                 var item = new AttachmentPreviewItem
                 {
                     FilePath = filePath,
@@ -33,12 +43,19 @@ namespace BarkFluff.Client.WPF.UserControls
                 };
 
                 _attachments.Add(item);
-                AddPreviewItem(item);
+                added = true;
+            }
+
+            if (added)
+            {
+                RefreshUI();
             }
         }
 
         public void AddImageFromClipboard(BitmapSource image)
         {
+            if (_attachments.Count >= MaxAttachments) return;
+
             // Save clipboard image to temp file
             var tempPath = Path.Combine(Path.GetTempPath(), $"clipboard_{Guid.NewGuid()}.png");
             using (var fileStream = new FileStream(tempPath, FileMode.Create))
@@ -57,30 +74,142 @@ namespace BarkFluff.Client.WPF.UserControls
             };
 
             _attachments.Add(item);
-            AddPreviewItem(item);
+            RefreshUI();
+        }
+
+        private void RefreshUI()
+        {
+            PreviewItemsControl.Items.Clear();
+
+            foreach (var item in _attachments)
+            {
+                AddPreviewItem(item);
+            }
+
+            UpdateHeader();
+
+            if (_attachments.Count < MaxAttachments)
+            {
+                AddPlusButton();
+            }
+        }
+
+        private void UpdateHeader()
+        {
+            if (_attachments.Count == 0)
+            {
+                HeaderTextBlock.Text = "Предпросмотр вложений";
+                return;
+            }
+
+            bool allImages = _attachments.All(a => a.FileType == UploadFileType.MessageAttachmentImage || a.FileType == UploadFileType.MessageAttachmentGif);
+
+            if (allImages)
+            {
+                HeaderTextBlock.Text = $"Отправить {_attachments.Count} фото";
+            }
+            else
+            {
+                string suffix = "файлов";
+                int count = _attachments.Count;
+                
+                if (count == 1) suffix = "файл";
+                else if (count >= 2 && count <= 4) suffix = "файла";
+                
+                HeaderTextBlock.Text = $"Отправить {count} {suffix}";
+            }
+        }
+
+        private void AddPlusButton()
+        {
+            var button = new Button
+            {
+                Width = 100,
+                Height = 156,
+                Margin = new Thickness(4),
+                Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(20, 255, 255, 255)),
+                BorderBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(50, 255, 255, 255)),
+                BorderThickness = new Thickness(1),
+                Cursor = System.Windows.Input.Cursors.Hand
+            };
+
+            string templateXaml = @"
+                <ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' TargetType='Button'>
+                    <Border Background='{TemplateBinding Background}' 
+                            BorderBrush='{TemplateBinding BorderBrush}' 
+                            BorderThickness='{TemplateBinding BorderThickness}' 
+                            CornerRadius='8'>
+                        <ContentPresenter HorizontalAlignment='Center' VerticalAlignment='Center'/>
+                    </Border>
+                </ControlTemplate>";
+
+            button.Template = (ControlTemplate)System.Windows.Markup.XamlReader.Parse(templateXaml);
+
+            var icon = new Wpf.Ui.Controls.SymbolIcon
+            {
+                Symbol = Wpf.Ui.Controls.SymbolRegular.Add24,
+                FontSize = 32,
+                Foreground = System.Windows.Media.Brushes.White
+            };
+
+            button.Content = icon;
+
+            button.Click += (s, e) =>
+            {
+                var openFileDialog = new OpenFileDialog
+                {
+                    Multiselect = true,
+                    Filter = "All files (*.*)|*.*"
+                };
+
+                if (openFileDialog.ShowDialog() == true)
+                {
+                    AddAttachments(openFileDialog.FileNames.ToList());
+                }
+            };
+
+            PreviewItemsControl.Items.Add(button);
         }
 
         private void AddPreviewItem(AttachmentPreviewItem item)
         {
             Border previewBorder = new Border
             {
-                Width = 120,
-                Height = 120,
-                Margin = new Thickness(8),
+                Height = 156,
+                Margin = new Thickness(4),
                 CornerRadius = new CornerRadius(8),
                 Background = System.Windows.Media.Brushes.Black,
-                Tag = item
+                Tag = item,
+                ClipToBounds = true
             };
 
-            if (item.FileType == UploadFileType.MessageAttachmentImage || 
+            if (item.FileType == UploadFileType.MessageAttachmentImage ||
                 item.FileType == UploadFileType.MessageAttachmentGif)
             {
                 // Show image preview
                 try
                 {
+                    var bitmap = new BitmapImage();
+                    bitmap.BeginInit();
+                    bitmap.UriSource = new Uri(Path.GetFullPath(item.FilePath));
+                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmap.EndInit();
+
+                    double width = 156;
+                    if (bitmap.PixelHeight > 0)
+                    {
+                        double ratio = (double)bitmap.PixelWidth / bitmap.PixelHeight;
+                        width = 156 * ratio;
+                    }
+
+                    // Max 2:1
+                    if (width > 156 * 2) width = 156 * 2;
+
+                    previewBorder.Width = width;
+
                     var image = new Image
                     {
-                        Source = new BitmapImage(new Uri(Path.GetFullPath(item.FilePath))),
+                        Source = bitmap,
                         Stretch = System.Windows.Media.Stretch.UniformToFill
                     };
                     previewBorder.Child = image;
@@ -88,18 +217,23 @@ namespace BarkFluff.Client.WPF.UserControls
                 catch
                 {
                     // Fallback to file icon if image can't be loaded
+                    previewBorder.Width = 156;
                     ShowFileIcon(previewBorder, item);
                 }
             }
-            else if (item.FileType == UploadFileType.MessageAttachmentVideo)
-            {
-                // Show video icon with file name
-                ShowFileIcon(previewBorder, item, Wpf.Ui.Controls.SymbolRegular.Video24);
-            }
             else
             {
-                // Show document icon with file name
-                ShowFileIcon(previewBorder, item, Wpf.Ui.Controls.SymbolRegular.Document24);
+                previewBorder.Width = 156;
+                if (item.FileType == UploadFileType.MessageAttachmentVideo)
+                {
+                    // Show video icon with file name
+                    ShowFileIcon(previewBorder, item, Wpf.Ui.Controls.SymbolRegular.Video24);
+                }
+                else
+                {
+                    // Show document icon with file name
+                    ShowFileIcon(previewBorder, item, Wpf.Ui.Controls.SymbolRegular.Document24);
+                }
             }
 
             PreviewItemsControl.Items.Add(previewBorder);
@@ -173,6 +307,7 @@ namespace BarkFluff.Client.WPF.UserControls
             _attachments.Clear();
             PreviewItemsControl.Items.Clear();
             MessageTextBox.Clear();
+            UpdateHeader();
         }
 
         private void CancelButton_Click(object sender, RoutedEventArgs e)
