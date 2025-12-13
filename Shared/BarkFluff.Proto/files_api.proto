@@ -61,6 +61,7 @@ message UploadFileInfo {
   string file_url = 8; // Ссылка на загрузку файла
   string preview_url = 9; // Ссылка на превью, если есть
   int64 file_size = 10; // Размер файла в байтах
+  string preview_file_id = 11; // Идентификатор файла превью, если есть
 }
 
 message GetUploadUrlRequest {
