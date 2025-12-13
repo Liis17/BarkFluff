@@ -160,11 +160,31 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
         {
             var border = new Border
             {
-                CornerRadius = new CornerRadius(8),
+                CornerRadius = new CornerRadius(18),
                 MaxWidth = maxWidth,
                 MaxHeight = maxHeight,
                 ClipToBounds = true
             };
+
+            // Create clipping geometry for rounded corners
+            var clip = new RectangleGeometry
+            {
+                RadiusX = 18,
+                RadiusY = 18
+            };
+            
+            // Bind the Rect to the border's actual size
+            border.Loaded += (s, e) =>
+            {
+                clip.Rect = new Rect(0, 0, border.ActualWidth, border.ActualHeight);
+            };
+            
+            border.SizeChanged += (s, e) =>
+            {
+                clip.Rect = new Rect(0, 0, border.ActualWidth, border.ActualHeight);
+            };
+            
+            border.Clip = clip;
 
             var image = new Image
             {
