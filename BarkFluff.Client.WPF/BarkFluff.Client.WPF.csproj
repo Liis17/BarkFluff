@@ -18,6 +18,7 @@
     <SelfContained>true</SelfContained>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <SupportedOSPlatformVersion>10.0.26100.0</SupportedOSPlatformVersion>
+    <AssemblyName>BarkFluff</AssemblyName>
 
   </PropertyGroup>
 
