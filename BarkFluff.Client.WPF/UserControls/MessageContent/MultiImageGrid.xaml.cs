@@ -248,10 +248,10 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
             var imagePath = App.FileCacheService.GetCachedFilePath(fileIdToUse, fileType, attachment.PreviewUrl);
             LoadImage(image, imagePath);
 
-            // Track the image control for FileCached updates
-            if (!string.IsNullOrEmpty(fileIdToUse) && !_imageControls.ContainsKey(fileIdToUse))
+            // Track the image control for FileCached updates using TryAdd
+            if (!string.IsNullOrEmpty(fileIdToUse))
             {
-                _imageControls[fileIdToUse] = image;
+                _imageControls.TryAdd(fileIdToUse, image);
             }
 
             border.Child = image;

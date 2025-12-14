@@ -383,7 +383,7 @@ namespace BarkFluff.Client.WPF.UserControls
             {
                 FilePath = a.FilePath,
                 FileName = a.FileName,
-                FileType = sendAsFiles ? UploadFileType.MessageAttachmentDocument : a.FileType,
+                FileType = UploadFileType.MessageAttachmentDocument,
                 IsFromClipboard = a.IsFromClipboard
             }).ToList();
         }
