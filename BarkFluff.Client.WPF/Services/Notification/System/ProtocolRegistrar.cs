@@ -10,7 +10,7 @@ namespace BarkFluff.Client.WPF.Services.Notification.System
         // Единый метод для регистрации, принимает название протокола
         private static void RegisterProtocolInternal(string protocolName, string protocolDescription)
         {
-            string exePath = Path.Combine(AppContext.BaseDirectory, "BarkFluff.Client.WPF.exe");
+            string exePath = Path.Combine(AppContext.BaseDirectory, "BarkFluff.exe");
 
             // Формируем сложную команду для cmd.exe
             // Конструкция \"\\\" нужен, чтобы в реестр записались кавычки вокруг пути

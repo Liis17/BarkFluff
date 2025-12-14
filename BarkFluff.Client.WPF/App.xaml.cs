@@ -192,6 +192,7 @@ namespace BarkFluff.Client.WPF
             MessengerWindow.Show();
             WindowStateService.Initialize(MessengerWindow);
 
+
             if (!File.Exists(filePath))
             {
                 GParam = new BarkFluff.WebApi.Core.MessengerData.GlobalParam();
@@ -306,6 +307,6 @@ namespace BarkFluff.Client.WPF
 
         }
 
-        public static string AppUserModelIdPublic => AppUserModelId; // переместили выше чтобы не ругалось на отсутствие свойства
+        public static string AppUserModelIdPublic => AppUserModelId;
     }
 }
