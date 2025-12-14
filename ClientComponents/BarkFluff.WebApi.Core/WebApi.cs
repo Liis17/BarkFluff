@@ -1253,6 +1253,7 @@ namespace BarkFluff.WebApi.Core
 
         /// <summary>
         /// Uploads a file to the server with progress reporting and automatic image optimization.
+        /// First checks if a file with the same hash already exists to prevent duplicates.
         /// </summary>
         /// <param name="globalParam">Application parameters</param>
         /// <param name="filePath">Path to the file to upload</param>
@@ -1271,7 +1272,7 @@ namespace BarkFluff.WebApi.Core
                 return await SafeCallAsync(async () =>
                 {
                     // Report initial progress
-                    progress?.Report(0.1);
+                    progress?.Report(0.05);
 
                     // Process image if needed (convert to JPEG with compression)
                     string fileToUpload = filePath;
@@ -1279,8 +1280,34 @@ namespace BarkFluff.WebApi.Core
                     {
                         processedFilePath = await ImageProcessor.ProcessImageForUploadAsync(filePath);
                         fileToUpload = processedFilePath;
-                        progress?.Report(0.2);
+                        progress?.Report(0.1);
                     }
+
+                    // Compute file hash for deduplication check
+                    var fileHash = await ComputeFileHashAsync(fileToUpload);
+                    progress?.Report(0.15);
+
+                    // Check if file with this hash already exists
+                    try
+                    {
+                        var hashCheckResponse = await FilesAC!.CheckFileHashAsync(new Proto.Files.CheckFileHashRequest
+                        {
+                            FileHash = fileHash
+                        });
+
+                        if (!string.IsNullOrEmpty(hashCheckResponse.FileId))
+                        {
+                            // File already exists, return existing file ID
+                            progress?.Report(1.0);
+                            return (new ErrorReturner(true), hashCheckResponse.FileId);
+                        }
+                    }
+                    catch
+                    {
+                        // If hash check fails, continue with upload
+                    }
+
+                    progress?.Report(0.2);
 
                     var getLinkUpload = await FilesAC!.GetUploadUrlAsync(new Proto.Files.GetUploadUrlRequest
                     {
@@ -1436,6 +1463,56 @@ namespace BarkFluff.WebApi.Core
             catch (Exception)
             {
                 return (new ErrorReturner(false, "Ошибка получения файлов"), null);
+            }
+        }
+
+        /// <summary>
+        /// Computes SHA256 hash of a file.
+        /// </summary>
+        /// <param name="filePath">Path to the file</param>
+        /// <returns>Hex string of the SHA256 hash (64 characters, lowercase)</returns>
+        public static async Task<string> ComputeFileHashAsync(string filePath)
+        {
+            using var sha256 = System.Security.Cryptography.SHA256.Create();
+            await using var stream = File.OpenRead(filePath);
+            var hashBytes = await sha256.ComputeHashAsync(stream);
+            return Convert.ToHexString(hashBytes).ToLowerInvariant();
+        }
+
+        /// <summary>
+        /// Computes SHA256 hash of a byte array.
+        /// </summary>
+        /// <param name="data">Byte array to hash</param>
+        /// <returns>Hex string of the SHA256 hash (64 characters, lowercase)</returns>
+        public static string ComputeDataHash(byte[] data)
+        {
+            using var sha256 = System.Security.Cryptography.SHA256.Create();
+            var hashBytes = sha256.ComputeHash(data);
+            return Convert.ToHexString(hashBytes).ToLowerInvariant();
+        }
+
+        /// <summary>
+        /// Checks if a file with the given hash already exists on the server.
+        /// </summary>
+        /// <param name="globalParam">Application parameters</param>
+        /// <param name="fileHash">SHA256 hash of the file (hex string, 64 characters)</param>
+        /// <returns>FileId if file exists, empty string if not found</returns>
+        public async Task<(ErrorReturner error, string fileId)> CheckFileHashAsync(GlobalParam globalParam, string fileHash)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var response = await FilesAC!.CheckFileHashAsync(new Proto.Files.CheckFileHashRequest
+                    {
+                        FileHash = fileHash
+                    });
+                    return (new ErrorReturner(true), response.FileId);
+                }, globalParam);
+            }
+            catch (Exception ex)
+            {
+                return (new ErrorReturner(false, $"Ошибка проверки хеша файла: {ex.Message}"), string.Empty);
             }
         }
 

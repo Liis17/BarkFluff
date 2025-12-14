@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using BarkFluff.Files.Domain;
 using BarkFluff.Files.Exceptions;
 using BarkFluff.Files.Extensions;
 using BarkFluff.Files.Infrastructure;
@@ -11,6 +13,7 @@ namespace BarkFluff.Files.Features.UploadFile;
 public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, string>
 {
     private readonly UploadedFilesStorage _filesStorage;
+    private readonly FileHashesStorage _hashesStorage;
     private readonly S3Uploader _s3Uploader;
     private readonly ImageCompressor _imageCompressor;
     private readonly ILogger<UploadFileCommandHandler> _logger;
@@ -26,11 +29,13 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
 
     public UploadFileCommandHandler(
         UploadedFilesStorage filesStorage,
+        FileHashesStorage hashesStorage,
         S3Uploader s3Uploader, 
         ImageCompressor imageCompressor,
         ILogger<UploadFileCommandHandler> logger)
     {
         _filesStorage = filesStorage;
+        _hashesStorage = hashesStorage;
         _s3Uploader = s3Uploader;
         _imageCompressor = imageCompressor;
         _logger = logger;
@@ -72,6 +77,18 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
         await request.FileStream.CopyToAsync(originalStream, cancellationToken);
         
         originalStream.Position = 0;
+        
+        // Compute SHA256 hash of the file
+        string fileHash;
+        using (var sha256 = SHA256.Create())
+        {
+            var hashBytes = await sha256.ComputeHashAsync(originalStream, cancellationToken);
+            fileHash = Convert.ToHexString(hashBytes).ToLowerInvariant();
+        }
+        
+        originalStream.Position = 0;
+        
+        _logger.LogInformation("Вычислен хеш файла: {FileHash}", fileHash);
         
         try
         {
@@ -131,6 +148,16 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
         
         // Сохраняем изменения
         await _filesStorage.UpdateFile(file);
+        
+        // Save the file hash for deduplication
+        var fileHashEntity = new FileHash
+        {
+            FileId = file.Id,
+            Hash = fileHash
+        };
+        await _hashesStorage.AddHash(fileHashEntity);
+        
+        _logger.LogInformation("Хеш файла сохранен в базу данных");
         
         _logger.LogInformation("Обработка файла {FileId} успешно завершена", file.Id);
         

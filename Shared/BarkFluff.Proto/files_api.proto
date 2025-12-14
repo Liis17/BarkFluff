@@ -10,6 +10,8 @@ service FilesApi {
   rpc GetUploadUrl(GetUploadUrlRequest) returns(GetUploadUrlResponse); // Получить ссылку для загрузки файла
   
   rpc GetTempDownloadUrl(GetTempDownloadUrlRequest) returns(GetTempDownloadUrlResponse); // Получить ссылку для скачивания файла
+  
+  rpc CheckFileHash(CheckFileHashRequest) returns(CheckFileHashResponse); // Проверить существует ли файл с таким хешем
 }
 
 service FilesServerApi {
@@ -52,7 +54,7 @@ message GetFileDataResponse {
 
 message UploadFileInfo {
   string id = 1; // Идентификатор файла
-  int64 uploader = 2; // Индетификатор загрузившего пользователя
+  repeated int64 uploaders = 2; // Идентификаторы пользователей загрузивших файл
   google.protobuf.Timestamp created_at = 3; // Время создания
   google.protobuf.Timestamp uploaded_at = 4; // время загрузки
   string etag = 5; // Etag S3
@@ -87,4 +89,12 @@ enum UploadFileType {
   MESSAGE_ATTACHMENT_DOCUMENT = 5; // Вложение сообщения - документ
   
   CHAT_PICTURE = 6; // Обложка группового чата
+}
+
+message CheckFileHashRequest {
+  string file_hash = 1; // SHA256 хеш файла (hex строка, 64 символа)
+}
+
+message CheckFileHashResponse {
+  string file_id = 1; // Идентификатор файла если найден, пустая строка если не найден
 }
