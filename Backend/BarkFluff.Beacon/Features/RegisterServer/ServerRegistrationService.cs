@@ -40,10 +40,11 @@ public class ServerRegistrationService : BackgroundService
                 {
                     Name = serverProps.Name,
                     Description = serverProps.Description,
+                    ServerPublicName = serverProps.PublicName ?? string.Empty,
                     AccountsCount = 0, // Можно доработать, если нужно
                     BeaconUri = new ServiceEndpoint
                     {
-                        Host = config["RunSettings:Host"], 
+                        Host = config["RunSettings:Host"],
                         Port = int.Parse(config["RunSettings:Port"])
                     }
                 };

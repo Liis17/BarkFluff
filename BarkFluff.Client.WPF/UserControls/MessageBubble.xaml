@@ -13,44 +13,59 @@
     d:DesignWidth="700"
     mc:Ignorable="d">
     <UserControl.Resources>
-        <!--  Стиль для входящих сообщений  -->
+        <!--  Стиль для входящих сообщений (более скруглённый и мягкий)  -->
         <Style x:Key="IncomingMessageStyle" TargetType="Border">
-            <Setter Property="Background" Value="#FF2D2D30" />
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Offset="0" Color="#FF3A3A3D" />
+                        <GradientStop Offset="1" Color="#FF2D2D30" />
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
             <Setter Property="HorizontalAlignment" Value="Right" />
             <Setter Property="MaxWidth" Value="600" />
-            <Setter Property="Margin" Value="0,2,0,2" />
-            <Setter Property="CornerRadius" Value="15,15,15,4" />
+            <Setter Property="Margin" Value="0,3,0,3" />
+            <Setter Property="CornerRadius" Value="18,18,18,6" />
         </Style>
 
-        <!--  Стиль для исходящих сообщений  -->
+        <!--  Стиль для исходящих сообщений (более скруглённый и мягкий)  -->
         <Style x:Key="OutgoingMessageStyle" TargetType="Border">
-            <Setter Property="Background" Value="#c87e5b" />
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Offset="0" Color="#D49A7A" />
+                        <GradientStop Offset="1" Color="#C87E5B" />
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
             <Setter Property="HorizontalAlignment" Value="Left" />
             <Setter Property="MaxWidth" Value="600" />
-            <Setter Property="Margin" Value="0,2,0,2" />
-            <Setter Property="CornerRadius" Value="20,20,4,20" />
+            <Setter Property="Margin" Value="0,3,0,3" />
+            <Setter Property="CornerRadius" Value="18,18,6,18" />
         </Style>
 
         <!--  Контекстное меню  -->
         <ContextMenu
             x:Key="MessageContextMenu"
             Background="#FF3C3C3C"
-            BorderBrush="#FF606060">
+            BorderBrush="#FF505050"
+            BorderThickness="1">
             <ContextMenu.Resources>
                 <Style TargetType="MenuItem">
                     <Setter Property="Foreground" Value="White" />
                     <Setter Property="Background" Value="Transparent" />
                     <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
                     <Setter Property="FontSize" Value="13" />
-                    <Setter Property="Padding" Value="8,6" />
+                    <Setter Property="Padding" Value="10,8" />
                     <Setter Property="Template">
                         <Setter.Value>
                             <ControlTemplate TargetType="MenuItem">
                                 <Border
-                                    Margin="2"
+                                    Margin="3"
                                     Padding="{TemplateBinding Padding}"
                                     Background="{TemplateBinding Background}"
-                                    CornerRadius="4">
+                                    CornerRadius="6">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />
@@ -60,7 +75,7 @@
 
                                         <ContentPresenter
                                             Grid.Column="0"
-                                            Margin="0,0,8,0"
+                                            Margin="0,0,10,0"
                                             VerticalAlignment="Center"
                                             Content="{TemplateBinding Icon}" />
 
@@ -71,16 +86,16 @@
 
                                         <TextBlock
                                             Grid.Column="2"
-                                            Margin="12,0,0,0"
+                                            Margin="16,0,0,0"
                                             VerticalAlignment="Center"
                                             FontSize="11"
-                                            Foreground="#FF9E9E9E"
+                                            Foreground="#FF8A8A8A"
                                             Text="{TemplateBinding InputGestureText}" />
                                     </Grid>
                                 </Border>
                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsHighlighted" Value="True">
-                                        <Setter Property="Background" Value="#FF4A4A4A" />
+                                        <Setter Property="Background" Value="#FF505050" />
                                     </Trigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>
@@ -89,60 +104,72 @@
                 </Style>
             </ContextMenu.Resources>
 
-            <MenuItem Header="Ответить">
+            <MenuItem Click="OnReplyClick" Header="Ответить">
                 <MenuItem.Icon>
                     <ui:SymbolIcon FontSize="14" Symbol="ArrowReply16" />
                 </MenuItem.Icon>
             </MenuItem>
 
-            <MenuItem Header="Переслать">
+            <MenuItem Click="OnForwardClick" Header="Переслать">
                 <MenuItem.Icon>
                     <ui:SymbolIcon FontSize="14" Symbol="ArrowForward16" />
                 </MenuItem.Icon>
             </MenuItem>
 
-            <MenuItem Header="Копировать" InputGestureText="Ctrl+C">
+            <MenuItem
+                Click="OnCopyClick"
+                Header="Копировать"
+                InputGestureText="Ctrl+C">
                 <MenuItem.Icon>
                     <ui:SymbolIcon FontSize="14" Symbol="Copy16" />
                 </MenuItem.Icon>
             </MenuItem>
 
-            <MenuItem Header="Выделить текст" InputGestureText="Ctrl+A">
+            <MenuItem
+                Click="OnSelectAllTextClick"
+                Header="Выделить текст"
+                InputGestureText="Ctrl+A">
                 <MenuItem.Icon>
                     <ui:SymbolIcon FontSize="14" Symbol="SelectAllOff16" />
                 </MenuItem.Icon>
             </MenuItem>
 
-            <Separator Margin="4,2" Background="#FF606060" />
+            <Separator Margin="6,4" Background="#FF505050" />
 
-            <MenuItem Header="Закрепить">
+            <MenuItem Click="OnPinClick" Header="Закрепить">
                 <MenuItem.Icon>
                     <ui:SymbolIcon FontSize="14" Symbol="Pin16" />
                 </MenuItem.Icon>
             </MenuItem>
 
-            <MenuItem Header="Добавить в избранное">
+            <MenuItem Click="OnAddToFavoritesClick" Header="Добавить в избранное">
                 <MenuItem.Icon>
                     <ui:SymbolIcon FontSize="14" Symbol="Star16" />
                 </MenuItem.Icon>
             </MenuItem>
 
-            <Separator Margin="4,2" Background="#FF606060" />
+            <Separator Margin="6,4" Background="#FF505050" />
 
-            <MenuItem Foreground="#FFFF9800" Header="Изменить">
+            <MenuItem
+                Click="OnEditClick"
+                Foreground="#FFFFB74D"
+                Header="Изменить">
                 <MenuItem.Icon>
                     <ui:SymbolIcon
                         FontSize="14"
-                        Foreground="#FFFF9800"
+                        Foreground="#FFFFB74D"
                         Symbol="Edit16" />
                 </MenuItem.Icon>
             </MenuItem>
 
-            <MenuItem Foreground="#FFF44336" Header="Удалить">
+            <MenuItem
+                Click="OnDeleteClick"
+                Foreground="#FFEF5350"
+                Header="Удалить">
                 <MenuItem.Icon>
                     <ui:SymbolIcon
                         FontSize="14"
-                        Foreground="#FFF44336"
+                        Foreground="#FFEF5350"
                         Symbol="Delete16" />
                 </MenuItem.Icon>
             </MenuItem>
@@ -158,67 +185,61 @@
 
             <Border.Effect>
                 <DropShadowEffect
-                    BlurRadius="8"
-                    Opacity="0.15"
-                    ShadowDepth="2"
+                    BlurRadius="12"
+                    Direction="270"
+                    Opacity="0.12"
+                    ShadowDepth="3"
                     Color="Black" />
             </Border.Effect>
 
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="15" />
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <!--  Имя отправителя (для входящих сообщений)  -->
                 <TextBlock
                     x:Name="SenderName"
                     Grid.Row="0"
-                    Margin="20,0,10,1"
+                    Grid.ColumnSpan="2"
+                    Margin="14,10,14,4"
                     FontFamily="{DynamicResource AdwaitaSans}"
                     FontSize="12"
-                    FontWeight="Medium"
-                    Foreground="#FF69341C"
+                    FontWeight="SemiBold"
+                    Foreground="#FF8B5A3C"
                     Text="Apogee"
                     Visibility="Visible" />
 
-                <!--  Текст сообщения  -->
-                <TextBox
-                    x:Name="MessageText"
+                <!--  Динамический контент сообщения (Image, Video, Document)  -->
+                <ContentPresenter
+                    x:Name="MediaContentPresenter"
                     Grid.Row="1"
-                    Margin="0,0,-20,-10"
-                    AcceptsReturn="True"
-                    Background="Transparent"
-                    BorderThickness="0"
-                    Cursor="IBeam"
-                    FontFamily="{DynamicResource AdwaitaSans}"
-                    FontSize="14"
-                    Foreground="White"
-                    HorizontalScrollBarVisibility="Disabled"
-                    IsReadOnly="True"
-                    SelectionBrush="#0c0620"
-                    Text="123"
-                    TextWrapping="Wrap"
-                    VerticalScrollBarVisibility="Disabled">
-                    <TextBox.Template>
-                        <ControlTemplate TargetType="TextBox">
-                            <ScrollViewer
-                                x:Name="PART_ContentHost"
-                                Background="Transparent"
-                                Focusable="false"
-                                HorizontalScrollBarVisibility="Hidden"
-                                VerticalScrollBarVisibility="Hidden" />
-                        </ControlTemplate>
-                    </TextBox.Template>
-                </TextBox>
+                    Grid.ColumnSpan="2"
+                    Margin="0,0,0,5"
+                    Content="{x:Null}" />
+
+                <!--  Текстовое содержимое сообщения  -->
+                <ContentPresenter
+                    x:Name="TextContentPresenter"
+                    Grid.Row="2"
+                    Grid.ColumnSpan="2"
+                    Margin="14,0,14,0"
+                    Content="{x:Null}" />
 
                 <!--  Время и статус  -->
-                <Grid Grid.Row="2" Grid.Column="1">
+                <Grid
+                    Grid.Row="3"
+                    Grid.Column="1"
+                    Margin="0,0,0,0"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Bottom">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
@@ -228,12 +249,12 @@
                     <TextBlock
                         x:Name="MessageTime"
                         Grid.Column="0"
-                        Margin="0,0,-3,3"
+                        Margin="0,0,4,3"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Bottom"
                         FontFamily="{DynamicResource AdwaitaSans}"
                         FontSize="11"
-                        Foreground="White"
+                        Foreground="#E0FFFFFF"
                         Text="placeholder"
                         TextWrapping="WrapWithOverflow">
                         <TextBlock.ToolTip>
@@ -247,37 +268,81 @@
                     <StackPanel
                         x:Name="ReadStatus"
                         Grid.Column="1"
+                        Margin="0,-5,5,0"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Bottom"
                         Orientation="Horizontal"
                         Visibility="Visible">
 
+                        <!--  Pending/Loading icon (clock)  -->
                         <ui:SymbolIcon
-                            Width="20"
-                            Height="20"
-                            Margin="6,0,-14,0"
-                            FontSize="20"
+                            x:Name="PendingIcon"
+                            Width="16"
+                            Height="16"
+                            FontSize="16"
                             Foreground="#FFFFC1A4"
-                            Symbol="Checkmark12">
+                            Symbol="Clock12"
+                            Visibility="Collapsed">
                             <ui:SymbolIcon.Effect>
                                 <DropShadowEffect
                                     BlurRadius="3"
-                                    Opacity="1"
+                                    Opacity="0.8"
+                                    ShadowDepth="0"
+                                    Color="#FF353535" />
+                            </ui:SymbolIcon.Effect>
+                            <ui:SymbolIcon.RenderTransform>
+                                <RotateTransform x:Name="PendingRotation" CenterX="8" CenterY="8" />
+                            </ui:SymbolIcon.RenderTransform>
+                            <ui:SymbolIcon.Triggers>
+                                <EventTrigger RoutedEvent="Loaded">
+                                    <BeginStoryboard>
+                                        <Storyboard RepeatBehavior="Forever">
+                                            <DoubleAnimation
+                                                Storyboard.TargetName="PendingRotation"
+                                                Storyboard.TargetProperty="Angle"
+                                                From="0"
+                                                To="360"
+                                                Duration="0:0:2" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </EventTrigger>
+                            </ui:SymbolIcon.Triggers>
+                        </ui:SymbolIcon>
+
+                        <!--  First checkmark (always shown when message is sent)  -->
+                        <ui:SymbolIcon
+                            x:Name="SingleCheckmark"
+                            Width="20"
+                            Height="20"
+                            Margin="0,0,0,0"
+                            FontSize="20"
+                            Foreground="#FFFFC1A4"
+                            Symbol="Checkmark12"
+                            Visibility="Collapsed">
+                            <ui:SymbolIcon.Effect>
+                                <DropShadowEffect
+                                    BlurRadius="3"
+                                    Opacity="0.8"
                                     ShadowDepth="0"
                                     Color="#FF353535" />
                             </ui:SymbolIcon.Effect>
                         </ui:SymbolIcon>
+
+                        <!--  Second checkmark (shown when message is read)  -->
                         <ui:SymbolIcon
+                            x:Name="DoubleCheckmark"
                             Width="20"
                             Height="20"
+                            Margin="-15,0,0,0"
                             Panel.ZIndex="-1"
                             FontSize="20"
                             Foreground="#FFFFC1A4"
-                            Symbol="Checkmark12">
+                            Symbol="Checkmark12"
+                            Visibility="Collapsed">
                             <ui:SymbolIcon.Effect>
                                 <DropShadowEffect
                                     BlurRadius="3"
-                                    Opacity="1"
+                                    Opacity="0.8"
                                     ShadowDepth="0"
                                     Color="#FF353535" />
                             </ui:SymbolIcon.Effect>
@@ -291,13 +356,18 @@
         <!--  Индикатор редактирования  -->
         <Border
             x:Name="EditIndicator"
-            Margin="8,-8,0,0"
-            Padding="6,2"
+            Margin="10,-8,0,0"
+            Padding="8,3"
             HorizontalAlignment="Left"
             VerticalAlignment="Top"
-            Background="#FFFF9800"
-            CornerRadius="8"
+            CornerRadius="10"
             Visibility="Collapsed">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Offset="0" Color="#FFFFB74D" />
+                    <GradientStop Offset="1" Color="#FFFF9800" />
+                </LinearGradientBrush>
+            </Border.Background>
             <TextBlock
                 FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="9"

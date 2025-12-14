@@ -5,8 +5,9 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="clr-namespace:BarkFluff.Client.WPF.UserControls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    d:DesignHeight="450"
-    d:DesignWidth="800"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    d:DesignHeight="100"
+    d:DesignWidth="400"
     mc:Ignorable="d">
 
     <UserControl.Resources>
@@ -27,7 +28,7 @@
                         <Border
                             Padding="{TemplateBinding Padding}"
                             Background="{TemplateBinding Background}"
-                            CornerRadius="8">
+                            CornerRadius="12">
                             <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
@@ -46,25 +47,79 @@
     <Grid>
         <Button
             Click="PublicServer_Click"
-            Style="{StaticResource ServerButton}"
-            Tag="tailrunners.dogpack.io:9090">
-            <StackPanel HorizontalAlignment="Left" Orientation="Vertical">
-                <TextBlock
-                    x:Name="ServerTitle"
-                    FontWeight="Medium"
-                    Text="Tail Runners" />
-                <TextBlock
-                    x:Name="ServerDescription"
-                    FontSize="12"
-                    FontWeight="Normal"
-                    Foreground="#9E9E9E"
-                    Text="Tail Runners" />
-                <TextBlock
-                    x:Name="ServerInfo"
-                    FontSize="10"
-                    Foreground="#9E9E9E"
-                    Text="tailrunners.dogpack.io:9090 • 765 пользователей" />
-            </StackPanel>
+            Style="{StaticResource ServerButton}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!--  Цветовой индикатор сервера  -->
+                <Border
+                    x:Name="ServerColorIndicator"
+                    Grid.Column="0"
+                    Width="4"
+                    Margin="0,0,12,0"
+                    Background="#df5000"
+                    CornerRadius="2" />
+
+                <!--  Информация о сервере  -->
+                <StackPanel
+                    Grid.Column="1"
+                    VerticalAlignment="Center"
+                    Orientation="Vertical">
+                    
+                    <!--  Название сервера  -->
+                    <TextBlock
+                        x:Name="ServerTitle"
+                        FontFamily="{DynamicResource AdwaitaSans}"
+                        FontSize="16"
+                        FontWeight="SemiBold"
+                        Foreground="White"
+                        Text="Название сервера" />
+                    
+                    <!--  Публичное имя @servername  -->
+                    <TextBlock
+                        x:Name="ServerPublicName"
+                        Margin="0,2,0,0"
+                        FontFamily="{DynamicResource AdwaitaSans}"
+                        FontSize="13"
+                        Foreground="#FFF39E6D"
+                        Text="@servername" />
+                    
+                    <!--  Описание  -->
+                    <TextBlock
+                        x:Name="ServerDescription"
+                        Margin="0,4,0,0"
+                        FontFamily="{DynamicResource AdwaitaSans}"
+                        FontSize="12"
+                        Foreground="#9E9E9E"
+                        Text="Описание сервера"
+                        TextTrimming="CharacterEllipsis"
+                        TextWrapping="NoWrap" />
+                </StackPanel>
+
+                <!--  Количество пользователей  -->
+                <StackPanel
+                    Grid.Column="2"
+                    Margin="12,0,0,0"
+                    VerticalAlignment="Center"
+                    Orientation="Horizontal">
+                    <ui:SymbolIcon
+                        Margin="0,0,4,0"
+                        FontSize="14"
+                        Foreground="#9E9E9E"
+                        Symbol="People20" />
+                    <TextBlock
+                        x:Name="ServerUserCount"
+                        VerticalAlignment="Center"
+                        FontFamily="{DynamicResource AdwaitaSans}"
+                        FontSize="12"
+                        Foreground="#9E9E9E"
+                        Text="0" />
+                </StackPanel>
+            </Grid>
         </Button>
     </Grid>
 </UserControl>

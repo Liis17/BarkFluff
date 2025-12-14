@@ -1,6 +1,8 @@
-﻿using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
+﻿using BarkFluff.Client.WPF.Services.App.Caching;
+using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
 using System.Globalization;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -43,11 +45,17 @@ namespace BarkFluff.Client.WPF.UserControls
         }
         public MessageModel TransferMessage { get; set; } //объект класса MessageModel для обновления этого блока в списке чатов (после считывания делать пустым)
         private string _url;
+        private string? _avatarFileId;
         public string ChatId = "";
         private long _lastMessageId;
         private bool _isGroupChat;
         private long _userId;
         private string _title;
+        private long _currentUserId;
+        private List<long> _lastMessageReadBy = new List<long>();
+        private long _lastMessageSenderId;
+        private int _unreadCount;
+
         public ChatItem(string imageUrl, string chatName, string lastMessageText, string time, ReadingStatus reading, List<long> readBy, long unReaded, string chatId, long lastMessageId, bool isGroupChat, long userId)
         {
             InitializeComponent();
@@ -59,48 +67,208 @@ namespace BarkFluff.Client.WPF.UserControls
             LastMessage.Text = ProcessText(lastMessageText);
             _url = imageUrl;
             _userId = userId;
+            _currentUserId = App.GParam.UserId;
+            _lastMessageReadBy = readBy ?? new List<long>();
+            _lastMessageSenderId = 0; // Will be set later via TransferMessage
+            _unreadCount = (int)unReaded;
             TimeMessage.Text = FormatDateTime(time.Length >= 2 ? time.Substring(1, time.Length - 2) : time);
 
+            // Пытаемся извлечь fileId из URL если это не placeholder
+            if (!string.IsNullOrEmpty(imageUrl) && !FileCacheService.IsPlaceholder(imageUrl))
+            {
+                _avatarFileId = FileCacheService.ExtractFileIdFromUrl(imageUrl);
+            }
+
             Loaded += ChatItem_Loaded;
+            UpdateUnreadBadge();
         }
 
         public void UpdateMessage()
         {
-            //_lastMessageId = TransferMessage.MessageId;
+            // Update the last message ID so pagination works correctly
+            _lastMessageId = TransferMessage.MessageId;
             LastMessage.Text = ProcessText(TransferMessage.Text);
             var time = TransferMessage.SentAt.ToString();
             TimeMessage.Text = FormatDateTime(time.Length >= 2 ? time.Substring(1, time.Length - 2) : time);
+            
+            // Update read status
+            _lastMessageReadBy = TransferMessage.ReadBy ?? new List<long>();
+            _lastMessageSenderId = TransferMessage.SenderId;
+            UpdateReadStatusIndicator();
+        }
+
+        /// <summary>
+        /// Updates the unread badge visibility and count
+        /// </summary>
+        public void UpdateUnreadBadge()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                if (_unreadCount > 0)
+                {
+                    UnreadBadge.Visibility = Visibility.Visible;
+                    UnreadCountText.Text = _unreadCount > 99 ? "99+" : _unreadCount.ToString();
+                }
+                else
+                {
+                    UnreadBadge.Visibility = Visibility.Collapsed;
+                }
+            });
+        }
+
+        /// <summary>
+        /// Sets the unread count for this chat
+        /// </summary>
+        public void SetUnreadCount(int count)
+        {
+            _unreadCount = count;
+            UpdateUnreadBadge();
+        }
+
+        /// <summary>
+        /// Increments the unread count
+        /// </summary>
+        public void IncrementUnreadCount()
+        {
+            _unreadCount++;
+            UpdateUnreadBadge();
+        }
+
+        /// <summary>
+        /// Resets the unread count to zero
+        /// </summary>
+        public void ResetUnreadCount()
+        {
+            _unreadCount = 0;
+            UpdateUnreadBadge();
+        }
+
+        /// <summary>
+        /// Updates the read status for a specific message by ID (called when read receipt is received)
+        /// </summary>
+        public void UpdateLastMessageReadStatus(long messageId, List<long> readBy)
+        {
+            // Only update if this is the last message in the chat
+            if (_lastMessageId == messageId)
+            {
+                _lastMessageReadBy = readBy;
+                UpdateReadStatusIndicator();
+            }
+        }
+
+        /// <summary>
+        /// Updates the read status for the last message (called when read receipt is received)
+        /// </summary>
+        public void UpdateLastMessageReadStatus(List<long> readBy)
+        {
+            _lastMessageReadBy = readBy;
+            UpdateReadStatusIndicator();
+        }
+
+        /// <summary>
+        /// Updates the read status checkmarks based on the last message
+        /// </summary>
+        private void UpdateReadStatusIndicator()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                // Only show read status for messages sent by current user
+                if (_lastMessageSenderId != _currentUserId)
+                {
+                    ReadStatusPanel.Visibility = Visibility.Collapsed;
+                    return;
+                }
+
+                ReadStatusPanel.Visibility = Visibility.Visible;
+
+                // Check if message has been read by others
+                var readByOthers = _lastMessageReadBy.Any(id => id != _currentUserId);
+
+                if (readByOthers)
+                {
+                    // Double checkmark - message read
+                    FirstCheckmark.Visibility = Visibility.Visible;
+                    SecondCheckmark.Visibility = Visibility.Visible;
+                    ReadStatusPanel.Opacity = 1.0;
+                }
+                else
+                {
+                    // Single checkmark - message sent but not read
+                    FirstCheckmark.Visibility = Visibility.Visible;
+                    SecondCheckmark.Visibility = Visibility.Collapsed;
+                    ReadStatusPanel.Opacity = 1.0;
+                }
+            });
         }
 
         private async void ChatItem_Loaded(object sender, RoutedEventArgs e)
         {
-            BitmapImage bitmapImage = new BitmapImage();
-            bitmapImage.BeginInit();
-            bitmapImage.UriSource = new Uri(_url, UriKind.Absolute);
-            bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
-            bitmapImage.EndInit();
+            // Используем кеш-сервис для загрузки аватара
+            var imagePath = App.FileCacheService.GetCachedFilePath(_avatarFileId ?? string.Empty, FileType.Avatar, _url);
+            SetAvatarImage(imagePath);
 
-            ImageBrush imageBrush = new ImageBrush
+            // Подписываемся на событие кеширования файла
+            App.FileCacheService.FileCached += OnFileCached;
+
+            // Отписываемся при выгрузке контрола
+            Unloaded += (s, args) =>
             {
-                ImageSource = bitmapImage,
-                Stretch = Stretch.UniformToFill,
+                App.FileCacheService.FileCached -= OnFileCached;
             };
-            border.Background = imageBrush;
+        }
 
-            bitmapImage.DownloadCompleted += async (s, args) =>
+        private void OnFileCached(string fileId, string filePath, FileType fileType)
+        {
+            if (fileId == _avatarFileId && fileType == FileType.Avatar)
             {
-                Color averageColor = await App.ColorAnalyzer.GetAverageColorFromUrlAsync(_url);
-                DropShadowEffect shadowEffect = new DropShadowEffect
+                Dispatcher.Invoke(() => SetAvatarImage(filePath));
+            }
+        }
+
+        private async void SetAvatarImage(string imagePath)
+        {
+            try
+            {
+                BitmapImage bitmapImage = new BitmapImage();
+                bitmapImage.BeginInit();
+                bitmapImage.UriSource = new Uri(imagePath, UriKind.RelativeOrAbsolute);
+                bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                bitmapImage.EndInit();
+
+                ImageBrush imageBrush = new ImageBrush
                 {
-                    BlurRadius = 12,
-                    Opacity = 0.9,
-                    ShadowDepth = 0,
-                    Color = averageColor
+                    ImageSource = bitmapImage,
+                    Stretch = Stretch.UniformToFill,
                 };
-                border.Effect = shadowEffect;
-            };
+                border.Background = imageBrush;
 
-            bitmapImage.DownloadFailed += (s, args) =>
+                bitmapImage.DownloadCompleted += async (s, args) =>
+                {
+                    // Use the original URL for color analysis if available, otherwise use the cached path
+                    var colorSourceUrl = !string.IsNullOrEmpty(_url) ? _url : imagePath;
+                    Color averageColor = await App.ColorAnalyzer.GetAverageColorFromUrlAsync(colorSourceUrl);
+                    DropShadowEffect shadowEffect = new DropShadowEffect
+                    {
+                        BlurRadius = 12,
+                        Opacity = 0.9,
+                        ShadowDepth = 0,
+                        Color = averageColor
+                    };
+                    border.Effect = shadowEffect;
+                };
+
+                bitmapImage.DownloadFailed += (s, args) =>
+                {
+                    border.Effect = new DropShadowEffect
+                    {
+                        BlurRadius = 10,
+                        Opacity = 0.3,
+                        ShadowDepth = 0,
+                        Color = Colors.Gray
+                    };
+                };
+            }
+            catch
             {
                 border.Effect = new DropShadowEffect
                 {
@@ -109,7 +277,7 @@ namespace BarkFluff.Client.WPF.UserControls
                     ShadowDepth = 0,
                     Color = Colors.Gray
                 };
-            };
+            }
         }
 
         private string FormatDateTime(string input)

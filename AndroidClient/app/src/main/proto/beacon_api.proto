@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+option csharp_namespace = "BarkFluff.Proto.Beacon";
+
+package barkfluff.beacon;
+
+service BeaconApi {
+  
+  // Получить инфу о сервере
+  rpc GetServerInfo(GetServerInfoRequest) returns(GetServerInfoResponse);
+}
+
+message GetServerInfoRequest {
+  
+}
+
+message GetServerInfoResponse {
+  
+  string name = 1; // Имя сервера
+  
+  string description = 2; // Описание сервера
+  
+  ServerColor color = 3; // Цвета сервера
+  
+  Service identity = 4; // Микросервис identity
+  
+  Service users = 5; // Микросервис users
+  
+  Service files = 6; // Микросервис files
+  
+  Service messages = 7; // Микросервис messages
+  
+  Service updates = 8; // Микросервис updates
+}
+
+message ServerColor {
+  
+  string lite_hex = 1; // Светлый цвет сервера
+  
+  string main_hex = 2; // Основной цвет сервера
+  
+  string hard_hex = 3; // Темный цвет сервера
+}
+
+message Service {
+  string name = 1; // Название микросервиса
+  
+  ServiceEndpoint endpoint = 2; // Эндоинт микросервиса
+  
+  bool tls_enabled = 3; // Включен ли ssl
+  
+  ServiceStatus status = 4; // Состояние сервиса
+}
+
+enum ServiceStatus {
+  Unknown = 0;
+  Healthy = 1; // Живчик
+  Degraded = 2; // Имеются отклонения
+  Unhealthy = 3; // Нездоровый жесть
+  Offline = 4; // Помер капец
+}
+
+message ServiceEndpoint {
+  string host = 1; // Хост
+  int32 port = 2; // Порт
+}

@@ -31,6 +31,9 @@ public static class ServiceCollectionExtensions
         // Регистрируем uploader
         services.AddTransient<S3Uploader>();
 
+        // Регистрируем инициализатор бакетов
+        services.AddSingleton<S3BucketInitializer>();
+
         return services;
     }
 }

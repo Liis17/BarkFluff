@@ -146,19 +146,87 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
 
         if (!string.Equals(currentPasswordHash, enteredPasswordHash))
         {
+            // Отправка уведомления о неудачной попытке входа
+            var userContactInfo = await usersClient.GetUserContactsAsync(new GetUserContactsRequest { UserId = user.User.Id });
+
+            string locationInfo = "-";
+            if (!string.IsNullOrEmpty(requestContext.IpAddress))
+            {
+                var ipLocation = await locationClient.GetLocation(requestContext.IpAddress);
+                if (ipLocation != null)
+                {
+                    locationInfo = $"{ipLocation.Country}, {ipLocation.RegionName}, {ipLocation.City}";
+                }
+            }
+
+            var failedLoginNotification = new EmailNotification
+            {
+                OwnerId = user.User.Id,
+                Address = userContactInfo.Contact.Email,
+                CreatedAt = DateTime.UtcNow,
+                Payload = new Dictionary<string, string>
+                {
+                    {"username", user.User.Username},
+                    {"ip", requestContext.IpAddress ?? string.Empty},
+                    {"devicename", requestContext.DeviceName},
+                    {"os", requestContext.OperationSystem},
+                    {"location", locationInfo},
+                    {"datetime", DateTime.UtcNow.ToString("D")}
+                },
+                ServiceId = ServiceId.Identity,
+                Title = "Неуспешная попытка входа в аккаунт",
+                Type = NotificationType.FailedLogin
+            };
+
+            await notificationQueueSender.SendNotification(failedLoginNotification);
+
             throw new InvalidLoginOrPasswordException();
         }
-        
+
         var refreshTokenString = RefreshTokenGenerator.GenerateRefreshToken();
         await refreshTokensStorage.CreateNewRefreshToken(refreshTokenString, user.User.Id, requestContext.DeviceName, ExpDaysRefreshToken);
 
         var accessTokenResponse = await mediator.Send(new CreateTokenCommand { RefreshToken = refreshTokenString }, cancellationToken);
-        
-        var response = new AuthResponse { RefreshToken = new Token 
+
+        // Отправка уведомления об успешном входе
+        var successUserContactInfo = await usersClient.GetUserContactsAsync(new GetUserContactsRequest { UserId = user.User.Id });
+
+        string successLocationInfo = "-";
+        if (!string.IsNullOrEmpty(requestContext.IpAddress))
+        {
+            var ipLocation = await locationClient.GetLocation(requestContext.IpAddress);
+            if (ipLocation != null)
             {
-                Value = refreshTokenString, 
+                successLocationInfo = $"{ipLocation.Country}, {ipLocation.RegionName}, {ipLocation.City}";
+            }
+        }
+
+        var successfulLoginNotification = new EmailNotification
+        {
+            OwnerId = user.User.Id,
+            Address = successUserContactInfo.Contact.Email,
+            CreatedAt = DateTime.UtcNow,
+            Payload = new Dictionary<string, string>
+            {
+                {"username", user.User.Username},
+                {"ip", requestContext.IpAddress ?? string.Empty},
+                {"devicename", requestContext.DeviceName},
+                {"os", requestContext.OperationSystem},
+                {"location", successLocationInfo},
+                {"datetime", DateTime.UtcNow.ToString("D")}
+            },
+            ServiceId = ServiceId.Identity,
+            Title = "Успешный вход в аккаунт",
+            Type = NotificationType.SuccessfulLogin
+        };
+
+        await notificationQueueSender.SendNotification(successfulLoginNotification);
+
+        var response = new AuthResponse { RefreshToken = new Token
+            {
+                Value = refreshTokenString,
                 ExpirationDate = Timestamp.FromDateTime(DateTime.UtcNow.AddDays(ExpDaysRefreshToken))
-                
+
             },
             AccessToken = accessTokenResponse.AccessToken
         };

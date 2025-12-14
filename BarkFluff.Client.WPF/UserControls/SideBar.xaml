@@ -18,7 +18,7 @@
             HorizontalAlignment="Left"
             VerticalAlignment="Top">
             <Ellipse.Fill>
-                <ImageBrush ImageSource="https://image.barkfluff.com/notanesilia.png" />
+                <ImageBrush x:Name="BluredUserAvatarBrush" ImageSource="pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png" />
             </Ellipse.Fill>
             <Ellipse.Effect>
                 <BlurEffect Radius="100" />
@@ -34,21 +34,24 @@
                     </Grid.ColumnDefinitions>
 
                     <Ellipse
+                        x:Name="UserAvatarEllipse"
                         Grid.Column="0"
                         Width="50"
                         Height="50"
                         Margin="0,0,10,0">
                         <Ellipse.Fill>
-                            <ImageBrush ImageSource="https://image.barkfluff.com/notanesilia.png" />
+                            <ImageBrush x:Name="UserAvatarBrush" ImageSource="pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png" />
                         </Ellipse.Fill>
                     </Ellipse>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock
+                            x:Name="EmailText"
                             FontSize="14"
                             FontWeight="Bold"
                             Foreground="White"
                             Text="username" />
                         <TextBlock
+                            x:Name="UsernameText"
                             FontSize="12"
                             Foreground="Gray"
                             Text="email" />
@@ -86,9 +89,9 @@
                         HorizontalContentAlignment="Left"
                         Background="Transparent"
                         BorderThickness="0"
-                        Click="SidebarButtonClick"
+                        Click="OpenFavorites"
                         Content="Избранное"
-                        Cursor="No"
+                        Cursor="Hand"
                         Foreground="White">
                         <Button.ContentTemplate>
                             <DataTemplate>

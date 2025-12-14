@@ -1,4 +1,5 @@
-﻿using BarkFluff.Client.WPF.UserControls.Classes;
+﻿using BarkFluff.Client.WPF.Services.App.Caching;
+using BarkFluff.Client.WPF.UserControls.Classes;
 
 using System.ComponentModel;
 using System.Windows;
@@ -15,13 +16,31 @@ namespace BarkFluff.Client.WPF.UserControls
     /// </summary>
     public partial class Profile : UserControl
     {
+        private string? _avatarFileId;
+        private bool _isCurrentUser = false;
+
         public Profile()
         {
             InitializeComponent();
             DataContext = this;
+
+            Loaded += Profile_Loaded;
+            Unloaded += Profile_Unloaded;
         }
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        private void Profile_Loaded(object sender, RoutedEventArgs e)
+        {
+            // Подписываемся на событие кеширования
+            App.FileCacheService.FileCached += OnFileCached;
+        }
+
+        private void Profile_Unloaded(object sender, RoutedEventArgs e)
+        {
+            // Отписываемся от события кеширования
+            App.FileCacheService.FileCached -= OnFileCached;
+        }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
 
         protected virtual void OnPropertyChanged(string propertyName)
         {
@@ -63,7 +82,64 @@ namespace BarkFluff.Client.WPF.UserControls
             if (d is Profile control)
             {
                 var username = e.NewValue?.ToString() ?? string.Empty;
-                control.UsernameTextBlock.Text = string.IsNullOrEmpty(username) ? string.Empty : $"@{username}";
+                control.UsernameInfoTextBlock.Text = string.IsNullOrEmpty(username) ? string.Empty : $"@{username}";
+            }
+        }
+
+        // FirstName
+        public static readonly DependencyProperty FirstNameProperty =
+            DependencyProperty.Register(nameof(FirstName), typeof(string), typeof(Profile),
+                new PropertyMetadata(string.Empty, OnNameChanged));
+
+        public string FirstName
+        {
+            get => (string)GetValue(FirstNameProperty);
+            set => SetValue(FirstNameProperty, value);
+        }
+
+        // LastName
+        public static readonly DependencyProperty LastNameProperty =
+            DependencyProperty.Register(nameof(LastName), typeof(string), typeof(Profile),
+                new PropertyMetadata(string.Empty, OnNameChanged));
+
+        public string LastName
+        {
+            get => (string)GetValue(LastNameProperty);
+            set => SetValue(LastNameProperty, value);
+        }
+
+        private static void OnNameChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is Profile control)
+                control.UpdatePublicName();
+        }
+
+        private void UpdatePublicName()
+        {
+            var fullName = $"{FirstName} {LastName}".Trim();
+            PublicNameTextBlock.Text = string.IsNullOrEmpty(fullName) ? Username : fullName;
+        }
+
+        // Description
+        public static readonly DependencyProperty DescriptionProperty =
+            DependencyProperty.Register(nameof(Description), typeof(string), typeof(Profile),
+                new PropertyMetadata(string.Empty, OnDescriptionChanged));
+
+        public string Description
+        {
+            get => (string)GetValue(DescriptionProperty);
+            set => SetValue(DescriptionProperty, value);
+        }
+
+        private static void OnDescriptionChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is Profile control)
+            {
+                var description = e.NewValue?.ToString() ?? string.Empty;
+                control.DescriptionTextBlock.Text = description;
+                control.DescriptionSection.Visibility = string.IsNullOrWhiteSpace(description)
+                    ? Visibility.Collapsed
+                    : Visibility.Visible;
             }
         }
 
@@ -81,7 +157,14 @@ namespace BarkFluff.Client.WPF.UserControls
         private static void OnEmailChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             if (d is Profile control)
-                control.EmailTextBlock.Text = e.NewValue?.ToString() ?? string.Empty;
+            {
+                var email = e.NewValue?.ToString() ?? string.Empty;
+                control.EmailTextBlock.Text = email;
+                // Email показывается только для своего профиля и если он не пустой
+                control.EmailSection.Visibility = (control._isCurrentUser && !string.IsNullOrWhiteSpace(email))
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+            }
         }
 
         // User ID
@@ -117,7 +200,14 @@ namespace BarkFluff.Client.WPF.UserControls
             if (d is Profile control)
             {
                 var date = (DateTime?)e.NewValue;
-                control.RegistrationDateTextBlock.Text = date?.ToString("dd MMM yyyy") ?? string.Empty;
+                if (date.HasValue)
+                {
+                    control.RegistrationDateTextBlock.Text = date.Value.ToString("dd MMMM yyyy");
+                }
+                else
+                {
+                    control.RegistrationDateTextBlock.Text = "Неизвестно";
+                }
             }
         }
 
@@ -154,8 +244,7 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private static void OnLastSeenChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            if (d is Profile control)
-                control.UpdateLastSeenText();
+            // Online status UI has been removed, keeping property for compatibility
         }
 
         // Онлайн статус
@@ -171,8 +260,7 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private static void OnIsOnlineChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            if (d is Profile control)
-                control.UpdateLastSeenText();
+            // Online status UI has been removed, keeping property for compatibility
         }
 
         #endregion
@@ -262,46 +350,149 @@ namespace BarkFluff.Client.WPF.UserControls
 
         #endregion
 
-        private void UpdateLastSeenText()
-        {
-            if (IsOnline)
-            {
-                LastSeenTextBlock.Text = "В сети";
-                OnlineStatusIndicator.Fill = new SolidColorBrush(Color.FromRgb(76, 175, 80)); // Green
-            }
-            else if (LastSeen.HasValue)
-            {
-                var timeAgo = DateTime.Now - LastSeen.Value;
+        #region Profile Loading Methods
 
-                if (timeAgo.TotalMinutes < 1)
-                {
-                    LastSeenTextBlock.Text = "Только что";
-                    OnlineStatusIndicator.Fill = new SolidColorBrush(Color.FromRgb(76, 175, 80)); // Green
-                }
-                else if (timeAgo.TotalHours < 1)
-                {
-                    LastSeenTextBlock.Text = $"{(int)timeAgo.TotalMinutes} мин назад";
-                    OnlineStatusIndicator.Fill = new SolidColorBrush(Color.FromRgb(255, 193, 7)); // Yellow
-                }
-                else if (timeAgo.TotalDays < 1)
-                {
-                    LastSeenTextBlock.Text = $"{(int)timeAgo.TotalHours} ч назад";
-                    OnlineStatusIndicator.Fill = new SolidColorBrush(Color.FromRgb(255, 152, 0)); // Orange
-                }
-                else
-                {
-                    LastSeenTextBlock.Text = LastSeen.Value.ToString("dd.MM.yyyy");
-                    OnlineStatusIndicator.Fill = new SolidColorBrush(Color.FromRgb(158, 158, 158)); // Gray
-                }
-            }
-            else
+        /// <summary>
+        /// Загружает профиль текущего пользователя из App.GParam
+        /// </summary>
+        public void LoadCurrentUserProfile()
+        {
+            _isCurrentUser = true;
+
+            UserId = App.GParam.UserId.ToString();
+            Username = App.GParam.UserName;
+            FirstName = App.GParam.FirstName;
+            LastName = App.GParam.LastName;
+            Description = App.GParam.Description;
+            Email = App.GParam.Email;
+
+            RegistrationDate = App.GParam.RegistrationDate;
+
+            UpdatePublicName();
+
+            // Показываем email для своего профиля
+            EmailSection.Visibility = Visibility.Visible;
+
+            // Загружаем аватар через кеш
+            LoadAvatar(App.GParam.PictureUrl);
+
+            // Скрываем баджи по умолчанию
+            SetBadges(null);
+        }
+
+        /// <summary>
+        /// Загружает профиль другого пользователя по userId
+        /// </summary>
+        /// <param name="userId">ID пользователя для загрузки</param>
+        public async void LoadUserProfile(long userId)
+        {
+            _isCurrentUser = userId == App.GParam.UserId;
+
+            if (_isCurrentUser)
             {
-                LastSeenTextBlock.Text = "Неизвестно";
-                OnlineStatusIndicator.Fill = new SolidColorBrush(Color.FromRgb(158, 158, 158)); // Gray
+                LoadCurrentUserProfile();
+                return;
+            }
+
+            try
+            {
+                var response = await App.ServerCommunication.GetUserData(App.GParam, userId);
+
+                if (response.Data == null)
+                {
+                    App.ErideMessage?.AddMessage($"Не удалось загрузить профиль пользователя {userId}: данные не получены",
+                        new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Warning });
+                    return;
+                }
+
+                UserId = response.Data.Id.ToString();
+                Username = response.Data.Username;
+                FirstName = response.Data.FirstName;
+                LastName = response.Data.LastName;
+                Description = response.Data.Description;
+
+                // Конвертируем Timestamp в DateTime
+                RegistrationDate = response.Data.RegistrationDate;
+
+                UpdatePublicName();
+
+                // Скрываем email для чужого профиля
+                EmailSection.Visibility = Visibility.Collapsed;
+
+                // Загружаем аватар
+                var avatarUrl = !string.IsNullOrEmpty(response.Data.ProfilePictureUrl)
+                    ? response.Data.ProfilePictureUrl
+                    : response.Data.ProfilePicturePreviewUrl;
+
+                LoadAvatar(avatarUrl);
+
+                // Скрываем баджи по умолчанию
+                SetBadges(null);
+            }
+            catch (Exception ex)
+            {
+                App.ErideMessage?.AddMessage($"Ошибка загрузки профиля пользователя {userId}: {ex.Message}",
+                    new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
             }
         }
 
-        // Методы для установки данных пользователя
+        private void LoadAvatar(string? avatarUrl)
+        {
+            if (string.IsNullOrEmpty(avatarUrl))
+            {
+                SetAvatarImage(FileCacheService.DefaultPlaceholder);
+                return;
+            }
+
+            try
+            {
+                _avatarFileId = FileCacheService.ExtractFileIdFromUrl(avatarUrl);
+                var imagePath = App.FileCacheService.GetCachedFilePath(
+                    _avatarFileId ?? string.Empty,
+                    FileType.Avatar,
+                    avatarUrl);
+                SetAvatarImage(imagePath);
+            }
+            catch (Exception ex)
+            {
+                App.ErideMessage?.AddMessage($"Ошибка загрузки аватара: {ex.Message}",
+                    new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Debug });
+                SetAvatarImage(FileCacheService.DefaultPlaceholder);
+            }
+        }
+
+
+        #endregion
+
+        #region Attachment Tab Methods
+
+        private void OnAttachmentTabChecked(object sender, RoutedEventArgs e)
+        {
+            // Проверяем, что все элементы контента инициализированы
+            // (это событие может сработать до полной инициализации при IsChecked="True")
+            if (ImagesContent == null || VideosContent == null || FilesContent == null || VoiceContent == null)
+                return;
+
+            // Скрываем все контенты
+            ImagesContent.Visibility = Visibility.Collapsed;
+            VideosContent.Visibility = Visibility.Collapsed;
+            FilesContent.Visibility = Visibility.Collapsed;
+            VoiceContent.Visibility = Visibility.Collapsed;
+
+            // Показываем выбранный контент
+            if (sender == ImagesTab)
+                ImagesContent.Visibility = Visibility.Visible;
+            else if (sender == VideosTab)
+                VideosContent.Visibility = Visibility.Visible;
+            else if (sender == FilesTab)
+                FilesContent.Visibility = Visibility.Visible;
+            else if (sender == VoiceTab)
+                VoiceContent.Visibility = Visibility.Visible;
+        }
+
+        #endregion
+
+        // Методы для установки данных пользователя (совместимость с существующим кодом)
         public void SetUserData(UserProfile userProfile)
         {
             PublicName = userProfile.PublicName;
@@ -314,21 +505,31 @@ namespace BarkFluff.Client.WPF.UserControls
 
             if (!string.IsNullOrEmpty(userProfile.AvatarPath))
             {
-                try
-                {
-                    AvatarSource = new BitmapImage(new Uri(userProfile.AvatarPath, UriKind.RelativeOrAbsolute));
-                }
-                catch
-                {
-                    // Использовать аватар по умолчанию
-                }
+                LoadAvatar(userProfile.AvatarPath);
             }
 
             // Установка баджей
             SetBadges(userProfile.Badges);
         }
 
-        public void SetBadges(BadgeInfo[] badges)
+        private void OnFileCached(string fileId, string filePath, FileType fileType)
+        {
+            if (fileId == _avatarFileId && fileType == FileType.Avatar)
+            {
+                Dispatcher.Invoke(() => SetAvatarImage(filePath));
+            }
+        }
+
+        private void SetAvatarImage(string imagePath)
+        {
+            try
+            {
+                AvatarSource = new BitmapImage(new Uri(imagePath, UriKind.RelativeOrAbsolute));
+            }
+            catch { }
+        }
+
+        public void SetBadges(BadgeInfo[]? badges)
         {
             // Сначала скрываем все баджи
             Badge1Visibility = Visibility.Collapsed;
@@ -356,11 +557,6 @@ namespace BarkFluff.Client.WPF.UserControls
                         break;
                 }
             }
-        }
-
-        private void OnTabButtonClick(object sender, RoutedEventArgs e)
-        {
-
         }
     }
 }

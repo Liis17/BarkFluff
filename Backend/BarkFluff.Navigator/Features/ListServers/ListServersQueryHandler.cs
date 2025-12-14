@@ -25,7 +25,10 @@ public class ListServersQueryHandler : IRequestHandler<ListServersQuery, ListSer
                 servers.Select(server =>
                     new ServerInfo
                     {
-                        Name = server.Name, Description = server.Description, AccountsCount = 0,
+                        Name = server.Name,
+                        Description = server.Description,
+                        ServerPublicName = server.ServerPublicName,
+                        AccountsCount = 0,
                         BeaconUri = new ServiceEndpoint()
                         {
                             Host = server.BeaconHost, Port = server.BeaconPort

@@ -37,6 +37,19 @@
                 </DoubleAnimation.EasingFunction>
             </DoubleAnimation>
         </Storyboard>
+
+        <!--  Анимация тряски при неправильном вводе  -->
+        <Storyboard x:Key="ShakeAnimation">
+            <DoubleAnimationUsingKeyFrames Storyboard.TargetName="PinContainer" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)">
+                <EasingDoubleKeyFrame KeyTime="0:0:0.05" Value="-10" />
+                <EasingDoubleKeyFrame KeyTime="0:0:0.1" Value="10" />
+                <EasingDoubleKeyFrame KeyTime="0:0:0.15" Value="-8" />
+                <EasingDoubleKeyFrame KeyTime="0:0:0.2" Value="8" />
+                <EasingDoubleKeyFrame KeyTime="0:0:0.25" Value="-5" />
+                <EasingDoubleKeyFrame KeyTime="0:0:0.3" Value="5" />
+                <EasingDoubleKeyFrame KeyTime="0:0:0.35" Value="0" />
+            </DoubleAnimationUsingKeyFrames>
+        </Storyboard>
     </UserControl.Resources>
 
     <Grid x:Name="MainGrid">
@@ -44,120 +57,176 @@
             <TranslateTransform />
         </Grid.RenderTransform>
 
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!--  Основной контент  -->
         <StackPanel
+            Grid.Row="0"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             Orientation="Vertical">
+
+            <!--  Заголовок  -->
             <TextBlock
-                Margin="40"
+                Margin="0,0,0,40"
                 HorizontalAlignment="Center"
                 FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="32"
-                FontWeight="Black"
-                Foreground="White"
+                FontSize="26"
+                FontWeight="SemiBold"
+                Foreground="#E8E8E8"
                 Text="Введите код приложения" />
-            <StackPanel
-                x:Name="PinContainer"
-                HorizontalAlignment="Center"
-                Orientation="Horizontal">
-                <TextBox
-                    x:Name="Box0"
-                    GotFocus="PinBox_GotFocus"
-                    Loaded="FocusBoxZero"
-                    PreviewKeyDown="PinBox_PreviewKeyDown"
-                    PreviewTextInput="PinBox_PreviewTextInput"
-                    Style="{StaticResource VerificationTextBox}"
-                    TextChanged="PinBox_TextChanged" />
-                <TextBox
-                    x:Name="Box1"
-                    GotFocus="PinBox_GotFocus"
-                    PreviewKeyDown="PinBox_PreviewKeyDown"
-                    PreviewTextInput="PinBox_PreviewTextInput"
-                    Style="{StaticResource VerificationTextBox}"
-                    TextChanged="PinBox_TextChanged" />
-                <TextBox
-                    x:Name="Box2"
-                    GotFocus="PinBox_GotFocus"
-                    PreviewKeyDown="PinBox_PreviewKeyDown"
-                    PreviewTextInput="PinBox_PreviewTextInput"
-                    Style="{StaticResource VerificationTextBox}"
-                    TextChanged="PinBox_TextChanged" />
-                <TextBox
-                    x:Name="Box3"
-                    GotFocus="PinBox_GotFocus"
-                    PreviewKeyDown="PinBox_PreviewKeyDown"
-                    PreviewTextInput="PinBox_PreviewTextInput"
-                    Style="{StaticResource VerificationTextBox}"
-                    TextChanged="PinBox_TextChanged" />
-            </StackPanel>
-            <StackPanel
-                HorizontalAlignment="Center"
-                Opacity="0.7"
-                Orientation="Horizontal">
-                <ui:SymbolIcon
-                    x:Name="key3"
-                    Filled="True"
-                    FontSize="17"
-                    Foreground="Orange"
-                    Symbol="Key16" />
-                <ui:SymbolIcon
-                    x:Name="key2"
-                    Filled="True"
-                    FontSize="17"
-                    Foreground="Orange"
-                    Symbol="Key16" />
-                <ui:SymbolIcon
-                    x:Name="key1"
-                    Filled="True"
-                    FontSize="17"
-                    Foreground="Orange"
-                    Symbol="Key16" />
-            </StackPanel>
-            <TextBlock
-                x:Name="helper"
-                Margin="10"
-                HorizontalAlignment="Center"
-                FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="15"
-                FontWeight="Medium"
-                Foreground="White"
-                Opacity="0.8"
-                Text="Текст предупреждения будет отображаться тут"
-                TextAlignment="Center" />
+
+            <!--  Карточка с полями ввода  -->
+            <Border Style="{StaticResource Win11CardStyle}">
+                <StackPanel Orientation="Vertical">
+                    <!--  Поля для ввода PIN  -->
+                    <StackPanel
+                        x:Name="PinContainer"
+                        HorizontalAlignment="Center"
+                        Orientation="Horizontal">
+                        <StackPanel.RenderTransform>
+                            <TranslateTransform />
+                        </StackPanel.RenderTransform>
+                        <TextBox
+                            x:Name="Box0"
+                            GotFocus="PinBox_GotFocus"
+                            Loaded="FocusBoxZero"
+                            PreviewKeyDown="PinBox_PreviewKeyDown"
+                            PreviewTextInput="PinBox_PreviewTextInput"
+                            Style="{StaticResource PinCodeTextBoxWin11}"
+                            TextChanged="PinBox_TextChanged" />
+                        <TextBox
+                            x:Name="Box1"
+                            GotFocus="PinBox_GotFocus"
+                            PreviewKeyDown="PinBox_PreviewKeyDown"
+                            PreviewTextInput="PinBox_PreviewTextInput"
+                            Style="{StaticResource PinCodeTextBoxWin11}"
+                            TextChanged="PinBox_TextChanged" />
+                        <TextBox
+                            x:Name="Box2"
+                            GotFocus="PinBox_GotFocus"
+                            PreviewKeyDown="PinBox_PreviewKeyDown"
+                            PreviewTextInput="PinBox_PreviewTextInput"
+                            Style="{StaticResource PinCodeTextBoxWin11}"
+                            TextChanged="PinBox_TextChanged" />
+                        <TextBox
+                            x:Name="Box3"
+                            GotFocus="PinBox_GotFocus"
+                            PreviewKeyDown="PinBox_PreviewKeyDown"
+                            PreviewTextInput="PinBox_PreviewTextInput"
+                            Style="{StaticResource PinCodeTextBoxWin11}"
+                            TextChanged="PinBox_TextChanged" />
+                    </StackPanel>
+
+                    <!--  Индикатор попыток  -->
+                    <StackPanel
+                        Margin="0,24,0,0"
+                        HorizontalAlignment="Center"
+                        Orientation="Horizontal">
+                        <TextBlock
+                            Margin="0,0,14,0"
+                            VerticalAlignment="Center"
+                            FontFamily="{DynamicResource AdwaitaSans}"
+                            FontSize="13"
+                            FontWeight="Medium"
+                            Foreground="#A0A0A0"
+                            Text="Попытки:" />
+                        <Border
+                            x:Name="key3"
+                            Width="30"
+                            Height="30"
+                            Margin="5,0"
+                            Background="#2D4A20"
+                            CornerRadius="15">
+                            <ui:SymbolIcon
+                                FontSize="15"
+                                Foreground="#5DBE6A"
+                                Symbol="Checkmark24" />
+                        </Border>
+                        <Border
+                            x:Name="key2"
+                            Width="30"
+                            Height="30"
+                            Margin="5,0"
+                            Background="#2D4A20"
+                            CornerRadius="15">
+                            <ui:SymbolIcon
+                                FontSize="15"
+                                Foreground="#5DBE6A"
+                                Symbol="Checkmark24" />
+                        </Border>
+                        <Border
+                            x:Name="key1"
+                            Width="30"
+                            Height="30"
+                            Margin="5,0"
+                            Background="#2D4A20"
+                            CornerRadius="15">
+                            <ui:SymbolIcon
+                                FontSize="15"
+                                Foreground="#5DBE6A"
+                                Symbol="Checkmark24" />
+                        </Border>
+                    </StackPanel>
+
+                    <!--  Текст подсказки  -->
+                    <TextBlock
+                        x:Name="helper"
+                        Margin="0,20,0,0"
+                        HorizontalAlignment="Center"
+                        FontFamily="{DynamicResource AdwaitaSans}"
+                        FontSize="13"
+                        FontWeight="Normal"
+                        Foreground="#E8A870"
+                        Text=""
+                        TextAlignment="Center" />
+                </StackPanel>
+            </Border>
         </StackPanel>
-        <StackPanel
+
+        <!--  Нижняя панель  -->
+        <Border
+            Grid.Row="1"
+            Margin="40,0,40,32"
+            Padding="24,18"
             HorizontalAlignment="Center"
-            VerticalAlignment="Bottom"
-            Orientation="Vertical">
-            <TextBlock
-                HorizontalAlignment="Center"
-                FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="12"
-                FontWeight="Light"
-                Foreground="#FF9A9A9A"
-                Text="Проблемы со входом? Попробуйте сбросить приложение." />
+            Background="#2A2A2A"
+            CornerRadius="12">
             <StackPanel
                 x:Name="ButtonStack"
+                HorizontalAlignment="Center"
                 Loaded="ButtonStack_Loaded"
                 Orientation="Vertical">
-                <ui:Button
-                    Background="#FFD20505"
-                    Click="RemoveSettings"
-                    MouseOverBackground="#FFC54700"
-                    Opacity="0.6"
-                    PressedBackground="#FFAB3D00"
-                    Style="{StaticResource MainButton}">
+                <TextBlock
+                    Margin="0,0,0,14"
+                    HorizontalAlignment="Center"
+                    FontFamily="{DynamicResource AdwaitaSans}"
+                    FontSize="13"
+                    FontWeight="Normal"
+                    Foreground="#A8A8A8"
+                    Text="Проблемы со входом? Попробуйте сбросить приложение." />
+                <ui:Button Click="RemoveSettings" Style="{StaticResource Win11DangerButton}">
                     <ui:Button.Content>
                         <StackPanel Orientation="Horizontal">
-                            <ui:TextBlock Style="{StaticResource MainButtonTextLeft}" Text="Сбросить приложение" />
-                            <ui:SymbolIcon Style="{StaticResource ButtonSymbolRight}" Symbol="Delete28" />
+                            <ui:SymbolIcon
+                                Margin="0,0,10,0"
+                                FontSize="16"
+                                Foreground="White"
+                                Symbol="Delete24" />
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                FontFamily="{DynamicResource AdwaitaSans}"
+                                FontSize="14"
+                                FontWeight="Medium"
+                                Foreground="White"
+                                Text="Сбросить приложение" />
                         </StackPanel>
-
                     </ui:Button.Content>
                 </ui:Button>
             </StackPanel>
-
-        </StackPanel>
-
+        </Border>
     </Grid>
 </UserControl>
