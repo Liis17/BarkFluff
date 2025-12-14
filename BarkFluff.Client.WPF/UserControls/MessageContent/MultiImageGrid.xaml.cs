@@ -21,10 +21,56 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
         private const int IMAGE_SPACING = 4;
 
         private List<AttachmentsModel> _attachments = new List<AttachmentsModel>();
+        private Dictionary<string, Image> _imageControls = new Dictionary<string, Image>();
+        private bool _isSubscribedToFileCached = false;
 
         public MultiImageGrid()
         {
             InitializeComponent();
+            Loaded += MultiImageGrid_Loaded;
+            Unloaded += MultiImageGrid_Unloaded;
+        }
+
+        private void MultiImageGrid_Loaded(object sender, RoutedEventArgs e)
+        {
+            SubscribeToFileCached();
+        }
+
+        private void MultiImageGrid_Unloaded(object sender, RoutedEventArgs e)
+        {
+            UnsubscribeFromFileCached();
+        }
+
+        private void SubscribeToFileCached()
+        {
+            if (!_isSubscribedToFileCached)
+            {
+                App.FileCacheService.FileCached += OnFileCached;
+                _isSubscribedToFileCached = true;
+            }
+        }
+
+        private void UnsubscribeFromFileCached()
+        {
+            if (_isSubscribedToFileCached)
+            {
+                App.FileCacheService.FileCached -= OnFileCached;
+                _isSubscribedToFileCached = false;
+            }
+        }
+
+        private void OnFileCached(string fileId, string filePath, FileType fileType)
+        {
+            if (fileType != FileType.Image && fileType != FileType.Gif)
+                return;
+
+            if (_imageControls.TryGetValue(fileId, out Image? imageControl))
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    LoadImage(imageControl, filePath);
+                });
+            }
         }
 
         public void SetImages(List<AttachmentsModel> attachments)
@@ -33,6 +79,7 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
                 return;
 
             _attachments = attachments;
+            _imageControls.Clear();
             BuildImageGrid();
         }
 
@@ -193,10 +240,19 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
                 VerticalAlignment = VerticalAlignment.Center
             };
 
+            // Use previewFileId if available, otherwise fall back to fileId
+            var fileIdToUse = !string.IsNullOrEmpty(attachment.PreviewFileId) ? attachment.PreviewFileId : attachment.FileId;
+
             // Load image from cache or set placeholder
             var fileType = attachment.Type == Proto.Shared.MessageAttachmentType.Gif ? FileType.Gif : FileType.Image;
-            var imagePath = App.FileCacheService.GetCachedFilePath(attachment.FileId, fileType, attachment.PreviewUrl);
+            var imagePath = App.FileCacheService.GetCachedFilePath(fileIdToUse, fileType, attachment.PreviewUrl);
             LoadImage(image, imagePath);
+
+            // Track the image control for FileCached updates
+            if (!string.IsNullOrEmpty(fileIdToUse) && !_imageControls.ContainsKey(fileIdToUse))
+            {
+                _imageControls[fileIdToUse] = image;
+            }
 
             border.Child = image;
 

@@ -64,8 +64,14 @@
 
             <!--  Message Text Input  -->
             <Grid Grid.Row="2" Margin="0,12,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                
                 <ui:TextBox
                     x:Name="MessageTextBox"
+                    Grid.Row="0"
                     MinHeight="40"
                     MaxHeight="80"
                     Padding="12,8"
@@ -82,6 +88,17 @@
                     Style="{StaticResource MessageInputTextBox}"
                     TextWrapping="Wrap"
                     VerticalScrollBarVisibility="Auto" />
+                
+                <!--  Send as file checkbox (only visible for images)  -->
+                <CheckBox
+                    x:Name="SendAsFileCheckbox"
+                    Grid.Row="1"
+                    Margin="0,8,0,0"
+                    Foreground="White"
+                    FontFamily="{DynamicResource AdwaitaSans}"
+                    FontSize="13"
+                    Content="Отправить без сжатия (как файлы)"
+                    Visibility="Collapsed" />
             </Grid>
 
             <!--  Footer with buttons  -->

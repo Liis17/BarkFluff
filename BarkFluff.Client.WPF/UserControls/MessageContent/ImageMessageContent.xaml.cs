@@ -25,9 +25,33 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
         public ImageMessageContent(string fileId, string previewUrl, FileType fileType) : this()
         {
             _fileId = fileId;
-            var imagePath = App.FileCacheService.GetCachedFilePath(fileId, fileType, previewUrl);
+            var imagePath = App.FileCacheService.GetCachedFilePath(fileId ?? string.Empty, fileType, previewUrl);
             LoadImage(imagePath);
-            SubscribeToFileCached();
+            
+            // Only subscribe if we're waiting for a file to be cached
+            if (!string.IsNullOrEmpty(fileId) && !App.FileCacheService.IsFileCached(fileId))
+            {
+                SubscribeToFileCached();
+            }
+        }
+
+        /// <summary>
+        /// Constructor that accepts both fileId and previewFileId for better preview support
+        /// </summary>
+        public ImageMessageContent(string fileId, string previewFileId, string previewUrl, FileType fileType) : this()
+        {
+            // Use previewFileId for display if available
+            var displayFileId = !string.IsNullOrEmpty(previewFileId) ? previewFileId : fileId;
+            _fileId = displayFileId;
+            
+            var imagePath = App.FileCacheService.GetCachedFilePath(displayFileId ?? string.Empty, fileType, previewUrl);
+            LoadImage(imagePath);
+            
+            // Only subscribe if we're waiting for a file to be cached
+            if (!string.IsNullOrEmpty(displayFileId) && !App.FileCacheService.IsFileCached(displayFileId))
+            {
+                SubscribeToFileCached();
+            }
         }
 
         private void ImageMessageContent_SizeChanged(object sender, SizeChangedEventArgs e)

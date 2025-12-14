@@ -3,6 +3,7 @@ using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
 using System.Globalization;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -242,42 +243,62 @@ namespace BarkFluff.Client.WPF.UserControls
                 };
                 border.Background = imageBrush;
 
-                bitmapImage.DownloadCompleted += async (s, args) =>
+                // For local files, analyze color immediately. For remote files, wait for download.
+                if (bitmapImage.IsDownloading)
                 {
-                    // Use the original URL for color analysis if available, otherwise use the cached path
-                    var colorSourceUrl = !string.IsNullOrEmpty(_url) ? _url : imagePath;
-                    Color averageColor = await App.ColorAnalyzer.GetAverageColorFromUrlAsync(colorSourceUrl);
-                    DropShadowEffect shadowEffect = new DropShadowEffect
+                    bitmapImage.DownloadCompleted += async (s, args) =>
                     {
-                        BlurRadius = 12,
-                        Opacity = 0.9,
-                        ShadowDepth = 0,
-                        Color = averageColor
+                        await UpdateAvatarShadowColor(imagePath);
                     };
-                    border.Effect = shadowEffect;
-                };
 
-                bitmapImage.DownloadFailed += (s, args) =>
-                {
-                    border.Effect = new DropShadowEffect
+                    bitmapImage.DownloadFailed += (s, args) =>
                     {
-                        BlurRadius = 10,
-                        Opacity = 0.3,
-                        ShadowDepth = 0,
-                        Color = Colors.Gray
+                        SetDefaultShadow();
                     };
-                };
+                }
+                else
+                {
+                    // Image is already loaded (local file), analyze color immediately
+                    await UpdateAvatarShadowColor(imagePath);
+                }
             }
             catch
             {
-                border.Effect = new DropShadowEffect
-                {
-                    BlurRadius = 10,
-                    Opacity = 0.3,
-                    ShadowDepth = 0,
-                    Color = Colors.Gray
-                };
+                SetDefaultShadow();
             }
+        }
+
+        private async Task UpdateAvatarShadowColor(string imagePath)
+        {
+            try
+            {
+                // Use the local cached path for color analysis as it's more reliable
+                var colorSourcePath = !FileCacheService.IsPlaceholder(imagePath) ? imagePath : _url;
+                Color averageColor = await App.ColorAnalyzer.GetAverageColorFromUrlAsync(colorSourcePath);
+                DropShadowEffect shadowEffect = new DropShadowEffect
+                {
+                    BlurRadius = 12,
+                    Opacity = 0.9,
+                    ShadowDepth = 0,
+                    Color = averageColor
+                };
+                border.Effect = shadowEffect;
+            }
+            catch
+            {
+                SetDefaultShadow();
+            }
+        }
+
+        private void SetDefaultShadow()
+        {
+            border.Effect = new DropShadowEffect
+            {
+                BlurRadius = 10,
+                Opacity = 0.3,
+                ShadowDepth = 0,
+                Color = Colors.Gray
+            };
         }
 
         private string FormatDateTime(string input)
