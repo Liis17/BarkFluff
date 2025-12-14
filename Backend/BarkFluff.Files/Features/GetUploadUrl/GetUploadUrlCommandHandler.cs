@@ -28,7 +28,7 @@ public class GetUploadUrlCommandHandler : IRequestHandler<GetUploadUrlCommand, G
         {
             CreatedAt = DateTime.UtcNow,
             Type = request.Type,
-            Uploader = _userContext.UserId,
+            Uploaders = new List<long> { _userContext.UserId },
         };
         
         var file = await _uploadedFilesStorage.AddToStorage(uploadFile);

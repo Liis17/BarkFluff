@@ -12,9 +12,15 @@ public class FilesContext : DbContext
     
     public DbSet<TempFile> TempFiles { get; set; }
     
+    public DbSet<FileHash> FileHashes { get; set; }
+    
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<TempFile>()
             .HasIndex(x => x.OriginalFileId);
+        
+        // Configure FileHashes with index on Hash for fast lookups
+        modelBuilder.Entity<FileHash>()
+            .HasIndex(x => x.Hash);
     }
 }

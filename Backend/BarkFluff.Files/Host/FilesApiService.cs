@@ -1,3 +1,4 @@
+using BarkFluff.Files.Features.CheckFileHash;
 using BarkFluff.Files.Features.GetTempDownloadUrl;
 using BarkFluff.Files.Features.GetUploadUrl;
 using BarkFluff.Proto.Files;
@@ -37,6 +38,16 @@ public class FilesApiService : FilesApi.FilesApiBase
         var command = new GetTempDownloadUrlCommand()
         {
             FileIds = guids
+        };
+        
+        return await _mediator.Send(command);
+    }
+    
+    public override async Task<CheckFileHashResponse> CheckFileHash(CheckFileHashRequest request, ServerCallContext context)
+    {
+        var command = new CheckFileHashCommand()
+        {
+            FileHash = request.FileHash
         };
         
         return await _mediator.Send(command);
