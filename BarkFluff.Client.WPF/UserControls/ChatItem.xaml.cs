@@ -3,6 +3,7 @@ using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
 using System.Globalization;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -242,11 +243,39 @@ namespace BarkFluff.Client.WPF.UserControls
                 };
                 border.Background = imageBrush;
 
-                bitmapImage.DownloadCompleted += async (s, args) =>
+                // For local/cached files, DownloadCompleted won't fire, so we need to handle both cases
+                if (bitmapImage.IsDownloading)
                 {
-                    // Use the original URL for color analysis if available, otherwise use the cached path
-                    var colorSourceUrl = !string.IsNullOrEmpty(_url) ? _url : imagePath;
-                    Color averageColor = await App.ColorAnalyzer.GetAverageColorFromUrlAsync(colorSourceUrl);
+                    bitmapImage.DownloadCompleted += async (s, args) =>
+                    {
+                        await UpdateAvatarShadowEffect(imagePath);
+                    };
+
+                    bitmapImage.DownloadFailed += (s, args) =>
+                    {
+                        SetDefaultShadowEffect();
+                    };
+                }
+                else
+                {
+                    // Image is already loaded (local/cached file)
+                    await UpdateAvatarShadowEffect(imagePath);
+                }
+            }
+            catch
+            {
+                SetDefaultShadowEffect();
+            }
+        }
+
+        private async Task UpdateAvatarShadowEffect(string imagePath)
+        {
+            try
+            {
+                // Use cached image path for color analysis
+                Color averageColor = await App.ColorAnalyzer.GetAverageColorFromUrlAsync(imagePath);
+                Dispatcher.Invoke(() =>
+                {
                     DropShadowEffect shadowEffect = new DropShadowEffect
                     {
                         BlurRadius = 12,
@@ -255,29 +284,23 @@ namespace BarkFluff.Client.WPF.UserControls
                         Color = averageColor
                     };
                     border.Effect = shadowEffect;
-                };
-
-                bitmapImage.DownloadFailed += (s, args) =>
-                {
-                    border.Effect = new DropShadowEffect
-                    {
-                        BlurRadius = 10,
-                        Opacity = 0.3,
-                        ShadowDepth = 0,
-                        Color = Colors.Gray
-                    };
-                };
+                });
             }
             catch
             {
-                border.Effect = new DropShadowEffect
-                {
-                    BlurRadius = 10,
-                    Opacity = 0.3,
-                    ShadowDepth = 0,
-                    Color = Colors.Gray
-                };
+                Dispatcher.Invoke(() => SetDefaultShadowEffect());
             }
+        }
+
+        private void SetDefaultShadowEffect()
+        {
+            border.Effect = new DropShadowEffect
+            {
+                BlurRadius = 10,
+                Opacity = 0.3,
+                ShadowDepth = 0,
+                Color = Colors.Gray
+            };
         }
 
         private string FormatDateTime(string input)
