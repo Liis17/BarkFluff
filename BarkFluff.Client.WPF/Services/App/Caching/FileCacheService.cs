@@ -24,7 +24,7 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
         /// <summary>
         /// Placeholder по умолчанию для всех типов файлов
         /// </summary>
-        public const string DefaultPlaceholder = "pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png";
+        public const string DefaultPlaceholder = "pack://application:,,,/BarkFluff;component/Resources/Placeholders/userplaceholder.png";
 
         /// <summary>
         /// Событие, вызываемое при успешном кешировании файла

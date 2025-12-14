@@ -69,10 +69,6 @@ namespace BarkFluff.Client.WPF
             // Проверяем регистрацию (используем ваш ProtocolHelper)
             if (!ProtocolHelper.IsBFProtocolRegistered())
             {
-                // === БЛОК КРАСИВОГО УВЕДОМЛЕНИЯ ===
-
-                // Создаем временное невидимое окно, чтобы Wpf.Ui MessageBox имел владельца
-                // и корректно отрисовал тему/стили
                 var dummyWindow = new Window
                 {
                     Topmost = true,
@@ -124,7 +120,6 @@ namespace BarkFluff.Client.WPF
                 return;
             }
 
-            // === ПРОДОЛЖЕНИЕ ЗАПУСКА ===
             NormalBoot();
 
             void NormalBoot()
@@ -171,7 +166,7 @@ namespace BarkFluff.Client.WPF
                 folderPath = Windows.ApplicationModel.Package.Current.InstalledLocation.Path;
 #else
                 var baseDir = AppContext.BaseDirectory;
-                targetPath = Path.Combine(baseDir, "BarkFluff.Client.WPF.exe");
+                targetPath = Path.Combine(baseDir, "BarkFluff.exe");
 #endif
                 string shortcutPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Programs", "BarkFluff.lnk");
                 if (!File.Exists(shortcutPath))

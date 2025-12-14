@@ -54,7 +54,7 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
                 }
             }
 
-            string placeholder = "pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png";
+            string placeholder = "pack://application:,,,/BarkFluff;component/Resources/Placeholders/userplaceholder.png";
 
             Task.Run(async () =>
             {

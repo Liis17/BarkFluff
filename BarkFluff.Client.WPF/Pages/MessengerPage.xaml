@@ -242,7 +242,7 @@
                         <Border.Background>
                             <ImageBrush
                                 x:Name="AvatarTitleWindow"
-                                ImageSource="pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png"
+                                ImageSource="pack://application:,,,/BarkFluff;component/Resources/Placeholders/userplaceholder.png"
                                 Stretch="UniformToFill" />
                         </Border.Background>
                     </Border>
@@ -517,7 +517,7 @@
                                             <Border.Background>
                                                 <ImageBrush
                                                     x:Name="ChatAvatar"
-                                                    ImageSource="pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png"
+                                                    ImageSource="pack://application:,,,/BarkFluff;component/Resources/Placeholders/userplaceholder.png"
                                                     Stretch="UniformToFill" />
                                             </Border.Background>
                                         </Border>

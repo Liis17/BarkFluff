@@ -87,7 +87,7 @@
                 RenderOptions.BitmapScalingMode="HighQuality">
                 <Border.Background>
                     <ImageBrush
-                        ImageSource="pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png"
+                        ImageSource="pack://application:,,,/BarkFluff;component/Resources/Placeholders/userplaceholder.png"
                         RenderOptions.BitmapScalingMode="HighQuality"
                         Stretch="UniformToFill" />
                 </Border.Background>
