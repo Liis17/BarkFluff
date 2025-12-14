@@ -11,18 +11,22 @@ public static class UploadFileMapping
 {
     public static UploadFileInfo ToGrpc(this UploadFile file, RunSettings? runSettings = null)
     {
-        return new UploadFileInfo
+        var info = new UploadFileInfo
         {
             CreatedAt = Timestamp.FromDateTime(file.CreatedAt),
             Etag = file.Etag ?? string.Empty,
             FileName = file.Filename ?? string.Empty,
             Id = file.Id.ToString(),
             Type = (UploadFileType)(int)file.Type,
-            UploadedAt = Timestamp.FromDateTime(file.UploadedAt ?? DateTime.MinValue), Uploader = file.Uploader, 
+            UploadedAt = Timestamp.FromDateTime(file.UploadedAt ?? DateTime.MinValue),
             FileSize = file.Size,
             PreviewUrl = runSettings is null || file.PreviewId is null ? string.Empty : FileUrlHelper.GenerateDownloadUrl(runSettings.Host, runSettings.Http1Port, file.PreviewId!.Value),
             FileUrl = runSettings is null ? string.Empty : FileUrlHelper.GenerateDownloadUrl(runSettings.Host, runSettings.Http1Port, file.Id),
             PreviewFileId = file.PreviewId?.ToString() ?? string.Empty
         };
+        
+        info.Uploaders.AddRange(file.Uploaders);
+        
+        return info;
     }
 }
