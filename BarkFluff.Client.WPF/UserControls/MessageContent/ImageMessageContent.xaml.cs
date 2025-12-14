@@ -13,6 +13,7 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
         private const int IMAGE_MAX_WIDTH = 400;
 
         private string? _fileId;
+        private FileType _fileType;
         private bool _isSubscribedToFileCached;
 
         public ImageMessageContent()
@@ -25,9 +26,15 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
         public ImageMessageContent(string fileId, string previewUrl, FileType fileType) : this()
         {
             _fileId = fileId;
+            _fileType = fileType;
             var imagePath = App.FileCacheService.GetCachedFilePath(fileId, fileType, previewUrl);
             LoadImage(imagePath);
-            SubscribeToFileCached();
+            
+            // Only subscribe if we got a placeholder (image needs to be downloaded)
+            if (FileCacheService.IsPlaceholder(imagePath))
+            {
+                SubscribeToFileCached();
+            }
         }
 
         private void ImageMessageContent_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -60,7 +67,7 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
             }
             catch
             {
-                ContentImage.Source = new BitmapImage(new Uri(FileCacheService.DefaultPlaceholder, UriKind.RelativeOrAbsolute));
+                ContentImage.Source = new BitmapImage(new Uri(FileCacheService.ImagePlaceholder, UriKind.RelativeOrAbsolute));
             }
         }
 

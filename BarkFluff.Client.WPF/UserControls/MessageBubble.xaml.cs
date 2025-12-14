@@ -237,9 +237,10 @@ namespace BarkFluff.Client.WPF.UserControls
                 TextContentPresenter.Content = null;
             }
 
-            // Set up image content
+            // Set up image content - use preview file ID if available
             var fileType = messageType == MessageType.Gif ? FileType.Gif : FileType.Image;
-            var imageContent = new ImageMessageContent(attachment.FileId, attachment.PreviewUrl, fileType);
+            var fileId = !string.IsNullOrEmpty(attachment.PreviewFileId) ? attachment.PreviewFileId : attachment.FileId;
+            var imageContent = new ImageMessageContent(fileId, attachment.PreviewUrl, fileType);
             MediaContentPresenter.Content = imageContent;
             SetMediaContentMargin(false);
 
@@ -475,8 +476,11 @@ namespace BarkFluff.Client.WPF.UserControls
         /// </summary>
         public void ReplaceUploadingWithContent(MessageModel message, MessageType messageType)
         {
-            _uploadingItems.Clear();
-            SetupContent(message, messageType);
+            Dispatcher.Invoke(() =>
+            {
+                _uploadingItems.Clear();
+                SetupContent(message, messageType);
+            });
         }
 
         private void ThemedConfirm(MessageOwner owner)
