@@ -28,6 +28,21 @@ public class UploadedFilesStorage
         await _context.SaveChangesAsync();
     }
     
+    /// <summary>
+    /// Adds a user to the uploaders list if not already present.
+    /// </summary>
+    public async Task AddUploaderToFile(Guid fileId, long userId)
+    {
+        var file = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.Id == fileId);
+        if (file == null) return;
+        
+        if (!file.Uploaders.Contains(userId))
+        {
+            file.Uploaders.Add(userId);
+            await _context.SaveChangesAsync();
+        }
+    }
+    
     public async Task<UploadFile?> GetFile(Guid id)
     {
         return await _context.UploadedFiles

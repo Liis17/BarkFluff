@@ -8,7 +8,10 @@ public class UploadFile
     [Key]
     public Guid Id { get; set; }
     
-    public long Uploader { get; set; }
+    /// <summary>
+    /// List of user IDs who uploaded this file (for deduplication tracking).
+    /// </summary>
+    public List<long> Uploaders { get; set; } = new();
     
     public DateTime CreatedAt { get; set; }
     
