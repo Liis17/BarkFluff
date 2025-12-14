@@ -45,7 +45,12 @@
     <None Remove="Fonts\OpenSans-Italic-VariableFont_wdth,wght.ttf" />
     <None Remove="Fonts\OpenSans-VariableFont_wdth,wght.ttf" />
     <None Remove="Resources\Images\barkfluff_logo.png" />
+    <None Remove="Resources\Placeholders\audio.png" />
+    <None Remove="Resources\Placeholders\document.png" />
+    <None Remove="Resources\Placeholders\gif.png" />
+    <None Remove="Resources\Placeholders\image.png" />
     <None Remove="Resources\Placeholders\userplaceholder.png" />
+    <None Remove="Resources\Placeholders\video.png" />
   </ItemGroup>
 
   <ItemGroup>
@@ -57,8 +62,13 @@
     <Content Include="Resources\Icons\barkfluff.icon.black.ico" />
     <Resource Include="Resources\Images\barkfluff_logo.png" />
     <Resource Include="Resources\Images\barkfluff_logo_old.png" />
+    <Resource Include="Resources\Placeholders\audio.png" />
+    <Resource Include="Resources\Placeholders\document.png" />
+    <Resource Include="Resources\Placeholders\gif.png" />
+    <Resource Include="Resources\Placeholders\image.png" />
     <Resource Include="Resources\Placeholders\savedplaceholder.png" />
     <Resource Include="Resources\Placeholders\userplaceholder.png" />
+    <Resource Include="Resources\Placeholders\video.png" />
   </ItemGroup>
 
   <ItemGroup>
