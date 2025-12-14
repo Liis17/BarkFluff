@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 
 namespace BarkFluff.Client.WPF.Pages.PinCode
@@ -16,6 +17,11 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
     {
         private char[] pinDigits = new char[4];
         private int attempts = 3;
+
+        // Cached brushes for key indicators
+        private static readonly SolidColorBrush ActiveKeyBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2D4A20"));
+        private static readonly SolidColorBrush InactiveKeyBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4A2020"));
+
         public PincodeSecure()
         {
             InitializeComponent();
@@ -74,6 +80,7 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
                         {
                             attempts--;
                             KeysIconUpdate();
+                            PlayShakeAnimation();
                             ClearAll();
                             GetBox(0).Focus();
                         }
@@ -94,11 +101,28 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
                 }
             }
         }
+
+        private void PlayShakeAnimation()
+        {
+            var storyboard = (Storyboard)this.Resources["ShakeAnimation"];
+            storyboard.Begin();
+        }
+
         private void KeysIconUpdate()
         {
+            // Update visibility and color based on remaining attempts
             key3.Visibility = attempts >= 3 ? Visibility.Visible : Visibility.Collapsed;
             key2.Visibility = attempts >= 2 ? Visibility.Visible : Visibility.Collapsed;
             key1.Visibility = attempts >= 1 ? Visibility.Visible : Visibility.Collapsed;
+
+            UpdateKeyIndicatorStyle(key3, attempts >= 3);
+            UpdateKeyIndicatorStyle(key2, attempts >= 2);
+            UpdateKeyIndicatorStyle(key1, attempts >= 1);
+        }
+
+        private void UpdateKeyIndicatorStyle(Border keyBorder, bool isActive)
+        {
+            keyBorder.Background = isActive ? ActiveKeyBrush : InactiveKeyBrush;
         }
 
         private void PinBox_PreviewKeyDown(object sender, KeyEventArgs e)

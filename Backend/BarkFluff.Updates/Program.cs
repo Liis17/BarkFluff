@@ -2,6 +2,7 @@ using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Shared.Identity;
 using BarkFluff.Shared.Queue.Messages;
+using BarkFluff.Updates;
 using BarkFluff.Updates.Consumers;
 using BarkFluff.Updates.Host;
 using MassTransit;
@@ -18,13 +19,15 @@ builder.Services.AddGrpc(options =>
 
 builder.Services.AddGrpcReflection();
 
-builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
+// Register Updates services including StreamSubscriptionsManager as Singleton
+builder.Services.AddUpdatesServices();
 
 builder.Services.AddXAuth(builder.Configuration);
 
 builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<NewMessageConsumer>();
+    x.AddConsumer<ReadByConsumer>();
     
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -38,11 +41,15 @@ builder.Services.AddMassTransit(x =>
         {
             e.ConfigureConsumer<NewMessageConsumer>(context);
         });
+        
+        cfg.ReceiveEndpoint("read-receipts-updates-handler", e =>
+        {
+            e.ConfigureConsumer<ReadByConsumer>(context);
+        });
     });
 });
 
 var app = builder.Build();
-// Ќет DbContext Ц миграции не примен€ютс€
 app.MapGrpcReflectionService();
 app.UseRouting();
         

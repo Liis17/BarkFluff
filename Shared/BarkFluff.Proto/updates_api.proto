@@ -11,9 +11,15 @@ service UpdatesApi {
   
   // Подписаться на новые сообщения
   rpc SubscribeNewMessages(SubscribeNewMessagesRequest) returns (stream NewMessageEvent);
+  
+  rpc SubscribeMessagesRead(SubscribeMessagesReadRequest) returns(stream MessageReadEvent);
 }
 
 message SubscribeNewMessagesRequest {
+  
+}
+
+message SubscribeMessagesReadRequest {
   
 }
 
@@ -21,5 +27,11 @@ message NewMessageEvent {
   barkfluff.shared.Message message = 1; //Отправленное сообщение
   
   string chat_id = 2; // Идентификатор чата на который пришло сообщение
+}
+
+message MessageReadEvent {
+  string chat_id = 1; // Идентификатор чата
+  int64 message_id = 2; // Идентификатор прочитанного сообщения
+  repeated int64 new_read_by = 3; // Новый read_by сообщения (НЕ ТОЛЬКО НОВЫЕ, А ПОЛНОСТЬЮ ВСЕ, КТО ПРОЧИТАЛ)
 }
 

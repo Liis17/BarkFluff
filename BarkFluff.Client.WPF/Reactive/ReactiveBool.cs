@@ -6,9 +6,10 @@ using System.Text;
 
 namespace BarkFluff.Client.WPF.Reactive
 {
-    public class ReactiveBool : INotifyPropertyChanged
+    public class ReactiveBool : INotifyPropertyChanged, IDisposable
     {
         private bool _value;
+        private bool _disposed = false;
 
         public bool Value
         {
@@ -28,11 +29,29 @@ namespace BarkFluff.Client.WPF.Reactive
             _value = initialValue;
         }
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
 
         protected virtual void OnPropertyChanged()
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Value)));
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    PropertyChanged = null;
+                }
+                _disposed = true;
+            }
         }
     }
 }

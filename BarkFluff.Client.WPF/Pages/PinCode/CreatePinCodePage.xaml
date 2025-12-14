@@ -9,7 +9,8 @@
     d:DesignHeight="720"
     d:DesignWidth="1280"
     mc:Ignorable="d">
-    <Grid Background="#1A1A1A">
+
+    <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
@@ -18,166 +19,271 @@
         <!--  Основной контент (создание пин-кода)  -->
         <StackPanel
             Grid.Row="0"
-            Margin="0,0,0,30"
+            Margin="0,0,0,0"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             Orientation="Vertical">
 
             <!--  Заголовок  -->
             <TextBlock
-                Margin="0,0,0,5"
+                Margin="0,0,0,0"
                 HorizontalAlignment="Center"
                 FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="34"
+                FontSize="28"
                 FontWeight="SemiBold"
-                Foreground="White"
+                Foreground="#E8E8E8"
                 Text="Создание кода доступа" />
+
             <!--  Текст подсказки / статуса  -->
             <TextBlock
                 x:Name="statusText"
                 Margin="0,0,0,15"
                 HorizontalAlignment="Center"
                 FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="16"
+                FontSize="14"
                 FontWeight="Normal"
-                Foreground="#E0E0E0"
-                Opacity="0.8"
+                Foreground="#A0A0A0"
                 Text="Введите четырехзначный пин-код и подтвердите его"
                 TextAlignment="Center" />
 
-
-            <!--  Первый блок - Придумайте пин-код  -->
-            <TextBlock
-                Margin="0,5,0,10"
-                HorizontalAlignment="Center"
-                FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="18"
-                FontWeight="Normal"
-                Foreground="#E0E0E0"
-                Text="Придумайте код" />
-
-            <!--  Первые поля для ввода  -->
+            <!--  Прогресс индикатор  -->
             <StackPanel
-                x:Name="FirstPinContainer"
                 Margin="0,0,0,15"
                 HorizontalAlignment="Center"
                 Orientation="Horizontal">
-                <TextBox
-                    x:Name="FirstBox0"
-                    GotFocus="PinBox_GotFocus"
-                    Loaded="FocusFirstBoxZero"
-                    PreviewKeyDown="FirstPinBox_PreviewKeyDown"
-                    PreviewTextInput="PinBox_PreviewTextInput"
-                    Style="{StaticResource VerificationTextBox}"
-                    TextChanged="FirstPinBox_TextChanged" />
+                <!--  Шаг 1: Придумайте код  -->
+                <StackPanel Orientation="Horizontal">
+                    <Border
+                        x:Name="Step1Circle"
+                        Width="36"
+                        Height="36"
+                        Background="#C87E5B"
+                        CornerRadius="18">
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            FontFamily="{DynamicResource AdwaitaSans}"
+                            FontSize="15"
+                            FontWeight="SemiBold"
+                            Foreground="White"
+                            Text="1" />
+                    </Border>
+                    <TextBlock
+                        x:Name="Step1Text"
+                        Margin="10,0,0,0"
+                        VerticalAlignment="Center"
+                        FontFamily="{DynamicResource AdwaitaSans}"
+                        FontSize="14"
+                        FontWeight="Medium"
+                        Foreground="#D0D0D0"
+                        Text="Придумайте" />
+                </StackPanel>
 
-                <TextBox
-                    x:Name="FirstBox1"
-                    GotFocus="PinBox_GotFocus"
-                    PreviewKeyDown="FirstPinBox_PreviewKeyDown"
-                    PreviewTextInput="PinBox_PreviewTextInput"
-                    Style="{StaticResource VerificationTextBox}"
-                    TextChanged="FirstPinBox_TextChanged" />
+                <!--  Соединительная линия  -->
+                <Border
+                    Width="48"
+                    Height="2"
+                    Margin="20,0"
+                    VerticalAlignment="Center"
+                    Background="#404040"
+                    CornerRadius="1" />
 
-                <TextBox
-                    x:Name="FirstBox2"
-                    GotFocus="PinBox_GotFocus"
-                    PreviewKeyDown="FirstPinBox_PreviewKeyDown"
-                    PreviewTextInput="PinBox_PreviewTextInput"
-                    Style="{StaticResource VerificationTextBox}"
-                    TextChanged="FirstPinBox_TextChanged" />
-
-                <TextBox
-                    x:Name="FirstBox3"
-                    GotFocus="PinBox_GotFocus"
-                    PreviewKeyDown="FirstPinBox_PreviewKeyDown"
-                    PreviewTextInput="PinBox_PreviewTextInput"
-                    Style="{StaticResource VerificationTextBox}"
-                    TextChanged="FirstPinBox_TextChanged" />
+                <!--  Шаг 2: Подтвердите код  -->
+                <StackPanel Orientation="Horizontal">
+                    <Border
+                        x:Name="Step2Circle"
+                        Width="36"
+                        Height="36"
+                        Background="#404040"
+                        CornerRadius="18">
+                        <TextBlock
+                            x:Name="Step2CircleText"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            FontFamily="{DynamicResource AdwaitaSans}"
+                            FontSize="15"
+                            FontWeight="SemiBold"
+                            Foreground="#808080"
+                            Text="2" />
+                    </Border>
+                    <TextBlock
+                        x:Name="Step2Text"
+                        Margin="10,0,0,0"
+                        VerticalAlignment="Center"
+                        FontFamily="{DynamicResource AdwaitaSans}"
+                        FontSize="14"
+                        Foreground="#808080"
+                        Text="Подтвердите" />
+                </StackPanel>
             </StackPanel>
 
-            <!--  Второй блок - Подтверждение пин-кода  -->
-            <TextBlock
-                Margin="0,5,0,10"
-                HorizontalAlignment="Center"
-                FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="18"
-                FontWeight="Normal"
-                Foreground="#E0E0E0"
-                Text="Подтвердите код" />
+            <!--  Карточка с полями ввода  -->
+            <Border VerticalAlignment="Center" Style="{StaticResource Win11CardStyle}">
+                <StackPanel Orientation="Vertical">
+                    <!--  Первый блок - Придумайте пин-код  -->
+                    <TextBlock
+                        Margin="0,0,0,10"
+                        HorizontalAlignment="Center"
+                        FontFamily="{DynamicResource AdwaitaSans}"
+                        FontSize="15"
+                        FontWeight="Medium"
+                        Foreground="#D0D0D0"
+                        Text="Придумайте код" />
 
-            <!--  Вторые поля для ввода (подтверждение)  -->
-            <StackPanel
-                x:Name="SecondPinContainer"
-                Margin="0,0,0,15"
-                HorizontalAlignment="Center"
-                Orientation="Horizontal">
-                <TextBox
-                    x:Name="SecondBox0"
-                    GotFocus="PinBox_GotFocus"
-                    PreviewKeyDown="SecondPinBox_PreviewKeyDown"
-                    PreviewTextInput="PinBox_PreviewTextInput"
-                    Style="{StaticResource VerificationTextBox}"
-                    TextChanged="SecondPinBox_TextChanged" />
+                    <!--  Первые поля для ввода  -->
+                    <StackPanel
+                        x:Name="FirstPinContainer"
+                        Margin="0,0,0,15"
+                        HorizontalAlignment="Center"
+                        Orientation="Horizontal">
+                        <TextBox
+                            x:Name="FirstBox0"
+                            GotFocus="PinBox_GotFocus"
+                            Loaded="FocusFirstBoxZero"
+                            PreviewKeyDown="FirstPinBox_PreviewKeyDown"
+                            PreviewTextInput="PinBox_PreviewTextInput"
+                            Style="{StaticResource PinCodeTextBoxWin11}"
+                            TextChanged="FirstPinBox_TextChanged" />
 
-                <TextBox
-                    x:Name="SecondBox1"
-                    GotFocus="PinBox_GotFocus"
-                    PreviewKeyDown="SecondPinBox_PreviewKeyDown"
-                    PreviewTextInput="PinBox_PreviewTextInput"
-                    Style="{StaticResource VerificationTextBox}"
-                    TextChanged="SecondPinBox_TextChanged" />
+                        <TextBox
+                            x:Name="FirstBox1"
+                            GotFocus="PinBox_GotFocus"
+                            PreviewKeyDown="FirstPinBox_PreviewKeyDown"
+                            PreviewTextInput="PinBox_PreviewTextInput"
+                            Style="{StaticResource PinCodeTextBoxWin11}"
+                            TextChanged="FirstPinBox_TextChanged" />
 
-                <TextBox
-                    x:Name="SecondBox2"
-                    GotFocus="PinBox_GotFocus"
-                    PreviewKeyDown="SecondPinBox_PreviewKeyDown"
-                    PreviewTextInput="PinBox_PreviewTextInput"
-                    Style="{StaticResource VerificationTextBox}"
-                    TextChanged="SecondPinBox_TextChanged" />
+                        <TextBox
+                            x:Name="FirstBox2"
+                            GotFocus="PinBox_GotFocus"
+                            PreviewKeyDown="FirstPinBox_PreviewKeyDown"
+                            PreviewTextInput="PinBox_PreviewTextInput"
+                            Style="{StaticResource PinCodeTextBoxWin11}"
+                            TextChanged="FirstPinBox_TextChanged" />
 
-                <TextBox
-                    x:Name="SecondBox3"
-                    GotFocus="PinBox_GotFocus"
-                    PreviewKeyDown="SecondPinBox_PreviewKeyDown"
-                    PreviewTextInput="PinBox_PreviewTextInput"
-                    Style="{StaticResource VerificationTextBox}"
-                    TextChanged="SecondPinBox_TextChanged" />
-            </StackPanel>
+                        <TextBox
+                            x:Name="FirstBox3"
+                            GotFocus="PinBox_GotFocus"
+                            PreviewKeyDown="FirstPinBox_PreviewKeyDown"
+                            PreviewTextInput="PinBox_PreviewTextInput"
+                            Style="{StaticResource PinCodeTextBoxWin11}"
+                            TextChanged="FirstPinBox_TextChanged" />
+                    </StackPanel>
 
+                    <!--  Разделитель  -->
+                    <Border
+                        Height="1"
+                        Margin="24,0,24,10"
+                        Background="#404040" />
+
+                    <!--  Второй блок - Подтверждение пин-кода  -->
+                    <TextBlock
+                        Margin="0,0,0,10"
+                        HorizontalAlignment="Center"
+                        FontFamily="{DynamicResource AdwaitaSans}"
+                        FontSize="15"
+                        FontWeight="Medium"
+                        Foreground="#D0D0D0"
+                        Text="Подтвердите код" />
+
+                    <!--  Вторые поля для ввода (подтверждение)  -->
+                    <StackPanel
+                        x:Name="SecondPinContainer"
+                        HorizontalAlignment="Center"
+                        Orientation="Horizontal">
+                        <TextBox
+                            x:Name="SecondBox0"
+                            GotFocus="PinBox_GotFocus"
+                            PreviewKeyDown="SecondPinBox_PreviewKeyDown"
+                            PreviewTextInput="PinBox_PreviewTextInput"
+                            Style="{StaticResource PinCodeTextBoxWin11}"
+                            TextChanged="SecondPinBox_TextChanged" />
+
+                        <TextBox
+                            x:Name="SecondBox1"
+                            GotFocus="PinBox_GotFocus"
+                            PreviewKeyDown="SecondPinBox_PreviewKeyDown"
+                            PreviewTextInput="PinBox_PreviewTextInput"
+                            Style="{StaticResource PinCodeTextBoxWin11}"
+                            TextChanged="SecondPinBox_TextChanged" />
+
+                        <TextBox
+                            x:Name="SecondBox2"
+                            GotFocus="PinBox_GotFocus"
+                            PreviewKeyDown="SecondPinBox_PreviewKeyDown"
+                            PreviewTextInput="PinBox_PreviewTextInput"
+                            Style="{StaticResource PinCodeTextBoxWin11}"
+                            TextChanged="SecondPinBox_TextChanged" />
+
+                        <TextBox
+                            x:Name="SecondBox3"
+                            GotFocus="PinBox_GotFocus"
+                            PreviewKeyDown="SecondPinBox_PreviewKeyDown"
+                            PreviewTextInput="PinBox_PreviewTextInput"
+                            Style="{StaticResource PinCodeTextBoxWin11}"
+                            TextChanged="SecondPinBox_TextChanged" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
 
             <!--  Кнопка продолжить  -->
             <ui:Button
                 x:Name="ContinueButton"
+                
                 Click="ContinueButton_Click"
-                Style="{StaticResource MainButton}">
+                Style="{StaticResource Win11AccentButton}">
                 <ui:Button.Content>
                     <StackPanel Orientation="Horizontal">
-                        <ui:TextBlock Style="{StaticResource MainButtonTextLeft}" Text="Продолжить" />
-                        <ui:SymbolIcon Style="{StaticResource ButtonSymbolRight}" Symbol="ArrowRight24" />
+                        <TextBlock
+                            Margin="0,0,12,0"
+                            VerticalAlignment="Center"
+                            FontFamily="{DynamicResource AdwaitaSans}"
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Foreground="White"
+                            Text="Продолжить" />
+                        <ui:SymbolIcon
+                            FontSize="18"
+                            Foreground="White"
+                            Symbol="ArrowRight24" />
                     </StackPanel>
                 </ui:Button.Content>
-
             </ui:Button>
         </StackPanel>
 
         <!--  Нижняя информационная панель  -->
-        <StackPanel
+        <Border
             Grid.Row="1"
-            Margin="0,0,0,20"
+            MaxWidth="600"
+            Margin="40,0,40,32"
+            Padding="24,18"
             HorizontalAlignment="Center"
             VerticalAlignment="Bottom"
-            Orientation="Vertical">
-            <TextBlock
-                MaxWidth="600"
-                HorizontalAlignment="Center"
-                FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="14"
-                FontWeight="Light"
-                Foreground="#9E9E9E"
-                Text="Пин-код обеспечивает безопасность этого приложения и Ваших данных в нем. Постарайтесь использовать комбинацию, которую легко запомнить, но сложно угадать."
-                TextAlignment="Center"
-                TextWrapping="Wrap" />
-        </StackPanel>
+            Background="#2A2A2A"
+            CornerRadius="12">
+            <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                <ui:SymbolIcon
+                    Margin="0,0,14,0"
+                    VerticalAlignment="Top"
+                    FontSize="20"
+                    Foreground="#909090"
+                    Symbol="Info24" />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    FontFamily="{DynamicResource AdwaitaSans}"
+                    FontSize="13"
+                    FontWeight="Normal"
+                    Foreground="#A8A8A8"
+                    LineHeight="20"
+                    TextAlignment="Left"
+                    TextWrapping="Wrap">
+                    <Run Text="Пин-код обеспечивает безопасность этого приложения" />
+                    <LineBreak />
+                    <Run Text="и Ваших данных в нем. Постарайтесь использовать" />
+                    <LineBreak />
+                    <Run Text="комбинацию, которую легко запомнить, но сложно угадать." />
+                </TextBlock>
+            </StackPanel>
+        </Border>
     </Grid>
 </UserControl>

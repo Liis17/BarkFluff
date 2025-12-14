@@ -1,5 +1,7 @@
 ﻿using BarkFluff.Client.WPF.Pages;
+using BarkFluff.Client.WPF.Reactive;
 using BarkFluff.Client.WPF.Services;
+using BarkFluff.Client.WPF.Services.App;
 using BarkFluff.Client.WPF.Services.App.Caching;
 using BarkFluff.Client.WPF.Services.App.Update;
 using BarkFluff.Client.WPF.Services.Erida;
@@ -12,10 +14,6 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 
-using MessageBox = System.Windows.MessageBox;
-using MessageBoxButton = System.Windows.MessageBoxButton;
-using MessageBoxResult = System.Windows.MessageBoxResult;
-
 namespace BarkFluff.Client.WPF
 {
     public partial class App : Application
@@ -27,7 +25,7 @@ namespace BarkFluff.Client.WPF
         private const string AppUserModelId = "com.barkfluff.messenger";
         private const string MutexName = "BarkFluffMutex";
 #endif
-
+        public static ReactiveString MessagerTask = new ReactiveString(); //задача для мессенджера, которая будет выполнена при запуске через протокол или при запуске нового экземпляра
         public static BarkFluff.WebApi.Core.WebApi ServerCommunication { get; set; } = null!;
         public static BarkFluff.WebApi.Core.MessengerData.GlobalParam GParam { get; set; } = null!;
         public static ImageColorAnalyzer ColorAnalyzer { get; set; } = null!;
@@ -36,7 +34,9 @@ namespace BarkFluff.Client.WPF
         public static MainWindow MessengerWindow { get; set; } = null!;
         public static MessengerPage Messenger { get; set; } = null!;
         public static MessageCacheManager CacheManager { get; set; } = null!;
+        public static FileCacheService FileCacheService { get; set; } = null!;
         public static DropMessage ErideMessage { get; set; } = null!;
+        public static WindowStateService WindowStateService { get; set; } = null!;
 
         private static UpdateService updateService { get; set; } = null!;
         public App() { }
@@ -66,23 +66,85 @@ namespace BarkFluff.Client.WPF
 
             base.OnStartup(e);
 
+            // Проверяем регистрацию (используем ваш ProtocolHelper)
             if (!ProtocolHelper.IsBFProtocolRegistered())
             {
-                var result = MessageBox.Show("Протокол bf:// не зарегистрирован. Зарегистрировать?", "Регистрация протокола", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                // === БЛОК КРАСИВОГО УВЕДОМЛЕНИЯ ===
 
-                if (result == MessageBoxResult.Yes)
+                // Создаем временное невидимое окно, чтобы Wpf.Ui MessageBox имел владельца
+                // и корректно отрисовал тему/стили
+                var dummyWindow = new Window
                 {
-                    ProtocolRegistrar.RegisterBFProtocol();
-                    MessageBox.Show("Готово. Перезапустите приложение через bf:// ссылку.");
-                    Shutdown();
-                    return;
-                }
+                    Topmost = true,
+                    WindowStyle = WindowStyle.None,
+                    AllowsTransparency = true,
+                    Background = System.Windows.Media.Brushes.Transparent,
+                    Width = 0,
+                    Height = 0,
+                    ShowInTaskbar = false,
+                    Visibility = Visibility.Visible
+                };
+                dummyWindow.Show();
+
+                // Используем Wpf.Ui MessageBox
+                var messageBox = new Wpf.Ui.Controls.MessageBox
+                {
+                    Title = "Настройка системы",
+                    Content = "",
+                    CloseButtonText = "Понятно",
+                    Owner = dummyWindow // Привязываем к невидимому окну
+                };
+                var tb = new Wpf.Ui.Controls.TextBlock();
+#if (DEBUG)
+                tb.Text = "Для корректной работы приложения необходимо зарегистрировать системный протокол (bfdev://).\n\nСейчас будут запрошены права администратора. Пожалуйста, подтвердите действие.";
+#else
+                tb.Text = "Для корректной работы приложения необходимо зарегистрировать системный протокол (bf://).\n\nСейчас будут запрошены права администратора. Пожалуйста, подтвердите действие.";
+#endif
+                tb.TextWrapping = TextWrapping.Wrap;
+                tb.HorizontalAlignment = HorizontalAlignment.Left;
+                messageBox.Content = tb;
+
+                // Убираем лишние кнопки, оставляем только подтверждение
+                messageBox.PrimaryButtonText = string.Empty;
+                messageBox.SecondaryButtonText = string.Empty;
+
+                // Показываем диалог и ждем закрытия
+                messageBox.ShowDialogAsync();
+                // регистрируем протокол
+#if (DEBUG)
+                ProtocolRegistrar.RegisterDevBFProtocol();
+#else
+                ProtocolRegistrar.RegisterBFProtocol();
+#endif
+                // Продолжаем нормальный запуск
+                NormalBoot();
+                // Закрываем временное окно
+                dummyWindow.Close();
+
+                return;
             }
 
-            string[] args = e.Args;
-            ProcessArguments(args);
+            // === ПРОДОЛЖЕНИЕ ЗАПУСКА ===
+            NormalBoot();
 
-            Bootstrap();
+            void NormalBoot()
+            {
+                Bootstrap();
+            }
+
+        }
+
+        /// <summary>
+        /// Устанавливает рабочую директорию приложения в папку исполняемого файла.
+        /// </summary>
+        private void SetWorkingDirectoryToExecutablePath()
+        {
+            var exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+            var exeDir = Path.GetDirectoryName(exePath);
+            if (!string.IsNullOrEmpty(exeDir))
+            {
+                Environment.CurrentDirectory = exeDir;
+            }
         }
 
         /// <summary>
@@ -90,9 +152,16 @@ namespace BarkFluff.Client.WPF
         /// </summary>
         private void Bootstrap()
         {
-            Directory.CreateDirectory("temp");
-            Directory.CreateDirectory("datas");
+            SetWorkingDirectoryToExecutablePath();
+            if (!Directory.Exists("datas") || !Directory.Exists("datas\\cache"))
+            {
+                Directory.CreateDirectory("datas");
+                Directory.CreateDirectory("datas\\cache");
+            }
+
             CacheManager = new MessageCacheManager("datas\\cache.db", "temp");
+            FileCacheService = new FileCacheService("datas\\file_cache.db", "datas\\cache");
+            WindowStateService = new WindowStateService();
 
             string targetPath = string.Empty;
             try
@@ -126,6 +195,7 @@ namespace BarkFluff.Client.WPF
 #endif
             MessengerWindow = new MainWindow();
             MessengerWindow.Show();
+            WindowStateService.Initialize(MessengerWindow);
 
             if (!File.Exists(filePath))
             {
@@ -150,25 +220,17 @@ namespace BarkFluff.Client.WPF
         protected override void OnExit(ExitEventArgs e)
         {
             cts.Cancel();
+            WindowStateService?.Dispose();
             base.OnExit(e);
         }
 
-        private void OnBFUriReceived(string uri)
+        private void OnBFUriReceived(string task)
         {
             Application.Current.Dispatcher.Invoke(() =>
             {
-                MessageBox.Show("Получен bf:// URI: " + uri);
+                App.MessagerTask.Value = task;
             });
         }
-
-        private void ProcessArguments(string[] args)
-        {
-            foreach (string arg in args)
-            {
-
-            }
-
-        } //обработка аргументов
         private void IncrementVersion()
         {
             var versionParts = AppVersion.Version.Split('.');
@@ -200,17 +262,17 @@ namespace BarkFluff.Client.WPF
             var response = ServerCommunication.CreateAC(GParam, GParam.MachineName, SystemInfo.GetFriendlyWindowsVersion(), AppVersion.AppName, AppVersion.Version, GParam.IpAddress);
             if (!response.IsSuccess)
             {
-                App.ErideMessage.AddMessage(response.ErrorMessage ?? "Не удалось обновить API клиент", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
+                App.ErideMessage.AddMessage(response.ErrorMessage ?? "Не удалось обновить API клиент", new BarkFluff.Client.WPF.Services.Erida.MessageType { Type = BarkFluff.Client.WPF.Services.Erida.MessageType.MessageTypeEnum.Error });
                 return;
             }
             else
             {
-                App.ErideMessage.AddMessage("API клиент успешно обновлён", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Debug });
+                App.ErideMessage.AddMessage("API клиент успешно обновлён", new BarkFluff.Client.WPF.Services.Erida.MessageType { Type = BarkFluff.Client.WPF.Services.Erida.MessageType.MessageTypeEnum.Debug });
             }
             var (error, serverInfo) = await ServerCommunication.GetServerInfo(GParam);
             if (!error.IsSuccess)
             {
-                App.ErideMessage.AddMessage(error.ErrorMessage ?? "Не удалось получить информацию о сервере", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
+                App.ErideMessage.AddMessage(error.ErrorMessage ?? "Не удалось получить информацию о сервере", new BarkFluff.Client.WPF.Services.Erida.MessageType { Type = BarkFluff.Client.WPF.Services.Erida.MessageType.MessageTypeEnum.Error });
                 return;
             }
             else
@@ -248,5 +310,7 @@ namespace BarkFluff.Client.WPF
             });
 
         }
+
+        public static string AppUserModelIdPublic => AppUserModelId; // переместили выше чтобы не ругалось на отсутствие свойства
     }
 }

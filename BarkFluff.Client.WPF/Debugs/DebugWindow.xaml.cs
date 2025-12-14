@@ -30,9 +30,9 @@ namespace BarkFluff.Client.WPF.Debugs
             await App.ServerCommunication.OtpReceipt(App.GParam);
         }
 
-        private void SimpleNotification(object sender, RoutedEventArgs e)
+        private async void SimpleNotification(object sender, RoutedEventArgs e)
         {
-            toastNotificationService.ShowToast("Apogee", "пошли в фортнайт пёс", "https://charlie.liis17.ru/apogeemini.png");
+            await toastNotificationService.ShowToastAsync("Apogee", "пошли в фортнайт пёс", "https://image.barkfluff.com/apogeeavatar.png");
         }
 
         private void AdvancedNotification(object sender, RoutedEventArgs e)
@@ -40,13 +40,13 @@ namespace BarkFluff.Client.WPF.Debugs
 
         }
 
-        public void ImageNotification(object sender, RoutedEventArgs e)
+        public async void ImageNotification(object sender, RoutedEventArgs e)
         {
-            toastNotificationService.ShowToastWithImage(
-            "Apogee",
-            "Отправил(a) изображение",
-            "https://charlie.liis17.ru/apogeemini.png",
-            "https://charlie.liis17.ru/FortniteClient-Win64-Shipping_lOV3mo24Xo.jpg"
+            await toastNotificationService.ShowToastWithImageAsync(
+                "Apogee",
+                "Отправил(a) изображение",
+                "https://image.barkfluff.com/apogeeavatar.png",
+                "https://image.barkfluff.com/photo_52063@10-08-2024_19-42-02.jpg"
             );
         }
 

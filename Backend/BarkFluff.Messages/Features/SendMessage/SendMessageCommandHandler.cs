@@ -100,6 +100,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
         }
 
         List<Domain.MessageAttachment>? attachments = new List<MessageAttachment>();
+        Dictionary<string, UploadFileInfo> filesInfoMap = new();
         
         if (request.Message.FileIds != null && request.Message.FileIds.Any())
         {
@@ -109,6 +110,8 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             {
                 throw new FileNotSupportedException();
             }
+            
+            filesInfoMap = filesInfo.FilesInfos.ToDictionary(f => f.Id, f => f);
             
             attachments = filesInfo.FilesInfos.Select(x => new Domain.MessageAttachment { FileId = x.Id, 
                 FileSize = x.FileSize, 
@@ -134,12 +137,12 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
         };
         
         var members = await _chatsStorage.GetChatMembers(chatId.Value, 0, int.MaxValue);
-        
-        await _messagesStorage.AddMessage(message);
-        
+
+        message = await _messagesStorage.AddMessage(message);
+
         await _messageQueueSender.SendMessage(message, chatId.Value, members
             .Select(x => x.UserId).ToList());
-        
-        return new SendMessageResponse() { Message = message.ToGrpc() };
+
+        return new SendMessageResponse() { Message = message.ToGrpc(filesInfoMap) };
     }
 }

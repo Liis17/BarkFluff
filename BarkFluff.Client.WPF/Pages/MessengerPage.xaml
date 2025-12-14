@@ -100,6 +100,20 @@
             Background="#80000000"
             MouseDown="OverlayCenter_MouseDown"
             Visibility="Collapsed" />
+
+        <!--  Attachment Preview Overlay  -->
+        <Grid
+            x:Name="AttachmentOverlay"
+            Margin="-30"
+            Panel.ZIndex="1001"
+            Background="#80000000"
+            Visibility="Collapsed">
+            <uc:AttachmentPreviewOverlay
+                x:Name="AttachmentPreview"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center" />
+        </Grid>
+
         <!--  Боковая панель  -->
         <Grid
             x:Name="SidePanel"
@@ -112,17 +126,22 @@
 
         <Border
             x:Name="CenterPanel"
-            Width="500"
-            Height="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=Window}}"
+            Width="480"
+            MaxHeight="700"
             HorizontalAlignment="Center"
-            VerticalAlignment="Stretch"
+            VerticalAlignment="Center"
             Panel.ZIndex="1000"
-            Background="LightGreen"
+            CornerRadius="16"
             Visibility="Collapsed">
-            <TextBlock
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                Text="Центральный блок" />
+            <Border.Effect>
+                <DropShadowEffect
+                    BlurRadius="30"
+                    Direction="270"
+                    Opacity="0.5"
+                    ShadowDepth="10"
+                    Color="#000000" />
+            </Border.Effect>
+            <!--  Динамический контент будет добавляться программно  -->
         </Border>
 
         <!--  Основной грид  -->
@@ -191,7 +210,7 @@
                             CornerRadius="6"
                             Visibility="Collapsed">
                             <Border.Background>
-                                <ImageBrush ImageSource="https://charlie.liis17.ru/apogee.png" Stretch="UniformToFill" />
+                                <ImageBrush ImageSource="https://image.barkfluff.com/apogeeavatar.png" Stretch="UniformToFill" />
                             </Border.Background>
 
                         </Border>
@@ -208,6 +227,7 @@
 
                     <!--  Аватар пользователя  -->
                     <Border
+                        x:Name="AvatarTitleWindowButton"
                         Grid.Column="0"
                         Width="23"
                         Height="23"
@@ -217,11 +237,12 @@
                         CornerRadius="15"
                         Cursor="Hand"
                         MouseLeftButtonUp="OpenCenterBlock"
+                        Tag="UserProfile"
                         ToolTip="Открыть мой профиль">
                         <Border.Background>
                             <ImageBrush
                                 x:Name="AvatarTitleWindow"
-                                ImageSource="https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/The_International_2018_%2843263984845%29_%28cropped%29.jpg/960px-The_International_2018_%2843263984845%29_%28cropped%29.jpg"
+                                ImageSource="pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png"
                                 Stretch="UniformToFill" />
                         </Border.Background>
                     </Border>
@@ -236,6 +257,7 @@
                         CornerRadius="15"
                         Cursor="Hand"
                         MouseLeftButtonUp="OpenCenterBlock"
+                        Tag="UpdateBlock"
                         ToolTip="Открыть мой профиль">
                         <ui:SymbolIcon
                             FontSize="23"
@@ -481,20 +503,24 @@
                                                 Foreground="Wheat"
                                                 Symbol="ChevronLeft12" />
                                         </ui:Button>
-                                        <ui:Button
+                                        <Border
+                                            x:Name="ChatAvatarButton"
                                             Width="35"
                                             Height="35"
-                                            Padding="-5"
                                             BorderBrush="Transparent"
                                             CornerRadius="30"
-                                            Focusable="False">
-                                            <ui:Button.Background>
+                                            Cursor="Hand"
+                                            Focusable="False"
+                                            MouseLeftButtonUp="OpenCenterBlock"
+                                            Tag="UserProfile"
+                                            ToolTip="Открыть профиль">
+                                            <Border.Background>
                                                 <ImageBrush
                                                     x:Name="ChatAvatar"
-                                                    ImageSource="https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/The_International_2018_%2843263984845%29_%28cropped%29.jpg/960px-The_International_2018_%2843263984845%29_%28cropped%29.jpg"
+                                                    ImageSource="pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png"
                                                     Stretch="UniformToFill" />
-                                            </ui:Button.Background>
-                                        </ui:Button>
+                                            </Border.Background>
+                                        </Border>
                                         <StackPanel Orientation="Vertical">
                                             <TextBlock
                                                 x:Name="ChatTitleUsername"
@@ -530,7 +556,7 @@
                             <ScrollViewer
                                 x:Name="MessageScrollViewer"
                                 Grid.Row="1"
-                                Padding="20"
+                                Padding="5,0,15,0"
                                 HorizontalAlignment="Stretch"
                                 VerticalAlignment="Bottom"
                                 HorizontalScrollBarVisibility="Disabled"
@@ -545,6 +571,7 @@
 
                             <!--  Панель ввода сообщения  -->
                             <Border
+                                x:Name="TFMBackground"
                                 Grid.Row="2"
                                 Margin="10,0,10,10"
                                 Background="#7653b1"
@@ -568,43 +595,138 @@
                                     </Rectangle>
                                     <!--  Кнопка прикрепления  -->
                                     <Button
+                                        x:Name="AttachFileButton"
                                         Grid.Column="0"
                                         Width="50"
                                         Height="50"
                                         Margin="5,0,12,0"
                                         Padding="5"
                                         Background="Transparent"
-                                        BorderThickness="0">
+                                        BorderThickness="0"
+                                        Click="AttachFileButton_Click">
                                         <ui:SymbolIcon
                                             FontSize="40"
                                             Foreground="#FF9E9E9E"
                                             Symbol="Attach16" />
                                     </Button>
 
+                                    <!--  Attachment Menu Popup  -->
+                                    <Popup
+                                        x:Name="AttachmentMenuPopup"
+                                        Grid.Column="0"
+                                        AllowsTransparency="True"
+                                        Placement="Top"
+                                        PlacementTarget="{Binding ElementName=AttachFileButton}"
+                                        StaysOpen="False">
+                                        <Border
+                                            Padding="4"
+                                            Background="#FF3C3C3C"
+                                            BorderBrush="#FF505050"
+                                            BorderThickness="1"
+                                            CornerRadius="8">
+                                            <StackPanel>
+                                                <Button
+                                                    x:Name="AttachMediaButton"
+                                                    Padding="12,10"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    Click="AttachMediaButton_Click"
+                                                    FontFamily="{DynamicResource AdwaitaSans}"
+                                                    FontSize="13"
+                                                    Foreground="White">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <ui:SymbolIcon
+                                                            Margin="0,0,8,0"
+                                                            FontSize="18"
+                                                            Symbol="Image20" />
+                                                        <TextBlock VerticalAlignment="Center" Text="фото или видео" />
+                                                    </StackPanel>
+                                                    <Button.Style>
+                                                        <Style TargetType="Button">
+                                                            <Setter Property="Background" Value="Transparent" />
+                                                            <Setter Property="Template">
+                                                                <Setter.Value>
+                                                                    <ControlTemplate TargetType="Button">
+                                                                        <Border
+                                                                            Padding="{TemplateBinding Padding}"
+                                                                            Background="{TemplateBinding Background}"
+                                                                            CornerRadius="6">
+                                                                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center" />
+                                                                        </Border>
+                                                                    </ControlTemplate>
+                                                                </Setter.Value>
+                                                            </Setter>
+                                                            <Style.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter Property="Background" Value="#FF505050" />
+                                                                </Trigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
+                                                <Button
+                                                    x:Name="AttachDocumentButton"
+                                                    Padding="12,10"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    Click="AttachDocumentButton_Click"
+                                                    FontFamily="{DynamicResource AdwaitaSans}"
+                                                    FontSize="13"
+                                                    Foreground="White">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <ui:SymbolIcon
+                                                            Margin="0,0,8,0"
+                                                            FontSize="18"
+                                                            Symbol="Document20" />
+                                                        <TextBlock VerticalAlignment="Center" Text="файл" />
+                                                    </StackPanel>
+                                                    <Button.Style>
+                                                        <Style TargetType="Button">
+                                                            <Setter Property="Background" Value="Transparent" />
+                                                            <Setter Property="Template">
+                                                                <Setter.Value>
+                                                                    <ControlTemplate TargetType="Button">
+                                                                        <Border
+                                                                            Padding="{TemplateBinding Padding}"
+                                                                            Background="{TemplateBinding Background}"
+                                                                            CornerRadius="6">
+                                                                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center" />
+                                                                        </Border>
+                                                                    </ControlTemplate>
+                                                                </Setter.Value>
+                                                            </Setter>
+                                                            <Style.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter Property="Background" Value="#FF505050" />
+                                                                </Trigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
+                                            </StackPanel>
+                                        </Border>
+                                    </Popup>
+
                                     <!--  Поле ввода  -->
-                                    <Border
+                                    <ui:TextBox
+                                        x:Name="TextForMessage"
                                         Grid.Column="1"
-                                        Background="{StaticResource BlurredBackgroundBrush}"
-                                        CornerRadius="20">
-                                        <ui:TextBox
-                                            x:Name="TextForMessage"
-                                            Height="35"
-                                            VerticalAlignment="Center"
-                                            AcceptsReturn="False"
-                                            AcceptsTab="True"
-                                            BorderThickness="0"
-                                            ClearButtonEnabled="False"
-                                            FontFamily="{DynamicResource AdwaitaSans}"
-                                            FontSize="14"
-                                            Foreground="White"
-                                            IsTabStop="True"
-                                            IsUndoEnabled="True"
-                                            KeyDown="TextBox_KeyDown"
-                                            KeyUp="TextForMessage_KeyUp"
-                                            LostFocus="TextForMessage_LostFocus"
-                                            PlaceholderText="Сообщение"
-                                            VerticalScrollBarVisibility="Auto" />
-                                    </Border>
+                                        MinHeight="45"
+                                        VerticalAlignment="Center"
+                                        AcceptsReturn="False"
+                                        AcceptsTab="True"
+                                        ClearButtonEnabled="False"
+                                        FontFamily="{DynamicResource AdwaitaSans}"
+                                        FontSize="15"
+                                        IsTabStop="True"
+                                        IsUndoEnabled="True"
+                                        KeyDown="TextBox_KeyDown"
+                                        KeyUp="TextForMessage_KeyUp"
+                                        LostFocus="TextForMessage_LostFocus"
+                                        PlaceholderEnabled="True"
+                                        PlaceholderText="Сообщение"
+                                        Style="{StaticResource MessageInputTextBox}"
+                                        VerticalScrollBarVisibility="Auto" />
 
                                     <!--  Кнопка отправки  -->
                                     <Button
