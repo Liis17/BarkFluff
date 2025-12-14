@@ -27,6 +27,31 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
         public const string DefaultPlaceholder = "pack://application:,,,/BarkFluff;component/Resources/Placeholders/userplaceholder.png";
 
         /// <summary>
+        /// Placeholder для изображений
+        /// </summary>
+        public const string ImagePlaceholder = "pack://application:,,,/BarkFluff;component/Resources/Placeholders/image.png";
+
+        /// <summary>
+        /// Placeholder для видео
+        /// </summary>
+        public const string VideoPlaceholder = "pack://application:,,,/BarkFluff;component/Resources/Placeholders/video.png";
+
+        /// <summary>
+        /// Placeholder для GIF
+        /// </summary>
+        public const string GifPlaceholder = "pack://application:,,,/BarkFluff;component/Resources/Placeholders/gif.png";
+
+        /// <summary>
+        /// Placeholder для документов
+        /// </summary>
+        public const string DocumentPlaceholder = "pack://application:,,,/BarkFluff;component/Resources/Placeholders/document.png";
+
+        /// <summary>
+        /// Placeholder для аудио
+        /// </summary>
+        public const string AudioPlaceholder = "pack://application:,,,/BarkFluff;component/Resources/Placeholders/audio.png";
+
+        /// <summary>
         /// Событие, вызываемое при успешном кешировании файла
         /// </summary>
         public event Action<string, string, FileType>? FileCached;
@@ -80,9 +105,21 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
         /// </summary>
         private static string GetPlaceholder(FileType fileType)
         {
-            // В будущем можно добавить разные placeholders для разных типов файлов
-            return DefaultPlaceholder;
+            return fileType switch
+            {
+                FileType.Avatar => DefaultPlaceholder,
+                FileType.Image => ImagePlaceholder,
+                FileType.Video => VideoPlaceholder,
+                FileType.Gif => GifPlaceholder,
+                FileType.Document => DocumentPlaceholder,
+                _ => DefaultPlaceholder
+            };
         }
+
+        /// <summary>
+        /// Возвращает placeholder для указанного типа файла (публичный метод)
+        /// </summary>
+        public static string GetPlaceholderForType(FileType fileType) => GetPlaceholder(fileType);
 
         /// <summary>
         /// Получает путь к закешированному файлу или placeholder, если файл не найден.

@@ -21,10 +21,61 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
         private const int IMAGE_SPACING = 4;
 
         private List<AttachmentsModel> _attachments = new List<AttachmentsModel>();
+        private Dictionary<string, Image> _imageControlsByFileId = new Dictionary<string, Image>();
+        private bool _isSubscribedToFileCached;
 
         public MultiImageGrid()
         {
             InitializeComponent();
+            Loaded += MultiImageGrid_Loaded;
+            Unloaded += MultiImageGrid_Unloaded;
+        }
+
+        private void MultiImageGrid_Loaded(object sender, RoutedEventArgs e)
+        {
+            SubscribeToFileCached();
+        }
+
+        private void MultiImageGrid_Unloaded(object sender, RoutedEventArgs e)
+        {
+            UnsubscribeFromFileCached();
+            _imageControlsByFileId.Clear();
+        }
+
+        private void SubscribeToFileCached()
+        {
+            if (!_isSubscribedToFileCached && _imageControlsByFileId.Count > 0)
+            {
+                App.FileCacheService.FileCached += OnFileCached;
+                _isSubscribedToFileCached = true;
+            }
+        }
+
+        private void UnsubscribeFromFileCached()
+        {
+            if (_isSubscribedToFileCached)
+            {
+                App.FileCacheService.FileCached -= OnFileCached;
+                _isSubscribedToFileCached = false;
+            }
+        }
+
+        private void OnFileCached(string fileId, string filePath, FileType fileType)
+        {
+            if (_imageControlsByFileId.TryGetValue(fileId, out var imageControl))
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    LoadImage(imageControl, filePath);
+                    // Remove from tracking after successful load
+                    _imageControlsByFileId.Remove(fileId);
+                    // Unsubscribe if no more pending images
+                    if (_imageControlsByFileId.Count == 0)
+                    {
+                        UnsubscribeFromFileCached();
+                    }
+                });
+            }
         }
 
         public void SetImages(List<AttachmentsModel> attachments)
@@ -33,7 +84,10 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
                 return;
 
             _attachments = attachments;
+            _imageControlsByFileId.Clear();
             BuildImageGrid();
+            // Subscribe after building grid to track pending images
+            SubscribeToFileCached();
         }
 
         private void BuildImageGrid()
@@ -195,7 +249,15 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
 
             // Load image from cache or set placeholder
             var fileType = attachment.Type == Proto.Shared.MessageAttachmentType.Gif ? FileType.Gif : FileType.Image;
-            var imagePath = App.FileCacheService.GetCachedFilePath(attachment.FileId, fileType, attachment.PreviewUrl);
+            var fileId = !string.IsNullOrEmpty(attachment.PreviewFileId) ? attachment.PreviewFileId : attachment.FileId;
+            var imagePath = App.FileCacheService.GetCachedFilePath(fileId, fileType, attachment.PreviewUrl);
+            
+            // If this is a placeholder, track the image control for update when file is cached
+            if (FileCacheService.IsPlaceholder(imagePath) && !string.IsNullOrEmpty(fileId))
+            {
+                _imageControlsByFileId[fileId] = image;
+            }
+            
             LoadImage(image, imagePath);
 
             border.Child = image;
@@ -220,7 +282,7 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
             }
             catch
             {
-                imageControl.Source = new BitmapImage(new Uri(FileCacheService.DefaultPlaceholder, UriKind.RelativeOrAbsolute));
+                imageControl.Source = new BitmapImage(new Uri(FileCacheService.ImagePlaceholder, UriKind.RelativeOrAbsolute));
             }
         }
     }

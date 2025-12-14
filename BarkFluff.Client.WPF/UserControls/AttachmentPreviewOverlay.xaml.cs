@@ -18,6 +18,7 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private List<AttachmentPreviewItem> _attachments = new List<AttachmentPreviewItem>();
         private const int MaxAttachments = 10;
+        private bool _hasNonImageFiles = false;
 
         public AttachmentPreviewOverlay()
         {
@@ -87,11 +88,76 @@ namespace BarkFluff.Client.WPF.UserControls
             }
 
             UpdateHeader();
+            UpdateSendAsFileCheckbox();
 
             if (_attachments.Count < MaxAttachments)
             {
                 AddPlusButton();
             }
+        }
+
+        private void UpdateSendAsFileCheckbox()
+        {
+            // Check if there are any non-image files
+            _hasNonImageFiles = _attachments.Any(a => 
+                a.FileType == UploadFileType.MessageAttachmentDocument || 
+                a.FileType == UploadFileType.MessageAttachmentVideo);
+
+            // Check if there are any images
+            bool hasImages = _attachments.Any(a => 
+                a.FileType == UploadFileType.MessageAttachmentImage || 
+                a.FileType == UploadFileType.MessageAttachmentGif);
+
+            if (hasImages)
+            {
+                SendAsFileCheckBox.Visibility = Visibility.Visible;
+                
+                if (_hasNonImageFiles)
+                {
+                    // Force send as files when mixed content
+                    SendAsFileCheckBox.IsChecked = true;
+                    SendAsFileCheckBox.IsEnabled = false;
+                }
+                else
+                {
+                    SendAsFileCheckBox.IsEnabled = true;
+                }
+            }
+            else
+            {
+                // No images, hide checkbox
+                SendAsFileCheckBox.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void SendAsFileCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            // Update file types if sending as files
+            if (SendAsFileCheckBox.IsChecked == true)
+            {
+                foreach (var item in _attachments)
+                {
+                    if (item.FileType == UploadFileType.MessageAttachmentImage || 
+                        item.FileType == UploadFileType.MessageAttachmentGif)
+                    {
+                        item.OriginalFileType = item.FileType;
+                        item.FileType = UploadFileType.MessageAttachmentDocument;
+                    }
+                }
+            }
+            else
+            {
+                // Restore original file types
+                foreach (var item in _attachments)
+                {
+                    if (item.OriginalFileType.HasValue)
+                    {
+                        item.FileType = item.OriginalFileType.Value;
+                        item.OriginalFileType = null;
+                    }
+                }
+            }
+            UpdateHeader();
         }
 
         private void UpdateHeader()
@@ -305,8 +371,12 @@ namespace BarkFluff.Client.WPF.UserControls
             }
 
             _attachments.Clear();
+            _hasNonImageFiles = false;
             PreviewItemsControl.Items.Clear();
             MessageTextBox.Clear();
+            SendAsFileCheckBox.IsChecked = false;
+            SendAsFileCheckBox.IsEnabled = true;
+            SendAsFileCheckBox.Visibility = Visibility.Collapsed;
             UpdateHeader();
         }
 
@@ -321,7 +391,8 @@ namespace BarkFluff.Client.WPF.UserControls
             {
                 Attachments = _attachments,
                 SendSeparately = false,
-                MessageText = MessageTextBox.Text ?? string.Empty
+                MessageText = MessageTextBox.Text ?? string.Empty,
+                SendAsFile = SendAsFileCheckBox.IsChecked == true
             };
             OnSend?.Invoke(this, args);
         }
@@ -333,7 +404,8 @@ namespace BarkFluff.Client.WPF.UserControls
             {
                 Attachments = _attachments,
                 SendSeparately = true,
-                MessageText = MessageTextBox.Text ?? string.Empty
+                MessageText = MessageTextBox.Text ?? string.Empty,
+                SendAsFile = SendAsFileCheckBox.IsChecked == true
             };
             OnSend?.Invoke(this, args);
         }
@@ -349,6 +421,7 @@ namespace BarkFluff.Client.WPF.UserControls
         public string FilePath { get; set; } = string.Empty;
         public string FileName { get; set; } = string.Empty;
         public UploadFileType FileType { get; set; }
+        public UploadFileType? OriginalFileType { get; set; }
         public bool IsFromClipboard { get; set; } = false;
     }
 
@@ -357,5 +430,6 @@ namespace BarkFluff.Client.WPF.UserControls
         public List<AttachmentPreviewItem> Attachments { get; set; } = new List<AttachmentPreviewItem>();
         public bool SendSeparately { get; set; }
         public string MessageText { get; set; } = string.Empty;
+        public bool SendAsFile { get; set; }
     }
 }
