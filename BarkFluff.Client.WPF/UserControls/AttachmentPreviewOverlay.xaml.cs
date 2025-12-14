@@ -96,17 +96,22 @@ namespace BarkFluff.Client.WPF.UserControls
             }
         }
 
+        /// <summary>
+        /// Checks if the file type is an image type (image or gif)
+        /// </summary>
+        private static bool IsImageFileType(UploadFileType fileType)
+        {
+            return fileType == UploadFileType.MessageAttachmentImage || 
+                   fileType == UploadFileType.MessageAttachmentGif;
+        }
+
         private void UpdateSendAsFileCheckbox()
         {
             // Check if there are any non-image files
-            _hasNonImageFiles = _attachments.Any(a => 
-                a.FileType == UploadFileType.MessageAttachmentDocument || 
-                a.FileType == UploadFileType.MessageAttachmentVideo);
+            _hasNonImageFiles = _attachments.Any(a => !IsImageFileType(a.FileType));
 
             // Check if there are any images
-            bool hasImages = _attachments.Any(a => 
-                a.FileType == UploadFileType.MessageAttachmentImage || 
-                a.FileType == UploadFileType.MessageAttachmentGif);
+            bool hasImages = _attachments.Any(a => IsImageFileType(a.FileType));
 
             if (hasImages)
             {
@@ -137,8 +142,7 @@ namespace BarkFluff.Client.WPF.UserControls
             {
                 foreach (var item in _attachments)
                 {
-                    if (item.FileType == UploadFileType.MessageAttachmentImage || 
-                        item.FileType == UploadFileType.MessageAttachmentGif)
+                    if (IsImageFileType(item.FileType))
                     {
                         item.OriginalFileType = item.FileType;
                         item.FileType = UploadFileType.MessageAttachmentDocument;
@@ -168,7 +172,7 @@ namespace BarkFluff.Client.WPF.UserControls
                 return;
             }
 
-            bool allImages = _attachments.All(a => a.FileType == UploadFileType.MessageAttachmentImage || a.FileType == UploadFileType.MessageAttachmentGif);
+            bool allImages = _attachments.All(a => IsImageFileType(a.FileType));
 
             if (allImages)
             {
@@ -249,8 +253,7 @@ namespace BarkFluff.Client.WPF.UserControls
                 ClipToBounds = true
             };
 
-            if (item.FileType == UploadFileType.MessageAttachmentImage ||
-                item.FileType == UploadFileType.MessageAttachmentGif)
+            if (IsImageFileType(item.FileType))
             {
                 // Show image preview
                 try

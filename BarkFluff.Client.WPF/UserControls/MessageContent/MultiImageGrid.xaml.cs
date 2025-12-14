@@ -21,6 +21,7 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
         private const int IMAGE_SPACING = 4;
 
         private List<AttachmentsModel> _attachments = new List<AttachmentsModel>();
+        private readonly object _imageControlsLock = new object();
         private Dictionary<string, Image> _imageControlsByFileId = new Dictionary<string, Image>();
         private bool _isSubscribedToFileCached;
 
@@ -39,12 +40,15 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
         private void MultiImageGrid_Unloaded(object sender, RoutedEventArgs e)
         {
             UnsubscribeFromFileCached();
-            _imageControlsByFileId.Clear();
+            lock (_imageControlsLock)
+            {
+                _imageControlsByFileId.Clear();
+            }
         }
 
         private void SubscribeToFileCached()
         {
-            if (!_isSubscribedToFileCached && _imageControlsByFileId.Count > 0)
+            if (!_isSubscribedToFileCached)
             {
                 App.FileCacheService.FileCached += OnFileCached;
                 _isSubscribedToFileCached = true;
@@ -62,15 +66,24 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
 
         private void OnFileCached(string fileId, string filePath, FileType fileType)
         {
-            if (_imageControlsByFileId.TryGetValue(fileId, out var imageControl))
+            Image? imageControl = null;
+            bool shouldUnsubscribe = false;
+            
+            lock (_imageControlsLock)
+            {
+                if (_imageControlsByFileId.TryGetValue(fileId, out imageControl))
+                {
+                    _imageControlsByFileId.Remove(fileId);
+                    shouldUnsubscribe = _imageControlsByFileId.Count == 0;
+                }
+            }
+
+            if (imageControl != null)
             {
                 Dispatcher.Invoke(() =>
                 {
                     LoadImage(imageControl, filePath);
-                    // Remove from tracking after successful load
-                    _imageControlsByFileId.Remove(fileId);
-                    // Unsubscribe if no more pending images
-                    if (_imageControlsByFileId.Count == 0)
+                    if (shouldUnsubscribe)
                     {
                         UnsubscribeFromFileCached();
                     }
@@ -84,7 +97,10 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
                 return;
 
             _attachments = attachments;
-            _imageControlsByFileId.Clear();
+            lock (_imageControlsLock)
+            {
+                _imageControlsByFileId.Clear();
+            }
             BuildImageGrid();
             // Subscribe after building grid to track pending images
             SubscribeToFileCached();
@@ -255,7 +271,10 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
             // If this is a placeholder, track the image control for update when file is cached
             if (FileCacheService.IsPlaceholder(imagePath) && !string.IsNullOrEmpty(fileId))
             {
-                _imageControlsByFileId[fileId] = image;
+                lock (_imageControlsLock)
+                {
+                    _imageControlsByFileId[fileId] = image;
+                }
             }
             
             LoadImage(image, imagePath);
