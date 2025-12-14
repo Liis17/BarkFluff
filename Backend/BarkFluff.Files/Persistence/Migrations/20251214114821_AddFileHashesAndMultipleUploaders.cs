@@ -47,8 +47,10 @@ namespace BarkFluff.Files.Persistence.Migrations
                 defaultValue: new List<long>());
 
             // Migrate data from OldUploader to Uploaders array
+            // For non-zero uploaders, add them to the array
+            // For zero uploaders (shouldn't exist but just in case), keep empty array
             migrationBuilder.Sql(
-                "UPDATE \"UploadedFiles\" SET \"Uploaders\" = ARRAY[\"OldUploader\"] WHERE \"OldUploader\" != 0");
+                "UPDATE \"UploadedFiles\" SET \"Uploaders\" = CASE WHEN \"OldUploader\" != 0 THEN ARRAY[\"OldUploader\"] ELSE ARRAY[]::bigint[] END");
 
             // Drop the old column
             migrationBuilder.DropColumn(

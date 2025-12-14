@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using BarkFluff.Files.Persistence;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Proto.Files;
@@ -5,12 +6,16 @@ using MediatR;
 
 namespace BarkFluff.Files.Features.CheckFileHash;
 
-public class CheckFileHashCommandHandler : IRequestHandler<CheckFileHashCommand, CheckFileHashResponse>
+public partial class CheckFileHashCommandHandler : IRequestHandler<CheckFileHashCommand, CheckFileHashResponse>
 {
     private readonly FileHashesStorage _hashesStorage;
     private readonly UploadedFilesStorage _filesStorage;
     private readonly UserContext _userContext;
     private readonly ILogger<CheckFileHashCommandHandler> _logger;
+
+    // Regex for validating SHA256 hash format (64 hex characters)
+    [GeneratedRegex("^[a-fA-F0-9]{64}$", RegexOptions.Compiled)]
+    private static partial Regex Sha256HashRegex();
 
     public CheckFileHashCommandHandler(
         FileHashesStorage hashesStorage,
@@ -27,6 +32,16 @@ public class CheckFileHashCommandHandler : IRequestHandler<CheckFileHashCommand,
     public async Task<CheckFileHashResponse> Handle(CheckFileHashCommand request, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Проверка хеша файла: {FileHash}", request.FileHash);
+        
+        // Validate hash format (must be 64 hex characters for SHA256)
+        if (string.IsNullOrEmpty(request.FileHash) || !Sha256HashRegex().IsMatch(request.FileHash))
+        {
+            _logger.LogWarning("Неверный формат хеша: {FileHash}", request.FileHash);
+            return new CheckFileHashResponse
+            {
+                FileId = string.Empty
+            };
+        }
         
         // Normalize hash to lowercase
         var normalizedHash = request.FileHash.ToLowerInvariant();

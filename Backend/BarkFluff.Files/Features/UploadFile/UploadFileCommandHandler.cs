@@ -79,6 +79,7 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
         originalStream.Position = 0;
         
         // Compute SHA256 hash of the file
+        // TODO: For better performance with large files, consider computing hash during the initial stream copy
         string fileHash;
         using (var sha256 = SHA256.Create())
         {

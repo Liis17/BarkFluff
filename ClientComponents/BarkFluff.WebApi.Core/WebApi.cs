@@ -1302,9 +1302,10 @@ namespace BarkFluff.WebApi.Core
                             return (new ErrorReturner(true), hashCheckResponse.FileId);
                         }
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        // If hash check fails, continue with upload
+                        // If hash check fails, log and continue with upload
+                        System.Diagnostics.Debug.WriteLine($"WebApi: Hash check failed, proceeding with upload: {ex.Message}");
                     }
 
                     progress?.Report(0.2);
