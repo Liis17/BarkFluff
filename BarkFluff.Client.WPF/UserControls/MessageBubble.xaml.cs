@@ -165,6 +165,7 @@ namespace BarkFluff.Client.WPF.UserControls
                 var grid = new MultiImageGrid();
                 grid.SetImages(imageAttachments);
                 MediaContentPresenter.Content = grid;
+                SetMediaContentMargin(false);
                 this.MinWidth = IMAGE_MAX_WIDTH;
             }
             else if (isDocument)
@@ -173,6 +174,7 @@ namespace BarkFluff.Client.WPF.UserControls
                 var list = new MultiDocumentList();
                 list.SetDocuments(attachments);
                 MediaContentPresenter.Content = list;
+                SetMediaContentMargin(true);
                 var sizeMessageWidth = CalculateLongestLineWidth(message.Text);
                 this.MinWidth = Math.Max(sizeMessageWidth + MIN_WIDTH_PADDING, 250);
             }
@@ -194,11 +196,22 @@ namespace BarkFluff.Client.WPF.UserControls
             return attachment.Type == Proto.Shared.MessageAttachmentType.Document;
         }
 
+        /// <summary>
+        /// Sets the MediaContentPresenter margin based on whether content is a document/file
+        /// </summary>
+        private void SetMediaContentMargin(bool isDocument)
+        {
+            MediaContentPresenter.Margin = isDocument 
+                ? new Thickness(8, 8, 8, 5) 
+                : new Thickness(0, 0, 0, 5);
+        }
+
         private void SetupTextContent(MessageModel message)
         {
             _textContent = new TextMessageContent(message.Text);
             TextContentPresenter.Content = _textContent;
             MediaContentPresenter.Content = null;
+            SetMediaContentMargin(false);
 
             var sizeMessageWidth = CalculateLongestLineWidth(message.Text);
             this.MinWidth = sizeMessageWidth + MIN_WIDTH_PADDING;
@@ -228,6 +241,7 @@ namespace BarkFluff.Client.WPF.UserControls
             var fileType = messageType == MessageType.Gif ? FileType.Gif : FileType.Image;
             var imageContent = new ImageMessageContent(attachment.FileId, attachment.PreviewUrl, fileType);
             MediaContentPresenter.Content = imageContent;
+            SetMediaContentMargin(false);
 
             this.MinWidth = IMAGE_MAX_WIDTH;
         }
@@ -255,6 +269,7 @@ namespace BarkFluff.Client.WPF.UserControls
             // Set up document content
             var documentContent = new DocumentMessageContent(attachment.FileId, attachment.PreviewUrl, attachment.Size);
             MediaContentPresenter.Content = documentContent;
+            SetMediaContentMargin(true);
 
             var sizeMessageWidth = CalculateLongestLineWidth(message.Text);
             this.MinWidth = Math.Max(sizeMessageWidth + MIN_WIDTH_PADDING, 200);
@@ -283,6 +298,7 @@ namespace BarkFluff.Client.WPF.UserControls
             // Set up video content
             var videoContent = new VideoMessageContent(attachment.FileId, attachment.PreviewUrl);
             MediaContentPresenter.Content = videoContent;
+            SetMediaContentMargin(false);
 
             this.MinWidth = IMAGE_MAX_WIDTH;
         }
@@ -417,6 +433,7 @@ namespace BarkFluff.Client.WPF.UserControls
             }
 
             MediaContentPresenter.Content = uploadingPanel;
+            SetMediaContentMargin(true);
         }
 
         /// <summary>
