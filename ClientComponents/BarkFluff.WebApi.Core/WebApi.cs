@@ -283,6 +283,8 @@ namespace BarkFluff.WebApi.Core
                 catch (Exception refreshEx)
                 {
                     throw new InvalidOperationException("Failed to refresh token and retry operation", refreshEx);
+                    //тут вызвать открытие OpenLoginPage() в messangerwindow
+
                 }
             }
         }
@@ -1410,7 +1412,7 @@ namespace BarkFluff.WebApi.Core
                 {
                     var response = await FilesAC!.GetTempDownloadUrlAsync(new Proto.Files.GetTempDownloadUrlRequest { FileIds = { fileId } });
                     if (!HasValidFileUrls(response.FileUrls))
-                        return (new ErrorReturner(false, "Файл не найден"), null);
+                        return (new ErrorReturner(false, "Файл не найден"), string.Empty);
                     return (new ErrorReturner(true), response.FileUrls[0].Url);
                 }, globalParam);
             }

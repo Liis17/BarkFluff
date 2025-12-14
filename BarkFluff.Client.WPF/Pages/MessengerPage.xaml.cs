@@ -853,7 +853,7 @@ namespace BarkFluff.Client.WPF.Pages
 
                 // Определяем аватар
                 string avatar = string.IsNullOrEmpty(item.Picture)
-                    ? "pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png"
+                    ? "pack://application:,,,/BarkFluff;component/Resources/Placeholders/userplaceholder.png"
                     : item.Picture;
 
                 // Определяем статус чтения и заголовок
@@ -864,7 +864,7 @@ namespace BarkFluff.Client.WPF.Pages
                 {
                     isRead = ChatItem.ReadingStatus.My;
                     title = "Избранное";
-                    avatar = "pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/savedplaceholder.png";
+                    avatar = "pack://application:,,,/BarkFluff;component/Resources/Placeholders/savedplaceholder.png";
                 }
 
                 membersId.Remove(App.GParam.UserId);
@@ -965,7 +965,7 @@ namespace BarkFluff.Client.WPF.Pages
             {
 
                 ChatTitleUsername.Text = "Избранное";
-                avatar = "pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/savedplaceholder.png";
+                avatar = "pack://application:,,,/BarkFluff;component/Resources/Placeholders/savedplaceholder.png";
                 // Для избранного используем placeholder напрямую
                 ChatAvatar.ImageSource = new BitmapImage(new Uri(avatar, UriKind.RelativeOrAbsolute));
             }
@@ -1371,7 +1371,7 @@ namespace BarkFluff.Client.WPF.Pages
                     {
                         // Determine avatar and title
                         string avatar = string.IsNullOrEmpty(newChat.Picture)
-                            ? "pack://application:,,,/Barkfluff.Client.WPF;component/Resources/Placeholders/userplaceholder.png"
+                            ? "pack://application:,,,/BarkFluff;component/Resources/Placeholders/userplaceholder.png"
                             : newChat.Picture;
 
                         var title = newChat.Title;
