@@ -208,6 +208,11 @@ namespace BarkFluff.Client.WPF.Services.Notification
         }
 
         /// <summary>
+        /// Таймаут загрузки изображений для уведомлений (10 секунд)
+        /// </summary>
+        private static readonly TimeSpan ImageLoadTimeout = TimeSpan.FromSeconds(10);
+
+        /// <summary>
         /// Показать уведомление
         /// </summary>
         public async Task ShowNotificationAsync(NotificationData data)
@@ -221,26 +226,88 @@ namespace BarkFluff.Client.WPF.Services.Notification
                 builder.AddArgument("chatId", data.ChatId);
                 builder.AddArgument("messageId", data.LastMessageId.ToString());
 
-                // Добавляем аватар
-                var avatarPath = await GetCachedImagePathAsync(data.AvatarFileId, data.AvatarUrl, FileType.Avatar);
-                if (!string.IsNullOrEmpty(avatarPath))
+                // Загружаем аватар с таймаутом
+                string? avatarPath = null;
+                bool avatarLoaded = false;
+                try
+                {
+                    using var avatarCts = new CancellationTokenSource(ImageLoadTimeout);
+                    avatarPath = await GetCachedImagePathWithTimeoutAsync(
+                        data.AvatarFileId, 
+                        data.AvatarUrl, 
+                        FileType.Avatar, 
+                        avatarCts.Token);
+                    avatarLoaded = !string.IsNullOrEmpty(avatarPath) && !FileCacheService.IsPlaceholder(avatarPath);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Таймаут - используем заглушку
+                    avatarLoaded = false;
+                }
+
+                // Добавляем аватар (заглушку если не загрузился)
+                if (avatarLoaded && !string.IsNullOrEmpty(avatarPath))
                 {
                     builder.AddAppLogoOverride(new Uri(avatarPath), ToastGenericAppLogoCrop.Circle);
+                }
+                else
+                {
+                    // Используем заглушку для аватара
+                    var placeholderPath = GetLocalPlaceholderPath(FileType.Avatar);
+                    if (!string.IsNullOrEmpty(placeholderPath))
+                    {
+                        builder.AddAppLogoOverride(new Uri(placeholderPath), ToastGenericAppLogoCrop.Circle);
+                    }
                 }
 
                 // Добавляем заголовок и текст
                 builder.AddText(data.Title);
-                builder.AddText(data.Message);
 
-                // Добавляем изображение если есть
+                // Загружаем превью изображения с таймаутом (если есть)
+                bool imageLoaded = false;
+                string? imagePath = null;
                 if ((data.Type == NotificationType.ImageMessage || data.Type == NotificationType.GifMessage)
                     && (!string.IsNullOrEmpty(data.ImageFileId) || !string.IsNullOrEmpty(data.ImageUrl)))
                 {
-                    var imagePath = await GetCachedImagePathAsync(data.ImageFileId, data.ImageUrl, FileType.Image);
-                    if (!string.IsNullOrEmpty(imagePath) && !FileCacheService.IsPlaceholder(imagePath))
+                    try
                     {
-                        builder.AddInlineImage(new Uri(imagePath));
+                        using var imageCts = new CancellationTokenSource(ImageLoadTimeout);
+                        imagePath = await GetCachedImagePathWithTimeoutAsync(
+                            data.ImageFileId, 
+                            data.ImageUrl, 
+                            FileType.Image, 
+                            imageCts.Token);
+                        imageLoaded = !string.IsNullOrEmpty(imagePath) && !FileCacheService.IsPlaceholder(imagePath);
                     }
+                    catch (OperationCanceledException)
+                    {
+                        // Таймаут - не показываем превью
+                        imageLoaded = false;
+                    }
+                }
+
+                // Формируем текст сообщения
+                string messageText = data.Message;
+                
+                // Если изображение не загрузилось, но тип сообщения - картинка, обновляем текст
+                if (!imageLoaded && (data.Type == NotificationType.ImageMessage || data.Type == NotificationType.GifMessage))
+                {
+                    // Если текст ещё не содержит информацию о картинке - добавляем её
+                    if (!string.IsNullOrEmpty(data.Message) && !data.Message.StartsWith("📷"))
+                    {
+                        if (data.FileCount > 1)
+                            messageText = $"{data.Message} [📷 {data.FileCount} {GetFilesWordForm(data.FileCount, "фото")}]";
+                        else
+                            messageText = $"{data.Message} [📷 Фото]";
+                    }
+                }
+
+                builder.AddText(messageText);
+
+                // Добавляем превью изображения если загрузилось
+                if (imageLoaded && !string.IsNullOrEmpty(imagePath))
+                {
+                    builder.AddInlineImage(new Uri(imagePath));
                 }
 
                 var toastContent = builder.GetToastContent();
@@ -257,6 +324,157 @@ namespace BarkFluff.Client.WPF.Services.Notification
                     $"Ошибка при показе уведомления: {ex.Message}",
                     new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Error });
             }
+        }
+
+        /// <summary>
+        /// Получает локальный путь к placeholder-изображению для использования в уведомлениях
+        /// </summary>
+        private static string? GetLocalPlaceholderPath(FileType fileType)
+        {
+            try
+            {
+                // Для уведомлений нужен реальный файл, а не pack:// URI
+                // Создаём временный файл из ресурса если нужно
+                var tempDir = Path.Combine(Path.GetTempPath(), "BarkFluff", "placeholders");
+                Directory.CreateDirectory(tempDir);
+
+                var fileName = fileType switch
+                {
+                    FileType.Avatar => "avatar_placeholder.png",
+                    FileType.Image => "image_placeholder.png",
+                    _ => "default_placeholder.png"
+                };
+
+                var placeholderPath = Path.Combine(tempDir, fileName);
+
+                // Если файл уже существует - возвращаем его
+                if (File.Exists(placeholderPath))
+                {
+                    return new Uri(placeholderPath).AbsoluteUri;
+                }
+
+                // Создаём простой placeholder-файл
+                // Это серый квадрат 64x64 пикселя
+                CreateSimplePlaceholderImage(placeholderPath);
+
+                if (File.Exists(placeholderPath))
+                {
+                    return new Uri(placeholderPath).AbsoluteUri;
+                }
+            }
+            catch
+            {
+                // Игнорируем ошибки
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Создаёт простое placeholder-изображение
+        /// </summary>
+        private static void CreateSimplePlaceholderImage(string path)
+        {
+            try
+            {
+                // Создаём простой PNG 1x1 серый пиксель (минимальный валидный PNG)
+                byte[] pngData = new byte[]
+                {
+                    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG signature
+                    0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, // IHDR chunk
+                    0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, // 1x1
+                    0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53, 0xDE, // 8-bit RGB
+                    0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41, 0x54, // IDAT chunk
+                    0x08, 0xD7, 0x63, 0x90, 0x90, 0x90, 0x00, 0x00, // compressed data (gray)
+                    0x00, 0x04, 0x00, 0x01, 0x11, 0x3D, 0x7D, 0x3E,
+                    0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, // IEND chunk
+                    0xAE, 0x42, 0x60, 0x82
+                };
+                File.WriteAllBytes(path, pngData);
+            }
+            catch
+            {
+                // Игнорируем ошибки
+            }
+        }
+
+        /// <summary>
+        /// Получить путь к закешированному изображению с поддержкой отмены
+        /// </summary>
+        private async Task<string?> GetCachedImagePathWithTimeoutAsync(string? fileId, string? url, FileType fileType, CancellationToken cancellationToken)
+        {
+            if (_fileCacheService == null)
+                return null;
+
+            // Сначала проверяем, есть ли файл уже в кеше (синхронно)
+            if (!string.IsNullOrEmpty(fileId) && _fileCacheService.IsFileCached(fileId))
+            {
+                var cachedPath = _fileCacheService.GetCachedFilePath(fileId, fileType, url);
+                if (!string.IsNullOrEmpty(cachedPath) && !FileCacheService.IsPlaceholder(cachedPath) && File.Exists(cachedPath))
+                {
+                    if (Uri.TryCreate(cachedPath, UriKind.Absolute, out var cachedUri))
+                    {
+                        return cachedUri.AbsoluteUri;
+                    }
+                }
+            }
+
+            // Пробуем извлечь fileId из URL если его нет
+            var effectiveFileId = fileId;
+            if (string.IsNullOrEmpty(effectiveFileId) && !string.IsNullOrEmpty(url))
+            {
+                effectiveFileId = FileCacheService.ExtractFileIdFromUrl(url);
+            }
+
+            if (string.IsNullOrEmpty(effectiveFileId))
+                return null;
+
+            // Проверяем кеш для извлечённого fileId
+            if (_fileCacheService.IsFileCached(effectiveFileId))
+            {
+                var cachedPath = _fileCacheService.GetCachedFilePath(effectiveFileId, fileType, url);
+                if (!string.IsNullOrEmpty(cachedPath) && !FileCacheService.IsPlaceholder(cachedPath) && File.Exists(cachedPath))
+                {
+                    if (Uri.TryCreate(cachedPath, UriKind.Absolute, out var cachedUri))
+                    {
+                        return cachedUri.AbsoluteUri;
+                    }
+                }
+            }
+
+            // Файл не в кеше - запускаем загрузку с таймаутом
+            try
+            {
+                var downloadTask = _fileCacheService.GetCachedFilePathAsync(effectiveFileId, fileType, url);
+                var completedTask = await Task.WhenAny(downloadTask, Task.Delay(Timeout.Infinite, cancellationToken));
+
+                if (completedTask == downloadTask)
+                {
+                    var path = await downloadTask;
+                    if (!string.IsNullOrEmpty(path) && !FileCacheService.IsPlaceholder(path) && File.Exists(path))
+                    {
+                        if (Uri.TryCreate(path, UriKind.Absolute, out var uri))
+                        {
+                            return uri.AbsoluteUri;
+                        }
+                    }
+                }
+                else
+                {
+                    // Отмена по таймауту
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                throw; // Пробрасываем дальше
+            }
+            catch
+            {
+                // Игнорируем другие ошибки
+            }
+
+            return null;
         }
 
         /// <summary>
