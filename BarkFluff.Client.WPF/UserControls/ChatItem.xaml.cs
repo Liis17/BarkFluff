@@ -57,6 +57,31 @@ namespace BarkFluff.Client.WPF.UserControls
         private long _lastMessageSenderId;
         private int _unreadCount;
 
+        /// <summary>
+        /// URL аватара чата
+        /// </summary>
+        public string AvatarUrl => _url;
+
+        /// <summary>
+        /// Название чата
+        /// </summary>
+        public string ChatTitle => _title;
+
+        /// <summary>
+        /// ID последнего сообщения
+        /// </summary>
+        public long LastMessageId => _lastMessageId;
+
+        /// <summary>
+        /// Является ли чат групповым
+        /// </summary>
+        public bool IsGroupChat => _isGroupChat;
+
+        /// <summary>
+        /// ID пользователя (собеседника)
+        /// </summary>
+        public long UserId => _userId;
+
         public ChatItem(string imageUrl, string chatName, string lastMessageText, string time, ReadingStatus reading, List<long> readBy, long unReaded, string chatId, long lastMessageId, bool isGroupChat, long userId)
         {
             InitializeComponent();
