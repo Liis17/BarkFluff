@@ -226,6 +226,11 @@ namespace BarkFluff.Client.WPF.Services.Notification
                 builder.AddArgument("chatId", data.ChatId);
                 builder.AddArgument("messageId", data.LastMessageId.ToString());
 
+                // Логируем входные данные для отладки
+                WPF.App.ErideMessage?.AddMessage(
+                    $"[Notification] AvatarFileId={data.AvatarFileId ?? "null"}, AvatarUrl={data.AvatarUrl ?? "null"}",
+                    new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
+
                 // Загружаем аватар с таймаутом
                 string? avatarPath = null;
                 bool avatarLoaded = false;
@@ -238,11 +243,18 @@ namespace BarkFluff.Client.WPF.Services.Notification
                         FileType.Avatar, 
                         avatarCts.Token);
                     avatarLoaded = !string.IsNullOrEmpty(avatarPath) && !FileCacheService.IsPlaceholder(avatarPath);
+                    
+                    WPF.App.ErideMessage?.AddMessage(
+                        $"[Notification] Avatar result: path={avatarPath ?? "null"}, loaded={avatarLoaded}",
+                        new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
                 }
                 catch (OperationCanceledException)
                 {
                     // Таймаут - используем заглушку
                     avatarLoaded = false;
+                    WPF.App.ErideMessage?.AddMessage(
+                        "[Notification] Avatar loading timed out",
+                        new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
                 }
 
                 // Добавляем аватар (заглушку если не загрузился)
@@ -426,32 +438,30 @@ namespace BarkFluff.Client.WPF.Services.Notification
             if (_fileCacheService == null)
                 return null;
 
-            // Сначала проверяем, есть ли файл уже в кеше (синхронно)
-            if (!string.IsNullOrEmpty(fileId) && _fileCacheService.IsFileCached(fileId))
-            {
-                var cachedPath = _fileCacheService.GetCachedFilePath(fileId, fileType, url);
-                if (!string.IsNullOrEmpty(cachedPath) && !FileCacheService.IsPlaceholder(cachedPath))
-                {
-                    var fileUri = ConvertToFileUri(cachedPath);
-                    if (fileUri != null)
-                        return fileUri;
-                }
-            }
+            // Логируем входные данные
+            WPF.App.ErideMessage?.AddMessage($"[Notification] GetCachedImagePathWithTimeoutAsync: fileId={fileId ?? "null"}, url={url ?? "null"}, type={fileType}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
 
-            // Пробуем извлечь fileId из URL если его нет
+            // Определяем effectiveFileId - либо переданный, либо извлечённый из URL
             var effectiveFileId = fileId;
             if (string.IsNullOrEmpty(effectiveFileId) && !string.IsNullOrEmpty(url))
             {
                 effectiveFileId = FileCacheService.ExtractFileIdFromUrl(url);
             }
 
+            // Если effectiveFileId всё ещё пустой - не можем ничего сделать
             if (string.IsNullOrEmpty(effectiveFileId))
+            {
+                WPF.App.ErideMessage?.AddMessage("[Notification] No fileId available", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
                 return null;
+            }
 
-            // Проверяем кеш для извлечённого fileId
+            // Проверяем кеш синхронно
             if (_fileCacheService.IsFileCached(effectiveFileId))
             {
+                // Файл уже в кеше - получаем путь
                 var cachedPath = _fileCacheService.GetCachedFilePath(effectiveFileId, fileType, url);
+                WPF.App.ErideMessage?.AddMessage($"[Notification] File is cached, path: {cachedPath}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
+                
                 if (!string.IsNullOrEmpty(cachedPath) && !FileCacheService.IsPlaceholder(cachedPath))
                 {
                     var fileUri = ConvertToFileUri(cachedPath);
@@ -461,14 +471,19 @@ namespace BarkFluff.Client.WPF.Services.Notification
             }
 
             // Файл не в кеше - запускаем загрузку с таймаутом
+            WPF.App.ErideMessage?.AddMessage($"[Notification] File not in cache, starting download for {effectiveFileId}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
+            
             try
             {
                 var downloadTask = _fileCacheService.GetCachedFilePathAsync(effectiveFileId, fileType, url);
-                var completedTask = await Task.WhenAny(downloadTask, Task.Delay(Timeout.Infinite, cancellationToken));
+                var timeoutTask = Task.Delay(ImageLoadTimeout, cancellationToken);
+                var completedTask = await Task.WhenAny(downloadTask, timeoutTask);
 
                 if (completedTask == downloadTask)
                 {
                     var path = await downloadTask;
+                    WPF.App.ErideMessage?.AddMessage($"[Notification] Download completed, path: {path}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
+                    
                     if (!string.IsNullOrEmpty(path) && !FileCacheService.IsPlaceholder(path))
                     {
                         var fileUri = ConvertToFileUri(path);
@@ -478,17 +493,16 @@ namespace BarkFluff.Client.WPF.Services.Notification
                 }
                 else
                 {
-                    // Отмена по таймауту
-                    cancellationToken.ThrowIfCancellationRequested();
+                    WPF.App.ErideMessage?.AddMessage("[Notification] Download timed out", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
                 }
             }
             catch (OperationCanceledException)
             {
-                throw; // Пробрасываем дальше
+                throw;
             }
-            catch
+            catch (Exception ex)
             {
-                // Игнорируем другие ошибки
+                WPF.App.ErideMessage?.AddMessage($"[Notification] Error: {ex.Message}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
             }
 
             return null;

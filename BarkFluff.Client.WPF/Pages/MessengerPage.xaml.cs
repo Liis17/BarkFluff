@@ -1385,6 +1385,10 @@ namespace BarkFluff.Client.WPF.Pages
                 {
                     avatarUrl = chatItem.AvatarUrl;
                     avatarFileId = chatItem.AvatarFileId; // Используем уже извлечённый fileId
+                    
+                    App.ErideMessage.AddMessage(
+                        $"[Notification] ChatItem data: AvatarUrl={avatarUrl ?? "null"}, AvatarFileId={avatarFileId ?? "null"}",
+                        new Erida { Type = MType.Debug });
                 }
 
                 // Показываем уведомление через NotificationManager
