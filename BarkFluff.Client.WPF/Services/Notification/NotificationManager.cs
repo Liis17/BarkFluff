@@ -273,7 +273,10 @@ namespace BarkFluff.Client.WPF.Services.Notification
                 var path = await _fileCacheService.GetCachedFilePathAsync(fileId, fileType, url);
                 if (!string.IsNullOrEmpty(path) && !FileCacheService.IsPlaceholder(path) && File.Exists(path))
                 {
-                    return new Uri(path).AbsoluteUri;
+                    if (Uri.TryCreate(path, UriKind.Absolute, out var uri))
+                    {
+                        return uri.AbsoluteUri;
+                    }
                 }
             }
 
@@ -286,7 +289,10 @@ namespace BarkFluff.Client.WPF.Services.Notification
                     var path = await _fileCacheService.GetCachedFilePathAsync(extractedFileId, fileType, url);
                     if (!string.IsNullOrEmpty(path) && !FileCacheService.IsPlaceholder(path) && File.Exists(path))
                     {
-                        return new Uri(path).AbsoluteUri;
+                        if (Uri.TryCreate(path, UriKind.Absolute, out var uri))
+                        {
+                            return uri.AbsoluteUri;
+                        }
                     }
                 }
             }

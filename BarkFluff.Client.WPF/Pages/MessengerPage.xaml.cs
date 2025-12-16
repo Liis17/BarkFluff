@@ -1316,7 +1316,7 @@ namespace BarkFluff.Client.WPF.Pages
                     // Показываем уведомление если сообщение не от текущего пользователя
                     if (message.SenderId != App.GParam.UserId)
                     {
-                        ShowNotificationForMessage(chatId, message, existingChatItem);
+                        _ = ShowNotificationForMessage(chatId, message, existingChatItem);
                     }
                 }
                 else
@@ -1371,7 +1371,7 @@ namespace BarkFluff.Client.WPF.Pages
         /// <summary>
         /// Показывает уведомление для нового сообщения
         /// </summary>
-        private async void ShowNotificationForMessage(string chatId, MessageModel message, ChatItem? chatItem)
+        private async Task ShowNotificationForMessage(string chatId, MessageModel message, ChatItem? chatItem)
         {
             try
             {
