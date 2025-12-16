@@ -1380,11 +1380,11 @@ namespace BarkFluff.Client.WPF.Pages
                 string? avatarFileId = null;
                 string? avatarUrl = null;
 
-                // Пытаемся получить аватар
+                // Пытаемся получить аватар - используем уже извлечённый fileId из ChatItem
                 if (chatItem != null)
                 {
                     avatarUrl = chatItem.AvatarUrl;
-                    avatarFileId = FileCacheService.ExtractFileIdFromUrl(avatarUrl);
+                    avatarFileId = chatItem.AvatarFileId; // Используем уже извлечённый fileId
                 }
 
                 // Показываем уведомление через NotificationManager

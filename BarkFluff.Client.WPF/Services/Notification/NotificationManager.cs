@@ -399,6 +399,26 @@ namespace BarkFluff.Client.WPF.Services.Notification
         }
 
         /// <summary>
+        /// Преобразует локальный путь к файлу в file:// URI для использования в Toast уведомлениях
+        /// </summary>
+        private static string? ConvertToFileUri(string localPath)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(localPath) || !File.Exists(localPath))
+                    return null;
+
+                // Используем Uri конструктор для правильного преобразования локального пути
+                var uri = new Uri(localPath);
+                return uri.AbsoluteUri;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
         /// Получить путь к закешированному изображению с поддержкой отмены
         /// </summary>
         private async Task<string?> GetCachedImagePathWithTimeoutAsync(string? fileId, string? url, FileType fileType, CancellationToken cancellationToken)
@@ -410,12 +430,11 @@ namespace BarkFluff.Client.WPF.Services.Notification
             if (!string.IsNullOrEmpty(fileId) && _fileCacheService.IsFileCached(fileId))
             {
                 var cachedPath = _fileCacheService.GetCachedFilePath(fileId, fileType, url);
-                if (!string.IsNullOrEmpty(cachedPath) && !FileCacheService.IsPlaceholder(cachedPath) && File.Exists(cachedPath))
+                if (!string.IsNullOrEmpty(cachedPath) && !FileCacheService.IsPlaceholder(cachedPath))
                 {
-                    if (Uri.TryCreate(cachedPath, UriKind.Absolute, out var cachedUri))
-                    {
-                        return cachedUri.AbsoluteUri;
-                    }
+                    var fileUri = ConvertToFileUri(cachedPath);
+                    if (fileUri != null)
+                        return fileUri;
                 }
             }
 
@@ -433,12 +452,11 @@ namespace BarkFluff.Client.WPF.Services.Notification
             if (_fileCacheService.IsFileCached(effectiveFileId))
             {
                 var cachedPath = _fileCacheService.GetCachedFilePath(effectiveFileId, fileType, url);
-                if (!string.IsNullOrEmpty(cachedPath) && !FileCacheService.IsPlaceholder(cachedPath) && File.Exists(cachedPath))
+                if (!string.IsNullOrEmpty(cachedPath) && !FileCacheService.IsPlaceholder(cachedPath))
                 {
-                    if (Uri.TryCreate(cachedPath, UriKind.Absolute, out var cachedUri))
-                    {
-                        return cachedUri.AbsoluteUri;
-                    }
+                    var fileUri = ConvertToFileUri(cachedPath);
+                    if (fileUri != null)
+                        return fileUri;
                 }
             }
 
@@ -451,12 +469,11 @@ namespace BarkFluff.Client.WPF.Services.Notification
                 if (completedTask == downloadTask)
                 {
                     var path = await downloadTask;
-                    if (!string.IsNullOrEmpty(path) && !FileCacheService.IsPlaceholder(path) && File.Exists(path))
+                    if (!string.IsNullOrEmpty(path) && !FileCacheService.IsPlaceholder(path))
                     {
-                        if (Uri.TryCreate(path, UriKind.Absolute, out var uri))
-                        {
-                            return uri.AbsoluteUri;
-                        }
+                        var fileUri = ConvertToFileUri(path);
+                        if (fileUri != null)
+                            return fileUri;
                     }
                 }
                 else
@@ -489,12 +506,11 @@ namespace BarkFluff.Client.WPF.Services.Notification
             if (!string.IsNullOrEmpty(fileId))
             {
                 var path = await _fileCacheService.GetCachedFilePathAsync(fileId, fileType, url);
-                if (!string.IsNullOrEmpty(path) && !FileCacheService.IsPlaceholder(path) && File.Exists(path))
+                if (!string.IsNullOrEmpty(path) && !FileCacheService.IsPlaceholder(path))
                 {
-                    if (Uri.TryCreate(path, UriKind.Absolute, out var uri))
-                    {
-                        return uri.AbsoluteUri;
-                    }
+                    var fileUri = ConvertToFileUri(path);
+                    if (fileUri != null)
+                        return fileUri;
                 }
             }
 
@@ -505,12 +521,11 @@ namespace BarkFluff.Client.WPF.Services.Notification
                 if (!string.IsNullOrEmpty(extractedFileId))
                 {
                     var path = await _fileCacheService.GetCachedFilePathAsync(extractedFileId, fileType, url);
-                    if (!string.IsNullOrEmpty(path) && !FileCacheService.IsPlaceholder(path) && File.Exists(path))
+                    if (!string.IsNullOrEmpty(path) && !FileCacheService.IsPlaceholder(path))
                     {
-                        if (Uri.TryCreate(path, UriKind.Absolute, out var uri))
-                        {
-                            return uri.AbsoluteUri;
-                        }
+                        var fileUri = ConvertToFileUri(path);
+                        if (fileUri != null)
+                            return fileUri;
                     }
                 }
             }

@@ -82,6 +82,11 @@ namespace BarkFluff.Client.WPF.UserControls
         /// </summary>
         public long UserId => _userId;
 
+        /// <summary>
+        /// ID файла аватара (уже извлечённый из URL)
+        /// </summary>
+        public string? AvatarFileId => _avatarFileId;
+
         public ChatItem(string imageUrl, string chatName, string lastMessageText, string time, ReadingStatus reading, List<long> readBy, long unReaded, string chatId, long lastMessageId, bool isGroupChat, long userId)
         {
             InitializeComponent();
