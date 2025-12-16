@@ -6,6 +6,7 @@ using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 using Microsoft.Toolkit.Uwp.Notifications;
 
 using System.IO;
+using System.Net.Http;
 
 using Windows.UI.Notifications;
 
@@ -226,85 +227,30 @@ namespace BarkFluff.Client.WPF.Services.Notification
                 builder.AddArgument("chatId", data.ChatId);
                 builder.AddArgument("messageId", data.LastMessageId.ToString());
 
-                // Логируем входные данные для отладки
-                WPF.App.ErideMessage?.AddMessage(
-                    $"[Notification] AvatarFileId={data.AvatarFileId ?? "null"}, AvatarUrl={data.AvatarUrl ?? "null"}",
-                    new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
-
-                // Загружаем аватар с таймаутом
-                string? avatarPath = null;
-                bool avatarLoaded = false;
-                try
+                // Получаем путь к аватару из кеша или скачиваем
+                string? avatarUri = await GetImageUriForToastAsync(data.AvatarFileId, data.AvatarUrl, FileType.Avatar);
+                if (!string.IsNullOrEmpty(avatarUri))
                 {
-                    using var avatarCts = new CancellationTokenSource(ImageLoadTimeout);
-                    avatarPath = await GetCachedImagePathWithTimeoutAsync(
-                        data.AvatarFileId, 
-                        data.AvatarUrl, 
-                        FileType.Avatar, 
-                        avatarCts.Token);
-                    avatarLoaded = !string.IsNullOrEmpty(avatarPath) && !FileCacheService.IsPlaceholder(avatarPath);
-                    
-                    WPF.App.ErideMessage?.AddMessage(
-                        $"[Notification] Avatar result: path={avatarPath ?? "null"}, loaded={avatarLoaded}",
-                        new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
-                }
-                catch (OperationCanceledException)
-                {
-                    // Таймаут - используем заглушку
-                    avatarLoaded = false;
-                    WPF.App.ErideMessage?.AddMessage(
-                        "[Notification] Avatar loading timed out",
-                        new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
+                    builder.AddAppLogoOverride(new Uri(avatarUri), ToastGenericAppLogoCrop.Circle);
                 }
 
-                // Добавляем аватар (заглушку если не загрузился)
-                if (avatarLoaded && !string.IsNullOrEmpty(avatarPath))
-                {
-                    builder.AddAppLogoOverride(new Uri(avatarPath), ToastGenericAppLogoCrop.Circle);
-                }
-                else
-                {
-                    // Используем заглушку для аватара
-                    var placeholderPath = GetLocalPlaceholderPath(FileType.Avatar);
-                    if (!string.IsNullOrEmpty(placeholderPath))
-                    {
-                        builder.AddAppLogoOverride(new Uri(placeholderPath), ToastGenericAppLogoCrop.Circle);
-                    }
-                }
-
-                // Добавляем заголовок и текст
+                // Добавляем заголовок
                 builder.AddText(data.Title);
 
-                // Загружаем превью изображения с таймаутом (если есть)
-                bool imageLoaded = false;
-                string? imagePath = null;
+                // Получаем путь к изображению из кеша или скачиваем (если есть)
+                string? imageUri = null;
                 if ((data.Type == NotificationType.ImageMessage || data.Type == NotificationType.GifMessage)
                     && (!string.IsNullOrEmpty(data.ImageFileId) || !string.IsNullOrEmpty(data.ImageUrl)))
                 {
-                    try
-                    {
-                        using var imageCts = new CancellationTokenSource(ImageLoadTimeout);
-                        imagePath = await GetCachedImagePathWithTimeoutAsync(
-                            data.ImageFileId, 
-                            data.ImageUrl, 
-                            FileType.Image, 
-                            imageCts.Token);
-                        imageLoaded = !string.IsNullOrEmpty(imagePath) && !FileCacheService.IsPlaceholder(imagePath);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        // Таймаут - не показываем превью
-                        imageLoaded = false;
-                    }
+                    imageUri = await GetImageUriForToastAsync(data.ImageFileId, data.ImageUrl, FileType.Image);
                 }
 
                 // Формируем текст сообщения
                 string messageText = data.Message;
                 
-                // Если изображение не загрузилось, но тип сообщения - картинка, обновляем текст
-                if (!imageLoaded && (data.Type == NotificationType.ImageMessage || data.Type == NotificationType.GifMessage))
+                // Если изображение не загрузилось, но тип сообщения - картинка, добавляем текстовое обозначение
+                if (string.IsNullOrEmpty(imageUri) && (data.Type == NotificationType.ImageMessage || data.Type == NotificationType.GifMessage))
                 {
-                    // Если текст ещё не содержит информацию о картинке - добавляем её
                     if (!string.IsNullOrEmpty(data.Message) && !data.Message.StartsWith("📷"))
                     {
                         if (data.FileCount > 1)
@@ -316,10 +262,10 @@ namespace BarkFluff.Client.WPF.Services.Notification
 
                 builder.AddText(messageText);
 
-                // Добавляем превью изображения если загрузилось
-                if (imageLoaded && !string.IsNullOrEmpty(imagePath))
+                // Добавляем превью изображения если получилось загрузить
+                if (!string.IsNullOrEmpty(imageUri))
                 {
-                    builder.AddInlineImage(new Uri(imagePath));
+                    builder.AddInlineImage(new Uri(imageUri));
                 }
 
                 var toastContent = builder.GetToastContent();
@@ -339,212 +285,97 @@ namespace BarkFluff.Client.WPF.Services.Notification
         }
 
         /// <summary>
-        /// Получает локальный путь к placeholder-изображению для использования в уведомлениях
+        /// Получает URI изображения для использования в Toast уведомлении.
+        /// Сначала проверяет кеш, если файл не в кеше - скачивает с таймаутом.
         /// </summary>
-        private static string? GetLocalPlaceholderPath(FileType fileType)
+        private async Task<string?> GetImageUriForToastAsync(string? fileId, string? url, FileType fileType)
         {
-            try
+            // Шаг 1: Пробуем получить из кеша по fileId
+            if (!string.IsNullOrEmpty(fileId) && _fileCacheService != null)
             {
-                // Для уведомлений нужен реальный файл, а не pack:// URI
-                // Создаём временный файл из ресурса если нужно
-                var tempDir = Path.Combine(Path.GetTempPath(), "BarkFluff", "placeholders");
-                Directory.CreateDirectory(tempDir);
-
-                var fileName = fileType switch
+                if (_fileCacheService.IsFileCached(fileId))
                 {
-                    FileType.Avatar => "avatar_placeholder.png",
-                    FileType.Image => "image_placeholder.png",
-                    _ => "default_placeholder.png"
-                };
-
-                var placeholderPath = Path.Combine(tempDir, fileName);
-
-                // Если файл уже существует - возвращаем его
-                if (File.Exists(placeholderPath))
-                {
-                    return new Uri(placeholderPath).AbsoluteUri;
-                }
-
-                // Создаём простой placeholder-файл
-                // Это серый квадрат 64x64 пикселя
-                CreateSimplePlaceholderImage(placeholderPath);
-
-                if (File.Exists(placeholderPath))
-                {
-                    return new Uri(placeholderPath).AbsoluteUri;
+                    var cachedPath = _fileCacheService.GetCachedFilePath(fileId, fileType, url);
+                    if (!string.IsNullOrEmpty(cachedPath) && !FileCacheService.IsPlaceholder(cachedPath) && File.Exists(cachedPath))
+                    {
+                        // Преобразуем локальный путь в file:// URI
+                        return new Uri(cachedPath).AbsoluteUri;
+                    }
                 }
             }
-            catch
-            {
-                // Игнорируем ошибки
-            }
 
-            return null;
-        }
-
-        /// <summary>
-        /// Создаёт простое placeholder-изображение
-        /// </summary>
-        private static void CreateSimplePlaceholderImage(string path)
-        {
-            try
-            {
-                // Создаём простой PNG 1x1 серый пиксель (минимальный валидный PNG)
-                byte[] pngData = new byte[]
-                {
-                    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG signature
-                    0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, // IHDR chunk
-                    0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, // 1x1
-                    0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53, 0xDE, // 8-bit RGB
-                    0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41, 0x54, // IDAT chunk
-                    0x08, 0xD7, 0x63, 0x90, 0x90, 0x90, 0x00, 0x00, // compressed data (gray)
-                    0x00, 0x04, 0x00, 0x01, 0x11, 0x3D, 0x7D, 0x3E,
-                    0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, // IEND chunk
-                    0xAE, 0x42, 0x60, 0x82
-                };
-                File.WriteAllBytes(path, pngData);
-            }
-            catch
-            {
-                // Игнорируем ошибки
-            }
-        }
-
-        /// <summary>
-        /// Преобразует локальный путь к файлу в file:// URI для использования в Toast уведомлениях
-        /// </summary>
-        private static string? ConvertToFileUri(string localPath)
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(localPath) || !File.Exists(localPath))
-                    return null;
-
-                // Используем Uri конструктор для правильного преобразования локального пути
-                var uri = new Uri(localPath);
-                return uri.AbsoluteUri;
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// Получить путь к закешированному изображению с поддержкой отмены
-        /// </summary>
-        private async Task<string?> GetCachedImagePathWithTimeoutAsync(string? fileId, string? url, FileType fileType, CancellationToken cancellationToken)
-        {
-            if (_fileCacheService == null)
-                return null;
-
-            // Логируем входные данные
-            WPF.App.ErideMessage?.AddMessage($"[Notification] GetCachedImagePathWithTimeoutAsync: fileId={fileId ?? "null"}, url={url ?? "null"}, type={fileType}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
-
-            // Определяем effectiveFileId - либо переданный, либо извлечённый из URL
+            // Шаг 2: Если нет fileId, пробуем извлечь из URL
             var effectiveFileId = fileId;
             if (string.IsNullOrEmpty(effectiveFileId) && !string.IsNullOrEmpty(url))
             {
                 effectiveFileId = FileCacheService.ExtractFileIdFromUrl(url);
             }
 
-            // Если effectiveFileId всё ещё пустой - не можем ничего сделать
-            if (string.IsNullOrEmpty(effectiveFileId))
+            // Шаг 3: Пробуем получить из кеша по извлечённому fileId
+            if (!string.IsNullOrEmpty(effectiveFileId) && _fileCacheService != null)
             {
-                WPF.App.ErideMessage?.AddMessage("[Notification] No fileId available", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
-                return null;
-            }
-
-            // Проверяем кеш синхронно
-            if (_fileCacheService.IsFileCached(effectiveFileId))
-            {
-                // Файл уже в кеше - получаем путь
-                var cachedPath = _fileCacheService.GetCachedFilePath(effectiveFileId, fileType, url);
-                WPF.App.ErideMessage?.AddMessage($"[Notification] File is cached, path: {cachedPath}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
-                
-                if (!string.IsNullOrEmpty(cachedPath) && !FileCacheService.IsPlaceholder(cachedPath))
+                if (_fileCacheService.IsFileCached(effectiveFileId))
                 {
-                    var fileUri = ConvertToFileUri(cachedPath);
-                    if (fileUri != null)
-                        return fileUri;
-                }
-            }
-
-            // Файл не в кеше - запускаем загрузку с таймаутом
-            WPF.App.ErideMessage?.AddMessage($"[Notification] File not in cache, starting download for {effectiveFileId}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
-            
-            try
-            {
-                var downloadTask = _fileCacheService.GetCachedFilePathAsync(effectiveFileId, fileType, url);
-                var timeoutTask = Task.Delay(ImageLoadTimeout, cancellationToken);
-                var completedTask = await Task.WhenAny(downloadTask, timeoutTask);
-
-                if (completedTask == downloadTask)
-                {
-                    var path = await downloadTask;
-                    WPF.App.ErideMessage?.AddMessage($"[Notification] Download completed, path: {path}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
-                    
-                    if (!string.IsNullOrEmpty(path) && !FileCacheService.IsPlaceholder(path))
+                    var cachedPath = _fileCacheService.GetCachedFilePath(effectiveFileId, fileType, url);
+                    if (!string.IsNullOrEmpty(cachedPath) && !FileCacheService.IsPlaceholder(cachedPath) && File.Exists(cachedPath))
                     {
-                        var fileUri = ConvertToFileUri(path);
-                        if (fileUri != null)
-                            return fileUri;
+                        return new Uri(cachedPath).AbsoluteUri;
                     }
                 }
-                else
+            }
+
+            // Шаг 4: Файл не в кеше - скачиваем с таймаутом (как в ToastNotificationService)
+            if (!string.IsNullOrEmpty(url) && !FileCacheService.IsPlaceholder(url))
+            {
+                try
                 {
-                    WPF.App.ErideMessage?.AddMessage("[Notification] Download timed out", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
+                    using var cts = new CancellationTokenSource(ImageLoadTimeout);
+                    var tempUri = await DownloadToTempAsync(url, fileType, cts.Token);
+                    return tempUri;
                 }
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                WPF.App.ErideMessage?.AddMessage($"[Notification] Error: {ex.Message}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
+                catch (OperationCanceledException)
+                {
+                    // Таймаут - возвращаем null
+                }
+                catch
+                {
+                    // Другие ошибки - возвращаем null
+                }
             }
 
             return null;
         }
 
         /// <summary>
-        /// Получить путь к закешированному изображению
+        /// Скачивает изображение во временную папку (как fallback если нет в кеше)
         /// </summary>
-        private async Task<string?> GetCachedImagePathAsync(string? fileId, string? url, FileType fileType)
+        private static async Task<string?> DownloadToTempAsync(string url, FileType fileType, CancellationToken cancellationToken)
         {
-            if (_fileCacheService == null)
+            try
+            {
+                using var client = new HttpClient();
+                client.Timeout = ImageLoadTimeout;
+                
+                var bytes = await client.GetByteArrayAsync(url, cancellationToken);
+                
+                var fileName = fileType switch
+                {
+                    FileType.Avatar => "notification_avatar.png",
+                    FileType.Image => "notification_image.png",
+                    _ => "notification_file.png"
+                };
+                
+                var tempPath = Path.Combine(Path.GetTempPath(), "BarkFluff", fileName);
+                Directory.CreateDirectory(Path.GetDirectoryName(tempPath)!);
+                
+                await File.WriteAllBytesAsync(tempPath, bytes, cancellationToken);
+                
+                return new Uri(tempPath).AbsoluteUri;
+            }
+            catch
+            {
                 return null;
-
-            // Если есть fileId - используем его
-            if (!string.IsNullOrEmpty(fileId))
-            {
-                var path = await _fileCacheService.GetCachedFilePathAsync(fileId, fileType, url);
-                if (!string.IsNullOrEmpty(path) && !FileCacheService.IsPlaceholder(path))
-                {
-                    var fileUri = ConvertToFileUri(path);
-                    if (fileUri != null)
-                        return fileUri;
-                }
             }
-
-            // Пробуем извлечь fileId из URL
-            if (!string.IsNullOrEmpty(url))
-            {
-                var extractedFileId = FileCacheService.ExtractFileIdFromUrl(url);
-                if (!string.IsNullOrEmpty(extractedFileId))
-                {
-                    var path = await _fileCacheService.GetCachedFilePathAsync(extractedFileId, fileType, url);
-                    if (!string.IsNullOrEmpty(path) && !FileCacheService.IsPlaceholder(path))
-                    {
-                        var fileUri = ConvertToFileUri(path);
-                        if (fileUri != null)
-                            return fileUri;
-                    }
-                }
-            }
-
-            return null;
         }
 
         /// <summary>
