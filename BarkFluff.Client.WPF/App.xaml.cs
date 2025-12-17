@@ -21,9 +21,11 @@ namespace BarkFluff.Client.WPF
 #if (DEBUG)
         private const string AppUserModelId = "com.barkfluff.messenger.debug";
         private const string MutexName = "BarkFluffDebug";
+        private const string ShortcutName = "BarkFluff Dev.lnk";
 #else
         private const string AppUserModelId = "com.barkfluff.messenger";
         private const string MutexName = "BarkFluffMutex";
+        private const string ShortcutName = "BarkFluff.lnk";
 #endif
         public static ReactiveString MessagerTask = new ReactiveString(); //задача для мессенджера, которая будет выполнена при запуске через протокол или при запуске нового экземпляра
         public static BarkFluff.WebApi.Core.WebApi ServerCommunication { get; set; } = null!;
@@ -169,7 +171,7 @@ namespace BarkFluff.Client.WPF
                 var baseDir = AppContext.BaseDirectory;
                 targetPath = Path.Combine(baseDir, "BarkFluff.exe");
 #endif
-                string shortcutPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Programs", "BarkFluff.lnk");
+                string shortcutPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Programs", ShortcutName);
                 if (!File.Exists(shortcutPath))
                 {
                     ShortcutHelper.CreateShortcut(shortcutPath, targetPath, AppUserModelId);
