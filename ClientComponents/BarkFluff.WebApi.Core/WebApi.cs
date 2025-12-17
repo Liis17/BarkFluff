@@ -1444,10 +1444,15 @@ namespace BarkFluff.WebApi.Core
                     return (new ErrorReturner(true), response.FileUrls[0].Url);
                 }, globalParam);
             }
+            catch (BarkFluff.Shared.Exceptions.Files.NotValidFileIdException)
+            {
+                return (new ErrorReturner(false, "Неверный формат идентификатора файла. Он должен быть guid"), null);
+            }
             catch (Exception ex)
             {
                 return (new ErrorReturner(false, "Ошибка получения файла"), null);
             }
+            return new ErrorReturner(true);
         }
 
         public async Task<(ErrorReturner error, List<string>? urls)> GetFiles(GlobalParam globalParam, List<string> fileId)
