@@ -4,7 +4,6 @@ using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
 using Google.Protobuf.WellKnownTypes;
 
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -21,7 +20,7 @@ namespace BarkFluff.Client.WPF.UserControls
         private const int IMAGE_MAX_WIDTH = 400;
         private const int IMAGE_MAX_HEIGHT = 300;
         private const string DEFAULT_SEND_ERROR = "Ошибка отправки сообщения";
-        
+
         // Status indicator opacity values
         private const double STATUS_READ_OPACITY = 1.0;
         private const double STATUS_SENT_OPACITY = 0.7;
@@ -95,11 +94,11 @@ namespace BarkFluff.Client.WPF.UserControls
             ReadBy = new List<long>();
             _owner = MessageOwner.Me;
             ThemedConfirm(MessageOwner.Me);
-            
+
             // Set pending state if files need to be uploaded
             IsPending = filesId != null && filesId.Count > 0;
             _pendingFileIds = filesId ?? new List<string>();
-            
+
             UpdateReadStatus();
 
             if (options.sendingRequired)
@@ -201,8 +200,8 @@ namespace BarkFluff.Client.WPF.UserControls
         /// </summary>
         private void SetMediaContentMargin(bool isDocument)
         {
-            MediaContentPresenter.Margin = isDocument 
-                ? new Thickness(8, 8, 8, 5) 
+            MediaContentPresenter.Margin = isDocument
+                ? new Thickness(8, 8, 8, 5)
                 : new Thickness(0, 0, 0, 5);
         }
 
@@ -326,30 +325,16 @@ namespace BarkFluff.Client.WPF.UserControls
             else if (response.message != null)
             {
                 MessageId = response.message.MessageId.ToString();
-                
+
                 // Mark as sent (no longer pending)
                 MarkAsSent();
-                
+
                 App.CacheManager.SaveMessage(
                     response.message.ChatId,
                     string.Empty,
                     response.message,
                     MessageOperation.Added);
             }
-
-            MediaContentPresenter.Content = uploadingPanel;
-            SetMediaContentMargin(true);
-        }
-
-        /// <summary>
-        /// Updates the upload progress for a specific attachment by index
-        /// </summary>
-        public void UpdateAttachmentProgress(int index, double progress)
-        {
-            if (index < 0 || index >= _uploadingItems.Count)
-                return;
-
-            _uploadingItems[index].UpdateProgress(progress);
         }
 
         /// <summary>
@@ -456,7 +441,7 @@ namespace BarkFluff.Client.WPF.UserControls
         public void UpdateReadByList(List<long> newReadBy)
         {
             if (newReadBy == null) return;
-            
+
             ReadBy = newReadBy;
             Dispatcher.Invoke(() => UpdateReadStatus());
         }
@@ -492,41 +477,6 @@ namespace BarkFluff.Client.WPF.UserControls
                 return;
 
             _uploadingItems[index].UpdateProgress(progress);
-        }
-
-        /// <summary>
-        /// Marks a specific attachment as uploaded
-        /// </summary>
-        public void MarkAttachmentUploaded(int index, string fileId)
-        {
-            if (index < 0 || index >= _uploadingItems.Count)
-                return;
-
-            _uploadingItems[index].MarkAsUploaded(fileId);
-            // Note: Message sending happens in MessengerPage after all files are uploaded
-        }
-
-        /// <summary>
-        /// Marks a specific attachment as failed
-        /// </summary>
-        public void MarkAttachmentFailed(int index, string errorMessage)
-        {
-            if (index < 0 || index >= _uploadingItems.Count)
-                return;
-
-            _uploadingItems[index].MarkAsFailed(errorMessage);
-        }
-
-        /// <summary>
-        /// Replaces the uploading panel with the actual content after successful upload
-        /// </summary>
-        public void ReplaceUploadingWithContent(MessageModel message, MessageType messageType)
-        {
-            Dispatcher.Invoke(() =>
-            {
-                _uploadingItems.Clear();
-                SetupContent(message, messageType);
-            });
         }
 
         private void ThemedConfirm(MessageOwner owner)
