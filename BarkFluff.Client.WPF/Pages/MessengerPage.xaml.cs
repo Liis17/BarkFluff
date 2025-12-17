@@ -1,5 +1,6 @@
 ﻿using BarkFluff.Client.WPF.Reactive;
 using BarkFluff.Client.WPF.Services.App.Caching;
+using BarkFluff.Client.WPF.Services.Notification;
 using BarkFluff.Client.WPF.UserControls;
 using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
@@ -237,6 +238,9 @@ namespace BarkFluff.Client.WPF.Pages
             // Отписываемся от событий кеширования
             App.FileCacheService.FileCached -= OnFileCached;
 
+            // Отписываемся от событий клика по уведомлениям
+            App.NotificationManager.NotificationClicked -= OnNotificationClicked;
+
             // Отписываемся от подписок сервиса реального времени
             CleanupRealtimeService();
 
@@ -466,6 +470,9 @@ namespace BarkFluff.Client.WPF.Pages
         {
             // Подписываемся на события кеширования
             App.FileCacheService.FileCached += OnFileCached;
+
+            // Подписываемся на события клика по уведомлениям
+            App.NotificationManager.NotificationClicked += OnNotificationClicked;
 
             // Устанавливаем placeholder для аватарок
             ChatAvatar.ImageSource = null;
@@ -1305,6 +1312,12 @@ namespace BarkFluff.Client.WPF.Pages
                     {
                         existingChatItem.IncrementUnreadCount();
                     }
+
+                    // Показываем уведомление если сообщение не от текущего пользователя
+                    if (message.SenderId != App.GParam.UserId)
+                    {
+                        _ = ShowNotificationForMessage(chatId, message, existingChatItem);
+                    }
                 }
                 else
                 {
@@ -1353,6 +1366,38 @@ namespace BarkFluff.Client.WPF.Pages
                     }
                 }
             });
+        }
+
+        /// <summary>
+        /// Показывает уведомление для нового сообщения
+        /// </summary>
+        private async Task ShowNotificationForMessage(string chatId, MessageModel message, ChatItem? chatItem)
+        {
+            try
+            {
+                // Получаем имя отправителя и аватар из ChatItem
+                string senderName = chatItem?.ChatTitle ?? "Новое сообщение";
+                string? avatarFileId = null;
+                string? avatarUrl = null;
+
+                // Пытаемся получить аватар - используем уже извлечённый fileId из ChatItem
+                if (chatItem != null)
+                {
+                    avatarUrl = chatItem.AvatarUrl;
+                    avatarFileId = chatItem.AvatarFileId;
+                }
+
+                // Показываем уведомление через NotificationManager
+                await App.NotificationManager.ShowMessageNotificationAsync(
+                    message,
+                    senderName,
+                    avatarFileId,
+                    avatarUrl);
+            }
+            catch (Exception ex)
+            {
+                App.ErideMessage.AddMessage($"Ошибка показа уведомления: {ex.Message}", new Erida { Type = MType.Error });
+            }
         }
 
         /// <summary>
@@ -1532,6 +1577,43 @@ namespace BarkFluff.Client.WPF.Pages
             ChatId.Value = string.Empty;
             ChatIdbyUserId.Dispose();
             ChatIdbyUserId = new ReactiveLong(0);
+        }
+
+        /// <summary>
+        /// Обработчик клика по уведомлению - открывает соответствующий чат
+        /// </summary>
+        private void OnNotificationClicked(NotificationData data)
+        {
+            if (string.IsNullOrEmpty(data.ChatId))
+                return;
+
+            // Ищем чат в списке чатов
+            ChatItem? targetChatItem = null;
+            foreach (var child in ChatList.Children)
+            {
+                if (child is ChatItem chatItem && chatItem.ChatId == data.ChatId)
+                {
+                    targetChatItem = chatItem;
+                    break;
+                }
+            }
+
+            if (targetChatItem != null)
+            {
+                // Открываем чат через существующий метод
+                OpenChatById(
+                    targetChatItem.ChatId,
+                    targetChatItem.LastMessageId,
+                    targetChatItem.IsGroupChat,
+                    targetChatItem.UserId,
+                    targetChatItem.ChatTitle);
+            }
+            else
+            {
+                // Чат не найден в списке - обновляем список чатов
+                App.ErideMessage.AddMessage($"Чат {data.ChatId} не найден в списке, обновляем...", new Erida { Type = MType.Debug });
+                _ = ChatUpdate();
+            }
         }
 
         #endregion
