@@ -298,8 +298,9 @@ namespace BarkFluff.Client.WPF.Services.Notification
                     var cachedPath = _fileCacheService.GetCachedFilePath(fileId, fileType, url);
                     if (!string.IsNullOrEmpty(cachedPath) && !FileCacheService.IsPlaceholder(cachedPath) && File.Exists(cachedPath))
                     {
-                        // Преобразуем локальный путь в file:// URI
-                        return new Uri(cachedPath).AbsoluteUri;
+                        // Преобразуем относительный путь в абсолютный, затем в file:// URI
+                        var absolutePath = Path.GetFullPath(cachedPath);
+                        return new Uri(absolutePath).AbsoluteUri;
                     }
                 }
             }
@@ -319,7 +320,9 @@ namespace BarkFluff.Client.WPF.Services.Notification
                     var cachedPath = _fileCacheService.GetCachedFilePath(effectiveFileId, fileType, url);
                     if (!string.IsNullOrEmpty(cachedPath) && !FileCacheService.IsPlaceholder(cachedPath) && File.Exists(cachedPath))
                     {
-                        return new Uri(cachedPath).AbsoluteUri;
+                        // Преобразуем относительный путь в абсолютный, затем в file:// URI
+                        var absolutePath = Path.GetFullPath(cachedPath);
+                        return new Uri(absolutePath).AbsoluteUri;
                     }
                 }
             }
