@@ -1452,7 +1452,6 @@ namespace BarkFluff.WebApi.Core
             {
                 return (new ErrorReturner(false, "Ошибка получения файла"), null);
             }
-            return new ErrorReturner(true);
         }
 
         public async Task<(ErrorReturner error, List<string>? urls)> GetFiles(GlobalParam globalParam, List<string> fileId)

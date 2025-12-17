@@ -23,17 +23,6 @@ namespace BarkFluff.Client.WPF.Services.Notification.System
             sb.Append(" & ");
             sb.Append($"reg add \"HKCR\\{protocolName}\\shell\\open\\command\" /ve /d \"{commandPathEntry}\" /f");
 
-            // Формируем сложную команду для cmd.exe
-            // Конструкция \"\\\" нужен, чтобы в реестр записались кавычки вокруг пути
-            string commandPathEntry = $"\\\"{exePath}\\\" \\\"%1\\\"";
-
-            var sb = new StringBuilder();
-            sb.Append($"reg add \"HKCR\\{protocolName}\" /ve /d \"{protocolDescription}\" /f");
-            sb.Append(" & ");
-            sb.Append($"reg add \"HKCR\\{protocolName}\" /v \"URL Protocol\" /d \"\" /f");
-            sb.Append(" & ");
-            sb.Append($"reg add \"HKCR\\{protocolName}\\shell\\open\\command\" /ve /d \"{commandPathEntry}\" /f");
-
             var psi = new ProcessStartInfo
             {
                 FileName = "cmd.exe",
