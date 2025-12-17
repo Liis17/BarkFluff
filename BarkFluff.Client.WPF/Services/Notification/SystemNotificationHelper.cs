@@ -1,5 +1,4 @@
-﻿using System.Media;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 
 namespace BarkFluff.Client.WPF.Services.Notification
 {
@@ -27,7 +26,7 @@ namespace BarkFluff.Client.WPF.Services.Notification
         {
             try
             {
-                SystemSounds.Asterisk.Play();
+                //SystemSounds.Asterisk.Play();
             }
             catch
             {

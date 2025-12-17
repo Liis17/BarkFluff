@@ -591,40 +591,6 @@ namespace BarkFluff.Client.WPF.Pages
 
         #endregion
 
-        #region Обработчка аргументов из протокола
-
-        private async void OpenChatViaProtocol(string task)
-        {
-            try
-            {
-                var temp1 = task.Split("//");
-                var temp2 = temp1[1].Replace("/", "");
-                var command = temp2.Split("=")[0];
-                var arg = temp2.Split("=")[1];
-                if (command == "user-username")
-                {
-                    var result = await App.ServerCommunication.SearchUser(App.GParam, arg);
-                    if (result.userList.Count > 0)
-                    {
-                        var user = result.userList[0];
-                        IsOpenChatEmpty = true;
-                        IsOpenChat.Value = true;
-                        ChatIdbyUserId.Value = user.Id;
-                    }
-                    else
-                    {
-                        MessageBox.Show("Пользователь не найден");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                var a = ex.Message;
-                MessageBox.Show("Ошибка при выполнении задачи из протокола");
-            }
-        }
-
-        #endregion
 
         #region Сообщения
         private const int MESSAGE_LIMIT = 4096; // лимит символов в одном сообщении
