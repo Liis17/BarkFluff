@@ -336,6 +336,52 @@ namespace BarkFluff.Client.WPF.UserControls
                     response.message,
                     MessageOperation.Added);
             }
+
+            MediaContentPresenter.Content = uploadingPanel;
+            SetMediaContentMargin(true);
+        }
+
+        /// <summary>
+        /// Updates the upload progress for a specific attachment by index
+        /// </summary>
+        public void UpdateAttachmentProgress(int index, double progress)
+        {
+            if (index < 0 || index >= _uploadingItems.Count)
+                return;
+
+            _uploadingItems[index].UpdateProgress(progress);
+        }
+
+        /// <summary>
+        /// Marks a specific attachment as uploaded
+        /// </summary>
+        public void MarkAttachmentUploaded(int index, string fileId)
+        {
+            if (index < 0 || index >= _uploadingItems.Count)
+                return;
+
+            _uploadingItems[index].MarkAsUploaded(fileId);
+            // Note: Message sending happens in MessengerPage after all files are uploaded
+        }
+
+        /// <summary>
+        /// Marks a specific attachment as failed
+        /// </summary>
+        public void MarkAttachmentFailed(int index, string errorMessage)
+        {
+            if (index < 0 || index >= _uploadingItems.Count)
+                return;
+
+            _uploadingItems[index].MarkAsFailed(errorMessage);
+        }
+
+        /// <summary>
+        /// Replaces the uploading panel with the actual content after successful upload
+        /// </summary>
+        public void ReplaceUploadingWithContent(MessageModel message, MessageType messageType)
+        {
+            _uploadingItems.Clear();
+            SetupContent(message, messageType);
         }
 
         /// <summary>
