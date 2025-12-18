@@ -7,6 +7,7 @@ using BarkFluff.Shared.Queue.Notifications;
 using GrpcServer.XAuth;
 using Infrastructure;
 using MediatR;
+using Microsoft.Extensions.Logging;
 using Persistence.Services;
 using Services;
 
@@ -19,10 +20,12 @@ public class SetPasswordCommandHandler : IRequestHandler<SetPasswordCommand>
     private readonly LocationClient _locationClient;
     private readonly UsersServerApi.UsersServerApiClient _usersClient;
     private readonly RequestContext _requestContext;
+    private readonly ILogger<SetPasswordCommandHandler> _logger;
 
     public SetPasswordCommandHandler(UserContext userContext, PasswordsStorage passwordsStorage,
         RefreshTokensStorage refreshTokensStorage, NotificationQueueSender notificationQueueSender,
-        LocationClient locationClient, UsersServerApi.UsersServerApiClient usersClient, RequestContext requestContext)
+        LocationClient locationClient, UsersServerApi.UsersServerApiClient usersClient, RequestContext requestContext,
+        ILogger<SetPasswordCommandHandler> logger)
     {
         _userContext = userContext;
         _passwordsStorage = passwordsStorage;
@@ -31,11 +34,19 @@ public class SetPasswordCommandHandler : IRequestHandler<SetPasswordCommand>
         _locationClient = locationClient;
         _usersClient = usersClient;
         _requestContext = requestContext;
+        _logger = logger;
     }
 
     public async Task Handle(SetPasswordCommand request, CancellationToken cancellationToken)
     {
+        _logger.LogInformation(
+            "Начало изменения пароля для пользователя {UserId}",
+            _userContext.UserId
+        );
+
         var passwordHash = PasswordHasher.HashPassword(request.NewPassword);
+
+        _logger.LogDebug("Обновление хэша пароля в БД для пользователя {UserId}", _userContext.UserId);
 
         await _passwordsStorage.UpdateUserPasswordHash(_userContext.UserId, passwordHash);
 
@@ -72,6 +83,16 @@ public class SetPasswordCommandHandler : IRequestHandler<SetPasswordCommand>
             Type = NotificationType.PasswordChanged
         };
 
+        _logger.LogDebug(
+            "Отправка уведомления об изменении пароля на адрес {Email}",
+            userContacts.Contact.Email
+        );
+
         await _notificationQueueSender.SendNotification(passwordChangedNotification);
+
+        _logger.LogInformation(
+            "Пароль успешно изменен для пользователя {UserId}. Уведомление отправлено",
+            _userContext.UserId
+        );
     }
 }

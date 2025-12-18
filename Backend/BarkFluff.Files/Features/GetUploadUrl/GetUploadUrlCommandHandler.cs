@@ -3,6 +3,7 @@ using BarkFluff.GrpcServer.Settings;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Proto.Files;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 
 namespace BarkFluff.Files.Features.GetUploadUrl;
@@ -13,29 +14,47 @@ public class GetUploadUrlCommandHandler : IRequestHandler<GetUploadUrlCommand, G
     private readonly UploadedFilesStorage _uploadedFilesStorage;
     private readonly RunSettings _runSettings;
     private readonly UserContext _userContext;
+    private readonly ILogger<GetUploadUrlCommandHandler> _logger;
 
-    
-    public GetUploadUrlCommandHandler(UploadedFilesStorage uploadedFilesStorage, UserContext userContext, RunSettings runSettings)
+
+    public GetUploadUrlCommandHandler(UploadedFilesStorage uploadedFilesStorage, UserContext userContext, RunSettings runSettings,
+        ILogger<GetUploadUrlCommandHandler> logger)
     {
         _uploadedFilesStorage = uploadedFilesStorage;
         _userContext = userContext;
         _runSettings = runSettings;
+        _logger = logger;
     }
 
     public async Task<GetUploadUrlResponse> Handle(GetUploadUrlCommand request, CancellationToken cancellationToken)
     {
+        _logger.LogInformation(
+            "Запрос URL для загрузки файла. Тип: {FileType}, UserId: {UserId}",
+            request.Type,
+            _userContext.UserId
+        );
+
         var uploadFile = new Domain.UploadFile()
         {
             CreatedAt = DateTime.UtcNow,
             Type = request.Type,
             Uploaders = new List<long> { _userContext.UserId },
         };
-        
+
         var file = await _uploadedFilesStorage.AddToStorage(uploadFile);
+
+        var uploadUrl = $"{_runSettings.Host}:{_runSettings.Http1Port}/upload/{file.Id}";
+
+        _logger.LogInformation(
+            "URL для загрузки создан. FileId: {FileId}, Тип: {FileType}, URL: {UploadUrl}",
+            file.Id,
+            request.Type,
+            uploadUrl
+        );
 
         return new GetUploadUrlResponse()
         {
-            Url = $"{_runSettings.Host}:{_runSettings.Http1Port}/upload/{file.Id}",
+            Url = uploadUrl,
             FileId = file.Id.ToString()
         };
     }
