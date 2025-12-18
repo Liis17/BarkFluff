@@ -9,20 +9,25 @@ using BarkFluff.Shared.Identity;
 using BarkFluff.Shared.Queue.Notifications;
 using Google.Protobuf.WellKnownTypes;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Identity.Features.ConfirmAccount;
 
 public class ConfirmAccountCommandHandler(ConfirmationCodesStorage confirmationCodesStorage,
     UsersServerApi.UsersServerApiClient usersClient, RefreshTokensStorage refreshTokensStorage, RequestContext requestContext,
-    NotificationQueueSender notificationQueueSender, LocationClient locationClient)
+    NotificationQueueSender notificationQueueSender, LocationClient locationClient, ILogger<ConfirmAccountCommandHandler> logger)
     : IRequestHandler<ConfirmAccountCommand, ConfirmAccountResponse>
 {
-    
+
     private const int ExpDaysRefreshToken = 9999;
 
-    
+
     public async Task<ConfirmAccountResponse> Handle(ConfirmAccountCommand request, CancellationToken cancellationToken)
     {
+        logger.LogInformation(
+            "Начало подтверждения аккаунта. CodeId: {CodeId}",
+            request.CodeId
+        );
         if (string.IsNullOrEmpty(requestContext.DeviceName))
         {
             throw new XDeviceNameIsRequiredException();
@@ -30,15 +35,23 @@ public class ConfirmAccountCommandHandler(ConfirmationCodesStorage confirmationC
         
         var codeId = Guid.Parse(request.CodeId);
 
+        logger.LogDebug("Получение кода подтверждения {CodeId}", codeId);
+
         var code = await confirmationCodesStorage.GetCode(codeId);
 
         if (code is null)
         {
+            logger.LogWarning("Код подтверждения {CodeId} не найден", codeId);
             throw new ConfirmationCodeNotFoundException();
         }
 
         if (code.Expires < DateTime.UtcNow)
         {
+            logger.LogWarning(
+                "Код подтверждения {CodeId} истек. Истек: {ExpirationDate}",
+                codeId,
+                code.Expires
+            );
             throw new ConfirmationCodeExpiredException();
         }
 
@@ -46,8 +59,15 @@ public class ConfirmAccountCommandHandler(ConfirmationCodesStorage confirmationC
 
         if (!equals)
         {
+            logger.LogWarning(
+                "Неверный код подтверждения для CodeId {CodeId}, UserId {UserId}",
+                codeId,
+                code.OwnerId
+            );
             throw new ConfirmationCodeIncorrectException();
         }
+
+        logger.LogDebug("Подтверждение пользователя {UserId}", code.OwnerId!.Value);
 
         var confirmRequest = new ConfirmUserRequest { UserId = code.OwnerId!.Value };
 
@@ -86,11 +106,25 @@ public class ConfirmAccountCommandHandler(ConfirmationCodesStorage confirmationC
             Type = NotificationType.SuccessfulRegistration
         };
 
+        logger.LogDebug(
+            "Отправка уведомления об успешной регистрации на адрес {Email}",
+            userContacts.Contact.Email
+        );
+
         await notificationQueueSender.SendNotification(successfulRegistrationNotification);
+
+        logger.LogDebug("Генерация refresh token для пользователя {UserId}", code.OwnerId!.Value);
 
         var refreshTokenString = RefreshTokenGenerator.GenerateRefreshToken();
 
         await refreshTokensStorage.CreateNewRefreshToken(refreshTokenString, code.OwnerId!.Value, requestContext.DeviceName, ExpDaysRefreshToken);
+
+        logger.LogInformation(
+            "Аккаунт успешно подтвержден. UserId: {UserId}, Username: {Username}, Устройство: {DeviceName}",
+            code.OwnerId!.Value,
+            userInfo.User.Username,
+            requestContext.DeviceName
+        );
 
         return new ConfirmAccountResponse()
         {
