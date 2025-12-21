@@ -5,7 +5,6 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
 
 using Wpf.Ui.Controls;
 
@@ -16,28 +15,12 @@ namespace BarkFluff.Client.WPF.UserControls
     /// </summary>
     public partial class Profile : UserControl
     {
-        private string? _avatarFileId;
         private bool _isCurrentUser = false;
 
         public Profile()
         {
             InitializeComponent();
             DataContext = this;
-
-            Loaded += Profile_Loaded;
-            Unloaded += Profile_Unloaded;
-        }
-
-        private void Profile_Loaded(object sender, RoutedEventArgs e)
-        {
-            // Подписываемся на событие кеширования
-            App.FileCacheService.FileCached += OnFileCached;
-        }
-
-        private void Profile_Unloaded(object sender, RoutedEventArgs e)
-        {
-            // Отписываемся от события кеширования
-            App.FileCacheService.FileCached -= OnFileCached;
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -224,11 +207,8 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private static void OnAvatarSourceChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            if (d is Profile control)
-            {
-                if (e.NewValue is ImageSource imageSource)
-                    control.AvatarBrush.ImageSource = imageSource;
-            }
+            // AvatarSource property kept for backwards compatibility
+            // Avatar is now displayed via CachedAvatar control
         }
 
         // Последнее время онлайн
@@ -440,25 +420,14 @@ namespace BarkFluff.Client.WPF.UserControls
         {
             if (string.IsNullOrEmpty(avatarUrl))
             {
-                SetAvatarImage(FileCacheService.DefaultPlaceholder);
+                AvatarCachedImage.FileId = null;
+                AvatarCachedImage.FileUrl = null;
                 return;
             }
 
-            try
-            {
-                _avatarFileId = FileCacheService.ExtractFileIdFromUrl(avatarUrl);
-                var imagePath = App.FileCacheService.GetCachedFilePath(
-                    _avatarFileId ?? string.Empty,
-                    FileType.Avatar,
-                    avatarUrl);
-                SetAvatarImage(imagePath);
-            }
-            catch (Exception ex)
-            {
-                App.ErideMessage?.AddMessage($"Ошибка загрузки аватара: {ex.Message}",
-                    new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Debug });
-                SetAvatarImage(FileCacheService.DefaultPlaceholder);
-            }
+            var fileId = FileCacheService.ExtractFileIdFromUrl(avatarUrl);
+            AvatarCachedImage.FileId = fileId;
+            AvatarCachedImage.FileUrl = avatarUrl;
         }
 
 
@@ -510,23 +479,6 @@ namespace BarkFluff.Client.WPF.UserControls
 
             // Установка баджей
             SetBadges(userProfile.Badges);
-        }
-
-        private void OnFileCached(string fileId, string filePath, FileType fileType)
-        {
-            if (fileId == _avatarFileId && fileType == FileType.Avatar)
-            {
-                Dispatcher.Invoke(() => SetAvatarImage(filePath));
-            }
-        }
-
-        private void SetAvatarImage(string imagePath)
-        {
-            try
-            {
-                AvatarSource = new BitmapImage(new Uri(imagePath, UriKind.RelativeOrAbsolute));
-            }
-            catch { }
         }
 
         public void SetBadges(BadgeInfo[]? badges)
