@@ -45,7 +45,7 @@
                     </Ellipse>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock
-                            x:Name="EmailText"
+                            x:Name="FullNameText"
                             FontSize="14"
                             FontWeight="Bold"
                             Foreground="White"
