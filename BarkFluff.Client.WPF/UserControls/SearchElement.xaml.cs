@@ -2,7 +2,6 @@
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
 using System.Windows.Controls;
-using System.Windows.Media.Imaging;
 
 namespace BarkFluff.Client.WPF.UserControls
 {
@@ -12,14 +11,13 @@ namespace BarkFluff.Client.WPF.UserControls
     public partial class SearchElement : UserControl
     {
         private long _userId = 0;
-        private string? _avatarFileId;
 
         public SearchElement(UserData userData)
         {
             InitializeComponent();
             _userId = userData.Id;
 
-            // Загружаем аватар через кеш-сервис
+            // Загружаем аватар через CachedAvatar контрол
             string avatarUrl = !string.IsNullOrEmpty(userData.ProfilePictureUrl)
                 ? userData.ProfilePictureUrl
                 : (!string.IsNullOrEmpty(userData.ProfilePicturePreviewUrl)
@@ -28,43 +26,13 @@ namespace BarkFluff.Client.WPF.UserControls
 
             if (!string.IsNullOrEmpty(avatarUrl))
             {
-                _avatarFileId = FileCacheService.ExtractFileIdFromUrl(avatarUrl);
-                var imagePath = App.FileCacheService.GetCachedFilePath(_avatarFileId ?? string.Empty, FileType.Avatar, avatarUrl);
-                SetAvatarImage(imagePath);
-
-                // Подписываемся на событие кеширования файла
-                App.FileCacheService.FileCached += OnFileCached;
-
-                // Отписываемся при выгрузке контрола
-                Unloaded += (s, e) =>
-                {
-                    App.FileCacheService.FileCached -= OnFileCached;
-                };
-            }
-            else
-            {
-                AvatarImage.ImageSource = new BitmapImage(new Uri("pack://application:,,,/Resources/Images/barkfluff_logo.png"));
+                var fileId = FileCacheService.ExtractFileIdFromUrl(avatarUrl);
+                AvatarCached.FileId = fileId;
+                AvatarCached.FileUrl = avatarUrl;
             }
 
             UserName.Text = "@" + userData.Username;
             PublicName.Text = userData.FirstName + " " + userData.LastName;
-        }
-
-        private void OnFileCached(string fileId, string filePath, FileType fileType)
-        {
-            if (fileId == _avatarFileId && fileType == FileType.Avatar)
-            {
-                Dispatcher.Invoke(() => SetAvatarImage(filePath));
-            }
-        }
-
-        private void SetAvatarImage(string imagePath)
-        {
-            try
-            {
-                AvatarImage.ImageSource = new BitmapImage(new Uri(imagePath, UriKind.RelativeOrAbsolute));
-            }
-            catch { }
         }
 
         private void UserControl_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)

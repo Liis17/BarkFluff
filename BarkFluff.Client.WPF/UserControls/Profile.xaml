@@ -86,29 +86,16 @@
 
                     <StackPanel HorizontalAlignment="Center">
                         <!--  Аватар с тенью  -->
-                        <Border
+                        <local:CachedAvatar
+                            x:Name="AvatarCachedImage"
                             Width="110"
                             Height="110"
                             Margin="0,0,0,16"
                             HorizontalAlignment="Center"
-                            CornerRadius="55">
-                            <Border.Effect>
-                                <DropShadowEffect
-                                    BlurRadius="25"
-                                    Direction="270"
-                                    Opacity="0.5"
-                                    ShadowDepth="6"
-                                    Color="#000000" />
-                            </Border.Effect>
-                            <Border CornerRadius="55">
-                                <Border.Background>
-                                    <ImageBrush
-                                        x:Name="AvatarBrush"
-                                        ImageSource="pack://application:,,,/BarkFluff;component/Resources/Placeholders/userplaceholder.png"
-                                        Stretch="UniformToFill" />
-                                </Border.Background>
-                            </Border>
-                        </Border>
+                            CornerRadius="55"
+                            EnableDynamicShadow="False"
+                            ShadowBlurRadius="25"
+                            ShadowOpacity="0.5" />
 
                         <!--  Публичное имя  -->
                         <TextBlock
