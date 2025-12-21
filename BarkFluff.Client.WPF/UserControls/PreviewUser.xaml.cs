@@ -3,7 +3,6 @@ using BarkFluff.Client.WPF.Services.App.Caching;
 
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media.Imaging;
 
 namespace BarkFluff.Client.WPF.UserControls
 {
@@ -15,7 +14,6 @@ namespace BarkFluff.Client.WPF.UserControls
         public string? fullName;
         public string? username;
         public string? avatarUrl;
-        private string? _avatarFileId;
 
         public CreateAccount? Pattern;
         public PreviewUser()
@@ -30,38 +28,10 @@ namespace BarkFluff.Client.WPF.UserControls
             if (!string.IsNullOrEmpty(avatarUrl))
             {
                 // Пытаемся извлечь fileId из URL
-                _avatarFileId = FileCacheService.ExtractFileIdFromUrl(avatarUrl);
-
-                // Используем кеш-сервис для загрузки аватара
-                var imagePath = App.FileCacheService.GetCachedFilePath(_avatarFileId ?? string.Empty, FileType.Avatar, avatarUrl);
-                SetAvatarImage(imagePath);
-
-                // Подписываемся на событие кеширования файла
-                App.FileCacheService.FileCached += OnFileCached;
-
-                // Отписываемся при выгрузке контрола
-                Unloaded += (s, e) =>
-                {
-                    App.FileCacheService.FileCached -= OnFileCached;
-                };
+                var fileId = FileCacheService.ExtractFileIdFromUrl(avatarUrl);
+                AvatarCached.FileId = fileId;
+                AvatarCached.FileUrl = avatarUrl;
             }
-        }
-
-        private void OnFileCached(string fileId, string filePath, FileType fileType)
-        {
-            if (fileId == _avatarFileId && fileType == FileType.Avatar)
-            {
-                Dispatcher.Invoke(() => SetAvatarImage(filePath));
-            }
-        }
-
-        private void SetAvatarImage(string imagePath)
-        {
-            try
-            {
-                AvatarBrush.ImageSource = new BitmapImage(new Uri(imagePath, UriKind.RelativeOrAbsolute));
-            }
-            catch { }
         }
 
         private async void SaveButton_Click(object sender, RoutedEventArgs e)

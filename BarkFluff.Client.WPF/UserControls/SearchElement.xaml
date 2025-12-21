@@ -45,25 +45,14 @@
 
             <!--  Контейнер для аватара  -->
             <Grid Grid.Column="0" VerticalAlignment="Center">
-                <Border
-                    x:Name="Avatar"
+                <local:CachedAvatar
+                    x:Name="AvatarCached"
                     Width="48"
                     Height="48"
-                    CornerRadius="24">
-                    <Border.Background>
-                        <ImageBrush x:Name="AvatarImage" Stretch="UniformToFill" />
-                    </Border.Background>
-
-                    <!--  Декоративная рамка вокруг аватара  -->
-                    <Border.Effect>
-                        <DropShadowEffect
-                            BlurRadius="6"
-                            Direction="270"
-                            Opacity="0.15"
-                            ShadowDepth="2"
-                            Color="Black" />
-                    </Border.Effect>
-                </Border>
+                    CornerRadius="24"
+                    EnableDynamicShadow="False"
+                    ShadowBlurRadius="6"
+                    ShadowOpacity="0.15" />
 
                 <!--  Тонкая рамка вокруг аватара  -->
                 <Border

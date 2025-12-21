@@ -1,4 +1,6 @@
-﻿using BarkFluff.Client.WPF.Services.App.Caching;
+﻿using System;
+
+using BarkFluff.Client.WPF.Services.App.Caching;
 
 using System.Windows;
 using System.Windows.Controls;
@@ -11,8 +13,6 @@ namespace BarkFluff.Client.WPF.UserControls
     /// </summary>
     public partial class SideBar : UserControl
     {
-        private string? _avatarFileId;
-
         public SideBar()
         {
             InitializeComponent();
@@ -22,15 +22,6 @@ namespace BarkFluff.Client.WPF.UserControls
         private void SideBar_Loaded(object sender, RoutedEventArgs e)
         {
             LoadCurrentUserData();
-
-            // Подписываемся на событие кеширования файла
-            App.FileCacheService.FileCached += OnFileCached;
-
-            // Отписываемся при выгрузке контрола
-            Unloaded += (s, args) =>
-            {
-                App.FileCacheService.FileCached -= OnFileCached;
-            };
         }
 
         private void LoadCurrentUserData()
@@ -42,28 +33,24 @@ namespace BarkFluff.Client.WPF.UserControls
             var fnln = $"{App.GParam.FirstName} {App.GParam.LastName}".Trim();
             FullNameText.Text = fnln ?? "first name last name";
 
-            // Загружаем аватар через кеш-сервис
+            // Загружаем аватар через CachedAvatar контрол
             if (!string.IsNullOrEmpty(App.GParam.PictureUrl))
             {
-                _avatarFileId = FileCacheService.ExtractFileIdFromUrl(App.GParam.PictureUrl);
-                var imagePath = App.FileCacheService.GetCachedFilePath(_avatarFileId ?? string.Empty, FileType.Avatar, App.GParam.PictureUrl);
-                SetAvatarImage(imagePath);
+                var fileId = FileCacheService.ExtractFileIdFromUrl(App.GParam.PictureUrl);
+                UserAvatarCached.FileId = fileId;
+                UserAvatarCached.FileUrl = App.GParam.PictureUrl;
+
+                // Также обновляем размытый фон (это остаётся отдельным)
+                SetBlurredBackground(App.GParam.PictureUrl);
             }
         }
 
-        private void OnFileCached(string fileId, string filePath, FileType fileType)
-        {
-            if (fileId == _avatarFileId && fileType == FileType.Avatar)
-            {
-                Dispatcher.Invoke(() => SetAvatarImage(filePath));
-            }
-        }
-
-        private void SetAvatarImage(string imagePath)
+        private void SetBlurredBackground(string pictureUrl)
         {
             try
             {
-                UserAvatarBrush.ImageSource = new BitmapImage(new Uri(imagePath, UriKind.RelativeOrAbsolute));
+                var fileId = FileCacheService.ExtractFileIdFromUrl(pictureUrl);
+                var imagePath = App.FileCacheService.GetCachedFilePath(fileId ?? string.Empty, FileType.Avatar, pictureUrl);
                 BluredUserAvatarBrush.ImageSource = new BitmapImage(new Uri(imagePath, UriKind.RelativeOrAbsolute));
             }
             catch { }

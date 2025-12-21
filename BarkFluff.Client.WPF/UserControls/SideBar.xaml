@@ -33,16 +33,14 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <Ellipse
-                        x:Name="UserAvatarEllipse"
+                    <local:CachedAvatar
+                        x:Name="UserAvatarCached"
                         Grid.Column="0"
                         Width="50"
                         Height="50"
-                        Margin="0,0,10,0">
-                        <Ellipse.Fill>
-                            <ImageBrush x:Name="UserAvatarBrush" ImageSource="pack://application:,,,/BarkFluff;component/Resources/Placeholders/userplaceholder.png" />
-                        </Ellipse.Fill>
-                    </Ellipse>
+                        Margin="0,0,10,0"
+                        CornerRadius="25"
+                        EnableDynamicShadow="False" />
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock
                             x:Name="FullNameText"
