@@ -8,25 +8,36 @@ using System.Collections.Concurrent;
 
 public class StreamSubscriptionsManager
 {
-    private readonly ConcurrentDictionary<long, IServerStreamWriter<NewMessageEvent>> _userSubscriptions = new();
+    // РџРѕРґРґРµСЂР¶РєР° РЅРµСЃРєРѕР»СЊРєРёС… РєР»РёРµРЅС‚РѕРІ РЅР° РѕРґРЅРѕРіРѕ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ: userId -> (subscriptionId -> stream)
+    private readonly ConcurrentDictionary<long, ConcurrentDictionary<Guid, IServerStreamWriter<NewMessageEvent>>> _userSubscriptions = new();
 
-    public void RegisterSubscription(long userId, IServerStreamWriter<NewMessageEvent> responseStream)
+    public Guid RegisterSubscription(long userId, IServerStreamWriter<NewMessageEvent> responseStream)
     {
-        // Заменяем старую подписку новой (один пользователь = одна подписка)
-        _userSubscriptions[userId] = responseStream;
+        var subscriptionId = Guid.NewGuid();
+        var userStreams = _userSubscriptions.GetOrAdd(userId, _ => new ConcurrentDictionary<Guid, IServerStreamWriter<NewMessageEvent>>());
+        userStreams[subscriptionId] = responseStream;
+        return subscriptionId;
     }
 
-    public void RemoveSubscription(long userId, IServerStreamWriter<NewMessageEvent> responseStream)
+    public void RemoveSubscription(long userId, Guid subscriptionId)
     {
-        // Удаляем только если это тот же stream
-        _userSubscriptions.TryRemove(new KeyValuePair<long, IServerStreamWriter<NewMessageEvent>>(userId, responseStream));
+        if (_userSubscriptions.TryGetValue(userId, out var userStreams))
+        {
+            userStreams.TryRemove(subscriptionId, out _);
+            
+            // РћС‡РёС‰Р°РµРј РїСѓСЃС‚С‹Рµ Р·Р°РїРёСЃРё РїРѕР»СЊР·РѕРІР°С‚РµР»РµР№
+            if (userStreams.IsEmpty)
+            {
+                _userSubscriptions.TryRemove(userId, out _);
+            }
+        }
     }
 
     public IEnumerable<IServerStreamWriter<NewMessageEvent>> GetUserStreams(long userId)
     {
-        if (_userSubscriptions.TryGetValue(userId, out var stream))
+        if (_userSubscriptions.TryGetValue(userId, out var userStreams))
         {
-            return [stream];
+            return userStreams.Values.ToList();
         }
         return [];
     }

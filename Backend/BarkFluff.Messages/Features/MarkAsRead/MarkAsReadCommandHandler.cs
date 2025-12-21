@@ -58,7 +58,10 @@ public class MarkAsReadCommandHandler : IRequestHandler<MarkAsReadCommand>
 
         _logger.LogDebug("Проверка доступа к {ChatCount} чатам", chatIds.Count);
 
-        // Проверяем доступ к каждому чату
+        // Кэш участников чатов для оптимизации - получаем один раз для каждого чата
+        var chatMembersCache = new Dictionary<Guid, List<long>>();
+
+        // Проверяем доступ к каждому чату и кэшируем участников
         foreach (var chatId in chatIds)
         {
             var hasAccess = await _chatsStorage.CheckAccessToChat(chatId, _userContext.UserId);
@@ -71,6 +74,10 @@ public class MarkAsReadCommandHandler : IRequestHandler<MarkAsReadCommand>
                 );
                 throw new NoAccessToChatException();
             }
+
+            // Получаем участников чата один раз и кэшируем
+            var chatMembers = await _chatsStorage.GetChatMembers(chatId, 0, int.MaxValue);
+            chatMembersCache[chatId] = chatMembers.Select(x => x.UserId).ToList();
         }
 
         // Обновляем ReadBy для сообщений
@@ -78,6 +85,8 @@ public class MarkAsReadCommandHandler : IRequestHandler<MarkAsReadCommand>
 
         _logger.LogDebug("Отправка событий о прочтении в очередь для {MessageCount} сообщений", messages.Count);
 
+        // Отправляем события параллельно для ускорения
+        var sendTasks = new List<Task>();
         foreach (var message in messages)
         {
             if (!message.ReadBy.Contains(_userContext.UserId))
@@ -85,10 +94,13 @@ public class MarkAsReadCommandHandler : IRequestHandler<MarkAsReadCommand>
                 message.ReadBy.Add(_userContext.UserId);
             }
 
-            var chatMembers = await _chatsStorage.GetChatMembers(message.ChatId, 0, int.MaxValue);
+            // Используем кэшированных участников чата
+            var chatMembers = chatMembersCache[message.ChatId];
 
-            await _readByQueueSender.SendEvent(message.ChatId, message.Id, message.ReadBy, chatMembers.Select(x => x.UserId).ToList());
+            sendTasks.Add(_readByQueueSender.SendEvent(message.ChatId, message.Id, message.ReadBy, chatMembers));
         }
+
+        await Task.WhenAll(sendTasks);
 
         _logger.LogInformation(
             "Успешно отмечено {MessageCount} сообщений как прочитанные пользователем {UserId}",
