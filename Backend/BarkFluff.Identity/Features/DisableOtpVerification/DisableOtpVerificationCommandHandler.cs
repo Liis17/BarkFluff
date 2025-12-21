@@ -8,6 +8,7 @@ using BarkFluff.Shared.Exceptions.Identity;
 using BarkFluff.Shared.Identity;
 using BarkFluff.Shared.Queue.Notifications;
 using MediatR;
+using Microsoft.Extensions.Logging;
 using OtpNet;
 using OtpNotCreatedException = BarkFluff.Identity.Persistence.Exceptions.OtpNotCreatedException;
 
@@ -21,10 +22,12 @@ public class DisableOtpVerificationCommandHandler : IRequestHandler<DisableOtpVe
     private readonly LocationClient _locationClient;
     private readonly UsersServerApi.UsersServerApiClient _usersClient;
     private readonly RequestContext _requestContext;
+    private readonly ILogger<DisableOtpVerificationCommandHandler> _logger;
 
     public DisableOtpVerificationCommandHandler(UserContext userContext, AuthPropertiesStorage authPropertiesStorage,
         NotificationQueueSender notificationQueueSender, LocationClient locationClient,
-        UsersServerApi.UsersServerApiClient usersClient, RequestContext requestContext)
+        UsersServerApi.UsersServerApiClient usersClient, RequestContext requestContext,
+        ILogger<DisableOtpVerificationCommandHandler> logger)
     {
         _userContext = userContext;
         _authPropertiesStorage = authPropertiesStorage;
@@ -32,14 +35,25 @@ public class DisableOtpVerificationCommandHandler : IRequestHandler<DisableOtpVe
         _locationClient = locationClient;
         _usersClient = usersClient;
         _requestContext = requestContext;
+        _logger = logger;
     }
 
     public async Task<DisableOtpVerificationResponse> Handle(DisableOtpVerificationCommand request, CancellationToken cancellationToken)
     {
+        _logger.LogInformation(
+            "Начало отключения 2FA для пользователя {UserId}, тип: {OtpType}",
+            _userContext.UserId,
+            request.OptType
+        );
+
         var otpConfigs = await _authPropertiesStorage.GetUserAuthProperties(_userContext.UserId);
 
         if (otpConfigs is null)
         {
+            _logger.LogWarning(
+                "Попытка отключить 2FA для пользователя {UserId}, но настройки не найдены",
+                _userContext.UserId
+            );
             throw new OtpNotCreatedException();
         }
 
@@ -48,10 +62,16 @@ public class DisableOtpVerificationCommandHandler : IRequestHandler<DisableOtpVe
         {
             if (!otpConfigs.OtpEnabled)
             {
+                _logger.LogWarning(
+                    "Попытка отключить Authenticator 2FA для пользователя {UserId}, но он не включен",
+                    _userContext.UserId
+                );
                 throw new OtpNotCreatedException();
             }
 
             oldMethod = "Authenticator приложение";
+
+            _logger.LogDebug("Проверка OTP кода для отключения Authenticator 2FA");
 
             var totp = new Totp(Base32Encoding.ToBytes(otpConfigs.OtpSecret));
 
@@ -59,14 +79,22 @@ public class DisableOtpVerificationCommandHandler : IRequestHandler<DisableOtpVe
 
             if (!isValid)
             {
+                _logger.LogWarning(
+                    "Неверный OTP код при попытке отключения Authenticator 2FA для пользователя {UserId}",
+                    _userContext.UserId
+                );
                 throw new NotValidOtpCodeException();
             }
+
+            _logger.LogDebug("Отключение Authenticator 2FA для пользователя {UserId}", _userContext.UserId);
 
             await _authPropertiesStorage.DisableOtp(_userContext.UserId);
         }
 
         if (request.OptType == OtpTypeId.Email)
         {
+            _logger.LogDebug("Отключение Email 2FA для пользователя {UserId}", _userContext.UserId);
+
             oldMethod = "Email";
             await _authPropertiesStorage.DisableEmailOtp(_userContext.UserId);
         }
@@ -106,7 +134,18 @@ public class DisableOtpVerificationCommandHandler : IRequestHandler<DisableOtpVe
             Type = NotificationType.TwoFactorMethodChanged
         };
 
+        _logger.LogDebug(
+            "Отправка уведомления об отключении 2FA на адрес {Email}",
+            userContacts.Contact.Email
+        );
+
         await _notificationQueueSender.SendNotification(twoFactorChangedNotification);
+
+        _logger.LogInformation(
+            "2FA успешно отключена для пользователя {UserId}. Метод: {OldMethod}",
+            _userContext.UserId,
+            oldMethod
+        );
 
         return new DisableOtpVerificationResponse();
     }
