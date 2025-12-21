@@ -1,22 +1,39 @@
 using BarkFluff.Shared.Exceptions;
 using Grpc.Core;
 using Grpc.Core.Interceptors;
+using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.GrpcServer;
 
 public class ServerExceptionInterceptor : Interceptor
 {
+    private readonly ILogger<ServerExceptionInterceptor> _logger;
+
+    public ServerExceptionInterceptor(ILogger<ServerExceptionInterceptor> logger)
+    {
+        _logger = logger;
+    }
+
     public override async Task<TResponse> UnaryServerHandler<TRequest, TResponse>(
         TRequest request,
         ServerCallContext context,
         UnaryServerMethod<TRequest, TResponse> continuation)
     {
+        var methodName = context.Method;
+
         try
         {
             return await continuation(request, context);
         }
         catch (BaseGrpcException ex)
         {
+            _logger.LogWarning(
+                "Бизнес-ошибка при вызове {Method}: {ErrorCode} - {ErrorMessage}",
+                methodName,
+                ex.ErrorCode,
+                ex.ErrorMessage
+            );
+
             var trailers = new Metadata
             {
                 { "x-error-code", ex.ErrorCode }
@@ -26,8 +43,15 @@ public class ServerExceptionInterceptor : Interceptor
         }
         catch (Exception ex)
         {
+            _logger.LogError(
+                ex,
+                "КРИТИЧЕСКАЯ ОШИБКА при вызове {Method}. Тип: {ExceptionType}",
+                methodName,
+                ex.GetType().Name
+            );
+
             var baseExcetion = new BaseGrpcException();
-            
+
             var trailers = new Metadata
             {
                 { "x-error-code", baseExcetion.ErrorCode }

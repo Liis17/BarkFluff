@@ -11,16 +11,22 @@ using BarkFluff.Shared.Identity;
 using BarkFluff.Shared.Queue.Notifications;
 using MassTransit;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Identity.Features.CreateAccount;
 
 public class CreateAccountCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
     ConfirmationCodesStorage confirationCodesStorage, NotificationQueueSender notificationQueueSender,
-    RequestContext requestContext, LocationClient locationClient) 
+    RequestContext requestContext, LocationClient locationClient, ILogger<CreateAccountCommandHandler> logger)
     : IRequestHandler<CreateAccountCommand, CreateAccountResponse>
 {
     public async Task<CreateAccountResponse> Handle(CreateAccountCommand request, CancellationToken cancellationToken)
     {
+        logger.LogInformation(
+            "Начало создания аккаунта. Username: {Username}, Email: {Email}",
+            request.Username,
+            request.Email
+        );
         if (string.IsNullOrEmpty(request.Email) || string.IsNullOrEmpty(request.Username))
         {
             throw new UsernameOrEmailIsEmptyException();
@@ -49,18 +55,24 @@ public class CreateAccountCommandHandler(UsersServerApi.UsersServerApiClient use
             LastName = request.LastName
         };
 
+        logger.LogDebug("Создание черновика пользователя {Username}", request.Username);
+
         AddDraftUserResponse responseUser = null;
 
         try
         {
             responseUser = await usersClient.AddDraftUserAsync(createAccountRequest);
+            logger.LogDebug("Черновик пользователя создан. UserId: {UserId}", responseUser.UserId);
         }
         catch (UserIsDraftException)
         {
+            logger.LogDebug("Пользователь уже существует как черновик, переопределение данных");
             responseUser = await usersClient.OverrideDraftUserAsync(createAccountRequest);
         }
 
         var code = CodeGenerator.GenerateDigitalCode(6);
+
+        logger.LogDebug("Генерация кода подтверждения для регистрации");
 
         var confirmationCode = new ConfirmationCode()
         {
@@ -69,7 +81,7 @@ public class CreateAccountCommandHandler(UsersServerApi.UsersServerApiClient use
             Type = ConfirmationCodeType.Registration,
             Value = code
         };
-        
+
         confirmationCode = await confirationCodesStorage.AddCode(confirmationCode);
 
         // Получаем данные о местоположении IP-адреса
@@ -95,6 +107,12 @@ public class CreateAccountCommandHandler(UsersServerApi.UsersServerApiClient use
             {"datetime", DateTime.UtcNow.ToString("F")}
         };
         
+        logger.LogDebug(
+            "Отправка кода подтверждения на адрес {Email} для пользователя {UserId}",
+            request.Email,
+            responseUser.UserId
+        );
+
         await notificationQueueSender.SendNotification(new EmailNotification()
         {
             Address = request.Email,
@@ -105,7 +123,15 @@ public class CreateAccountCommandHandler(UsersServerApi.UsersServerApiClient use
             Title = "Код подтверждения",
             Type = NotificationType.ConfirmationRegistration,
         });
-        
+
+        logger.LogInformation(
+            "Аккаунт создан. UserId: {UserId}, Username: {Username}, Email: {Email}, CodeId: {CodeId}",
+            responseUser.UserId,
+            request.Username,
+            request.Email,
+            confirmationCode.Id
+        );
+
         return new CreateAccountResponse { CodeId = confirmationCode.Id.ToString()};
     }
 }

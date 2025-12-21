@@ -6,6 +6,7 @@ using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Shared.Exceptions.Messages;
 using MediatR;
+using Microsoft.Extensions.Logging;
 using ChatMember = BarkFluff.Messages.Domain.ChatMember;
 using Message = BarkFluff.Messages.Domain.Message;
 using MessageContent = BarkFluff.Messages.Domain.MessageContent;
@@ -22,19 +23,28 @@ public class CreateGroupChatCommandHandler : IRequestHandler<CreateGroupChatComm
     private readonly ChatsStorage _chatsStorage;
     private readonly MessagesStorage _messagesStorage;
     private readonly MessageQueueSender _messageQueueSender;
+    private readonly ILogger<CreateGroupChatCommandHandler> _logger;
 
-    public CreateGroupChatCommandHandler(UserContext userContext, FilesServerApi.FilesServerApiClient filesServerApiClient, 
-        ChatsStorage chatsStorage, MessagesStorage messagesStorage, MessageQueueSender messageQueueSender)
+    public CreateGroupChatCommandHandler(UserContext userContext, FilesServerApi.FilesServerApiClient filesServerApiClient,
+        ChatsStorage chatsStorage, MessagesStorage messagesStorage, MessageQueueSender messageQueueSender,
+        ILogger<CreateGroupChatCommandHandler> logger)
     {
         _userContext = userContext;
         _filesServerApiClient = filesServerApiClient;
         _chatsStorage = chatsStorage;
         _messagesStorage = messagesStorage;
         _messageQueueSender = messageQueueSender;
+        _logger = logger;
     }
-    
+
     public async Task<CreateGroupChatResponse> Handle(CreateGroupChatCommand request, CancellationToken cancellationToken)
     {
+        _logger.LogInformation(
+            "Создание группового чата '{Title}' пользователем {UserId}, участников: {MemberCount}",
+            request.Title,
+            _userContext.UserId,
+            request.UserIds.Count()
+        );
         if (string.IsNullOrEmpty(request.Title))
         {
             throw new GroupChatTitleIsEmptyException();
@@ -51,20 +61,30 @@ public class CreateGroupChatCommandHandler : IRequestHandler<CreateGroupChatComm
         }
 
         string? pictureUrl = null;
-        
+
         if (request.PictureFileId != null)
         {
+            _logger.LogDebug("Получение информации о файле картинки группового чата {FileId}", request.PictureFileId);
+
             var fileInfo = await _filesServerApiClient.GetFileDataAsync(new GetFileDataRequest
                 { FileId = request.PictureFileId.Value.ToString() });
 
             if (fileInfo.FileInfo.Type != UploadFileType.ChatPicture)
             {
+                _logger.LogWarning(
+                    "Файл {FileId} имеет неверный тип {FileType}, ожидается {ExpectedType}",
+                    request.PictureFileId,
+                    fileInfo.FileInfo.Type,
+                    UploadFileType.ChatPicture
+                );
                 throw new FileHasNotGroupPictureTypeException();
             }
 
             pictureUrl = fileInfo.FileInfo.FileUrl;
         }
-        
+
+        _logger.LogDebug("Создание группового чата в БД");
+
         var groupChat = await _chatsStorage.CreateGroupChat(request.UserIds, request.Title, pictureUrl);
 
         var groupChatInfo = new GroupChatInfo()
@@ -92,11 +112,24 @@ public class CreateGroupChatCommandHandler : IRequestHandler<CreateGroupChatComm
 
         await _messagesStorage.AddMessage(message);
 
+        _logger.LogDebug(
+            "Отправка системного сообщения о создании чата в очередь для {MemberCount} участников",
+            request.UserIds.Count()
+        );
+
         await _messageQueueSender.SendMessage(message, groupChat.Id, request.UserIds);
 
         groupChat.LastMessage = message;
         groupChat.Members = [];
-        
+
+        _logger.LogInformation(
+            "Групповой чат '{Title}' успешно создан. ChatId: {ChatId}, создатель: {CreatorId}, участников: {MemberCount}",
+            request.Title,
+            groupChat.Id,
+            _userContext.UserId,
+            request.UserIds.Count()
+        );
+
         return new CreateGroupChatResponse()
         {
             CreatedChat = groupChat.ToGrpc()

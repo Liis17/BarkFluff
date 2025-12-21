@@ -3,16 +3,19 @@ using BarkFluff.Shared.Auth;
 using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.GrpcServer.Tracker;
 
 public class RequestContextInterceptor : Interceptor
 {
     private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<RequestContextInterceptor> _logger;
 
-    public RequestContextInterceptor(IServiceProvider serviceProvider)
+    public RequestContextInterceptor(IServiceProvider serviceProvider, ILogger<RequestContextInterceptor> logger)
     {
         _serviceProvider = serviceProvider;
+        _logger = logger;
     }
 
     public override async Task<TResponse> UnaryServerHandler<TRequest, TResponse>(
@@ -22,17 +25,28 @@ public class RequestContextInterceptor : Interceptor
     {
         var httpContext = context.GetHttpContext();
         var requestContext = httpContext.RequestServices.GetRequiredService<RequestContext>();
-        
+
         var metadata = context.RequestHeaders;
         requestContext.DeviceName = GetMetadataValue(metadata, MetadataKeys.DeviceName);
         requestContext.OperationSystem = GetMetadataValue(metadata, MetadataKeys.OsName);
         requestContext.AppName = GetMetadataValue(metadata, MetadataKeys.AppName);
         requestContext.AppVersion = GetMetadataValue(metadata, MetadataKeys.AppVersion);
         requestContext.DeviceId = GetMetadataValue(metadata, MetadataKeys.DeviceId);
-        
-        requestContext.IpAddress = GetMetadataValue(metadata, MetadataKeys.IpAddress) 
+
+        requestContext.IpAddress = GetMetadataValue(metadata, MetadataKeys.IpAddress)
                                    ?? httpContext?.Connection?.RemoteIpAddress?.ToString();
-        
+
+        _logger.LogDebug(
+            "Входящий gRPC запрос {Method} от устройства: {DeviceName} ({OS}), IP: {IpAddress}, DeviceID: {DeviceId}, Приложение: {AppName} v{AppVersion}",
+            context.Method,
+            requestContext.DeviceName ?? "Unknown",
+            requestContext.OperationSystem ?? "Unknown",
+            requestContext.IpAddress ?? "Unknown",
+            requestContext.DeviceId ?? "Unknown",
+            requestContext.AppName ?? "Unknown",
+            requestContext.AppVersion ?? "Unknown"
+        );
+
         return await continuation(request, context);
     }
     
