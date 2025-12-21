@@ -26,6 +26,9 @@ public class ReadByNotificationHandler : INotificationHandler<ReadByNotification
         int successfulStreams = 0;
         int failedStreams = 0;
 
+        // Собираем все задачи отправки и выполняем параллельно для ускорения
+        var sendTasks = new List<Task<bool>>();
+
         // Отправляем уведомление всем пользователям из списка Members
         foreach (var memberId in notification.ChatMembers)
         {
@@ -39,32 +42,39 @@ public class ReadByNotificationHandler : INotificationHandler<ReadByNotification
 
             foreach (var stream in streams)
             {
-                try
+                sendTasks.Add(Task.Run(async () =>
                 {
-                    var newReadEvent = new BarkFluff.Proto.Updates.MessageReadEvent()
+                    try
                     {
-                        ChatId = notification.ChatId.ToString(),
-                        MessageId = notification.MessageId,
-                        NewReadBy = { notification.NewReadBy },
-                    };
-                    await stream.WriteAsync(newReadEvent, cancellationToken);
-                    successfulStreams++;
-                }
-                catch (Exception ex)
-                {
-                    failedStreams++;
-                    _logger.LogWarning(
-                        ex,
-                        "Ошибка при отправке события прочтения пользователю {UserId}. ChatId: {ChatId}, MessageId: {MessageId}",
-                        memberId,
-                        notification.ChatId,
-                        notification.MessageId
-                    );
-                    // Если произошла ошибка при записи в поток, игнорируем и продолжаем
-                    // Отключение подписки произойдет в gRPC сервисе при отмене запроса
-                }
+                        var newReadEvent = new BarkFluff.Proto.Updates.MessageReadEvent()
+                        {
+                            ChatId = notification.ChatId.ToString(),
+                            MessageId = notification.MessageId,
+                            NewReadBy = { notification.NewReadBy },
+                        };
+                        await stream.WriteAsync(newReadEvent, cancellationToken);
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(
+                            ex,
+                            "Ошибка при отправке события прочтения пользователю {UserId}. ChatId: {ChatId}, MessageId: {MessageId}",
+                            memberId,
+                            notification.ChatId,
+                            notification.MessageId
+                        );
+                        // Если произошла ошибка при записи в поток, игнорируем и продолжаем
+                        // Отключение подписки произойдет в gRPC сервисе при отмене запроса
+                        return false;
+                    }
+                }, cancellationToken));
             }
         }
+
+        var results = await Task.WhenAll(sendTasks);
+        successfulStreams = results.Count(r => r);
+        failedStreams = results.Count(r => !r);
 
         _logger.LogInformation(
             "Событие прочтения обработано. ChatId: {ChatId}, MessageId: {MessageId}, Успешно: {SuccessCount}, Ошибок: {FailCount}",
