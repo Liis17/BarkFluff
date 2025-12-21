@@ -887,7 +887,7 @@ namespace BarkFluff.Client.WPF.Pages
                 var messageItem = new ChatItem(
                     avatar,
                     title,
-                    item.LastMessage?.Content.Text ?? string.Empty,
+                    ChatItem.GetDisplayTextFromProto(item.LastMessage),
                     time: item.LastMessage?.SentAt.ToString() ?? string.Empty,
                     reading: isRead,
                     readBy: item.LastMessage?.ReadBy.ToList() ?? new List<long>(),
@@ -908,7 +908,16 @@ namespace BarkFluff.Client.WPF.Pages
                         ReadBy = item.LastMessage.ReadBy.ToList(),
                         Text = item.LastMessage.Content.Text,
                         SentAt = item.LastMessage.SentAt,
-                        ChatId = item.Id
+                        ChatId = item.Id,
+                        Attachments = item.LastMessage.Content.Attachments?
+                            .Select(a => new AttachmentsModel
+                            {
+                                Id = a.Id,
+                                Type = a.Type,
+                                FileId = a.FileId,
+                                PreviewUrl = a.PreviewUrl,
+                                Size = a.AttachmentSize
+                            }).ToList() ?? new List<AttachmentsModel>()
                     };
 
                     // Добавляем в буфер для быстрого поиска при обновлении статуса прочтения
@@ -1351,19 +1360,24 @@ namespace BarkFluff.Client.WPF.Pages
                         // Обновляем существующее сообщение (например, изменился список ReadBy)
                         existingBubble.UpdateReadByList(message.ReadBy);
                     }
-                    else if (message.SenderId != App.GParam.UserId)
+                    else
                     {
-                        // Добавляем разделитель даты при необходимости перед добавлением входящего сообщения
+                        // Добавляем разделитель даты при необходимости перед добавлением сообщения
                         AddDateSeparatorIfNeeded(message.SentAt.ToDateTime());
 
-                        // Добавляем новое входящее сообщение
-                        var owner = MessageBubble.MessageOwner.Interlocutor;
+                        // Определяем владельца сообщения
+                        var owner = message.SenderId == App.GParam.UserId 
+                            ? MessageBubble.MessageOwner.Me 
+                            : MessageBubble.MessageOwner.Interlocutor;
                         var type = GetMessageType(message);
                         var messageItem = new MessageBubble(owner, type, message, IsGroup);
                         AddMessage(messageItem);
 
-                        // Автоматически отмечаем как прочитанное, если чат открыт и видим
-                        MarkVisibleMessagesAsRead();
+                        // Автоматически отмечаем как прочитанное, если это входящее сообщение и чат открыт
+                        if (message.SenderId != App.GParam.UserId)
+                        {
+                            MarkVisibleMessagesAsRead();
+                        }
                     }
                 }
             });
@@ -1434,7 +1448,7 @@ namespace BarkFluff.Client.WPF.Pages
                         var messageItem = new ChatItem(
                             avatar,
                             title,
-                            message.Text,
+                            ChatItem.GetDisplayText(message),
                             time: message.SentAt.ToString(),
                             reading: ChatItem.ReadingStatus.ForMe,
                             readBy: message.ReadBy,
