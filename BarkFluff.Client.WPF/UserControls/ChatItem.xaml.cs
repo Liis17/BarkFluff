@@ -298,17 +298,7 @@ namespace BarkFluff.Client.WPF.UserControls
             // Если текста нет, но есть вложения - показываем тип вложения
             if (message.Attachments != null && message.Attachments.Count > 0)
             {
-                var firstAttachment = message.Attachments[0];
-                var count = message.Attachments.Count;
-
-                return firstAttachment.Type switch
-                {
-                    Proto.Shared.MessageAttachmentType.Image => count > 1 ? $"📷 Фото ({count})" : "📷 Фото",
-                    Proto.Shared.MessageAttachmentType.Video => count > 1 ? $"🎬 Видео ({count})" : "🎬 Видео",
-                    Proto.Shared.MessageAttachmentType.Gif => count > 1 ? $"🎞️ GIF ({count})" : "🎞️ GIF",
-                    Proto.Shared.MessageAttachmentType.Document => count > 1 ? $"📎 Файл ({count})" : "📎 Файл",
-                    _ => count > 1 ? $"📎 Вложение ({count})" : "📎 Вложение"
-                };
+                return FormatAttachmentText(message.Attachments[0].Type, message.Attachments.Count);
             }
 
             return string.Empty;
@@ -329,20 +319,25 @@ namespace BarkFluff.Client.WPF.UserControls
             // Если текста нет, но есть вложения - показываем тип вложения
             if (message.Content?.Attachments != null && message.Content.Attachments.Count > 0)
             {
-                var firstAttachment = message.Content.Attachments[0];
-                var count = message.Content.Attachments.Count;
-
-                return firstAttachment.Type switch
-                {
-                    Proto.Shared.MessageAttachmentType.Image => count > 1 ? $"📷 Фото ({count})" : "📷 Фото",
-                    Proto.Shared.MessageAttachmentType.Video => count > 1 ? $"🎬 Видео ({count})" : "🎬 Видео",
-                    Proto.Shared.MessageAttachmentType.Gif => count > 1 ? $"🎞️ GIF ({count})" : "🎞️ GIF",
-                    Proto.Shared.MessageAttachmentType.Document => count > 1 ? $"📎 Файл ({count})" : "📎 Файл",
-                    _ => count > 1 ? $"📎 Вложение ({count})" : "📎 Вложение"
-                };
+                return FormatAttachmentText(message.Content.Attachments[0].Type, message.Content.Attachments.Count);
             }
 
             return string.Empty;
+        }
+
+        /// <summary>
+        /// Форматирует текст для отображения типа вложения
+        /// </summary>
+        private static string FormatAttachmentText(Proto.Shared.MessageAttachmentType type, int count)
+        {
+            return type switch
+            {
+                Proto.Shared.MessageAttachmentType.Image => count > 1 ? $"📷 Фото ({count})" : "📷 Фото",
+                Proto.Shared.MessageAttachmentType.Video => count > 1 ? $"🎬 Видео ({count})" : "🎬 Видео",
+                Proto.Shared.MessageAttachmentType.Gif => count > 1 ? $"🎞️ GIF ({count})" : "🎞️ GIF",
+                Proto.Shared.MessageAttachmentType.Document => count > 1 ? $"📎 Файл ({count})" : "📎 Файл",
+                _ => count > 1 ? $"📎 Вложение ({count})" : "📎 Вложение"
+            };
         }
     }
 }
