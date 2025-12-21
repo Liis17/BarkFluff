@@ -9,6 +9,7 @@ using BarkFluff.Shared.Exceptions.Identity;
 using BarkFluff.Shared.Identity;
 using BarkFluff.Shared.Queue.Notifications;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Identity.Features.ResetPassword;
 
@@ -20,10 +21,12 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
     private readonly RequestContext _requestContext;
     private readonly NotificationQueueSender _notificationQueueSender;
     private readonly LocationClient _locationClient;
+    private readonly ILogger<ResetPasswordCommandHandler> _logger;
 
     public ResetPasswordCommandHandler(ResetPasswordsStorage resetPasswordsStorage,
         AuthPropertiesStorage authPropertiesStorage, UsersServerApi.UsersServerApiClient usersApiClient,
-        RequestContext requestContext, NotificationQueueSender notificationQueueSender, LocationClient locationClient)
+        RequestContext requestContext, NotificationQueueSender notificationQueueSender, LocationClient locationClient,
+        ILogger<ResetPasswordCommandHandler> logger)
     {
         _resetPasswordsStorage = resetPasswordsStorage;
         _authPropertiesStorage = authPropertiesStorage;
@@ -31,10 +34,18 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
         _requestContext = requestContext;
         _notificationQueueSender = notificationQueueSender;
         _locationClient = locationClient;
+        _logger = logger;
     }
 
     public async Task<ResetPasswordResponse> Handle(ResetPasswordCommand request, CancellationToken cancellationToken)
     {
+        var login = request.Username ?? request.Email;
+
+        _logger.LogInformation(
+            "Запрос на сброс пароля для {Login}, тип OTP: {OtpType}",
+            login,
+            request.OtpType
+        );
         if (string.IsNullOrEmpty(request.Username) && string.IsNullOrEmpty(request.Email))
         {
             throw new NotSetUsernameOrEmailException();
@@ -66,22 +77,39 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
             usersRequest.Email = request.Email;
         }
         
+        _logger.LogDebug("Поиск пользователя по логину: {Login}", login);
+
         var user = await _usersClient.FindByLoginAsync(usersRequest);
 
         if (user.User is null)
         {
+            _logger.LogWarning(
+                "Попытка сброса пароля для несуществующего пользователя: {Login}",
+                login
+            );
             throw new UserNotFoundException();
         }
+
+        _logger.LogDebug("Пользователь {UserId} найден, проверка настроек OTP", user.User.Id);
 
         var enableOtp = await _authPropertiesStorage.CheckOtpEnabled(user.User.Id);
 
         if (request.OtpType == OtpType.Authenticator && !enableOtp)
         {
+            _logger.LogWarning(
+                "Запрос сброса пароля с Authenticator OTP, но OTP не настроен для пользователя {UserId}",
+                user.User.Id
+            );
             throw new OtpNotCreatedException();
         }
 
         if (request.OtpType == OtpType.Authenticator)
         {
+            _logger.LogInformation(
+                "Создание запроса на сброс пароля с Authenticator OTP для пользователя {UserId}",
+                user.User.Id
+            );
+
             var resetPassword = new Domain.ResetPassword()
             {
                 CreatedAt = DateTime.UtcNow, IsApproved = false, OtpType = request.OtpType, UserId = user.User.Id
@@ -89,13 +117,26 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
 
             var resp = await _resetPasswordsStorage.AddResetPassword(resetPassword);
 
+            _logger.LogInformation(
+                "Запрос на сброс пароля создан. ResetId: {ResetId}, UserId: {UserId}",
+                resp.Id,
+                user.User.Id
+            );
+
             return new ResetPasswordResponse {ResetId = resp.Id.ToString()};
         }
         
+        _logger.LogInformation(
+            "Создание запроса на сброс пароля с Email OTP для пользователя {UserId}",
+            user.User.Id
+        );
+
         var userContactInfo = await _usersClient.GetUserContactsAsync(new GetUserContactsRequest { UserId = user.User.Id });
-        
+
         var code = CodeGenerator.GenerateDigitalCode(6);
-        
+
+        _logger.LogDebug("Генерация кода подтверждения для пользователя {UserId}", user.User.Id);
+
         var resetEmailPassword = new Domain.ResetPassword()
         {
             CreatedAt = DateTime.UtcNow, OtpCode = code, IsApproved = false, OtpType = request.OtpType, UserId = user.User.Id
@@ -134,8 +175,21 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
         };
         
         resetEmailPassword = await _resetPasswordsStorage.AddResetPassword(resetEmailPassword);
- 
+
+        _logger.LogDebug(
+            "Отправка кода подтверждения на адрес {Email} для пользователя {UserId}",
+            userContactInfo.Contact.Email,
+            user.User.Id
+        );
+
         await _notificationQueueSender.SendNotification(emailNotification);
+
+        _logger.LogInformation(
+            "Запрос на сброс пароля создан. ResetId: {ResetId}, UserId: {UserId}, Email: {Email}",
+            resetEmailPassword.Id,
+            user.User.Id,
+            userContactInfo.Contact.Email
+        );
 
         return new ResetPasswordResponse() { ResetId = resetEmailPassword.Id.ToString() };
     }
