@@ -37,7 +37,6 @@ public class NewMessageNotificationHandler : INotificationHandler<NewMessageNoti
             
             foreach (var stream in streams)
             {
-                var memberIdCopy = memberId;
                 sendTasks.Add(Task.Run(async () =>
                 {
                     try
@@ -49,14 +48,14 @@ public class NewMessageNotificationHandler : INotificationHandler<NewMessageNoti
                         await stream.WriteAsync(newMessageEvent, cancellationToken);
                         
                         _logger.LogDebug("Successfully sent message {MessageId} to user {UserId}", 
-                            message.Id, memberIdCopy);
+                            message.Id, memberId);
                     }
                     catch (Exception ex)
                     {
                         // Если произошла ошибка при записи в поток, логируем и продолжаем
                         // Отключение подписки произойдет в gRPC сервисе при отмене запроса
                         _logger.LogWarning(ex, "Failed to send message {MessageId} to user {UserId} stream", 
-                            message.Id, memberIdCopy);
+                            message.Id, memberId);
                     }
                 }, cancellationToken));
             }

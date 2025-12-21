@@ -42,7 +42,6 @@ public class ReadByNotificationHandler : INotificationHandler<ReadByNotification
 
             foreach (var stream in streams)
             {
-                var memberIdCopy = memberId;
                 sendTasks.Add(Task.Run(async () =>
                 {
                     try
@@ -61,7 +60,7 @@ public class ReadByNotificationHandler : INotificationHandler<ReadByNotification
                         _logger.LogWarning(
                             ex,
                             "Ошибка при отправке события прочтения пользователю {UserId}. ChatId: {ChatId}, MessageId: {MessageId}",
-                            memberIdCopy,
+                            memberId,
                             notification.ChatId,
                             notification.MessageId
                         );
