@@ -33,8 +33,8 @@ public class UpdatesApiService : BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiBa
         
         long userId = _userContext.UserId;
         
-        // Регистрируем подписку
-        _newMessagesSubscriptionsManager.RegisterSubscription(userId, responseStream);
+        // Регистрируем подписку и получаем уникальный идентификатор
+        var subscriptionId = _newMessagesSubscriptionsManager.RegisterSubscription(userId, responseStream);
         
         try
         {
@@ -47,8 +47,8 @@ public class UpdatesApiService : BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiBa
         }
         finally
         {
-            // Удаляем подписку при завершении
-            _newMessagesSubscriptionsManager.RemoveSubscription(userId, responseStream);
+            // Удаляем подписку при завершении по идентификатору
+            _newMessagesSubscriptionsManager.RemoveSubscription(userId, subscriptionId);
         }
     }
 
@@ -57,8 +57,8 @@ public class UpdatesApiService : BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiBa
     {
         long userId = _userContext.UserId;
         
-        // Регистрируем подписку
-        _newReadBySubscriptionsManager.RegisterSubscription(userId, responseStream);
+        // Регистрируем подписку и получаем уникальный идентификатор
+        var subscriptionId = _newReadBySubscriptionsManager.RegisterSubscription(userId, responseStream);
         
         try
         {
@@ -71,8 +71,8 @@ public class UpdatesApiService : BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiBa
         }
         finally
         {
-            // Удаляем подписку при завершении
-            _newReadBySubscriptionsManager.RemoveSubscription(userId, responseStream);
+            // Удаляем подписку при завершении по идентификатору
+            _newReadBySubscriptionsManager.RemoveSubscription(userId, subscriptionId);
         }
     }
 }
