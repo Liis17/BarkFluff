@@ -1,6 +1,5 @@
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 
 using BarkFluff.Client.WPF.Services.App.Caching;
 
@@ -24,11 +23,6 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
         private void VideoMessageContent_SizeChanged(object sender, SizeChangedEventArgs e)
         {
             ClipGeometry.Rect = new Rect(0, 0, VideoBorder.ActualWidth, VideoBorder.ActualHeight);
-        }
-
-        public void SetPreviewSource(ImageSource source)
-        {
-            // For backward compatibility - manually set image if needed
         }
     }
 }

@@ -1,4 +1,6 @@
-﻿using BarkFluff.Client.WPF.Services.App.Caching;
+﻿using System;
+
+using BarkFluff.Client.WPF.Services.App.Caching;
 
 using System.Windows;
 using System.Windows.Controls;
@@ -49,7 +51,7 @@ namespace BarkFluff.Client.WPF.UserControls
             {
                 var fileId = FileCacheService.ExtractFileIdFromUrl(pictureUrl);
                 var imagePath = App.FileCacheService.GetCachedFilePath(fileId ?? string.Empty, FileType.Avatar, pictureUrl);
-                BluredUserAvatarBrush.ImageSource = new BitmapImage(new System.Uri(imagePath, System.UriKind.RelativeOrAbsolute));
+                BluredUserAvatarBrush.ImageSource = new BitmapImage(new Uri(imagePath, UriKind.RelativeOrAbsolute));
             }
             catch { }
         }

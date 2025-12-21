@@ -194,23 +194,6 @@ namespace BarkFluff.Client.WPF.UserControls
             }
         }
 
-        // Аватар
-        public static readonly DependencyProperty AvatarSourceProperty =
-            DependencyProperty.Register(nameof(AvatarSource), typeof(ImageSource), typeof(Profile),
-                new PropertyMetadata(null, OnAvatarSourceChanged));
-
-        public ImageSource AvatarSource
-        {
-            get => (ImageSource)GetValue(AvatarSourceProperty);
-            set => SetValue(AvatarSourceProperty, value);
-        }
-
-        private static void OnAvatarSourceChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        {
-            // AvatarSource property kept for backwards compatibility
-            // Avatar is now displayed via CachedAvatar control
-        }
-
         // Последнее время онлайн
         public static readonly DependencyProperty LastSeenProperty =
             DependencyProperty.Register(nameof(LastSeen), typeof(DateTime?), typeof(Profile),
