@@ -115,7 +115,7 @@ namespace BarkFluff.Client.WPF.UserControls
         {
             // Update the last message ID so pagination works correctly
             _lastMessageId = TransferMessage.MessageId;
-            LastMessage.Text = ProcessText(TransferMessage.Text);
+            LastMessage.Text = ProcessText(GetDisplayText(TransferMessage));
             var time = TransferMessage.SentAt.ToString();
             TimeMessage.Text = FormatDateTime(time.Length >= 2 ? time.Substring(1, time.Length - 2) : time);
             
@@ -281,6 +281,63 @@ namespace BarkFluff.Client.WPF.UserControls
 
             string result = input.Replace("\r\n", " ").Replace("\n", " ").Trim();
             return result.Length > 50 ? result.Substring(0, 50) : result;
+        }
+
+        /// <summary>
+        /// Получает текст для отображения в ChatItem с учётом вложений
+        /// </summary>
+        public static string GetDisplayText(MessageModel message)
+        {
+            if (message == null)
+                return string.Empty;
+
+            // Если есть текст, возвращаем его
+            if (!string.IsNullOrEmpty(message.Text))
+                return message.Text;
+
+            // Если текста нет, но есть вложения - показываем тип вложения
+            if (message.Attachments != null && message.Attachments.Count > 0)
+            {
+                return FormatAttachmentText(message.Attachments[0].Type, message.Attachments.Count);
+            }
+
+            return string.Empty;
+        }
+
+        /// <summary>
+        /// Получает текст для отображения из proto-сообщения с учётом вложений
+        /// </summary>
+        public static string GetDisplayTextFromProto(BarkFluff.Proto.Shared.Message? message)
+        {
+            if (message == null)
+                return string.Empty;
+
+            // Если есть текст, возвращаем его
+            if (!string.IsNullOrEmpty(message.Content?.Text))
+                return message.Content.Text;
+
+            // Если текста нет, но есть вложения - показываем тип вложения
+            if (message.Content?.Attachments != null && message.Content.Attachments.Count > 0)
+            {
+                return FormatAttachmentText(message.Content.Attachments[0].Type, message.Content.Attachments.Count);
+            }
+
+            return string.Empty;
+        }
+
+        /// <summary>
+        /// Форматирует текст для отображения типа вложения
+        /// </summary>
+        private static string FormatAttachmentText(Proto.Shared.MessageAttachmentType type, int count)
+        {
+            return type switch
+            {
+                Proto.Shared.MessageAttachmentType.Image => count > 1 ? $"📷 Фото ({count})" : "📷 Фото",
+                Proto.Shared.MessageAttachmentType.Video => count > 1 ? $"🎬 Видео ({count})" : "🎬 Видео",
+                Proto.Shared.MessageAttachmentType.Gif => count > 1 ? $"🎞️ GIF ({count})" : "🎞️ GIF",
+                Proto.Shared.MessageAttachmentType.Document => count > 1 ? $"📎 Файл ({count})" : "📎 Файл",
+                _ => count > 1 ? $"📎 Вложение ({count})" : "📎 Вложение"
+            };
         }
     }
 }
