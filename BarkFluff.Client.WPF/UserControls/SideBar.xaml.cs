@@ -38,8 +38,9 @@ namespace BarkFluff.Client.WPF.UserControls
             if (App.GParam == null) return;
 
             // Устанавливаем имя пользователя и email
-            UsernameText.Text = !string.IsNullOrEmpty(App.GParam.UserName) ? $"@{App.GParam.UserName}" : "username";
-            EmailText.Text = App.GParam.FirstName ?? "email";
+            UsernameText.Text = !string.IsNullOrEmpty(App.GParam.UserName) ? $"@{App.GParam.UserName}" : "email";
+            var fnln = $"{App.GParam.FirstName} {App.GParam.LastName}".Trim();
+            FullNameText.Text = fnln ?? "first name last name";
 
             // Загружаем аватар через кеш-сервис
             if (!string.IsNullOrEmpty(App.GParam.PictureUrl))
