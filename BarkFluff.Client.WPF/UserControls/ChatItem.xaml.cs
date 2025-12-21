@@ -3,14 +3,8 @@ using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
 using System.Globalization;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
-using System.Windows.Media.Effects;
-using System.Windows.Media.Imaging;
-
-using Color = System.Windows.Media.Color;
 
 namespace BarkFluff.Client.WPF.UserControls
 {
@@ -110,7 +104,10 @@ namespace BarkFluff.Client.WPF.UserControls
                 _avatarFileId = FileCacheService.ExtractFileIdFromUrl(imageUrl);
             }
 
-            Loaded += ChatItem_Loaded;
+            // Устанавливаем данные для CachedAvatar
+            AvatarControl.FileId = _avatarFileId;
+            AvatarControl.FileUrl = imageUrl;
+
             UpdateUnreadBadge();
         }
 
@@ -230,107 +227,6 @@ namespace BarkFluff.Client.WPF.UserControls
                     ReadStatusPanel.Opacity = 1.0;
                 }
             });
-        }
-
-        private async void ChatItem_Loaded(object sender, RoutedEventArgs e)
-        {
-            // Используем кеш-сервис для загрузки аватара
-            var imagePath = App.FileCacheService.GetCachedFilePath(_avatarFileId ?? string.Empty, FileType.Avatar, _url);
-            SetAvatarImage(imagePath);
-
-            // Подписываемся на событие кеширования файла
-            App.FileCacheService.FileCached += OnFileCached;
-
-            // Отписываемся при выгрузке контрола
-            Unloaded += (s, args) =>
-            {
-                App.FileCacheService.FileCached -= OnFileCached;
-            };
-        }
-
-        private void OnFileCached(string fileId, string filePath, FileType fileType)
-        {
-            if (fileId == _avatarFileId && fileType == FileType.Avatar)
-            {
-                Dispatcher.Invoke(() => SetAvatarImage(filePath));
-            }
-        }
-
-        private async void SetAvatarImage(string imagePath)
-        {
-            try
-            {
-                BitmapImage bitmapImage = new BitmapImage();
-                bitmapImage.BeginInit();
-                bitmapImage.UriSource = new Uri(imagePath, UriKind.RelativeOrAbsolute);
-                bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
-                bitmapImage.EndInit();
-
-                ImageBrush imageBrush = new ImageBrush
-                {
-                    ImageSource = bitmapImage,
-                    Stretch = Stretch.UniformToFill,
-                };
-                border.Background = imageBrush;
-
-                // For local/cached files, DownloadCompleted won't fire, so we need to handle both cases
-                if (bitmapImage.IsDownloading)
-                {
-                    bitmapImage.DownloadCompleted += async (s, args) =>
-                    {
-                        await UpdateAvatarShadowEffect(imagePath);
-                    };
-
-                    bitmapImage.DownloadFailed += (s, args) =>
-                    {
-                        SetDefaultShadowEffect();
-                    };
-                }
-                else
-                {
-                    // Image is already loaded (local/cached file)
-                    await UpdateAvatarShadowEffect(imagePath);
-                }
-            }
-            catch
-            {
-                SetDefaultShadowEffect();
-            }
-        }
-
-        private async Task UpdateAvatarShadowEffect(string imagePath)
-        {
-            try
-            {
-                // Use cached image path for color analysis
-                Color averageColor = await App.ColorAnalyzer.GetAverageColorFromUrlAsync(imagePath);
-                Dispatcher.Invoke(() =>
-                {
-                    DropShadowEffect shadowEffect = new DropShadowEffect
-                    {
-                        BlurRadius = 12,
-                        Opacity = 0.9,
-                        ShadowDepth = 0,
-                        Color = averageColor
-                    };
-                    border.Effect = shadowEffect;
-                });
-            }
-            catch
-            {
-                Dispatcher.Invoke(() => SetDefaultShadowEffect());
-            }
-        }
-
-        private void SetDefaultShadowEffect()
-        {
-            border.Effect = new DropShadowEffect
-            {
-                BlurRadius = 10,
-                Opacity = 0.3,
-                ShadowDepth = 0,
-                Color = Colors.Gray
-            };
         }
 
         private string FormatDateTime(string input)

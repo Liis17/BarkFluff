@@ -101,14 +101,12 @@
 
                                 <Border Background="#2A2A40" CornerRadius="52">
                                     <Grid>
-                                        <Ellipse
-                                            x:Name="AvatarImage"
+                                        <local:CachedAvatar
+                                            x:Name="AvatarCached"
                                             Width="104"
-                                            Height="104">
-                                            <Ellipse.Fill>
-                                                <ImageBrush x:Name="AvatarBrush" Stretch="UniformToFill" />
-                                            </Ellipse.Fill>
-                                        </Ellipse>
+                                            Height="104"
+                                            CornerRadius="52"
+                                            EnableDynamicShadow="False" />
 
                                         <!--  Placeholder icon with modern styling  -->
                                         <ui:SymbolIcon
