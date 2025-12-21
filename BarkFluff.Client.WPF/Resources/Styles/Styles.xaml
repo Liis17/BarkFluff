@@ -106,8 +106,8 @@
                         BorderThickness="{TemplateBinding BorderThickness}"
                         CornerRadius="8">
                         <Grid>
-                            <ScrollViewer 
-                                x:Name="PART_ContentHost" 
+                            <ScrollViewer
+                                x:Name="PART_ContentHost"
                                 Margin="{TemplateBinding Padding}"
                                 Focusable="False"
                                 HorizontalScrollBarVisibility="Hidden"
@@ -117,8 +117,8 @@
                                 Margin="{TemplateBinding Padding}"
                                 VerticalAlignment="Center"
                                 Foreground="#FF9E9E9E"
-                                Text="{TemplateBinding PlaceholderText}"
-                                IsHitTestVisible="False">
+                                IsHitTestVisible="False"
+                                Text="{TemplateBinding PlaceholderText}">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Visibility" Value="Collapsed" />
@@ -150,10 +150,13 @@
     </Style>
 
     <!--  Стиль для текстового поля ввода сообщения (прозрачный фон, без рамки)  -->
-    <Style x:Key="MessageInputTextBox" TargetType="ui:TextBox" BasedOn="{StaticResource MinimalTextBox}">
+    <Style
+        x:Key="MessageInputTextBox"
+        BasedOn="{StaticResource MinimalTextBox}"
+        TargetType="ui:TextBox">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Padding" Value="8,10" />
+        <Setter Property="Padding" Value="-5,10" />
         <Setter Property="Foreground" Value="White" />
     </Style>
 
