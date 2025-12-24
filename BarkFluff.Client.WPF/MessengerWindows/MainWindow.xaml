@@ -15,6 +15,17 @@
     SizeChanged="FluentWindow_SizeChanged"
     WindowBackdropType="Mica"
     mc:Ignorable="d">
+
+    <!--  Хоткеи  -->
+    <ui:FluentWindow.InputBindings>
+        <KeyBinding
+            Key="Q"
+            Command="{x:Static local:MainWindow.BarkfluffHotkeys}"
+            Modifiers="Control" />
+    </ui:FluentWindow.InputBindings>
+    <ui:FluentWindow.CommandBindings>
+        <CommandBinding Command="{x:Static local:MainWindow.BarkfluffHotkeys}" Executed="ExitHotkey" />
+    </ui:FluentWindow.CommandBindings>
     <Grid>
         <ui:TitleBar
             Height="30"
