@@ -58,31 +58,67 @@
         </Grid.RenderTransform>
 
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!--  Основной контент  -->
+        <!--  Заголовок (Стилистика регистрации)  -->
         <StackPanel
             Grid.Row="0"
+            Margin="0,40,0,0"
+            HorizontalAlignment="Center"
+            Orientation="Vertical">
+            <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                <Image
+                    Width="28"
+                    Height="28"
+                    Source="/Resources/Images/barkfluff_logo.png" />
+                <TextBlock
+                    Margin="12,0,0,0"
+                    VerticalAlignment="Center"
+                    FontFamily="{DynamicResource AdwaitaSans}"
+                    FontSize="18"
+                    FontWeight="SemiBold"
+                    Foreground="White"
+                    Text="BarkFluff" />
+            </StackPanel>
+            <TextBlock
+                Margin="0,8,0,0"
+                HorizontalAlignment="Center"
+                FontFamily="{DynamicResource AdwaitaSans}"
+                FontSize="14"
+                FontWeight="Normal"
+                Foreground="#B0B0B0"
+                Text="Вход в приложение" />
+        </StackPanel>
+
+        <!--  Основной контент с пинкодом  -->
+        <StackPanel
+            Grid.Row="1"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             Orientation="Vertical">
 
-            <!--  Заголовок  -->
             <TextBlock
-                Margin="0,0,0,40"
+                Margin="0,0,0,20"
                 HorizontalAlignment="Center"
                 FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="26"
+                FontSize="20"
                 FontWeight="SemiBold"
-                Foreground="#E8E8E8"
-                Text="Введите код приложения" />
+                Foreground="White"
+                Text="Код доступа" />
 
-            <!--  Карточка с полями ввода  -->
-            <Border Style="{StaticResource Win11CardStyle}">
+            <!--  Карточка в стиле SetupPages  -->
+            <Border
+                Padding="40,35"
+                Background="#1F1F1F"
+                BorderBrush="#333333"
+                BorderThickness="1"
+                CornerRadius="12">
                 <StackPanel Orientation="Vertical">
-                    <!--  Поля для ввода PIN  -->
+
+                    <!--  Контейнер PIN (С RenderTransform для анимации тряски)  -->
                     <StackPanel
                         x:Name="PinContainer"
                         HorizontalAlignment="Center"
@@ -90,6 +126,8 @@
                         <StackPanel.RenderTransform>
                             <TranslateTransform />
                         </StackPanel.RenderTransform>
+
+                        <!--  Поля ввода  -->
                         <TextBox
                             x:Name="Box0"
                             GotFocus="PinBox_GotFocus"
@@ -123,53 +161,40 @@
 
                     <!--  Индикатор попыток  -->
                     <StackPanel
-                        Margin="0,24,0,0"
+                        Margin="0,25,0,0"
                         HorizontalAlignment="Center"
                         Orientation="Horizontal">
                         <TextBlock
-                            Margin="0,0,14,0"
+                            Margin="0,0,15,0"
                             VerticalAlignment="Center"
                             FontFamily="{DynamicResource AdwaitaSans}"
                             FontSize="13"
-                            FontWeight="Medium"
-                            Foreground="#A0A0A0"
+                            FontWeight="Normal"
+                            Foreground="#888888"
                             Text="Попытки:" />
+
+                        <!--  Индикаторы (Borders используются в коде для смены цвета)  -->
                         <Border
                             x:Name="key3"
-                            Width="30"
-                            Height="30"
-                            Margin="5,0"
+                            Width="10"
+                            Height="10"
+                            Margin="4,0"
                             Background="#2D4A20"
-                            CornerRadius="15">
-                            <ui:SymbolIcon
-                                FontSize="15"
-                                Foreground="#5DBE6A"
-                                Symbol="Checkmark24" />
-                        </Border>
+                            CornerRadius="5" />
                         <Border
                             x:Name="key2"
-                            Width="30"
-                            Height="30"
-                            Margin="5,0"
+                            Width="10"
+                            Height="10"
+                            Margin="4,0"
                             Background="#2D4A20"
-                            CornerRadius="15">
-                            <ui:SymbolIcon
-                                FontSize="15"
-                                Foreground="#5DBE6A"
-                                Symbol="Checkmark24" />
-                        </Border>
+                            CornerRadius="5" />
                         <Border
                             x:Name="key1"
-                            Width="30"
-                            Height="30"
-                            Margin="5,0"
+                            Width="10"
+                            Height="10"
+                            Margin="4,0"
                             Background="#2D4A20"
-                            CornerRadius="15">
-                            <ui:SymbolIcon
-                                FontSize="15"
-                                Foreground="#5DBE6A"
-                                Symbol="Checkmark24" />
-                        </Border>
+                            CornerRadius="5" />
                     </StackPanel>
 
                     <!--  Текст подсказки  -->
@@ -180,53 +205,40 @@
                         FontFamily="{DynamicResource AdwaitaSans}"
                         FontSize="13"
                         FontWeight="Normal"
-                        Foreground="#E8A870"
+                        Foreground="#FF9800"
                         Text=""
                         TextAlignment="Center" />
                 </StackPanel>
             </Border>
         </StackPanel>
 
-        <!--  Нижняя панель  -->
-        <Border
-            Grid.Row="1"
-            Margin="40,0,40,32"
-            Padding="24,18"
+        <!--  Нижняя панель (Сброс)  -->
+        <StackPanel
+            x:Name="ButtonStack"
+            Grid.Row="2"
+            Margin="0,0,0,30"
             HorizontalAlignment="Center"
-            Background="#2A2A2A"
-            CornerRadius="12">
-            <StackPanel
-                x:Name="ButtonStack"
+            Loaded="ButtonStack_Loaded"
+            Orientation="Vertical">
+
+            <TextBlock
+                Margin="0,0,0,10"
                 HorizontalAlignment="Center"
-                Loaded="ButtonStack_Loaded"
-                Orientation="Vertical">
-                <TextBlock
-                    Margin="0,0,0,14"
-                    HorizontalAlignment="Center"
-                    FontFamily="{DynamicResource AdwaitaSans}"
-                    FontSize="13"
-                    FontWeight="Normal"
-                    Foreground="#A8A8A8"
-                    Text="Проблемы со входом? Попробуйте сбросить приложение." />
-                <ui:Button Click="RemoveSettings" Style="{StaticResource Win11DangerButton}">
-                    <ui:Button.Content>
-                        <StackPanel Orientation="Horizontal">
-                            <ui:SymbolIcon
-                                Margin="0,0,10,0"
-                                FontSize="16"
-                                Foreground="White"
-                                Symbol="Delete24" />
-                            <TextBlock
-                                VerticalAlignment="Center"
-                                FontFamily="{DynamicResource AdwaitaSans}"
-                                FontSize="14"
-                                FontWeight="Medium"
-                                Foreground="White"
-                                Text="Сбросить приложение" />
-                        </StackPanel>
-                    </ui:Button.Content>
-                </ui:Button>
-            </StackPanel>
-        </Border>
+                FontFamily="{DynamicResource AdwaitaSans}"
+                FontSize="12"
+                Foreground="#666666"
+                Text="Забыли код доступа?" />
+
+            <!--  Кнопка в стиле регистрации (используем ui:Button для единства стиля)  -->
+            <ui:Button
+                HorizontalAlignment="Center"
+                Appearance="Danger"
+                Click="RemoveSettings">
+                <StackPanel Orientation="Horizontal" >
+                    <ui:SymbolIcon Symbol="Delete24" />
+                    <TextBlock Text="Сбросить настройки и войти" />
+                </StackPanel>
+            </ui:Button>
+        </StackPanel>
     </Grid>
 </UserControl>
