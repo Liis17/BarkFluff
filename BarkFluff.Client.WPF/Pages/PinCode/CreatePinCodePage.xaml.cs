@@ -6,9 +6,12 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using Wpf.Ui.Controls;
 
 using Erida = BarkFluff.Client.WPF.Services.Erida.MessageType;
 using MType = BarkFluff.Client.WPF.Services.Erida.MessageType.MessageTypeEnum;
+using TextBox = System.Windows.Controls.TextBox;
+
 namespace BarkFluff.Client.WPF.Pages.PinCode
 {
     /// <summary>
@@ -36,6 +39,8 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
             {
                 box.MaxLength = 1;
             }
+            
+            UpdateContinueButtonState();
         }
 
         private void FirstPinBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -195,6 +200,7 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
             {
                 firstPinCode += box.Text;
             }
+            UpdateContinueButtonState();
         }
 
         private void UpdateSecondPinCode()
@@ -203,6 +209,37 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
             foreach (var box in secondBoxes)
             {
                 secondPinCode += box.Text;
+            }
+            UpdateContinueButtonState();
+        }
+
+        private void UpdateContinueButtonState()
+        {
+            bool isFirstComplete = firstPinCode.Length == 4;
+            bool isSecondComplete = secondPinCode.Length == 4;
+
+            if (isFirstComplete && isSecondComplete)
+            {
+                if (firstPinCode == secondPinCode)
+                {
+                    ContinueButton.Appearance = ControlAppearance.Success;
+                    ContinueButton.IsEnabled = true;
+                }
+                else
+                {
+                    ContinueButton.Appearance = ControlAppearance.Danger;
+                    ContinueButton.IsEnabled = true;
+                }
+            }
+            else if (isFirstComplete || secondPinCode.Length > 0)
+            {
+                ContinueButton.Appearance = ControlAppearance.Secondary;
+                ContinueButton.IsEnabled = false;
+            }
+            else
+            {
+                ContinueButton.Appearance = ControlAppearance.Caution;
+                ContinueButton.IsEnabled = false;
             }
         }
 
