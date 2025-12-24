@@ -1120,7 +1120,10 @@ namespace BarkFluff.Client.WPF.Pages
         {
             ClosePanel();
         }
-        private void OpenPanel()
+        /// <summary>
+        /// открыть Sidebar
+        /// </summary>
+        public void OpenPanel()
         {
             var anim = new ThicknessAnimation
             {
@@ -1133,7 +1136,10 @@ namespace BarkFluff.Client.WPF.Pages
             OverlayPanel.Visibility = Visibility.Visible;
             isOpenPanel = true;
         }
-        private void ClosePanel()
+        /// <summary>
+        /// Закрыть Sidebar
+        /// </summary>
+        public void ClosePanel()
         {
             var anim = new ThicknessAnimation
             {
@@ -1231,6 +1237,22 @@ namespace BarkFluff.Client.WPF.Pages
             {
                 _currentProfile.LoadUserProfile(userId);
             }
+        }
+        public void OpenSettings()
+        {
+            CenterPanel.Child = null;
+
+            CenterPanel.Child = new BarkFluff.Client.WPF.UserControls.Settings();
+
+            OpenCenterPanel();
+        }
+        public void OpenDebugMenu()
+        {
+            CenterPanel.Child = null;
+
+            CenterPanel.Child = new BarkFluff.Client.WPF.UserControls.Debug.Menu();
+
+            OpenCenterPanel();
         }
 
         private void OpenCenterPanel()
@@ -1366,8 +1388,8 @@ namespace BarkFluff.Client.WPF.Pages
                         AddDateSeparatorIfNeeded(message.SentAt.ToDateTime());
 
                         // Определяем владельца сообщения
-                        var owner = message.SenderId == App.GParam.UserId 
-                            ? MessageBubble.MessageOwner.Me 
+                        var owner = message.SenderId == App.GParam.UserId
+                            ? MessageBubble.MessageOwner.Me
                             : MessageBubble.MessageOwner.Interlocutor;
                         var type = GetMessageType(message);
                         var messageItem = new MessageBubble(owner, type, message, IsGroup);
