@@ -300,6 +300,36 @@
                         Background="White"
                         Opacity="0.1" />
                     <Button
+                        x:Name="DebugMenuButton"
+                        Padding="15,8"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Left"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Click="OpenDebugMenuButtonClick"
+                        Content="Отладка"
+                        Cursor="Hand"
+                        Foreground="White">
+                        <Button.ContentTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:SymbolIcon
+                                        Margin="0,0,10,0"
+                                        FontSize="20"
+                                        Foreground="White"
+                                        Symbol="Bug20" />
+                                    <TextBlock Foreground="White" Text="{Binding}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </Button.ContentTemplate>
+                    </Button>
+                    <Border
+                        x:Name="DebugBorder"
+                        Height="1"
+                        Margin="5,1,15,1"
+                        Background="White"
+                        Opacity="0.1" />
+                    <Button
                         Padding="15,8"
                         HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Left"

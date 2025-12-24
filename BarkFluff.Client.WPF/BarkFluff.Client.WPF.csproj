@@ -39,6 +39,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Classes\**" />
+    <EmbeddedResource Remove="Classes\**" />
+    <None Remove="Classes\**" />
+    <Page Remove="Classes\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Remove="Fonts\AdwaitaSans-Regular.ttf" />
     <None Remove="Fonts\Neucha-Regular.ttf" />
     <None Remove="Fonts\NotoSansDisplay-VariableFont_wdth,wght.ttf" />
@@ -97,10 +104,6 @@
     <Compile Update="Pages\SetupPages\Login.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Classes\" />
   </ItemGroup>
 
 </Project>

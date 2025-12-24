@@ -20,6 +20,13 @@ namespace BarkFluff.Client.WPF.UserControls
         private void SideBar_Loaded(object sender, RoutedEventArgs e)
         {
             LoadCurrentUserData();
+#if (!DEBUG)
+            DebugMenuButton.Visibility = Visibility.Hidden;
+            DebugBorder.Visibility = Visibility.Hidden;
+#else
+            DebugMenuButton.Visibility = Visibility.Visible;
+            DebugBorder.Visibility = Visibility.Visible;
+#endif
         }
 
         private void LoadCurrentUserData()
@@ -76,7 +83,19 @@ namespace BarkFluff.Client.WPF.UserControls
         /// <param name="e"></param>
         private void OpenSettingsButtonClick(object sender, RoutedEventArgs e)
         {
+            App.Messenger.ClosePanel();
+            App.Messenger.OpenSettings();
+        }
 
+        /// <summary>
+        /// Открытие отладочного меню
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void OpenDebugMenuButtonClick(object sender, RoutedEventArgs e)
+        {
+            App.Messenger.ClosePanel();
+            App.Messenger.OpenDebugMenu();
         }
     }
 }
