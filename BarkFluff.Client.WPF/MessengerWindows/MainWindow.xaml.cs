@@ -21,7 +21,8 @@ namespace BarkFluff.Client.WPF
     public partial class MainWindow : FluentWindow
     {
         private readonly HashSet<Key> _pressedKeys = new();
-        public static readonly RoutedCommand BarkfluffHotkeys = new RoutedCommand();
+        public static readonly RoutedCommand ExitHotkeyRouted = new RoutedCommand();
+        public static readonly RoutedCommand SearchHotkeyRouted = new RoutedCommand();
         #region Инициализация
         public MainWindow()
         {
@@ -103,6 +104,11 @@ namespace BarkFluff.Client.WPF
         private void ExitHotkey(object sender, ExecutedRoutedEventArgs e)
         {
             Application.Current.Shutdown();
+        }
+
+        private void SearchHotkeyExecuted(object sender, ExecutedRoutedEventArgs e)
+        {
+            System.Windows.MessageBox.Show("Ctrl+F нажата!", "Поиск", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
         }
         #endregion
 
