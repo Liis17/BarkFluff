@@ -20,11 +20,16 @@
     <ui:FluentWindow.InputBindings>
         <KeyBinding
             Key="Q"
-            Command="{x:Static local:MainWindow.BarkfluffHotkeys}"
+            Command="{x:Static local:MainWindow.ExitHotkeyRouted}"
+            Modifiers="Control" />
+        <KeyBinding
+            Key="F"
+            Command="{x:Static local:MainWindow.SearchHotkeyRouted}"
             Modifiers="Control" />
     </ui:FluentWindow.InputBindings>
     <ui:FluentWindow.CommandBindings>
-        <CommandBinding Command="{x:Static local:MainWindow.BarkfluffHotkeys}" Executed="ExitHotkey" />
+        <CommandBinding Command="{x:Static local:MainWindow.ExitHotkeyRouted}" Executed="ExitHotkey" />
+        <CommandBinding Command="{x:Static local:MainWindow.SearchHotkeyRouted}" Executed="SearchHotkeyExecuted" />
     </ui:FluentWindow.CommandBindings>
     <Grid>
         <ui:TitleBar
