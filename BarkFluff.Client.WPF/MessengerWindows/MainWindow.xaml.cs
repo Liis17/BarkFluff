@@ -2,7 +2,6 @@
 using BarkFluff.Client.WPF.Pages;
 using BarkFluff.Client.WPF.Pages.PinCode;
 using BarkFluff.Client.WPF.Pages.SetupPages;
-using BarkFluff.Client.WPF.Services.App;
 using BarkFluff.WebApi.Core.MessengerData;
 
 using System.IO;
@@ -22,6 +21,7 @@ namespace BarkFluff.Client.WPF
     public partial class MainWindow : FluentWindow
     {
         private readonly HashSet<Key> _pressedKeys = new();
+        public static readonly RoutedCommand BarkfluffHotkeys = new RoutedCommand();
         #region Инициализация
         public MainWindow()
         {
@@ -99,8 +99,12 @@ namespace BarkFluff.Client.WPF
 #endif
 
 
-
-
+        #region Hotkey Events
+        private void ExitHotkey(object sender, ExecutedRoutedEventArgs e)
+        {
+            Application.Current.Shutdown();
+        }
+        #endregion
 
         private void MainFrame_Loaded(object sender, RoutedEventArgs e)
         {
