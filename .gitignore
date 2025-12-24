@@ -361,4 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
-/BarkFluff.Client.WPF/Pages/Register.xaml.cs
+
+# не игнорировать дебажные контролы
+!/BarkFluff.Client.WPF/UserControls/Debug/
