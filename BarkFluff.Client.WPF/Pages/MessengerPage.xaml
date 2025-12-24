@@ -447,7 +447,7 @@
                                     x:Name="BackgroundChatImage"
                                     AlignmentX="Center"
                                     AlignmentY="Top"
-                                    ImageSource="https://image.barkfluff.com/vlc_bOFxnqoUWh.jpg"
+                                    ImageSource="https://image.barkfluff.com/background.jpg"
                                     Stretch="UniformToFill" />
                             </Border.Background>
                         </Border>
@@ -479,7 +479,7 @@
                                         Grid.Column="1"
                                         Margin="0,0,0,0"
                                         Padding="10,0,0,0"
-                                        Background="#2a0f52"
+                                        Background="#171717"
                                         CornerRadius="10,0,0,10"
                                         Opacity="0.8" />
 
@@ -556,7 +556,8 @@
                             <ScrollViewer
                                 x:Name="MessageScrollViewer"
                                 Grid.Row="1"
-                                Padding="5,0,15,0"
+                                Panel.ZIndex="-1"
+                                Padding="5,-45,15,0"
                                 HorizontalAlignment="Stretch"
                                 VerticalAlignment="Bottom"
                                 HorizontalScrollBarVisibility="Disabled"
@@ -574,7 +575,7 @@
                                 x:Name="TFMBackground"
                                 Grid.Row="2"
                                 Margin="10,0,10,10"
-                                Background="#7653b1"
+                                Background="#171717"
                                 CornerRadius="15"
                                 Opacity="0.8">
 

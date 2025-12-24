@@ -84,6 +84,7 @@
                 Margin="0,0,16,0"
                 VerticalAlignment="Center"
                 CornerRadius="23"
+                EnableDynamicShadow="False"
                 ShadowBlurRadius="12"
                 ShadowOpacity="0.9" />
 
@@ -127,7 +128,7 @@
                 HorizontalAlignment="Right"
                 VerticalAlignment="Top"
                 Orientation="Vertical">
-                
+
                 <!--  Unread Badge  -->
                 <Border
                     x:Name="UnreadBadge"
@@ -136,8 +137,8 @@
                     Margin="0,0,0,4"
                     Padding="6,2"
                     HorizontalAlignment="Right"
-                    CornerRadius="10"
                     Background="#f8a947"
+                    CornerRadius="10"
                     Visibility="Collapsed">
                     <Border.Effect>
                         <DropShadowEffect
@@ -156,10 +157,14 @@
                         Foreground="White"
                         Text="1" />
                 </Border>
-                
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+
+                <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
                     <!--  Read Status Checkmarks  -->
-                    <Grid x:Name="ReadStatusPanel" HorizontalAlignment="Right" Margin="0,0,4,0" Visibility="Collapsed">
+                    <Grid
+                        x:Name="ReadStatusPanel"
+                        Margin="0,0,4,0"
+                        HorizontalAlignment="Right"
+                        Visibility="Collapsed">
                         <ui:SymbolIcon
                             x:Name="FirstCheckmark"
                             Width="20"
@@ -192,7 +197,7 @@
                             </ui:SymbolIcon.Effect>
                         </ui:SymbolIcon>
                     </Grid>
-                    
+
                     <!--  Время  -->
                     <TextBlock
                         x:Name="TimeMessage"
