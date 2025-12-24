@@ -1,6 +1,4 @@
-﻿using System;
-
-using BarkFluff.Client.WPF.Services.App.Caching;
+﻿using BarkFluff.Client.WPF.Services.App.Caching;
 
 using System.Windows;
 using System.Windows.Controls;
@@ -67,6 +65,16 @@ namespace BarkFluff.Client.WPF.UserControls
         /// <param name="sender"></param>
         /// <param name="e"></param>
         private void OpenFavorites(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        /// <summary>
+        /// Обрабатывает событие Click кнопки «Открыть настройки» для отображения диалогового окна настроек приложения.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void OpenSettingsButtonClick(object sender, RoutedEventArgs e)
         {
 
         }
