@@ -16,7 +16,8 @@
             Height="256"
             Margin="-128,-128,0,0"
             HorizontalAlignment="Left"
-            VerticalAlignment="Top">
+            VerticalAlignment="Top"
+            Opacity="0.6">
             <Ellipse.Fill>
                 <ImageBrush x:Name="BluredUserAvatarBrush" ImageSource="pack://application:,,,/BarkFluff;component/Resources/Placeholders/userplaceholder.png" />
             </Ellipse.Fill>
@@ -304,9 +305,9 @@
                         HorizontalContentAlignment="Left"
                         Background="Transparent"
                         BorderThickness="0"
-                        Click="SidebarButtonClick"
+                        Click="OpenSettingsButtonClick"
                         Content="Настройки"
-                        Cursor="No"
+                        Cursor="Hand"
                         Foreground="White">
                         <Button.ContentTemplate>
                             <DataTemplate>
