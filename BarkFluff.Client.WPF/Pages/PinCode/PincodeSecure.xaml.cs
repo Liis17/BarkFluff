@@ -1,15 +1,16 @@
 ﻿using BarkFluff.Client.WPF.Debugs;
 using BarkFluff.WebApi.Core.MessengerData;
-using Erida = BarkFluff.Client.WPF.Services.Erida.MessageType;
-using MType = BarkFluff.Client.WPF.Services.Erida.MessageType.MessageTypeEnum;
+
 using System.Diagnostics;
 using System.IO;
-using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+
+using Erida = BarkFluff.Client.WPF.Services.Erida.MessageType;
+using MType = BarkFluff.Client.WPF.Services.Erida.MessageType.MessageTypeEnum;
 
 namespace BarkFluff.Client.WPF.Pages.PinCode
 {
@@ -174,7 +175,7 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
         {
             string exePath = AppContext.BaseDirectory;
             string exeDirectory = Path.GetDirectoryName(exePath);
-            string filePath = Path.Combine(exeDirectory,"datas", "GlobalParam.json");
+            string filePath = Path.Combine(exeDirectory, "datas", "GlobalParam.json");
             if (File.Exists(filePath))
             {
                 var a = GlobalParam.VerifyPassword(filePath, pin);
@@ -190,7 +191,7 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
         private void Next()
         {
             string exeDirectory = Path.GetDirectoryName(AppContext.BaseDirectory);
-            string filePath = Path.Combine(Path.GetDirectoryName(AppContext.BaseDirectory),"datas", "GlobalParam.json");
+            string filePath = Path.Combine(Path.GetDirectoryName(AppContext.BaseDirectory), "datas", "GlobalParam.json");
             App.GParam = GlobalParam.Load(filePath, new string(pinDigits));
             App.GParam.AppPass = new string(pinDigits);
             App.GParam.AppPath = exeDirectory ?? string.Empty;
@@ -218,7 +219,7 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
 
         private void RemoveSettings(object sender, RoutedEventArgs e)
         {
-            string filePath = Path.Combine(Path.GetDirectoryName(AppContext.BaseDirectory),"datas", "GlobalParam.json");
+            string filePath = Path.Combine(Path.GetDirectoryName(AppContext.BaseDirectory), "datas", "GlobalParam.json");
             if (File.Exists(filePath))
             {
                 File.Delete("GlobalParam.json");
@@ -238,8 +239,8 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
                 var btn = new Button
                 {
                     Content = "Открыть дебаг окно",
-                    Width = 150,
-                    Height = 30,
+                    Width = 165,
+                    Height = 35,
                     Margin = new Thickness(5),
                     HorizontalAlignment = HorizontalAlignment.Center,
                 };
