@@ -19,7 +19,7 @@
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <SupportedOSPlatformVersion>10.0.26100.0</SupportedOSPlatformVersion>
     <AssemblyName>BarkFluff</AssemblyName>
-
+    <ErrorReport>false</ErrorReport>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
