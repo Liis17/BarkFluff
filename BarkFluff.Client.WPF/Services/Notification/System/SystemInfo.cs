@@ -1,4 +1,6 @@
 ﻿using Microsoft.Win32;
+using System.Net.Http;
+using System.Threading.Tasks;
 
 using System.Diagnostics;
 
@@ -66,24 +68,20 @@ namespace BarkFluff.Client.WPF
             return $"{windowsName} (сборка {buildNumber})";
         }
 
-        public static string GetExternalIp()
+        public static async Task<string> GetExternalIp()
         {
-            ProcessStartInfo psi = new ProcessStartInfo
+            try
             {
-                FileName = "curl",
-                Arguments = "ifconfig.me",
-                RedirectStandardOutput = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using (Process process = Process.Start(psi))
+                using (HttpClient client = new HttpClient())
+                {
+                    client.Timeout = TimeSpan.FromSeconds(5);
+                    string ip = await client.GetStringAsync("https://ifconfig.me");
+                    return ip.Trim();
+                }
+            }
+            catch
             {
-                if (process == null)
-                    throw new InvalidOperationException("Не удалось запустить процесс curl.");
-                string output = process.StandardOutput.ReadToEnd();
-                process.WaitForExit();
-                return output.Trim();
+                return string.Empty;
             }
         }
 
