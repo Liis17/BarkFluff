@@ -268,6 +268,7 @@
                         </Border>
                         <!--  Иконка проблем с сетью  -->
                         <Border
+                            x:Name="ErrorConnection"
                             Grid.Column="0"
                             Width="25"
                             Height="25"
@@ -275,15 +276,12 @@
                             HorizontalAlignment="Left"
                             VerticalAlignment="Center"
                             CornerRadius="15"
-                            Cursor="Hand"
-                            MouseLeftButtonUp="OpenCenterBlock"
-                            Tag="UpdateBlock"
                             ToolTip="Открыть мой профиль">
                             <ui:SymbolIcon
                                 FontSize="23"
-                                Foreground="#f8a644"
-                                Symbol="ArrowCircleUp16"
-                                ToolTip="Доступно обновление" />
+                                Foreground="#fd354a"
+                                Symbol="CloudError32"
+                                ToolTip="Проблемы с соединением" />
                         </Border>
                     </StackPanel>
 
