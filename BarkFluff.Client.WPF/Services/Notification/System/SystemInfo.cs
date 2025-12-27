@@ -1,8 +1,6 @@
 ﻿using Microsoft.Win32;
-using System.Net.Http;
-using System.Threading.Tasks;
 
-using System.Diagnostics;
+using System.Net.Http;
 
 namespace BarkFluff.Client.WPF
 {
@@ -84,6 +82,7 @@ namespace BarkFluff.Client.WPF
                 return string.Empty;
             }
         }
+
 
         public static string GetAppPath()
         {
