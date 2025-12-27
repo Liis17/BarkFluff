@@ -32,6 +32,7 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="20" />
                     </Grid.ColumnDefinitions>
 
                     <local:CachedAvatar
@@ -55,6 +56,18 @@
                             Foreground="Gray"
                             Text="email" />
                     </StackPanel>
+                    <Border VerticalAlignment="Center" Grid.Column="2">
+                        <ui:SymbolIcon
+                            x:Name="UserStatusIcon"
+                            Width="16"
+                            MouseLeftButtonUp="OpenQRModal"
+                            Height="16"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Bottom"
+                            Margin="0,0,5,5"
+                            Symbol="QrCode24"
+                            Foreground="White" />
+                    </Border>
                 </Grid>
 
                 <!--  Меню  -->

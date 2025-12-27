@@ -1995,5 +1995,15 @@ namespace BarkFluff.Client.WPF.Pages
         }
 
         #endregion
+
+        #region Другие действия
+
+        public void OpenQRModal()
+        {
+            OpenCenterPanel();
+            CenterPanel.Child = new UserControls.ProfileShare(App.GParam.UserName);
+        }
+
+        #endregion
     }
 }

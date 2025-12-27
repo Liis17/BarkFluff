@@ -7,6 +7,7 @@ using BarkFluff.Client.WPF.Services.App.Update;
 using BarkFluff.Client.WPF.Services.Erida;
 using BarkFluff.Client.WPF.Services.Notification;
 using BarkFluff.Client.WPF.Services.Notification.System;
+using BarkFluff.Client.WPF.Services.QR;
 using BarkFluff.WebApi.Core.MessengerData;
 
 using System.Diagnostics;
@@ -127,6 +128,8 @@ namespace BarkFluff.Client.WPF
 
             void NormalBoot()
             {
+                RoundedQrGenerator.Main();
+
                 Bootstrap();
             }
 

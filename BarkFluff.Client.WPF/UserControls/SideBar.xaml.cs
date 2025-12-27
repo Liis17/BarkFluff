@@ -97,5 +97,16 @@ namespace BarkFluff.Client.WPF.UserControls
             App.Messenger.ClosePanel();
             App.Messenger.OpenDebugMenu();
         }
+
+        /// <summary>
+        /// Открыть модалку с QR кодом на профиль
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void OpenQRModal(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            App.Messenger.ClosePanel();
+            App.Messenger.OpenQRModal();
+        }
     }
 }
