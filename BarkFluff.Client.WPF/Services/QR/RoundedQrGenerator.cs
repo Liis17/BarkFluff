@@ -3,63 +3,51 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using System.IO;
+using System.Windows.Media.Imaging;
 
 namespace BarkFluff.Client.WPF.Services.QR
 {
     public class RoundedQrGenerator
     {
-        public static void Main()
-        {
-            string payload = "лее мать ебать азазазазазаз"; // Ссылка внутри QR
-            string logoPath = "D:\\Win11\\download\\5363848505971119737_120.jpg";    // Путь к логотипу (должен лежать рядом с exe или укажите полный путь)
-            string outputPath = "C:\\Users\\daske\\Desktop\\custom_qr.png";
-
-            // Если нет логотипа под рукой, передайте null вместо logoPath
-            GenerateRoundedQr(payload, outputPath, logoPath);
-
-            Console.WriteLine($"QR код сохранен в {outputPath}");
-        }
-
-        public static void GenerateRoundedQr(string text, string filePath, string logoPath = null)
+        /// <summary>
+        /// Генерирует QR код и возвращает его как BitmapSource для использования в WPF
+        /// </summary>
+        /// <param name="text">Текст или URL для кодирования в QR</param>
+        /// <param name="logoPath">Путь к логотипу (опционально)</param>
+        /// <returns>BitmapSource с QR кодом</returns>
+        public static BitmapSource GenerateRoundedQrBitmap(string text, string logoPath = null)
         {
             // 1. Генерируем данные QR кода
             QRCodeGenerator qrGenerator = new QRCodeGenerator();
-            QRCodeData qrCodeData = qrGenerator.CreateQrCode(text, QRCodeGenerator.ECCLevel.H); // Высокий уровень коррекции для логотипа
+            QRCodeData qrCodeData = qrGenerator.CreateQrCode(text, QRCodeGenerator.ECCLevel.H);
 
-            // Получаем матрицу (true = черный, false = белый)
-            // ModuleMatrix - это List<BitArray>, преобразуем для удобства
             var matrix = qrCodeData.ModuleMatrix;
             int moduleCount = matrix.Count;
 
             // 2. Настройки рисования
-            int pixelSize = 20; // Размер одного модуля (точки) в пикселях
-            int padding = 40;   // Отступ белого поля вокруг
+            int pixelSize = 20;
+            int padding = 40;
             int qrPixelWidth = moduleCount * pixelSize;
             int imgSize = qrPixelWidth + (padding * 2);
 
-            // Настройка скругления (0.5 = круг, 0.2 = скругленный квадрат)
             float cornerRadiusRatio = 0.4f;
 
             using (Bitmap bitmap = new Bitmap(imgSize, imgSize))
             using (Graphics g = Graphics.FromImage(bitmap))
             {
-                // Улучшаем качество графики (антиалиасинг важен для скруглений)
                 g.SmoothingMode = SmoothingMode.HighQuality;
                 g.InterpolationMode = InterpolationMode.HighQualityBicubic;
                 g.PixelOffsetMode = PixelOffsetMode.HighQuality;
 
-                // Заливаем фон белым
                 g.Clear(Color.White);
 
-                // Создаем градиентную кисть (как на картинке: от светло-зеленого к темно-зеленому)
-                // Координаты градиента по диагонали
                 using (LinearGradientBrush brush = new LinearGradientBrush(
                     new Rectangle(0, 0, imgSize, imgSize),
-                    Color.FromArgb(135, 206, 250), // Светлый (например голубой или лайм)
-                    Color.FromArgb(34, 139, 34),   // Темный (ForestGreen)
-                    45f)) // Угол 45 градусов
+                    Color.FromArgb(135, 206, 250),
+                    Color.FromArgb(34, 139, 34),
+                    45f))
                 {
-                    // Настраиваем цвета градиента точнее под референс (Telegram зеленый)
                     ColorBlend cblend = new ColorBlend(3);
                     cblend.Colors = new Color[] { Color.FromArgb(162, 218, 104), Color.FromArgb(70, 178, 157), Color.FromArgb(41, 148, 100) };
                     cblend.Positions = new float[] { 0f, 0.5f, 1f };
@@ -70,11 +58,10 @@ namespace BarkFluff.Client.WPF.Services.QR
                     {
                         for (int y = 0; y < moduleCount; y++)
                         {
-                            // Пропускаем "Глаза" (Finder Patterns), их нарисуем отдельно красиво
                             if (IsFinderPattern(x, y, moduleCount))
                                 continue;
 
-                            if (matrix[y][x]) // Обратите внимание: в QRCoder часто [y][x]
+                            if (matrix[y][x])
                             {
                                 RectangleF rect = new RectangleF(
                                     padding + x * pixelSize,
@@ -82,9 +69,7 @@ namespace BarkFluff.Client.WPF.Services.QR
                                     pixelSize,
                                     pixelSize);
 
-                                // Рисуем скругленный модуль (немного уменьшаем размер для эффекта разрыва, если нужно)
-                                // Если хотите слитный стиль, не отнимайте padding у rect
-                                float gap = 0; // Можно поставить 1-2 для зазоров
+                                float gap = 0;
                                 RectangleF drawRect = new RectangleF(rect.X + gap, rect.Y + gap, rect.Width - gap * 2, rect.Height - gap * 2);
 
                                 FillRoundedRectangle(g, brush, drawRect, (int)(pixelSize * cornerRadiusRatio));
@@ -92,7 +77,7 @@ namespace BarkFluff.Client.WPF.Services.QR
                         }
                     }
 
-                    // 4. Рисуем красивые "Глаза" (Finder Patterns)
+                    // 4. Рисуем "Глаза" (Finder Patterns)
                     // Левый верхний
                     DrawFinderPattern(g, brush, padding, padding, pixelSize, cornerRadiusRatio);
                     // Правый верхний
@@ -102,7 +87,7 @@ namespace BarkFluff.Client.WPF.Services.QR
                 }
 
                 // 5. Добавляем Логотип
-                if (!string.IsNullOrEmpty(logoPath) && System.IO.File.Exists(logoPath))
+                if (!string.IsNullOrEmpty(logoPath) && File.Exists(logoPath))
                 {
                     using (Image logo = Image.FromFile(logoPath))
                     {
@@ -119,7 +104,29 @@ namespace BarkFluff.Client.WPF.Services.QR
                     }
                 }
 
-                bitmap.Save(filePath, ImageFormat.Png);
+                // Конвертируем в BitmapSource для WPF
+                return ConvertBitmapToBitmapSource(bitmap);
+            }
+        }
+
+        /// <summary>
+        /// Конвертирует System.Drawing.Bitmap в WPF BitmapSource
+        /// </summary>
+        private static BitmapSource ConvertBitmapToBitmapSource(Bitmap bitmap)
+        {
+            using (MemoryStream memory = new MemoryStream())
+            {
+                bitmap.Save(memory, ImageFormat.Png);
+                memory.Position = 0;
+
+                BitmapImage bitmapImage = new BitmapImage();
+                bitmapImage.BeginInit();
+                bitmapImage.StreamSource = memory;
+                bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                bitmapImage.EndInit();
+                bitmapImage.Freeze();
+
+                return bitmapImage;
             }
         }
 

@@ -128,8 +128,6 @@ namespace BarkFluff.Client.WPF
 
             void NormalBoot()
             {
-                RoundedQrGenerator.Main();
-
                 Bootstrap();
             }
 
