@@ -276,7 +276,8 @@
                             HorizontalAlignment="Left"
                             VerticalAlignment="Center"
                             CornerRadius="15"
-                            ToolTip="Открыть мой профиль">
+                            Visibility="Collapsed"
+                            ToolTip="Проблемы с соединением">
                             <ui:SymbolIcon
                                 FontSize="23"
                                 Foreground="#fd354a"

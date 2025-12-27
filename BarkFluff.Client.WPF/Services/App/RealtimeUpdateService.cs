@@ -19,14 +19,17 @@ namespace BarkFluff.Client.WPF.Services.App
         private bool _isConnected;
         private bool _disposed;
         private int _reconnectAttempts;
-        private const int MaxReconnectAttempts = 5;
-        private const int ReconnectDelayMs = 5000;
+        private const int InitialReconnectDelayMs = 2000;
+        private const int MaxReconnectDelayMs = 30000;
+        private GlobalParam? _currentGlobalParam;
 
-        // Read receipt streaming - только одна глобальная подписка
+        // Read receipt streaming
         private CancellationTokenSource? _readReceiptCancellationTokenSource;
         private Task? _readReceiptStreamingTask;
+        private bool _isReadReceiptConnected;
+        private bool _readReceiptSubscriptionStarted;
 
-        // Дедупликация сообщений
+        // Duplicate detection
         private readonly HashSet<long> _processedMessageIds = new();
         private readonly object _processedMessagesLock = new();
         private const int MaxProcessedMessagesCacheSize = 1000;
@@ -89,6 +92,7 @@ namespace BarkFluff.Client.WPF.Services.App
                 return;
             }
 
+            _currentGlobalParam = globalParam;
             _cancellationTokenSource = new CancellationTokenSource();
             _streamingTask = Task.Run(() => StreamUpdatesAsync(globalParam, _cancellationTokenSource.Token));
 
@@ -114,7 +118,8 @@ namespace BarkFluff.Client.WPF.Services.App
 
         private async Task StreamUpdatesAsync(GlobalParam globalParam, CancellationToken cancellationToken)
         {
-            while (!cancellationToken.IsCancellationRequested && _reconnectAttempts < MaxReconnectAttempts)
+            // Infinite reconnection loop
+            while (!cancellationToken.IsCancellationRequested)
             {
                 try
                 {
@@ -138,6 +143,14 @@ namespace BarkFluff.Client.WPF.Services.App
                     {
                         ProcessMessageEvent(messageEvent);
                     }
+
+                    // Stream ended normally - attempt to reconnect
+                    WPF.App.ErideMessage.AddMessage("Updates stream ended, reconnecting...", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Warning });
+                    _isConnected = false;
+                    ConnectionStatusChanged?.Invoke(false);
+                    
+                    // Reconnect all streams when one disconnects
+                    await ReconnectAllStreamsAsync(globalParam, cancellationToken);
                 }
                 catch (OperationCanceledException)
                 {
@@ -152,25 +165,40 @@ namespace BarkFluff.Client.WPF.Services.App
 
                     if (!cancellationToken.IsCancellationRequested)
                     {
-                        await HandleReconnectionAsync(cancellationToken);
+                        // Reconnect all streams when one fails
+                        await ReconnectAllStreamsAsync(globalParam, cancellationToken);
                     }
                 }
             }
 
             _isConnected = false;
             ConnectionStatusChanged?.Invoke(false);
+        }
 
-            if (_reconnectAttempts >= MaxReconnectAttempts)
+        /// <summary>
+        /// Calculates the backoff delay using exponential backoff with a cap
+        /// </summary>
+        private int CalculateBackoffDelay(int attempts)
+        {
+            return Math.Min(InitialReconnectDelayMs * (int)Math.Pow(2, Math.Min(attempts - 1, 10)), MaxReconnectDelayMs);
+        }
+
+        /// <summary>
+        /// Notifies about connection failure if all streams are down
+        /// </summary>
+        private void NotifyConnectionFailureIfAllStreamsDown()
+        {
+            if (!_isConnected && !_isReadReceiptConnected)
             {
-                WPF.App.ErideMessage.AddMessage("Max reconnection attempts reached. Stopping realtime updates.", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Error });
+                ConnectionStatusChanged?.Invoke(false);
             }
         }
 
         private async Task HandleReconnectionAsync(CancellationToken cancellationToken)
         {
             _reconnectAttempts++;
-            var delay = ReconnectDelayMs * _reconnectAttempts;
-            WPF.App.ErideMessage.AddMessage($"Reconnection attempt {_reconnectAttempts}/{MaxReconnectAttempts} in {delay / 1000} seconds", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
+            var delay = CalculateBackoffDelay(_reconnectAttempts);
+            WPF.App.ErideMessage.AddMessage($"Reconnection attempt {_reconnectAttempts} in {delay / 1000} seconds", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
 
             try
             {
@@ -182,13 +210,31 @@ namespace BarkFluff.Client.WPF.Services.App
             }
         }
 
+        /// <summary>
+        /// Reconnects all realtime streams (messages and read receipts) when one connection fails
+        /// </summary>
+        private async Task ReconnectAllStreamsAsync(GlobalParam globalParam, CancellationToken cancellationToken)
+        {
+            await HandleReconnectionAsync(cancellationToken);
+
+            if (cancellationToken.IsCancellationRequested)
+                return;
+
+            // Restart read receipt subscription if it was previously started
+            if (_readReceiptSubscriptionStarted)
+            {
+                StopGlobalReadReceiptSubscription();
+                StartGlobalReadReceiptSubscription(globalParam);
+            }
+        }
+
         private void ProcessMessageEvent(NewMessageEvent messageEvent)
         {
             try
             {
                 var messageId = messageEvent.Message.Id;
 
-                // Проверяем, не обрабатывали ли мы уже это сообщение
+                // Check if we have already processed this message
                 lock (_processedMessagesLock)
                 {
                     if (_processedMessageIds.Contains(messageId))
@@ -197,10 +243,10 @@ namespace BarkFluff.Client.WPF.Services.App
                         return;
                     }
 
-                    // Добавляем в кэш обработанных сообщений
+                    // Add to processed messages cache
                     _processedMessageIds.Add(messageId);
 
-                    // Очищаем кэш, если он стал слишком большим
+                    // Clear cache if it gets too large
                     if (_processedMessageIds.Count > MaxProcessedMessagesCacheSize)
                     {
                         _processedMessageIds.Clear();
@@ -265,7 +311,7 @@ namespace BarkFluff.Client.WPF.Services.App
         }
 
         /// <summary>
-        /// Запускает глобальную подписку на подтверждение о прочтении
+        /// Starts the global read receipt subscription
         /// </summary>
         public void StartGlobalReadReceiptSubscription(GlobalParam globalParam)
         {
@@ -278,6 +324,7 @@ namespace BarkFluff.Client.WPF.Services.App
                 return;
             }
 
+            _readReceiptSubscriptionStarted = true;
             _readReceiptCancellationTokenSource = new CancellationTokenSource();
             _readReceiptStreamingTask = Task.Run(() => StreamReadReceiptsAsync(globalParam, _readReceiptCancellationTokenSource.Token));
 
@@ -301,6 +348,9 @@ namespace BarkFluff.Client.WPF.Services.App
 
         private async Task StreamReadReceiptsAsync(GlobalParam globalParam, CancellationToken cancellationToken)
         {
+            int readReceiptReconnectAttempts = 0;
+
+            // Infinite reconnection loop
             while (!cancellationToken.IsCancellationRequested)
             {
                 try
@@ -312,16 +362,28 @@ namespace BarkFluff.Client.WPF.Services.App
                     if (!error.IsSuccess || stream == null)
                     {
                         WPF.App.ErideMessage.AddMessage($"Failed to connect to read receipts stream: {error.ErrorMessage}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Error });
-                        await Task.Delay(ReconnectDelayMs, cancellationToken);
+                        _isReadReceiptConnected = false;
+                        NotifyConnectionFailureIfAllStreamsDown();
+
+                        readReceiptReconnectAttempts++;
+                        var delay = CalculateBackoffDelay(readReceiptReconnectAttempts);
+                        await Task.Delay(delay, cancellationToken);
                         continue;
                     }
 
+                    _isReadReceiptConnected = true;
+                    readReceiptReconnectAttempts = 0;
                     WPF.App.ErideMessage.AddMessage("Connected to read receipts stream", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
 
                     await foreach (var update in stream.WithCancellation(cancellationToken))
                     {
                         ProcessReadReceiptUpdate(update);
                     }
+
+                    // Stream ended normally - attempt to reconnect
+                    WPF.App.ErideMessage.AddMessage("Read receipts stream ended, reconnecting...", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Warning });
+                    _isReadReceiptConnected = false;
+                    NotifyConnectionFailureIfAllStreamsDown();
                 }
                 catch (OperationCanceledException)
                 {
@@ -331,13 +393,19 @@ namespace BarkFluff.Client.WPF.Services.App
                 catch (Exception ex)
                 {
                     WPF.App.ErideMessage.AddMessage($"Error in read receipts stream: {ex.Message}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Error });
+                    _isReadReceiptConnected = false;
+                    NotifyConnectionFailureIfAllStreamsDown();
 
                     if (!cancellationToken.IsCancellationRequested)
                     {
-                        await Task.Delay(ReconnectDelayMs, cancellationToken);
+                        readReceiptReconnectAttempts++;
+                        var delay = CalculateBackoffDelay(readReceiptReconnectAttempts);
+                        await Task.Delay(delay, cancellationToken);
                     }
                 }
             }
+
+            _isReadReceiptConnected = false;
         }
 
         private void ProcessReadReceiptUpdate(MessageReadEvent update)
