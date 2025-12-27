@@ -225,46 +225,66 @@
                             Text="AppName" />
                     </StackPanel>
 
-                    <!--  Аватар пользователя  -->
-                    <Border
-                        x:Name="AvatarTitleWindowButton"
-                        Grid.Column="0"
-                        Width="23"
-                        Height="23"
-                        Margin="30,0,0,0"
-                        HorizontalAlignment="Left"
-                        VerticalAlignment="Center"
-                        CornerRadius="15"
-                        Cursor="Hand"
-                        MouseLeftButtonUp="OpenCenterBlock"
-                        Tag="UserProfile"
-                        ToolTip="Открыть мой профиль">
-                        <Border.Background>
-                            <ImageBrush
-                                x:Name="AvatarTitleWindow"
-                                ImageSource="pack://application:,,,/BarkFluff;component/Resources/Placeholders/userplaceholder.png"
-                                Stretch="UniformToFill" />
-                        </Border.Background>
-                    </Border>
+                    <StackPanel Margin="30,0,0,0" Orientation="Horizontal">
+                        <!--  Аватар пользователя  -->
+                        <Border
+                            x:Name="AvatarTitleWindowButton"
+                            Grid.Column="0"
+                            Width="23"
+                            Height="23"
+                            Margin="2 0"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            CornerRadius="15"
+                            Cursor="Hand"
+                            MouseLeftButtonUp="OpenCenterBlock"
+                            Tag="UserProfile"
+                            ToolTip="Открыть мой профиль">
+                            <Border.Background>
+                                <ImageBrush
+                                    x:Name="AvatarTitleWindow"
+                                    ImageSource="pack://application:,,,/BarkFluff;component/Resources/Placeholders/userplaceholder.png"
+                                    Stretch="UniformToFill" />
+                            </Border.Background>
+                        </Border>
+                        <!--  Иконка обновления  -->
+                        <Border
+                            Grid.Column="0"
+                            Width="25" Margin="5 0"
+                            Height="25"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            CornerRadius="15"
+                            Cursor="Hand"
+                            MouseLeftButtonUp="OpenCenterBlock"
+                            Tag="UpdateBlock"
+                            ToolTip="Открыть мой профиль">
+                            <ui:SymbolIcon
+                                FontSize="23"
+                                Foreground="#f8a644"
+                                Symbol="ArrowCircleUp16"
+                                ToolTip="Доступно обновление" />
+                        </Border>
+                        <!--  Иконка проблем с сетью  -->
+                        <Border
+                            Grid.Column="0"
+                            Width="25" Margin="2 0"
+                            Height="25"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            CornerRadius="15"
+                            Cursor="Hand"
+                            MouseLeftButtonUp="OpenCenterBlock"
+                            Tag="UpdateBlock"
+                            ToolTip="Открыть мой профиль">
+                            <ui:SymbolIcon
+                                FontSize="23"
+                                Foreground="#f8a644"
+                                Symbol="ArrowCircleUp16"
+                                ToolTip="Доступно обновление" />
+                        </Border>
+                    </StackPanel>
 
-                    <Border
-                        Grid.Column="0"
-                        Width="25"
-                        Height="25"
-                        Margin="58,0,0,0"
-                        HorizontalAlignment="Left"
-                        VerticalAlignment="Center"
-                        CornerRadius="15"
-                        Cursor="Hand"
-                        MouseLeftButtonUp="OpenCenterBlock"
-                        Tag="UpdateBlock"
-                        ToolTip="Открыть мой профиль">
-                        <ui:SymbolIcon
-                            FontSize="23"
-                            Foreground="#f8a644"
-                            Symbol="ArrowCircleUp16"
-                            ToolTip="Доступно обновление" />
-                    </Border>
                 </Grid>
             </Border>
 
@@ -531,7 +551,7 @@
                                                 FontSize="13"
                                                 FontWeight="SemiBold"
                                                 Foreground="White"
-                                                Text="Apogee1" />
+                                                Text="" />
                                             <TextBlock
                                                 x:Name="UserOnlineTime"
                                                 Margin="15,0,0,0"
@@ -556,10 +576,10 @@
                             <ScrollViewer
                                 x:Name="MessageScrollViewer"
                                 Grid.Row="1"
-                                Panel.ZIndex="-1"
                                 Padding="5,-45,15,0"
                                 HorizontalAlignment="Stretch"
                                 VerticalAlignment="Bottom"
+                                Panel.ZIndex="-1"
                                 HorizontalScrollBarVisibility="Disabled"
                                 VerticalScrollBarVisibility="Auto">
                                 <StackPanel
