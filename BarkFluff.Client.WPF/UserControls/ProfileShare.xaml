@@ -55,8 +55,8 @@
                 <!--  Белый фон обязателен для контраста QR кода, даже в темной теме  -->
                 <Border
                     Grid.Row="0"
-                    Width="220"
-                    Height="220"
+                    Width="450"
+                    Height="450"
                     Padding="10"
                     Background="White"
                     CornerRadius="18">
