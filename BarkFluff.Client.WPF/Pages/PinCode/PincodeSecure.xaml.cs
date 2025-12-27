@@ -188,14 +188,14 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
             }
 
         }
-        private void Next()
+        private async void Next()
         {
             string exeDirectory = Path.GetDirectoryName(AppContext.BaseDirectory);
             string filePath = Path.Combine(Path.GetDirectoryName(AppContext.BaseDirectory), "datas", "GlobalParam.json");
             App.GParam = GlobalParam.Load(filePath, new string(pinDigits));
             App.GParam.AppPass = new string(pinDigits);
             App.GParam.AppPath = exeDirectory ?? string.Empty;
-            App.GParam.IpAddress = SystemInfo.GetExternalIp();
+            App.GParam.IpAddress = await SystemInfo.GetExternalIp();
 
             Box0.Focusable = false;
             Box1.Focusable = false;

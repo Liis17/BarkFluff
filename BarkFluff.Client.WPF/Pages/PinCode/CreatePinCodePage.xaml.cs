@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+
 using Wpf.Ui.Controls;
 
 using Erida = BarkFluff.Client.WPF.Services.Erida.MessageType;
@@ -39,7 +40,7 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
             {
                 box.MaxLength = 1;
             }
-            
+
             UpdateContinueButtonState();
         }
 
@@ -169,7 +170,7 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
             firstBoxes[0].Focus();
         }
 
-        private void ContinueButton_Click(object sender, RoutedEventArgs e)
+        private async void ContinueButton_Click(object sender, RoutedEventArgs e)
         {
             if (firstPinCode.Length == 4 && secondPinCode.Length == 4)
             {
@@ -181,15 +182,15 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
                 else
                 {
                     App.GParam.AppPass = firstPinCode;
-                    App.GParam.IpAddress = SystemInfo.GetExternalIp();
-                    string filePath = Path.Combine(App.GParam.AppPath,"datas", "GlobalParam.json");
+                    App.GParam.IpAddress = await SystemInfo.GetExternalIp();
+                    string filePath = Path.Combine(App.GParam.AppPath, "datas", "GlobalParam.json");
                     GlobalParam.Save(App.GParam, filePath, App.GParam.AppPass);
                     App.MessengerWindow.OpenServerListPage();
                 }
             }
             else
             {
-                App.ErideMessage.AddMessage("Заполните обе строки пинкода", new Erida { Type = MType.Warning});
+                App.ErideMessage.AddMessage("Заполните обе строки пинкода", new Erida { Type = MType.Warning });
             }
         }
 
