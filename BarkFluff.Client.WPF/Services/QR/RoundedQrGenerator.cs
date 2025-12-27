@@ -5,6 +5,7 @@ using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Windows.Media.Imaging;
+using System.Collections.Generic;
 
 namespace BarkFluff.Client.WPF.Services.QR
 {
@@ -31,7 +32,7 @@ namespace BarkFluff.Client.WPF.Services.QR
             int qrPixelWidth = moduleCount * pixelSize;
             int imgSize = qrPixelWidth + (padding * 2);
 
-            float cornerRadiusRatio = 0.4f;
+            float cornerRadius = pixelSize * 0.4f;
 
             using (Bitmap bitmap = new Bitmap(imgSize, imgSize))
             using (Graphics g = Graphics.FromImage(bitmap))
@@ -53,59 +54,179 @@ namespace BarkFluff.Client.WPF.Services.QR
                     cblend.Positions = new float[] { 0f, 0.5f, 1f };
                     brush.InterpolationColors = cblend;
 
-                    // 3. Рисуем QR код
-                    for (int x = 0; x < moduleCount; x++)
+                    // 3. Создаем матрицу посещенных модулей
+                    bool[,] visited = new bool[moduleCount, moduleCount];
+
+                    // 4. Рисуем QR код с соединением соседних модулей
+                    for (int y = 0; y < moduleCount; y++)
                     {
-                        for (int y = 0; y < moduleCount; y++)
+                        for (int x = 0; x < moduleCount; x++)
                         {
-                            if (IsFinderPattern(x, y, moduleCount))
+                            if (visited[x, y] || !matrix[y][x])
                                 continue;
 
-                            if (matrix[y][x])
+                            // Находим горизонтальную линию соседних модулей
+                            int width = 1;
+                            while (x + width < moduleCount && matrix[y][x + width] && !visited[x + width, y])
                             {
-                                RectangleF rect = new RectangleF(
-                                    padding + x * pixelSize,
-                                    padding + y * pixelSize,
-                                    pixelSize,
-                                    pixelSize);
-
-                                float gap = 0;
-                                RectangleF drawRect = new RectangleF(rect.X + gap, rect.Y + gap, rect.Width - gap * 2, rect.Height - gap * 2);
-
-                                FillRoundedRectangle(g, brush, drawRect, (int)(pixelSize * cornerRadiusRatio));
+                                width++;
                             }
+
+                            // Проверяем, можно ли расширить вниз (создать прямоугольник)
+                            int height = 1;
+                            bool canExpand = true;
+                            while (canExpand && y + height < moduleCount)
+                            {
+                                for (int checkX = x; checkX < x + width; checkX++)
+                                {
+                                    if (!matrix[y + height][checkX] || visited[checkX, y + height])
+                                    {
+                                        canExpand = false;
+                                        break;
+                                    }
+                                }
+                                if (canExpand) height++;
+                            }
+
+                            // Отмечаем все модули прямоугольника как посещенные
+                            for (int dy = 0; dy < height; dy++)
+                            {
+                                for (int dx = 0; dx < width; dx++)
+                                {
+                                    visited[x + dx, y + dy] = true;
+                                }
+                            }
+
+                            // Рисуем объединенный прямоугольник
+                            RectangleF rect = new RectangleF(
+                                padding + x * pixelSize,
+                                padding + y * pixelSize,
+                                width * pixelSize,
+                                height * pixelSize);
+
+                            // Определяем скругление углов в зависимости от соседей
+                            DrawModuleWithSmartCorners(g, brush, rect, cornerRadius, 
+                                x, y, width, height, matrix, moduleCount);
                         }
                     }
-
-                    // 4. Рисуем "Глаза" (Finder Patterns)
-                    // Левый верхний
-                    DrawFinderPattern(g, brush, padding, padding, pixelSize, cornerRadiusRatio);
-                    // Правый верхний
-                    DrawFinderPattern(g, brush, padding + (moduleCount - 7) * pixelSize, padding, pixelSize, cornerRadiusRatio);
-                    // Левый нижний
-                    DrawFinderPattern(g, brush, padding, padding + (moduleCount - 7) * pixelSize, pixelSize, cornerRadiusRatio);
                 }
 
-                // 5. Добавляем Логотип
+                // 5. Добавляем Логотип с закруглением
                 if (!string.IsNullOrEmpty(logoPath) && File.Exists(logoPath))
                 {
                     using (Image logo = Image.FromFile(logoPath))
                     {
-                        // Логотип занимает обычно около 15-20% площади
                         int logoSize = (int)(qrPixelWidth * 0.22);
                         int logoX = padding + (qrPixelWidth - logoSize) / 2;
                         int logoY = padding + (qrPixelWidth - logoSize) / 2;
 
                         // Рисуем белую подложку под лого (круглую)
-                        g.FillEllipse(Brushes.White, logoX - 5, logoY - 5, logoSize + 10, logoSize + 10);
+                        int backgroundPadding = 8;
+                        g.FillEllipse(Brushes.White, logoX - backgroundPadding, logoY - backgroundPadding, 
+                            logoSize + backgroundPadding * 2, logoSize + backgroundPadding * 2);
 
-                        // Рисуем сам логотип
-                        g.DrawImage(logo, new Rectangle(logoX, logoY, logoSize, logoSize));
+                        // Рисуем логотип с круглой маской
+                        DrawRoundedImage(g, logo, logoX, logoY, logoSize, logoSize);
                     }
                 }
 
-                // Конвертируем в BitmapSource для WPF
                 return ConvertBitmapToBitmapSource(bitmap);
+            }
+        }
+
+        /// <summary>
+        /// Рисует модуль с умным скруглением углов на основе соседей
+        /// </summary>
+        private static void DrawModuleWithSmartCorners(Graphics g, Brush brush, RectangleF rect, 
+            float radius, int startX, int startY, int width, int height, 
+            List<System.Collections.BitArray> matrix, int moduleCount)
+        {
+            // Проверяем соседей для каждого угла
+            bool hasTopLeft = HasNeighbor(matrix, moduleCount, startX - 1, startY) || 
+                              HasNeighbor(matrix, moduleCount, startX, startY - 1);
+            bool hasTopRight = HasNeighbor(matrix, moduleCount, startX + width, startY) || 
+                               HasNeighbor(matrix, moduleCount, startX + width - 1, startY - 1);
+            bool hasBottomLeft = HasNeighbor(matrix, moduleCount, startX - 1, startY + height - 1) || 
+                                 HasNeighbor(matrix, moduleCount, startX, startY + height);
+            bool hasBottomRight = HasNeighbor(matrix, moduleCount, startX + width, startY + height - 1) || 
+                                  HasNeighbor(matrix, moduleCount, startX + width - 1, startY + height);
+
+            float tlRadius = hasTopLeft ? 0 : radius;
+            float trRadius = hasTopRight ? 0 : radius;
+            float blRadius = hasBottomLeft ? 0 : radius;
+            float brRadius = hasBottomRight ? 0 : radius;
+
+            FillRoundedRectangleWithCorners(g, brush, rect, tlRadius, trRadius, brRadius, blRadius);
+        }
+
+        /// <summary>
+        /// Проверяет наличие соседнего закрашенного модуля
+        /// </summary>
+        private static bool HasNeighbor(List<System.Collections.BitArray> matrix, int moduleCount, int x, int y)
+        {
+            if (x < 0 || x >= moduleCount || y < 0 || y >= moduleCount)
+                return false;
+            return matrix[y][x];
+        }
+
+        /// <summary>
+        /// Рисует прямоугольник с индивидуальными радиусами для каждого угла
+        /// </summary>
+        private static void FillRoundedRectangleWithCorners(Graphics g, Brush brush, RectangleF rect, 
+            float tlRadius, float trRadius, float brRadius, float blRadius)
+        {
+            using (GraphicsPath path = new GraphicsPath())
+            {
+                // Top-left corner
+                if (tlRadius > 0)
+                    path.AddArc(rect.X, rect.Y, tlRadius * 2, tlRadius * 2, 180, 90);
+                else
+                    path.AddLine(rect.X, rect.Y, rect.X, rect.Y);
+
+                // Top edge
+                path.AddLine(rect.X + tlRadius, rect.Y, rect.Right - trRadius, rect.Y);
+
+                // Top-right corner
+                if (trRadius > 0)
+                    path.AddArc(rect.Right - trRadius * 2, rect.Y, trRadius * 2, trRadius * 2, 270, 90);
+                else
+                    path.AddLine(rect.Right, rect.Y, rect.Right, rect.Y);
+
+                // Right edge
+                path.AddLine(rect.Right, rect.Y + trRadius, rect.Right, rect.Bottom - brRadius);
+
+                // Bottom-right corner
+                if (brRadius > 0)
+                    path.AddArc(rect.Right - brRadius * 2, rect.Bottom - brRadius * 2, brRadius * 2, brRadius * 2, 0, 90);
+                else
+                    path.AddLine(rect.Right, rect.Bottom, rect.Right, rect.Bottom);
+
+                // Bottom edge
+                path.AddLine(rect.Right - brRadius, rect.Bottom, rect.X + blRadius, rect.Bottom);
+
+                // Bottom-left corner
+                if (blRadius > 0)
+                    path.AddArc(rect.X, rect.Bottom - blRadius * 2, blRadius * 2, blRadius * 2, 90, 90);
+                else
+                    path.AddLine(rect.X, rect.Bottom, rect.X, rect.Bottom);
+
+                path.CloseFigure();
+                g.FillPath(brush, path);
+            }
+        }
+
+        /// <summary>
+        /// Рисует изображение с круглой маской
+        /// </summary>
+        private static void DrawRoundedImage(Graphics g, Image image, int x, int y, int width, int height)
+        {
+            using (GraphicsPath path = new GraphicsPath())
+            {
+                path.AddEllipse(x, y, width, height);
+                var oldClip = g.Clip;
+                g.SetClip(path);
+                g.DrawImage(image, new Rectangle(x, y, width, height));
+                g.Clip = oldClip;
             }
         }
 
@@ -128,76 +249,6 @@ namespace BarkFluff.Client.WPF.Services.QR
 
                 return bitmapImage;
             }
-        }
-
-        // Проверка: является ли точка частью "глаза" (квадраты 7x7 по углам)
-        private static bool IsFinderPattern(int x, int y, int moduleCount)
-        {
-            // Левый верхний (0,0) - (7,7)
-            if (x < 7 && y < 7) return true;
-            // Правый верхний (Width-7, 0)
-            if (x >= moduleCount - 7 && y < 7) return true;
-            // Левый нижний (0, Height-7)
-            if (x < 7 && y >= moduleCount - 7) return true;
-
-            return false;
-        }
-
-        // Рисование одного "глаза"
-        private static void DrawFinderPattern(Graphics g, Brush brush, float x, float y, int moduleSize, float cornerRatio)
-        {
-            // Внешняя рамка (7 модулей)
-            int outerSize = moduleSize * 7;
-            float outerRadius = outerSize * 0.25f; // Скругление внешней рамки
-            RectangleF outerRect = new RectangleF(x, y, outerSize, outerSize);
-
-            // Рисуем большой квадрат (залитый)
-            FillRoundedRectangle(g, brush, outerRect, outerRadius);
-
-            // Вырезаем середину белым (рисуем белый квадрат поверх, 5 модулей)
-            int midSize = moduleSize * 5;
-            float midRadius = midSize * 0.25f; // Чуть меньше скругление
-            RectangleF midRect = new RectangleF(x + moduleSize, y + moduleSize, midSize, midSize);
-            FillRoundedRectangle(g, Brushes.White, midRect, midRadius);
-
-            // Рисуем внутренний квадрат (3 модуля)
-            int innerSize = moduleSize * 3;
-            float innerRadius = innerSize * 0.3f; // Скругление внутреннего
-            RectangleF innerRect = new RectangleF(x + moduleSize * 2, y + moduleSize * 2, innerSize, innerSize);
-            FillRoundedRectangle(g, brush, innerRect, innerRadius);
-        }
-
-        // Хелпер для рисования скругленного прямоугольника
-        private static void FillRoundedRectangle(Graphics g, Brush brush, RectangleF rect, float radius)
-        {
-            float diameter = radius * 2;
-            SizeF size = new SizeF(diameter, diameter);
-            RectangleF arc = new RectangleF(rect.Location, size);
-            GraphicsPath path = new GraphicsPath();
-
-            if (radius == 0)
-            {
-                g.FillRectangle(brush, rect);
-                return;
-            }
-
-            // Top left
-            path.AddArc(arc, 180, 90);
-
-            // Top right
-            arc.X = rect.Right - diameter;
-            path.AddArc(arc, 270, 90);
-
-            // Bottom right
-            arc.Y = rect.Bottom - diameter;
-            path.AddArc(arc, 0, 90);
-
-            // Bottom left
-            arc.X = rect.Left;
-            path.AddArc(arc, 90, 90);
-
-            path.CloseFigure();
-            g.FillPath(brush, path);
         }
     }
 }
