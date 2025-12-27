@@ -1510,14 +1510,16 @@ namespace BarkFluff.Client.WPF.Pages
         {
             Application.Current.Dispatcher.Invoke(() =>
             {
-                // Обновляем UI в основном потоке
+                // Update UI on the main thread
                 if (isConnected)
                 {
                     App.ErideMessage.AddMessage("Подключено к потоку обновлений", new Erida { Type = MType.Debug });
+                    ErrorConnection.Visibility = Visibility.Collapsed;
                 }
                 else
                 {
-                    App.ErideMessage.AddMessage("Отключено от потока обновлений", new Erida { Type = MType.Warning });
+                    App.ErideMessage.AddMessage("Отключено от потока обновлений. Попытка переподключения...", new Erida { Type = MType.Warning });
+                    ErrorConnection.Visibility = Visibility.Visible;
                 }
             });
         }
