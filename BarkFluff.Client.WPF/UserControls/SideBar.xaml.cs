@@ -21,8 +21,8 @@ namespace BarkFluff.Client.WPF.UserControls
         {
             LoadCurrentUserData();
 #if (!DEBUG)
-            DebugMenuButton.Visibility = Visibility.Hidden;
-            DebugBorder.Visibility = Visibility.Hidden;
+            DebugMenuButton.Visibility = Visibility.Collapsed;
+            DebugBorder.Visibility = Visibility.Collapsed;
 #else
             DebugMenuButton.Visibility = Visibility.Visible;
             DebugBorder.Visibility = Visibility.Visible;
