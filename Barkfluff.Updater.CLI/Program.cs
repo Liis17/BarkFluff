@@ -6,7 +6,14 @@ namespace Barkfluff.Updater.CLI
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Barkfluff Updater CLI");
+            Console.WriteLine("┌────────────────────────────────────────────────────────────────────┐");
+            Console.WriteLine("│ ██████   ██   ██████  ██  ██ ██████ ██      ██   ██ ██████ ██████  │");
+            Console.WriteLine("│ ██  ██  ████  ██   ██ ██ ██  ██     ██      ██   ██ ██     ██      │");
+            Console.WriteLine("│ █████  ██  ██ ██████  ████   █████  ██      ██   ██ █████  █████   │");
+            Console.WriteLine("│ █████  ██████ ██ ██   ██ ██  ██     ██      ██   ██ ██     ██      │");
+            Console.WriteLine("│ ██  ██ ██  ██ ██  ██  ██  ██ ██     ██      ██   ██ ██     ██      │");
+            Console.WriteLine("│ ██████ ██  ██ ██   ██ ██   ██ ██     █████   █████  ██     ██      │");
+            Console.WriteLine("└────────────────────────────────────────────────────────────────────┘");
             Console.ReadLine();
         }
     }
