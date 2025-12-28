@@ -1,6 +1,7 @@
 ﻿using Microsoft.Win32;
 
 using System.Net.Http;
+using System.Text.RegularExpressions;
 
 namespace BarkFluff.Client.WPF
 {
@@ -73,8 +74,15 @@ namespace BarkFluff.Client.WPF
                 using (HttpClient client = new HttpClient())
                 {
                     client.Timeout = TimeSpan.FromSeconds(5);
-                    string ip = await client.GetStringAsync("https://ifconfig.me");
-                    return ip.Trim();
+                    string response = await client.GetStringAsync("https://ifconfig.me");
+
+                    var match = Regex.Match(response, @"<strong\s+id=""ip_address"">\s*([\d\.]+)\s*</strong>", RegexOptions.IgnoreCase);
+                    if (match.Success)
+                    {
+                        return match.Groups[1].Value.Trim();
+                    }
+
+                    return response.Trim();
                 }
             }
             catch
