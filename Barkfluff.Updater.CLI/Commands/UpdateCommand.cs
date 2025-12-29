@@ -12,11 +12,15 @@ namespace Barkfluff.Updater.CLI.Commands
     {
         private readonly Services.GitHubReleaseService _releaseService;
         private readonly Services.DownloadService _downloadService;
+        private readonly Services.ProtocolRegistrationService _protocolService;
+        private readonly Services.ShortcutService _shortcutService;
 
         public UpdateCommand()
         {
             _releaseService = new Services.GitHubReleaseService();
             _downloadService = new Services.DownloadService();
+            _protocolService = new Services.ProtocolRegistrationService();
+            _shortcutService = new Services.ShortcutService();
         }
 
         public async Task<int> ExecuteAsync(bool silent)
@@ -64,6 +68,23 @@ namespace Barkfluff.Updater.CLI.Commands
 
                 // 5. ќчистка временных файлов
                 _downloadService.CleanupTempFile(zipPath);
+
+                // 6. ќбновление регистрации протокола и €рлыка (требует прав администратора)
+                var exePath = Services.AdminService.GetBarkFluffExecutablePath(updatePath);
+                
+                try
+                {
+                    Console.WriteLine();
+                    ConsoleUI.PrintInfo("Updating system integration...");
+                    
+                    _protocolService.RegisterProtocol(exePath);
+                    _shortcutService.CreateStartMenuShortcut(exePath);
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    ConsoleUI.PrintWarning("System integration update skipped (Administrator rights required)");
+                    ConsoleUI.PrintProgress("Protocol and Start Menu shortcut were not updated");
+                }
 
                 Console.WriteLine();
                 ConsoleUI.PrintSuccess("Update completed successfully!");
