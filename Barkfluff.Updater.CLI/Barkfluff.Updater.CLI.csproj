@@ -78,8 +78,11 @@
     <Compile Include="Commands\UpdateCommand.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Services\AdminService.cs" />
     <Compile Include="Services\DownloadService.cs" />
     <Compile Include="Services\GitHubReleaseService.cs" />
+    <Compile Include="Services\ProtocolRegistrationService.cs" />
+    <Compile Include="Services\ShortcutService.cs" />
     <Compile Include="UI\ConsoleUI.cs" />
     <Compile Include="UI\LogoAssets.cs" />
   </ItemGroup>
