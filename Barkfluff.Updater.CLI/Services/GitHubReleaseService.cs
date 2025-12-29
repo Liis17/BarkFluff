@@ -43,8 +43,7 @@ namespace Barkfluff.Updater.CLI.Services
                     ReleaseInfo latestStable = null;
                     foreach (var release in releases)
                     {
-                        if (release.Channel.Equals("Dev", StringComparison.OrdinalIgnoreCase) ||
-                            release.Channel.Equals("Master", StringComparison.OrdinalIgnoreCase) ||
+                        if (release.Channel.Equals("Master", StringComparison.OrdinalIgnoreCase) ||
                             release.Channel.Equals("Release", StringComparison.OrdinalIgnoreCase))
                         {
                             if (latestStable == null || release.BuildNumber > latestStable.BuildNumber)
