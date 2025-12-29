@@ -72,8 +72,16 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Arguments\ArgumentParser.cs" />
+    <Compile Include="Commands\HelpCommand.cs" />
+    <Compile Include="Commands\InstallCommand.cs" />
+    <Compile Include="Commands\UpdateCommand.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Services\DownloadService.cs" />
+    <Compile Include="Services\GitHubReleaseService.cs" />
+    <Compile Include="UI\ConsoleUI.cs" />
+    <Compile Include="UI\LogoAssets.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
