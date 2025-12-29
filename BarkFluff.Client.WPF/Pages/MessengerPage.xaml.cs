@@ -517,7 +517,6 @@ namespace BarkFluff.Client.WPF.Pages
                 App.ErideMessage.AddMessage("API клиент успешно обновлён", new Erida { Type = MType.Debug });
             }
 
-            TitleWindow.Text = "Barkfluff";
 
             UserInfoUpdate();
             ChatUpdate();
