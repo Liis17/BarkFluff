@@ -23,9 +23,30 @@ namespace Barkfluff.Updater.CLI.Services
         {
             try
             {
-                ConsoleUI.PrintProgress("Registering protocol handler...");
+                // Проверяем, совпадает ли текущий путь с зарегистрированным
+                var registeredPath = GetRegisteredProtocolPath();
+                if (!string.IsNullOrEmpty(registeredPath))
+                {
+                    // Нормализуем пути для сравнения
+                    var normalizedExePath = NormalizePath(exePath);
+                    var normalizedRegisteredPath = NormalizePath(registeredPath);
 
-                // HKEY_CLASSES_ROOT\barkfluff
+                    if (string.Equals(normalizedExePath, normalizedRegisteredPath, StringComparison.OrdinalIgnoreCase))
+                    {
+                        ConsoleUI.PrintProgress($"Protocol '{ProtocolName}://' is already registered with correct path");
+                        return;
+                    }
+
+                    ConsoleUI.PrintProgress($"Protocol path mismatch detected. Updating registration...");
+                    ConsoleUI.PrintProgress($"  Old: {registeredPath}");
+                    ConsoleUI.PrintProgress($"  New: {exePath}");
+                }
+                else
+                {
+                    ConsoleUI.PrintProgress("Registering protocol handler...");
+                }
+
+                // HKEY_CLASSES_ROOT\bf
                 using (var key = Registry.ClassesRoot.CreateSubKey(ProtocolName))
                 {
                     key.SetValue("", $"URL:{ProtocolDescription}");
@@ -55,6 +76,84 @@ namespace Barkfluff.Updater.CLI.Services
             {
                 ConsoleUI.PrintError($"Failed to register protocol: {ex.Message}");
                 throw;
+            }
+        }
+
+        /// <summary>
+        /// Получает путь к исполняемому файлу, зарегистрированному для протокола
+        /// </summary>
+        /// <returns>Путь к exe файлу или null если протокол не зарегистрирован</returns>
+        private string GetRegisteredProtocolPath()
+        {
+            try
+            {
+                using (var key = Registry.ClassesRoot.OpenSubKey($@"{ProtocolName}\shell\open\command"))
+                {
+                    if (key != null)
+                    {
+                        var value = key.GetValue("")?.ToString();
+                        if (!string.IsNullOrEmpty(value))
+                        {
+                            // Извлекаем путь из формата: "C:\Path\To\App.exe" "%1"
+                            return ExtractPathFromCommand(value);
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // Игнорируем ошибки при чтении реестра
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Извлекает путь к exe из командной строки реестра
+        /// </summary>
+        private string ExtractPathFromCommand(string command)
+        {
+            if (string.IsNullOrEmpty(command))
+                return null;
+
+            // Если начинается с кавычки, ищем закрывающую кавычку
+            if (command.StartsWith("\""))
+            {
+                var endQuoteIndex = command.IndexOf('\"', 1);
+                if (endQuoteIndex > 0)
+                {
+                    return command.Substring(1, endQuoteIndex - 1);
+                }
+            }
+            else
+            {
+                // Без кавычек - берем до первого пробела
+                var spaceIndex = command.IndexOf(' ');
+                if (spaceIndex > 0)
+                {
+                    return command.Substring(0, spaceIndex);
+                }
+                return command;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Нормализует путь для сравнения (убирает лишние слэши, приводит к нижнему регистру)
+        /// </summary>
+        private string NormalizePath(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+                return string.Empty;
+
+            try
+            {
+                return System.IO.Path.GetFullPath(path).ToLowerInvariant();
+            }
+            catch
+            {
+                return path.ToLowerInvariant();
             }
         }
 
