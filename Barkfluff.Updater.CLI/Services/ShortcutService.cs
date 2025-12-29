@@ -124,12 +124,36 @@ namespace Barkfluff.Updater.CLI.Services
         {
             try
             {
-                ConsoleUI.PrintProgress("Creating Start Menu shortcut...");
-
                 // Получаем путь к папке Programs в меню Пуск
                 var startMenuPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonStartMenu);
                 var programsPath = Path.Combine(startMenuPath, "Programs");
                 var shortcutPath = Path.Combine(programsPath, "BarkFluff.lnk");
+
+                // Проверяем, существует ли ярлык и совпадает ли путь
+                if (File.Exists(shortcutPath))
+                {
+                    var existingPath = GetShortcutTargetPath(shortcutPath);
+                    if (!string.IsNullOrEmpty(existingPath))
+                    {
+                        // Нормализуем пути для сравнения
+                        var normalizedTargetPath = NormalizePath(targetPath);
+                        var normalizedExistingPath = NormalizePath(existingPath);
+
+                        if (string.Equals(normalizedTargetPath, normalizedExistingPath, StringComparison.OrdinalIgnoreCase))
+                        {
+                            ConsoleUI.PrintProgress("Start Menu shortcut is already up to date");
+                            return;
+                        }
+
+                        ConsoleUI.PrintProgress("Shortcut path mismatch detected. Updating shortcut...");
+                        ConsoleUI.PrintProgress($"  Old: {existingPath}");
+                        ConsoleUI.PrintProgress($"  New: {targetPath}");
+                    }
+                }
+                else
+                {
+                    ConsoleUI.PrintProgress("Creating Start Menu shortcut...");
+                }
 
                 CreateShortcut(shortcutPath, targetPath, AppUserModelId);
 
@@ -139,6 +163,50 @@ namespace Barkfluff.Updater.CLI.Services
             {
                 ConsoleUI.PrintError($"Failed to create shortcut: {ex.Message}");
                 throw;
+            }
+        }
+
+        /// <summary>
+        /// Получает путь назначения из существующего ярлыка
+        /// </summary>
+        /// <param name="shortcutPath">Путь к файлу ярлыка</param>
+        /// <returns>Путь назначения или null в случае ошибки</returns>
+        private string GetShortcutTargetPath(string shortcutPath)
+        {
+            try
+            {
+                var link = (IShellLinkW)new ShellLink();
+                var file = (IPersistFile)link;
+                
+                file.Load(shortcutPath, 0);
+
+                var path = new StringBuilder(260);
+                link.GetPath(path, path.Capacity, out _, 0);
+
+                var result = path.ToString();
+                return string.IsNullOrEmpty(result) ? null : result;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Нормализует путь для сравнения (убирает лишние слэши, приводит к нижнему регистру)
+        /// </summary>
+        private string NormalizePath(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+                return string.Empty;
+
+            try
+            {
+                return Path.GetFullPath(path).ToLowerInvariant();
+            }
+            catch
+            {
+                return path.ToLowerInvariant();
             }
         }
 

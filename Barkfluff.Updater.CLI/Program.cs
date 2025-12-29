@@ -4,6 +4,7 @@ using Barkfluff.Updater.CLI.Services;
 using Barkfluff.Updater.CLI.UI;
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Barkfluff.Updater.CLI
@@ -92,9 +93,9 @@ namespace Barkfluff.Updater.CLI
             {
                 Console.WriteLine();
                 Console.ForegroundColor = ConsoleColor.DarkGray;
-                Console.WriteLine("  Нажмите Enter для выхода...");
+                Console.WriteLine("  Завершение...");
+                Thread.Sleep(1000);
                 Console.ResetColor();
-                Console.ReadLine();
             }
 
             return exitCode;
