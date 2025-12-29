@@ -1,120 +1,115 @@
-﻿using System;
-using System.Threading;
+﻿using Barkfluff.Updater.CLI.Arguments;
+using Barkfluff.Updater.CLI.Commands;
+using Barkfluff.Updater.CLI.Services;
+using Barkfluff.Updater.CLI.UI;
+
+using System;
+using System.Threading.Tasks;
 
 namespace Barkfluff.Updater.CLI
 {
     public class Program
     {
-        static void Main(string[] args)
+        static int Main(string[] args)
         {
-            string mode = "default";
-            if (args.Length > 0)
+            // Устанавливаем кодировку консоли для корректного отображения Unicode
+
+            Console.OutputEncoding = System.Text.Encoding.UTF8;
+            Console.InputEncoding = System.Text.Encoding.UTF8;
+
+            // Включаем поддержку ANSI escape sequences для Windows
+            EnableVirtualTerminalProcessing();
+
+            // Парсим аргументы
+            var parsedArgs = ArgumentParser.Parse(args);
+
+            int exitCode = 0;
+
+            // Обработка режима AutoUpdate (запуск без аргументов)
+            if (parsedArgs.Mode == AppMode.AutoUpdate)
             {
-                if (args[0] == "-update")
-                    mode = "update";
-                else if (args[0] == "-install")
-                    mode = "install";
-            }
-
-            string[] logoLines = new string[]
-            {
-                "┌─────────────────────────────────────────────────────────────────────┐",
-                "│ ██████   ██   ██████  ██  ██  ██████ ██      ██   ██ ██████ ██████  │",
-                "│ ██  ██  ████  ██   ██ ██ ██   ██     ██      ██   ██ ██     ██      │",
-                "│ █████  ██  ██ ██████  ████    █████  ██      ██   ██ █████  █████   │",
-                "│ █████  ██████ ██ ██   ██ ██   ██     ██      ██   ██ ██     ██      │",
-                "│ ██  ██ ██  ██ ██  ██  ██  ██  ██     ██      ██   ██ ██     ██      │",
-                "│ ██████ ██  ██ ██   ██ ██   ██ ██     █████   █████   ██     ██      │",
-                "└─────────────────────────────────────────────────────────────────────┘"
-            };
-
-            string[] updateLines = new string[]
-            {
-                "┌─────────────────────────────────────────────────────────────────────┐",
-                "│ ██████   ██   ██████  ██  ██  ██████ ██      ██   ██ ██████ ██████  │",
-                "│ ██  ██  ████  ██   ██ ██ ██   ██     ██      ██   ██ ██     ██      │",
-                "│ █████  ██  ██ ██████  ████    █████  ██      ██   ██ █████  █████   │",
-                "│ █████  ██████ ██ ██   ██ ██   ██     ██      ██   ██ ██     ██      │",
-                "│ ██  ██ ██  ██ ██  ██  ██  ██  ██     ██      ██   ██ ██     ██      │",
-                "│ ██████ ██  ██ ██   ██ ██   ██ ██     █████   █████   ██     ██      │",
-                "└─────────────────────────┐                                        ┌──┘",
-                "                          │ █  █ ████  ███   ██  █████ ████ ████   │",
-                "                          │ █  █ █  █  █  █ █  █   █   █    █  █   │",
-                "                          │ █  █ ████  █  █ ████   █   ███  ████   │",
-                "                          │ █  █ █     █  █ █  █   █   █    █ █    │",
-                "                          │ ████ █     ███  █  █   █   ████ █  █   │",
-                "                          └────────────────────────────────────────┘"
-            };
-
-            string[] installLines = new string[]
-            {
-                "┌─────────────────────────────────────────────────────────────────────┐",
-                "│ ██████   ██   ██████  ██  ██  ██████ ██      ██   ██ ██████ ██████  │",
-                "│ ██  ██  ████  ██   ██ ██ ██   ██     ██      ██   ██ ██     ██      │",
-                "│ █████  ██  ██ ██████  ████    █████  ██      ██   ██ █████  █████   │",
-                "│ █████  ██████ ██ ██   ██ ██   ██     ██      ██   ██ ██     ██      │",
-                "│ ██  ██ ██  ██ ██  ██  ██  ██  ██     ██      ██   ██ ██     ██      │",
-                "│ ██████ ██  ██ ██   ██ ██   ██ ██     █████   █████   ██     ██      │",
-                "└─────────────────────────┐                                           └──┐",
-                "                          │ ████ █  █  ███ █████  ██  █    █    ████ ████│",
-                "                          │  ██  ██ █ █      █   █  █ █    █    █    █  █│",
-                "                          │  ██  █ ██  ███   █   ████ █    █    ███  ████│",
-                "                          │  ██  █  █    █   █   █  █ █    █    █    █ █ │",
-                "                          │ ████ █  █ ███    █   █  █ ████ ████ ████ █  █│",
-                "                          └──────────────────────────────────────────────┘"
-            };
-
-            string[] lines;
-            switch (mode)
-            {
-                case "update":
-                    lines = updateLines;
-                    break;
-                case "install":
-                    lines = installLines;
-                    break;
-                default:
-                    lines = logoLines;
-                    break;
-            }
-
-            PrintWithGradient(lines);
-
-            Console.ResetColor();
-            Console.ReadLine();
-        }
-
-        static void PrintWithGradient(string[] lines)
-        {
-            int totalRows = lines.Length;
-            int maxCols = 0;
-            foreach (var line in lines)
-            {
-                if (line.Length > maxCols)
-                    maxCols = line.Length;
-            }
-
-            // Цвета градиента: #ff4141 -> #d69d85
-            int startR = 0xff, startG = 0x41, startB = 0x41;
-            int endR = 0xd6, endG = 0x9d, endB = 0x85;
-
-            for (int row = 0; row < lines.Length; row++)
-            {
-                string line = lines[row];
-                for (int col = 0; col < line.Length; col++)
+                var downloadService = new DownloadService();
+                if (downloadService.IsLocalInstallation())
                 {
-                    // Диагональный градиент: позиция от 0 до 1 по диагонали
-                    double t = (double)(row + col) / (totalRows + maxCols - 2);
-
-                    int r = (int)(startR + (endR - startR) * t);
-                    int g = (int)(startG + (endG - startG) * t);
-                    int b = (int)(startB + (endB - startB) * t);
-
-                    Console.Write($"\x1b[38;2;{r};{g};{b}m{line[col]}");
+                    // Есть Barkfluff.exe рядом - запускаем обновление
+                    parsedArgs.Mode = AppMode.Update;
                 }
-                Console.WriteLine("\x1b[0m");
-                Thread.Sleep(40);
+                else
+                {
+                    // Нет Barkfluff.exe - показываем справку
+                    parsedArgs.Mode = AppMode.Help;
+                }
+            }
+
+            switch (parsedArgs.Mode)
+            {
+                case AppMode.Install:
+                    ConsoleUI.PrintWithGradient(LogoAssets.InstallLines);
+                    exitCode = RunAsync(() => new InstallCommand().ExecuteAsync(parsedArgs.Silent));
+                    break;
+
+                case AppMode.Update:
+                    ConsoleUI.PrintWithGradient(LogoAssets.UpdateLines);
+                    exitCode = RunAsync(() => new UpdateCommand().ExecuteAsync(parsedArgs.Silent));
+                    break;
+
+                case AppMode.Help:
+                default:
+                    exitCode = new HelpCommand().Execute(parsedArgs.InvalidArguments);
+                    break;
+            }
+
+            // Если не тихий режим - ждём нажатия клавиши
+            if (!parsedArgs.Silent)
+            {
+                Console.WriteLine();
+                Console.ForegroundColor = ConsoleColor.DarkGray;
+                Console.WriteLine("  Нажмите Enter для выхода...");
+                Console.ResetColor();
+                Console.ReadLine();
+            }
+
+            return exitCode;
+        }
+
+        private static int RunAsync(Func<Task<int>> taskFunc)
+        {
+            try
+            {
+                return taskFunc().GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                ConsoleUI.PrintError($"Критическая ошибка: {ex.Message}");
+                return 1;
             }
         }
+
+        private static void EnableVirtualTerminalProcessing()
+        {
+            try
+            {
+                // Для Windows 10+ включаем поддержку ANSI
+                var handle = GetStdHandle(-11); // STD_OUTPUT_HANDLE
+                if (handle != IntPtr.Zero)
+                {
+                    GetConsoleMode(handle, out uint mode);
+                    SetConsoleMode(handle, mode | 0x0004); // ENABLE_VIRTUAL_TERMINAL_PROCESSING
+                }
+            }
+            catch
+            {
+                // Игнорируем ошибки на старых системах
+            }
+        }
+
+        [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+        private static extern IntPtr GetStdHandle(int nStdHandle);
+
+        [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+        private static extern bool GetConsoleMode(IntPtr hConsoleHandle, out uint lpMode);
+
+        [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+        private static extern bool SetConsoleMode(IntPtr hConsoleHandle, uint dwMode);
     }
 }
