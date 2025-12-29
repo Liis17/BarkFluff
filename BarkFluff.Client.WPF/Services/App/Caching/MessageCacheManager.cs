@@ -32,7 +32,7 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
         {
             _dbPath = dbPath;
             _fileCacheDir = fileCacheDir;
-            Directory.CreateDirectory(fileCacheDir);
+            //Directory.CreateDirectory(fileCacheDir);
             _db = new LiteDatabase(_dbPath);
             _messages = _db.GetCollection<MessageModel>("messages");
             _files = _db.GetCollection<CachedFile>("files");
@@ -70,7 +70,7 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
 
                 string extension = Path.GetExtension(new Uri(url).AbsolutePath) ?? ".png";
                 string filePath = Path.Combine(_fileCacheDir, $"{fileId}{extension}");
-                
+
                 var bytes = await _httpClient.GetByteArrayAsync(url);
                 await File.WriteAllBytesAsync(filePath, bytes);
 
