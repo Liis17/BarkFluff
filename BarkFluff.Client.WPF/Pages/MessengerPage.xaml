@@ -214,15 +214,7 @@
                             </Border.Background>
 
                         </Border>
-                        <TextBlock
-                            x:Name="TitleWindow"
-                            VerticalAlignment="Center"
-                            Cursor=""
-                            FontFamily="{DynamicResource AdwaitaSans}"
-                            FontSize="13"
-                            FontWeight="SemiBold"
-                            Foreground="White"
-                            Text="AppName" />
+                        
                     </StackPanel>
 
                     <StackPanel Margin="30,0,0,0" Orientation="Horizontal">
