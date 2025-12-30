@@ -1,9 +1,13 @@
+using Barkfluff.Updater.CLI.UI;
+
+using ICSharpCode.SharpZipLib.Zip;
+
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
-using Barkfluff.Updater.CLI.UI;
 
 namespace Barkfluff.Updater.CLI.Services
 {
@@ -29,18 +33,18 @@ namespace Barkfluff.Updater.CLI.Services
                 using (var client = new HttpClient())
                 {
                     client.DefaultRequestHeaders.Add("User-Agent", "BarkFluff-Updater");
-                    
+
                     using (var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead))
                     {
                         response.EnsureSuccessStatusCode();
 
                         var totalBytes = response.Content.Headers.ContentLength ?? -1L;
-                        
+
                         // Инициализируем прогресс-бар
                         ConsoleUI.InitProgressBar();
-                        
+
                         var stopwatch = Stopwatch.StartNew();
-                        
+
                         using (var contentStream = await response.Content.ReadAsStreamAsync())
                         using (var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
                         {
@@ -63,7 +67,7 @@ namespace Barkfluff.Updater.CLI.Services
                                     long bytesInInterval = totalRead - lastSpeedCalcBytes;
                                     double timeInterval = elapsedSeconds - lastSpeedCalcTime;
                                     currentSpeed = (bytesInInterval / timeInterval) / (1024 * 1024); // MB/s
-                                    
+
                                     lastSpeedCalcBytes = totalRead;
                                     lastSpeedCalcTime = elapsedSeconds;
                                 }
@@ -75,7 +79,7 @@ namespace Barkfluff.Updater.CLI.Services
                                 }
                             }
                         }
-                        
+
                         ConsoleUI.FinishProgressBar();
                     }
                 }
@@ -90,7 +94,7 @@ namespace Barkfluff.Updater.CLI.Services
         }
 
         /// <summary>
-        /// Распаковывает ZIP архив в указанную папку используя PowerShell
+        /// Распаковывает ZIP архив в указанную папку с отображением прогресса
         /// </summary>
         public void ExtractZip(string zipPath, string destinationPath)
         {
@@ -104,28 +108,78 @@ namespace Barkfluff.Updater.CLI.Services
                     Directory.CreateDirectory(destinationPath);
                 }
 
-                // Используем PowerShell для распаковки (доступен на Windows 10+)
-                var psCommand = $"Expand-Archive -Path '{zipPath}' -DestinationPath '{destinationPath}' -Force";
-                
-                var psi = new ProcessStartInfo
+                // Открываем архив и считаем количество файлов
+                using (var zipFile = new ZipFile(zipPath))
                 {
-                    FileName = "powershell.exe",
-                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{psCommand}\"",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                };
+                    int totalFiles = (int)zipFile.Count;
+                    int extractedFiles = 0;
 
-                using (var process = Process.Start(psi))
-                {
-                    process.WaitForExit();
-                    
-                    if (process.ExitCode != 0)
+                    ConsoleUI.InitProgressBar();
+
+                    var stopwatch = Stopwatch.StartNew();
+                    int lastSpeedCalcFiles = 0;
+                    double lastSpeedCalcTime = 0;
+                    double currentSpeed = 0;
+
+                    foreach (ZipEntry entry in zipFile)
                     {
-                        var error = process.StandardError.ReadToEnd();
-                        throw new Exception($"PowerShell error code {process.ExitCode}: {error}");
+                        // Пропускаем директории
+                        if (entry.IsDirectory)
+                        {
+                            string dirPath = Path.Combine(destinationPath, entry.Name);
+                            if (!Directory.Exists(dirPath))
+                            {
+                                Directory.CreateDirectory(dirPath);
+                            }
+                            extractedFiles++;
+                            continue;
+                        }
+
+                        // Получаем полный путь для файла
+                        string destinationFilePath = Path.Combine(destinationPath, entry.Name);
+
+                        // Создаем директорию если нужно
+                        string directoryPath = Path.GetDirectoryName(destinationFilePath);
+                        if (!Directory.Exists(directoryPath))
+                        {
+                            Directory.CreateDirectory(directoryPath);
+                        }
+
+                        // Распаковываем файл
+                        using (var zipStream = zipFile.GetInputStream(entry))
+                        using (var outputStream = new FileStream(destinationFilePath, FileMode.Create, FileAccess.Write, FileShare.None))
+                        {
+                            byte[] buffer = new byte[4096];
+                            int bytesRead;
+                            while ((bytesRead = zipStream.Read(buffer, 0, buffer.Length)) > 0)
+                            {
+                                outputStream.Write(buffer, 0, bytesRead);
+                            }
+                        }
+
+                        extractedFiles++;
+
+                        // Рассчитываем скорость каждые 100мс
+                        double elapsedSeconds = stopwatch.Elapsed.TotalSeconds;
+                        if (elapsedSeconds - lastSpeedCalcTime >= 0.1)
+                        {
+                            int filesInInterval = extractedFiles - lastSpeedCalcFiles;
+                            double timeInterval = elapsedSeconds - lastSpeedCalcTime;
+                            currentSpeed = timeInterval > 0 ? filesInInterval / timeInterval : 0;
+
+                            lastSpeedCalcFiles = extractedFiles;
+                            lastSpeedCalcTime = elapsedSeconds;
+                        }
+
+                        // Обновляем прогресс-бар
+                        if (totalFiles > 0)
+                        {
+                            int percent = (int)((extractedFiles * 100) / totalFiles);
+                            ConsoleUI.UpdateExtractionProgressBar(percent, extractedFiles, totalFiles, currentSpeed);
+                        }
                     }
+
+                    ConsoleUI.FinishExtractionProgressBar();
                 }
 
                 ConsoleUI.PrintSuccess($"Extracted to: {destinationPath}");

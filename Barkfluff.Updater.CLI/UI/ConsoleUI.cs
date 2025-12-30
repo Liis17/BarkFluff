@@ -143,7 +143,7 @@ namespace Barkfluff.Updater.CLI.UI
         }
 
         /// <summary>
-        /// Обновляет прогресс-бар загрузки
+        /// Обновляет прогресс-бар скачивания
         /// </summary>
         public static void UpdateProgressBar(int percent, long bytesDownloaded, long totalBytes, double speedMBps)
         {
@@ -175,6 +175,36 @@ namespace Barkfluff.Updater.CLI.UI
         }
 
         /// <summary>
+        /// Обновляет прогресс-бар распаковки
+        /// </summary>
+        public static void UpdateExtractionProgressBar(int percent, int filesExtracted, int totalFiles, double speedFilesPerSec)
+        {
+            lock (_lock)
+            {
+                if (_progressBarTop < 0) return;
+
+                int barWidth = 40;
+                int filledWidth = (int)((percent / 100.0) * barWidth);
+                
+                string bar = new string('#', filledWidth) + new string('-', barWidth - filledWidth);
+                string speed = speedFilesPerSec >= 1 ? $"{speedFilesPerSec:F0} files/s" : $"{speedFilesPerSec:F1} files/s";
+
+                int currentTop = Console.CursorTop;
+                Console.SetCursorPosition(0, _progressBarTop);
+                
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.Write($"  [{bar}] {percent,3}%  ");
+                Console.ForegroundColor = ConsoleColor.DarkGray;
+                Console.Write($"{filesExtracted} / {totalFiles} files  ");
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.Write($"{speed}   ");
+                Console.ResetColor();
+                
+                Console.SetCursorPosition(0, currentTop);
+            }
+        }
+
+        /// <summary>
         /// Завершает прогресс-бар
         /// </summary>
         public static void FinishProgressBar()
@@ -191,6 +221,30 @@ namespace Barkfluff.Updater.CLI.UI
                 Console.Write($"  [{bar}] 100%  ");
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.Write("Download complete!                    ");
+                Console.ResetColor();
+                Console.WriteLine();
+                
+                _progressBarTop = -1;
+            }
+        }
+
+        /// <summary>
+        /// Завершает прогресс-бар распаковки
+        /// </summary>
+        public static void FinishExtractionProgressBar()
+        {
+            lock (_lock)
+            {
+                if (_progressBarTop < 0) return;
+
+                int currentTop = Console.CursorTop;
+                Console.SetCursorPosition(0, _progressBarTop);
+                
+                string bar = new string('#', 40);
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.Write($"  [{bar}] 100%  ");
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.Write("Extraction complete!                  ");
                 Console.ResetColor();
                 Console.WriteLine();
                 

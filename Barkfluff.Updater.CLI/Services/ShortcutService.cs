@@ -124,8 +124,8 @@ namespace Barkfluff.Updater.CLI.Services
         {
             try
             {
-                // Получаем путь к папке Programs в меню Пуск
-                var startMenuPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonStartMenu);
+                // Получаем путь к папке Programs в меню Пуск текущего пользователя
+                var startMenuPath = Environment.GetFolderPath(Environment.SpecialFolder.StartMenu);
                 var programsPath = Path.Combine(startMenuPath, "Programs");
                 var shortcutPath = Path.Combine(programsPath, "BarkFluff.lnk");
 
@@ -248,7 +248,7 @@ namespace Barkfluff.Updater.CLI.Services
             {
                 ConsoleUI.PrintProgress("Removing Start Menu shortcut...");
 
-                var startMenuPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonStartMenu);
+                var startMenuPath = Environment.GetFolderPath(Environment.SpecialFolder.StartMenu);
                 var programsPath = Path.Combine(startMenuPath, "Programs");
                 var shortcutPath = Path.Combine(programsPath, "BarkFluff.lnk");
 
