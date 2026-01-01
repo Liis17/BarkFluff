@@ -6,14 +6,36 @@
     xmlns:local="clr-namespace:BarkFluff.Client.WPF.UserControls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:settingsControls="clr-namespace:BarkFluff.Client.WPF.UserControls.SettingsPages"
-    Height="60"
+    Height="90"
     Margin="5"
     d:DesignHeight="450"
     d:DesignWidth="800"
     mc:Ignorable="d">
-    <Border Background="#FF2B2B2B" CornerRadius="10">
+    <Border
+        Padding="5,0,5,0"
+        Background="#FF2B2B2B"
+        CornerRadius="10"
+        Style="{DynamicResource Win11CardStyle}">
         <StackPanel Margin="10" Orientation="Vertical">
-            <local:ProgressUserControl Value="50" MaxValue="100" IsCyclic="False" ProgressBrush="Red" EmptyBrush="red"/>
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Style="{DynamicResource FieldLabelStyle}" Text="Использованно места в облоке " />
+                <TextBlock
+                    x:Name="UsedSpaceText"
+                    Style="{DynamicResource FieldLabelStyle}"
+                    Text="N" />
+                <TextBlock Style="{DynamicResource FieldLabelStyle}" Text=" из " />
+                <TextBlock
+                    x:Name="LimitSpaceText"
+                    Style="{DynamicResource FieldLabelStyle}"
+                    Text="N" />
+            </StackPanel>
+
+            <local:ProgressUserControl
+                EmptyBrush="#8078422e"
+                IsCyclic="False"
+                MaxValue="100"
+                ProgressBrush="#FFCE8F69"
+                Value="50" />
         </StackPanel>
     </Border>
 </UserControl>
