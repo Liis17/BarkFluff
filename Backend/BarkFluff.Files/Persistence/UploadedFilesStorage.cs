@@ -1,11 +1,12 @@
 using BarkFluff.Files.Domain;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace BarkFluff.Files.Persistence;
 
 public class UploadedFilesStorage
 {
-    
+
     private readonly FilesContext _context;
 
     public UploadedFilesStorage(FilesContext context)
@@ -21,13 +22,13 @@ public class UploadedFilesStorage
 
         return file;
     }
-    
+
     public async Task UpdateFile(UploadFile file)
     {
         _context.UploadedFiles.Update(file);
         await _context.SaveChangesAsync();
     }
-    
+
     /// <summary>
     /// Adds a user to the uploaders list if not already present.
     /// </summary>
@@ -35,19 +36,19 @@ public class UploadedFilesStorage
     {
         var file = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.Id == fileId);
         if (file == null) return;
-        
+
         if (!file.Uploaders.Contains(userId))
         {
             file.Uploaders.Add(userId);
             await _context.SaveChangesAsync();
         }
     }
-    
+
     public async Task<UploadFile?> GetFile(Guid id)
     {
         return await _context.UploadedFiles
             .AsNoTracking()
-            .FirstOrDefaultAsync( x=> x.Id == id);
+            .FirstOrDefaultAsync(x => x.Id == id);
     }
 
     public async Task<List<UploadFile>> GetFiles(List<Guid> ids)
@@ -55,7 +56,7 @@ public class UploadedFilesStorage
         return await _context.UploadedFiles
             .AsNoTracking()
             .Where(x => ids.Contains(x.Id))
-            .ToListAsync();   
+            .ToListAsync();
     }
 
     public async Task<UploadFile?> GetFileByPreviewId(Guid previewId)

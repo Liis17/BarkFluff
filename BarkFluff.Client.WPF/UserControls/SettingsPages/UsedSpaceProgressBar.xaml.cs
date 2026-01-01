@@ -1,15 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace BarkFluff.Client.WPF.UserControls.SettingsPages
 {
@@ -21,6 +12,35 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
         public UsedSpaceProgressBar()
         {
             InitializeComponent();
+            Loaded += USPBLoaded;
+        }
+
+        private async void USPBLoaded(object sender, RoutedEventArgs e)
+        {
+            var userSize = await App.ServerCommunication.GetUserStorageInfoAsync(App.GParam);
+            long usedBytes = userSize.usedSpace;
+            UsedSpaceText.Text = FormatBytes(usedBytes);
+        }
+
+        private string FormatBytes(long bytes)
+        {
+            // Определяем константы для вычислений (используем 1024)
+            const double OneMb = 1024.0 * 1024.0;
+            const double OneGb = 1024.0 * 1024.0 * 1024.0;
+
+            // Если байтов больше или равно 1 ГБ (1024^3)
+            if (bytes >= OneGb)
+            {
+                double result = bytes / OneGb;
+                // CultureInfo.InvariantCulture гарантирует точку вместо запятой
+                return result.ToString("0.##", CultureInfo.InvariantCulture) + " GB";
+            }
+            else
+            {
+                // Если меньше 1 ГБ, переводим в МБ (даже если число очень маленькое)
+                double result = bytes / OneMb;
+                return result.ToString("0.##", CultureInfo.InvariantCulture) + " MB";
+            }
         }
     }
 }

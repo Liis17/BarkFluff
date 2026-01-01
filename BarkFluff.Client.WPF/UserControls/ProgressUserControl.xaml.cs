@@ -15,9 +15,6 @@ using System.Windows.Media.Animation;
 
 namespace BarkFluff.Client.WPF.UserControls
 {
-    /// <summary>
-    /// Логика взаимодействия для ProgressUserControl.xaml
-    /// </summary>
     public partial class ProgressUserControl : UserControl
     {
         public static readonly DependencyProperty ValueProperty =
@@ -30,7 +27,7 @@ namespace BarkFluff.Client.WPF.UserControls
 
         public static readonly DependencyProperty IsCyclicProperty =
             DependencyProperty.Register("IsCyclic", typeof(bool), typeof(ProgressUserControl),
-                new PropertyMetadata(false));
+                new PropertyMetadata(false, OnIsCyclicChanged));
 
         public static readonly DependencyProperty ProgressBrushProperty =
             DependencyProperty.Register("ProgressBrush", typeof(Brush), typeof(ProgressUserControl),
@@ -40,9 +37,8 @@ namespace BarkFluff.Client.WPF.UserControls
             DependencyProperty.Register("EmptyBrush", typeof(Brush), typeof(ProgressUserControl),
                 new PropertyMetadata(new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FFCE8F69"))));
 
-        private DispatcherTimer timer;
-        private double angle = 0;
-        private Storyboard animationStoryboard;
+        private Storyboard cyclicAnimationStoryboard;
+        private Storyboard animStartStoryboard;
 
         public double Value
         {
@@ -79,7 +75,10 @@ namespace BarkFluff.Client.WPF.UserControls
             InitializeComponent();
             Loaded += (s, e) => {
                 UpdateProgress();
-                StartTestAnimation();
+                if (IsCyclic)
+                {
+                    StartCyclicAnimation();
+                }
             };
             SizeChanged += (s, e) => UpdateProgress();
         }
@@ -92,6 +91,19 @@ namespace BarkFluff.Client.WPF.UserControls
         private static void OnMaxValueChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             ((ProgressUserControl)d).UpdateProgress();
+        }
+
+        private static void OnIsCyclicChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            var control = (ProgressUserControl)d;
+            if ((bool)e.NewValue && control.IsLoaded)
+            {
+                control.StartCyclicAnimation();
+            }
+            else
+            {
+                control.StopCyclicAnimation();
+            }
         }
 
         private void UpdateProgress()
@@ -108,15 +120,12 @@ namespace BarkFluff.Client.WPF.UserControls
 
         public void AnimStart()
         {
-            if (animationStoryboard != null)
-            {
-                animationStoryboard.Stop();
-            }
+            StopAllAnimations();
 
             double targetValue = Value;
             Value = 0;
 
-            animationStoryboard = new Storyboard();
+            animStartStoryboard = new Storyboard();
             
             DoubleAnimation animation = new DoubleAnimation
             {
@@ -129,20 +138,53 @@ namespace BarkFluff.Client.WPF.UserControls
             Storyboard.SetTarget(animation, this);
             Storyboard.SetTargetProperty(animation, new PropertyPath(ValueProperty));
             
-            animationStoryboard.Children.Add(animation);
-            animationStoryboard.Begin();
+            animStartStoryboard.Children.Add(animation);
+            animStartStoryboard.Begin();
         }
 
-        private void StartTestAnimation()
+        private void StartCyclicAnimation()
         {
-            timer = new DispatcherTimer();
-            timer.Interval = TimeSpan.FromMilliseconds(16);
-            timer.Tick += (s, e) =>
+            StopCyclicAnimation();
+
+            cyclicAnimationStoryboard = new Storyboard
             {
-                angle += 0.01;
-                Value = (MaxValue / 2) + (MaxValue / 2) * Math.Sin(angle);
+                RepeatBehavior = RepeatBehavior.Forever,
+                AutoReverse = true
             };
-            timer.Start();
+
+            DoubleAnimation animation = new DoubleAnimation
+            {
+                From = 0,
+                To = MaxValue,
+                Duration = TimeSpan.FromSeconds(2),
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+            };
+
+            Storyboard.SetTarget(animation, this);
+            Storyboard.SetTargetProperty(animation, new PropertyPath(ValueProperty));
+
+            cyclicAnimationStoryboard.Children.Add(animation);
+            cyclicAnimationStoryboard.Begin();
+        }
+
+        private void StopCyclicAnimation()
+        {
+            if (cyclicAnimationStoryboard != null)
+            {
+                cyclicAnimationStoryboard.Stop();
+                cyclicAnimationStoryboard = null;
+            }
+        }
+
+        private void StopAllAnimations()
+        {
+            StopCyclicAnimation();
+            
+            if (animStartStoryboard != null)
+            {
+                animStartStoryboard.Stop();
+                animStartStoryboard = null;
+            }
         }
     }
 }
