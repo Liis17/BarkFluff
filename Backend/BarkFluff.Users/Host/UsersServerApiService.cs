@@ -1,6 +1,11 @@
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Identity;
 using BarkFluff.Users.Features.AddDraftUser;
+using BarkFluff.Users.Features.Badges.AssignUserBadge;
+using BarkFluff.Users.Features.Badges.Commands;
+using BarkFluff.Users.Features.Badges.Queries;
+using BarkFluff.Users.Features.Badges.RemoveUserBadge;
+using BarkFluff.Users.Features.Badges.UpdateUserBadgesPriority;
 using BarkFluff.Users.Features.CheckExistEmail;
 using BarkFluff.Users.Features.CheckExistUsername;
 using BarkFluff.Users.Features.ConfirmUser;
@@ -9,13 +14,11 @@ using BarkFluff.Users.Features.GetUser;
 using BarkFluff.Users.Features.GetUserContacts;
 using BarkFluff.Users.Features.ListByIds;
 using BarkFluff.Users.Features.OverrideDraftUser;
-using BarkFluff.Users.Features.Badges.AssignUserBadge;
-using BarkFluff.Users.Features.Badges.RemoveUserBadge;
-using BarkFluff.Users.Features.Badges.UpdateUserBadgesPriority;
-using BarkFluff.Users.Features.Badges.Commands;
-using BarkFluff.Users.Features.Badges.Queries;
+
 using Grpc.Core;
+
 using MediatR;
+
 using Microsoft.AspNetCore.Authorization;
 
 namespace BarkFluff.Users.Host;
@@ -34,37 +37,37 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
     public override Task<CheckExistResponse> CheckExistEmail(CheckExistEmailRequest request, ServerCallContext context)
     {
         var command = new CheckExistEmailQuery() { Email = request.Email };
-        
+
         return _mediator.Send(command);
     }
 
     public override Task<CheckExistResponse> CheckExistUsername(CheckExistUsernameRequest request, ServerCallContext context)
     {
         var command = new CheckExistUsernameQuery() { Username = request.Username };
-        
+
         return _mediator.Send(command);
     }
 
     public override Task<FindByLoginResponse> FindByLogin(FindByLoginRequest request, ServerCallContext context)
     {
         var command = new FindByLoginQuery() { Username = request.Username, Email = request.Email };
-        
+
         return _mediator.Send(command);
     }
 
     public override Task<AddDraftUserResponse> AddDraftUser(AddDraftUserRequest request, ServerCallContext context)
-    { 
-        var command = new AddDraftUserCommand(){ Username = request.Username, Email = request.Email, FirstName = request.FirstName, LastName = request.LastName};
-       
+    {
+        var command = new AddDraftUserCommand() { Username = request.Username, Email = request.Email, FirstName = request.FirstName, LastName = request.LastName };
+
         return _mediator.Send(command);
     }
 
     public override async Task<ConfirmUserResponse> ConfirmUser(ConfirmUserRequest request, ServerCallContext context)
     {
         var command = new ConfirmUserCommand() { UserId = request.UserId };
-        
+
         await _mediator.Send(command);
-        
+
         return new ConfirmUserResponse();
     }
 
@@ -72,7 +75,7 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
     {
         var query = new GetUserQuery { UserId = request.UserId };
         var res = await _mediator.Send(query);
-        
+
         return new GetByIdResponse { User = res.User };
     }
 
@@ -82,7 +85,7 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
         {
             UserId = request.UserId
         };
-        
+
         return _mediator.Send(command);
     }
 
