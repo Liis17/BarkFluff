@@ -22,6 +22,10 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
             long totalBytes = userSize.totalSpace;
             UsedSpaceText.Text = $"{FormatBytes(usedBytes)}";
             LimitSpaceText.Text = $"{FormatBytes(totalBytes)}";
+
+            UsedSpaceProgress.Value = usedBytes;
+            UsedSpaceProgress.MaxValue = totalBytes;
+            UsedSpaceProgress.AnimStart();
         }
 
         private string FormatBytes(long bytes)
