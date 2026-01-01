@@ -76,13 +76,19 @@ namespace BarkFluff.Client.WPF
                     client.Timeout = TimeSpan.FromSeconds(5);
                     string response = await client.GetStringAsync("https://ifconfig.me");
 
-                    var match = Regex.Match(response, @"<strong\s+id=""ip_address"">\s*([\d\.]+)\s*</strong>", RegexOptions.IgnoreCase);
+                    var match = Regex.Match(response, @"<strong\s+id=""ip_address"">\s*([\da-fA-F\.:]+)\s*</strong>", RegexOptions.IgnoreCase);
                     if (match.Success)
                     {
                         return match.Groups[1].Value.Trim();
                     }
 
-                    return response.Trim();
+                    var ipMatch = Regex.Match(response, @"^([\da-fA-F\.:]+)$", RegexOptions.Multiline);
+                    if (ipMatch.Success)
+                    {
+                        return ipMatch.Groups[1].Value.Trim();
+                    }
+
+                    return string.Empty;
                 }
             }
             catch
