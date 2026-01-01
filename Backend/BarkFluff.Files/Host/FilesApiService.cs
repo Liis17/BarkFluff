@@ -1,6 +1,7 @@
 using BarkFluff.Files.Features.CheckFileHash;
 using BarkFluff.Files.Features.GetTempDownloadUrl;
 using BarkFluff.Files.Features.GetUploadUrl;
+using BarkFluff.Files.Features.GetUserStorageInfo;
 using BarkFluff.Proto.Files;
 using BarkFluff.Shared.Identity;
 using Grpc.Core;
@@ -49,6 +50,13 @@ public class FilesApiService : FilesApi.FilesApiBase
         {
             FileHash = request.FileHash
         };
+        
+        return await _mediator.Send(command);
+    }
+
+    public override async Task<GetUserStorageInfoResponse> GetUserStorageInfo(GetUserStorageInfoRequest request, ServerCallContext context)
+    {
+        var command = new GetUserStorageInfoCommand();
         
         return await _mediator.Send(command);
     }

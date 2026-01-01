@@ -1242,6 +1242,27 @@ namespace BarkFluff.WebApi.Core
         #region Файлы
 
         /// <summary>
+        /// Gets user storage information (used space and limit).
+        /// </summary>
+        /// <param name="globalParam">Application parameters</param>
+        /// <returns>Used space and total storage limit in bytes</returns>
+        public async Task<(ErrorReturner error, long usedSpace, long totalSpace)> GetUserStorageInfoAsync(GlobalParam globalParam)
+        {
+            try
+            {
+                return await SafeCallAsync(async () =>
+                {
+                    var response = await FilesAC!.GetUserStorageInfoAsync(new Proto.Files.GetUserStorageInfoRequest());
+                    return (new ErrorReturner(true), response.UsedStorage, response.TotalStorage);
+                }, globalParam);
+            }
+            catch (Exception ex)
+            {
+                return (new ErrorReturner(false, $"Ошибка получения информации о хранилище: {ex.Message}"), 0L, 0L);
+            }
+        }
+
+        /// <summary>
         /// Uploads a file to the server and returns the file ID.
         /// </summary>
         /// <param name="globalParam">Application parameters</param>
@@ -1256,6 +1277,7 @@ namespace BarkFluff.WebApi.Core
         /// <summary>
         /// Uploads a file to the server with progress reporting and automatic image optimization.
         /// First checks if a file with the same hash already exists to prevent duplicates.
+        /// Also checks storage limit before uploading.
         /// </summary>
         /// <param name="globalParam">Application parameters</param>
         /// <param name="filePath">Path to the file to upload</param>
@@ -1282,8 +1304,32 @@ namespace BarkFluff.WebApi.Core
                     {
                         processedFilePath = await ImageProcessor.ProcessImageForUploadAsync(filePath);
                         fileToUpload = processedFilePath;
-                        progress?.Report(0.1);
+                        progress?.Report(0.08);
                     }
+
+                    // Get file size
+                    var fileInfo = new FileInfo(fileToUpload);
+                    var fileSize = fileInfo.Length;
+
+                    // Check storage limit before uploading
+                    try
+                    {
+                        var storageInfo = await GetUserStorageInfoAsync(globalParam);
+                        if (storageInfo.error.IsSuccess)
+                        {
+                            var availableSpace = storageInfo.totalSpace - storageInfo.usedSpace;
+                            if (fileSize > availableSpace)
+                            {
+                                return (new ErrorReturner(false, "Недостаточно места в хранилище. Удалите ненужные файлы или свяжитесь с администратором."), null);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"WebApi: Storage check failed, proceeding with upload: {ex.Message}");
+                    }
+
+                    progress?.Report(0.1);
 
                     // Compute file hash for deduplication check
                     var fileHash = await ComputeFileHashAsync(fileToUpload);

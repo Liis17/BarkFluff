@@ -12,6 +12,8 @@ service FilesApi {
   rpc GetTempDownloadUrl(GetTempDownloadUrlRequest) returns(GetTempDownloadUrlResponse); // Получить ссылку для скачивания файла
   
   rpc CheckFileHash(CheckFileHashRequest) returns(CheckFileHashResponse); // Проверить существует ли файл с таким хешем
+  
+  rpc GetUserStorageInfo(GetUserStorageInfoRequest) returns(GetUserStorageInfoResponse); // Получить информацию о хранилище пользователя
 }
 
 service FilesServerApi {
@@ -97,4 +99,12 @@ message CheckFileHashRequest {
 
 message CheckFileHashResponse {
   string file_id = 1; // Идентификатор файла если найден, пустая строка если не найден
+}
+
+message GetUserStorageInfoRequest {
+}
+
+message GetUserStorageInfoResponse {
+  int64 used_storage = 1; // Занятое пространство
+  int64 total_storage = 2; // Лимит хранилища
 }

@@ -62,4 +62,15 @@ public class UploadedFilesStorage
     {
         return await _context.UploadedFiles.AsNoTracking().FirstOrDefaultAsync(x => x.PreviewId == previewId);
     }
+
+    /// <summary>
+    /// Gets the total storage used by a specific user in bytes.
+    /// </summary>
+    public async Task<long> GetUserStorageUsed(long userId)
+    {
+        return await _context.UploadedFiles
+            .AsNoTracking()
+            .Where(x => x.Uploaders.Contains(userId) && x.UploadedAt != null)
+            .SumAsync(x => x.Size);
+    }
 }
