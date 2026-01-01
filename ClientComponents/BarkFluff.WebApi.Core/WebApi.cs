@@ -1253,13 +1253,13 @@ namespace BarkFluff.WebApi.Core
                 return await SafeCallAsync(async () =>
                 {
                     var response = await FilesAC!.GetUserStorageInfoAsync(new Proto.Files.GetUserStorageInfoRequest());
-                    
+
                     // Преобразуем repeated поле в словарь
                     var storageByType = response.StorageByTypes.ToDictionary(
                         x => x.FileType,
                         x => x.UsedStorage
                     );
-                    
+
                     return (new ErrorReturner(true), response.TotalUsedStorage, response.StorageLimit, storageByType);
                 }, globalParam);
             }
@@ -1302,10 +1302,8 @@ namespace BarkFluff.WebApi.Core
             {
                 return await SafeCallAsync(async () =>
                 {
-                    // Report initial progress
                     progress?.Report(0.05);
 
-                    // Process image if needed (convert to JPEG with compression)
                     string fileToUpload = filePath;
                     if (fileType == Proto.Files.UploadFileType.MessageAttachmentImage)
                     {
@@ -1314,11 +1312,10 @@ namespace BarkFluff.WebApi.Core
                         progress?.Report(0.08);
                     }
 
-                    // Get file size
                     var fileInfo = new FileInfo(fileToUpload);
                     var fileSize = fileInfo.Length;
+                    System.Diagnostics.Debug.WriteLine($"WebApi: Uploading file: {Path.GetFileName(fileToUpload)}, Size: {fileSize:N0} bytes ({fileSize / 1024.0 / 1024.0:F2} MB), Type: {fileType}");
 
-                    // Check storage limit before uploading
                     try
                     {
                         var storageInfo = await GetUserStorageInfoAsync(globalParam);
@@ -1337,11 +1334,9 @@ namespace BarkFluff.WebApi.Core
                     }
                     progress?.Report(0.1);
 
-                    // Compute file hash for deduplication check
                     var fileHash = await ComputeFileHashAsync(fileToUpload);
                     progress?.Report(0.15);
 
-                    // Check if file with this hash already exists
                     try
                     {
                         var hashCheckResponse = await FilesAC!.CheckFileHashAsync(new Proto.Files.CheckFileHashRequest
@@ -1351,14 +1346,12 @@ namespace BarkFluff.WebApi.Core
 
                         if (!string.IsNullOrEmpty(hashCheckResponse.FileId))
                         {
-                            // File already exists, return existing file ID
                             progress?.Report(1.0);
                             return (new ErrorReturner(true), hashCheckResponse.FileId);
                         }
                     }
                     catch (Exception ex)
                     {
-                        // If hash check fails, log and continue with upload
                         System.Diagnostics.Debug.WriteLine($"WebApi: Hash check failed, proceeding with upload: {ex.Message}");
                     }
 
@@ -1368,16 +1361,15 @@ namespace BarkFluff.WebApi.Core
                     {
                         FileType = fileType
                     });
+                    System.Diagnostics.Debug.WriteLine($"WebApi: Upload URL obtained: {getLinkUpload.Url}");
                     progress?.Report(0.3);
 
+                    await using var fileStream = File.OpenRead(fileToUpload);
+                    progress?.Report(0.4);
+
                     using var formData = new MultipartFormDataContent();
-
-                    // Note: Reading entire file into memory. For large files, consider streaming approach.
-                    var fileBytes = await File.ReadAllBytesAsync(fileToUpload);
-                    var fileContent = new ByteArrayContent(fileBytes);
-                    progress?.Report(0.5);
-
-                    // Determine content type based on file extension
+                    using var streamContent = new StreamContent(fileStream);
+                    
                     var extension = Path.GetExtension(fileToUpload).ToLowerInvariant();
                     var contentType = extension switch
                     {
@@ -1392,14 +1384,29 @@ namespace BarkFluff.WebApi.Core
                         ".mkv" => "video/x-matroska",
                         _ => "application/octet-stream"
                     };
+                    
+                    streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
 
-                    fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
+                    var sanitizedFileName = Path.GetFileName(filePath);
+                    sanitizedFileName = System.Text.RegularExpressions.Regex.Replace(sanitizedFileName, @"[^\w\.-]", "_");
+                    System.Diagnostics.Debug.WriteLine($"WebApi: Original filename: {Path.GetFileName(filePath)}, Sanitized: {sanitizedFileName}");
 
-                    formData.Add(fileContent, "file", Path.GetFileName(filePath));
-                    progress?.Report(0.7);
+                    formData.Add(streamContent, "file", sanitizedFileName);
+
+                    progress?.Report(0.5);
 
                     var response = await _httpClient.PostAsync(getLinkUpload.Url, formData);
-                    response.EnsureSuccessStatusCode();
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        var errorBody = await response.Content.ReadAsStringAsync();
+                        System.Diagnostics.Debug.WriteLine($"WebApi: Upload failed with status {response.StatusCode}");
+                        System.Diagnostics.Debug.WriteLine($"WebApi: Server error message: {errorBody}");
+                        System.Diagnostics.Debug.WriteLine($"WebApi: Request details - File size: {fileSize} bytes, Content-Type: {contentType}, Filename: {sanitizedFileName}");
+                        System.Diagnostics.Debug.WriteLine($"WebApi: Request Content-Type: {formData.Headers.ContentType}");
+                        
+                        return (new ErrorReturner(false, $"Ошибка загрузки файла: {response.StatusCode} - {errorBody}"), null);
+                    }
+                    
                     progress?.Report(1.0);
 
                     return (new ErrorReturner(true), getLinkUpload.FileId);
@@ -1415,7 +1422,6 @@ namespace BarkFluff.WebApi.Core
             }
             finally
             {
-                // Clean up processed file if it was created
                 if (processedFilePath != null && processedFilePath != filePath && File.Exists(processedFilePath))
                 {
                     try
