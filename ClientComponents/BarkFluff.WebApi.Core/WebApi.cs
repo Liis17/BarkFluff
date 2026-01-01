@@ -1242,23 +1242,30 @@ namespace BarkFluff.WebApi.Core
         #region Файлы
 
         /// <summary>
-        /// Gets user storage information (used space and limit).
+        /// Gets user storage information (used space, limit, and breakdown by file types).
         /// </summary>
         /// <param name="globalParam">Application parameters</param>
-        /// <returns>Used space and total storage limit in bytes</returns>
-        public async Task<(ErrorReturner error, long usedSpace, long totalSpace)> GetUserStorageInfoAsync(GlobalParam globalParam)
+        /// <returns>Storage information including total used space, limit, and usage by file type</returns>
+        public async Task<(ErrorReturner error, long totalUsedSpace, long totalSpace, Dictionary<Proto.Files.UploadFileType, long> storageByType)> GetUserStorageInfoAsync(GlobalParam globalParam)
         {
             try
             {
                 return await SafeCallAsync(async () =>
                 {
                     var response = await FilesAC!.GetUserStorageInfoAsync(new Proto.Files.GetUserStorageInfoRequest());
-                    return (new ErrorReturner(true), response.UsedStorage, response.TotalStorage);
+                    
+                    // Преобразуем repeated поле в словарь
+                    var storageByType = response.StorageByTypes.ToDictionary(
+                        x => x.FileType,
+                        x => x.UsedStorage
+                    );
+                    
+                    return (new ErrorReturner(true), response.TotalUsedStorage, response.StorageLimit, storageByType);
                 }, globalParam);
             }
             catch (Exception ex)
             {
-                return (new ErrorReturner(false, $"Ошибка получения информации о хранилище: {ex.Message}"), 0L, 0L);
+                return (new ErrorReturner(false, $"Ошибка получения информации о хранилище: {ex.Message}"), 0L, 0L, new Dictionary<Proto.Files.UploadFileType, long>());
             }
         }
 
@@ -1317,7 +1324,7 @@ namespace BarkFluff.WebApi.Core
                         var storageInfo = await GetUserStorageInfoAsync(globalParam);
                         if (storageInfo.error.IsSuccess)
                         {
-                            var availableSpace = storageInfo.totalSpace - storageInfo.usedSpace;
+                            var availableSpace = storageInfo.totalSpace - storageInfo.totalUsedSpace;
                             if (fileSize > availableSpace)
                             {
                                 return (new ErrorReturner(false, "Недостаточно места в хранилище. Удалите ненужные файлы или свяжитесь с администратором."), null);
@@ -1328,7 +1335,6 @@ namespace BarkFluff.WebApi.Core
                     {
                         System.Diagnostics.Debug.WriteLine($"WebApi: Storage check failed, proceeding with upload: {ex.Message}");
                     }
-
                     progress?.Report(0.1);
 
                     // Compute file hash for deduplication check
