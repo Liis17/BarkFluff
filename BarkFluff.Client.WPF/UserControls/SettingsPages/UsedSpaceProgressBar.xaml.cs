@@ -25,12 +25,15 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
 
             UsedSpaceProgress.Value = usedBytes;
             UsedSpaceProgress.MaxValue = totalBytes;
+
+            var a = userSize.storageByType;
+
+
             UsedSpaceProgress.AnimStart();
         }
 
         private string FormatBytes(long bytes)
         {
-            // Определяем константы для вычислений (используем 1024)
             const double OneMb = 1024.0 * 1024.0;
             const double OneGb = 1024.0 * 1024.0 * 1024.0;
 

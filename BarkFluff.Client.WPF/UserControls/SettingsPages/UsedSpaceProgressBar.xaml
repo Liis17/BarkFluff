@@ -13,7 +13,7 @@
     mc:Ignorable="d">
     <Border
         Padding="5,0,5,0"
-        Background="#FF2B2B2B"
+        Background="#1f1f1f"
         CornerRadius="10"
         Style="{DynamicResource Win11CardStyle}">
         <StackPanel Margin="10" Orientation="Vertical">
@@ -37,6 +37,100 @@
                 MaxValue="100"
                 ProgressBrush="#FFCE8F69"
                 Value="0" />
+            <StackPanel Orientation="Horizontal">
+                <Border
+                    Height="25"
+                    Margin="5"
+                    Padding="0"
+                    HorizontalAlignment="Left"
+                    CornerRadius="8"
+                    Style="{DynamicResource Win11CardStyle}">
+                    <Grid>
+                        <Border
+                            Width="10"
+                            Height="10"
+                            Margin="5"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            Background="#FFCE8F69"
+                            CornerRadius="2" />
+                        <TextBlock
+                            Margin="20,0,5,0"
+                            VerticalAlignment="Center"
+                            Style="{DynamicResource InfoTextStyle}"
+                            Text="Неизместно" />
+                    </Grid>
+                </Border>
+                <Border
+                    Height="25"
+                    Margin="5"
+                    Padding="0"
+                    HorizontalAlignment="Left"
+                    CornerRadius="8"
+                    Style="{DynamicResource Win11CardStyle}">
+                    <Grid>
+                        <Border
+                            Width="10"
+                            Height="10"
+                            Margin="5"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            Background="#FFCE8F69"
+                            CornerRadius="2" />
+                        <TextBlock
+                            Margin="20,0,5,0"
+                            VerticalAlignment="Center"
+                            Style="{DynamicResource InfoTextStyle}"
+                            Text="Картинки" />
+                    </Grid>
+                </Border>
+                <Border
+                    Height="25"
+                    Margin="5"
+                    Padding="0"
+                    HorizontalAlignment="Left"
+                    CornerRadius="8"
+                    Style="{DynamicResource Win11CardStyle}">
+                    <Grid>
+                        <Border
+                            Width="10"
+                            Height="10"
+                            Margin="5"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            Background="#FFCE8F69"
+                            CornerRadius="2" />
+                        <TextBlock
+                            Margin="20,0,5,0"
+                            VerticalAlignment="Center"
+                            Style="{DynamicResource InfoTextStyle}"
+                            Text="Видео" />
+                    </Grid>
+                </Border>
+                <Border
+                    Height="25"
+                    Margin="5"
+                    Padding="0"
+                    HorizontalAlignment="Left"
+                    CornerRadius="8"
+                    Style="{DynamicResource Win11CardStyle}">
+                    <Grid>
+                        <Border
+                            Width="10"
+                            Height="10"
+                            Margin="5"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            Background="#FFCE8F69"
+                            CornerRadius="2" />
+                        <TextBlock
+                            Margin="20,0,5,0"
+                            VerticalAlignment="Center"
+                            Style="{DynamicResource InfoTextStyle}"
+                            Text="Документы" />
+                    </Grid>
+                </Border>
+            </StackPanel>
         </StackPanel>
     </Border>
 </UserControl>
