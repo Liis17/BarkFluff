@@ -1253,7 +1253,6 @@ namespace BarkFluff.WebApi.Core
                 return await SafeCallAsync(async () =>
                 {
                     var response = await FilesAC!.GetUserStorageInfoAsync(new Proto.Files.GetUserStorageInfoRequest());
-
                     // Преобразуем repeated поле в словарь
                     var storageByType = response.StorageByTypes.ToDictionary(
                         x => x.FileType,
@@ -1369,7 +1368,7 @@ namespace BarkFluff.WebApi.Core
 
                     using var formData = new MultipartFormDataContent();
                     using var streamContent = new StreamContent(fileStream);
-                    
+
                     var extension = Path.GetExtension(fileToUpload).ToLowerInvariant();
                     var contentType = extension switch
                     {
@@ -1384,7 +1383,7 @@ namespace BarkFluff.WebApi.Core
                         ".mkv" => "video/x-matroska",
                         _ => "application/octet-stream"
                     };
-                    
+
                     streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
 
                     var sanitizedFileName = Path.GetFileName(filePath);
@@ -1403,10 +1402,10 @@ namespace BarkFluff.WebApi.Core
                         System.Diagnostics.Debug.WriteLine($"WebApi: Server error message: {errorBody}");
                         System.Diagnostics.Debug.WriteLine($"WebApi: Request details - File size: {fileSize} bytes, Content-Type: {contentType}, Filename: {sanitizedFileName}");
                         System.Diagnostics.Debug.WriteLine($"WebApi: Request Content-Type: {formData.Headers.ContentType}");
-                        
+
                         return (new ErrorReturner(false, $"Ошибка загрузки файла: {response.StatusCode} - {errorBody}"), null);
                     }
-                    
+
                     progress?.Report(1.0);
 
                     return (new ErrorReturner(true), getLinkUpload.FileId);
