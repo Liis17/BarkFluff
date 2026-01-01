@@ -10,20 +10,18 @@
     d:DesignWidth="400"
     mc:Ignorable="d">
     <DockPanel Height="10" LastChildFill="True">
-        <!--  Заполнение (левый, с закруглениями слева)  -->
         <Border
             x:Name="ProgressBorder"
             Width="300"
             HorizontalAlignment="Left"
-            Background="#78422e"
+            Background="{Binding ProgressBrush, RelativeSource={RelativeSource AncestorType=UserControl}}"
             CornerRadius="5" />
 
-        <!--  Пустота (правый, с закруглениями справа)  -->
         <Border
             x:Name="EmptyBorder"
             Width="100"
             HorizontalAlignment="Right"
-            Background="#FFCE8F69"
+            Background="{Binding EmptyBrush, RelativeSource={RelativeSource AncestorType=UserControl}}"
             CornerRadius="5" />
     </DockPanel>
 </UserControl>
