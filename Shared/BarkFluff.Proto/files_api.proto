@@ -105,6 +105,12 @@ message GetUserStorageInfoRequest {
 }
 
 message GetUserStorageInfoResponse {
-  int64 used_storage = 1; // Занятое пространство
-  int64 total_storage = 2; // Лимит хранилища
+  message StorageByType {
+    UploadFileType file_type = 1; // Тип файла
+    int64 used_storage = 2; // Занятое пространство для данного типа в байтах
+  }
+  
+  int64 total_used_storage = 1; // Общее занятое пространство в байтах
+  int64 storage_limit = 2; // Лимит хранилища в байтах
+  repeated StorageByType storage_by_types = 3; // Использованное пространство по типам файлов
 }

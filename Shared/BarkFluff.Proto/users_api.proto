@@ -220,6 +220,7 @@ message User{
   string bio = 7; // Био
   string profile_picture_preview = 8; // ссылка на превью аватарки
   repeated UserBadge badges = 9; // баджи пользователя
+  int32 storage_limit_gb = 10; // лимит хранилища в гигабайтах
 }
 
 // Сообщения для работы с баджами

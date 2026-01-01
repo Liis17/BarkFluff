@@ -74,4 +74,17 @@ public class UploadedFilesStorage
             .Where(x => x.Uploaders.Contains(userId) && x.UploadedAt != null)
             .SumAsync(x => x.Size);
     }
+
+    /// <summary>
+    /// Gets storage usage by file type for a specific user.
+    /// </summary>
+    public async Task<Dictionary<UploadFileType, long>> GetUserStorageByType(long userId)
+    {
+        return await _context.UploadedFiles
+            .AsNoTracking()
+            .Where(x => x.Uploaders.Contains(userId) && x.UploadedAt != null)
+            .GroupBy(x => x.Type)
+            .Select(g => new { Type = g.Key, Size = g.Sum(x => x.Size) })
+            .ToDictionaryAsync(x => x.Type, x => x.Size);
+    }
 }

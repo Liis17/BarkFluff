@@ -18,8 +18,10 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
         private async void USPBLoaded(object sender, RoutedEventArgs e)
         {
             var userSize = await App.ServerCommunication.GetUserStorageInfoAsync(App.GParam);
-            long usedBytes = userSize.usedSpace;
-            UsedSpaceText.Text = FormatBytes(usedBytes);
+            long usedBytes = userSize.totalUsedSpace;
+            long totalBytes = userSize.totalSpace;
+            UsedSpaceText.Text = $"{FormatBytes(usedBytes)}";
+            LimitSpaceText.Text = $"{FormatBytes(totalBytes)}";
         }
 
         private string FormatBytes(long bytes)

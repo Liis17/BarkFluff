@@ -11,6 +11,7 @@
         <PackageReference Include="AWSSDK.S3" Version="4.0.6.6" />
         <PackageReference Include="Google.Protobuf" Version="3.32.0" />
         <PackageReference Include="Grpc.AspNetCore.Server" Version="2.71.0" />
+        <PackageReference Include="Grpc.Net.ClientFactory" Version="2.71.0" />
         <PackageReference Include="Grpc.Tools" Version="2.72.0">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -33,10 +34,13 @@
 
     <ItemGroup>
         <Protobuf Include="..\..\Shared\BarkFluff.Proto\files_api.proto" GrpcServices="Server" />
+        <Protobuf Include="..\..\Shared\BarkFluff.Proto\users_api.proto" GrpcServices="Client" />
+        <Protobuf Include="..\..\Shared\BarkFluff.Proto\shared.proto" GrpcServices="None" />
     </ItemGroup>
 
     <ItemGroup>
       <ProjectReference Include="..\BarkFluff.GrpcServer\BarkFluff.GrpcServer.csproj" />
+      <ProjectReference Include="..\..\Shared\BarkFluff.Proto\BarkFluff.Proto.csproj" />
     </ItemGroup>
 
     <ItemGroup>
