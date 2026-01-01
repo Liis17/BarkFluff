@@ -32,6 +32,13 @@ public class Program
 
         builder.Services.AddXAuth(builder.Configuration);
 
+        // Регистрируем gRPC клиент для UsersServerApi
+        builder.Services.AddGrpcClient<BarkFluff.Proto.Users.UsersServerApi.UsersServerApiClient>(o =>
+            {
+                o.Address = new Uri(builder.Configuration["UsersService:Host"]);
+            }).AddInterceptor(() => new BarkFluff.Shared.Auth.JwtClientInterceptor(builder.Configuration["UsersService:Token"]))
+            .AddInterceptor(() => new BarkFluff.Shared.Exceptions.Interceptors.ExceptionClientInterceptor());
+
         builder.Services.AddControllers();
 
         builder.Services.AddScoped<UploadedFilesStorage>();
