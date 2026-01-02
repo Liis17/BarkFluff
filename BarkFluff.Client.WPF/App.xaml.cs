@@ -190,10 +190,7 @@ namespace BarkFluff.Client.WPF
             MessengerWindow.Show();
             WindowStateService.Initialize(MessengerWindow);
             NotificationManager.Initialize(WindowStateService, FileCacheService);
-            updateService = new UpdateService(AppVersion.Version, AppVersion.VersionType);
-            updateService.UpdateAvailable += OnUpdateAvailable;
-            updateService.NoUpdateAvailable += OnNoUpdateAvailable;
-            updateService.Start();
+
 
             if (!File.Exists(filePath))
             {
@@ -211,6 +208,14 @@ namespace BarkFluff.Client.WPF
         public static void CreateEridaMessage(StackPanel stack)
         {
             ErideMessage = new DropMessage(stack);
+        }
+
+        public static void MainPageLoaded()
+        {
+            updateService = new UpdateService(AppVersion.Version, AppVersion.VersionType);
+            updateService.UpdateAvailable += App.OnUpdateAvailable;
+            updateService.NoUpdateAvailable += OnNoUpdateAvailable;
+            updateService.Start();
         }
 
         private static void OnUpdateAvailable(string tagName, string version)
