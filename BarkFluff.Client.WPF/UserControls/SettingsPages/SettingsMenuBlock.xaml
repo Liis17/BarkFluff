@@ -16,13 +16,22 @@
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             Orientation="Horizontal">
-            <ui:SymbolIcon
-                Foreground="{Binding IconColor, ElementName=Root}"
-                Style="{StaticResource SettingsSymbolIcon}"
-                Symbol="{Binding IconSymbol, ElementName=Root}" />
-            <TextBlock 
-                Style="{StaticResource SettingsMenuBlockText}" 
-                Text="{Binding Text, ElementName=Root}" />
+            <Grid>
+                <ui:SymbolIcon
+                    Foreground="{Binding IconColor, ElementName=Root}"
+                    Style="{StaticResource SettingsSymbolIcon}"
+                    Symbol="{Binding IconSymbol, ElementName=Root}" >
+                    <ui:SymbolIcon.Effect>
+                        <BlurEffect Radius="20" RenderingBias="Performance" ></BlurEffect>
+                    </ui:SymbolIcon.Effect>
+                </ui:SymbolIcon>
+                <ui:SymbolIcon
+                    Foreground="{Binding IconColor, ElementName=Root}"
+                    Style="{StaticResource SettingsSymbolIcon}"
+                    Symbol="{Binding IconSymbol, ElementName=Root}" />
+            </Grid>
+
+            <TextBlock Style="{StaticResource SettingsMenuBlockText}" Text="{Binding Text, ElementName=Root}" />
         </StackPanel>
     </Grid>
 
