@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Barkfluff.Updater.CLI.Arguments;
 using Barkfluff.Updater.CLI.UI;
@@ -30,7 +31,7 @@ namespace Barkfluff.Updater.CLI.Commands
                 ConsoleUI.PrintHeader("Installing BarkFluff");
                 Console.WriteLine();
 
-                // 1. Получаем последний стабильный релиз
+                // 1. Проверяем последний стабильный релиз
                 ConsoleUI.PrintInfo("Checking releases repository...");
                 var release = await _releaseService.GetLatestStableReleaseAsync();
 
@@ -52,10 +53,10 @@ namespace Barkfluff.Updater.CLI.Commands
                 ConsoleUI.PrintInfo($"Installing to: {installPath}");
                 _downloadService.ExtractZip(zipPath, installPath);
 
-                // 4. Очистка временных файлов
+                // 4. Удаляем временный архив
                 _downloadService.CleanupTempFile(zipPath);
 
-                // 5. Регистрация протокола и создание ярлыка (требует прав администратора)
+                // 5. Регистрируем протокол и создаём ярлык (только если администратор)
                 var exePath = Services.AdminService.GetBarkFluffExecutablePath(installPath);
                 
                 try
@@ -75,6 +76,34 @@ namespace Barkfluff.Updater.CLI.Commands
                 Console.WriteLine();
                 ConsoleUI.PrintSuccess("Installation completed successfully!");
                 ConsoleUI.PrintInfo($"BarkFluff installed to: {installPath}");
+
+                // 6. Запускаем установленное приложение
+                if (!silent)
+                {
+                    ConsoleUI.PrintInfo("Launching BarkFluff...");
+                }
+                
+                try
+                {
+                    if (System.IO.File.Exists(exePath))
+                    {
+                        Process.Start(new ProcessStartInfo
+                        {
+                            FileName = exePath,
+                            UseShellExecute = true,
+                            WorkingDirectory = installPath
+                        });
+                        
+                        if (!silent)
+                        {
+                            ConsoleUI.PrintSuccess("BarkFluff launched successfully");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ConsoleUI.PrintWarning($"Could not launch application: {ex.Message}");
+                }
 
                 return 0;
             }

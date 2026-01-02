@@ -20,6 +20,21 @@ namespace Barkfluff.Updater.CLI
             // Включаем поддержку ANSI escape sequences для Windows
             EnableVirtualTerminalProcessing();
 
+            // Проверяем права администратора
+            if (!AdminService.IsRunningAsAdmin())
+            {
+                ConsoleUI.PrintWarning("This application requires Administrator privileges.");
+                ConsoleUI.PrintError("Please run as Administrator.");
+                
+                Console.WriteLine();
+                Console.ForegroundColor = ConsoleColor.DarkGray;
+                Console.WriteLine("  Press any key to exit...");
+                Console.ReadKey(true);
+                Console.ResetColor();
+                
+                return 1;
+            }
+
             // Парсим аргументы
             var parsedArgs = ArgumentParser.Parse(args);
 
