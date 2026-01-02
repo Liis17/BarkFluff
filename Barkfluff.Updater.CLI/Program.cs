@@ -41,35 +41,6 @@ namespace Barkfluff.Updater.CLI
                 }
             }
 
-            // Проверяем права администратора для режимов Install и Update
-            if ((parsedArgs.Mode == AppMode.Install || parsedArgs.Mode == AppMode.Update) && !AdminService.IsRunningAsAdmin())
-            {
-                if (!parsedArgs.Silent)
-                {
-                    Console.WriteLine();
-                    ConsoleUI.PrintWarning("Требуются права администратора для интеграции с системой");
-                    ConsoleUI.PrintProgress("Запрос прав администратора...");
-                }
-
-                // Перезапускаем с правами администратора
-                if (AdminService.RestartAsAdmin(args))
-                {
-                    // Успешный перезапуск - завершаем текущий процесс
-                    return 0;
-                }
-                else
-                {
-                    // Пользователь отказал или произошла ошибка
-                    if (!parsedArgs.Silent)
-                    {
-                        Console.WriteLine();
-                        ConsoleUI.PrintWarning("Права администратора не были предоставлены");
-                        ConsoleUI.PrintProgress("Установка продолжится без интеграции с системой");
-                        Console.WriteLine();
-                    }
-                }
-            }
-
             switch (parsedArgs.Mode)
             {
                 case AppMode.Install:
