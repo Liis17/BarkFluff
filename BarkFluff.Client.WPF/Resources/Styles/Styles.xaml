@@ -738,4 +738,24 @@
         </DrawingImage.Drawing>
     </DrawingImage>
 
+    <!--  SymbolIcon для настроек  -->
+    <Style x:Key="SettingsSymbolIcon" TargetType="ui:SymbolIcon">
+        <Setter Property="Width" Value="40" />
+        <Setter Property="Height" Value="40" />
+        <Setter Property="Margin" Value="10" />
+        <Setter Property="FontSize" Value="40" />
+        <Setter Property="Filled" Value="False" />
+        <Setter Property="Foreground" Value="#FFEDEDED" />
+    </Style>
+
+    <!--  Стиль текста для кнопок на странице настроек  -->
+    <Style x:Key="SettingsMenuBlockText" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="AdwaitaSans" />
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="#FFE4E4E4" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Margin" Value="10,0,0,0" />
+    </Style>
+
 </ResourceDictionary>
