@@ -6,6 +6,7 @@
     xmlns:local="clr-namespace:BarkFluff.Client.WPF.UserControls.SettingsPages"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    x:Name="Root"
     Height="70"
     d:DesignHeight="450"
     d:DesignWidth="800"
@@ -16,11 +17,12 @@
             VerticalAlignment="Center"
             Orientation="Horizontal">
             <ui:SymbolIcon
-                x:Name="Icon"
-                Foreground="#FF0E8F92"
+                Foreground="{Binding IconColor, ElementName=Root}"
                 Style="{StaticResource SettingsSymbolIcon}"
-                Symbol="LockClosed20" />
-            <TextBlock Style="{StaticResource SettingsMenuBlockText}" Text="Безопасность" />
+                Symbol="{Binding IconSymbol, ElementName=Root}" />
+            <TextBlock 
+                Style="{StaticResource SettingsMenuBlockText}" 
+                Text="{Binding Text, ElementName=Root}" />
         </StackPanel>
     </Grid>
 

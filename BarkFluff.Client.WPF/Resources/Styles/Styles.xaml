@@ -742,7 +742,7 @@
     <Style x:Key="SettingsSymbolIcon" TargetType="ui:SymbolIcon">
         <Setter Property="Width" Value="40" />
         <Setter Property="Height" Value="40" />
-        <Setter Property="Margin" Value="10" />
+        <Setter Property="Margin" Value="10,10,5,10" />
         <Setter Property="FontSize" Value="40" />
         <Setter Property="Filled" Value="False" />
         <Setter Property="Foreground" Value="#FFEDEDED" />
@@ -755,7 +755,7 @@
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Foreground" Value="#FFE4E4E4" />
         <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="Margin" Value="10,0,0,0" />
+        <Setter Property="Margin" Value="0,0,0,0" />
     </Style>
 
 </ResourceDictionary>
