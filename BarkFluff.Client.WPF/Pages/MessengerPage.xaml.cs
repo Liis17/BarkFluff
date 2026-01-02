@@ -562,10 +562,8 @@ namespace BarkFluff.Client.WPF.Pages
         {
             try
             {
-                var temp1 = task.Split("//");
-                var temp2 = temp1[1].Replace("/", "");
-                var command = temp2.Split("=")[0];
-                var arg = temp2.Split("=")[1];
+                var command = task.Split("=")[0];
+                var arg = task.Split("=")[1];
                 if (command == "user-username")
                 {
                     var result = await App.ServerCommunication.SearchUser(App.GParam, arg);
@@ -805,7 +803,7 @@ namespace BarkFluff.Client.WPF.Pages
                             transform = new TranslateTransform();
                             chatItem.RenderTransform = transform;
                         }
-                        
+
                         // Сохраняем текущую визуальную позицию
                         var point = chatItem.TransformToAncestor(ChatList).Transform(new Point(0, 0));
                         currentPositions[chatItem] = point.Y;
@@ -1265,20 +1263,20 @@ namespace BarkFluff.Client.WPF.Pages
                     {
                         // Клик на аватар в заголовке - открываем свой профиль
                         ShowUserProfile(isCurrentUser: true);
-                      }
-                      else if (senderElement.Name == "ChatAvatarButton")
-                      {
+                    }
+                    else if (senderElement.Name == "ChatAvatarButton")
+                    {
                         // Клик на аватар в чате - открываем профиль собеседника
                         if (ChatIdbyUserId.Value > 0)
                         {
-                          ShowUserProfile(userId: ChatIdbyUserId.Value);
+                            ShowUserProfile(userId: ChatIdbyUserId.Value);
                         }
-                      }
+                    }
 
-                      if (!isOpenCenter)
-                      {
+                    if (!isOpenCenter)
+                    {
                         OpenCenterPanel();
-                      }
+                    }
                 }
                 else if (tag == "UpdateBlock")
                 {
