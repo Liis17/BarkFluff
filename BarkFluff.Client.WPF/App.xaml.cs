@@ -210,7 +210,31 @@ namespace BarkFluff.Client.WPF
             ErideMessage = new DropMessage(stack);
 
             updateService = new UpdateService(AppVersion.Version, AppVersion.VersionType);
+            updateService.UpdateAvailable += OnUpdateAvailable;
+            updateService.NoUpdateAvailable += OnNoUpdateAvailable;
             updateService.Start();
+        }
+
+        private static void OnUpdateAvailable(string tagName, string version)
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                if (Messenger != null)
+                {
+                    Messenger.ShowUpdateIcon();
+                }
+            });
+        }
+
+        private static void OnNoUpdateAvailable()
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                if (Messenger != null)
+                {
+                    Messenger.HideUpdateIcon();
+                }
+            });
         }
         protected override void OnExit(ExitEventArgs e)
         {
