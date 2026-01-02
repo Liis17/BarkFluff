@@ -55,8 +55,7 @@
                 <TextBlock
                     Grid.Row="0"
                     Grid.Column="0"
-                    Margin="5,5,0,0"
-                    Style="{DynamicResource FieldLabelStyle}"
+                    Style="{DynamicResource HeaderSettings}"
                     Text="Оформление" />
                 <Border
                     Grid.Row="1"
@@ -65,12 +64,10 @@
                     Padding="5,0,5,0"
                     Background="#1f1f1f"
                     Style="{DynamicResource Win11CardStyle}">
-                    <StackPanel Orientation="Horizontal">
-                        <settingsControls:SettingsMenuBlock
-                            IconColor="#FF5086B5"
-                            IconSymbol="ChatEmpty24"
-                            Text="Чаты" />
-                    </StackPanel>
+                    <settingsControls:SettingsMenuBlock
+                        IconColor="#FF5086B5"
+                        IconSymbol="ChatEmpty24"
+                        Text="Чаты" />
                 </Border>
                 <Border
                     Grid.Row="1"
@@ -79,19 +76,16 @@
                     Padding="5,0,5,0"
                     Background="#1f1f1f"
                     Style="{DynamicResource Win11CardStyle}">
-                    <StackPanel Orientation="Horizontal">
-                        <settingsControls:SettingsMenuBlock
-                            IconColor="#FFDA5151"
-                            IconSymbol="Person24"
-                            Text="Профиль" />
-                    </StackPanel>
+                    <settingsControls:SettingsMenuBlock
+                        IconColor="#FFDA5151"
+                        IconSymbol="Person24"
+                        Text="Профиль" />
                 </Border>
 
                 <TextBlock
                     Grid.Row="2"
                     Grid.Column="0"
-                    Margin="5,5,0,0"
-                    Style="{DynamicResource FieldLabelStyle}"
+                    Style="{DynamicResource HeaderSettings}"
                     Text="Приложение" />
 
                 <Border
@@ -101,12 +95,10 @@
                     Padding="5,0,5,0"
                     Background="#1f1f1f"
                     Style="{DynamicResource Win11CardStyle}">
-                    <StackPanel Orientation="Horizontal">
-                        <settingsControls:SettingsMenuBlock
-                            IconColor="#FF8E469A"
-                            IconSymbol="Globe24"
-                            Text="Язык" />
-                    </StackPanel>
+                    <settingsControls:SettingsMenuBlock
+                        IconColor="#FF8E469A"
+                        IconSymbol="Globe24"
+                        Text="Язык" />
                 </Border>
                 <Border
                     Grid.Row="3"
@@ -115,20 +107,17 @@
                     Padding="5,0,5,0"
                     Background="#1f1f1f"
                     Style="{DynamicResource Win11CardStyle}">
-                    <StackPanel Orientation="Horizontal">
-                        <settingsControls:SettingsMenuBlock
-                            IconColor="#FFB35844"
-                            IconSymbol="CommentNote24"
-                            Text="Уведомления" />
-                    </StackPanel>
+                    <settingsControls:SettingsMenuBlock
+                        IconColor="#FFB35844"
+                        IconSymbol="CommentNote24"
+                        Text="Уведомления" />
                 </Border>
 
 
                 <TextBlock
                     Grid.Row="4"
                     Grid.Column="0"
-                    Margin="5,5,0,0"
-                    Style="{DynamicResource FieldLabelStyle}"
+                    Style="{DynamicResource HeaderSettings}"
                     Text="Безопасность" />
                 <Border
                     Grid.Row="5"
@@ -137,12 +126,10 @@
                     Padding="5,0,5,0"
                     Background="#1f1f1f"
                     Style="{DynamicResource Win11CardStyle}">
-                    <StackPanel Orientation="Horizontal">
-                        <settingsControls:SettingsMenuBlock
-                            IconColor="#FFC58C39"
-                            IconSymbol="LockClosed32"
-                            Text="Защита" />
-                    </StackPanel>
+                    <settingsControls:SettingsMenuBlock
+                        IconColor="#FFC58C39"
+                        IconSymbol="LockClosed32"
+                        Text="Защита" />
                 </Border>
                 <Border
                     Grid.Row="5"
@@ -151,12 +138,10 @@
                     Padding="5,0,5,0"
                     Background="#1f1f1f"
                     Style="{DynamicResource Win11CardStyle}">
-                    <StackPanel Orientation="Horizontal">
-                        <settingsControls:SettingsMenuBlock
-                            IconColor="#FF3FA29F"
-                            IconSymbol="ShieldLock28"
-                            Text="Конфиденциальность" />
-                    </StackPanel>
+                    <settingsControls:SettingsMenuBlock
+                        IconColor="#FF3FA29F"
+                        IconSymbol="ShieldLock28"
+                        Text="Конфиденциальность" />
                 </Border>
 
 
@@ -169,12 +154,10 @@
                 Padding="5,0,5,0"
                 Background="#1f1f1f"
                 Style="{DynamicResource Win11CardStyle}">
-                <StackPanel Orientation="Horizontal">
-                    <settingsControls:SettingsMenuDeviceBlock
-                        IconColor="#FF156ADC"
-                        IconSymbol="PhoneDesktop28"
-                        Text="Устройства" />
-                </StackPanel>
+                <settingsControls:SettingsMenuDeviceBlock
+                    IconColor="#FF156ADC"
+                    IconSymbol="PhoneDesktop28"
+                    Text="Устройства" />
             </Border>
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -188,8 +171,7 @@
                 <TextBlock
                     Grid.Row="0"
                     Grid.Column="0"
-                    Margin="5,5,0,0"
-                    Style="{DynamicResource FieldLabelStyle}"
+                    Style="{DynamicResource HeaderSettings}"
                     Text="Данные и память" />
 
                 <Border
@@ -199,12 +181,10 @@
                     Padding="5,0,5,0"
                     Background="#1f1f1f"
                     Style="{DynamicResource Win11CardStyle}">
-                    <StackPanel Orientation="Horizontal">
-                        <settingsControls:SettingsMenuBlock
-                            IconColor="#FF68A540"
-                            IconSymbol="DatabaseStack16"
-                            Text="Кеш" />
-                    </StackPanel>
+                    <settingsControls:SettingsMenuBlock
+                        IconColor="#FF68A540"
+                        IconSymbol="DatabaseStack16"
+                        Text="Кеш" />
                 </Border>
                 <Border
                     Grid.Row="1"
@@ -213,12 +193,10 @@
                     Padding="5,0,5,0"
                     Background="#1f1f1f"
                     Style="{DynamicResource Win11CardStyle}">
-                    <StackPanel Orientation="Horizontal">
-                        <settingsControls:SettingsMenuBlock
-                            IconColor="#FF79AEDC"
-                            IconSymbol="Cloud24"
-                            Text="Облако" />
-                    </StackPanel>
+                    <settingsControls:SettingsMenuBlock
+                        IconColor="#FF79AEDC"
+                        IconSymbol="Cloud24"
+                        Text="Облако" />
                 </Border>
             </Grid>
 

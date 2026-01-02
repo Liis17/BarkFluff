@@ -8,19 +8,70 @@
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     x:Name="Root"
     Height="70"
+    HorizontalAlignment="Stretch"
     d:DesignHeight="450"
     d:DesignWidth="800"
+    Background="Transparent"
     mc:Ignorable="d">
     <Grid HorizontalAlignment="Left" VerticalAlignment="Center">
         <StackPanel
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             Orientation="Horizontal">
-            <ui:SymbolIcon
-                Foreground="{Binding IconColor, ElementName=Root}"
-                Style="{StaticResource SettingsSymbolIcon}"
-                Symbol="{Binding IconSymbol, ElementName=Root}" />
+            <Grid>
+                <ui:SymbolIcon
+                    x:Name="BlurredIcon"
+                    Foreground="{Binding IconColor, ElementName=Root}"
+                    Style="{StaticResource SettingsSymbolIcon}"
+                    Symbol="{Binding IconSymbol, ElementName=Root}">
+                    <ui:SymbolIcon.Effect>
+                        <BlurEffect
+                            x:Name="BlurEffectElement"
+                            Radius="0"
+                            RenderingBias="Performance" />
+                    </ui:SymbolIcon.Effect>
+                </ui:SymbolIcon>
+                <ui:SymbolIcon
+                    Foreground="{Binding IconColor, ElementName=Root}"
+                    Style="{StaticResource SettingsSymbolIcon}"
+                    Symbol="{Binding IconSymbol, ElementName=Root}" />
+            </Grid>
+
             <TextBlock Style="{StaticResource SettingsMenuBlockText}" Text="{Binding Text, ElementName=Root}" />
         </StackPanel>
     </Grid>
+
+    <UserControl.Triggers>
+        <EventTrigger RoutedEvent="MouseEnter">
+            <BeginStoryboard>
+                <Storyboard>
+                    <DoubleAnimation
+                        Storyboard.TargetName="BlurEffectElement"
+                        Storyboard.TargetProperty="Radius"
+                        To="20"
+                        Duration="0:0:0.3">
+                        <DoubleAnimation.EasingFunction>
+                            <CubicEase EasingMode="EaseOut" />
+                        </DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                </Storyboard>
+            </BeginStoryboard>
+        </EventTrigger>
+        <EventTrigger RoutedEvent="MouseLeave">
+            <BeginStoryboard>
+                <Storyboard>
+                    <DoubleAnimation
+                        Storyboard.TargetName="BlurEffectElement"
+                        Storyboard.TargetProperty="Radius"
+                        To="0"
+                        Duration="0:0:0.3">
+                        <DoubleAnimation.EasingFunction>
+                            <CubicEase EasingMode="EaseIn" />
+                        </DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                </Storyboard>
+            </BeginStoryboard>
+        </EventTrigger>
+    </UserControl.Triggers>
+
 </UserControl>

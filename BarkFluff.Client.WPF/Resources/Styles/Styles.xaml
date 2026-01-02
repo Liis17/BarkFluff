@@ -758,4 +758,13 @@
         <Setter Property="Margin" Value="0,0,0,0" />
     </Style>
 
+    <!--  Стиль для заголовкой в настройках  -->
+    <Style x:Key="HeaderSettings" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="AdwaitaSans" />
+        <Setter Property="FontSize" Value="17" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="Foreground" Value="#E0E0E0" />
+        <Setter Property="Margin" Value="5,10,0,0" />
+    </Style>
+
 </ResourceDictionary>

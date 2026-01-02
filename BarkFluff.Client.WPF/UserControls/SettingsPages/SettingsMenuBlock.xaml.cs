@@ -1,15 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace BarkFluff.Client.WPF.UserControls.SettingsPages
 {
@@ -66,9 +58,9 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
         public SettingsMenuBlock()
         {
             InitializeComponent();
+            this.MouseLeftButtonDown += OnMouseLeftButtonDown;
             this.MouseEnter += OnMouseEnter;
             this.MouseLeave += OnMouseLeave;
-            this.MouseLeftButtonDown += OnMouseLeftButtonDown;
         }
 
         private void OnMouseEnter(object sender, MouseEventArgs e)
