@@ -10,6 +10,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 
@@ -644,7 +645,7 @@ namespace BarkFluff.Client.WPF.Pages
             animation.Begin();
             MessageScrollViewer.ScrollToEnd();
 
-            // Отметить видимые сообщения как прочитанные с небольшой задержкой
+            // Отметить видимые сообщения как прочтенные с небольшой задержкой
             System.Windows.Threading.DispatcherTimer delayTimer = new System.Windows.Threading.DispatcherTimer();
             delayTimer.Interval = TimeSpan.FromMilliseconds(INITIAL_MARK_DELAY_MS);
             delayTimer.Tick += (s, args) =>
@@ -781,17 +782,107 @@ namespace BarkFluff.Client.WPF.Pages
             targetChatItem.TransferMessage = message;
             targetChatItem.UpdateMessage();
 
-            // Сортировка ChatItem по времени последнего сообщения (новые сверху)
-            var sortedChatItems = ChatList.Children.OfType<ChatItem>()
-                .OrderByDescending(chatItem => chatItem.TransferMessage?.SentAt.ToDateTime() ?? DateTime.MinValue)
-                .ToList();
+            // Анимированная сортировка ChatItem по времени последнего сообщения
+            AnimateChatItemReordering();
+        }
 
-            // Очищаем и перестраиваем ChatList
-            ChatList.Children.Clear();
-            foreach (var chatItem in sortedChatItems)
+        /// <summary>
+        /// Анимирует перемещение ChatItem'ов при изменении их позиции в списке
+        /// </summary>
+        private async void AnimateChatItemReordering()
+        {
+            await Dispatcher.InvokeAsync(async () =>
             {
-                ChatList.Children.Add(chatItem);
-            }
+                // Получаем текущие позиции всех ChatItem
+                var currentPositions = new Dictionary<ChatItem, double>();
+                foreach (var child in ChatList.Children)
+                {
+                    if (child is ChatItem chatItem)
+                    {
+                        var transform = chatItem.RenderTransform as TranslateTransform;
+                        if (transform == null)
+                        {
+                            transform = new TranslateTransform();
+                            chatItem.RenderTransform = transform;
+                        }
+                        
+                        // Сохраняем текущую визуальную позицию
+                        var point = chatItem.TransformToAncestor(ChatList).Transform(new Point(0, 0));
+                        currentPositions[chatItem] = point.Y;
+                    }
+                }
+
+                // Сортируем ChatItem по времени последнего сообщения
+                var sortedChatItems = ChatList.Children.OfType<ChatItem>()
+                    .OrderByDescending(chatItem => chatItem.TransferMessage?.SentAt.ToDateTime() ?? DateTime.MinValue)
+                    .ToList();
+
+                // Проверяем, нужно ли вообще что-то менять
+                bool needsReordering = false;
+                for (int i = 0; i < sortedChatItems.Count; i++)
+                {
+                    if (ChatList.Children.IndexOf(sortedChatItems[i]) != i)
+                    {
+                        needsReordering = true;
+                        break;
+                    }
+                }
+
+                if (!needsReordering)
+                {
+                    return; // Порядок не изменился
+                }
+
+                // Перестраиваем список без анимации (логически)
+                ChatList.Children.Clear();
+                foreach (var chatItem in sortedChatItems)
+                {
+                    ChatList.Children.Add(chatItem);
+                }
+
+                // Даём время на layout update
+                await Task.Delay(10);
+                ChatList.UpdateLayout();
+
+                // Вычисляем новые позиции и запускаем анимацию
+                foreach (var chatItem in sortedChatItems)
+                {
+                    if (!currentPositions.ContainsKey(chatItem))
+                        continue;
+
+                    var oldPosition = currentPositions[chatItem];
+                    var newPoint = chatItem.TransformToAncestor(ChatList).Transform(new Point(0, 0));
+                    var newPosition = newPoint.Y;
+
+                    var offset = oldPosition - newPosition;
+
+                    // Если элемент не сдвинулся, пропускаем анимацию
+                    if (Math.Abs(offset) < 1)
+                        continue;
+
+                    var transform = chatItem.RenderTransform as TranslateTransform;
+                    if (transform == null)
+                    {
+                        transform = new TranslateTransform();
+                        chatItem.RenderTransform = transform;
+                    }
+
+                    // Устанавливаем начальное смещение (визуально элемент остаётся на старом месте)
+                    transform.Y = offset;
+
+                    // Создаём анимацию перемещения к новой позиции
+                    var animation = new DoubleAnimation
+                    {
+                        From = offset,
+                        To = 0,
+                        Duration = TimeSpan.FromMilliseconds(400),
+                        EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
+                    };
+
+                    // Запускаем анимацию
+                    transform.BeginAnimation(TranslateTransform.YProperty, animation);
+                }
+            });
         }
 
         #endregion
@@ -854,7 +945,7 @@ namespace BarkFluff.Client.WPF.Pages
             {
                 if (item.IsGroupChat)
                 {
-                    App.ErideMessage.AddMessage($"Пропущен групповой чат {item.Title}", new Erida { Type = MType.Debug });
+                    App.ErideMessage.AddMessage($"Пропущен Gruppowy chat {item.Title}", new Erida { Type = MType.Debug });
                     continue;
                 }
 
@@ -1174,20 +1265,20 @@ namespace BarkFluff.Client.WPF.Pages
                     {
                         // Клик на аватар в заголовке - открываем свой профиль
                         ShowUserProfile(isCurrentUser: true);
-                    }
-                    else if (senderElement.Name == "ChatAvatarButton")
-                    {
+                      }
+                      else if (senderElement.Name == "ChatAvatarButton")
+                      {
                         // Клик на аватар в чате - открываем профиль собеседника
                         if (ChatIdbyUserId.Value > 0)
                         {
-                            ShowUserProfile(userId: ChatIdbyUserId.Value);
+                          ShowUserProfile(userId: ChatIdbyUserId.Value);
                         }
-                    }
+                      }
 
-                    if (!isOpenCenter)
-                    {
+                      if (!isOpenCenter)
+                      {
                         OpenCenterPanel();
-                    }
+                      }
                 }
                 else if (tag == "UpdateBlock")
                 {
