@@ -1,5 +1,5 @@
 ﻿<UserControl
-    x:Class="BarkFluff.Client.WPF.UserControls.SettingsPages.SettingsMenuBlock"
+    x:Class="BarkFluff.Client.WPF.UserControls.SettingsPages.SettingsMenuDeviceBlock"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -16,23 +16,11 @@
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             Orientation="Horizontal">
-            <Grid>
-                <ui:SymbolIcon
-                    Foreground="{Binding IconColor, ElementName=Root}"
-                    Style="{StaticResource SettingsSymbolIcon}"
-                    Symbol="{Binding IconSymbol, ElementName=Root}" >
-                    <ui:SymbolIcon.Effect>
-                        <BlurEffect Radius="20" RenderingBias="Performance" ></BlurEffect>
-                    </ui:SymbolIcon.Effect>
-                </ui:SymbolIcon>
-                <ui:SymbolIcon
-                    Foreground="{Binding IconColor, ElementName=Root}"
-                    Style="{StaticResource SettingsSymbolIcon}"
-                    Symbol="{Binding IconSymbol, ElementName=Root}" />
-            </Grid>
-
+            <ui:SymbolIcon
+                Foreground="{Binding IconColor, ElementName=Root}"
+                Style="{StaticResource SettingsSymbolIcon}"
+                Symbol="{Binding IconSymbol, ElementName=Root}" />
             <TextBlock Style="{StaticResource SettingsMenuBlockText}" Text="{Binding Text, ElementName=Root}" />
         </StackPanel>
     </Grid>
-
 </UserControl>

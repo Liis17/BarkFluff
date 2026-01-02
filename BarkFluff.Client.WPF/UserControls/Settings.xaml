@@ -18,9 +18,20 @@
         <StackPanel VerticalAlignment="Top" Orientation="Vertical">
             <Border
                 x:Name="Avatar"
-                Height="120"
+                Height="140"
                 HorizontalAlignment="Stretch"
-                VerticalAlignment="Top" />
+                VerticalAlignment="Top">
+                <local:CachedAvatar
+                    x:Name="AvatarCachedImage"
+                    Width="110"
+                    Height="110"
+                    Margin="0,0,0,16"
+                    HorizontalAlignment="Center"
+                    CornerRadius="55"
+                    EnableDynamicShadow="True"
+                    ShadowBlurRadius="25"
+                    ShadowOpacity="0.5" />
+            </Border>
             <!--<settingsControls:UsedSpaceProgressBar HorizontalAlignment="Stretch" />-->
 
             <Grid>
@@ -147,30 +158,42 @@
                             Text="Конфиденциальность" />
                     </StackPanel>
                 </Border>
-                <Border
-                    Grid.Row="6"
-                    Grid.Column="3"
-                    Margin="5"
-                    Padding="5,0,5,0"
-                    Background="#1f1f1f"
-                    Style="{DynamicResource Win11CardStyle}">
-                    <StackPanel Orientation="Horizontal">
-                        <settingsControls:SettingsMenuBlock
-                            IconColor="#FF156ADC"
-                            IconSymbol="PhoneDesktop28"
-                            Text="Устройства" />
-                    </StackPanel>
-                </Border>
 
+
+
+            </Grid>
+            <Border
+                Grid.Row="6"
+                Grid.Column="3"
+                Margin="5"
+                Padding="5,0,5,0"
+                Background="#1f1f1f"
+                Style="{DynamicResource Win11CardStyle}">
+                <StackPanel Orientation="Horizontal">
+                    <settingsControls:SettingsMenuDeviceBlock
+                        IconColor="#FF156ADC"
+                        IconSymbol="PhoneDesktop28"
+                        Text="Устройства" />
+                </StackPanel>
+            </Border>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
                 <TextBlock
-                    Grid.Row="7"
+                    Grid.Row="0"
                     Grid.Column="0"
                     Margin="5,5,0,0"
                     Style="{DynamicResource FieldLabelStyle}"
                     Text="Данные и память" />
 
                 <Border
-                    Grid.Row="8"
+                    Grid.Row="1"
                     Grid.Column="1"
                     Margin="5"
                     Padding="5,0,5,0"
@@ -184,7 +207,7 @@
                     </StackPanel>
                 </Border>
                 <Border
-                    Grid.Row="8"
+                    Grid.Row="1"
                     Grid.Column="0"
                     Margin="5"
                     Padding="5,0,5,0"

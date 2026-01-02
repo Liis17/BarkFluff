@@ -1,15 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Windows;
+﻿using BarkFluff.Client.WPF.Services.App.Caching;
+
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace BarkFluff.Client.WPF.UserControls
 {
@@ -21,6 +12,21 @@ namespace BarkFluff.Client.WPF.UserControls
         public Settings()
         {
             InitializeComponent();
+            LoadAvatar(App.GParam.PictureUrl);
+        }
+
+        private void LoadAvatar(string? avatarUrl)
+        {
+            if (string.IsNullOrEmpty(avatarUrl))
+            {
+                AvatarCachedImage.FileId = null;
+                AvatarCachedImage.FileUrl = null;
+                return;
+            }
+
+            var fileId = FileCacheService.ExtractFileIdFromUrl(avatarUrl);
+            AvatarCachedImage.FileId = fileId;
+            AvatarCachedImage.FileUrl = avatarUrl;
         }
     }
 }
