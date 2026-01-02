@@ -533,7 +533,7 @@ namespace BarkFluff.Client.WPF.Pages
             if (!string.IsNullOrEmpty(task))
             {
                 App.MessagerTask.Value = string.Empty;
-                OpenChatViaProtocol(task);
+                OpenCommandViaProtocol(task);
             }
         }
 
@@ -543,7 +543,7 @@ namespace BarkFluff.Client.WPF.Pages
             if (!string.IsNullOrEmpty(task))
             {
                 App.MessagerTask.Value = string.Empty;
-                OpenChatViaProtocol(task);
+                OpenCommandViaProtocol(task);
             }
             else
             {
@@ -558,27 +558,36 @@ namespace BarkFluff.Client.WPF.Pages
 
         #region Обработчка аргументов из протокола
 
-        private async void OpenChatViaProtocol(string task)
+        private async void OpenCommandViaProtocol(string task)
         {
             try
             {
-                var command = task.Split("=")[0];
-                var arg = task.Split("=")[1];
-                if (command == "user-username")
+                if (task.StartsWith("user-username"))
                 {
-                    var result = await App.ServerCommunication.SearchUser(App.GParam, arg);
-                    if (result.userList.Count > 0)
+                    var command = task.Split("=")[0];
+                    var arg = task.Split("=")[1];
+                    if (command == "user-username")
                     {
-                        var user = result.userList[0];
-                        IsOpenChatEmpty = true;
-                        IsOpenChat.Value = true;
-                        ChatIdbyUserId.Value = user.Id;
-                    }
-                    else
-                    {
-                        MessageBox.Show("Пользователь не найден");
+                        var result = await App.ServerCommunication.SearchUser(App.GParam, arg);
+                        if (result.userList.Count > 0)
+                        {
+                            var user = result.userList[0];
+                            IsOpenChatEmpty = true;
+                            IsOpenChat.Value = true;
+                            ChatIdbyUserId.Value = user.Id;
+                        }
+                        else
+                        {
+                            MessageBox.Show("Пользователь не найден");
+                        }
                     }
                 }
+                if (task.StartsWith("successfulupdate"))
+                {
+                    OpenCenterPanel();
+                    CenterPanel.Child = new UserControls.PostUpdateMessage();
+                }
+
             }
             catch (Exception ex)
             {

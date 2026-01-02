@@ -767,4 +767,13 @@
         <Setter Property="Margin" Value="5,10,0,0" />
     </Style>
 
+    <!--  Стиль текста для окна после уведомления  -->
+    <Style x:Key="PostUpdateStyleText" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="AdwaitaSans" />
+        <Setter Property="FontSize" Value="26" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="HorizontalAlignment" Value="Center"></Setter>
+        <Setter Property="Foreground" Value="#FFE6E6E6" /> 
+    </Style>
+
 </ResourceDictionary>
