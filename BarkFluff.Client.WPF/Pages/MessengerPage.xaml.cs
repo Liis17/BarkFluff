@@ -476,6 +476,9 @@ namespace BarkFluff.Client.WPF.Pages
             // Подписываемся на события клика по уведомлениям
             App.NotificationManager.NotificationClicked += OnNotificationClicked;
 
+            //вызом метода для подписки на обновление приложения
+            App.MainPageLoaded();
+
             // Устанавливаем placeholder для аватарок
             ChatAvatar.ImageSource = null;
             AvatarTitleWindow.ImageSource = null;
@@ -1310,20 +1313,20 @@ namespace BarkFluff.Client.WPF.Pages
                     {
                         // Клик на аватар в заголовке - открываем свой профиль
                         ShowUserProfile(isCurrentUser: true);
-                      }
-                      else if (senderElement.Name == "ChatAvatarButton")
-                      {
+                    }
+                    else if (senderElement.Name == "ChatAvatarButton")
+                    {
                         // Клик на аватар в чате - открываем профиль собеседника
                         if (ChatIdbyUserId.Value > 0)
                         {
                             ShowUserProfile(userId: ChatIdbyUserId.Value);
                         }
-                      }
+                    }
 
-                      if (!isOpenCenter)
-                      {
-                          OpenCenterPanel();
-                      }
+                    if (!isOpenCenter)
+                    {
+                        OpenCenterPanel();
+                    }
                 }
                 else if (tag == "UpdateBlock")
                 {
