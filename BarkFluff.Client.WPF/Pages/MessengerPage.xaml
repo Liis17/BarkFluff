@@ -241,6 +241,7 @@
                         </Border>
                         <!--  Иконка обновления  -->
                         <Border
+                            x:Name="UpdateIconBorder"
                             Grid.Column="0"
                             Width="25"
                             Height="25"
@@ -251,7 +252,8 @@
                             Cursor="Hand"
                             MouseLeftButtonUp="OpenCenterBlock"
                             Tag="UpdateBlock"
-                            ToolTip="Открыть мой профиль">
+                            ToolTip="Доступно обновление"
+                            Visibility="Collapsed">
                             <ui:SymbolIcon
                                 FontSize="23"
                                 Foreground="#f8a644"
