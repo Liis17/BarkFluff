@@ -6,6 +6,7 @@ using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -586,6 +587,43 @@ namespace BarkFluff.Client.WPF.Pages
                 {
                     OpenCenterPanel();
                     CenterPanel.Child = new UserControls.PostUpdateMessage();
+                }
+
+                if (task.StartsWith("launch-updater"))
+                {
+                    // Показать сообщение об обновлении
+                    var message = "Доступно новое обновление Barkfluff!";
+                    App.ErideMessage.AddMessage(message, new Erida { Type = MType.Warning });
+
+                    // Запустить Barkfluff.Updater.CLI.exe
+                    try
+                    {
+                        string appDirectory = AppDomain.CurrentDomain.BaseDirectory;
+                        string updaterPath = System.IO.Path.Combine(appDirectory, "Barkfluff.Updater.CLI.exe");
+
+                        if (System.IO.File.Exists(updaterPath))
+                        {
+                            // Запустить обновление в фоновом режиме
+                            Process.Start(new ProcessStartInfo
+                            {
+                                FileName = updaterPath,
+                                Arguments = "--noseamless", // Принудительное обновление без бесшовного режима
+                                CreateNoWindow = true, // Не показывать окно консоли
+                                WindowStyle = ProcessWindowStyle.Hidden,
+                                UseShellExecute = true // Использовать оболочку для запуска
+                            });
+
+                            App.ErideMessage.AddMessage("Запущено обновление Barkfluff", new Erida { Type = MType.Debug });
+                        }
+                        else
+                        {
+                            App.ErideMessage.AddMessage("Обновление не найдено", new Erida { Type = MType.Warning });
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        App.ErideMessage.AddMessage($"Ошибка при запуске обновления: {ex.Message}", new Erida { Type = MType.Error });
+                    }
                 }
 
             }
@@ -1272,31 +1310,24 @@ namespace BarkFluff.Client.WPF.Pages
                     {
                         // Клик на аватар в заголовке - открываем свой профиль
                         ShowUserProfile(isCurrentUser: true);
-                    }
-                    else if (senderElement.Name == "ChatAvatarButton")
-                    {
+                      }
+                      else if (senderElement.Name == "ChatAvatarButton")
+                      {
                         // Клик на аватар в чате - открываем профиль собеседника
                         if (ChatIdbyUserId.Value > 0)
                         {
                             ShowUserProfile(userId: ChatIdbyUserId.Value);
                         }
-                    }
+                      }
 
-                    if (!isOpenCenter)
-                    {
-                        OpenCenterPanel();
-                    }
+                      if (!isOpenCenter)
+                      {
+                          OpenCenterPanel();
+                      }
                 }
                 else if (tag == "UpdateBlock")
                 {
-                    if (!isOpenCenter)
-                    {
-                        OpenCenterPanel();
-                    }
-                    else
-                    {
-                        CloseCenterPanel();
-                    }
+                    LaunchUpdater();
                 }
             }
             else
@@ -2090,6 +2121,70 @@ namespace BarkFluff.Client.WPF.Pages
                     AttachmentPreview.AddImageFromClipboard(image);
                     AttachmentOverlay.Visibility = Visibility.Visible;
                 }
+            }
+        }
+
+        #endregion
+
+        #region Управление иконкой обновления
+
+        /// <summary>
+        /// Показывает иконку обновления в заголовке приложения
+        /// </summary>
+        public void ShowUpdateIcon()
+        {
+            UpdateIconBorder.Visibility = Visibility.Visible;
+        }
+
+        /// <summary>
+        /// Скрывает иконку обновления в заголовке приложения
+        /// </summary>
+        public void HideUpdateIcon()
+        {
+            UpdateIconBorder.Visibility = Visibility.Collapsed;
+        }
+
+        #endregion
+
+        #region Updater Launch
+
+        /// <summary>
+        /// Запускает программу обновления Barkfluff.Updater.CLI.exe
+        /// </summary>
+        private void LaunchUpdater()
+        {
+            try
+            {
+                // Получаем путь к директории текущей программы
+                string currentDirectory = AppDomain.CurrentDomain.BaseDirectory;
+                string updaterPath = Path.Combine(currentDirectory, "Barkfluff.Updater.CLI.exe");
+
+                // Проверяем, существует ли файл
+                if (!File.Exists(updaterPath))
+                {
+                    App.ErideMessage.AddMessage($"Файл обновления не найден: {updaterPath}", new Erida { Type = MType.Error });
+                    MessageBox.Show("Программа обновления не найдена.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                // Создаем процесс для запуска обновления
+                var processInfo = new ProcessStartInfo
+                {
+                    FileName = updaterPath,
+                    UseShellExecute = true,
+                    WorkingDirectory = currentDirectory
+                };
+
+                Process.Start(processInfo);
+                App.ErideMessage.AddMessage("Программа обновления запущена", new Erida { Type = MType.Debug });
+
+                // Закрываем текущее приложение для применения обновления
+                Application.Current.Shutdown();
+            }
+            catch (Exception ex)
+            {
+                App.ErideMessage.AddMessage($"Ошибка при запуске программы обновления: {ex.Message}", new Erida { Type = MType.Error });
+                MessageBox.Show($"Не удалось запустить программу обновления: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

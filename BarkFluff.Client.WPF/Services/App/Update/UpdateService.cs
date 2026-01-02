@@ -16,9 +16,8 @@ namespace BarkFluff.Client.WPF.Services.App.Update
         private System.Timers.Timer _timer;
         private string _currentVersion;
         private string _currentType;
-        private const string UpdatesFolder = "updates";
-        private const string HashFileName = "release.hash";
-        private const string ZipFileName = "wpf-build.zip";
+        private const string UpdaterFileName = "Barkfluff.Updater.CLI.exe";
+        private const string UpdaterDownloadUrl = "https://github.com/Liis17/BarkFluff.Releases/releases/download/Installer/Barkfluff.Updater.CLI.exe";
 
         public UpdateService(string currentVersion, string currentType)
         {
@@ -26,19 +25,49 @@ namespace BarkFluff.Client.WPF.Services.App.Update
             _httpClient.DefaultRequestHeaders.Add("User-Agent", "UpdateService");
             _currentVersion = currentVersion;
             _currentType = currentType;
-            _timer = new System.Timers.Timer(300000); // 5 минут = 300000 мс
+            _timer = new System.Timers.Timer(7200000); // 2 hours = 7200000 ms
             _timer.Elapsed += async (sender, e) => await CheckForUpdatesAsync();
             _timer.AutoReset = true;
         }
 
-        public void Start()
+        public async void Start()
         {
-            Task.Run(() => _timer.Start());
+            // Check for updater on startup
+            await EnsureUpdaterExistsAsync();
+            
+            // Check for updates immediately on startup
+            await CheckForUpdatesAsync();
+            
+            // Start timer for periodic checks
+            _timer.Start();
         }
 
         public void Stop()
         {
             _timer.Stop();
+        }
+
+        private async Task EnsureUpdaterExistsAsync()
+        {
+            try
+            {
+                string appDirectory = AppContext.BaseDirectory;
+                string updaterPath = Path.Combine(appDirectory, UpdaterFileName);
+
+                if (!File.Exists(updaterPath))
+                {
+                    WPF.App.ErideMessage.AddMessage($"Загрузка {UpdaterFileName}...", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Info });
+                    
+                    byte[] updaterBytes = await _httpClient.GetByteArrayAsync(UpdaterDownloadUrl);
+                    await File.WriteAllBytesAsync(updaterPath, updaterBytes);
+                    
+                    WPF.App.ErideMessage.AddMessage($"{UpdaterFileName} успешно загружен", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Info });
+                }
+            }
+            catch (Exception ex)
+            {
+                WPF.App.ErideMessage.AddMessage($"Ошибка загрузки {UpdaterFileName}: {ex.Message}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Error });
+            }
         }
 
         private async Task CheckForUpdatesAsync()
@@ -50,11 +79,14 @@ namespace BarkFluff.Client.WPF.Services.App.Update
                 var releases = JsonConvert.DeserializeObject<List<Release>>(response);
                 Release latestSuitable = null;
                 Version currentVer = new Version(_currentVersion);
+                
                 foreach (var release in releases)
                 {
                     if (ParseRelease(release.TagName, out string relType, out string relVersion))
                     {
+                        // If current type is Release, skip Dev releases
                         if (_currentType == "Release" && relType == "Dev") continue;
+                        
                         Version relVer = new Version(relVersion);
                         if (relVer > currentVer && (latestSuitable == null || relVer > new Version(latestSuitable.Version)))
                         {
@@ -65,45 +97,12 @@ namespace BarkFluff.Client.WPF.Services.App.Update
 
                 if (latestSuitable != null)
                 {
-                    string zipDownloadUrl = latestSuitable.Assets?.Find(a => a.Name == ZipFileName)?.BrowserDownloadUrl;
-                    string hash = latestSuitable.Assets?.Find(a => a.Name == ZipFileName)?.Digest;
-
-                    if (string.IsNullOrEmpty(zipDownloadUrl) || string.IsNullOrEmpty(hash))
-                    {
-                        WPF.App.ErideMessage.AddMessage("Не найдены файлы обновления в релизе.", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Error });
-                        return;
-                    }
-
-                    Directory.CreateDirectory(UpdatesFolder);
-                    string hashPath = Path.Combine(UpdatesFolder, HashFileName);
-                    string zipPath = Path.Combine(UpdatesFolder, ZipFileName);
-
-                    hash = hash.Trim();
-
-                    bool needDownload = true;
-                    if (File.Exists(hashPath))
-                    {
-                        string localHash = File.ReadAllText(hashPath).Trim();
-                        if (localHash == hash && File.Exists(zipPath))
-                        {
-                            needDownload = false;
-                        }
-                    }
-
-                    if (needDownload)
-                    {
-                        // Скачивание в отдельном потоке
-                        await Task.Run(async () =>
-                        {
-                            byte[] zipBytes = await _httpClient.GetByteArrayAsync(zipDownloadUrl);
-                            File.WriteAllBytes(zipPath, zipBytes);
-                            File.WriteAllText(hashPath, hash);
-                        });
-                    }
-
-                    // Уведомление о готовом обновлении
-                    WPF.App.ErideMessage.AddMessage($"Обновление доступно: {latestSuitable.TagName}. Файл готов в {zipPath}.", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Info });
-                    OnUpdateAvailable(zipPath);
+                    WPF.App.ErideMessage.AddMessage($"Доступно обновление: {latestSuitable.TagName}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Info });
+                    OnUpdateAvailable(latestSuitable.TagName, latestSuitable.Version);
+                }
+                else
+                {
+                    OnNoUpdateAvailable();
                 }
             }
             catch (Exception ex)
@@ -153,8 +152,11 @@ namespace BarkFluff.Client.WPF.Services.App.Update
             public string Digest { get; set; }
         }
 
-        // Пример события для уведомления об обновлении
-        public event Action<string> UpdateAvailable;
-        private void OnUpdateAvailable(string path) => UpdateAvailable?.Invoke(path);
+        // Events for update notifications
+        public event Action<string, string> UpdateAvailable;
+        public event Action NoUpdateAvailable;
+        
+        private void OnUpdateAvailable(string tagName, string version) => UpdateAvailable?.Invoke(tagName, version);
+        private void OnNoUpdateAvailable() => NoUpdateAvailable?.Invoke();
     }
 }
