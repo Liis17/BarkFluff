@@ -1,8 +1,7 @@
 {
   "profiles": {
     "BarkFluff.Client.WPF": {
-      "commandName": "Project",
-      "commandLineArgs": "--successfulupdate"
+      "commandName": "Project"
     }
   }
 }
