@@ -240,9 +240,10 @@ namespace BarkFluff.Client.WPF
                 task = task.Replace("--", "");
             }
             task = task.Replace("/", "");
-            if (task == "closetoupdate")
+            if (task == "closetoupdate") //остановка приложения для обновления
             {
                 Application.Current.Shutdown();
+                return;
             }
             Application.Current.Dispatcher.Invoke(() =>
             {
