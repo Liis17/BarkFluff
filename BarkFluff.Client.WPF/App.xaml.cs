@@ -7,7 +7,6 @@ using BarkFluff.Client.WPF.Services.App.Update;
 using BarkFluff.Client.WPF.Services.Erida;
 using BarkFluff.Client.WPF.Services.Notification;
 using BarkFluff.Client.WPF.Services.Notification.System;
-using BarkFluff.Client.WPF.Services.QR;
 using BarkFluff.WebApi.Core.MessengerData;
 
 using System.Diagnostics;
@@ -28,7 +27,7 @@ namespace BarkFluff.Client.WPF
         private const string MutexName = "BarkFluffMutex";
         private const string ShortcutName = "BarkFluff.lnk";
 #endif
-        public static ReactiveString MessagerTask = new ReactiveString(); //задача для мессенджера, которая будет выполнена при запуске через протокол или при запуске нового экземпляра
+        public static ReactiveString MessagerTask { get; set; } = new ReactiveString(); //задача для мессенджера, которая будет выполнена при запуске через протокол или при запуске нового экземпляра
         public static BarkFluff.WebApi.Core.WebApi ServerCommunication { get; set; } = null!;
         public static BarkFluff.WebApi.Core.MessengerData.GlobalParam GParam { get; set; } = null!;
         public static ImageColorAnalyzer ColorAnalyzer { get; set; } = null!;
@@ -92,33 +91,28 @@ namespace BarkFluff.Client.WPF
                     Title = "Настройка системы",
                     Content = "",
                     CloseButtonText = "Понятно",
-                    Owner = dummyWindow // Привязываем к невидимому окну
+                    Owner = dummyWindow
                 };
                 var tb = new Wpf.Ui.Controls.TextBlock();
 #if (DEBUG)
-                tb.Text = "Для корректной работы приложения необходимо зарегистрировать системный протокол (bfdev://).\n\nСейчас будут запрошены права администратора. Пожалуйста, подтвердите действие.";
+                tb.Text = "Для корректной работы приложения необходимо зарегистрировать или обновить системный протокол (bfdev://).\n\nПротокол либо не зарегистрирован, либо указывает на неактуальный путь приложения.\n\nСейчас будут запрошены права администратора. Пожалуйста, подтвердите действие.";
 #else
-                tb.Text = "Для корректной работы приложения необходимо зарегистрировать системный протокол (bf://).\n\nСейчас будут запрошены права администратора. Пожалуйста, подтвердите действие.";
+                tb.Text = "Для корректной работы приложения необходимо зарегистрировать или обновить системный протокол (bf://).\n\nПротокол либо не зарегистрирован, либо указывает на неактуальный путь приложения.\n\nСейчас будут запрошены права администратора. Пожалуйста, подтвердите действие.";
 #endif
                 tb.TextWrapping = TextWrapping.Wrap;
                 tb.HorizontalAlignment = HorizontalAlignment.Left;
                 messageBox.Content = tb;
 
-                // Убираем лишние кнопки, оставляем только подтверждение
                 messageBox.PrimaryButtonText = string.Empty;
                 messageBox.SecondaryButtonText = string.Empty;
 
-                // Показываем диалог и ждем закрытия
                 messageBox.ShowDialogAsync();
-                // регистрируем протокол
 #if (DEBUG)
                 ProtocolRegistrar.RegisterDevBFProtocol();
 #else
                 ProtocolRegistrar.RegisterBFProtocol();
 #endif
-                // Продолжаем нормальный запуск
                 NormalBoot();
-                // Закрываем временное окно
                 dummyWindow.Close();
 
                 return;
@@ -228,6 +222,28 @@ namespace BarkFluff.Client.WPF
 
         private void OnBFUriReceived(string task)
         {
+            if (string.IsNullOrEmpty(task))
+            {
+                return;
+            }
+            if (task.StartsWith("bf://") || task.StartsWith("bfdev://"))
+            {
+                var tempstring = task.Split("://");
+                if (string.IsNullOrEmpty(tempstring[1]))
+                {
+                    return;
+                }
+                task = tempstring[1];
+            }
+            else if (task.StartsWith("--"))
+            {
+                task = task.Replace("--", "");
+            }
+            task = task.Replace("/", "");
+            if (task == "closetoupdate")
+            {
+                Application.Current.Shutdown();
+            }
             Application.Current.Dispatcher.Invoke(() =>
             {
                 App.MessagerTask.Value = task;
