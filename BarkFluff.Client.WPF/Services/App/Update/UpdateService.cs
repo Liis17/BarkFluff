@@ -1,10 +1,7 @@
 ﻿using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Net.Http;
-using System.Text;
+
 using System.IO;
-using System.Threading.Tasks;
+using System.Net.Http;
 
 namespace BarkFluff.Client.WPF.Services.App.Update
 {
@@ -34,10 +31,10 @@ namespace BarkFluff.Client.WPF.Services.App.Update
         {
             // Check for updater on startup
             await EnsureUpdaterExistsAsync();
-            
+
             // Check for updates immediately on startup
             await CheckForUpdatesAsync();
-            
+
             // Start timer for periodic checks
             _timer.Start();
         }
@@ -56,12 +53,12 @@ namespace BarkFluff.Client.WPF.Services.App.Update
 
                 if (!File.Exists(updaterPath))
                 {
-                    WPF.App.ErideMessage.AddMessage($"Загрузка {UpdaterFileName}...", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Info });
-                    
+                    WPF.App.ErideMessage.AddMessage($"Загрузка средства обновления...", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Info });
+
                     byte[] updaterBytes = await _httpClient.GetByteArrayAsync(UpdaterDownloadUrl);
                     await File.WriteAllBytesAsync(updaterPath, updaterBytes);
-                    
-                    WPF.App.ErideMessage.AddMessage($"{UpdaterFileName} успешно загружен", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Info });
+
+                    WPF.App.ErideMessage.AddMessage($"Средство обновления успешно загружено", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Info });
                 }
             }
             catch (Exception ex)
@@ -79,14 +76,14 @@ namespace BarkFluff.Client.WPF.Services.App.Update
                 var releases = JsonConvert.DeserializeObject<List<Release>>(response);
                 Release latestSuitable = null;
                 Version currentVer = new Version(_currentVersion);
-                
+
                 foreach (var release in releases)
                 {
                     if (ParseRelease(release.TagName, out string relType, out string relVersion))
                     {
                         // If current type is Release, skip Dev releases
                         if (_currentType == "Release" && relType == "Dev") continue;
-                        
+
                         Version relVer = new Version(relVersion);
                         if (relVer > currentVer && (latestSuitable == null || relVer > new Version(latestSuitable.Version)))
                         {
@@ -155,7 +152,7 @@ namespace BarkFluff.Client.WPF.Services.App.Update
         // Events for update notifications
         public event Action<string, string> UpdateAvailable;
         public event Action NoUpdateAvailable;
-        
+
         private void OnUpdateAvailable(string tagName, string version) => UpdateAvailable?.Invoke(tagName, version);
         private void OnNoUpdateAvailable() => NoUpdateAvailable?.Invoke();
     }
