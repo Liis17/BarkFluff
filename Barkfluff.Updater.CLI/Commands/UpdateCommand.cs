@@ -1,7 +1,6 @@
-using System;
-using System.Threading.Tasks;
-using Barkfluff.Updater.CLI.Arguments;
 using Barkfluff.Updater.CLI.UI;
+
+using System.Diagnostics;
 
 namespace Barkfluff.Updater.CLI.Commands
 {
@@ -45,7 +44,7 @@ namespace Barkfluff.Updater.CLI.Commands
                     ConsoleUI.PrintProgress($"Update path: {updatePath}");
                 }
 
-                // 2. Получаем последний стабильный релиз
+                // 2. Проверяем последний стабильный релиз
                 ConsoleUI.PrintInfo("Checking releases repository...");
                 var release = await _releaseService.GetLatestStableReleaseAsync();
 
@@ -58,25 +57,43 @@ namespace Barkfluff.Updater.CLI.Commands
                 ConsoleUI.PrintSuccess($"Found release: {release.TagName}");
                 ConsoleUI.PrintProgress($"Channel: {release.Channel}, Version: {release.Version}");
 
-                // 3. Скачиваем архив
+                // 3. Вызываем протокол bf://closetoupdate для закрытия приложения
+                ConsoleUI.PrintInfo("Requesting application to close...");
+                try
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "bf://closetoupdate",
+                        UseShellExecute = true
+                    });
+
+                    ConsoleUI.PrintProgress("Waiting for application to close...");
+                    await Task.Delay(3000); // Ждем 3 секунды
+                }
+                catch
+                {
+                    ConsoleUI.PrintWarning("Could not send close request (application may not be running)");
+                }
+
+                // 4. Скачиваем архив
                 ConsoleUI.PrintInfo("Downloading update...");
                 var zipPath = await _downloadService.DownloadToTempAsync(release.DownloadUrl, release.FileName);
 
-                // 4. Распаковываем
+                // 5. Распаковываем
                 ConsoleUI.PrintInfo("Applying update...");
                 _downloadService.ExtractZip(zipPath, updatePath);
 
-                // 5. Очистка временных файлов
+                // 6. Удаляем временный архив
                 _downloadService.CleanupTempFile(zipPath);
 
-                // 6. Обновление регистрации протокола и ярлыка (требует прав администратора)
+                // 7. Обновляем регистрацию протокола и ярлыка (только если администратор)
                 var exePath = Services.AdminService.GetBarkFluffExecutablePath(updatePath);
-                
+
                 try
                 {
                     Console.WriteLine();
                     ConsoleUI.PrintInfo("Updating system integration...");
-                    
+
                     _protocolService.RegisterProtocol(exePath);
                     _shortcutService.CreateStartMenuShortcut(exePath);
                 }
@@ -89,6 +106,35 @@ namespace Barkfluff.Updater.CLI.Commands
                 Console.WriteLine();
                 ConsoleUI.PrintSuccess("Update completed successfully!");
                 ConsoleUI.PrintInfo($"BarkFluff updated in: {updatePath}");
+
+                // 8. Запускаем обновленное приложение
+                if (!silent)
+                {
+                    ConsoleUI.PrintInfo("Launching BarkFluff...");
+                }
+
+                try
+                {
+                    if (System.IO.File.Exists(exePath))
+                    {
+                        Process.Start(new ProcessStartInfo
+                        {
+                            FileName = exePath,
+                            Arguments = "--successfulupdate",
+                            UseShellExecute = true,
+                            WorkingDirectory = updatePath
+                        });
+
+                        if (!silent)
+                        {
+                            ConsoleUI.PrintSuccess("BarkFluff launched successfully");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ConsoleUI.PrintWarning($"Could not launch application: {ex.Message}");
+                }
 
                 return 0;
             }
