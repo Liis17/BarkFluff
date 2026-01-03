@@ -12,7 +12,7 @@ namespace BarkFluff.WebApi.Core
     {
         #region Constants
         private const int DefaultPageSize = 50;
-        private const string DefaultNavigatorUrl = "navigator.barkfluff.com:64645";
+        private const string DefaultNavigatorUrl = "navigator.barkfluff.com:64646";
         private static readonly TimeSpan DefaultHttpTimeout = TimeSpan.FromMinutes(5);
         #endregion
 
