@@ -251,11 +251,6 @@ namespace BarkFluff.Client.WPF.UserControls
                     UpdateMinZoom();
                     ResetImagePosition();
                 }), System.Windows.Threading.DispatcherPriority.Loaded);
-
-                //установка значения слайдера
-                // небольшое движение чтобы триггерить ValueChanged для фикса отображения при загрузке картинки
-                ZoomSlider.Value += 0.1;
-                ZoomSlider.Value += 0.2;
             }
             catch (Exception ex)
             {
@@ -412,6 +407,9 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private void ResetImagePosition()
         {
+            if (ImageControl.Source == null)
+                return;
+
             // Устанавливаем масштаб не ниже динамического минимума
             double startZoom = Math.Max(1.0, _dynamicMinZoom);
             if (ZoomSlider != null)
@@ -420,8 +418,41 @@ namespace BarkFluff.Client.WPF.UserControls
             }
             _imageScale.ScaleX = startZoom;
             _imageScale.ScaleY = startZoom;
-            _imageTranslate.X = 0;
-            _imageTranslate.Y = 0;
+
+            // Центрируем изображение относительно области кропа
+            CenterImageInCropArea();
+        }
+
+        /// <summary>
+        /// Центрирует изображение относительно области кропа.
+        /// </summary>
+        private void CenterImageInCropArea()
+        {
+            if (ImageControl.Source == null)
+                return;
+
+            double zoom = _imageScale.ScaleX;
+            double imageWidth = ImageControl.ActualWidth * zoom;
+            double imageHeight = ImageControl.ActualHeight * zoom;
+
+            double cropLeft = Canvas.GetLeft(CropBorder);
+            double cropTop = Canvas.GetTop(CropBorder);
+            double cropWidth = CropBorder.Width;
+            double cropHeight = CropBorder.Height;
+
+            // Вычисляем центр области кропа
+            double cropCenterX = cropLeft + cropWidth / 2;
+            double cropCenterY = cropTop + cropHeight / 2;
+
+            // Вычисляем центр изображения (с учетом offset от ScaleTransform)
+            double offsetX = ImageControl.ActualWidth * (1 - zoom) / 2;
+            double offsetY = ImageControl.ActualHeight * (1 - zoom) / 2;
+
+            // Позиционируем изображение так, чтобы его центр совпал с центром кропа
+            _imageTranslate.X = cropCenterX - imageWidth / 2 - offsetX;
+            _imageTranslate.Y = cropCenterY - imageHeight / 2 - offsetY;
+
+            // Применяем ограничения, чтобы изображение не выходило за границы кропа
             ConstrainImagePosition();
         }
 
