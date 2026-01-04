@@ -28,12 +28,13 @@ jobs:
       
       - name: Set tags
         id: vars
+        shell: pwsh
         run: |
-          if [ "${{ github.ref_name }}" == "dev" ]; then
-            echo "tags=docker.barkfluff.com:5000/barkfluff-fast-auth-dev:latest,docker.barkfluff.com:5000/barkfluff-fast-auth-dev:${{ github.sha }}" >> $GITHUB_OUTPUT
-          else
-            echo "tags=docker.barkfluff.com:5000/barkfluff-fast-auth:latest,docker.barkfluff.com:5000/barkfluff-fast-auth:${{ github.sha }}" >> $GITHUB_OUTPUT
-          fi
+          if ("${{ github.ref_name }}" -eq "dev") {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-fast-auth-dev:latest,docker.barkfluff.com:5000/barkfluff-fast-auth-dev:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-fast-auth:latest,docker.barkfluff.com:5000/barkfluff-fast-auth:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          }
       
       - name: Build and Push
         uses: docker/build-push-action@v4
