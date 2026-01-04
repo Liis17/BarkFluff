@@ -81,6 +81,7 @@ namespace BarkFluff.Client.WPF.UserControls
             _transformGroup.Children.Add(_imageTranslate);
             ImageControl.RenderTransform = _transformGroup;
 
+            this.Loaded += CropImage_Loaded;
             this.Unloaded += CropImage_Unloaded;
 
             ImageControl.MouseLeftButtonDown += Image_MouseLeftButtonDown;
@@ -100,8 +101,11 @@ namespace BarkFluff.Client.WPF.UserControls
             CropGrid.Visibility = Visibility.Collapsed;
 
             ImageControl.SizeChanged += ImageControl_SizeChanged;
+        }
 
-            // Загружаем прозрачную картинку-заглушку для инициализации
+        private void CropImage_Loaded(object sender, RoutedEventArgs e)
+        {
+            // Загружаем прозрачную картинку-заглушку после того как контрол полностью загружен
             LoadTransparentPlaceholder();
         }
 
@@ -249,11 +253,12 @@ namespace BarkFluff.Client.WPF.UserControls
                 AnimateGridTransition(ButtonGrid, CropGrid);
 
                 // После того как визуал обновится пересчитаем минимальный масштаб
+                // Используем Render приоритет чтобы дождаться полного рендеринга с правильными размерами
                 Dispatcher.BeginInvoke(new Action(() =>
                 {
                     UpdateMinZoom();
                     ResetImagePosition();
-                }), System.Windows.Threading.DispatcherPriority.Loaded);
+                }), System.Windows.Threading.DispatcherPriority.Render);
             }
             catch (Exception ex)
             {
@@ -434,6 +439,15 @@ namespace BarkFluff.Client.WPF.UserControls
             if (ImageControl.Source == null)
                 return;
 
+            // Проверяем что размеры уже рассчитаны
+            if (ImageControl.ActualWidth <= 0 || ImageControl.ActualHeight <= 0)
+            {
+                // Размеры еще не рассчитаны, попробуем позже
+                Dispatcher.BeginInvoke(new Action(() => CenterImageInCropArea()),
+                    System.Windows.Threading.DispatcherPriority.Render);
+                return;
+            }
+
             double zoom = _imageScale.ScaleX;
             double imageWidth = ImageControl.ActualWidth * zoom;
             double imageHeight = ImageControl.ActualHeight * zoom;
@@ -470,7 +484,12 @@ namespace BarkFluff.Client.WPF.UserControls
             double imgW = ImageControl.ActualWidth;
             double imgH = ImageControl.ActualHeight;
             if (imgW <= 0 || imgH <= 0)
+            {
+                // Размеры еще не рассчитаны, попробуем позже
+                Dispatcher.BeginInvoke(new Action(() => UpdateMinZoom()),
+                    System.Windows.Threading.DispatcherPriority.Render);
                 return;
+            }
 
             double cropW = CropBorder.Width;
             double cropH = CropBorder.Height;
@@ -555,12 +574,12 @@ namespace BarkFluff.Client.WPF.UserControls
                 _currentBitmap = transparentBitmap as BitmapImage;
                 ImageControl.Source = transparentBitmap;
 
-                // Инициализируем позиционирование
+                // Инициализируем позиционирование с приоритетом Render для корректных размеров
                 Dispatcher.BeginInvoke(new Action(() =>
                 {
                     UpdateMinZoom();
                     ResetImagePosition();
-                }), System.Windows.Threading.DispatcherPriority.Loaded);
+                }), System.Windows.Threading.DispatcherPriority.Render);
             }
             catch (Exception ex)
             {
