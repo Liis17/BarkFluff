@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -7,11 +7,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="files\favicon.ico" />
     <None Remove="files\install.ps1" />
     <None Remove="html\userpage.html" />
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="files\favicon.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="files\install.ps1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
