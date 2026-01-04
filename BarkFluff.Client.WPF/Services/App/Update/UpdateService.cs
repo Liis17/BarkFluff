@@ -14,7 +14,7 @@ namespace BarkFluff.Client.WPF.Services.App.Update
         private string _currentVersion;
         private string _currentType;
         private const string UpdaterFileName = "Barkfluff.Updater.CLI.exe";
-        private const string UpdaterDownloadUrl = "https://github.com/Liis17/BarkFluff.Releases/releases/download/Installer/Barkfluff.Updater.CLI.exe";
+        private const string UpdaterDownloadUrl = "https://barkfluff.com/download/installer";
 
         public UpdateService(string currentVersion, string currentType)
         {

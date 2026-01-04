@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Профиль Barkfluff: @%%username%%</title>
-    
+    <title>Barkfluff: @%%username%%</title>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
@@ -16,12 +16,15 @@
             --card-border: rgba(255, 255, 255, 0.1);
             --text-main: #f1f5f9;
             --text-sub: #94a3b8;
-            --accent: #3b82f6; /* Синий */
-            --accent-glow: rgba(59, 130, 246, 0.5);
-            --success: #10b981;
+            --accent: #3b82f6;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
 
         body {
             background-color: var(--bg-dark);
@@ -34,232 +37,354 @@
             position: relative;
         }
 
-        /* === ФОН (BLOBS) === */
-        .blobs-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; overflow: hidden; pointer-events: none; }
-        .blob { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.5; animation: float 20s infinite alternate; }
-        .b1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: #4f46e5; animation-duration: 25s; }
-        .b2 { bottom: -10%; right: -10%; width: 40vw; height: 40vw; background: #0ea5e9; animation-duration: 30s; animation-delay: -5s; }
-        @keyframes float { 0% { transform: translate(0, 0); } 100% { transform: translate(40px, -40px); } }
+        /* === ФОНОВЫЕ ПЯТНА === */
+        .blobs {
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(90px);
+            opacity: 0.5;
+            animation: float 20s infinite alternate;
+        }
+
+        .b1 {
+            top: -10%;
+            left: -10%;
+            width: 50vw;
+            height: 50vw;
+            background: #4f46e5;
+            animation-duration: 25s;
+        }
+
+        .b2 {
+            bottom: -10%;
+            right: -10%;
+            width: 40vw;
+            height: 40vw;
+            background: #0ea5e9;
+            animation-duration: 30s;
+            animation-delay: -5s;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translate(0, 0);
+            }
+
+            100% {
+                transform: translate(40px, -40px);
+            }
+        }
 
         /* === КАРТОЧКА === */
         .card {
             background: var(--card-bg);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
             border: 1px solid var(--card-border);
-            width: 90%; max-width: 400px;
-            border-radius: 24px;
+            width: 90%;
+            max-width: 380px;
+            border-radius: 28px;
             padding: 40px 30px;
             text-align: center;
-            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
-            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
+            box-shadow: 0 30px 60px -15px rgba(0,0,0,0.6);
+            transition: all 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
             overflow: hidden;
+            position: relative;
         }
 
-        /* === ПРОФИЛЬ (ВЕРХНЯЯ ЧАСТЬ) === */
-        .avatar-container {
-            position: relative; width: 90px; height: 90px; margin: 0 auto 20px;
+        /* === АВАТАР И ИМЯ === */
+        .avatar-wrap {
+            position: relative;
+            width: 86px;
+            height: 86px;
+            margin: 0 auto 16px;
         }
 
         .avatar {
-            width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
-            border: 3px solid rgba(255,255,255,0.1); position: relative; z-index: 2;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid rgba(255,255,255,0.1);
+            position: relative;
+            z-index: 2;
             background: #1e293b;
         }
 
-        /* Пульсация поиска */
-        .pulse-ring {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            border-radius: 50%; border: 2px solid var(--accent);
-            opacity: 0; z-index: 1;
+        /* Пульсация */
+        .pulse {
+            position: absolute;
+            inset: -4px;
+            border-radius: 50%;
+            border: 2px solid var(--accent);
+            opacity: 0;
+            z-index: 1;
             animation: pulse 2s infinite;
         }
-        @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(2); opacity: 0; } }
 
-        h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
-        .username-tag { color: var(--accent); font-weight: 600; font-size: 16px; margin-bottom: 16px; display: block;}
-        
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(1.8);
+                opacity: 0;
+            }
+        }
+
+        /* Имя пользователя */
+        h1 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .tag {
+            color: var(--accent);
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 20px;
+            display: block;
+            opacity: 0.9;
+        }
+
+        /* Статус (исчезает через 5 сек) */
         .status-msg {
-            color: var(--text-sub); font-size: 14px; min-height: 20px;
-            display: flex; justify-content: center; align-items: center; gap: 6px;
+            font-size: 14px;
+            color: var(--text-sub);
+            transition: opacity 0.5s ease;
+            height: 20px;
         }
 
-        /* Кнопка "Открыть снова" */
-        .btn-retry {
-            margin-top: 20px;
-            background: rgba(255,255,255,0.1); color: white; border: none;
-            padding: 10px 20px; border-radius: 10px; cursor: pointer;
-            font-size: 14px; font-weight: 500; transition: 0.2s;
-            display: none; /* Скрыта по умолчанию */
+        .loading-dots::after {
+            content: ' .';
+            animation: dots 1.5s steps(5, end) infinite;
         }
-        .btn-retry:hover { background: rgba(255,255,255,0.2); }
 
-        /* === БЛОК ЗАГРУЗКИ (СКРЫТ ПО УМОЛЧАНИЮ) === */
-        .download-options {
-            max-height: 0; opacity: 0; overflow: hidden;
-            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        @keyframes dots {
+            0%, 20% {
+                content: ' .';
+            }
+
+            40% {
+                content: ' ..';
+            }
+
+            60% {
+                content: ' ...';
+            }
+
+            80%, 100% {
+                content: ' .';
+            }
+        }
+
+        /* === СЕКЦИЯ СКАЧИВАНИЯ (Скрыта) === */
+        .downloads {
+            display: grid;
+            grid-template-rows: 0fr; /* Трюк для анимации height */
+            opacity: 0;
+            transition: grid-template-rows 0.8s ease, opacity 0.8s ease, margin-top 0.8s ease;
             margin-top: 0;
-            border-top: 1px solid rgba(255,255,255,0.0);
         }
 
-        /* Состояние когда блок виден */
-        .card.expanded .download-options {
-            max-height: 400px; /* Достаточно места */
+        .downloads-inner {
+            overflow: hidden;
+        }
+        /* Внутренний контейнер для анимации */
+
+        /* Активное состояние карточки */
+        .card.show-download .downloads {
+            grid-template-rows: 1fr;
             opacity: 1;
-            margin-top: 30px;
-            padding-top: 25px;
+            margin-top: 24px;
+            padding-top: 24px;
             border-top: 1px solid var(--card-border);
         }
 
-        .dl-title { font-size: 15px; margin-bottom: 15px; color: var(--text-main); font-weight: 600; }
+        /* Скрываем статус при открытии загрузок */
+        .card.show-download .status-msg {
+            opacity: 0;
+        }
+        /* Останавливаем пульсацию плавно */
+        .card.show-download .pulse {
+            animation: none;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
 
-        .btn-main {
-            display: flex; justify-content: center; align-items: center; gap: 10px;
-            width: 100%; padding: 14px; margin-bottom: 10px;
+        .dl-label {
+            font-size: 14px;
+            color: var(--text-main);
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+
+        /* Кнопка */
+        .btn-dl {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            width: 100%;
+            padding: 14px;
             background: linear-gradient(135deg, #3b82f6, #2563eb);
-            color: white; text-decoration: none; font-weight: 600; border-radius: 12px;
+            color: white;
+            text-decoration: none;
+            border-radius: 14px;
+            box-shadow: 0 4px 20px rgba(37, 99, 235, 0.4);
             transition: transform 0.2s, box-shadow 0.2s;
-            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
         }
-        .btn-main:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(37, 99, 235, 0.6); }
 
-        .btn-text { display: flex; flex-direction: column; text-align: left; line-height: 1.2; }
-        .btn-text span:first-child { font-size: 11px; opacity: 0.8; font-weight: 400; text-transform: uppercase;}
-        .btn-text span:last-child { font-size: 15px; }
+            .btn-dl:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 8px 25px rgba(37, 99, 235, 0.6);
+            }
 
-        .links-row { display: flex; justify-content: space-between; gap: 10px; margin-top: 10px; }
-        .link-small {
-            font-size: 12px; color: var(--text-sub); text-decoration: none;
-            padding: 8px; border-radius: 6px; flex: 1; border: 1px solid var(--card-border);
+        .btn-content {
+            text-align: left;
+            line-height: 1.2;
+        }
+
+        .btn-top {
+            font-size: 11px;
+            opacity: 0.8;
+            text-transform: uppercase;
+            display: block;
+        }
+
+        .btn-bot {
+            font-size: 16px;
+            font-weight: 600;
+            display: block;
+        }
+
+        svg.win {
+            width: 24px;
+            height: 24px;
+            fill: white;
+        }
+
+        /* Доп ссылки */
+        .sub-links {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .btn-sub {
+            flex: 1;
+            text-decoration: none;
+            font-size: 12px;
+            color: var(--text-sub);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--card-border);
             transition: 0.2s;
+            background: rgba(0,0,0,0.2);
         }
-        .link-small:hover { background: rgba(255,255,255,0.05); color: white; border-color: rgba(255,255,255,0.2); }
 
-        /* Терминал */
-        .cli-box {
-            margin-top: 15px; background: rgba(0,0,0,0.3); padding: 10px;
-            border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px;
-            color: #a5b4fc; text-align: left; cursor: pointer; position: relative;
-            border: 1px solid transparent; transition: 0.2s;
+            .btn-sub:hover {
+                background: rgba(255,255,255,0.1);
+                color: white;
+            }
+
+        /* Кнопка ручного открытия */
+        .manual-link {
+            display: block;
+            margin-top: 16px;
+            font-size: 13px;
+            color: var(--text-sub);
+            text-decoration: underline;
+            cursor: pointer;
+            opacity: 0.6;
         }
-        .cli-box:hover { border-color: var(--accent); }
-        .cli-box::after { content: 'Скопировать'; position: absolute; right: 8px; top: 8px; opacity: 0; transition: 0.2s; color: white;}
-        .cli-box:hover::after { opacity: 1; }
 
-        /* Иконка винды */
-        svg.win-icon { width: 24px; height: 24px; fill: white; }
+            .manual-link:hover {
+                opacity: 1;
+            }
     </style>
 </head>
 <body>
 
-    <!-- Фон -->
-    <div class="blobs-container">
+    <div class="blobs">
         <div class="blob b1"></div>
         <div class="blob b2"></div>
     </div>
 
-    <!-- Основная карточка -->
-    <div class="card" id="main-card">
-        
-        <!-- Секция Профиля -->
-        <div class="avatar-container">
-            <img src="https://icon-library.com/images/default-user-icon/default-user-icon-23.jpg" alt="User Avatar" class="avatar">
-            <div class="pulse-ring" id="pulse"></div>
+    <div class="card" id="card">
+
+        <div class="avatar-wrap">
+            <img src="https://icon-library.com/images/default-user-icon/default-user-icon-23.jpg" alt="Avatar" class="avatar">
+            <div class="pulse"></div>
         </div>
 
         <h1>%%username%%</h1>
-        <span class="username-tag">@%%username%%</span>
-        
-        <div class="status-msg" id="status-text">
-            <span>Подключение к приложению...</span>
+        <span class="tag">@%%username%%</span>
+
+        <!-- Этот текст исчезнет через 5 сек -->
+        <div class="status-msg">
+            Открываем приложение<span class="loading-dots"></span>
         </div>
 
-        <button class="btn-retry" id="manual-open" onclick="openApp()">Открыть приложение</button>
+        <!-- Секция скачивания -->
+        <div class="downloads">
+            <div class="downloads-inner">
+                <div class="dl-label">Нет приложения?</div>
 
-        <!-- Секция Скачивания (Появляется если приложения нет) -->
-        <div class="download-options">
-            <div class="dl-title">Мессенджер не установлен?</div>
-            
-            <!-- Основная кнопка -->
-            <a href="https://example.com/setup.exe" class="btn-main">
-                <svg class="win-icon" viewBox="0 0 24 24"><path d="M3 12V6.75L9 5.43V12H3ZM21 3V11.75H10.5V4.78L21 3ZM10.5 21.66V13.25H21V21L10.5 21.66ZM3 18.25V13.25H9V19.95L3 18.25Z"/></svg>
-                <div class="btn-text">
-                    <span>Скачать для</span>
-                    <span>Windows x64</span>
+                <a href="https://example.com/setup.exe" class="btn-dl">
+                    <svg class="win" viewBox="0 0 24 24"><path d="M3 12V6.75L9 5.43V12H3ZM21 3V11.75H10.5V4.78L21 3ZM10.5 21.66V13.25H21V21L10.5 21.66ZM3 18.25V13.25H9V19.95L3 18.25Z" /></svg>
+                    <div class="btn-content">
+                        <span class="btn-top">Скачать для</span>
+                        <span class="btn-bot">Windows</span>
+                    </div>
+                </a>
+
+                <div class="sub-links">
+                    <a href="#" class="btn-sub">Portable (.zip)</a>
+                    <a href="#" class="btn-sub" onclick="openProtocol()">Попробовать открыть</a>
                 </div>
-            </a>
-
-            <!-- Доп ссылки -->
-            <div class="links-row">
-                <a href="https://example.com/portable.zip" class="link-small">Portable .zip</a>
-                <a href="https://github.com/..." class="link-small">GitHub</a>
-            </div>
-
-            <!-- Команда установки -->
-            <div class="cli-box" onclick="copyCli(this)">
-                > winget install Barkfluff
             </div>
         </div>
 
     </div>
 
     <script>
-        // === КОНФИГУРАЦИЯ ===
-        // Ссылка протокола. Замените на вашу схему.
-        const PROTOCOL_LINK = "bf://profile/%%username%%"; 
-        const WAIT_TIME = 2200; // Сколько ждать перед показом кнопок скачивания (мс)
+        // === НАСТРОЙКИ ===
+        const PROTOCOL_URL = "bf://profile/%%username%%";
+        const REVEAL_DELAY = 5000; // 5 секунд
 
-        // === ЭЛЕМЕНТЫ ===
-        const card = document.getElementById('main-card');
-        const statusText = document.getElementById('status-text');
-        const pulse = document.getElementById('pulse');
-        const manualBtn = document.getElementById('manual-open');
+        const card = document.getElementById('card');
 
-        // === ФУНКЦИЯ ЗАПУСКА ===
-        function openApp() {
-            window.location.href = PROTOCOL_LINK;
+        // Функция запуска протокола
+        function openProtocol() {
+            window.location.href = PROTOCOL_URL;
         }
 
-        // === ИНИЦИАЛИЗАЦИЯ ===
+        // Запуск при загрузке
         window.addEventListener('load', () => {
-            // 1. Пробуем открыть сразу
-            openApp();
+            // 1. Пытаемся открыть
+            openProtocol();
 
-            // 2. Запускаем таймер проверки
+            // 2. Ставим таймер на 5 секунд
             setTimeout(() => {
-                // Если пользователь все еще видит страницу (значит приложение не перехватило фокус)
+                // Если страница всё еще видна пользователю
                 if (document.visibilityState === 'visible') {
-                    showFallbackMode();
+                    // Просто добавляем класс, CSS сделает всю магию (раскроет меню, скроет статус)
+                    card.classList.add('show-download');
                 }
-            }, WAIT_TIME);
+            }, REVEAL_DELAY);
         });
-
-        // === РЕЖИМ ФОЛЛБЕКА (Приложения нет) ===
-        function showFallbackMode() {
-            // Раскрываем карточку
-            card.classList.add('expanded');
-            
-            // Меняем статус
-            statusText.innerHTML = "Не удалось открыть автоматически";
-            statusText.style.color = "#ef4444"; // Красный оттенок
-            
-            // Убираем анимацию поиска
-            pulse.style.animation = "none";
-            pulse.style.opacity = "0";
-
-            // Показываем кнопку ручного открытия (на всякий случай)
-            manualBtn.style.display = "inline-block";
-        }
-
-        // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
-        function copyCli(el) {
-            const text = "winget install Barkfluff";
-            navigator.clipboard.writeText(text);
-            const originalText = el.innerText;
-            el.innerText = "Скопировано в буфер!";
-            setTimeout(() => el.innerText = originalText, 2000);
-        }
     </script>
 </body>
 </html>
