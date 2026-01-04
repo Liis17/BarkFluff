@@ -1,3 +1,4 @@
+using System.Globalization;
 using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.Identity.Infrastructure;
 using BarkFluff.Identity.Persistence.Services;
@@ -99,7 +100,7 @@ public class ConfirmAccountCommandHandler(ConfirmationCodesStorage confirmationC
                 {"devicename", requestContext.DeviceName},
                 {"os", requestContext.OperationSystem ?? string.Empty},
                 {"location", locationInfo},
-                {"datetime", DateTime.UtcNow.ToString("D")}
+                {"datetime", DateTime.UtcNow.ToString("G", CultureInfo.GetCultureInfo("ru-RU"))}
             },
             ServiceId = ServiceId.Identity,
             Title = "Успешная регистрация",
