@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 
 namespace BarkFluff.Beacon;
 /// <summary>
-/// Точка входа в приложение
+/// пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 /// </summary>
 public class Program
 {
@@ -54,7 +54,6 @@ public class Program
 
         var app = builder.Build();
 
-        // Нет собственного DbContext – миграции не применяются
         app.MapGrpcReflectionService();
         app.UseRouting();
         app.MapGrpcService<BeaconApiService>();
