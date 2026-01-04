@@ -31,6 +31,8 @@ message GetServerInfoResponse {
   Service messages = 7; // Микросервис messages
   
   Service updates = 8; // Микросервис updates
+  
+  Service onliner = 9; // Микросервис onliner
 }
 
 message ServerColor {
