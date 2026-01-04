@@ -16,68 +16,139 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <ui:TitleBar Title="System Configuration" Grid.Row="0" />
 
-        <ui:DataGrid
-            Grid.Row="1"
-            Margin="10"
-            AutoGenerateColumns="False"
-            CanUserAddRows="False"
-            CanUserDeleteRows="False"
-            ItemsSource="{Binding Configs}">
-            <DataGrid.Columns>
-                <DataGridTextColumn
-                    Width="50"
-                    Binding="{Binding Id}"
-                    Header="ID"
-                    IsReadOnly="True" />
-                <DataGridTextColumn
-                    Width="150"
-                    Binding="{Binding Section}"
-                    Header="Section"
-                    IsReadOnly="True" />
-                <DataGridTextColumn
-                    Width="200"
-                    Binding="{Binding Key}"
-                    Header="Key"
-                    IsReadOnly="True" />
-                <DataGridTemplateColumn Width="*" Header="Value">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <ui:TextBox
-                                Background="Transparent"
-                                BorderThickness="0"
-                                Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" />
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-                <DataGridTextColumn
-                    Width="180"
-                    Binding="{Binding EditedAt}"
-                    Header="Edited At"
-                    IsReadOnly="True" />
-                <DataGridTextColumn
-                    Width="100"
-                    Binding="{Binding EditedBy}"
-                    Header="Edited By"
-                    IsReadOnly="True" />
-                <DataGridTextColumn
-                    Width="80"
-                    Binding="{Binding ServiceId}"
-                    Header="Service ID"
-                    IsReadOnly="True" />
-            </DataGrid.Columns>
-        </ui:DataGrid>
+        <TabControl Grid.Row="1" Margin="10">
+            <!-- Вкладка 1: Raw Table -->
+            <TabItem Header="Raw Table">
+                <Grid>
+                    <ui:DataGrid
+                        AutoGenerateColumns="False"
+                        CanUserAddRows="False"
+                        CanUserDeleteRows="False"
+                        ItemsSource="{Binding Configs}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn
+                                Width="50"
+                                Binding="{Binding Id}"
+                                Header="ID"
+                                IsReadOnly="True" />
+                            <DataGridTextColumn
+                                Width="150"
+                                Binding="{Binding Section}"
+                                Header="Section"
+                                IsReadOnly="True" />
+                            <DataGridTextColumn
+                                Width="200"
+                                Binding="{Binding Key}"
+                                Header="Key"
+                                IsReadOnly="True" />
+                            <DataGridTemplateColumn Width="*" Header="Value">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <ui:TextBox
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn
+                                Width="180"
+                                Binding="{Binding EditedAt}"
+                                Header="Edited At"
+                                IsReadOnly="True" />
+                            <DataGridTextColumn
+                                Width="100"
+                                Binding="{Binding EditedBy}"
+                                Header="Edited By"
+                                IsReadOnly="True" />
+                            <DataGridTextColumn
+                                Width="80"
+                                Binding="{Binding ServiceId}"
+                                Header="Service ID"
+                                IsReadOnly="True" />
+                        </DataGrid.Columns>
+                    </ui:DataGrid>
 
-        <ProgressBar
-            Grid.Row="1"
-            Width="200"
-            Height="5"
-            IsIndeterminate="True"
-            Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    <ProgressBar
+                        Width="200"
+                        Height="5"
+                        IsIndeterminate="True"
+                        Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                </Grid>
+            </TabItem>
+
+            <!-- Вкладка 2: Grouped by Service -->
+            <TabItem Header="Grouped by Service">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding ServiceGroups}" Margin="5">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <ui:Card Margin="5">
+                                    <Expander IsExpanded="True">
+                                        <Expander.Header>
+                                            <StackPanel Orientation="Horizontal">
+                                                <ui:SymbolIcon Symbol="Server24" Margin="0,0,10,0" />
+                                                <TextBlock 
+                                                    Text="{Binding ServiceName}" 
+                                                    FontWeight="SemiBold" 
+                                                    FontSize="14"
+                                                    VerticalAlignment="Center" />
+                                                <TextBlock 
+                                                    Text="{Binding ServiceId, StringFormat=' (ID: {0})'}" 
+                                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                    VerticalAlignment="Center"
+                                                    Margin="5,0,0,0" />
+                                                <TextBlock 
+                                                    Text="{Binding Items.Count, StringFormat=' - {0} items'}" 
+                                                    Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                                    VerticalAlignment="Center"
+                                                    Margin="5,0,0,0" />
+                                            </StackPanel>
+                                        </Expander.Header>
+                                        <ItemsControl ItemsSource="{Binding Items}" Margin="10,5,10,10">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border 
+                                                        BorderBrush="{DynamicResource ControlElevationBorderBrush}" 
+                                                        BorderThickness="0,0,0,1" 
+                                                        Padding="5">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="150" />
+                                                                <ColumnDefinition Width="150" />
+                                                                <ColumnDefinition Width="*" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock 
+                                                                Grid.Column="0" 
+                                                                Text="{Binding Section}" 
+                                                                FontWeight="Medium"
+                                                                VerticalAlignment="Center" />
+                                                            <TextBlock 
+                                                                Grid.Column="1" 
+                                                                Text="{Binding Key}" 
+                                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                                VerticalAlignment="Center" />
+                                                            <ui:TextBox 
+                                                                Grid.Column="2" 
+                                                                Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
+                                                                Margin="10,2" />
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Expander>
+                                </ui:Card>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
 
         <Border
             Grid.Row="2"
@@ -97,12 +168,13 @@
                         Appearance="Secondary"
                         Command="{Binding RevertCommand}"
                         Content="Revert"
-                        Icon="ArrowUndo24" />
+                        Icon="{ui:SymbolIcon ArrowUndo24}" />
                     <ui:Button
+                        Margin="5,0,0,0"
                         Appearance="Primary"
                         Command="{Binding SaveCommand}"
                         Content="Save Changes"
-                        Icon="Save24" />
+                        Icon="{ui:SymbolIcon Save24}" />
 
                 </StackPanel>
                 <ui:Button
@@ -110,7 +182,7 @@
                     Appearance="Secondary"
                     Command="{Binding LoadDataCommand}"
                     Content="Refresh Data"
-                    Icon="ArrowSync24" />
+                    Icon="{ui:SymbolIcon ArrowSync24}" />
             </Grid>
         </Border>
     </Grid>
