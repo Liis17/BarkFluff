@@ -17,6 +17,9 @@ namespace BarkFluff.DBEditor.ViewModels
         private ObservableCollection<ConfigItem> _configs;
 
         [ObservableProperty]
+        private ObservableCollection<ServiceGroup> _serviceGroups;
+
+        [ObservableProperty]
         private bool _isLoading;
 
         [ObservableProperty]
@@ -26,6 +29,7 @@ namespace BarkFluff.DBEditor.ViewModels
         {
             _dbService = new DatabaseService(creds);
             Configs = new ObservableCollection<ConfigItem>();
+            ServiceGroups = new ObservableCollection<ServiceGroup>();
             LoadDataCommand.Execute(null);
         }
 
@@ -37,12 +41,31 @@ namespace BarkFluff.DBEditor.ViewModels
             {
                 var data = await _dbService.GetAllConfigsAsync();
                 Configs.Clear();
+                ServiceGroups.Clear();
+
                 foreach (var item in data)
                 {
                     // Подписываемся на изменения каждого элемента
                     item.PropertyChanged += Item_PropertyChanged;
                     Configs.Add(item);
                 }
+
+                // Группировка по ServiceId
+                var groups = data
+                    .GroupBy(c => c.ServiceId)
+                    .OrderBy(g => g.Key)
+                    .Select(g => new ServiceGroup
+                    {
+                        ServiceId = g.Key,
+                        ServiceName = ServiceGroup.GetServiceName(g.Key),
+                        Items = new ObservableCollection<ConfigItem>(g.OrderBy(i => i.Section).ThenBy(i => i.Key))
+                    });
+
+                foreach (var group in groups)
+                {
+                    ServiceGroups.Add(group);
+                }
+
                 CheckChanges();
             }
             catch (Exception ex)
