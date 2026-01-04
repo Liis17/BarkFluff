@@ -100,6 +100,9 @@ namespace BarkFluff.Client.WPF.UserControls
             CropGrid.Visibility = Visibility.Collapsed;
 
             ImageControl.SizeChanged += ImageControl_SizeChanged;
+
+            // Загружаем прозрачную картинку-заглушку для инициализации
+            LoadTransparentPlaceholder();
         }
 
         private void CropImage_Unloaded(object sender, RoutedEventArgs e)
@@ -517,6 +520,52 @@ namespace BarkFluff.Client.WPF.UserControls
         private void ResetPosition(object sender, RoutedEventArgs e)
         {
             ResetImagePosition();
+        }
+
+        /// <summary>
+        /// Создает и загружает прозрачную картинку-заглушку 100x100 для инициализации контрола.
+        /// </summary>
+        private void LoadTransparentPlaceholder()
+        {
+            try
+            {
+                // Создаем прозрачную картинку 100x100
+                int width = 100;
+                int height = 100;
+                int stride = width * 4; // 4 bytes per pixel (BGRA)
+                byte[] pixels = new byte[height * stride];
+
+                // Заполняем прозрачными пикселями (все 0)
+                for (int i = 0; i < pixels.Length; i++)
+                {
+                    pixels[i] = 0;
+                }
+
+                BitmapSource transparentBitmap = BitmapSource.Create(
+                    width,
+                    height,
+                    96, 96, // DPI
+                    PixelFormats.Pbgra32,
+                    null,
+                    pixels,
+                    stride);
+
+                transparentBitmap.Freeze();
+
+                _currentBitmap = transparentBitmap as BitmapImage;
+                ImageControl.Source = transparentBitmap;
+
+                // Инициализируем позиционирование
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    UpdateMinZoom();
+                    ResetImagePosition();
+                }), System.Windows.Threading.DispatcherPriority.Loaded);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Не удалось создать прозрачную заглушку: {ex.Message}");
+            }
         }
     }
 }
