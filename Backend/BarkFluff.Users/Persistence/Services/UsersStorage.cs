@@ -165,9 +165,12 @@ public class UsersStorage
     public async Task<User> CreateUser(string username, string firstName, string lastName, string email)
     {
         var contactUser = new UserContact { Email = email };
+
+        var unixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         
         var user = new User
         {
+            Id = unixTimestamp,
             Username = username,
             FirstName = firstName, 
             LastName = lastName,
