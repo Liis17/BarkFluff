@@ -1,3 +1,4 @@
+using System.Globalization;
 using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Identity.Infrastructure;
@@ -127,7 +128,8 @@ public class DisableOtpVerificationCommandHandler : IRequestHandler<DisableOtpVe
                 {"devicename", _requestContext.DeviceName ?? string.Empty},
                 {"os", _requestContext.OperationSystem ?? string.Empty},
                 {"location", locationInfo},
-                {"datetime", DateTime.UtcNow.ToString("D")}
+                {"datetime", DateTime.UtcNow.ToString("G", CultureInfo.GetCultureInfo("ru-RU"))}
+
             },
             ServiceId = ServiceId.Identity,
             Title = "Изменен метод двухфакторной аутентификации",

@@ -1,3 +1,4 @@
+using System.Globalization;
 using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.Identity.Domain;
 using BarkFluff.Identity.Infrastructure;
@@ -167,7 +168,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
                 {"os", _requestContext.OperationSystem},
                 {"location", locationInfo},
                 {"app", $"{_requestContext.AppName} v.{_requestContext.AppVersion}"},
-                {"datetime", DateTime.UtcNow.ToString("D")}
+                {"datetime", DateTime.UtcNow.ToString("G", CultureInfo.GetCultureInfo("ru-RU"))}
             },
             ServiceId = ServiceId.Identity,
             Title = "Код подтверждения для сброса пароля",
