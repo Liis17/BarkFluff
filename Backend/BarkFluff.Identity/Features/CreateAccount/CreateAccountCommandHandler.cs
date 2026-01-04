@@ -1,3 +1,4 @@
+using System.Globalization;
 using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.Identity.Domain;
 using BarkFluff.Identity.Infrastructure;
@@ -104,7 +105,7 @@ public class CreateAccountCommandHandler(UsersServerApi.UsersServerApiClient use
             {"os", requestContext.OperationSystem},
             {"location", locationInfo},
             {"app", $"{requestContext.AppName} v.{requestContext.AppVersion}"},
-            {"datetime", DateTime.UtcNow.ToString("F")}
+            {"datetime", DateTime.UtcNow.ToString("G", CultureInfo.GetCultureInfo("ru-RU"))}
         };
         
         logger.LogDebug(

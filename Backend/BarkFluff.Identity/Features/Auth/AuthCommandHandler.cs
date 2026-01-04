@@ -1,3 +1,4 @@
+using System.Globalization;
 using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Identity.Domain;
@@ -132,7 +133,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                         {"os", requestContext.OperationSystem},
                         {"location", locationInfo},
                         {"app", $"{requestContext.AppName} v.{requestContext.AppVersion}"},
-                        {"datetime", DateTime.UtcNow.ToString("D")}
+                        {"datetime", DateTime.UtcNow.ToString("G", CultureInfo.GetCultureInfo("ru-RU"))}
                     },
                     ServiceId = ServiceId.Identity,
                     Title = "Код подтверждения для входа",
@@ -225,7 +226,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                     {"devicename", requestContext.DeviceName},
                     {"os", requestContext.OperationSystem},
                     {"location", locationInfo},
-                    {"datetime", DateTime.UtcNow.ToString("D")}
+                    {"datetime", DateTime.UtcNow.ToString("G", CultureInfo.GetCultureInfo("ru-RU"))}
                 },
                 ServiceId = ServiceId.Identity,
                 Title = "Неуспешная попытка входа в аккаунт",
@@ -276,8 +277,8 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                 {"ip", requestContext.IpAddress ?? string.Empty},
                 {"devicename", requestContext.DeviceName},
                 {"os", requestContext.OperationSystem},
-                {"location", successLocationInfo},
-                {"datetime", DateTime.UtcNow.ToString("D")}
+                {"location", successLocationInfo}, 
+                {"datetime", DateTime.UtcNow.ToString("G", CultureInfo.GetCultureInfo("ru-RU"))}
             },
             ServiceId = ServiceId.Identity,
             Title = "Успешный вход в аккаунт",

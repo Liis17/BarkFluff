@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace BarkFluff.Identity.Features.SetPassword;
 
 using BarkFluff.GrpcServer.Tracker;
@@ -76,7 +78,8 @@ public class SetPasswordCommandHandler : IRequestHandler<SetPasswordCommand>
                 {"devicename", _requestContext.DeviceName ?? string.Empty},
                 {"os", _requestContext.OperationSystem ?? string.Empty},
                 {"location", locationInfo},
-                {"datetime", DateTime.UtcNow.ToString("D")}
+                {"datetime", DateTime.UtcNow.ToString("G", CultureInfo.GetCultureInfo("ru-RU"))}
+
             },
             ServiceId = ServiceId.Identity,
             Title = "Пароль успешно изменен",

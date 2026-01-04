@@ -1,3 +1,4 @@
+using System.Globalization;
 using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Identity.Infrastructure;
@@ -116,7 +117,7 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
                     {"devicename", _requestContext.DeviceName},
                     {"os", _requestContext.OperationSystem},
                     {"location", locationInfo},
-                    {"datetime", DateTime.UtcNow.ToString("D")}
+                    {"datetime", DateTime.UtcNow.ToString("G", CultureInfo.GetCultureInfo("ru-RU"))}
                 },
                 ServiceId = ServiceId.Identity,
                 Title = "Изменен метод двухфакторной аутентификации",
@@ -192,7 +193,7 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
                     {"os", _requestContext.OperationSystem},
                     {"location", locationInfo},
                     {"app", $"{_requestContext.AppName} v.{_requestContext.AppVersion}"},
-                    {"datetime", DateTime.UtcNow.ToString("D")}
+                    {"datetime", DateTime.UtcNow.ToString("G", CultureInfo.GetCultureInfo("ru-RU"))}
                 },
                 ServiceId = ServiceId.Identity,
                 Title = "Код подтверждения для привязки",
@@ -221,7 +222,7 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
                     {"devicename", _requestContext.DeviceName},
                     {"os", _requestContext.OperationSystem},
                     {"location", locationInfo},
-                    {"datetime", DateTime.UtcNow.ToString("D")}
+                    {"datetime", DateTime.UtcNow.ToString("G", CultureInfo.GetCultureInfo("ru-RU"))}
                 },
                 ServiceId = ServiceId.Identity,
                 Title = "Изменен метод двухфакторной аутентификации",
