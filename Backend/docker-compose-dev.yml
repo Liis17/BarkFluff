@@ -114,6 +114,17 @@ services:
     depends_on:
       - configuration
 
+    onliner:
+      image: docker.barkfluff.com:5000/barkfluff-onliner-dev:latest
+      restart: always
+      ports: ["${ONLINER_PORT}:${ONLINER_PORT}"]
+      environment:
+        <<: *common-variables
+      network:
+        - barkfluff-network
+      depends_on:
+        - configuration
+
   # Дополнительные
   minio:
     image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z-cpuv1
