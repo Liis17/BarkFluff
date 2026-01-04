@@ -1,0 +1,44 @@
+name: 🐋 Сборка образа BarkFluff.Notification
+on:
+  push:
+    branches:
+      - dev
+      - master
+    paths:
+      - 'Backend/BarkFluff.Notification/**'
+      - 'BarkFluff.Shared.Queue/**'
+      - 'Backend/BarkFluff.GrpcServer/**'
+      - '.github/workflows/notification-build.yml'
+      - 'rebuild.trigger'
+jobs:
+  build-notification:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Login to Private Registry
+        uses: docker/login-action@v2
+        with:
+          registry: docker.barkfluff.com:5000
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Set tags
+        id: vars
+        run: |
+          if [ "${{ github.ref_name }}" == "dev" ]; then
+            echo "tags=docker.barkfluff.com:5000/barkfluff-notification-dev:latest,docker.barkfluff.com:5000/barkfluff-notification-dev:${{ github.sha }}" >> $GITHUB_OUTPUT
+          else
+            echo "tags=docker.barkfluff.com:5000/barkfluff-notification:latest,docker.barkfluff.com:5000/barkfluff-notification:${{ github.sha }}" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Build and Push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Backend/BarkFluff.Notification/Dockerfile
+          push: true
+          tags: ${{ steps.vars.outputs.tags }}
