@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+option csharp_namespace = "BarkFluff.Proto.Onliner";
+
+import "google/protobuf/timestamp.proto";
+
+package barkfluff.onliner;
+
+message SubscribeToOnlineStatusRequest {
+  repeated int64 user_ids = 1; // Идентификаторы пользователей
+}
+
+message GetOnlineStatusRequest {
+  repeated int64 user_ids = 1;
+}
+
+message GetOnlineStatusResponse {
+  repeated UserOnlineStatus users_statuses = 1;
+}
+
+message SetOnlineStatusRequest { }
+
+message SetOnlineStatusResponse { }
+
+message UserOnlineStatus {
+  int64 user_id = 1; // Идентификатор пользователя
+  StatusTypeId status = 2; // Тип состояния
+  google.protobuf.Timestamp last_seen = 3; // Дата последнего изменения статуса
+}
+
+enum StatusTypeId {
+  STATUS_TYPE_ID_UNKNOWN = 0;
+  STATUS_ONLINE = 1;
+  STATUS_OFFLINE = 2;
+}
+
+service OnlinerApi {
+  
+  // Подписаться на изменения статуса онлайна
+  rpc SubscribeToOnlineStatus(SubscribeToOnlineStatusRequest) returns (stream UserOnlineStatus);
+  
+  // Установить статус "В сети"
+  rpc SetOnlineStatus(SetOnlineStatusRequest) returns (SetOnlineStatusResponse);
+  
+  // Получить статус пользователей
+  rpc GetOnlineStatus(GetOnlineStatusRequest) returns (GetOnlineStatusResponse);
+}

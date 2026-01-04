@@ -55,6 +55,11 @@ public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand,
             ServiceId = (int)ServiceId.Updates
         });
 
+        var onlinerSettings = await _configurationApiClient.GetConfigurationAsync(new GetConfigurationRequest()
+        {
+            ServiceId = (int)ServiceId.Onliner
+        });
+
         _logger.LogInformation(
             "Информация о сервере '{ServerName}' успешно собрана. Описание: {Description}",
             _serverPropsSettings.Name,
@@ -77,7 +82,8 @@ public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand,
             Identity = ParseService(ServiceId.Identity, identitySettings.Configurations.ToList()),
             Users = ParseService(ServiceId.Users, usersSettings.Configurations.ToList()),
             Messages = ParseService(ServiceId.Messages, messagesSettings.Configurations.ToList()),
-            Updates = ParseService(ServiceId.Updates, updatesSettings.Configurations.ToList())
+            Updates = ParseService(ServiceId.Updates, updatesSettings.Configurations.ToList()),
+            Onliner = ParseService(ServiceId.Onliner, onlinerSettings.Configurations.ToList()),
         };
     }
 
