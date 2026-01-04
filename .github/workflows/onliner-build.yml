@@ -10,7 +10,7 @@ on:
       - '.github/workflows/onliner-build.yml'
       - 'rebuild.trigger'
 jobs:
-  build-identity:
+  build-onliner:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v3
@@ -27,17 +27,18 @@ jobs:
       
       - name: Set tags
         id: vars
+        shell: pwsh
         run: |
-          if [ "${{ github.ref_name }}" == "dev" ]; then
-            echo "tags=docker.barkfluff.com:5000/barkfluff-identity-dev:latest,docker.barkfluff.com:5000/barkfluff-identity-dev:${{ github.sha }}" >> $GITHUB_OUTPUT
-          else
-            echo "tags=docker.barkfluff.com:5000/barkfluff-identity:latest,docker.barkfluff.com:5000/barkfluff-identity:${{ github.sha }}" >> $GITHUB_OUTPUT
-          fi
+          if ("${{ github.ref_name }}" -eq "dev") {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-onliner-dev:latest,docker.barkfluff.com:5000/barkfluff-onliner-dev:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-onliner:latest,docker.barkfluff.com:5000/barkfluff-onliner:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          }
       
       - name: Build and Push
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./Backend/BarkFluff.Identity/Dockerfile
+          file: ./Backend/BarkFluff.Onliner/Dockerfile
           push: true
           tags: ${{ steps.vars.outputs.tags }}
