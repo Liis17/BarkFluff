@@ -7,12 +7,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="html\burkfluff.html" />
+    <None Remove="files\install.ps1" />
     <None Remove="html\userpage.html" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="html\burkfluff.html">
+    <Content Include="files\install.ps1">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="html\barkfluff.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="html\userpage.html">
