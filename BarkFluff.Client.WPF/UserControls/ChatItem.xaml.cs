@@ -339,5 +339,35 @@ namespace BarkFluff.Client.WPF.UserControls
                 _ => count > 1 ? $"📎 Вложение ({count})" : "📎 Вложение"
             };
         }
+
+        /// <summary>
+        /// Тип чата (приватный или групповой)
+        /// </summary>
+        public Proto.Messages.ChatType ChatType => _isGroupChat ? Proto.Messages.ChatType.Group : Proto.Messages.ChatType.Private;
+
+        /// <summary>
+        /// Обновляет индикатор онлайн статуса пользователя
+        /// </summary>
+        public void UpdateOnlineStatus(BarkFluff.Proto.Onliner.UserOnlineStatus status)
+        {
+            // Показываем индикатор только для приватных чатов
+            if (_isGroupChat)
+            {
+                Dispatcher.Invoke(() => OnlineIndicator.Visibility = Visibility.Collapsed);
+                return;
+            }
+
+            Dispatcher.Invoke(() =>
+            {
+                if (status.Status == BarkFluff.Proto.Onliner.StatusTypeId.StatusOnline)
+                {
+                    OnlineIndicator.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    OnlineIndicator.Visibility = Visibility.Collapsed;
+                }
+            });
+        }
     }
 }

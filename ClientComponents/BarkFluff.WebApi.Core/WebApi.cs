@@ -18,6 +18,7 @@ namespace BarkFluff.WebApi.Core
         internal BarkFluff.Proto.Messages.MessagesApi.MessagesApiClient? MessagesAC;
         internal BarkFluff.Proto.Navigator.NavigatorApi.NavigatorApiClient? NavigatorAC;
         internal BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiClient? UpdatesAC;
+        internal BarkFluff.Proto.Onliner.OnlinerApi.OnlinerApiClient? OnlinerAC;
         #endregion
 
         #region gRPC Channels (internal для доступа менеджеров)
@@ -28,6 +29,7 @@ namespace BarkFluff.WebApi.Core
         internal GrpcChannel? MessagesChannel;
         internal GrpcChannel? NavigatorChannel;
         internal GrpcChannel? UpdatesChannel;
+        internal GrpcChannel? OnlinerChannel;
         #endregion
 
         #region Менеджеры
@@ -42,6 +44,7 @@ namespace BarkFluff.WebApi.Core
         internal readonly WebApiSearchManager SearchManager;
         internal readonly WebApiFileManager FileManager;
         internal readonly WebApiUpdateManager UpdateManager;
+        internal readonly WebApiOnlinerManager OnlinerManager;
         #endregion
 
         public bool ACisnull => UsersAC == null || BeaconAC == null || IdentityAC == null || FilesAC == null || MessagesAC == null || UpdatesAC == null;
@@ -60,6 +63,7 @@ namespace BarkFluff.WebApi.Core
             SearchManager = new WebApiSearchManager(this);
             FileManager = new WebApiFileManager(this);
             UpdateManager = new WebApiUpdateManager(this);
+            OnlinerManager = new WebApiOnlinerManager(this);
         }
 
         #region IDisposable
@@ -81,6 +85,7 @@ namespace BarkFluff.WebApi.Core
                 MessagesChannel?.Dispose();
                 NavigatorChannel?.Dispose();
                 UpdatesChannel?.Dispose();
+                OnlinerChannel?.Dispose();
             }
             _disposed = true;
         }
@@ -170,6 +175,13 @@ namespace BarkFluff.WebApi.Core
         #region Реалтайм обновления (делегирование к UpdateManager)
         public async Task<(ErrorReturner error, IAsyncEnumerable<NewMessageEvent>? stream)> JustUpdate(GlobalParam globalParam) => await UpdateManager.JustUpdate(globalParam);
         public async Task<(ErrorReturner error, IAsyncEnumerable<MessageReadEvent>? stream)> SubscribeToReadReceipts(GlobalParam globalParam) => await UpdateManager.SubscribeToReadReceipts(globalParam);
+        #endregion
+
+        #region Onliner - статус онлайн (делегирование к OnlinerManager)
+        public async Task<(ErrorReturner error, IAsyncEnumerable<Proto.Onliner.UserOnlineStatus>? stream)> SubscribeToOnlineStatus(GlobalParam globalParam, List<long> userIds) => await OnlinerManager.SubscribeToOnlineStatus(globalParam, userIds);
+        public async Task<ErrorReturner> SetOnlineStatus(GlobalParam globalParam) => await OnlinerManager.SetOnlineStatus(globalParam);
+        public async Task<(ErrorReturner error, List<Proto.Onliner.UserOnlineStatus>? statuses)> GetOnlineStatus(GlobalParam globalParam, List<long> userIds) => await OnlinerManager.GetOnlineStatus(globalParam, userIds);
+        public async Task<ErrorReturner> ChangeUsersInSubscription(GlobalParam globalParam, List<long> userIds) => await OnlinerManager.ChangeUsersInSubscription(globalParam, userIds);
         #endregion
     }
 }

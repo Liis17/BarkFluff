@@ -40,6 +40,7 @@ namespace BarkFluff.Client.WPF
         public static DropMessage ErideMessage { get; set; } = null!;
         public static WindowStateService WindowStateService { get; set; } = null!;
         public static NotificationManager NotificationManager => NotificationManager.Instance;
+        public static OnlineStatusService OnlineStatusService => OnlineStatusService.Instance;
 
         private static UpdateService updateService { get; set; } = null!;
         public App() { }

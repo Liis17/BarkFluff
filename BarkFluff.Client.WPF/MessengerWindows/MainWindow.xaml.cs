@@ -47,6 +47,16 @@ namespace BarkFluff.Client.WPF
             bool isActive = App.WindowStateService.IsApplicationActive.Value;
             string statusText = isActive ? "активно (в фокусе и развернуто)" : "неактивно (свернуто или не в фокусе)";
             App.ErideMessage?.AddMessage($"Состояние окна: {statusText}", new Erida { Type = MType.Debug });
+
+            // Управление пингами онлайн статуса
+            if (isActive)
+            {
+                App.OnlineStatusService.StartPinging();
+            }
+            else
+            {
+                App.OnlineStatusService.StopPinging();
+            }
         }
 
         private void MainWindowBootstrap()

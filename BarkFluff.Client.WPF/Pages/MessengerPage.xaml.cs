@@ -1446,6 +1446,26 @@ namespace BarkFluff.Client.WPF.Pages
 
             // Start global read receipt subscription (for chat list)
             Services.App.RealtimeUpdateService.Instance.StartGlobalReadReceiptSubscription(globalParam);
+
+            // Подписываемся на события OnlineStatusService
+            App.OnlineStatusService.OnlineStatusChanged += OnUserOnlineStatusChanged;
+
+            // Собираем список userId из чатов для отслеживания
+            var userIdsToTrack = new List<long>();
+            foreach (var child in ChatList.Children)
+            {
+                if (child is ChatItem chatItem && chatItem.ChatType == Proto.Messages.ChatType.Private)
+                {
+                    // Для приватных чатов берем userId собеседника
+                    if (chatItem.UserId != 0 && chatItem.UserId != globalParam.UserId)
+                    {
+                        userIdsToTrack.Add(chatItem.UserId);
+                    }
+                }
+            }
+
+            // Start the online status service
+            App.OnlineStatusService.Start(globalParam, userIdsToTrack);
         }
 
         private void OnNewMessageReceived(string chatId, MessageModel message)
@@ -1661,6 +1681,68 @@ namespace BarkFluff.Client.WPF.Pages
             Services.App.RealtimeUpdateService.Instance.ConnectionStatusChanged -= OnConnectionStatusChanged;
             Services.App.RealtimeUpdateService.Instance.ReadReceiptReceived -= OnReadReceiptReceived;
             // Глобальная подписка остается активной - она управляется самим RealtimeUpdateService
+
+            App.OnlineStatusService.OnlineStatusChanged -= OnUserOnlineStatusChanged;
+        }
+
+        private void OnUserOnlineStatusChanged(BarkFluff.Proto.Onliner.UserOnlineStatus status)
+        {
+            // Update UI on the main thread
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                // Обновляем статус пользователя в ChatItem
+                foreach (var child in ChatList.Children)
+                {
+                    if (child is ChatItem chatItem && chatItem.UserId == status.UserId)
+                    {
+                        chatItem.UpdateOnlineStatus(status);
+                        break;
+                    }
+                }
+
+                // Если открыт чат с этим пользователем, обновляем UserOnlineTime
+                if (ChatId.Value != null && CurrentChatUserId == status.UserId)
+                {
+                    UpdateUserOnlineTime(status);
+                }
+            });
+        }
+
+        private long CurrentChatUserId { get; set; }
+
+        private void UpdateUserOnlineTime(BarkFluff.Proto.Onliner.UserOnlineStatus status)
+        {
+            if (UserOnlineTime == null)
+                return;
+
+            if (status.Status == BarkFluff.Proto.Onliner.StatusTypeId.StatusOnline)
+            {
+                UserOnlineTime.Text = "в сети";
+                UserOnlineTime.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0, 200, 0));
+            }
+            else
+            {
+                var lastSeen = status.LastSeen.ToDateTime();
+                UserOnlineTime.Text = FormatLastSeen(lastSeen);
+                UserOnlineTime.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(128, 128, 128));
+            }
+        }
+
+        private string FormatLastSeen(DateTime lastSeen)
+        {
+            var now = DateTime.UtcNow;
+            var diff = now - lastSeen;
+
+            if (diff.TotalMinutes < 1)
+                return "только что";
+            if (diff.TotalMinutes < 60)
+                return $"{(int)diff.TotalMinutes} мин. назад";
+            if (diff.TotalHours < 24)
+                return $"{(int)diff.TotalHours} ч. назад";
+            if (diff.TotalDays < 7)
+                return $"{(int)diff.TotalDays} д. назад";
+
+            return lastSeen.ToLocalTime().ToString("dd.MM.yyyy");
         }
 
         private void OnReadReceiptReceived(BarkFluff.Proto.Updates.MessageReadEvent update)
