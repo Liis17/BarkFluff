@@ -11,5 +11,5 @@ WORKDIR "/src/Backend/BarkFluff.Onliner"
 RUN dotnet publish "./BarkFluff.Onliner.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 FROM base AS final
 WORKDIR /app
-COPY --from=publish /app/publish .
+COPY --from=build /app/publish .
 ENTRYPOINT ["dotnet", "BarkFluff.Onliner.dll"]
