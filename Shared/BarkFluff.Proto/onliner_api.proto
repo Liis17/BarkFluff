@@ -28,6 +28,14 @@ message UserOnlineStatus {
   google.protobuf.Timestamp last_seen = 3; // Дата последнего изменения статуса
 }
 
+message ChangeUsersInSubscriptionRequest {
+  repeated int64 user_ids = 1; // Новый массив идентификаторов пользователей
+}
+
+message ChangeUsersInSubscriptionResponse {
+  
+}
+
 enum StatusTypeId {
   STATUS_TYPE_ID_UNKNOWN = 0;
   STATUS_ONLINE = 1;
@@ -44,4 +52,7 @@ service OnlinerApi {
   
   // Получить статус пользователей
   rpc GetOnlineStatus(GetOnlineStatusRequest) returns (GetOnlineStatusResponse);
+  
+  // Изменить список пользователей на которые ты подписан 
+  rpc ChangeUsersInSubscription(ChangeUsersInSubscriptionRequest) returns (ChangeUsersInSubscriptionResponse);
 }

@@ -87,4 +87,34 @@ public class OnlineStatusSubscriptionsManager
 
         return streams;
     }
+
+    /// <summary>
+    /// Обновить TrackedUserIds во всех активных подписках пользователя
+    /// </summary>
+    /// <param name="subscriberId">ID пользователя-подписчика</param>
+    /// <param name="newUserIds">Новый список отслеживаемых пользователей</param>
+    /// <returns>Количество обновленных подписок (0 если нет активных)</returns>
+    public int UpdateAllSubscriptions(long subscriberId, List<long> newUserIds)
+    {
+        if (!_subscriptions.TryGetValue(subscriberId, out var userSubscriptions))
+        {
+            return 0;
+        }
+
+        // Обновляем каждую подписку пользователя
+        foreach (var (connectionId, oldSubscription) in userSubscriptions.ToList())
+        {
+            // Создаем новый SubscriptionData с обновленным списком
+            var newSubscription = new SubscriptionData
+            {
+                Stream = oldSubscription.Stream,
+                TrackedUserIds = new HashSet<long>(newUserIds)
+            };
+
+            // Атомарная замена подписки
+            userSubscriptions.TryUpdate(connectionId, newSubscription, oldSubscription);
+        }
+
+        return userSubscriptions.Count;
+    }
 }

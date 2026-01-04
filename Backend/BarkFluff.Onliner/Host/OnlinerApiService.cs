@@ -1,3 +1,4 @@
+using BarkFluff.Onliner.Features.ChangeUsersInSubscription;
 using BarkFluff.Onliner.Features.GetOnlineStatus;
 using BarkFluff.Onliner.Features.SetOnlineStatus;
 using BarkFluff.Onliner.Features.SubscribeToOnlineStatus;
@@ -58,5 +59,17 @@ public class OnlinerApiService : OnlinerApi.OnlinerApiBase
 
         // Не используем MediatR для streaming - прямой вызов handler
         return _subscribeHandler.Handle(query);
+    }
+
+    public override async Task<ChangeUsersInSubscriptionResponse> ChangeUsersInSubscription(
+        ChangeUsersInSubscriptionRequest request,
+        ServerCallContext context)
+    {
+        var command = new ChangeUsersInSubscriptionCommand
+        {
+            UserIds = request.UserIds.ToList()
+        };
+
+        return await _mediator.Send(command, context.CancellationToken);
     }
 }
