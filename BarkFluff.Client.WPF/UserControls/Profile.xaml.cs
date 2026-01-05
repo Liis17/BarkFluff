@@ -21,6 +21,7 @@ namespace BarkFluff.Client.WPF.UserControls
         {
             InitializeComponent();
             DataContext = this;
+            this.Unloaded += Profile_Unloaded;
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -207,7 +208,10 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private static void OnLastSeenChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            // Online status UI has been removed, keeping property for compatibility
+            if (d is Profile control)
+            {
+                control.UpdateOnlineStatusDisplay();
+            }
         }
 
         // Онлайн статус
@@ -223,7 +227,10 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private static void OnIsOnlineChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            // Online status UI has been removed, keeping property for compatibility
+            if (d is Profile control)
+            {
+                control.UpdateOnlineStatusDisplay();
+            }
         }
 
         #endregion
@@ -341,6 +348,19 @@ namespace BarkFluff.Client.WPF.UserControls
 
             // Скрываем баджи по умолчанию
             SetBadges(null);
+
+            // ИСПРАВЛЕНИЕ: Подписываемся на онлайн-статус для себя
+            _trackedUserId = App.GParam.UserId;
+            App.OnlineStatusService.OnlineStatusChanged += OnOnlineStatusChanged;
+            App.OnlineStatusService.TrackUser(App.GParam.UserId);
+
+            // Получаем закешированный статус если доступен
+            var cachedStatus = App.OnlineStatusService.GetCachedStatus(App.GParam.UserId);
+            if (cachedStatus != null)
+            {
+                IsOnline = cachedStatus.Status == BarkFluff.Proto.Onliner.StatusTypeId.StatusOnline;
+                LastSeen = cachedStatus.LastSeen?.ToDateTime();
+            }
         }
 
         /// <summary>
@@ -391,6 +411,19 @@ namespace BarkFluff.Client.WPF.UserControls
 
                 // Скрываем баджи по умолчанию
                 SetBadges(null);
+
+                // Подписываемся на онлайн-статус
+                _trackedUserId = userId;
+                App.OnlineStatusService.OnlineStatusChanged += OnOnlineStatusChanged;
+                App.OnlineStatusService.TrackUser(userId);
+
+                // Получаем закешированный статус если доступен
+                var cachedStatus = App.OnlineStatusService.GetCachedStatus(userId);
+                if (cachedStatus != null)
+                {
+                    IsOnline = cachedStatus.Status == BarkFluff.Proto.Onliner.StatusTypeId.StatusOnline;
+                    LastSeen = cachedStatus.LastSeen?.ToDateTime();
+                }
             }
             catch (Exception ex)
             {
@@ -493,5 +526,120 @@ namespace BarkFluff.Client.WPF.UserControls
                 }
             }
         }
+
+        #region Online Status
+
+        private long _trackedUserId;
+
+        private void UpdateOnlineStatusDisplay()
+        {
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.BeginInvoke(new Action(UpdateOnlineStatusDisplay));
+                return;
+            }
+
+            // Теперь гарантированно в UI потоке
+            if (IsOnline)
+            {
+                // Кешируем предыдущие значения для минимизации мерцания
+                if (OnlineStatusText.Text != "В сети")
+                {
+                    OnlineStatusText.Text = "В сети";
+                    OnlineStatusText.Foreground = new System.Windows.Media.SolidColorBrush(
+                        System.Windows.Media.Color.FromRgb(68, 214, 44));
+                }
+                OnlineIndicator.Visibility = Visibility.Visible;
+                OnlineStatusSection.Visibility = Visibility.Visible;
+            }
+            else if (LastSeen.HasValue)
+            {
+                var newText = FormatLastSeen(LastSeen.Value);
+                if (OnlineStatusText.Text != newText)
+                {
+                    OnlineStatusText.Text = newText;
+                    OnlineStatusText.Foreground = new System.Windows.Media.SolidColorBrush(
+                        System.Windows.Media.Color.FromArgb(128, 255, 255, 255));
+                }
+                OnlineIndicator.Visibility = Visibility.Collapsed;
+                OnlineStatusSection.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                OnlineStatusSection.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private string FormatLastSeen(DateTime lastSeen)
+        {
+            // Проверяем если время Unknown (Unix epoch или очень старая дата)
+            // gRPC Google.Protobuf.WellKnownTypes.Timestamp может вернуть 1970-01-01 для Unknown
+            if (lastSeen.Year <= 1970 || lastSeen == DateTime.MinValue)
+            {
+                return "Был(а) давно";
+            }
+
+            // Конвертируем в локальное время для отображения
+            var localTime = lastSeen.ToLocalTime();
+            var now = DateTime.Now;
+
+            // Если это сегодня - показываем только время
+            if (localTime.Date == now.Date)
+            {
+                return $"Был(а) в {localTime:HH:mm}";
+            }
+            // Если это вчера
+            else if (localTime.Date == now.Date.AddDays(-1))
+            {
+                return $"Был(а) вчера в {localTime:HH:mm}";
+            }
+            // Если это в пределах недели - показываем день недели
+            else if ((now - localTime).TotalDays < 7)
+            {
+                string dayName = localTime.ToString("dddd", System.Globalization.CultureInfo.CurrentCulture);
+                return $"Был(а) в {dayName} в {localTime:HH:mm}";
+            }
+            // Старше недели - показываем дату
+            else
+            {
+                return $"Был(а) {localTime:dd.MM.yyyy} в {localTime:HH:mm}";
+            }
+        }
+
+        private void Profile_Unloaded(object sender, RoutedEventArgs e)
+        {
+            if (_trackedUserId > 0)
+            {
+                App.OnlineStatusService.OnlineStatusChanged -= OnOnlineStatusChanged;
+                App.OnlineStatusService.UntrackUser(_trackedUserId);
+            }
+        }
+
+        private void OnOnlineStatusChanged(BarkFluff.Proto.Onliner.UserOnlineStatus status)
+        {
+            // ВАЖНО: После исправления ProcessStatusUpdate это событие уже приходит в UI потоке,
+            // но на всякий случай делаем дополнительную проверку
+            if (status.UserId == _trackedUserId)
+            {
+                // Проверяем, нужен ли Dispatcher
+                if (Dispatcher.CheckAccess())
+                {
+                    // Уже в UI потоке
+                    IsOnline = status.Status == BarkFluff.Proto.Onliner.StatusTypeId.StatusOnline;
+                    LastSeen = status.LastSeen?.ToDateTime();
+                }
+                else
+                {
+                    // Не в UI потоке - маршалируем
+                    Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        IsOnline = status.Status == BarkFluff.Proto.Onliner.StatusTypeId.StatusOnline;
+                        LastSeen = status.LastSeen?.ToDateTime();
+                    }));
+                }
+            }
+        }
+
+        #endregion
     }
 }

@@ -45,6 +45,10 @@ namespace BarkFluff.Client.WPF.Pages
         private string? _currentChatAvatarFileId;
         private string? _currentUserAvatarFileId;
 
+        // Для отслеживания онлайн статуса текущего открытого чата
+        private long _currentChatUserId = 0;
+        private bool _isCurrentChatGroup = false;
+
         // Буфер для хранения chatId -> lastMessageId для быстрого обновления статуса прочтения
         private readonly Dictionary<string, long> _chatLastMessageBuffer = new();
         private readonly object _chatBufferLock = new();
@@ -243,6 +247,9 @@ namespace BarkFluff.Client.WPF.Pages
             // Отписываемся от событий клика по уведомлениям
             App.NotificationManager.NotificationClicked -= OnNotificationClicked;
 
+            // Отписываемся от обновлений онлайн статуса
+            App.OnlineStatusService.OnlineStatusChanged -= OnOnlineStatusChanged_MessengerPage;
+
             // Отписываемся от подписок сервиса реального времени
             CleanupRealtimeService();
 
@@ -286,6 +293,132 @@ namespace BarkFluff.Client.WPF.Pages
             catch { }
         }
 
+        #region Обработка онлайн статусов
+
+        private void OnOnlineStatusChanged_MessengerPage(BarkFluff.Proto.Onliner.UserOnlineStatus status)
+        {
+            // Обновляем только если это пользователь текущего открытого чата
+            if (!_isCurrentChatGroup && status.UserId == _currentChatUserId)
+            {
+                UpdateUserOnlineTime(status);
+            }
+        }
+
+        private void UpdateUserOnlineTime(BarkFluff.Proto.Onliner.UserOnlineStatus status)
+        {
+            // События уже приходят в UI потоке после исправления ProcessStatusUpdate, но проверяем на всякий случай
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.BeginInvoke(new Action(() => UpdateUserOnlineTime(status)));
+                return;
+            }
+
+            // Найти TextBlock UserOnlineTime в XAML
+            if (UserOnlineTime == null) return;
+
+            if (status.Status == BarkFluff.Proto.Onliner.StatusTypeId.StatusOnline)
+            {
+                UserOnlineTime.Text = "В сети";
+                UserOnlineTime.Foreground = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(68, 214, 44));
+            }
+            else if (status.LastSeen != null)
+            {
+                var lastSeen = status.LastSeen.ToDateTime();
+                UserOnlineTime.Text = FormatLastSeenForMessenger(lastSeen);
+                UserOnlineTime.Foreground = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromArgb(128, 255, 255, 255));
+            }
+            else
+            {
+                UserOnlineTime.Text = string.Empty;
+            }
+        }
+
+        private string FormatLastSeenForMessenger(DateTime lastSeen)
+        {
+            // Проверяем если время Unknown (Unix epoch или очень старая дата)
+            // gRPC Google.Protobuf.WellKnownTypes.Timestamp может вернуть 1970-01-01 для Unknown
+            if (lastSeen.Year <= 1970 || lastSeen == DateTime.MinValue)
+            {
+                return "Был(а) давно";
+            }
+
+            var localTime = lastSeen.ToLocalTime();
+            var now = DateTime.Now;
+
+            // Если это сегодня - показываем только время
+            if (localTime.Date == now.Date)
+            {
+                return $"Был(а) в {localTime:HH:mm}";
+            }
+            // Если это вчера
+            else if (localTime.Date == now.Date.AddDays(-1))
+            {
+                return $"Был(а) вчера в {localTime:HH:mm}";
+            }
+            // Если это в пределах недели
+            else if ((now - localTime).TotalDays < 7)
+            {
+                string dayName = localTime.ToString("dddd", System.Globalization.CultureInfo.CurrentCulture);
+                return $"Был(а) в {dayName} в {localTime:HH:mm}";
+            }
+            // Старше недели
+            else
+            {
+                return $"Был(а) {localTime:dd.MM.yyyy} в {localTime:HH:mm}";
+            }
+        }
+
+        /// <summary>
+        /// Делает немедленный запрос статуса онлайна для пользователя (не через stream)
+        /// </summary>
+        private async Task FetchAndUpdateOnlineStatus(long userId)
+        {
+            try
+            {
+                var userIds = new List<long> { userId };
+                var (error, response) = await App.ServerCommunication.GetOnlineStatus(userIds, App.GParam);
+
+                if (error.IsSuccess && response != null && response.UsersStatuses.Count > 0)
+                {
+                    var status = response.UsersStatuses[0];
+
+                    // Обновляем кеш в OnlineStatusService для консистентности с stream обновлениями
+                    App.OnlineStatusService.UpdateCachedStatus(status);
+
+                    // Обновляем UI
+                    Dispatcher.Invoke(() =>
+                    {
+                        UpdateUserOnlineTime(status);
+                    });
+
+                    App.ErideMessage.AddMessage(
+                        $"Получен статус для пользователя {userId}: {(status.Status == BarkFluff.Proto.Onliner.StatusTypeId.StatusOnline ? "онлайн" : "оффлайн")}",
+                        new Erida { Type = MType.Debug });
+                }
+                else
+                {
+                    // Если не удалось получить статус - показываем пустое
+                    Dispatcher.Invoke(() =>
+                    {
+                        if (UserOnlineTime != null)
+                        {
+                            UserOnlineTime.Text = string.Empty;
+                        }
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                App.ErideMessage.AddMessage(
+                    $"Ошибка получения статуса для пользователя {userId}: {ex.Message}",
+                    new Erida { Type = MType.Error });
+            }
+        }
+
+        #endregion
+
         #region Обработчики событий
         private async void ChatIdbyUserId_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
@@ -301,6 +434,28 @@ namespace BarkFluff.Client.WPF.Pages
             MessageArea.Children.Clear();
             GetChatInfo(ChatIdbyUserId.Value); // получаем информацию о чате для вывода в заголовке и аватара
 
+            // Обновление онлайн статуса для открытого чата
+            _currentChatUserId = ChatIdbyUserId.Value;
+            _isCurrentChatGroup = false;
+
+            // Трекаем пользователя и получаем его онлайн статус
+            if (ChatIdbyUserId.Value > 0)
+            {
+                App.OnlineStatusService.TrackUser(ChatIdbyUserId.Value);
+
+                var cachedStatus = App.OnlineStatusService.GetCachedStatus(ChatIdbyUserId.Value);
+                if (cachedStatus != null)
+                {
+                    UpdateUserOnlineTime(cachedStatus);
+                }
+                else
+                {
+                    if (UserOnlineTime != null)
+                    {
+                        UserOnlineTime.Text = string.Empty;
+                    }
+                }
+            }
         }
         private void TextForMessage_LostFocus(object sender, RoutedEventArgs e)
         {
@@ -476,6 +631,9 @@ namespace BarkFluff.Client.WPF.Pages
             // Подписываемся на события клика по уведомлениям
             App.NotificationManager.NotificationClicked += OnNotificationClicked;
 
+            // Подписываемся на обновления онлайн статуса
+            App.OnlineStatusService.OnlineStatusChanged += OnOnlineStatusChanged_MessengerPage;
+
             //вызом метода для подписки на обновление приложения
             App.MainPageLoaded();
 
@@ -502,6 +660,7 @@ namespace BarkFluff.Client.WPF.Pages
                 App.GParam.SocketFiles = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Files.Endpoint.Host + ":" + serverInfo.Files.Endpoint.Port);
                 App.GParam.SocketMessages = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Messages.Endpoint.Host + ":" + serverInfo.Messages.Endpoint.Port);
                 App.GParam.SocketUpdates = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Updates.Endpoint.Host + ":" + serverInfo.Updates.Endpoint.Port);
+                App.GParam.SocketOnliner = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Onliner.Endpoint.Host + ":" + serverInfo.Onliner.Endpoint.Port);
                 App.GParam.Colors = new ClientColors()
                 {
                     LiteHex = serverInfo.Color.LiteHex,
@@ -1446,6 +1605,9 @@ namespace BarkFluff.Client.WPF.Pages
 
             // Start global read receipt subscription (for chat list)
             Services.App.RealtimeUpdateService.Instance.StartGlobalReadReceiptSubscription(globalParam);
+
+            // Start the online status service
+            App.OnlineStatusService.Start(globalParam);
         }
 
         private void OnNewMessageReceived(string chatId, MessageModel message)
@@ -1737,6 +1899,28 @@ namespace BarkFluff.Client.WPF.Pages
             ChatIdbyUserId.Dispose();
             ChatIdbyUserId = new ReactiveLong(userId);
             App.ErideMessage.AddMessage($"Открытие чата с ID: {ChatId.Value}", new Erida { Type = MType.Debug });
+
+            // Обновление онлайн статуса для открытого чата
+            _currentChatUserId = userId;
+            _isCurrentChatGroup = isGroupChat;
+
+            // Если это личный чат - получить и показать текущий статус
+            if (!isGroupChat && userId > 0)
+            {
+                // Трекаем пользователя для реалтайм обновлений
+                App.OnlineStatusService.TrackUser(userId);
+
+                // КРИТИЧНО: Делаем отдельный запрос для немедленного получения статуса
+                _ = FetchAndUpdateOnlineStatus(userId);
+            }
+            else if (isGroupChat)
+            {
+                // Для групповых чатов - очищаем статус
+                if (UserOnlineTime != null)
+                {
+                    UserOnlineTime.Text = string.Empty;
+                }
+            }
         }
 
         private async void CloseChatButton(object sender, RoutedEventArgs e)
