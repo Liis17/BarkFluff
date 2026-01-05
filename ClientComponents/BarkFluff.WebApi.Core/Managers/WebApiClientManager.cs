@@ -1,4 +1,5 @@
 using BarkFluff.WebApi.Core.MessengerData;
+
 using Grpc.Core.Interceptors;
 using Grpc.Net.Client;
 
@@ -108,6 +109,7 @@ namespace BarkFluff.WebApi.Core.Managers
             _webApi.FilesAC = null!;
             _webApi.MessagesAC = null!;
             _webApi.UpdatesAC = null!;
+            _webApi.OnlinerAC = null!;
 
             try
             {
@@ -129,6 +131,7 @@ namespace BarkFluff.WebApi.Core.Managers
                 _gParam.SocketBeacon = WebApi.EnsureHttpPrefix(_gParam.SocketBeacon);
                 _gParam.SocketUsers = WebApi.EnsureHttpPrefix(_gParam.SocketUsers);
                 _gParam.SocketUpdates = WebApi.EnsureHttpPrefix(_gParam.SocketUpdates);
+                _gParam.SocketOnliner = WebApi.EnsureHttpPrefix(_gParam.SocketOnliner);
 
                 _webApi.MessagesChannel = GrpcChannel.ForAddress(_gParam.SocketMessages);
                 _webApi.FilesChannel = GrpcChannel.ForAddress(_gParam.SocketFiles);
@@ -136,23 +139,34 @@ namespace BarkFluff.WebApi.Core.Managers
                 _webApi.BeaconChannel = GrpcChannel.ForAddress(_gParam.SocketBeacon);
                 _webApi.UserChannel = GrpcChannel.ForAddress(_gParam.SocketUsers);
                 _webApi.UpdatesChannel = GrpcChannel.ForAddress(_gParam.SocketUpdates);
+                _webApi.OnlinerChannel = GrpcChannel.ForAddress(_gParam.SocketOnliner);
 
                 var identityInvoker = _webApi.IdentityChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
                 var userInvoker = _webApi.UserChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
                 var filesInvoker = _webApi.FilesChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
                 var messageInvoker = _webApi.MessagesChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
                 var updatesInvoker = _webApi.UpdatesChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
+                var onlinerInvoker = _webApi.OnlinerChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
 
                 _webApi.IdentityAC = new BarkFluff.Proto.Identity.IdentityApi.IdentityApiClient(identityInvoker);
                 _webApi.UsersAC = new BarkFluff.Proto.Users.UsersApi.UsersApiClient(userInvoker);
                 _webApi.FilesAC = new BarkFluff.Proto.Files.FilesApi.FilesApiClient(filesInvoker);
                 _webApi.MessagesAC = new Proto.Messages.MessagesApi.MessagesApiClient(messageInvoker);
                 _webApi.UpdatesAC = new Proto.Updates.UpdatesApi.UpdatesApiClient(updatesInvoker);
+                _webApi.OnlinerAC = new BarkFluff.Proto.Onliner.OnlinerApi.OnlinerApiClient(onlinerInvoker);
 
-                UpdateManagerClients();
+                try
+                {
+                    UpdateManagerClients();
+                }
+                catch (Exception ex)
+                {
+                    return new ErrorReturner(false, "ошибка в UpdateManagerClients");
+                }
+
                 return new ErrorReturner(true);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 return new ErrorReturner(false, "Ошибка подключения к серверу");
             }
@@ -164,44 +178,48 @@ namespace BarkFluff.WebApi.Core.Managers
         private void UpdateManagerClients()
         {
             _webApi.ServerManager.SetClients(
-                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC,
-                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel);
+                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC, _webApi.OnlinerAC,
+                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel, _webApi.OnlinerChannel);
 
             _webApi.TokenManager.SetClients(
-                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC,
-                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel);
+                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC, _webApi.OnlinerAC,
+                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel, _webApi.OnlinerChannel);
 
             _webApi.UserManager.SetClients(
-                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC,
-                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel);
+                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC, _webApi.OnlinerAC,
+                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel, _webApi.OnlinerChannel);
 
             _webApi.AuthManager.SetClients(
-                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC,
-                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel);
+                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC, _webApi.OnlinerAC,
+                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel, _webApi.OnlinerChannel);
 
             _webApi.RegistrationManager.SetClients(
-                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC,
-                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel);
+                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC, _webApi.OnlinerAC,
+                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel, _webApi.OnlinerChannel);
 
             _webApi.PasswordManager.SetClients(
-                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC,
-                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel);
+                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC, _webApi.OnlinerAC,
+                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel, _webApi.OnlinerChannel);
 
             _webApi.MessageManager.SetClients(
-                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC,
-                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel);
+                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC, _webApi.OnlinerAC,
+                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel, _webApi.OnlinerChannel);
 
             _webApi.SearchManager.SetClients(
-                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC,
-                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel);
+                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC, _webApi.OnlinerAC,
+                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel, _webApi.OnlinerChannel);
 
             _webApi.FileManager.SetClients(
-                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC,
-                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel);
+                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC, _webApi.OnlinerAC,
+                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel, _webApi.OnlinerChannel);
 
             _webApi.UpdateManager.SetClients(
-                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC,
-                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel);
+                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC, _webApi.OnlinerAC,
+                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel, _webApi.OnlinerChannel);
+
+            _webApi.OnlinerManager.SetClients(
+                _webApi.UsersAC, _webApi.BeaconAC, _webApi.IdentityAC, _webApi.FilesAC, _webApi.MessagesAC, _webApi.NavigatorAC, _webApi.UpdatesAC, _webApi.OnlinerAC,
+                _webApi.BeaconChannel, _webApi.UserChannel, _webApi.IdentityChannel, _webApi.FilesChannel, _webApi.MessagesChannel, _webApi.NavigatorChannel, _webApi.UpdatesChannel, _webApi.OnlinerChannel);
         }
     }
 }

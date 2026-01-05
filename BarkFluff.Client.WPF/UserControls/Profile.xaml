@@ -109,6 +109,29 @@
                             Text="Имя пользователя"
                             TextAlignment="Center" />
 
+                        <!--  Онлайн статус  -->
+                        <StackPanel
+                            x:Name="OnlineStatusSection"
+                            Margin="0,4,0,0"
+                            HorizontalAlignment="Center"
+                            Orientation="Horizontal"
+                            Visibility="Visible">
+                            <Ellipse
+                                x:Name="OnlineIndicator"
+                                Width="8"
+                                Height="8"
+                                Margin="0,0,6,0"
+                                VerticalAlignment="Center"
+                                Fill="#44D62C"
+                                Visibility="Collapsed" />
+                            <TextBlock
+                                x:Name="OnlineStatusText"
+                                FontFamily="{DynamicResource AdwaitaSans}"
+                                FontSize="13"
+                                Foreground="#80FFFFFF"
+                                Text="Был(а) недавно" />
+                        </StackPanel>
+
                         <!--  Баджи  -->
                         <StackPanel
                             Margin="0,8,0,0"
