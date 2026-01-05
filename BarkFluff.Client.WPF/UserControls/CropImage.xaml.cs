@@ -41,6 +41,7 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private string _imagePath = string.Empty;
         private BitmapImage? _currentBitmap;
+        private bool _isInitialized = false;
 
         // Zoom settings for mouse wheel
         private const double ZoomStep = 0.1;
@@ -81,6 +82,7 @@ namespace BarkFluff.Client.WPF.UserControls
             _transformGroup.Children.Add(_imageTranslate);
             ImageControl.RenderTransform = _transformGroup;
 
+            this.Loaded += CropImage_Loaded;
             this.Unloaded += CropImage_Unloaded;
 
             ImageControl.MouseLeftButtonDown += Image_MouseLeftButtonDown;
@@ -100,6 +102,16 @@ namespace BarkFluff.Client.WPF.UserControls
             CropGrid.Visibility = Visibility.Collapsed;
 
             ImageControl.SizeChanged += ImageControl_SizeChanged;
+        }
+
+        private void CropImage_Loaded(object sender, RoutedEventArgs e)
+        {
+            // Загружаем прозрачную картинку-заглушку только один раз
+            if (!_isInitialized)
+            {
+                _isInitialized = true;
+                LoadTransparentPlaceholder();
+            }
         }
 
         private void CropImage_Unloaded(object sender, RoutedEventArgs e)
@@ -246,16 +258,12 @@ namespace BarkFluff.Client.WPF.UserControls
                 AnimateGridTransition(ButtonGrid, CropGrid);
 
                 // После того как визуал обновится пересчитаем минимальный масштаб
+                // Используем Render приоритет чтобы дождаться полного рендеринга с правильными размерами
                 Dispatcher.BeginInvoke(new Action(() =>
                 {
                     UpdateMinZoom();
                     ResetImagePosition();
-                }), System.Windows.Threading.DispatcherPriority.Loaded);
-
-                //установка значения слайдера
-                // небольшое движение чтобы триггерить ValueChanged для фикса отображения при загрузке картинки
-                ZoomSlider.Value += 0.1;
-                ZoomSlider.Value += 0.2;
+                }), System.Windows.Threading.DispatcherPriority.Render);
             }
             catch (Exception ex)
             {
@@ -412,6 +420,9 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private void ResetImagePosition()
         {
+            if (ImageControl.Source == null)
+                return;
+
             // Устанавливаем масштаб не ниже динамического минимума
             double startZoom = Math.Max(1.0, _dynamicMinZoom);
             if (ZoomSlider != null)
@@ -420,8 +431,45 @@ namespace BarkFluff.Client.WPF.UserControls
             }
             _imageScale.ScaleX = startZoom;
             _imageScale.ScaleY = startZoom;
-            _imageTranslate.X = 0;
-            _imageTranslate.Y = 0;
+
+            // Центрируем изображение относительно области кропа
+            CenterImageInCropArea();
+        }
+
+        /// <summary>
+        /// Центрирует изображение относительно области кропа.
+        /// </summary>
+        private void CenterImageInCropArea()
+        {
+            if (ImageControl.Source == null)
+                return;
+
+            // Если размеры не готовы, просто выходим без рекурсии
+            if (ImageControl.ActualWidth <= 0 || ImageControl.ActualHeight <= 0)
+                return;
+
+            double zoom = _imageScale.ScaleX;
+            double imageWidth = ImageControl.ActualWidth * zoom;
+            double imageHeight = ImageControl.ActualHeight * zoom;
+
+            double cropLeft = Canvas.GetLeft(CropBorder);
+            double cropTop = Canvas.GetTop(CropBorder);
+            double cropWidth = CropBorder.Width;
+            double cropHeight = CropBorder.Height;
+
+            // Вычисляем центр области кропа
+            double cropCenterX = cropLeft + cropWidth / 2;
+            double cropCenterY = cropTop + cropHeight / 2;
+
+            // Вычисляем центр изображения (с учетом offset от ScaleTransform)
+            double offsetX = ImageControl.ActualWidth * (1 - zoom) / 2;
+            double offsetY = ImageControl.ActualHeight * (1 - zoom) / 2;
+
+            // Позиционируем изображение так, чтобы его центр совпал с центром кропа
+            _imageTranslate.X = cropCenterX - imageWidth / 2 - offsetX;
+            _imageTranslate.Y = cropCenterY - imageHeight / 2 - offsetY;
+
+            // Применяем ограничения, чтобы изображение не выходило за границы кропа
             ConstrainImagePosition();
         }
 
@@ -435,6 +483,7 @@ namespace BarkFluff.Client.WPF.UserControls
 
             double imgW = ImageControl.ActualWidth;
             double imgH = ImageControl.ActualHeight;
+            // Если размеры не готовы, просто выходим без рекурсии
             if (imgW <= 0 || imgH <= 0)
                 return;
 
@@ -486,6 +535,48 @@ namespace BarkFluff.Client.WPF.UserControls
         private void ResetPosition(object sender, RoutedEventArgs e)
         {
             ResetImagePosition();
+        }
+
+        /// <summary>
+        /// Создает и загружает прозрачную картинку-заглушку 100x100 для инициализации контрола.
+        /// </summary>
+        private void LoadTransparentPlaceholder()
+        {
+            try
+            {
+                // Создаем прозрачную картинку 100x100
+                int width = 100;
+                int height = 100;
+                int stride = width * 4; // 4 bytes per pixel (BGRA)
+                byte[] pixels = new byte[height * stride];
+
+                // Заполняем прозрачными пикселями (все 0)
+                for (int i = 0; i < pixels.Length; i++)
+                {
+                    pixels[i] = 0;
+                }
+
+                BitmapSource transparentBitmap = BitmapSource.Create(
+                    width,
+                    height,
+                    96, 96, // DPI
+                    PixelFormats.Pbgra32,
+                    null,
+                    pixels,
+                    stride);
+
+                transparentBitmap.Freeze();
+
+                _currentBitmap = transparentBitmap as BitmapImage;
+                ImageControl.Source = transparentBitmap;
+
+                // Простая инициализация без Dispatcher - позиционирование произойдет при загрузке реальной картинки
+                // или при SizeChanged событии
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Не удалось создать прозрачную заглушку: {ex.Message}");
+            }
         }
     }
 }
