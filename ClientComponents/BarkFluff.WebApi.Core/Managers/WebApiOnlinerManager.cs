@@ -27,18 +27,10 @@ namespace BarkFluff.WebApi.Core.Managers
             {
                 try
                 {
-                    // Подготовка заголовков с токеном
-                    var headers = new Metadata();
-                    if (!string.IsNullOrEmpty(globalParam.AccessToken?.Value))
-                    {
-                        headers.Add("Authorization", $"Bearer {globalParam.AccessToken.Value}");
-                    }
-
                     var request = new SubscribeToOnlineStatusRequest();
                     request.UserIds.AddRange(userIds);
 
-                    // Вызов метода подписки с заголовками
-                    var response = OnlinerAC!.SubscribeToOnlineStatus(request, headers);
+                    var response = OnlinerAC!.SubscribeToOnlineStatus(request);
 
                     // Создаём IAsyncEnumerable для стрима
                     async IAsyncEnumerable<UserOnlineStatus> GetOnlineStatusStream()
@@ -92,15 +84,8 @@ namespace BarkFluff.WebApi.Core.Managers
             {
                 try
                 {
-                    // Подготовка заголовков с токеном
-                    var headers = new Metadata();
-                    if (!string.IsNullOrEmpty(globalParam.AccessToken?.Value))
-                    {
-                        headers.Add("Authorization", $"Bearer {globalParam.AccessToken.Value}");
-                    }
-
                     var request = new SetOnlineStatusRequest();
-                    await OnlinerAC!.SetOnlineStatusAsync(request, headers);
+                    await OnlinerAC!.SetOnlineStatusAsync(request);
 
                     return new ErrorReturner(true, "");
                 }
@@ -126,17 +111,10 @@ namespace BarkFluff.WebApi.Core.Managers
             {
                 try
                 {
-                    // Подготовка заголовков с токеном
-                    var headers = new Metadata();
-                    if (!string.IsNullOrEmpty(globalParam.AccessToken?.Value))
-                    {
-                        headers.Add("Authorization", $"Bearer {globalParam.AccessToken.Value}");
-                    }
-
                     var request = new GetOnlineStatusRequest();
                     request.UserIds.AddRange(userIds);
 
-                    var response = await OnlinerAC!.GetOnlineStatusAsync(request, headers);
+                    var response = await OnlinerAC!.GetOnlineStatusAsync(request);
 
                     return (new ErrorReturner(true, ""), response.UsersStatuses.ToList());
                 }
@@ -162,17 +140,10 @@ namespace BarkFluff.WebApi.Core.Managers
             {
                 try
                 {
-                    // Подготовка заголовков с токеном
-                    var headers = new Metadata();
-                    if (!string.IsNullOrEmpty(globalParam.AccessToken?.Value))
-                    {
-                        headers.Add("Authorization", $"Bearer {globalParam.AccessToken.Value}");
-                    }
-
                     var request = new ChangeUsersInSubscriptionRequest();
                     request.UserIds.AddRange(userIds);
 
-                    await OnlinerAC!.ChangeUsersInSubscriptionAsync(request, headers);
+                    await OnlinerAC!.ChangeUsersInSubscriptionAsync(request);
 
                     return new ErrorReturner(true, "");
                 }
