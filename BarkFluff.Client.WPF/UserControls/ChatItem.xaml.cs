@@ -365,6 +365,9 @@ namespace BarkFluff.Client.WPF.UserControls
                         cachedStatus.LastSeen?.ToDateTime()
                     );
                 }
+
+                // КРИТИЧНО: Делаем отдельный запрос для немедленного получения статуса
+                _ = FetchAndUpdateOnlineStatusAsync(_userId);
             }
         }
 
@@ -397,13 +400,48 @@ namespace BarkFluff.Client.WPF.UserControls
             _isOnline = isOnline;
             _lastSeen = lastSeen;
 
-            Dispatcher.Invoke(() =>
+            // ИСПРАВЛЕНИЕ: Используем CheckAccess вместо всегда вызывать Invoke
+            if (!Dispatcher.CheckAccess())
             {
-                // Only show online indicator for non-group chats
-                OnlineIndicator.Visibility = (isOnline && !_isGroupChat)
-                    ? Visibility.Visible
-                    : Visibility.Collapsed;
-            });
+                Dispatcher.BeginInvoke(new Action(() => UpdateOnlineStatus(isOnline, lastSeen)));
+                return;
+            }
+
+            // Теперь гарантированно в UI потоке
+            // Only show online indicator for non-group chats
+            OnlineIndicator.Visibility = (isOnline && !_isGroupChat)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        }
+
+        /// <summary>
+        /// Делает немедленный запрос статуса онлайна для пользователя (не через stream)
+        /// </summary>
+        private async System.Threading.Tasks.Task FetchAndUpdateOnlineStatusAsync(long userId)
+        {
+            try
+            {
+                var userIds = new System.Collections.Generic.List<long> { userId };
+                var (error, response) = await App.ServerCommunication.GetOnlineStatus(userIds, App.GParam);
+
+                if (error.IsSuccess && response != null && response.UsersStatuses.Count > 0)
+                {
+                    var status = response.UsersStatuses[0];
+
+                    // Обновляем кеш в OnlineStatusService для консистентности
+                    App.OnlineStatusService.UpdateCachedStatus(status);
+
+                    // Обновляем UI
+                    UpdateOnlineStatus(
+                        status.Status == BarkFluff.Proto.Onliner.StatusTypeId.StatusOnline,
+                        status.LastSeen?.ToDateTime()
+                    );
+                }
+            }
+            catch (System.Exception)
+            {
+                // Игнорируем ошибки - будем полагаться на stream обновления
+            }
         }
 
         #endregion

@@ -572,6 +572,13 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private string FormatLastSeen(DateTime lastSeen)
         {
+            // Проверяем если время Unknown (Unix epoch или очень старая дата)
+            // gRPC Google.Protobuf.WellKnownTypes.Timestamp может вернуть 1970-01-01 для Unknown
+            if (lastSeen.Year <= 1970 || lastSeen == DateTime.MinValue)
+            {
+                return "Был(а) давно";
+            }
+
             // Конвертируем в локальное время для отображения
             var localTime = lastSeen.ToLocalTime();
             var now = DateTime.Now;

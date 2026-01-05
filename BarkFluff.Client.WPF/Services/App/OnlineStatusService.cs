@@ -169,6 +169,17 @@ namespace BarkFluff.Client.WPF.Services.App
             }
         }
 
+        /// <summary>
+        /// Manually updates the cached status for a user (used when fetching via GetOnlineStatus RPC)
+        /// </summary>
+        public void UpdateCachedStatus(UserOnlineStatus status)
+        {
+            lock (_statusCacheLock)
+            {
+                _statusCache[status.UserId] = status;
+            }
+        }
+
         private async Task StreamOnlineStatusesAsync(GlobalParam globalParam, CancellationToken cancellationToken)
         {
             // Infinite reconnection loop

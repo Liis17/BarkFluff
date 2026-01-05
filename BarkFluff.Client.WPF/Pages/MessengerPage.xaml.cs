@@ -337,6 +337,13 @@ namespace BarkFluff.Client.WPF.Pages
 
         private string FormatLastSeenForMessenger(DateTime lastSeen)
         {
+            // Проверяем если время Unknown (Unix epoch или очень старая дата)
+            // gRPC Google.Protobuf.WellKnownTypes.Timestamp может вернуть 1970-01-01 для Unknown
+            if (lastSeen.Year <= 1970 || lastSeen == DateTime.MinValue)
+            {
+                return "Был(а) давно";
+            }
+
             var localTime = lastSeen.ToLocalTime();
             var now = DateTime.Now;
 
@@ -360,6 +367,53 @@ namespace BarkFluff.Client.WPF.Pages
             else
             {
                 return $"Был(а) {localTime:dd.MM.yyyy} в {localTime:HH:mm}";
+            }
+        }
+
+        /// <summary>
+        /// Делает немедленный запрос статуса онлайна для пользователя (не через stream)
+        /// </summary>
+        private async Task FetchAndUpdateOnlineStatus(long userId)
+        {
+            try
+            {
+                var userIds = new List<long> { userId };
+                var (error, response) = await App.ServerCommunication.GetOnlineStatus(userIds, App.GParam);
+
+                if (error.IsSuccess && response != null && response.UsersStatuses.Count > 0)
+                {
+                    var status = response.UsersStatuses[0];
+
+                    // Обновляем кеш в OnlineStatusService для консистентности с stream обновлениями
+                    App.OnlineStatusService.UpdateCachedStatus(status);
+
+                    // Обновляем UI
+                    Dispatcher.Invoke(() =>
+                    {
+                        UpdateUserOnlineTime(status);
+                    });
+
+                    App.ErideMessage.AddMessage(
+                        $"Получен статус для пользователя {userId}: {(status.Status == BarkFluff.Proto.Onliner.StatusTypeId.StatusOnline ? "онлайн" : "оффлайн")}",
+                        new Erida { Type = MType.Debug });
+                }
+                else
+                {
+                    // Если не удалось получить статус - показываем пустое
+                    Dispatcher.Invoke(() =>
+                    {
+                        if (UserOnlineTime != null)
+                        {
+                            UserOnlineTime.Text = string.Empty;
+                        }
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                App.ErideMessage.AddMessage(
+                    $"Ошибка получения статуса для пользователя {userId}: {ex.Message}",
+                    new Erida { Type = MType.Error });
             }
         }
 
@@ -1853,23 +1907,11 @@ namespace BarkFluff.Client.WPF.Pages
             // Если это личный чат - получить и показать текущий статус
             if (!isGroupChat && userId > 0)
             {
-                // Трекаем пользователя если еще не трекаем
+                // Трекаем пользователя для реалтайм обновлений
                 App.OnlineStatusService.TrackUser(userId);
 
-                // Получаем закешированный статус
-                var cachedStatus = App.OnlineStatusService.GetCachedStatus(userId);
-                if (cachedStatus != null)
-                {
-                    UpdateUserOnlineTime(cachedStatus);
-                }
-                else
-                {
-                    // Нет кешированного статуса - показываем пустое
-                    if (UserOnlineTime != null)
-                    {
-                        UserOnlineTime.Text = string.Empty;
-                    }
-                }
+                // КРИТИЧНО: Делаем отдельный запрос для немедленного получения статуса
+                _ = FetchAndUpdateOnlineStatus(userId);
             }
             else if (isGroupChat)
             {
