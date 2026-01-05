@@ -1454,7 +1454,7 @@ namespace BarkFluff.Client.WPF.Pages
             var userIdsToTrack = new List<long>();
             foreach (var child in ChatList.Children)
             {
-                if (child is ChatItem chatItem && chatItem.ChatType == Proto.Messages.ChatType.Private)
+                if (child is ChatItem chatItem && !chatItem.IsGroupChat)
                 {
                     // Для приватных чатов берем userId собеседника
                     if (chatItem.UserId != 0 && chatItem.UserId != globalParam.UserId)

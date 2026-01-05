@@ -341,11 +341,6 @@ namespace BarkFluff.Client.WPF.UserControls
         }
 
         /// <summary>
-        /// Тип чата (приватный или групповой)
-        /// </summary>
-        public Proto.Messages.ChatType ChatType => _isGroupChat ? Proto.Messages.ChatType.Group : Proto.Messages.ChatType.Private;
-
-        /// <summary>
         /// Обновляет индикатор онлайн статуса пользователя
         /// </summary>
         public void UpdateOnlineStatus(BarkFluff.Proto.Onliner.UserOnlineStatus status)
