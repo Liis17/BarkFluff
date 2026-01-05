@@ -14,6 +14,7 @@ namespace BarkFluff.WebApi.Core
         protected BarkFluff.Proto.Messages.MessagesApi.MessagesApiClient? MessagesAC { get; set; }
         protected BarkFluff.Proto.Navigator.NavigatorApi.NavigatorApiClient? NavigatorAC { get; set; }
         protected BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiClient? UpdatesAC { get; set; }
+        protected BarkFluff.Proto.Onliner.OnlinerApi.OnlinerApiClient? OnlinerAC { get; set; }
 
         protected GrpcChannel? BeaconChannel { get; set; }
         protected GrpcChannel? UserChannel { get; set; }
@@ -22,6 +23,7 @@ namespace BarkFluff.WebApi.Core
         protected GrpcChannel? MessagesChannel { get; set; }
         protected GrpcChannel? NavigatorChannel { get; set; }
         protected GrpcChannel? UpdatesChannel { get; set; }
+        protected GrpcChannel? OnlinerChannel { get; set; }
 
         protected WebApiBase(WebApi webApi)
         {
@@ -39,13 +41,15 @@ namespace BarkFluff.WebApi.Core
             BarkFluff.Proto.Messages.MessagesApi.MessagesApiClient? messagesAC,
             BarkFluff.Proto.Navigator.NavigatorApi.NavigatorApiClient? navigatorAC,
             BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiClient? updatesAC,
+            BarkFluff.Proto.Onliner.OnlinerApi.OnlinerApiClient? onlinerAC,
             GrpcChannel? beaconChannel,
             GrpcChannel? userChannel,
             GrpcChannel? identityChannel,
             GrpcChannel? filesChannel,
             GrpcChannel? messagesChannel,
             GrpcChannel? navigatorChannel,
-            GrpcChannel? updatesChannel)
+            GrpcChannel? updatesChannel,
+            GrpcChannel? onlinerChannel)
         {
             UsersAC = usersAC;
             BeaconAC = beaconAC;
@@ -54,6 +58,7 @@ namespace BarkFluff.WebApi.Core
             MessagesAC = messagesAC;
             NavigatorAC = navigatorAC;
             UpdatesAC = updatesAC;
+            OnlinerAC = onlinerAC;
 
             BeaconChannel = beaconChannel;
             UserChannel = userChannel;
@@ -62,6 +67,7 @@ namespace BarkFluff.WebApi.Core
             MessagesChannel = messagesChannel;
             NavigatorChannel = navigatorChannel;
             UpdatesChannel = updatesChannel;
+            OnlinerChannel = onlinerChannel;
         }
     }
 }

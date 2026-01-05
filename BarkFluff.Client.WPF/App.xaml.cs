@@ -40,6 +40,7 @@ namespace BarkFluff.Client.WPF
         public static DropMessage ErideMessage { get; set; } = null!;
         public static WindowStateService WindowStateService { get; set; } = null!;
         public static NotificationManager NotificationManager => NotificationManager.Instance;
+        public static OnlineStatusService OnlineStatusService => OnlineStatusService.Instance;
 
         private static UpdateService updateService { get; set; } = null!;
         public App() { }
@@ -242,6 +243,8 @@ namespace BarkFluff.Client.WPF
         protected override void OnExit(ExitEventArgs e)
         {
             cts.Cancel();
+            OnlineStatusService?.Stop();
+            OnlineStatusService?.Dispose();
             NotificationManager?.Dispose();
             WindowStateService?.Dispose();
             base.OnExit(e);
@@ -330,6 +333,7 @@ namespace BarkFluff.Client.WPF
                 App.GParam.SocketFiles = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Files.Endpoint.Host + ":" + serverInfo.Files.Endpoint.Port);
                 App.GParam.SocketMessages = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Messages.Endpoint.Host + ":" + serverInfo.Messages.Endpoint.Port);
                 App.GParam.SocketUpdates = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Updates.Endpoint.Host + ":" + serverInfo.Updates.Endpoint.Port);
+                App.GParam.SocketOnliner = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Onliner.Endpoint.Host + ":" + serverInfo.Onliner.Endpoint.Port);
                 App.GParam.Colors = new ClientColors()
                 {
                     LiteHex = serverInfo.Color.LiteHex,

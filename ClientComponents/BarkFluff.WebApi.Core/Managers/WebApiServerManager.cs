@@ -31,7 +31,7 @@ namespace BarkFluff.WebApi.Core.Managers
                     var response = await BeaconAC!.GetServerInfoAsync(new BarkFluff.Proto.Beacon.GetServerInfoRequest());
                     return (new ErrorReturner(true), response);
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
                     return (new ErrorReturner(false, "Ошибка получения информации о сервере"), null);
                 }

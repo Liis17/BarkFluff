@@ -15,6 +15,7 @@ namespace BarkFluff.WebApi.Core.MessengerData
         public string SocketFiles { get; set; } = string.Empty;
         public string SocketMessages { get; set; } = string.Empty;
         public string SocketUpdates { get; set; } = string.Empty;
+        public string SocketOnliner { get; set; } = string.Empty;
         public string AppPath { get; set; } = string.Empty;
         public string ServerName { get; set; } = string.Empty;
         public string ServerDescription { get; set; } = string.Empty;
