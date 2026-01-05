@@ -90,6 +90,16 @@ namespace BarkFluff.Client.WPF.Services.App
             }
 
             _currentGlobalParam = globalParam;
+
+            // ИСПРАВЛЕНИЕ: Автоматически добавить текущего пользователя в отслеживаемые
+            lock (_trackedUsersLock)
+            {
+                if (_trackedUserIds.Add(globalParam.UserId))
+                {
+                    WPF.App.ErideMessage.AddMessage($"Added current user {globalParam.UserId} to tracked users", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
+                }
+            }
+
             _subscriptionCts = new CancellationTokenSource();
             _streamingTask = Task.Run(() => StreamOnlineStatusesAsync(globalParam, _subscriptionCts.Token));
 
@@ -253,7 +263,22 @@ namespace BarkFluff.Client.WPF.Services.App
                         $"User {status.UserId} status: {statusText}{lastSeenText}",
                         new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
 
-                    OnlineStatusChanged?.Invoke(status);
+                    // ИСПРАВЛЕНИЕ: Маршалировать событие в UI поток
+                    System.Windows.Application.Current?.Dispatcher.BeginInvoke(
+                        new Action(() =>
+                        {
+                            try
+                            {
+                                OnlineStatusChanged?.Invoke(status);
+                            }
+                            catch (Exception ex)
+                            {
+                                WPF.App.ErideMessage.AddMessage(
+                                    $"Error invoking OnlineStatusChanged: {ex.Message}",
+                                    new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Error });
+                            }
+                        })
+                    );
                 }
             }
             catch (Exception ex)

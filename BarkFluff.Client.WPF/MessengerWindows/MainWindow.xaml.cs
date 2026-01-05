@@ -233,6 +233,9 @@ namespace BarkFluff.Client.WPF
                 !string.IsNullOrEmpty(App.GParam.SocketFiles) &&
                 !string.IsNullOrEmpty(App.GParam.SocketIdentity) &&
                 !string.IsNullOrEmpty(App.GParam.SocketUsers) &&
+                !string.IsNullOrEmpty(App.GParam.SocketMessages) &&
+                !string.IsNullOrEmpty(App.GParam.SocketUpdates) &&
+                !string.IsNullOrEmpty(App.GParam.SocketOnliner) &&
                 !string.IsNullOrEmpty(App.GParam.RefreshToken.Value) &&
                 !string.IsNullOrEmpty(App.GParam.ServerName)
                 )
