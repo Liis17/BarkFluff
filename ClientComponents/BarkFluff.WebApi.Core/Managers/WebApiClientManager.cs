@@ -1,4 +1,5 @@
 using BarkFluff.WebApi.Core.MessengerData;
+
 using Grpc.Core.Interceptors;
 using Grpc.Net.Client;
 
@@ -154,10 +155,18 @@ namespace BarkFluff.WebApi.Core.Managers
                 _webApi.UpdatesAC = new Proto.Updates.UpdatesApi.UpdatesApiClient(updatesInvoker);
                 _webApi.OnlinerAC = new BarkFluff.Proto.Onliner.OnlinerApi.OnlinerApiClient(onlinerInvoker);
 
-                UpdateManagerClients();
+                try
+                {
+                    UpdateManagerClients();
+                }
+                catch (Exception ex)
+                {
+                    return new ErrorReturner(false, "ошибка в UpdateManagerClients");
+                }
+
                 return new ErrorReturner(true);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 return new ErrorReturner(false, "Ошибка подключения к серверу");
             }
