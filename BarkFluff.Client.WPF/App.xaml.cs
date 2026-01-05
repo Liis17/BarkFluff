@@ -40,6 +40,7 @@ namespace BarkFluff.Client.WPF
         public static DropMessage ErideMessage { get; set; } = null!;
         public static WindowStateService WindowStateService { get; set; } = null!;
         public static NotificationManager NotificationManager => NotificationManager.Instance;
+        public static OnlineStatusService OnlineStatusService => OnlineStatusService.Instance;
 
         private static UpdateService updateService { get; set; } = null!;
         public App() { }
@@ -242,6 +243,8 @@ namespace BarkFluff.Client.WPF
         protected override void OnExit(ExitEventArgs e)
         {
             cts.Cancel();
+            OnlineStatusService?.Stop();
+            OnlineStatusService?.Dispose();
             NotificationManager?.Dispose();
             WindowStateService?.Dispose();
             base.OnExit(e);

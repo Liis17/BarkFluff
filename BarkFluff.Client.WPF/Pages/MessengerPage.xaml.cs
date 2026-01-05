@@ -1446,6 +1446,9 @@ namespace BarkFluff.Client.WPF.Pages
 
             // Start global read receipt subscription (for chat list)
             Services.App.RealtimeUpdateService.Instance.StartGlobalReadReceiptSubscription(globalParam);
+
+            // Start the online status service
+            App.OnlineStatusService.Start(globalParam);
         }
 
         private void OnNewMessageReceived(string chatId, MessageModel message)

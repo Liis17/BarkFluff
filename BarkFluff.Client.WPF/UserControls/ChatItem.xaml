@@ -75,18 +75,35 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <!--  Аватар  -->
-            <local:CachedAvatar
-                x:Name="AvatarControl"
+            <!--  Аватар с индикатором онлайна  -->
+            <Grid
                 Grid.Column="0"
                 Width="50"
                 Height="50"
                 Margin="0,0,16,0"
-                VerticalAlignment="Center"
-                CornerRadius="23"
-                EnableDynamicShadow="False"
-                ShadowBlurRadius="12"
-                ShadowOpacity="0.9" />
+                VerticalAlignment="Center">
+                <local:CachedAvatar
+                    x:Name="AvatarControl"
+                    Width="50"
+                    Height="50"
+                    CornerRadius="23"
+                    EnableDynamicShadow="False"
+                    ShadowBlurRadius="12"
+                    ShadowOpacity="0.9" />
+
+                <!--  Индикатор онлайна  -->
+                <Ellipse
+                    x:Name="OnlineIndicator"
+                    Width="14"
+                    Height="14"
+                    Margin="0,0,-2,-2"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Bottom"
+                    Fill="#44D62C"
+                    Stroke="#1E1E1E"
+                    StrokeThickness="2"
+                    Visibility="Collapsed" />
+            </Grid>
 
             <!--  Контент сообщения  -->
             <StackPanel

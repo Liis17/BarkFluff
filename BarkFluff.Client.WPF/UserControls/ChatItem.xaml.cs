@@ -50,6 +50,8 @@ namespace BarkFluff.Client.WPF.UserControls
         private List<long> _lastMessageReadBy = new List<long>();
         private long _lastMessageSenderId;
         private int _unreadCount;
+        private bool _isOnline;
+        private DateTime? _lastSeen;
 
         /// <summary>
         /// URL аватара чата
@@ -109,6 +111,10 @@ namespace BarkFluff.Client.WPF.UserControls
             AvatarControl.FileUrl = imageUrl;
 
             UpdateUnreadBadge();
+
+            // Subscribe to online status events
+            this.Loaded += ChatItem_Loaded;
+            this.Unloaded += ChatItem_Unloaded;
         }
 
         public void UpdateMessage()
@@ -339,5 +345,67 @@ namespace BarkFluff.Client.WPF.UserControls
                 _ => count > 1 ? $"📎 Вложение ({count})" : "📎 Вложение"
             };
         }
+
+        #region Online Status
+
+        private void ChatItem_Loaded(object sender, RoutedEventArgs e)
+        {
+            // Only track online status for non-group chats
+            if (!_isGroupChat && _userId > 0)
+            {
+                App.OnlineStatusService.OnlineStatusChanged += OnOnlineStatusChanged;
+                App.OnlineStatusService.TrackUser(_userId);
+
+                // Get cached status if available
+                var cachedStatus = App.OnlineStatusService.GetCachedStatus(_userId);
+                if (cachedStatus != null)
+                {
+                    UpdateOnlineStatus(
+                        cachedStatus.Status == BarkFluff.Proto.Onliner.StatusTypeId.StatusOnline,
+                        cachedStatus.LastSeen?.ToDateTime()
+                    );
+                }
+            }
+        }
+
+        private void ChatItem_Unloaded(object sender, RoutedEventArgs e)
+        {
+            // Unsubscribe from online status events
+            if (!_isGroupChat && _userId > 0)
+            {
+                App.OnlineStatusService.OnlineStatusChanged -= OnOnlineStatusChanged;
+                App.OnlineStatusService.UntrackUser(_userId);
+            }
+        }
+
+        private void OnOnlineStatusChanged(BarkFluff.Proto.Onliner.UserOnlineStatus status)
+        {
+            if (status.UserId == _userId)
+            {
+                UpdateOnlineStatus(
+                    status.Status == BarkFluff.Proto.Onliner.StatusTypeId.StatusOnline,
+                    status.LastSeen?.ToDateTime()
+                );
+            }
+        }
+
+        /// <summary>
+        /// Updates the online status indicator
+        /// </summary>
+        public void UpdateOnlineStatus(bool isOnline, DateTime? lastSeen)
+        {
+            _isOnline = isOnline;
+            _lastSeen = lastSeen;
+
+            Dispatcher.Invoke(() =>
+            {
+                // Only show online indicator for non-group chats
+                OnlineIndicator.Visibility = (isOnline && !_isGroupChat)
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+            });
+        }
+
+        #endregion
     }
 }
