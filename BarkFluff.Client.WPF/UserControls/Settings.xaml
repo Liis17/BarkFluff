@@ -32,9 +32,9 @@
                     ShadowBlurRadius="25"
                     ShadowOpacity="0.5" />
             </Border>
-            <!--<settingsControls:UsedSpaceProgressBar HorizontalAlignment="Stretch" />-->
+            <settingsControls:UsedSpaceProgressBar HorizontalAlignment="Stretch" />
 
-            <Grid>
+                <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="*" />
