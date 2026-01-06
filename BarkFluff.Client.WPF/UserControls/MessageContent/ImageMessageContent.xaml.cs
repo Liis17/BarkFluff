@@ -1,14 +1,19 @@
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 
+using BarkFluff.Client.WPF.Pages;
 using BarkFluff.Client.WPF.Services.App.Caching;
+using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
 namespace BarkFluff.Client.WPF.UserControls.MessageContent
 {
     public partial class ImageMessageContent : UserControl
     {
         private string _fileId = string.Empty;
+        private AttachmentsModel _attachment;
 
         public ImageMessageContent()
         {
@@ -17,12 +22,21 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
             ImageBorder.MouseLeftButtonDown += ImageBorder_MouseLeftButtonDown;
         }
 
-        public ImageMessageContent(string fileId, string previewUrl, FileType fileType) : this()
+        public ImageMessageContent(AttachmentsModel attachment) : this()
         {
-            _fileId = fileId;
-            CachedContentImage.FileId = fileId;
-            CachedContentImage.FileUrl = previewUrl;
-            CachedContentImage.FileType = fileType;
+            _attachment = attachment;
+            _fileId = attachment.FileId;
+
+            // Используем PreviewFileId для превью в сообщении (как раньше)
+            var previewId = !string.IsNullOrEmpty(attachment.PreviewFileId)
+                ? attachment.PreviewFileId
+                : attachment.FileId;
+
+            CachedContentImage.FileId = previewId;
+            CachedContentImage.FileUrl = attachment.PreviewUrl;
+            CachedContentImage.FileType = attachment.Type == BarkFluff.Proto.Shared.MessageAttachmentType.Gif
+                ? FileType.Gif
+                : FileType.Image;
         }
 
         private void ImageMessageContent_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -32,15 +46,25 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
 
         private void ImageBorder_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (!string.IsNullOrEmpty(_fileId))
+            if (_attachment != null)
             {
-                var msgType = new Services.Erida.MessageType
-                {
-                    Type = Services.Erida.MessageType.MessageTypeEnum.Info
-                };
-                App.ErideMessage.AddMessage($"Image clicked: {_fileId}", msgType);
+                // Открыть ImageViewer с одним изображением
+                OpenImageViewer(new List<AttachmentsModel> { _attachment }, 0);
             }
             e.Handled = true;
+        }
+
+        private void OpenImageViewer(List<AttachmentsModel> attachments, int currentIndex)
+        {
+            var messengerPage = FindParent<MessengerPage>(this);
+            messengerPage?.OpenImageViewer(attachments, currentIndex);
+        }
+
+        private T FindParent<T>(DependencyObject child) where T : DependencyObject
+        {
+            var parent = VisualTreeHelper.GetParent(child);
+            if (parent == null) return null;
+            return parent is T ? (T)parent : FindParent<T>(parent);
         }
     }
 }
