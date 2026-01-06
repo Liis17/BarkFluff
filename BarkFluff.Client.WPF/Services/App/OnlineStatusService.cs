@@ -1,5 +1,6 @@
 using BarkFluff.Proto.Onliner;
 using BarkFluff.WebApi.Core.MessengerData;
+
 using System.ComponentModel;
 
 namespace BarkFluff.Client.WPF.Services.App

@@ -21,11 +21,13 @@ namespace BarkFluff.Client.WPF.Services.Erida
                 return;
             }
 #if (!DEBUG)
-            if (messageType.Type == MessageType.MessageTypeEnum.Debug)
+            if (messageType.Type == MessageType.MessageTypeEnum.Debug || messageType.Type == MessageType.MessageTypeEnum.Warning)
             {
                 return;
             }
 #endif
+
+
             Application.Current.Dispatcher.Invoke(() =>
             {
                 var messageControl = new UserControl
