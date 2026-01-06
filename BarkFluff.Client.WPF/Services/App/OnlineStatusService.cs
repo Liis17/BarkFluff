@@ -405,24 +405,22 @@ namespace BarkFluff.Client.WPF.Services.App
                 return;
 
             _pingCts = new CancellationTokenSource();
+            var cancellationToken = _pingCts.Token; // Capture token locally to avoid race condition
+            
             _pingTask = Task.Run(async () =>
             {
-                while (!_pingCts.Token.IsCancellationRequested)
+                while (!cancellationToken.IsCancellationRequested)
                 {
                     try
                     {
                         var result = await WPF.App.ServerCommunication.SetOnlineStatus(_currentGlobalParam);
 
-                        if (result.IsSuccess)
-                        {
-                            WPF.App.ErideMessage.AddMessage("Ping sent successfully", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
-                        }
-                        else
+                        if (!result.IsSuccess)
                         {
                             WPF.App.ErideMessage.AddMessage($"Ping failed: {result.ErrorMessage}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Warning });
                         }
 
-                        await Task.Delay(PingIntervalMs, _pingCts.Token);
+                        await Task.Delay(PingIntervalMs, cancellationToken);
                     }
                     catch (OperationCanceledException)
                     {
@@ -441,9 +439,22 @@ namespace BarkFluff.Client.WPF.Services.App
             if (_pingCts != null)
             {
                 _pingCts.Cancel();
+                
+                // Wait for ping task to complete
+                try
+                {
+                    _pingTask?.Wait(1000); // Wait up to 1 second for graceful shutdown
+                }
+                catch (AggregateException)
+                {
+                    // Ignore exceptions during shutdown
+                }
+                
                 _pingCts.Dispose();
                 _pingCts = null;
             }
+            
+            _pingTask = null;
         }
 
         public void Dispose()
