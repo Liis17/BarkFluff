@@ -8,7 +8,7 @@
     d:DesignHeight="60"
     d:DesignWidth="300"
     mc:Ignorable="d">
-    <Grid x:Name="DocumentPanel" Margin="0">
+    <Grid x:Name="DocumentPanel" Margin="0" Cursor="Hand">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" />

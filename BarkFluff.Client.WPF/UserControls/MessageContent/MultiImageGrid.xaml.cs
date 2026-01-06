@@ -1,23 +1,20 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 
-using BarkFluff.Client.WPF.Services.App.Caching;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
 namespace BarkFluff.Client.WPF.UserControls.MessageContent
 {
     /// <summary>
-    /// Control for displaying multiple images in an adaptive grid layout (Telegram-style)
+    /// Orchestrator control for displaying multiple images in an adaptive grid layout
+    /// Delegates row rendering to ImageRow components
     /// </summary>
     public partial class MultiImageGrid : UserControl
     {
         private const int IMAGE_MAX_WIDTH = 400;
-        private const int IMAGE_MAX_HEIGHT = 300;
-        private const int IMAGE_SPACING = 4;
+        private const int IMAGE_SPACING = 2;
 
         private List<AttachmentsModel> _attachments = new List<AttachmentsModel>();
 
@@ -31,179 +28,61 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
             if (attachments == null || attachments.Count == 0)
                 return;
 
-            _attachments = attachments;
+            // Ограничить до 10 картинок максимум
+            _attachments = attachments.Count > 10
+                ? attachments.Take(10).ToList()
+                : attachments;
+
             BuildImageGrid();
         }
 
         private void BuildImageGrid()
         {
-            ImageGrid.Children.Clear();
-            ImageGrid.RowDefinitions.Clear();
-            ImageGrid.ColumnDefinitions.Clear();
+            ImageStack.Children.Clear();
 
-            int count = _attachments.Count;
+            var rowsDistribution = DetermineLayout(_attachments.Count);
+            int imageIndex = 0;
 
-            if (count == 1)
+            for (int rowIndex = 0; rowIndex < rowsDistribution.Count; rowIndex++)
             {
-                // Single image - full width
-                CreateSingleImageLayout();
-            }
-            else if (count == 2)
-            {
-                // Two images side by side
-                CreateTwoImageLayout();
-            }
-            else if (count == 3)
-            {
-                // First image large on top, two smaller below
-                CreateThreeImageLayout();
-            }
-            else
-            {
-                // 4+ images - 2xN grid
-                CreateMultiImageLayout();
+                int imagesInRow = rowsDistribution[rowIndex];
+                var rowImages = _attachments.Skip(imageIndex).Take(imagesInRow).ToList();
+
+                var imageRow = new ImageRow();
+                imageRow.SetImages(rowImages, isFirstRow: rowIndex == 0);
+
+                // Добавить отступ между рядами (2px)
+                if (rowIndex > 0)
+                {
+                    imageRow.Margin = new Thickness(0, IMAGE_SPACING, 0, 0);
+                }
+
+                ImageStack.Children.Add(imageRow);
+                imageIndex += imagesInRow;
             }
         }
 
-        private void CreateSingleImageLayout()
+        /// <summary>
+        /// Определяет распределение картинок по рядам
+        /// </summary>
+        /// <param name="totalImages">Общее количество картинок (1-10)</param>
+        /// <returns>Список количества картинок в каждом ряду</returns>
+        private List<int> DetermineLayout(int totalImages)
         {
-            ImageGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            ImageGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-            var image = CreateImageBorder(_attachments[0], IMAGE_MAX_WIDTH, IMAGE_MAX_HEIGHT);
-            Grid.SetRow(image, 0);
-            Grid.SetColumn(image, 0);
-            ImageGrid.Children.Add(image);
-        }
-
-        private void CreateTwoImageLayout()
-        {
-            ImageGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            ImageGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            ImageGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-            var image1 = CreateImageBorder(_attachments[0], IMAGE_MAX_WIDTH / 2 - IMAGE_SPACING, IMAGE_MAX_HEIGHT);
-            Grid.SetRow(image1, 0);
-            Grid.SetColumn(image1, 0);
-            image1.Margin = new Thickness(0, 0, IMAGE_SPACING / 2, 0);
-            ImageGrid.Children.Add(image1);
-
-            var image2 = CreateImageBorder(_attachments[1], IMAGE_MAX_WIDTH / 2 - IMAGE_SPACING, IMAGE_MAX_HEIGHT);
-            Grid.SetRow(image2, 0);
-            Grid.SetColumn(image2, 1);
-            image2.Margin = new Thickness(IMAGE_SPACING / 2, 0, 0, 0);
-            ImageGrid.Children.Add(image2);
-        }
-
-        private void CreateThreeImageLayout()
-        {
-            ImageGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            ImageGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            ImageGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            ImageGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-            // First large image on top
-            var image1 = CreateImageBorder(_attachments[0], IMAGE_MAX_WIDTH, IMAGE_MAX_HEIGHT * 2 / 3);
-            Grid.SetRow(image1, 0);
-            Grid.SetColumn(image1, 0);
-            Grid.SetColumnSpan(image1, 2);
-            image1.Margin = new Thickness(0, 0, 0, IMAGE_SPACING);
-            ImageGrid.Children.Add(image1);
-
-            // Two smaller images below
-            var image2 = CreateImageBorder(_attachments[1], IMAGE_MAX_WIDTH / 2 - IMAGE_SPACING, IMAGE_MAX_HEIGHT / 3);
-            Grid.SetRow(image2, 1);
-            Grid.SetColumn(image2, 0);
-            image2.Margin = new Thickness(0, 0, IMAGE_SPACING / 2, 0);
-            ImageGrid.Children.Add(image2);
-
-            var image3 = CreateImageBorder(_attachments[2], IMAGE_MAX_WIDTH / 2 - IMAGE_SPACING, IMAGE_MAX_HEIGHT / 3);
-            Grid.SetRow(image3, 1);
-            Grid.SetColumn(image3, 1);
-            image3.Margin = new Thickness(IMAGE_SPACING / 2, 0, 0, 0);
-            ImageGrid.Children.Add(image3);
-        }
-
-        private void CreateMultiImageLayout()
-        {
-            int count = _attachments.Count;
-            int rows = (count + 1) / 2; // Ceiling division
-
-            for (int i = 0; i < rows; i++)
+            return totalImages switch
             {
-                ImageGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            }
-            ImageGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            ImageGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-            for (int i = 0; i < count; i++)
-            {
-                int row = i / 2;
-                int col = i % 2;
-
-                var image = CreateImageBorder(_attachments[i], IMAGE_MAX_WIDTH / 2 - IMAGE_SPACING, IMAGE_MAX_HEIGHT / 2);
-                Grid.SetRow(image, row);
-                Grid.SetColumn(image, col);
-
-                // Add margins for spacing
-                double marginRight = col == 0 ? IMAGE_SPACING / 2 : 0;
-                double marginLeft = col == 1 ? IMAGE_SPACING / 2 : 0;
-                double marginBottom = row < rows - 1 ? IMAGE_SPACING : 0;
-                image.Margin = new Thickness(marginLeft, 0, marginRight, marginBottom);
-
-                ImageGrid.Children.Add(image);
-            }
-        }
-
-        private Border CreateImageBorder(AttachmentsModel attachment, int maxWidth, int maxHeight)
-        {
-            var border = new Border
-            {
-                CornerRadius = new CornerRadius(18),
-                MaxWidth = maxWidth,
-                MaxHeight = maxHeight,
-                ClipToBounds = true
+                1 => new List<int> { 1 },              // [1]
+                2 => new List<int> { 2 },              // [2]
+                3 => new List<int> { 2, 1 },           // [2, 1]
+                4 => new List<int> { 2, 2 },           // [2, 2]
+                5 => new List<int> { 3, 2 },           // [3, 2]
+                6 => new List<int> { 3, 3 },           // [3, 3]
+                7 => new List<int> { 3, 2, 2 },        // [3, 2, 2]
+                8 => new List<int> { 3, 3, 2 },        // [3, 3, 2]
+                9 => new List<int> { 3, 3, 3 },        // [3, 3, 3]
+                10 => new List<int> { 3, 2, 2, 3 },    // [3, 2, 2, 3]
+                _ => new List<int> { 1 }               // Fallback
             };
-
-            // Create clipping geometry for rounded corners
-            var clip = new RectangleGeometry
-            {
-                RadiusX = 18,
-                RadiusY = 18
-            };
-            
-            // Bind the Rect to the border's actual size
-            border.Loaded += (s, e) =>
-            {
-                clip.Rect = new Rect(0, 0, border.ActualWidth, border.ActualHeight);
-            };
-            
-            border.SizeChanged += (s, e) =>
-            {
-                clip.Rect = new Rect(0, 0, border.ActualWidth, border.ActualHeight);
-            };
-            
-            border.Clip = clip;
-
-            // Determine file type and file ID
-            var fileType = attachment.Type == Proto.Shared.MessageAttachmentType.Gif ? FileType.Gif : FileType.Image;
-            var fileId = !string.IsNullOrEmpty(attachment.PreviewFileId) ? attachment.PreviewFileId : attachment.FileId;
-
-            // Create CachedImage control
-            var cachedImage = new CachedImage
-            {
-                FileId = fileId,
-                FileUrl = attachment.PreviewUrl,
-                FileType = fileType,
-                Stretch = Stretch.UniformToFill,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                DecodePixelWidth = maxWidth
-            };
-
-            border.Child = cachedImage;
-
-            return border;
         }
     }
 }
