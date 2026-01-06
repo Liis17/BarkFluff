@@ -7,7 +7,9 @@
     d:DesignHeight="300"
     d:DesignWidth="400"
     mc:Ignorable="d">
-    <Grid x:Name="ImageGrid" MaxWidth="400">
-        <!-- Dynamic grid layout will be created in code-behind -->
-    </Grid>
+    <StackPanel
+        x:Name="ImageStack"
+        MaxWidth="400"
+        Orientation="Vertical"
+        HorizontalAlignment="Left" />
 </UserControl>
