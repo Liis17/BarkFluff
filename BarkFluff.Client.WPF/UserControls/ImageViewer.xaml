@@ -115,7 +115,7 @@
             x:Name="CloseButton"
             Width="50"
             Height="50"
-            Margin="20"
+            Margin="0 60 30 0"
             HorizontalAlignment="Right"
             VerticalAlignment="Top"
             Click="OnCloseClick"
