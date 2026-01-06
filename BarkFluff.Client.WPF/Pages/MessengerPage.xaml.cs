@@ -2385,6 +2385,31 @@ namespace BarkFluff.Client.WPF.Pages
             CenterPanel.Child = new UserControls.ProfileShare(App.GParam.UserName);
         }
 
+        public void OpenImageViewer(List<AttachmentsModel> attachments, int currentIndex)
+        {
+            // Фильтровать только изображения и GIF
+            var imageAttachments = attachments
+                .Where(a => a.Type == MessageAttachmentType.Image ||
+                            a.Type == MessageAttachmentType.Gif)
+                .ToList();
+
+            if (imageAttachments.Count == 0) return;
+
+            var adjustedIndex = Math.Min(currentIndex, imageAttachments.Count - 1);
+
+            ImageViewer.Attachments = imageAttachments;
+            ImageViewer.CurrentIndex = adjustedIndex;
+            ImageViewer.IsOpen = true;
+            ImageViewerOverlay.Visibility = Visibility.Visible;
+            ImageViewer.Focus(); // Для обработки клавиатуры
+        }
+
+        private void OnImageViewerClosed(object sender, EventArgs e)
+        {
+            ImageViewerOverlay.Visibility = Visibility.Collapsed;
+            ImageViewer.IsOpen = false;
+        }
+
         #endregion
     }
 }

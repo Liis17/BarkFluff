@@ -1,0 +1,199 @@
+<UserControl
+    x:Class="BarkFluff.Client.WPF.UserControls.ImageViewer"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    d:DesignHeight="1080"
+    d:DesignWidth="1920"
+    Focusable="True"
+    mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <!--  Стиль для кнопок вьюера  -->
+        <Style x:Key="ViewerButton" TargetType="Button">
+            <Setter Property="Width" Value="50" />
+            <Setter Property="Height" Value="50" />
+            <Setter Property="Background" Value="#80000000" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            Background="{TemplateBinding Background}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="25">
+                            <ContentPresenter
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#B0000000" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.3" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!--  Анимации  -->
+        <Storyboard x:Key="FadeIn">
+            <DoubleAnimation
+                Storyboard.TargetProperty="Opacity"
+                From="0"
+                To="1"
+                Duration="0:0:0.3" />
+        </Storyboard>
+
+        <Storyboard x:Key="FadeOut">
+            <DoubleAnimation
+                Storyboard.TargetProperty="Opacity"
+                From="1"
+                To="0"
+                Duration="0:0:0.3" />
+        </Storyboard>
+    </UserControl.Resources>
+
+    <!--  Root Grid - захватывает все клики  -->
+    <Grid Background="#D9000000" MouseLeftButtonDown="OnBackgroundClick">
+        <!--  Контейнер изображения  -->
+        <Grid
+            x:Name="ImageContainer"
+            Background="Transparent"
+            MouseLeftButtonDown="OnImageContainerClick">
+            <!--  Image с трансформациями для зума  -->
+            <Image
+                x:Name="MainImage"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                RenderTransformOrigin="0.5,0.5"
+                Stretch="Uniform"
+                MouseLeftButtonDown="MainImage_MouseLeftButtonDown"
+                MouseLeftButtonUp="MainImage_MouseLeftButtonUp"
+                MouseMove="MainImage_MouseMove"
+                MouseWheel="MainImage_MouseWheel">
+                <Image.RenderTransform>
+                    <TransformGroup>
+                        <ScaleTransform x:Name="ScaleTransform" ScaleX="1" ScaleY="1" />
+                        <TranslateTransform x:Name="TranslateTransform" X="0" Y="0" />
+                    </TransformGroup>
+                </Image.RenderTransform>
+
+                <!--  Контекстное меню  -->
+                <Image.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Click="OnSaveClick" Header="Сохранить">
+                            <MenuItem.Icon>
+                                <ui:SymbolIcon Symbol="Save20" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Click="OnCopyClick" Header="Копировать в буфер">
+                            <MenuItem.Icon>
+                                <ui:SymbolIcon Symbol="Copy20" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Click="OnOpenInExplorerClick" Header="Открыть на диске">
+                            <MenuItem.Icon>
+                                <ui:SymbolIcon Symbol="Folder20" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                    </ContextMenu>
+                </Image.ContextMenu>
+            </Image>
+        </Grid>
+
+        <!--  UI Controls Overlay  -->
+        <!--  Кнопка закрытия (верхний правый угол)  -->
+        <Button
+            x:Name="CloseButton"
+            Width="50"
+            Height="50"
+            Margin="20"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Top"
+            Click="OnCloseClick"
+            Style="{StaticResource ViewerButton}"
+            ToolTip="Закрыть (Esc)">
+            <ui:SymbolIcon
+                FontSize="20"
+                Foreground="White"
+                Symbol="Dismiss24" />
+        </Button>
+
+        <!--  Navigation Controls (нижний центр)  -->
+        <StackPanel
+            x:Name="NavigationPanel"
+            Margin="20"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Bottom"
+            Orientation="Horizontal">
+            <!--  Previous Button  -->
+            <Button
+                x:Name="PrevButton"
+                Margin="0,0,15,0"
+                Click="OnPrevClick"
+                Style="{StaticResource ViewerButton}"
+                ToolTip="Предыдущее (←)">
+                <ui:SymbolIcon
+                    FontSize="20"
+                    Foreground="White"
+                    Symbol="ChevronLeft20" />
+            </Button>
+
+            <!--  Index Indicator  -->
+            <Border
+                Padding="15,10"
+                Background="#80000000"
+                CornerRadius="15">
+                <TextBlock
+                    x:Name="IndexIndicator"
+                    FontFamily="{DynamicResource AdwaitaSans}"
+                    FontSize="14"
+                    FontWeight="Medium"
+                    Foreground="White"
+                    Text="1 / 1" />
+            </Border>
+
+            <!--  Next Button  -->
+            <Button
+                x:Name="NextButton"
+                Margin="15,0,0,0"
+                Click="OnNextClick"
+                Style="{StaticResource ViewerButton}"
+                ToolTip="Следующее (→)">
+                <ui:SymbolIcon
+                    FontSize="20"
+                    Foreground="White"
+                    Symbol="ChevronRight20" />
+            </Button>
+        </StackPanel>
+
+        <!--  Loading Overlay  -->
+        <Grid
+            x:Name="LoadingOverlay"
+            Background="#40000000"
+            Visibility="Collapsed">
+            <StackPanel
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center">
+                <ProgressBar
+                    Width="200"
+                    Height="4"
+                    IsIndeterminate="True" />
+                <TextBlock
+                    Margin="0,15,0,0"
+                    FontFamily="{DynamicResource AdwaitaSans}"
+                    FontSize="14"
+                    Foreground="White"
+                    Text="Загрузка полной версии..." />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>
