@@ -128,6 +128,7 @@ namespace BarkFluff.WebApi.Core
         public async Task<(ErrorReturner, string?)> GetUserAvatar(GlobalParam globalParam, long userId = 0) => await UserManager.GetUserAvatar(globalParam, userId);
         public async Task<(ErrorReturner Error, UserData? Data)> GetUserData(GlobalParam globalParam, long userId = 0) => await UserManager.GetUserData(globalParam, userId);
         public async Task<(ErrorReturner Error, Proto.Identity.Token? refreshToken, Proto.Identity.Token? accessToken, bool getMeOtpCode)> Authorizations(string _email, string _username, string _password, string _otpCode, GlobalParam global) => await UserManager.Authorizations(_email, _username, _password, _otpCode, global);
+        public async Task<(ErrorReturner error, List<Proto.Users.UserBadge>? badges)> GetUserBadges(GlobalParam globalParam, long userId = 0, int? limit = null) => await UserManager.GetUserBadges(globalParam, userId, limit);
         #endregion
 
         #region Настройка двухфакторной аутентификации (делегирование к AuthManager)
