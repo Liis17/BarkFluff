@@ -340,10 +340,10 @@ namespace BarkFluff.Client.WPF.UserControls
                     ? FileType.Gif
                     : FileType.Image;
 
+                // НЕ передаем providedUrl - FileCacheService сам получит URL оригинала через API
                 var fullPath = await App.FileCacheService.GetCachedFilePathAsync(
                     attachment.FileId,  // ВАЖНО: используем FileId, не PreviewFileId
-                    fileType,
-                    attachment.PreviewUrl
+                    fileType
                 );
 
                 // Загрузить полную версию (или placeholder пока грузится)
