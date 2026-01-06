@@ -12,7 +12,8 @@
         <Border
             x:Name="ImageBorder"
             Margin="0"
-            CornerRadius="18">
+            CornerRadius="18,18,0,0"
+            Cursor="Hand">
             <Border.Clip>
                 <RectangleGeometry
                     x:Name="ClipGeometry"
