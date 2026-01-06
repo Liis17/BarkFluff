@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 
 using BarkFluff.Client.WPF.Services.App.Caching;
@@ -17,7 +18,7 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
     {
         private const int IMAGE_MAX_WIDTH = 400;
         private const int IMAGE_MAX_HEIGHT = 300;
-        private const int IMAGE_SPACING = 4;
+        private const int IMAGE_SPACING = 2;
 
         private List<AttachmentsModel> _attachments = new List<AttachmentsModel>();
 
@@ -70,7 +71,9 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
             ImageGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             ImageGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-            var image = CreateImageBorder(_attachments[0], IMAGE_MAX_WIDTH, IMAGE_MAX_HEIGHT);
+            // Single image - round top corners only
+            var cornerRadius = new CornerRadius(18, 18, 0, 0);
+            var image = CreateImageBorder(_attachments[0], IMAGE_MAX_WIDTH, IMAGE_MAX_HEIGHT, cornerRadius);
             Grid.SetRow(image, 0);
             Grid.SetColumn(image, 0);
             ImageGrid.Children.Add(image);
@@ -82,13 +85,17 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
             ImageGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             ImageGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-            var image1 = CreateImageBorder(_attachments[0], IMAGE_MAX_WIDTH / 2 - IMAGE_SPACING, IMAGE_MAX_HEIGHT);
+            // Left image - round top-left corner only
+            var cornerRadiusLeft = new CornerRadius(18, 0, 0, 0);
+            var image1 = CreateImageBorder(_attachments[0], IMAGE_MAX_WIDTH / 2 - IMAGE_SPACING, IMAGE_MAX_HEIGHT, cornerRadiusLeft);
             Grid.SetRow(image1, 0);
             Grid.SetColumn(image1, 0);
             image1.Margin = new Thickness(0, 0, IMAGE_SPACING / 2, 0);
             ImageGrid.Children.Add(image1);
 
-            var image2 = CreateImageBorder(_attachments[1], IMAGE_MAX_WIDTH / 2 - IMAGE_SPACING, IMAGE_MAX_HEIGHT);
+            // Right image - round top-right corner only
+            var cornerRadiusRight = new CornerRadius(0, 18, 0, 0);
+            var image2 = CreateImageBorder(_attachments[1], IMAGE_MAX_WIDTH / 2 - IMAGE_SPACING, IMAGE_MAX_HEIGHT, cornerRadiusRight);
             Grid.SetRow(image2, 0);
             Grid.SetColumn(image2, 1);
             image2.Margin = new Thickness(IMAGE_SPACING / 2, 0, 0, 0);
@@ -102,22 +109,24 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
             ImageGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             ImageGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-            // First large image on top
-            var image1 = CreateImageBorder(_attachments[0], IMAGE_MAX_WIDTH, IMAGE_MAX_HEIGHT * 2 / 3);
+            // First large image on top - round top corners
+            var cornerRadiusTop = new CornerRadius(18, 18, 0, 0);
+            var image1 = CreateImageBorder(_attachments[0], IMAGE_MAX_WIDTH, IMAGE_MAX_HEIGHT * 2 / 3, cornerRadiusTop);
             Grid.SetRow(image1, 0);
             Grid.SetColumn(image1, 0);
             Grid.SetColumnSpan(image1, 2);
             image1.Margin = new Thickness(0, 0, 0, IMAGE_SPACING);
             ImageGrid.Children.Add(image1);
 
-            // Two smaller images below
-            var image2 = CreateImageBorder(_attachments[1], IMAGE_MAX_WIDTH / 2 - IMAGE_SPACING, IMAGE_MAX_HEIGHT / 3);
+            // Two smaller images below - no rounding
+            var cornerRadiusNone = new CornerRadius(0);
+            var image2 = CreateImageBorder(_attachments[1], IMAGE_MAX_WIDTH / 2 - IMAGE_SPACING, IMAGE_MAX_HEIGHT / 3, cornerRadiusNone);
             Grid.SetRow(image2, 1);
             Grid.SetColumn(image2, 0);
             image2.Margin = new Thickness(0, 0, IMAGE_SPACING / 2, 0);
             ImageGrid.Children.Add(image2);
 
-            var image3 = CreateImageBorder(_attachments[2], IMAGE_MAX_WIDTH / 2 - IMAGE_SPACING, IMAGE_MAX_HEIGHT / 3);
+            var image3 = CreateImageBorder(_attachments[2], IMAGE_MAX_WIDTH / 2 - IMAGE_SPACING, IMAGE_MAX_HEIGHT / 3, cornerRadiusNone);
             Grid.SetRow(image3, 1);
             Grid.SetColumn(image3, 1);
             image3.Margin = new Thickness(IMAGE_SPACING / 2, 0, 0, 0);
@@ -141,7 +150,25 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
                 int row = i / 2;
                 int col = i % 2;
 
-                var image = CreateImageBorder(_attachments[i], IMAGE_MAX_WIDTH / 2 - IMAGE_SPACING, IMAGE_MAX_HEIGHT / 2);
+                // Determine corner radius based on position
+                CornerRadius cornerRadius;
+                if (row == 0 && col == 0)
+                {
+                    // Top-left image - round top-left corner
+                    cornerRadius = new CornerRadius(18, 0, 0, 0);
+                }
+                else if (row == 0 && col == 1)
+                {
+                    // Top-right image - round top-right corner
+                    cornerRadius = new CornerRadius(0, 18, 0, 0);
+                }
+                else
+                {
+                    // All other images - no rounding
+                    cornerRadius = new CornerRadius(0);
+                }
+
+                var image = CreateImageBorder(_attachments[i], IMAGE_MAX_WIDTH / 2 - IMAGE_SPACING, IMAGE_MAX_HEIGHT / 2, cornerRadius);
                 Grid.SetRow(image, row);
                 Grid.SetColumn(image, col);
 
@@ -155,34 +182,35 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
             }
         }
 
-        private Border CreateImageBorder(AttachmentsModel attachment, int maxWidth, int maxHeight)
+        private Border CreateImageBorder(AttachmentsModel attachment, int maxWidth, int maxHeight, CornerRadius cornerRadius)
         {
             var border = new Border
             {
-                CornerRadius = new CornerRadius(18),
+                CornerRadius = cornerRadius,
                 MaxWidth = maxWidth,
                 MaxHeight = maxHeight,
-                ClipToBounds = true
+                ClipToBounds = true,
+                Cursor = Cursors.Hand
             };
 
             // Create clipping geometry for rounded corners
             var clip = new RectangleGeometry
             {
-                RadiusX = 18,
-                RadiusY = 18
+                RadiusX = cornerRadius.TopLeft,
+                RadiusY = cornerRadius.TopRight
             };
-            
+
             // Bind the Rect to the border's actual size
             border.Loaded += (s, e) =>
             {
                 clip.Rect = new Rect(0, 0, border.ActualWidth, border.ActualHeight);
             };
-            
+
             border.SizeChanged += (s, e) =>
             {
                 clip.Rect = new Rect(0, 0, border.ActualWidth, border.ActualHeight);
             };
-            
+
             border.Clip = clip;
 
             // Determine file type and file ID
@@ -203,7 +231,23 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
 
             border.Child = cachedImage;
 
+            // Add click handler
+            border.MouseLeftButtonDown += (s, e) =>
+            {
+                OnImageClicked(fileId);
+                e.Handled = true;
+            };
+
             return border;
+        }
+
+        private void OnImageClicked(string fileId)
+        {
+            var msgType = new Services.Erida.MessageType
+            {
+                Type = Services.Erida.MessageType.MessageTypeEnum.Info
+            };
+            App.ErideMessage.AddMessage($"Image clicked: {fileId}", msgType);
         }
     }
 }
