@@ -14,5 +14,41 @@
         HorizontalAlignment="Stretch"
         VerticalAlignment="Stretch"
         Background="#1f1f1f"
-        CornerRadius="12" />
+        CornerRadius="12">
+        <Border
+            Margin="10"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch"
+            CornerRadius="12"
+            Style="{DynamicResource Win11CardStyle}">
+            <StackPanel Opacity="5" Orientation="Vertical">
+                <TextBlock
+                    Margin="10"
+                    Style="{DynamicResource HeaderSettings}"
+                    Text="Получение файла по FileID" />
+                <StackPanel Orientation="Horizontal">
+                    <ui:TextBox
+                        x:Name="FileIdText"
+                        Width="350"
+                        Margin="10,0,10,0"
+                        HorizontalAlignment="Left"
+                        PlaceholderEnabled="True"
+                        PlaceholderText="Сюда вставить FileID" />
+                    <ui:Button Click="GetFileLink" Margin="0" Content="Get" />
+                </StackPanel>
+
+                <ui:TextBox
+                    x:Name="FileLinkText"
+                    Width="350"
+                    Margin="10,10,10,0"
+                    HorizontalAlignment="Left"
+                    HorizontalContentAlignment="Stretch"
+                    Cursor="IBeam"
+                    IsReadOnly="True"
+                    PlaceholderEnabled="True"
+                    PlaceholderText="Тут будет ссылка" />
+            </StackPanel>
+        </Border>
+    </Border>
+
 </UserControl>

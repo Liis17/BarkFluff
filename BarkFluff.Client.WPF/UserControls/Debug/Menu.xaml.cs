@@ -1,15 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace BarkFluff.Client.WPF.UserControls.Debug
 {
@@ -21,6 +11,20 @@ namespace BarkFluff.Client.WPF.UserControls.Debug
         public Menu()
         {
             InitializeComponent();
+        }
+
+        private async void GetFileLink(object sender, RoutedEventArgs e)
+        {
+            var response = await App.ServerCommunication.GetFile(App.GParam, FileIdText.Text);
+            if (response.error.IsSuccess)
+            {
+                var fileLink = response.url;
+                FileLinkText.Text = fileLink;
+            }
+            else
+            {
+                App.ErideMessage.AddMessage($"Failed to get file link. Status code: {response.error.ErrorCode}", new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Debug });
+            }
         }
     }
 }

@@ -57,6 +57,7 @@
         <Setter Property="HorizontalAlignment" Value="Center" />
         <Setter Property="Background" Value="#df5000" />
         <Setter Property="CornerRadius" Value="22" />
+        <Setter Property="Foreground" Value="White" />
         <Setter Property="MouseOverBackground" Value="#FFC54700" />
         <Setter Property="PressedBackground" Value="#FFAB3D00" />
         <Setter Property="Template">
@@ -772,8 +773,8 @@
         <Setter Property="FontFamily" Value="AdwaitaSans" />
         <Setter Property="FontSize" Value="26" />
         <Setter Property="FontWeight" Value="Bold" />
-        <Setter Property="HorizontalAlignment" Value="Center"></Setter>
-        <Setter Property="Foreground" Value="#FFE6E6E6" /> 
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="Foreground" Value="#FFE6E6E6" />
     </Style>
 
 </ResourceDictionary>
