@@ -332,10 +332,7 @@ namespace BarkFluff.Client.WPF.UserControls
                         attachment.PreviewFileId,
                         FileType.Image);
 
-                    if (!IsPlaceholder(previewPath))
-                    {
-                        LoadImageFromPath(previewPath);
-                    }
+                    LoadImageFromPath(previewPath);
                 }
 
                 // Загрузить полную версию (FileId!)
@@ -349,10 +346,8 @@ namespace BarkFluff.Client.WPF.UserControls
                     attachment.PreviewUrl
                 );
 
-                if (!IsPlaceholder(fullPath))
-                {
-                    LoadImageFromPath(fullPath);
-                }
+                // Загрузить полную версию (или placeholder пока грузится)
+                LoadImageFromPath(fullPath);
             }
             catch (Exception ex)
             {
@@ -366,14 +361,19 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private void LoadImageFromPath(string path)
         {
-            if (string.IsNullOrEmpty(path) || !File.Exists(path))
+            if (string.IsNullOrEmpty(path))
+                return;
+
+            // Проверка: если это не pack:// URI, то это файл и нужно проверить существование
+            if (!path.StartsWith("pack://") && !File.Exists(path))
                 return;
 
             try
             {
                 var bitmapImage = new BitmapImage();
                 bitmapImage.BeginInit();
-                bitmapImage.UriSource = new Uri(path, UriKind.Absolute);
+                // Использовать RelativeOrAbsolute для поддержки pack:// URI
+                bitmapImage.UriSource = new Uri(path, UriKind.RelativeOrAbsolute);
                 bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
                 // НЕ устанавливать DecodePixelWidth - показываем полное разрешение!
                 bitmapImage.EndInit();
