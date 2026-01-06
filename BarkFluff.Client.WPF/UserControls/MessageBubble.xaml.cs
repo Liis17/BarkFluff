@@ -236,10 +236,8 @@ namespace BarkFluff.Client.WPF.UserControls
                 TextContentPresenter.Content = null;
             }
 
-            // Set up image content - use preview file ID if available
-            var fileType = messageType == MessageType.Gif ? FileType.Gif : FileType.Image;
-            var fileId = !string.IsNullOrEmpty(attachment.PreviewFileId) ? attachment.PreviewFileId : attachment.FileId;
-            var imageContent = new ImageMessageContent(fileId, attachment.PreviewUrl, fileType);
+            // Set up image content - pass the full attachment model
+            var imageContent = new ImageMessageContent(attachment);
             MediaContentPresenter.Content = imageContent;
             SetMediaContentMargin(false);
 

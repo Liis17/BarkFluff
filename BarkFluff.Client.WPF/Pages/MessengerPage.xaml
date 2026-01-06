@@ -114,6 +114,17 @@
                 VerticalAlignment="Center" />
         </Grid>
 
+        <!--  Image Viewer Overlay  -->
+        <Grid
+            x:Name="ImageViewerOverlay"
+            Margin="-30"
+            Panel.ZIndex="1002"
+            Visibility="Collapsed">
+            <uc:ImageViewer
+                x:Name="ImageViewer"
+                Closed="OnImageViewerClosed" />
+        </Grid>
+
         <!--  Боковая панель  -->
         <Grid
             x:Name="SidePanel"
