@@ -235,91 +235,6 @@ namespace BarkFluff.Client.WPF.UserControls
 
         #endregion
 
-        #region Badge Properties
-
-        // Badge 1
-        public static readonly DependencyProperty Badge1VisibilityProperty =
-            DependencyProperty.Register(nameof(Badge1Visibility), typeof(Visibility), typeof(Profile),
-                new PropertyMetadata(Visibility.Collapsed, OnBadge1VisibilityChanged));
-
-        public Visibility Badge1Visibility
-        {
-            get => (Visibility)GetValue(Badge1VisibilityProperty);
-            set => SetValue(Badge1VisibilityProperty, value);
-        }
-
-        private static void OnBadge1VisibilityChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        {
-            if (d is Profile control)
-                control.Badge1.Visibility = (Visibility)e.NewValue;
-        }
-
-        public static readonly DependencyProperty Badge1IconProperty =
-            DependencyProperty.Register(nameof(Badge1Icon), typeof(SymbolRegular), typeof(Profile),
-                new PropertyMetadata(SymbolRegular.Crown24));
-
-        public SymbolRegular Badge1Icon
-        {
-            get => (SymbolRegular)GetValue(Badge1IconProperty);
-            set => SetValue(Badge1IconProperty, value);
-        }
-
-        // Badge 2
-        public static readonly DependencyProperty Badge2VisibilityProperty =
-            DependencyProperty.Register(nameof(Badge2Visibility), typeof(Visibility), typeof(Profile),
-                new PropertyMetadata(Visibility.Collapsed, OnBadge2VisibilityChanged));
-
-        public Visibility Badge2Visibility
-        {
-            get => (Visibility)GetValue(Badge2VisibilityProperty);
-            set => SetValue(Badge2VisibilityProperty, value);
-        }
-
-        private static void OnBadge2VisibilityChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        {
-            if (d is Profile control)
-                control.Badge2.Visibility = (Visibility)e.NewValue;
-        }
-
-        public static readonly DependencyProperty Badge2IconProperty =
-            DependencyProperty.Register(nameof(Badge2Icon), typeof(SymbolRegular), typeof(Profile),
-                new PropertyMetadata(SymbolRegular.Shield24));
-
-        public SymbolRegular Badge2Icon
-        {
-            get => (SymbolRegular)GetValue(Badge2IconProperty);
-            set => SetValue(Badge2IconProperty, value);
-        }
-
-        // Badge 3
-        public static readonly DependencyProperty Badge3VisibilityProperty =
-            DependencyProperty.Register(nameof(Badge3Visibility), typeof(Visibility), typeof(Profile),
-                new PropertyMetadata(Visibility.Collapsed, OnBadge3VisibilityChanged));
-
-        public Visibility Badge3Visibility
-        {
-            get => (Visibility)GetValue(Badge3VisibilityProperty);
-            set => SetValue(Badge3VisibilityProperty, value);
-        }
-
-        private static void OnBadge3VisibilityChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        {
-            if (d is Profile control)
-                control.Badge3.Visibility = (Visibility)e.NewValue;
-        }
-
-        public static readonly DependencyProperty Badge3IconProperty =
-            DependencyProperty.Register(nameof(Badge3Icon), typeof(SymbolRegular), typeof(Profile),
-                new PropertyMetadata(SymbolRegular.Star24));
-
-        public SymbolRegular Badge3Icon
-        {
-            get => (SymbolRegular)GetValue(Badge3IconProperty);
-            set => SetValue(Badge3IconProperty, value);
-        }
-
-        #endregion
-
         #region Profile Loading Methods
 
         /// <summary>
@@ -346,8 +261,8 @@ namespace BarkFluff.Client.WPF.UserControls
             // Загружаем аватар через кеш
             LoadAvatar(App.GParam.PictureUrl);
 
-            // Скрываем баджи по умолчанию
-            SetBadges(null);
+            // Загружаем баджи асинхронно (не блокируем UI)
+            _ = LoadUserBadgesAsync(App.GParam.UserId);
 
             // ИСПРАВЛЕНИЕ: Подписываемся на онлайн-статус для себя
             _trackedUserId = App.GParam.UserId;
@@ -409,8 +324,8 @@ namespace BarkFluff.Client.WPF.UserControls
 
                 LoadAvatar(avatarUrl);
 
-                // Скрываем баджи по умолчанию
-                SetBadges(null);
+                // Загружаем баджи асинхронно (не блокируем UI)
+                _ = LoadUserBadgesAsync(userId);
 
                 // Подписываемся на онлайн-статус
                 _trackedUserId = userId;
@@ -497,33 +412,92 @@ namespace BarkFluff.Client.WPF.UserControls
             SetBadges(userProfile.Badges);
         }
 
-        public void SetBadges(BadgeInfo[]? badges)
+        /// <summary>
+        /// Устанавливает отображение баджей пользователя
+        /// </summary>
+        /// <param name="badges">Массив баджей для отображения (до 3 штук)</param>
+        private void SetBadges(BadgeInfo[]? badges)
         {
             // Сначала скрываем все баджи
-            Badge1Visibility = Visibility.Collapsed;
-            Badge2Visibility = Visibility.Collapsed;
-            Badge3Visibility = Visibility.Collapsed;
+            Badge1.Visibility = Visibility.Collapsed;
+            Badge2.Visibility = Visibility.Collapsed;
+            Badge3.Visibility = Visibility.Collapsed;
+            BadgesContainer.Visibility = Visibility.Collapsed;
 
-            if (badges == null) return;
+            if (badges == null || badges.Length == 0)
+                return;
+
+            // Показываем контейнер баджей
+            BadgesContainer.Visibility = Visibility.Visible;
 
             // Показываем до 3 баджей
             for (int i = 0; i < Math.Min(badges.Length, 3); i++)
             {
+                var badge = badges[i];
+
                 switch (i)
                 {
                     case 0:
-                        Badge1Visibility = Visibility.Visible;
-                        Badge1Icon = badges[i].Icon;
+                        Badge1.Visibility = Visibility.Visible;
+                        Badge1Image.FileUrl = badge.ImageUrl;
+                        Badge1Title.Text = badge.Name ?? string.Empty;
+                        Badge1Description.Text = badge.Description ?? string.Empty;
                         break;
                     case 1:
-                        Badge2Visibility = Visibility.Visible;
-                        Badge2Icon = badges[i].Icon;
+                        Badge2.Visibility = Visibility.Visible;
+                        Badge2Image.FileUrl = badge.ImageUrl;
+                        Badge2Title.Text = badge.Name ?? string.Empty;
+                        Badge2Description.Text = badge.Description ?? string.Empty;
                         break;
                     case 2:
-                        Badge3Visibility = Visibility.Visible;
-                        Badge3Icon = badges[i].Icon;
+                        Badge3.Visibility = Visibility.Visible;
+                        Badge3Image.FileUrl = badge.ImageUrl;
+                        Badge3Title.Text = badge.Name ?? string.Empty;
+                        Badge3Description.Text = badge.Description ?? string.Empty;
                         break;
                 }
+            }
+        }
+
+        /// <summary>
+        /// Загружает баджи пользователя с сервера
+        /// </summary>
+        /// <param name="userId">ID пользователя</param>
+        private async Task LoadUserBadgesAsync(long userId)
+        {
+            try
+            {
+                // Запрашиваем только топ-3 баджа для профиля
+                var (error, protoBadges) = await App.ServerCommunication.GetUserBadges(App.GParam, userId, limit: 3);
+
+                if (!error.IsSuccess || protoBadges == null || protoBadges.Count == 0)
+                {
+                    // Нет баджей или ошибка - скрываем секцию
+                    Dispatcher.Invoke(() => SetBadges(null));
+                    return;
+                }
+
+                // Конвертируем proto баджи в BadgeInfo
+                var badgeInfos = protoBadges
+                    .Select(ub => new BadgeInfo
+                    {
+                        ImageUrl = ub.Badge.ImageUrl,
+                        Name = ub.Badge.Name,
+                        Description = ub.Badge.Description,
+                        Priority = ub.Priority
+                    })
+                    .ToArray();
+
+                // Обновляем UI в главном потоке
+                Dispatcher.Invoke(() => SetBadges(badgeInfos));
+            }
+            catch (Exception ex)
+            {
+                // В случае ошибки просто скрываем баджи (не критично для профиля)
+                Dispatcher.Invoke(() => SetBadges(null));
+
+                App.ErideMessage?.AddMessage($"Не удалось загрузить баджи пользователя {userId}: {ex.Message}",
+                    new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Warning });
             }
         }
 

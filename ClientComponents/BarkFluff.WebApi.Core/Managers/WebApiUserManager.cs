@@ -234,5 +234,41 @@ namespace BarkFluff.WebApi.Core.Managers
                 return (new ErrorReturner(false, "Неверный код двухфакторной аутентификации (OTP)"), null, null, true);
             }
         }
+
+        /// <summary>
+        /// Получает баджи пользователя с сервера
+        /// </summary>
+        /// <param name="globalParam">Глобальные параметры</param>
+        /// <param name="userId">ID пользователя (0 для текущего пользователя)</param>
+        /// <param name="limit">Лимит количества баджей (null для всех, 3 для профиля)</param>
+        /// <returns>Список баджей пользователя, отсортированных по приоритету</returns>
+        public async Task<(ErrorReturner error, List<Proto.Users.UserBadge>? badges)> GetUserBadges(
+            GlobalParam globalParam,
+            long userId = 0,
+            int? limit = null)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var request = new Proto.Users.GetUserBadgesRequest
+                    {
+                        UserId = userId
+                    };
+
+                    if (limit.HasValue)
+                    {
+                        request.Limit = limit.Value;
+                    }
+
+                    var response = await UsersAC!.GetUserBadgesAsync(request);
+                    return (new ErrorReturner(true), response.Badges.ToList());
+                }, globalParam);
+            }
+            catch (Exception ex)
+            {
+                return (new ErrorReturner(false, $"Ошибка получения баджей пользователя: {ex.Message}"), null);
+            }
+        }
     }
 }

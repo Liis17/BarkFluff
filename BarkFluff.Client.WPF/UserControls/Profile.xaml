@@ -129,35 +129,103 @@
 
                         <!--  Баджи  -->
                         <StackPanel
-                            Margin="0,0,0,0"
+                            x:Name="BadgesContainer"
+                            Margin="0,8,0,0"
                             HorizontalAlignment="Center"
-                            Orientation="Horizontal">
+                            Orientation="Horizontal"
+                            Visibility="Collapsed">
                             <Border
                                 x:Name="Badge1"
-                                Style="{StaticResource ProfileBadgeStyle}"
+                                Width="32"
+                                Height="32"
+                                Margin="4,0"
+                                Background="Transparent"
+                                CornerRadius="16"
+                                ToolTipService.ShowDuration="10000"
                                 Visibility="Collapsed">
-                                <ui:SymbolIcon
-                                    FontSize="14"
-                                    Foreground="Gold"
-                                    Symbol="Crown24" />
+                                <local:CachedImage
+                                    x:Name="Badge1Image"
+                                    FileType="Image"
+                                    Stretch="UniformToFill" />
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="250">
+                                            <TextBlock
+                                                x:Name="Badge1Title"
+                                                FontWeight="SemiBold"
+                                                Text=""
+                                                TextWrapping="Wrap" />
+                                            <TextBlock
+                                                x:Name="Badge1Description"
+                                                Margin="0,4,0,0"
+                                                Foreground="#B0FFFFFF"
+                                                Text=""
+                                                TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
                             </Border>
                             <Border
                                 x:Name="Badge2"
-                                Style="{StaticResource ProfileBadgeStyle}"
+                                Width="32"
+                                Height="32"
+                                Margin="4,0"
+                                Background="Transparent"
+                                CornerRadius="16"
+                                ToolTipService.ShowDuration="10000"
                                 Visibility="Collapsed">
-                                <ui:SymbolIcon
-                                    FontSize="14"
-                                    Foreground="LightBlue"
-                                    Symbol="Shield24" />
+                                <local:CachedImage
+                                    x:Name="Badge2Image"
+                                    FileType="Image"
+                                    Stretch="UniformToFill" />
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="250">
+                                            <TextBlock
+                                                x:Name="Badge2Title"
+                                                FontWeight="SemiBold"
+                                                Text=""
+                                                TextWrapping="Wrap" />
+                                            <TextBlock
+                                                x:Name="Badge2Description"
+                                                Margin="0,4,0,0"
+                                                Foreground="#B0FFFFFF"
+                                                Text=""
+                                                TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
                             </Border>
                             <Border
                                 x:Name="Badge3"
-                                Style="{StaticResource ProfileBadgeStyle}"
+                                Width="32"
+                                Height="32"
+                                Margin="4,0"
+                                Background="Transparent"
+                                CornerRadius="16"
+                                ToolTipService.ShowDuration="10000"
                                 Visibility="Collapsed">
-                                <ui:SymbolIcon
-                                    FontSize="14"
-                                    Foreground="Orange"
-                                    Symbol="Star24" />
+                                <local:CachedImage
+                                    x:Name="Badge3Image"
+                                    FileType="Image"
+                                    Stretch="UniformToFill" />
+                                <Border.ToolTip>
+                                    <ToolTip>
+                                        <StackPanel MaxWidth="250">
+                                            <TextBlock
+                                                x:Name="Badge3Title"
+                                                FontWeight="SemiBold"
+                                                Text=""
+                                                TextWrapping="Wrap" />
+                                            <TextBlock
+                                                x:Name="Badge3Description"
+                                                Margin="0,4,0,0"
+                                                Foreground="#B0FFFFFF"
+                                                Text=""
+                                                TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
                             </Border>
                         </StackPanel>
                     </StackPanel>
@@ -174,7 +242,7 @@
                     CornerRadius="10">
                     <StackPanel>
                         <!--  Описание  -->
-                        <StackPanel x:Name="DescriptionSection" Visibility="Visible">
+                        <StackPanel x:Name="DescriptionSection" Visibility="Collapsed">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
