@@ -10,8 +10,8 @@
     <Grid>
         <Image
             x:Name="ContentImage"
-            HorizontalAlignment="Stretch"
-            VerticalAlignment="Stretch"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
             RenderOptions.BitmapScalingMode="HighQuality"
             Stretch="{Binding Stretch, RelativeSource={RelativeSource AncestorType=UserControl}}" />
     </Grid>
