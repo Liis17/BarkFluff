@@ -46,12 +46,7 @@
                         <ControlTemplate.Triggers>
                             <!--  Триггер: выбранная вкладка  -->
                             <Trigger Property="IsChecked" Value="True">
-                                <!--  ВАЖНО: Используем ключ из библиотеки Wpf.Ui  -->
-                                <!--  Он автоматически подтянет цвет из настроек Windows 11  -->
                                 <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource SystemAccentColorPrimaryBrush}" />
-
-                                <!--  Если SystemAccentColorPrimaryBrush не сработает (зависит от версии библиотеки), попробуйте:  -->
-                                <!--  Value="{DynamicResource SystemAccentBrush}"  -->
 
                                 <Setter Property="Foreground" Value="White" />
                             </Trigger>
@@ -81,7 +76,7 @@
                 <!--  Верхняя секция с аватаром и основной информацией  -->
                 <Border
                     Grid.Row="0"
-                    Padding="24,32,24,24"
+                    Padding="24,24,24,0"
                     CornerRadius="12,12,0,0">
 
                     <StackPanel HorizontalAlignment="Center">
@@ -90,7 +85,7 @@
                             x:Name="AvatarCachedImage"
                             Width="110"
                             Height="110"
-                            Margin="0,0,0,16"
+                            Margin="0,0,0,4"
                             HorizontalAlignment="Center"
                             CornerRadius="55"
                             EnableDynamicShadow="False"
@@ -100,7 +95,7 @@
                         <!--  Публичное имя  -->
                         <TextBlock
                             x:Name="PublicNameTextBlock"
-                            Margin="0,0,0,8"
+                            Margin="0,0,0,0"
                             HorizontalAlignment="Center"
                             FontFamily="{DynamicResource AdwaitaSans}"
                             FontSize="24"
@@ -112,7 +107,7 @@
                         <!--  Онлайн статус  -->
                         <StackPanel
                             x:Name="OnlineStatusSection"
-                            Margin="0,4,0,0"
+                            Margin="0,0,0,0"
                             HorizontalAlignment="Center"
                             Orientation="Horizontal"
                             Visibility="Visible">
@@ -134,7 +129,7 @@
 
                         <!--  Баджи  -->
                         <StackPanel
-                            Margin="0,8,0,0"
+                            Margin="0,0,0,0"
                             HorizontalAlignment="Center"
                             Orientation="Horizontal">
                             <Border
