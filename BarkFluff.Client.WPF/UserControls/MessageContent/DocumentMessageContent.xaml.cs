@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace BarkFluff.Client.WPF.UserControls.MessageContent
 {
@@ -11,6 +12,7 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
         public DocumentMessageContent()
         {
             InitializeComponent();
+            DocumentPanel.MouseLeftButtonDown += DocumentPanel_MouseLeftButtonDown;
         }
 
         public DocumentMessageContent(string fileId, string previewUrl, long size) : this()
@@ -30,6 +32,19 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
             {
                 DocumentFileSize.Visibility = Visibility.Collapsed;
             }
+        }
+
+        private void DocumentPanel_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (!string.IsNullOrEmpty(FileId))
+            {
+                var msgType = new Services.Erida.MessageType
+                {
+                    Type = Services.Erida.MessageType.MessageTypeEnum.Info
+                };
+                App.ErideMessage.AddMessage($"Document clicked: {FileId}", msgType);
+            }
+            e.Handled = true;
         }
 
         public void SetFileName(string fileName)
