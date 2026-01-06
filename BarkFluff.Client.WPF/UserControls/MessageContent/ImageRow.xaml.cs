@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 
+using BarkFluff.Client.WPF.Pages;
 using BarkFluff.Client.WPF.Services.App.Caching;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
@@ -168,7 +169,7 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
             // Add click handler
             border.MouseLeftButtonDown += (sender, e) =>
             {
-                OnImageClick(fileId);
+                OnImageClick(attachment);
                 e.Handled = true;
             };
 
@@ -243,13 +244,27 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
         /// <summary>
         /// Handles image click event
         /// </summary>
-        private void OnImageClick(string fileId)
+        private void OnImageClick(AttachmentsModel clickedAttachment)
         {
-            var msgType = new Services.Erida.MessageType
-            {
-                Type = Services.Erida.MessageType.MessageTypeEnum.Info
-            };
-            App.ErideMessage.AddMessage($"Image clicked: {fileId}", msgType);
+            // Найти индекс кликнутого вложения
+            var index = _attachments.IndexOf(clickedAttachment);
+            if (index < 0) return;
+
+            // Открыть ImageViewer со всеми картинками из ряда
+            OpenImageViewer(_attachments, index);
+        }
+
+        private void OpenImageViewer(List<AttachmentsModel> attachments, int currentIndex)
+        {
+            var messengerPage = FindParent<MessengerPage>(this);
+            messengerPage?.OpenImageViewer(attachments, currentIndex);
+        }
+
+        private T FindParent<T>(DependencyObject child) where T : DependencyObject
+        {
+            var parent = VisualTreeHelper.GetParent(child);
+            if (parent == null) return null;
+            return parent is T ? (T)parent : FindParent<T>(parent);
         }
     }
 }
