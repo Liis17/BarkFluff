@@ -8,9 +8,10 @@
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     d:DesignHeight="700"
     d:DesignWidth="500"
+    Cursor=""
     mc:Ignorable="d">
     <Border
-        Height="400"
+        Height="900"
         HorizontalAlignment="Stretch"
         VerticalAlignment="Stretch"
         Background="#1f1f1f"
@@ -34,7 +35,10 @@
                         HorizontalAlignment="Left"
                         PlaceholderEnabled="True"
                         PlaceholderText="Сюда вставить FileID" />
-                    <ui:Button Click="GetFileLink" Margin="0" Content="Get" />
+                    <ui:Button
+                        Margin="0"
+                        Click="GetFileLink"
+                        Content="Get" />
                 </StackPanel>
 
                 <ui:TextBox
@@ -47,6 +51,24 @@
                     IsReadOnly="True"
                     PlaceholderEnabled="True"
                     PlaceholderText="Тут будет ссылка" />
+
+                <TextBlock
+                    Margin="10,20,10,0"
+                    Style="{DynamicResource HeaderSettings}"
+                    Text="Редактор видео" />
+                <StackPanel Orientation="Horizontal">
+                    <ui:TextBox
+                        x:Name="VideoPathText"
+                        Width="350"
+                        Margin="10,0,10,0"
+                        HorizontalAlignment="Left"
+                        PlaceholderEnabled="True"
+                        PlaceholderText="Путь к видео файлу" />
+                    <ui:Button
+                        Margin="0"
+                        Click="OpenVideoEditor"
+                        Content="Открыть редактор" />
+                </StackPanel>
             </StackPanel>
         </Border>
     </Border>
