@@ -125,6 +125,17 @@
                 Closed="OnImageViewerClosed" />
         </Grid>
 
+        <!--  Video Player Overlay  -->
+        <Grid
+            x:Name="VideoPlayerOverlay"
+            Margin="-30"
+            Panel.ZIndex="1003"
+            Visibility="Collapsed">
+            <uc:VideoPlayer
+                x:Name="VideoPlayer"
+                Closed="OnVideoPlayerClosed" />
+        </Grid>
+
         <!--  Боковая панель  -->
         <Grid
             x:Name="SidePanel"
