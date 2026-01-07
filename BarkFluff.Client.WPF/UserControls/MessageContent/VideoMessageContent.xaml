@@ -21,14 +21,14 @@
                     RadiusY="12" />
             </Border.Clip>
             <Grid>
-                <!--  Video preview image  -->
-                <local:CachedImage
-                    x:Name="CachedPreviewImage"
+                <!--  Video preview image (placeholder)  -->
+                <Image
+                    x:Name="PreviewImage"
                     MaxWidth="400"
                     MaxHeight="300"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
-                    DecodePixelWidth="400"
+                    Source="pack://application:,,,/BarkFluff;component/Resources/Placeholders/video.png"
                     Stretch="Uniform" />
 
                 <!--  Play button overlay  -->
