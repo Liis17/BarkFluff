@@ -3,13 +3,339 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:local="clr-namespace:BarkFluff.Client.WPF.UserControls"
-    xmlns:local1="clr-namespace:BarkFluff.Client.WPF.Services.App"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    d:DesignHeight="450"
-    d:DesignWidth="800"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    d:DesignHeight="1080"
+    d:DesignWidth="1920"
+    Focusable="True"
     mc:Ignorable="d">
-    <Grid>
-        <local1:FFPlayHost x:Name="ffHost" />
+
+    <UserControl.Resources>
+        <!--  Стиль для кнопок плеера  -->
+        <Style x:Key="ViewerButton" TargetType="ButtonBase">
+            <Setter Property="Width" Value="50" />
+            <Setter Property="Height" Value="50" />
+            <Setter Property="Background" Value="#80000000" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ButtonBase">
+                        <Border
+                            Background="{TemplateBinding Background}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="25">
+                            <ContentPresenter
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#B0000000" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.3" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!--  Стиль для ToggleButton (Loop)  -->
+        <Style
+            x:Key="LoopToggleButton"
+            BasedOn="{StaticResource ViewerButton}"
+            TargetType="ToggleButton">
+            <Setter Property="Width" Value="40" />
+            <Setter Property="Height" Value="40" />
+            <Style.Triggers>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter Property="Background" Value="#B0007ACC" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!--  Анимации  -->
+        <Storyboard x:Key="FadeIn">
+            <DoubleAnimation
+                Storyboard.TargetProperty="Opacity"
+                From="0"
+                To="1"
+                Duration="0:0:0.3" />
+        </Storyboard>
+
+        <Storyboard x:Key="FadeOut">
+            <DoubleAnimation
+                Storyboard.TargetProperty="Opacity"
+                From="1"
+                To="0"
+                Duration="0:0:0.3" />
+        </Storyboard>
+    </UserControl.Resources>
+
+    <!--  Root Grid с темным фоном  -->
+    <Grid Background="#D9000000" MouseLeftButtonDown="OnBackgroundClick">
+        <!--  MediaElement Container  -->
+        <Grid
+            x:Name="MediaContainer"
+            Background="Transparent"
+            MouseLeftButtonDown="OnMediaContainerClick">
+            <MediaElement
+                x:Name="VideoElement"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                LoadedBehavior="Manual"
+                ScrubbingEnabled="True"
+                Stretch="Uniform"
+                UnloadedBehavior="Stop"
+                MediaEnded="OnMediaEnded"
+                MediaFailed="OnMediaFailed"
+                MediaOpened="OnMediaOpened"
+                MouseWheel="OnMediaMouseWheel">
+
+                <!--  Контекстное меню  -->
+                <MediaElement.ContextMenu>
+                    <ContextMenu
+                        Background="#FF3C3C3C"
+                        BorderBrush="#FF505050"
+                        BorderThickness="1">
+                        <ContextMenu.Resources>
+                            <Style TargetType="MenuItem">
+                                <Setter Property="Foreground" Value="White" />
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
+                                <Setter Property="FontSize" Value="13" />
+                                <Setter Property="Padding" Value="10,8" />
+                            </Style>
+                        </ContextMenu.Resources>
+
+                        <MenuItem Click="OnToggleLoopClick" Header="Включить/выключить повтор">
+                            <MenuItem.Icon>
+                                <ui:SymbolIcon FontSize="14" Symbol="ArrowRepeatAll20" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+
+                        <Separator Margin="6,4" Background="#FF505050" />
+
+                        <MenuItem Click="OnOpenInExplorerClick" Header="Открыть папку с видео">
+                            <MenuItem.Icon>
+                                <ui:SymbolIcon FontSize="14" Symbol="Folder20" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+
+                        <MenuItem Click="OnCopyPathClick" Header="Скопировать путь">
+                            <MenuItem.Icon>
+                                <ui:SymbolIcon FontSize="14" Symbol="Copy20" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+
+                        <MenuItem Click="OnCopyFrameClick" Header="Скопировать текущий кадр">
+                            <MenuItem.Icon>
+                                <ui:SymbolIcon FontSize="14" Symbol="Screenshot20" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                    </ContextMenu>
+                </MediaElement.ContextMenu>
+            </MediaElement>
+        </Grid>
+
+        <!--  Close Button (верхний правый угол)  -->
+        <Button
+            x:Name="CloseButton"
+            Width="50"
+            Height="50"
+            Margin="0,60,30,0"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Top"
+            Click="OnCloseClick"
+            Style="{StaticResource ViewerButton}"
+            ToolTip="Закрыть (Esc)">
+            <ui:SymbolIcon
+                FontSize="20"
+                Foreground="White"
+                Symbol="Dismiss24" />
+        </Button>
+
+        <!--  Controls Panel (нижний центр)  -->
+        <Border
+            x:Name="ControlsPanel"
+            Margin="20"
+            Padding="15,10"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Bottom"
+            Background="#CC000000"
+            CornerRadius="12"
+            MinWidth="600">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <!--  Timeline  -->
+                    <RowDefinition Height="Auto" />
+                    <!--  Controls  -->
+                </Grid.RowDefinitions>
+
+                <!--  Timeline Slider  -->
+                <Slider
+                    x:Name="TimelineSlider"
+                    Grid.Row="0"
+                    Margin="0,0,0,10"
+                    Maximum="100"
+                    Minimum="0"
+                    Value="0"
+                    PreviewMouseDown="OnTimelineMouseDown"
+                    PreviewMouseUp="OnTimelineMouseUp"
+                    ValueChanged="OnTimelineValueChanged" />
+
+                <!--  Bottom Controls Row  -->
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <!--  Play/Pause  -->
+                        <ColumnDefinition Width="Auto" />
+                        <!--  Time Display  -->
+                        <ColumnDefinition Width="*" />
+                        <!--  Spacer  -->
+                        <ColumnDefinition Width="Auto" />
+                        <!--  Loop  -->
+                        <ColumnDefinition Width="Auto" />
+                        <!--  Volume  -->
+                    </Grid.ColumnDefinitions>
+
+                    <!--  Play/Pause Button  -->
+                    <Button
+                        x:Name="PlayPauseButton"
+                        Grid.Column="0"
+                        Width="40"
+                        Height="40"
+                        Margin="0,0,10,0"
+                        Click="OnPlayPauseClick"
+                        Style="{StaticResource ViewerButton}"
+                        ToolTip="Воспроизведение/Пауза (Пробел)">
+                        <ui:SymbolIcon x:Name="PlayPauseIcon" FontSize="20" Symbol="Play24" />
+                    </Button>
+
+                    <!--  Time Display (клик для переключения режима)  -->
+                    <Border
+                        Grid.Column="1"
+                        Padding="10,5"
+                        Background="#80000000"
+                        CornerRadius="8"
+                        Cursor="Hand"
+                        MouseLeftButtonDown="OnTimeDisplayClick">
+                        <TextBlock
+                            x:Name="TimeDisplay"
+                            FontFamily="{DynamicResource AdwaitaSans}"
+                            FontSize="13"
+                            Foreground="White"
+                            Text="00:00 / 00:00" />
+                    </Border>
+
+                    <!--  Loop Button  -->
+                    <ToggleButton
+                        x:Name="LoopButton"
+                        Grid.Column="3"
+                        Margin="10,0"
+                        Click="OnLoopToggle"
+                        Style="{StaticResource LoopToggleButton}"
+                        ToolTip="Повтор">
+                        <ui:SymbolIcon FontSize="16" Symbol="ArrowRepeatAll20" />
+                    </ToggleButton>
+
+                    <!--  Volume Control  -->
+                    <StackPanel
+                        Grid.Column="4"
+                        Orientation="Horizontal">
+                        <Button
+                            x:Name="VolumeButton"
+                            Width="40"
+                            Height="40"
+                            Margin="0,0,10,0"
+                            Click="OnVolumeMuteToggle"
+                            Style="{StaticResource ViewerButton}"
+                            ToolTip="Звук">
+                            <ui:SymbolIcon x:Name="VolumeIcon" FontSize="20" Symbol="Speaker220" />
+                        </Button>
+                        <Slider
+                            x:Name="VolumeSlider"
+                            Width="100"
+                            VerticalAlignment="Center"
+                            Maximum="100"
+                            Minimum="0"
+                            Value="50"
+                            MouseWheel="OnVolumeMouseWheel"
+                            ValueChanged="OnVolumeChanged" />
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!--  Navigation Panel (если несколько видео)  -->
+        <StackPanel
+            x:Name="NavigationPanel"
+            Margin="20,80,20,20"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Top"
+            Orientation="Horizontal"
+            Visibility="Collapsed">
+            <Button
+                x:Name="PrevButton"
+                Margin="0,0,15,0"
+                Click="OnPrevClick"
+                Style="{StaticResource ViewerButton}"
+                ToolTip="Предыдущее (←)">
+                <ui:SymbolIcon
+                    FontSize="20"
+                    Foreground="White"
+                    Symbol="ChevronLeft20" />
+            </Button>
+
+            <Border
+                Padding="15,10"
+                Background="#80000000"
+                CornerRadius="15">
+                <TextBlock
+                    x:Name="IndexIndicator"
+                    FontFamily="{DynamicResource AdwaitaSans}"
+                    FontSize="14"
+                    FontWeight="Medium"
+                    Foreground="White"
+                    Text="1 / 1" />
+            </Border>
+
+            <Button
+                x:Name="NextButton"
+                Margin="15,0,0,0"
+                Click="OnNextClick"
+                Style="{StaticResource ViewerButton}"
+                ToolTip="Следующее (→)">
+                <ui:SymbolIcon
+                    FontSize="20"
+                    Foreground="White"
+                    Symbol="ChevronRight20" />
+            </Button>
+        </StackPanel>
+
+        <!--  Loading Overlay  -->
+        <Grid
+            x:Name="LoadingOverlay"
+            Background="#40000000"
+            Visibility="Collapsed">
+            <StackPanel
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center">
+                <ProgressBar
+                    Width="200"
+                    Height="4"
+                    IsIndeterminate="True" />
+                <TextBlock
+                    Margin="0,15,0,0"
+                    FontFamily="{DynamicResource AdwaitaSans}"
+                    FontSize="14"
+                    Foreground="White"
+                    Text="Загрузка видео..." />
+            </StackPanel>
+        </Grid>
     </Grid>
 </UserControl>
