@@ -371,28 +371,39 @@ namespace BarkFluff.Client.WPF.UserControls
 
             int currentBitrate = _videoMetadata.Bitrate;
 
-            // Установить максимум слайдера в зависимости от разрешения
-            UpdateBitrateSliderMaximum(_videoMetadata.Width, _videoMetadata.Height);
+            // Максимум слайдера = текущий битрейт видео
+            BitrateSlider.Maximum = currentBitrate;
+            BitrateSlider.Minimum = 500;
+            BitrateSlider.TickFrequency = Math.Max(100, currentBitrate / 20);
+            BitrateSlider.Value = currentBitrate;
 
-            BitrateSlider.Value = Math.Min(currentBitrate, BitrateSlider.Maximum);
-            _editSettings.TargetBitrate = (int)BitrateSlider.Value;
+            _editSettings.TargetBitrate = currentBitrate;
 
             UpdateBitrateValueText();
         }
 
         private void UpdateBitrateSliderMaximum(int width, int height)
         {
-            // Рассчитать максимальный битрейт в зависимости от разрешения
-            // Формула: ширина * высота * 0.15 бит на пиксель (типичное значение для H.264)
-            int maxBitrate = (int)(width * height * 0.15 / 1000); // в kbps
+            if (_videoMetadata == null) return;
+
+            // Рассчитать пропорцию разрешения относительно оригинала
+            double originalPixels = _videoMetadata.Width * _videoMetadata.Height;
+            double targetPixels = width * height;
+            double resolutionRatio = targetPixels / originalPixels;
+
+            // Максимальный битрейт пропорционален разрешению
+            // Но с учетом что при меньшем разрешении кодек работает эффективнее
+            // Формула: оригинальный_битрейт * (0.4 + 0.6 * соотношение)
+            // Это дает: 480p от 1080p → ~0.5x битрейт, 720p от 1080p → ~0.7x битрейт
+            int maxBitrate = (int)(_videoMetadata.Bitrate * (0.4 + 0.6 * resolutionRatio));
 
             // Ограничения
-            maxBitrate = Math.Max(500, Math.Min(maxBitrate, 20000));
+            maxBitrate = Math.Max(500, Math.Min(maxBitrate, _videoMetadata.Bitrate));
 
             BitrateSlider.Maximum = maxBitrate;
-            BitrateSlider.TickFrequency = maxBitrate / 20;
+            BitrateSlider.TickFrequency = Math.Max(100, maxBitrate / 20);
 
-            // Если текущее значение больше максимума, уменьшить
+            // Если текущее значение больше нового максимума, установить на максимум
             if (BitrateSlider.Value > maxBitrate)
             {
                 BitrateSlider.Value = maxBitrate;

@@ -236,15 +236,14 @@
                                 Margin="0,0,0,5"
                                 FontSize="12"
                                 Foreground="#4CAF50"
-                                Text="5000 kbps" />
+                                Text="0 kbps" />
                             <Slider
                                 x:Name="BitrateSlider"
                                 Margin="0,0,0,10"
                                 Maximum="10000"
                                 Minimum="500"
-                                TickFrequency="500"
+                                TickFrequency="100"
                                 TickPlacement="BottomRight"
-                                Value="5000"
                                 ValueChanged="OnBitrateChanged" />
 
                             <TextBlock
