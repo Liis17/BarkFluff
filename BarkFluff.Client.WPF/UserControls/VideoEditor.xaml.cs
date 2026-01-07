@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 using BarkFluff.Client.WPF.Services.App.Converter;
 
@@ -29,13 +30,11 @@ namespace BarkFluff.Client.WPF.UserControls
         private bool _isDraggingCurrent;
         private Point _dragStartPoint;
 
-        // ComboBox items
-        private class BitrateOption
-        {
-            public string Label { get; set; } = string.Empty;
-            public int Value { get; set; }
-        }
+        // Playback state
+        private DispatcherTimer? _playbackTimer;
+        private bool _isPlaying;
 
+        // Resolution options
         private class ResolutionOption
         {
             public string Label { get; set; } = string.Empty;
@@ -53,6 +52,11 @@ namespace BarkFluff.Client.WPF.UserControls
 
             _editSettings = new VideoEditSettings();
 
+            // Таймер для обновления позиции воспроизведения
+            _playbackTimer = new DispatcherTimer();
+            _playbackTimer.Interval = TimeSpan.FromMilliseconds(100);
+            _playbackTimer.Tick += OnPlaybackTimerTick;
+
             Loaded += VideoEditor_Loaded;
             _ = LoadVideoAsync(videoPath);
         }
@@ -61,6 +65,23 @@ namespace BarkFluff.Client.WPF.UserControls
         {
             _timelineWidth = TimelineCanvas.ActualWidth - 20; // Учитываем margin
             UpdateTimelineVisuals();
+        }
+
+        private void OnPlaybackTimerTick(object? sender, EventArgs e)
+        {
+            if (_videoMetadata == null || !_isPlaying) return;
+
+            _currentTime = PreviewElement.Position.TotalSeconds;
+
+            // Если достигли конца обрезки, остановить
+            if (_currentTime >= _endTime)
+            {
+                _currentTime = _endTime;
+                StopPlayback();
+            }
+
+            UpdateTimelineVisuals();
+            UpdateTimeLabels();
         }
 
         #region Loading
@@ -111,7 +132,7 @@ namespace BarkFluff.Client.WPF.UserControls
 
                 // Инициализация UI
                 InitializeTimeline();
-                PopulateBitrateOptions();
+                InitializeBitrateSlider();
                 PopulateResolutionOptions();
                 UpdateInfoText();
 
@@ -120,6 +141,18 @@ namespace BarkFluff.Client.WPF.UserControls
                 {
                     PreviewElement.Source = new Uri(videoPath, UriKind.Absolute);
                     PreviewElement.Position = TimeSpan.Zero;
+                    PreviewElement.MediaOpened += (s, args) =>
+                    {
+                        // Видео загружено успешно
+                        if (PreviewElement.NaturalDuration.HasTimeSpan)
+                        {
+                            _videoMetadata.Duration = PreviewElement.NaturalDuration.TimeSpan.TotalSeconds;
+                            _endTime = _videoMetadata.Duration;
+                            _editSettings.EndTime = _endTime;
+                            UpdateTimelineVisuals();
+                            UpdateTimeLabels();
+                        }
+                    };
                 }
                 catch (Exception ex)
                 {
@@ -330,32 +363,54 @@ namespace BarkFluff.Client.WPF.UserControls
 
         #endregion
 
-        #region ComboBox Population
+        #region Bitrate and Resolution Controls
 
-        private void PopulateBitrateOptions()
+        private void InitializeBitrateSlider()
         {
             if (_videoMetadata == null) return;
 
             int currentBitrate = _videoMetadata.Bitrate;
 
-            var options = new[]
-            {
-                new BitrateOption { Label = $"Оригинал ({currentBitrate} kbps)", Value = currentBitrate },
-                new BitrateOption { Label = $"{(int)(currentBitrate * 0.75)} kbps", Value = (int)(currentBitrate * 0.75) },
-                new BitrateOption { Label = $"{(int)(currentBitrate * 0.5)} kbps", Value = (int)(currentBitrate * 0.5) },
-                new BitrateOption { Label = $"{(int)(currentBitrate * 0.25)} kbps", Value = (int)(currentBitrate * 0.25) }
-            };
+            // Установить максимум слайдера в зависимости от разрешения
+            UpdateBitrateSliderMaximum(_videoMetadata.Width, _videoMetadata.Height);
 
-            BitrateComboBox.ItemsSource = options;
-            BitrateComboBox.SelectedIndex = 0;
-            BitrateComboBox.SelectionChanged += (s, e) =>
+            BitrateSlider.Value = Math.Min(currentBitrate, BitrateSlider.Maximum);
+            _editSettings.TargetBitrate = (int)BitrateSlider.Value;
+
+            UpdateBitrateValueText();
+        }
+
+        private void UpdateBitrateSliderMaximum(int width, int height)
+        {
+            // Рассчитать максимальный битрейт в зависимости от разрешения
+            // Формула: ширина * высота * 0.15 бит на пиксель (типичное значение для H.264)
+            int maxBitrate = (int)(width * height * 0.15 / 1000); // в kbps
+
+            // Ограничения
+            maxBitrate = Math.Max(500, Math.Min(maxBitrate, 20000));
+
+            BitrateSlider.Maximum = maxBitrate;
+            BitrateSlider.TickFrequency = maxBitrate / 20;
+
+            // Если текущее значение больше максимума, уменьшить
+            if (BitrateSlider.Value > maxBitrate)
             {
-                if (BitrateComboBox.SelectedItem is BitrateOption option)
-                {
-                    _editSettings.TargetBitrate = option.Value;
-                    UpdateInfoText();
-                }
-            };
+                BitrateSlider.Value = maxBitrate;
+            }
+        }
+
+        private void OnBitrateChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (_videoMetadata == null) return;
+
+            _editSettings.TargetBitrate = (int)BitrateSlider.Value;
+            UpdateBitrateValueText();
+            UpdateInfoText();
+        }
+
+        private void UpdateBitrateValueText()
+        {
+            BitrateValueText.Text = $"{_editSettings.TargetBitrate} kbps";
         }
 
         private void PopulateResolutionOptions()
@@ -402,17 +457,70 @@ namespace BarkFluff.Client.WPF.UserControls
                 {
                     _editSettings.TargetWidth = option.Width;
                     _editSettings.TargetHeight = option.Height;
+
+                    // Обновить максимум слайдера битрейта при изменении разрешения
+                    UpdateBitrateSliderMaximum(option.Width, option.Height);
+
                     UpdateInfoText();
                 }
             };
         }
+
+        #endregion
+
+        #region Playback Controls
+
+        private void OnPlayPauseClick(object sender, RoutedEventArgs e)
+        {
+            if (_isPlaying)
+            {
+                PausePlayback();
+            }
+            else
+            {
+                StartPlayback();
+            }
+        }
+
+        private void StartPlayback()
+        {
+            if (_videoMetadata == null) return;
+
+            _isPlaying = true;
+            PreviewElement.Play();
+            _playbackTimer?.Start();
+
+            PlayPauseIcon.Symbol = Wpf.Ui.Controls.SymbolRegular.Pause24;
+        }
+
+        private void PausePlayback()
+        {
+            _isPlaying = false;
+            PreviewElement.Pause();
+            _playbackTimer?.Stop();
+
+            PlayPauseIcon.Symbol = Wpf.Ui.Controls.SymbolRegular.Play24;
+        }
+
+        private void StopPlayback()
+        {
+            _isPlaying = false;
+            PreviewElement.Pause();
+            _playbackTimer?.Stop();
+
+            PlayPauseIcon.Symbol = Wpf.Ui.Controls.SymbolRegular.Play24;
+        }
+
+        #endregion
 
         private void UpdateInfoText()
         {
             if (_videoMetadata == null) return;
 
             double duration = _endTime - _startTime;
-            double estimatedSizeMB = EstimateFileSize(duration, _editSettings.TargetBitrate);
+            double estimatedSizeMB = EstimateFileSize(duration, _editSettings.TargetBitrate,
+                _editSettings.TargetWidth, _editSettings.TargetHeight,
+                _videoMetadata.Width, _videoMetadata.Height);
 
             InfoText.Text = $"Исходное видео:\n" +
                             $"  Длительность: {FormatTime(_videoMetadata.Duration)}\n" +
@@ -425,16 +533,29 @@ namespace BarkFluff.Client.WPF.UserControls
                             $"  Примерный размер: ~{estimatedSizeMB:F1} МБ";
         }
 
-        private double EstimateFileSize(double durationSeconds, int bitrateKbps)
+        private double EstimateFileSize(double durationSeconds, int bitrateKbps,
+            int targetWidth, int targetHeight, int originalWidth, int originalHeight)
         {
-            // Оценка размера файла: (битрейт видео + битрейт аудио) * длительность
+            // Базовая оценка: (битрейт видео + битрейт аудио) * длительность
             // Аудио битрейт: 128 kbps
-            double totalBitrateKbps = bitrateKbps + 128;
+            double videoBitrateKbps = bitrateKbps;
+
+            // Корректировка с учетом изменения разрешения
+            // При уменьшении разрешения реальный битрейт может быть ниже заданного
+            double resolutionRatio = (double)(targetWidth * targetHeight) / (originalWidth * originalHeight);
+
+            // Если разрешение уменьшается значительно, корректируем битрейт
+            if (resolutionRatio < 1.0)
+            {
+                // Эмпирическая формула: реальный битрейт = заданный * (0.5 + 0.5 * ratio)
+                // Это учитывает что при меньшем разрешении кодек сжимает эффективнее
+                videoBitrateKbps *= (0.5 + 0.5 * resolutionRatio);
+            }
+
+            double totalBitrateKbps = videoBitrateKbps + 128;
             double sizeMB = (totalBitrateKbps * durationSeconds) / 8 / 1024;
             return sizeMB;
         }
-
-        #endregion
 
         #region Video Processing
 
@@ -478,11 +599,14 @@ namespace BarkFluff.Client.WPF.UserControls
 
                 // Успешно
                 HideProgressPanel();
+                EnableControls(); // ИСПРАВЛЕНИЕ: разблокировать UI перед закрытием
                 ShowSuccess("Видео успешно обработано!");
 
                 // Открыть проводник с файлом
                 OpenInExplorer(outputPath);
 
+                // Небольшая задержка перед закрытием чтобы пользователь увидел сообщение
+                await System.Threading.Tasks.Task.Delay(500);
                 CloseEditor();
             }
             catch (OperationCanceledException)
@@ -635,6 +759,10 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private void CloseEditor()
         {
+            // Остановить воспроизведение
+            StopPlayback();
+            _playbackTimer?.Stop();
+
             // Остановить превью
             try
             {

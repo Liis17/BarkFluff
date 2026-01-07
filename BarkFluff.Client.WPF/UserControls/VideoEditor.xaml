@@ -64,6 +64,29 @@
                         ScrubbingEnabled="True"
                         Stretch="Uniform" />
 
+                    <!--  Play/Pause Controls  -->
+                    <StackPanel
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Bottom"
+                        Margin="0,0,0,10"
+                        Orientation="Horizontal">
+                        <Button
+                            x:Name="PlayPauseButton"
+                            Width="50"
+                            Height="50"
+                            Background="#CC000000"
+                            BorderBrush="#4CAF50"
+                            BorderThickness="2"
+                            Click="OnPlayPauseClick"
+                            Cursor="Hand">
+                            <ui:SymbolIcon
+                                x:Name="PlayPauseIcon"
+                                FontSize="24"
+                                Foreground="White"
+                                Symbol="Play24" />
+                        </Button>
+                    </StackPanel>
+
                     <!--  Loading Overlay  -->
                     <Border
                         x:Name="LoadingOverlay"
@@ -203,18 +226,29 @@
                         CornerRadius="8">
                         <StackPanel>
                             <TextBlock
-                                Margin="0,0,0,10"
+                                Margin="0,0,0,5"
                                 FontSize="14"
                                 FontWeight="Bold"
                                 Foreground="White"
                                 Text="Качество (битрейт)" />
-                            <ComboBox
-                                x:Name="BitrateComboBox"
-                                DisplayMemberPath="Label"
-                                SelectedValuePath="Value" />
+                            <TextBlock
+                                x:Name="BitrateValueText"
+                                Margin="0,0,0,5"
+                                FontSize="12"
+                                Foreground="#4CAF50"
+                                Text="5000 kbps" />
+                            <Slider
+                                x:Name="BitrateSlider"
+                                Margin="0,0,0,10"
+                                Maximum="10000"
+                                Minimum="500"
+                                TickFrequency="500"
+                                TickPlacement="BottomRight"
+                                Value="5000"
+                                ValueChanged="OnBitrateChanged" />
 
                             <TextBlock
-                                Margin="0,20,0,10"
+                                Margin="0,10,0,10"
                                 FontSize="14"
                                 FontWeight="Bold"
                                 Foreground="White"
