@@ -168,8 +168,20 @@ namespace BarkFluff.Client.WPF.UserControls
                     return;
                 }
 
+                // Преобразовать относительный путь в абсолютный
+                string absolutePath;
+                if (!Path.IsPathRooted(videoPath))
+                {
+                    // Если путь относительный - преобразуем в абсолютный
+                    absolutePath = Path.GetFullPath(videoPath);
+                }
+                else
+                {
+                    absolutePath = videoPath;
+                }
+
                 // Установить источник и начать воспроизведение
-                VideoElement.Source = new Uri(videoPath, UriKind.Absolute);
+                VideoElement.Source = new Uri(absolutePath, UriKind.Absolute);
                 VideoElement.Play();
             }
             catch (Exception ex)
