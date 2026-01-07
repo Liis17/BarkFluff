@@ -2410,6 +2410,31 @@ namespace BarkFluff.Client.WPF.Pages
             ImageViewer.IsOpen = false;
         }
 
+        public void OpenVideoPlayer(List<AttachmentsModel> attachments, int currentIndex)
+        {
+            // Фильтровать только видео
+            var videoAttachments = attachments
+                .Where(a => a.Type == MessageAttachmentType.Video)
+                .ToList();
+
+            if (videoAttachments.Count == 0) return;
+
+            var adjustedIndex = Math.Min(currentIndex, videoAttachments.Count - 1);
+
+            VideoPlayer.Attachments = videoAttachments;
+            VideoPlayer.CurrentIndex = adjustedIndex;
+            VideoPlayer.IsOpen = true;
+            VideoPlayerOverlay.Visibility = Visibility.Visible;
+            VideoPlayer.Focus();
+        }
+
+        private void OnVideoPlayerClosed(object sender, EventArgs e)
+        {
+            VideoPlayerOverlay.Visibility = Visibility.Collapsed;
+            VideoPlayer.IsOpen = false;
+            VideoPlayer.StopAndCleanup();
+        }
+
         #endregion
     }
 }

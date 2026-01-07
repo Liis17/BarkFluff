@@ -293,8 +293,8 @@ namespace BarkFluff.Client.WPF.UserControls
                 TextContentPresenter.Content = null;
             }
 
-            // Set up video content
-            var videoContent = new VideoMessageContent(attachment.FileId, attachment.PreviewUrl);
+            // Set up video content - передаем ПОЛНЫЙ attachment
+            var videoContent = new VideoMessageContent(attachment);
             MediaContentPresenter.Content = videoContent;
             SetMediaContentMargin(false);
 
