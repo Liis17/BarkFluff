@@ -1,0 +1,341 @@
+<UserControl
+    x:Class="BarkFluff.Client.WPF.UserControls.VideoEditor"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:BarkFluff.Client.WPF.UserControls"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    d:DesignHeight="700"
+    d:DesignWidth="900"
+    mc:Ignorable="d">
+    <Border
+        Width="900"
+        Height="700"
+        HorizontalAlignment="Center"
+        VerticalAlignment="Center"
+        Background="#1f1f1f"
+        CornerRadius="12">
+        <Grid Margin="20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <!--  Header  -->
+                <RowDefinition Height="*" />
+                <!--  Video Preview  -->
+                <RowDefinition Height="Auto" />
+                <!--  Timeline  -->
+                <RowDefinition Height="Auto" />
+                <!--  Controls  -->
+                <RowDefinition Height="Auto" />
+                <!--  Buttons/Progress  -->
+            </Grid.RowDefinitions>
+
+            <!--  Header  -->
+            <Grid Row="0" Margin="0,0,0,20">
+                <TextBlock
+                    HorizontalAlignment="Left"
+                    Style="{DynamicResource HeaderSettings}"
+                    Text="Редактор видео" />
+                <Button
+                    x:Name="CloseButton"
+                    Width="32"
+                    Height="32"
+                    Padding="0"
+                    HorizontalAlignment="Right"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Click="OnCloseClick"
+                    Content="✕"
+                    Cursor="Hand"
+                    FontSize="18"
+                    Foreground="White" />
+            </Grid>
+
+            <!--  Video Preview  -->
+            <Border
+                Grid.Row="1"
+                Margin="0,0,0,20"
+                Background="Black"
+                CornerRadius="8">
+                <Grid>
+                    <MediaElement
+                        x:Name="PreviewElement"
+                        LoadedBehavior="Manual"
+                        ScrubbingEnabled="True"
+                        Stretch="Uniform" />
+
+                    <!--  Play/Pause Controls  -->
+                    <StackPanel
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Bottom"
+                        Margin="0,0,0,10"
+                        Orientation="Horizontal">
+                        <Button
+                            x:Name="PlayPauseButton"
+                            Width="50"
+                            Height="50"
+                            Background="#CC000000"
+                            BorderBrush="#4CAF50"
+                            BorderThickness="2"
+                            Click="OnPlayPauseClick"
+                            Cursor="Hand">
+                            <ui:SymbolIcon
+                                x:Name="PlayPauseIcon"
+                                FontSize="24"
+                                Foreground="White"
+                                Symbol="Play24" />
+                        </Button>
+                    </StackPanel>
+
+                    <!--  Loading Overlay  -->
+                    <Border
+                        x:Name="LoadingOverlay"
+                        Background="#CC000000"
+                        Visibility="Collapsed">
+                        <StackPanel
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center">
+                            <ui:ProgressRing IsIndeterminate="True" />
+                            <TextBlock
+                                x:Name="LoadingText"
+                                Margin="0,10,0,0"
+                                Foreground="White"
+                                Text="Загрузка метаданных..." />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!--  Timeline  -->
+            <Grid Row="2" Margin="0,0,0,20">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!--  Timeline Canvas  -->
+                <Border
+                    Grid.Row="0"
+                    Height="40"
+                    Background="#2a2a2a"
+                    CornerRadius="4">
+                    <Canvas
+                        x:Name="TimelineCanvas"
+                        Margin="10,0"
+                        ClipToBounds="True">
+                        <!--  Background track  -->
+                        <Border
+                            Height="8"
+                            Canvas.Top="16"
+                            Background="#404040"
+                            CornerRadius="4" />
+
+                        <!--  Selected region highlight  -->
+                        <Border
+                            x:Name="SelectedRegion"
+                            Height="8"
+                            Canvas.Top="16"
+                            Background="#4CAF50"
+                            CornerRadius="4" />
+
+                        <!--  Start trim thumb  -->
+                        <Border
+                            x:Name="StartTrimThumb"
+                            Width="3"
+                            Height="24"
+                            Canvas.Top="8"
+                            Background="#4CAF50"
+                            CornerRadius="2"
+                            Cursor="SizeWE"
+                            MouseLeftButtonDown="OnStartTrimMouseDown"
+                            MouseLeftButtonUp="OnThumbMouseUp"
+                            MouseMove="OnStartTrimMouseMove" />
+
+                        <!--  End trim thumb  -->
+                        <Border
+                            x:Name="EndTrimThumb"
+                            Width="3"
+                            Height="24"
+                            Canvas.Top="8"
+                            Background="#4CAF50"
+                            CornerRadius="2"
+                            Cursor="SizeWE"
+                            MouseLeftButtonDown="OnEndTrimMouseDown"
+                            MouseLeftButtonUp="OnThumbMouseUp"
+                            MouseMove="OnEndTrimMouseMove" />
+
+                        <!--  Current position thumb  -->
+                        <Border
+                            x:Name="CurrentPositionThumb"
+                            Width="3"
+                            Height="32"
+                            Canvas.Top="4"
+                            Background="#2196F3"
+                            CornerRadius="2"
+                            Cursor="Hand"
+                            MouseLeftButtonDown="OnCurrentPositionMouseDown"
+                            MouseLeftButtonUp="OnThumbMouseUp"
+                            MouseMove="OnCurrentPositionMouseMove" />
+                    </Canvas>
+                </Border>
+
+                <!--  Time labels  -->
+                <StackPanel
+                    Grid.Row="1"
+                    Margin="0,10,0,0"
+                    HorizontalAlignment="Center"
+                    Orientation="Horizontal">
+                    <TextBlock
+                        x:Name="StartTimeLabel"
+                        Foreground="#4CAF50"
+                        Text="00:00" />
+                    <TextBlock
+                        Margin="10,0"
+                        Foreground="White"
+                        Text="-" />
+                    <TextBlock
+                        x:Name="CurrentTimeLabel"
+                        Foreground="#2196F3"
+                        Text="00:00" />
+                    <TextBlock
+                        Margin="10,0"
+                        Foreground="White"
+                        Text="/" />
+                    <TextBlock
+                        x:Name="EndTimeLabel"
+                        Foreground="#4CAF50"
+                        Text="00:00" />
+                </StackPanel>
+            </Grid>
+
+            <!--  Controls  -->
+            <Grid
+                x:Name="ControlsPanel"
+                Grid.Row="3"
+                Margin="0,0,0,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!--  Left column: Quality/Resolution  -->
+                <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                    <Border
+                        Padding="15"
+                        Background="#2a2a2a"
+                        CornerRadius="8">
+                        <StackPanel>
+                            <TextBlock
+                                Margin="0,0,0,5"
+                                FontSize="14"
+                                FontWeight="Bold"
+                                Foreground="White"
+                                Text="Качество (битрейт)" />
+                            <TextBlock
+                                x:Name="BitrateValueText"
+                                Margin="0,0,0,5"
+                                FontSize="12"
+                                Foreground="#4CAF50"
+                                Text="0 kbps" />
+                            <Slider
+                                x:Name="BitrateSlider"
+                                Margin="0,0,0,10"
+                                Maximum="10000"
+                                Minimum="500"
+                                TickFrequency="100"
+                                TickPlacement="BottomRight"
+                                ValueChanged="OnBitrateChanged" />
+
+                            <TextBlock
+                                Margin="0,10,0,10"
+                                FontSize="14"
+                                FontWeight="Bold"
+                                Foreground="White"
+                                Text="Разрешение" />
+                            <ComboBox
+                                x:Name="ResolutionComboBox"
+                                DisplayMemberPath="Label"
+                                SelectedValuePath="Value" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!--  Right column: Info  -->
+                <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                    <Border
+                        Padding="15"
+                        Background="#2a2a2a"
+                        CornerRadius="8">
+                        <StackPanel>
+                            <TextBlock
+                                Margin="0,0,0,10"
+                                FontSize="14"
+                                FontWeight="Bold"
+                                Foreground="White"
+                                Text="Информация о видео" />
+                            <TextBlock
+                                x:Name="InfoText"
+                                Foreground="#CCCCCC"
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+
+            <!--  Progress Panel (Hidden by default)  -->
+            <Grid
+                x:Name="ProgressPanel"
+                Grid.Row="4"
+                Margin="0,0,0,20"
+                Visibility="Collapsed">
+                <Border
+                    Padding="20"
+                    Background="#2a2a2a"
+                    CornerRadius="8">
+                    <StackPanel>
+                        <ProgressBar
+                            x:Name="ProcessingProgress"
+                            Height="8"
+                            Maximum="100"
+                            Minimum="0"
+                            Value="0" />
+                        <TextBlock
+                            x:Name="ProgressText"
+                            Margin="0,10,0,0"
+                            HorizontalAlignment="Center"
+                            FontWeight="Bold"
+                            Foreground="White"
+                            Text="Обработка видео... 0%" />
+                        <TextBlock
+                            x:Name="ProgressDetail"
+                            Margin="0,5,0,0"
+                            HorizontalAlignment="Center"
+                            FontSize="11"
+                            Foreground="#888888"
+                            Text="" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!--  Action Buttons  -->
+            <StackPanel
+                x:Name="ButtonsPanel"
+                Grid.Row="4"
+                HorizontalAlignment="Center"
+                Orientation="Horizontal">
+                <ui:Button
+                    Width="120"
+                    Margin="5"
+                    Appearance="Secondary"
+                    Click="OnCancelClick"
+                    Content="Отмена" />
+                <ui:Button
+                    Width="120"
+                    Margin="5"
+                    Appearance="Primary"
+                    Click="OnSaveClick"
+                    Content="Сохранить" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>
