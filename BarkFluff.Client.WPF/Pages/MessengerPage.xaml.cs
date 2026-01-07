@@ -1545,6 +1545,16 @@ namespace BarkFluff.Client.WPF.Pages
             OpenCenterPanel();
         }
 
+        public void OpenVideoEditor(string videoPath)
+        {
+            CenterPanel.Child = null;
+
+            var editor = new BarkFluff.Client.WPF.UserControls.VideoEditor(videoPath);
+            CenterPanel.Child = editor;
+
+            OpenCenterPanel();
+        }
+
         private void OpenCenterPanel()
         {
             CenterPanel.Visibility = Visibility.Visible;

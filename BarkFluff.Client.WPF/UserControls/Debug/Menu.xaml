@@ -47,6 +47,21 @@
                     IsReadOnly="True"
                     PlaceholderEnabled="True"
                     PlaceholderText="Тут будет ссылка" />
+
+                <TextBlock
+                    Margin="10,20,10,0"
+                    Style="{DynamicResource HeaderSettings}"
+                    Text="Редактор видео" />
+                <StackPanel Orientation="Horizontal">
+                    <ui:TextBox
+                        x:Name="VideoPathText"
+                        Width="350"
+                        Margin="10,0,10,0"
+                        HorizontalAlignment="Left"
+                        PlaceholderEnabled="True"
+                        PlaceholderText="Путь к видео файлу" />
+                    <ui:Button Click="OpenVideoEditor" Margin="0" Content="Открыть редактор" />
+                </StackPanel>
             </StackPanel>
         </Border>
     </Border>
