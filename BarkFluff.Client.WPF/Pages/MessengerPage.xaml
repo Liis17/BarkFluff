@@ -148,8 +148,8 @@
 
         <Border
             x:Name="CenterPanel"
-            Width="550"
-            MaxHeight="700"
+            Width="900"
+            MaxHeight="1200"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             Panel.ZIndex="1000"
