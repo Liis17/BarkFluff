@@ -22,6 +22,7 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private DispatcherTimer? _timer;
         private bool _isUserDraggingSlider = false;
+        private bool _wasPlayingBeforeDrag = false;
         private bool _showTimeRemaining = false;
         private double _volumeBeforeMute = 50;
 
@@ -290,6 +291,18 @@ namespace BarkFluff.Client.WPF.UserControls
         private void OnTimelineMouseDown(object sender, MouseButtonEventArgs e)
         {
             _isUserDraggingSlider = true;
+
+            // Сохранить состояние воспроизведения и поставить на паузу
+            if (VideoElement.Source != null && VideoElement.CanPause)
+            {
+                _wasPlayingBeforeDrag = true;
+                VideoElement.Pause();
+                _timer?.Stop();
+            }
+            else
+            {
+                _wasPlayingBeforeDrag = false;
+            }
         }
 
         private void OnTimelineMouseUp(object sender, MouseButtonEventArgs e)
@@ -298,6 +311,14 @@ namespace BarkFluff.Client.WPF.UserControls
             if (VideoElement.Source != null)
             {
                 VideoElement.Position = TimeSpan.FromSeconds(TimelineSlider.Value);
+
+                // Продолжить воспроизведение если оно было активно до перетаскивания
+                if (_wasPlayingBeforeDrag)
+                {
+                    VideoElement.Play();
+                    _timer?.Start();
+                    UpdatePlayPauseIcon(true);
+                }
             }
         }
 
