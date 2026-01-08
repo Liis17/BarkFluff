@@ -17,6 +17,7 @@ namespace BarkFluff.Client.WPF.UserControls
         private const int CHAR_WIDTH_APPROX = 12;
         private const int MESSAGE_LIMIT = 4096;
         private const int MIN_WIDTH_PADDING = 50;
+        private const int MIN_TEXT_WIDTH = 150;
         private const int IMAGE_MAX_WIDTH = 400;
         private const int IMAGE_MAX_HEIGHT = 300;
         private const string DEFAULT_SEND_ERROR = "Ошибка отправки сообщения";
@@ -156,6 +157,7 @@ namespace BarkFluff.Client.WPF.UserControls
             var firstAttachment = attachments[0];
             var isImage = IsImageType(firstAttachment);
             var isDocument = IsDocumentType(firstAttachment);
+            var isVideo = IsVideoType(firstAttachment);
 
             if (isImage)
             {
@@ -166,6 +168,26 @@ namespace BarkFluff.Client.WPF.UserControls
                 MediaContentPresenter.Content = grid;
                 SetMediaContentMargin(false);
                 this.MinWidth = IMAGE_MAX_WIDTH;
+            }
+            else if (isVideo)
+            {
+                // Filter to only video attachments
+                var videoAttachments = attachments.Where(a => IsVideoType(a)).ToList();
+
+                if (videoAttachments.Count > 1)
+                {
+                    // Multiple videos - use MultiVideoGrid
+                    var grid = new MultiVideoGrid();
+                    grid.SetVideos(videoAttachments);
+                    MediaContentPresenter.Content = grid;
+                    SetMediaContentMargin(false);
+                    this.MinWidth = IMAGE_MAX_WIDTH;
+                }
+                else
+                {
+                    // Single video - use VideoMessageContent
+                    SetupVideoContent(message);
+                }
             }
             else if (isDocument)
             {
@@ -179,8 +201,8 @@ namespace BarkFluff.Client.WPF.UserControls
             }
             else
             {
-                // Fallback to single attachment view for videos or other types
-                SetupVideoContent(message);
+                // Fallback to text content
+                SetupTextContent(message);
             }
         }
 
@@ -193,6 +215,11 @@ namespace BarkFluff.Client.WPF.UserControls
         private bool IsDocumentType(AttachmentsModel attachment)
         {
             return attachment.Type == Proto.Shared.MessageAttachmentType.Document;
+        }
+
+        private bool IsVideoType(AttachmentsModel attachment)
+        {
+            return attachment.Type == Proto.Shared.MessageAttachmentType.Video;
         }
 
         /// <summary>
@@ -504,7 +531,10 @@ namespace BarkFluff.Client.WPF.UserControls
 
             int longestLineLength = lines.Max(line => line.Length);
 
-            return Math.Min(longestLineLength, MAX_CHARS_PER_LINE) * CHAR_WIDTH_APPROX;
+            int calculatedWidth = Math.Min(longestLineLength, MAX_CHARS_PER_LINE) * CHAR_WIDTH_APPROX;
+
+            // Применить минимальную ширину 150px для коротких сообщений
+            return Math.Max(calculatedWidth, MIN_TEXT_WIDTH);
         }
 
         #region Context Menu Handlers
