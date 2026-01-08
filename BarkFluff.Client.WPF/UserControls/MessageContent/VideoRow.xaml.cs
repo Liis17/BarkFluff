@@ -144,17 +144,15 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
             // Grid для наложения Preview + Play button
             var grid = new Grid();
 
-            // Определить fileId для превью
-            var fileId = !string.IsNullOrEmpty(attachment.PreviewFileId)
-                ? attachment.PreviewFileId
-                : attachment.FileId;
+            // Для превью ВСЕГДА используем только PreviewFileId (изображение), НЕ полное видео
+            var previewFileId = attachment.PreviewFileId;
 
             // CachedImage для превью видео
             var cachedImage = new CachedImage
             {
-                FileId = fileId,
+                FileId = previewFileId, // Только превью, не fallback на FileId!
                 FileUrl = attachment.PreviewUrl,
-                FileType = FileType.Video,
+                FileType = FileType.Image, // Превью - это изображение
                 Stretch = Stretch.UniformToFill,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
