@@ -4,22 +4,23 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
+using SixLabors.ImageSharp.Formats.Jpeg;
 
 namespace BarkFluff.WebApi.Core
 {
     /// <summary>
     /// Provides image processing utilities for optimizing images before upload.
     /// 
-    /// NOTE: This currently uses System.Drawing.Common which has limitations:
-    /// - Not recommended for server-side applications
-    /// - May have thread safety issues
-    /// - Only supported on Windows (with limited Linux support)
+    /// Uses ImageSharp as the primary image processing library with fallback to System.Drawing.Common.
+    /// ImageSharp provides:
+    /// - Full WebP support (and other modern formats)
+    /// - Cross-platform compatibility
+    /// - Modern, safe API
+    /// - Better performance
     /// 
-    /// For future improvements, consider migrating to:
-    /// - ImageSharp (cross-platform, modern API)
-    /// - SkiaSharp (cross-platform, performant)
-    /// 
-    /// However, for a WPF client application, System.Drawing.Common is acceptable.
+    /// System.Drawing.Common is kept as fallback for legacy formats if needed.
     /// </summary>
     public static class ImageProcessor
     {
@@ -56,7 +57,7 @@ namespace BarkFluff.WebApi.Core
         }
 
         /// <summary>
-        /// Converts an image to JPEG format with specified quality
+        /// Converts an image to JPEG format with specified quality using ImageSharp
         /// </summary>
         /// <param name="sourcePath">Path to source image</param>
         /// <param name="outputPath">Path where converted image will be saved</param>
@@ -74,9 +75,63 @@ namespace BarkFluff.WebApi.Core
                     return false;
                 }
 
-                return await Task.Run(() =>
+                var extension = Path.GetExtension(sourcePath).ToLowerInvariant();
+                
+                // Use ImageSharp for WebP and other formats
+                if (extension == ".webp" || extension == ".png" || extension == ".bmp")
                 {
-                    using (var image = Image.FromFile(sourcePath))
+                    return await ConvertToJpegWithImageSharpAsync(sourcePath, outputPath, quality);
+                }
+                
+                // Use System.Drawing.Common for JPEG (already in correct format, just optimize)
+                return await ConvertToJpegWithSystemDrawingAsync(sourcePath, outputPath, quality);
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't throw - caller will handle by using original file
+                System.Diagnostics.Debug.WriteLine($"ImageProcessor: Failed to convert image: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Converts an image to JPEG using ImageSharp library (supports WebP and modern formats)
+        /// </summary>
+        private static async Task<bool> ConvertToJpegWithImageSharpAsync(string sourcePath, string outputPath, int quality)
+        {
+            return await Task.Run(() =>
+            {
+                try
+                {
+                    using (var image = SixLabors.ImageSharp.Image.Load(sourcePath))
+                    {
+                        var encoder = new JpegEncoder
+                        {
+                            Quality = quality
+                        };
+                        
+                        image.Save(outputPath, encoder);
+                        return true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"ImageProcessor: ImageSharp conversion failed: {ex.Message}");
+                    return false;
+                }
+            });
+        }
+
+        /// <summary>
+        /// Converts an image to JPEG using System.Drawing.Common (fallback for legacy formats)
+        /// </summary>
+        private static async Task<bool> ConvertToJpegWithSystemDrawingAsync(string sourcePath, string outputPath, int quality)
+        {
+            return await Task.Run(() =>
+            {
+                try
+                {
+                    using (var image = System.Drawing.Image.FromFile(sourcePath))
                     {
                         // Get JPEG codec
                         var jpegCodec = GetEncoderInfo("image/jpeg");
@@ -85,20 +140,19 @@ namespace BarkFluff.WebApi.Core
 
                         // Set quality parameter
                         var encoderParameters = new EncoderParameters(1);
-                        encoderParameters.Param[0] = new EncoderParameter(Encoder.Quality, quality);
+                        encoderParameters.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, quality);
 
                         // Save as JPEG
                         image.Save(outputPath, jpegCodec, encoderParameters);
                         return true;
                     }
-                });
-            }
-            catch (Exception ex)
-            {
-                // Log error but don't throw - caller will handle by using original file
-                System.Diagnostics.Debug.WriteLine($"ImageProcessor: Failed to convert image: {ex.Message}");
-                return false;
-            }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"ImageProcessor: System.Drawing conversion failed: {ex.Message}");
+                    return false;
+                }
+            });
         }
 
         /// <summary>
