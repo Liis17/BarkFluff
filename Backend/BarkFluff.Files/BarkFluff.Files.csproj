@@ -8,6 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="AWSSDK.Core" Version="4.0.3.8" />
         <PackageReference Include="AWSSDK.S3" Version="4.0.6.6" />
         <PackageReference Include="Google.Protobuf" Version="3.32.0" />
         <PackageReference Include="Grpc.AspNetCore.Server" Version="2.71.0" />
@@ -23,7 +24,7 @@
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
-        <PackageReference Include="SixLabors.ImageSharp" Version="3.1.11" />
+        <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
     </ItemGroup>
 
     <ItemGroup>
