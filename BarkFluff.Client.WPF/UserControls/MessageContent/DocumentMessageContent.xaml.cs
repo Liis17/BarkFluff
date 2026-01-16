@@ -2,6 +2,8 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
+using Wpf.Ui.Controls;
 
 namespace BarkFluff.Client.WPF.UserControls.MessageContent
 {
@@ -23,6 +25,31 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
                 ? Path.GetFileName(previewUrl)
                 : $"Document_{fileId}";
 
+            if (size > 0)
+            {
+                DocumentFileSize.Text = FormatFileSize(size);
+                DocumentFileSize.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                DocumentFileSize.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        public DocumentMessageContent(string fileId, string previewUrl, long size,
+            BarkFluff.Proto.Shared.MessageAttachmentType type) : this()
+        {
+            FileId = fileId;
+
+            // Установить иконку в зависимости от типа
+            SetIconForType(type);
+
+            // Установить имя файла
+            DocumentFileName.Text = !string.IsNullOrEmpty(previewUrl)
+                ? Path.GetFileName(previewUrl)
+                : GenerateFileName(fileId, type);
+
+            // Установить размер файла
             if (size > 0)
             {
                 DocumentFileSize.Text = FormatFileSize(size);
@@ -76,6 +103,40 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
                 size /= 1024;
             }
             return $"{size:0.##} {sizes[order]}";
+        }
+
+        private void SetIconForType(BarkFluff.Proto.Shared.MessageAttachmentType type)
+        {
+            switch (type)
+            {
+                case BarkFluff.Proto.Shared.MessageAttachmentType.Image:
+                case BarkFluff.Proto.Shared.MessageAttachmentType.Gif:
+                    DocumentIcon.Symbol = SymbolRegular.Image16;
+                    IconBorder.Background = new SolidColorBrush(Color.FromRgb(0x4C, 0xAF, 0x50)); // Зеленый
+                    break;
+
+                case BarkFluff.Proto.Shared.MessageAttachmentType.Video:
+                    DocumentIcon.Symbol = SymbolRegular.Video16;
+                    IconBorder.Background = new SolidColorBrush(Color.FromRgb(0xF4, 0x43, 0x36)); // Красный
+                    break;
+
+                case BarkFluff.Proto.Shared.MessageAttachmentType.Document:
+                default:
+                    DocumentIcon.Symbol = SymbolRegular.Document16;
+                    IconBorder.Background = new SolidColorBrush(Color.FromRgb(0x4A, 0x9F, 0xD4)); // Синий (текущий)
+                    break;
+            }
+        }
+
+        private string GenerateFileName(string fileId, BarkFluff.Proto.Shared.MessageAttachmentType type)
+        {
+            return type switch
+            {
+                BarkFluff.Proto.Shared.MessageAttachmentType.Image => $"Image_{fileId}",
+                BarkFluff.Proto.Shared.MessageAttachmentType.Gif => $"Animation_{fileId}",
+                BarkFluff.Proto.Shared.MessageAttachmentType.Video => $"Video_{fileId}",
+                _ => $"Document_{fileId}"
+            };
         }
     }
 }
