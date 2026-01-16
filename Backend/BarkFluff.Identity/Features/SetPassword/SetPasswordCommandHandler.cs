@@ -50,7 +50,7 @@ public class SetPasswordCommandHandler : IRequestHandler<SetPasswordCommand>
 
         _logger.LogDebug("Обновление хэша пароля в БД для пользователя {UserId}", _userContext.UserId);
 
-        await _passwordsStorage.UpdateUserPasswordHash(_userContext.UserId, passwordHash);
+        var isNewUser = await _passwordsStorage.UpdateUserPasswordHash(_userContext.UserId, passwordHash);
 
         // Отправка уведомления об изменении пароля
         var userInfo = await _usersClient.GetByIdAsync(new GetByIdRequest { UserId = _userContext.UserId });
@@ -66,32 +66,35 @@ public class SetPasswordCommandHandler : IRequestHandler<SetPasswordCommand>
             }
         }
 
-        var passwordChangedNotification = new EmailNotification
+        if (!isNewUser)
         {
-            OwnerId = _userContext.UserId,
-            Address = userContacts.Contact.Email,
-            CreatedAt = DateTime.UtcNow,
-            Payload = new Dictionary<string, string>
+            var passwordChangedNotification = new EmailNotification
             {
-                {"username", userInfo.User.Username},
-                {"ip", _requestContext.IpAddress ?? string.Empty},
-                {"devicename", _requestContext.DeviceName ?? string.Empty},
-                {"os", _requestContext.OperationSystem ?? string.Empty},
-                {"location", locationInfo},
-                {"datetime", DateTime.UtcNow.ToString("G", CultureInfo.GetCultureInfo("ru-RU"))}
+                OwnerId = _userContext.UserId,
+                Address = userContacts.Contact.Email,
+                CreatedAt = DateTime.UtcNow,
+                Payload = new Dictionary<string, string>
+                {
+                    {"username", userInfo.User.Username},
+                    {"ip", _requestContext.IpAddress ?? string.Empty},
+                    {"devicename", _requestContext.DeviceName ?? string.Empty},
+                    {"os", _requestContext.OperationSystem ?? string.Empty},
+                    {"location", locationInfo},
+                    {"datetime", DateTime.UtcNow.ToString("G", CultureInfo.GetCultureInfo("ru-RU"))}
 
-            },
-            ServiceId = ServiceId.Identity,
-            Title = "Пароль успешно изменен",
-            Type = NotificationType.PasswordChanged
-        };
+                },
+                ServiceId = ServiceId.Identity,
+                Title = "Пароль успешно изменен",
+                Type = NotificationType.PasswordChanged
+            };
 
-        _logger.LogDebug(
-            "Отправка уведомления об изменении пароля на адрес {Email}",
-            userContacts.Contact.Email
-        );
+            _logger.LogDebug(
+                "Отправка уведомления об изменении пароля на адрес {Email}",
+                userContacts.Contact.Email
+            );
 
-        await _notificationQueueSender.SendNotification(passwordChangedNotification);
+            await _notificationQueueSender.SendNotification(passwordChangedNotification);
+        }
 
         _logger.LogInformation(
             "Пароль успешно изменен для пользователя {UserId}. Уведомление отправлено",
