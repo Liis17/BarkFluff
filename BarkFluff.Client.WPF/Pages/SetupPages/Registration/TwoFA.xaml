@@ -166,7 +166,7 @@
                 <TextBlock
                     x:Name="statusText"
                     MaxWidth="450"
-                    Margin="0,0,0,28"
+                    Margin="0,0,0,10"
                     HorizontalAlignment="Center"
                     Style="{StaticResource SubtitleStyle}"
                     Text="Повысьте безопасность своего аккаунта с помощью Google Authenticator"
@@ -174,14 +174,14 @@
 
                 <!--  QR Code Card Section  -->
                 <Border
-                    Margin="0,0,0,24"
-                    Padding="28,24,28,20"
+                    Margin="0,0,0,12"
+                    Padding="28,5,28,20"
                     Style="{StaticResource Win11CardStyle}">
                     <StackPanel Orientation="Vertical">
 
                         <!--  Card Header  -->
                         <StackPanel
-                            Margin="0,0,0,20"
+                            Margin="0,0,0,5"
                             HorizontalAlignment="Center"
                             Orientation="Horizontal">
                             <ui:SymbolIcon
@@ -196,9 +196,9 @@
                         <!--  QR Code Container with modern styling  -->
                         <Border
                             x:Name="QrCodeContainer"
-                            Width="220"
-                            Height="220"
-                            Margin="0,0,0,20"
+                            Width="180"
+                            Height="180"
+                            Margin="0,0,0,10"
                             Padding="12"
                             HorizontalAlignment="Center"
                             Background="White"
@@ -226,7 +226,7 @@
                         </Border>
 
                         <!--  Separator with "or" text  -->
-                        <Grid Margin="0,0,0,16">
+                        <Grid Margin="0,0,0,5">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
@@ -301,7 +301,7 @@
 
                         <!--  Section Header  -->
                         <StackPanel
-                            Margin="0,0,0,20"
+                            Margin="0,0,0,10"
                             HorizontalAlignment="Center"
                             Orientation="Horizontal">
                             <ui:SymbolIcon
@@ -394,7 +394,7 @@
 
                 <!--  Action Buttons  -->
                 <StackPanel
-                    Margin="0,8,0,0"
+                    Margin="0,0,0,0"
                     HorizontalAlignment="Center"
                     Orientation="Horizontal">
 
