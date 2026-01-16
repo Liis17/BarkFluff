@@ -25,8 +25,5 @@ public class User
 
     public string? ProfilePicturePreviewUrl { get; set; }
 
-    /// <summary>
-    /// Storage limit in gigabytes. Default is 10 GB.
-    /// </summary>
-    public int StorageLimitGb { get; set; } = 10;
+    public int StorageLimitGb { get; set; } = 5;
 }
