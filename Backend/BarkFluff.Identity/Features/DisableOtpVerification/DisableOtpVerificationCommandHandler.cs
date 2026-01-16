@@ -128,6 +128,7 @@ public class DisableOtpVerificationCommandHandler : IRequestHandler<DisableOtpVe
                 {"devicename", _requestContext.DeviceName ?? string.Empty},
                 {"os", _requestContext.OperationSystem ?? string.Empty},
                 {"location", locationInfo},
+                {"appname", $"{_requestContext.AppName} v.{_requestContext.AppVersion}"},
                 {"datetime", DateTime.UtcNow.ToString("G", CultureInfo.GetCultureInfo("ru-RU"))}
 
             },

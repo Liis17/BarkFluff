@@ -104,7 +104,7 @@ public class CreateAccountCommandHandler(UsersServerApi.UsersServerApiClient use
             {"devicename", requestContext.DeviceName },
             {"os", requestContext.OperationSystem},
             {"location", locationInfo},
-            {"app", $"{requestContext.AppName} v.{requestContext.AppVersion}"},
+            {"appname", $"{requestContext.AppName} v.{requestContext.AppVersion}"},
             {"datetime", DateTime.UtcNow.ToString("G", CultureInfo.GetCultureInfo("ru-RU"))}
         };
         

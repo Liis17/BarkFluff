@@ -100,6 +100,7 @@ public class ConfirmAccountCommandHandler(ConfirmationCodesStorage confirmationC
                 {"devicename", requestContext.DeviceName},
                 {"os", requestContext.OperationSystem ?? string.Empty},
                 {"location", locationInfo},
+                {"appname", $"{requestContext.AppName} v.{requestContext.AppVersion}"},
                 {"datetime", DateTime.UtcNow.ToString("G", CultureInfo.GetCultureInfo("ru-RU"))}
             },
             ServiceId = ServiceId.Identity,
