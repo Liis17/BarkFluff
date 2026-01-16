@@ -210,9 +210,9 @@ namespace BarkFluff.Client.WPF.UserControls
         {
             Border previewBorder = new Border
             {
-                Height = 156,
-                Margin = new Thickness(4),
-                CornerRadius = new CornerRadius(8),
+                Height = 180,
+                Margin = new Thickness(6),
+                CornerRadius = new CornerRadius(12),
                 Background = System.Windows.Media.Brushes.Black,
                 Tag = item,
                 ClipToBounds = true
@@ -229,15 +229,15 @@ namespace BarkFluff.Client.WPF.UserControls
                     bitmap.CacheOption = BitmapCacheOption.OnLoad;
                     bitmap.EndInit();
 
-                    double width = 156;
+                    double width = 180;
                     if (bitmap.PixelHeight > 0)
                     {
                         double ratio = (double)bitmap.PixelWidth / bitmap.PixelHeight;
-                        width = 156 * ratio;
+                        width = 180 * ratio;
                     }
 
                     // Max 2:1
-                    if (width > 156 * 2) width = 156 * 2;
+                    if (width > 180 * 2) width = 180 * 2;
 
                     previewBorder.Width = width;
 
@@ -251,13 +251,13 @@ namespace BarkFluff.Client.WPF.UserControls
                 catch
                 {
                     // Fallback to file icon if image can't be loaded
-                    previewBorder.Width = 156;
+                    previewBorder.Width = 180;
                     ShowFileIcon(previewBorder, item);
                 }
             }
             else
             {
-                previewBorder.Width = 156;
+                previewBorder.Width = 180;
                 if (item.FileType == UploadFileType.MessageAttachmentVideo)
                 {
                     // Show video icon with file name
@@ -270,7 +270,40 @@ namespace BarkFluff.Client.WPF.UserControls
                 }
             }
 
-            PreviewItemsControl.Items.Add(previewBorder);
+            // Wrap in Grid to add delete button
+            var grid = new Grid();
+            grid.Children.Add(previewBorder);
+
+            // Add delete button overlay
+            var deleteButton = new Wpf.Ui.Controls.Button
+            {
+                Width = 28,
+                Height = 28,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(6),
+                Background = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromArgb(200, 0, 0, 0)),
+                CornerRadius = new CornerRadius(14)
+            };
+
+            var deleteIcon = new Wpf.Ui.Controls.SymbolIcon
+            {
+                Symbol = Wpf.Ui.Controls.SymbolRegular.Delete24,
+                FontSize = 16,
+                Foreground = System.Windows.Media.Brushes.White
+            };
+            deleteButton.Content = deleteIcon;
+
+            deleteButton.Click += (s, e) =>
+            {
+                _attachments.Remove(item);
+                RefreshUI();
+            };
+
+            grid.Children.Add(deleteButton);
+
+            PreviewItemsControl.Items.Add(grid);
         }
 
         private void ShowFileIcon(Border previewBorder, AttachmentPreviewItem item, Wpf.Ui.Controls.SymbolRegular symbol = Wpf.Ui.Controls.SymbolRegular.Document24)
