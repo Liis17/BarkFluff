@@ -192,7 +192,7 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
                     {"devicename", _requestContext.DeviceName},
                     {"os", _requestContext.OperationSystem},
                     {"location", locationInfo},
-                    {"app", $"{_requestContext.AppName} v.{_requestContext.AppVersion}"},
+                    {"appname", $"{_requestContext.AppName} v.{_requestContext.AppVersion}"},
                     {"datetime", DateTime.UtcNow.ToString("G", CultureInfo.GetCultureInfo("ru-RU"))}
                 },
                 ServiceId = ServiceId.Identity,
