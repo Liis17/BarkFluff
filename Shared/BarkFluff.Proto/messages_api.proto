@@ -30,6 +30,9 @@ service MessagesApi {
   // Отментить сообщения как прочитанные
   rpc MarkAsRead(MarkAsReadRequest) returns(MarkAsReadResponse);
 
+  // Получить список вложений в чате
+  rpc ListChatAttachments(ListChatAttachmentsRequest) returns(ListChatAttachmentsResponse);
+
   // Получить ID личного чата с пользователем
   rpc GetPersonChatId(GetPersonChatIdRequest) returns(GetPersonChatIdResponse);
 }
@@ -165,4 +168,22 @@ message GetPersonChatIdResponse {
   string chat_id = 1; // Идентификатор чата
 }
 
+message ListChatAttachmentsRequest {
+  string chat_id = 1; // Идентификатор чата
+  barkfluff.shared.PageRequest pagination = 2; // Пагинация
+  barkfluff.shared.MessageAttachmentType attachment_type = 3; // Фильтр по типу (0 = все)
+  bool sort_descending = 4; // true = новые первыми (по умолчанию)
+}
 
+message ListChatAttachmentsResponse {
+  repeated ChatAttachmentInfo attachments = 1; // Список вложений
+  int32 total_count = 2; // Общее количество вложений с учетом фильтра
+}
+
+message ChatAttachmentInfo {
+  int64 message_id = 1; // ID сообщения для перехода к нему
+  int64 attachment_id = 2; // ID вложения
+  barkfluff.shared.MessageAttachment attachment = 3; // Данные вложения
+  google.protobuf.Timestamp sent_at = 4; // Дата отправки
+  int64 sender_id = 5; // ID отправителя
+}

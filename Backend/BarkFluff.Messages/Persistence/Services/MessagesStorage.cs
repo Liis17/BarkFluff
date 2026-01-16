@@ -1,5 +1,6 @@
 using BarkFluff.Messages.Domain;
 using BarkFluff.Messages.Persistence.Exceptions;
+using BarkFluff.Messages.Persistence.Services.Dtos;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -141,5 +142,70 @@ public class MessagesStorage
             WHERE ""Id"" = ANY(@messageIds)",
             new NpgsqlParameter("@userId", userId),
             new NpgsqlParameter("@messageIds", messageIds.ToArray()));
+    }
+
+    /// <summary>
+    /// Gets attachments from a chat with pagination, filtering, and sorting.
+    /// </summary>
+    public async Task<(List<ChatAttachmentDto> Attachments, int TotalCount)> GetChatAttachmentsAsync(
+        Guid chatId,
+        MessageAttachmentType? attachmentType,
+        int skip,
+        int take,
+        bool sortDescending)
+    {
+        // Build filter and sort strings
+        string attachmentTypeFilter;
+        if (attachmentType.HasValue && attachmentType.Value != Domain.MessageAttachmentType.Unknown)
+        {
+            var typeValue = (int)attachmentType.Value;
+            attachmentTypeFilter = "AND a.\"Type\" = " + typeValue;
+        }
+        else
+        {
+            attachmentTypeFilter = "";
+        }
+
+        var sortOrder = sortDescending ? "DESC" : "ASC";
+
+        // Get total count with filter (database-side)
+        var countSql = $@"
+            SELECT COUNT(*)
+            FROM ""Messages"" m
+            INNER JOIN ""MessageAttachments"" a ON m.""Id"" = a.""MessageId""
+            WHERE m.""ChatId"" = @chatId
+            {attachmentTypeFilter}";
+
+        var totalCount = (await _context.Database.SqlQueryRaw<int>(
+            countSql,
+            new NpgsqlParameter("@chatId", chatId))
+            .ToListAsync()).FirstOrDefault();
+
+        // Get attachments with pagination (database-side)
+        var sql = $@"
+            SELECT
+                m.""Id"" AS ""MessageId"",
+                m.""SenderId"" AS ""SenderId"",
+                m.""SentAt"" AS ""SentAt"",
+                a.""Id"" AS ""AttachmentId"",
+                a.""Type"" AS ""AttachmentType"",
+                a.""FileId"" AS ""FileId"",
+                a.""PreviewUrl"" AS ""PreviewUrl"",
+                a.""FileSize"" AS ""FileSize""
+            FROM ""Messages"" m
+            INNER JOIN ""MessageAttachments"" a ON m.""Id"" = a.""MessageId""
+            WHERE m.""ChatId"" = @chatId
+            {attachmentTypeFilter}
+            ORDER BY m.""SentAt"" {sortOrder}, a.""Id"" ASC
+            LIMIT @take OFFSET @skip";
+
+        var attachments = await _context.Database
+            .SqlQueryRaw<ChatAttachmentDto>(sql,
+                new NpgsqlParameter("@chatId", chatId),
+                new NpgsqlParameter("@take", take),
+                new NpgsqlParameter("@skip", skip))
+            .ToListAsync();
+
+        return (attachments, totalCount);
     }
 }
