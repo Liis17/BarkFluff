@@ -38,6 +38,13 @@ namespace BarkFluff.Client.WPF.UserControls
         private List<string> _pendingFileIds = new List<string>();
         private List<UploadingAttachmentItem> _uploadingItems = new List<UploadingAttachmentItem>();
 
+        private enum AttachmentDisplayMode
+        {
+            PureImage,   // Все Image/Gif → MultiImageGrid
+            PureVideo,   // Все Video → MultiVideoGrid
+            Mixed        // Смешанные типы или есть Document → MultiDocumentList
+        }
+
         public MessageBubble(MessageOwner owner, MessageType messageType, MessageModel message, bool isGroup)
         {
             InitializeComponent();
@@ -142,7 +149,7 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private void SetupMultipleAttachments(MessageModel message, List<AttachmentsModel> attachments)
         {
-            // Set up text content if present
+            // Настроить текстовый контент если есть
             if (!string.IsNullOrEmpty(message.Text))
             {
                 _textContent = new TextMessageContent(message.Text);
@@ -153,57 +160,81 @@ namespace BarkFluff.Client.WPF.UserControls
                 TextContentPresenter.Content = null;
             }
 
-            // Determine type of first attachment
-            var firstAttachment = attachments[0];
-            var isImage = IsImageType(firstAttachment);
-            var isDocument = IsDocumentType(firstAttachment);
-            var isVideo = IsVideoType(firstAttachment);
+            // Определить режим отображения на основе ВСЕХ вложений
+            var displayMode = DetermineDisplayMode(attachments);
 
-            if (isImage)
+            switch (displayMode)
             {
-                // Filter to only image/gif attachments
-                var imageAttachments = attachments.Where(a => IsImageType(a)).ToList();
-                var grid = new MultiImageGrid();
-                grid.SetImages(imageAttachments);
-                MediaContentPresenter.Content = grid;
-                SetMediaContentMargin(false);
-                this.MinWidth = IMAGE_MAX_WIDTH;
-            }
-            else if (isVideo)
-            {
-                // Filter to only video attachments
-                var videoAttachments = attachments.Where(a => IsVideoType(a)).ToList();
-
-                if (videoAttachments.Count > 1)
-                {
-                    // Multiple videos - use MultiVideoGrid
-                    var grid = new MultiVideoGrid();
-                    grid.SetVideos(videoAttachments);
-                    MediaContentPresenter.Content = grid;
+                case AttachmentDisplayMode.PureImage:
+                    // Все вложения - изображения/gif → сетка изображений
+                    var imageGrid = new MultiImageGrid();
+                    imageGrid.SetImages(attachments);  // Передаем ВСЕ вложения
+                    MediaContentPresenter.Content = imageGrid;
                     SetMediaContentMargin(false);
                     this.MinWidth = IMAGE_MAX_WIDTH;
-                }
-                else
-                {
-                    // Single video - use VideoMessageContent
-                    SetupVideoContent(message);
-                }
+                    break;
+
+                case AttachmentDisplayMode.PureVideo:
+                    // Все вложения - видео → сетка видео
+                    var videoGrid = new MultiVideoGrid();
+                    videoGrid.SetVideos(attachments);  // Передаем ВСЕ вложения
+                    MediaContentPresenter.Content = videoGrid;
+                    SetMediaContentMargin(false);
+                    this.MinWidth = IMAGE_MAX_WIDTH;
+                    break;
+
+                case AttachmentDisplayMode.Mixed:
+                    // Смешанные типы или есть документы → список файлов
+                    var list = new MultiDocumentList();
+                    list.SetAttachments(attachments);  // ← НОВЫЙ метод (был SetDocuments)
+                    MediaContentPresenter.Content = list;
+                    SetMediaContentMargin(true);
+                    var sizeMessageWidth = CalculateLongestLineWidth(message.Text);
+                    this.MinWidth = Math.Max(sizeMessageWidth + MIN_WIDTH_PADDING, 250);
+                    break;
+
+                default:
+                    // Fallback на текстовый контент
+                    SetupTextContent(message);
+                    break;
             }
-            else if (isDocument)
+        }
+
+        private AttachmentDisplayMode DetermineDisplayMode(List<AttachmentsModel> attachments)
+        {
+            bool hasImage = false;
+            bool hasVideo = false;
+            bool hasDocument = false;
+
+            // Анализируем ВСЕ вложения
+            foreach (var attachment in attachments)
             {
-                // All attachments as documents
-                var list = new MultiDocumentList();
-                list.SetDocuments(attachments);
-                MediaContentPresenter.Content = list;
-                SetMediaContentMargin(true);
-                var sizeMessageWidth = CalculateLongestLineWidth(message.Text);
-                this.MinWidth = Math.Max(sizeMessageWidth + MIN_WIDTH_PADDING, 250);
+                if (IsImageType(attachment))
+                    hasImage = true;
+                else if (IsVideoType(attachment))
+                    hasVideo = true;
+                else if (IsDocumentType(attachment))
+                    hasDocument = true;
             }
-            else
-            {
-                // Fallback to text content
-                SetupTextContent(message);
-            }
+
+            // Если есть документ → смешанный режим (список)
+            if (hasDocument)
+                return AttachmentDisplayMode.Mixed;
+
+            // Если есть и картинки и видео → смешанный режим (список)
+            if (hasImage && hasVideo)
+                return AttachmentDisplayMode.Mixed;
+
+            // Если только картинки → режим сетки картинок
+            if (hasImage && !hasVideo)
+                return AttachmentDisplayMode.PureImage;
+
+            // Если только видео → режим сетки видео
+            if (hasVideo && !hasImage)
+                return AttachmentDisplayMode.PureVideo;
+
+            // Fallback
+            return AttachmentDisplayMode.Mixed;
         }
 
         private bool IsImageType(AttachmentsModel attachment)
