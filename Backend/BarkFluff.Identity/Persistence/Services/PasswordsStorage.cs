@@ -14,7 +14,7 @@ public class PasswordsStorage
         _context = context;
     }
 
-    public async Task UpdateUserPasswordHash(long userId, string passwordHash)
+    public async Task<bool> UpdateUserPasswordHash(long userId, string passwordHash)
     {
         var userPassword = await _context.UserPasswords.FirstOrDefaultAsync(x => x.UserId == userId);
 
@@ -26,7 +26,7 @@ public class PasswordsStorage
             
             await _context.SaveChangesAsync();
 
-            return;
+            return true;
         }
 
         userPassword.ChangedAt = DateTime.UtcNow;
@@ -35,6 +35,8 @@ public class PasswordsStorage
         _context.UserPasswords.Update(userPassword);
         
         await _context.SaveChangesAsync();
+
+        return false;
     }
 
     public async Task<string?> GetUserPasswordHash(long userId)
