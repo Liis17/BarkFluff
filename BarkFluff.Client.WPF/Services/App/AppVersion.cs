@@ -2,7 +2,7 @@ namespace BarkFluff.Client.WPF
 {
     public class AppVersion
     {
-        public static string Version { get; set; } = "0.0.0.1551";
+        public static string Version { get; set; } = "0.0.0.1559";
 #if DEBUG
         public static string VersionType { get; set; } = "Dev";
 #else
@@ -16,10 +16,10 @@ namespace BarkFluff.Client.WPF
 #if DEBUG
                 if (System.Diagnostics.Debugger.IsAttached)
                 {
-                    return $"BarkFluff on Visual studio {Version}";
+                    return $"BarkFluff on Visual studio";
                 }
 #endif
-                return $"BarkFluff {Version}";
+                return $"BarkFluff";
             }
         }
     }

@@ -70,8 +70,10 @@ namespace BarkFluff.Client.WPF.Pages
             AttachmentPreview.OnCancel += AttachmentPreview_OnCancel;
             AttachmentPreview.OnSend += AttachmentPreview_OnSend;
 
-            // Подписываемся на событие вставки в TextForMessage
-            DataObject.AddPastingHandler(TextForMessage, OnTextForMessagePaste);
+            // Перехватываем команду вставки для обработки файлов и изображений
+            var pasteBinding = new CommandBinding(ApplicationCommands.Paste);
+            pasteBinding.Executed += OnTextForMessagePasteCommand;
+            TextForMessage.CommandBindings.Add(pasteBinding);
         }
 
         private async void MessageScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
@@ -2027,7 +2029,31 @@ namespace BarkFluff.Client.WPF.Pages
 
         private void ShowAttachmentPreview(List<string> filePaths)
         {
-            AttachmentPreview.AddAttachments(filePaths);
+            ShowAttachmentPreviewWithText(() =>
+            {
+                AttachmentPreview.AddAttachments(filePaths);
+            });
+        }
+
+        /// <summary>
+        /// Показывает AttachmentPreviewOverlay и переносит текст из TextForMessage в MessageTextBox overlay
+        /// </summary>
+        /// <param name="attachmentAction">Действие для добавления вложений в preview</param>
+        private void ShowAttachmentPreviewWithText(Action attachmentAction)
+        {
+            // Захватываем текущий текст до любых операций
+            string currentText = TextForMessage.Text ?? string.Empty;
+
+            // Выполняем действие добавления вложений
+            attachmentAction();
+
+            // Переносим текст в overlay
+            AttachmentPreview.SetMessageText(currentText);
+
+            // Очищаем исходное текстовое поле
+            TextForMessage.Text = string.Empty;
+
+            // Показываем overlay
             AttachmentOverlay.Visibility = Visibility.Visible;
         }
 
@@ -2296,28 +2322,57 @@ namespace BarkFluff.Client.WPF.Pages
             }
         }
 
-        private void OnTextForMessagePaste(object sender, DataObjectPastingEventArgs e)
+        private void OnTextForMessagePasteCommand(object sender, ExecutedRoutedEventArgs e)
         {
-            if (e.DataObject.GetDataPresent(DataFormats.FileDrop))
+            System.Diagnostics.Debug.WriteLine("=== OnTextForMessagePasteCommand вызван ===");
+
+            // Получаем данные из буфера обмена напрямую
+            var clipboard = Clipboard.GetDataObject();
+            if (clipboard == null)
+            {
+                System.Diagnostics.Debug.WriteLine("Буфер обмена пуст");
+                return;
+            }
+
+            System.Diagnostics.Debug.WriteLine($"FileDrop present: {clipboard.GetDataPresent(DataFormats.FileDrop)}");
+            System.Diagnostics.Debug.WriteLine($"Bitmap present: {clipboard.GetDataPresent(DataFormats.Bitmap)}");
+
+            // Выводим все доступные форматы
+            var formats = clipboard.GetFormats();
+            System.Diagnostics.Debug.WriteLine($"Доступные форматы: {string.Join(", ", formats)}");
+
+            if (clipboard.GetDataPresent(DataFormats.FileDrop))
             {
                 // Файлы, вставленные из Проводника
-                e.CancelCommand();
-                var files = (string[])e.DataObject.GetData(DataFormats.FileDrop);
+                System.Diagnostics.Debug.WriteLine("Обработка FileDrop");
+                e.Handled = true; // Предотвращаем стандартную обработку
+                var files = (string[])clipboard.GetData(DataFormats.FileDrop);
                 if (files != null && files.Length > 0)
                 {
+                    System.Diagnostics.Debug.WriteLine($"Найдено файлов: {files.Length}");
                     ShowAttachmentPreview(files.ToList());
                 }
             }
-            else if (e.DataObject.GetDataPresent(DataFormats.Bitmap))
+            else if (clipboard.GetDataPresent(DataFormats.Bitmap))
             {
                 // Изображение, вставленное из буфера обмена (скриншот)
-                e.CancelCommand();
-                var image = (BitmapSource)e.DataObject.GetData(DataFormats.Bitmap);
+                System.Diagnostics.Debug.WriteLine("Обработка Bitmap");
+                e.Handled = true; // Предотвращаем стандартную обработку
+                var image = Clipboard.GetImage();
                 if (image != null)
                 {
-                    AttachmentPreview.AddImageFromClipboard(image);
-                    AttachmentOverlay.Visibility = Visibility.Visible;
+                    System.Diagnostics.Debug.WriteLine("Изображение получено");
+                    ShowAttachmentPreviewWithText(() =>
+                    {
+                        AttachmentPreview.AddImageFromClipboard(image);
+                    });
                 }
+            }
+            else
+            {
+                // Обычный текст - позволяем стандартную обработку
+                System.Diagnostics.Debug.WriteLine("Обработка обычного текста - стандартная вставка");
+                // НЕ устанавливаем e.Handled = true, чтобы текст вставился как обычно
             }
         }
 
