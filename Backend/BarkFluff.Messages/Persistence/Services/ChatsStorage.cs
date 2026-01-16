@@ -24,7 +24,7 @@ public class ChatsStorage
 
     public async Task<List<Chat>> GetUserChats(long userId, int skip, int count)
     {
-        //todo: если будет лагать, то разделить на два разных запроса 
+        //todo: если будет лагать, то разделить на два разных запроса
         var chats = await _context
             .Chats
             .Include(x => x.Members)
@@ -46,7 +46,8 @@ public class ChatsStorage
             })
             .ToListAsync();
 
-        return chats;
+        // Фильтруем пустые чаты (без сообщений)
+        return chats.Where(x => x.LastMessage != null).ToList();
     }
 
     public async Task<Guid?> GetUserChatIdWithPerson(long person, long userId)
@@ -74,9 +75,10 @@ public class ChatsStorage
     
     public async Task<int> GetTotalUserChats(long userId)
     {
+        // Считаем только чаты, у которых есть сообщения (исключаем пустые чаты)
         var count = await _context.Chats
-            .CountAsync(x => x.Members.Any(c => c.UserId == userId));
-        
+            .CountAsync(x => x.Members.Any(c => c.UserId == userId) && _context.Messages.Any(m => m.ChatId == x.Id));
+
         return count;
     }
 

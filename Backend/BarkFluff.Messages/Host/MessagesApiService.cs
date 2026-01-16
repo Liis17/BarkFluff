@@ -1,4 +1,5 @@
 using BarkFluff.Messages.Features.CreateGroupChat;
+using BarkFluff.Messages.Features.GetPersonChatId;
 using BarkFluff.Messages.Features.KickUser;
 using BarkFluff.Messages.Features.ListChatMembers;
 using BarkFluff.Messages.Features.ListChats;
@@ -172,5 +173,15 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
         await _mediator.Send(command);
 
         return new MarkAsReadResponse();
+    }
+
+    public override async Task<GetPersonChatIdResponse> GetPersonChatId(GetPersonChatIdRequest request, ServerCallContext context)
+    {
+        var command = new GetPersonChatIdCommand
+        {
+            UserId = request.UserId
+        };
+
+        return await _mediator.Send(command);
     }
 }

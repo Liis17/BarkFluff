@@ -27,8 +27,11 @@ service MessagesApi {
   // Убрать пользователя из группового чата
   rpc KickUser(KickUserRequest) returns(KickUserResponse);
   
-  // Отментить сообщения как прочитанные 
+  // Отментить сообщения как прочитанные
   rpc MarkAsRead(MarkAsReadRequest) returns(MarkAsReadResponse);
+
+  // Получить ID личного чата с пользователем
+  rpc GetPersonChatId(GetPersonChatIdRequest) returns(GetPersonChatIdResponse);
 }
 
 message MarkAsReadRequest {
@@ -147,10 +150,18 @@ message ChatMember {
 }
 
 message OutgoingMessage {
-  
+
   string text = 1; //Текст сообщения
-  
+
   repeated string files_ids = 2; // Идентификаторы файлов
+}
+
+message GetPersonChatIdRequest {
+  int64 user_id = 1; // Идентификатор пользователя
+}
+
+message GetPersonChatIdResponse {
+  string chat_id = 1; // Идентификатор чата
 }
 
 
