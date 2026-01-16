@@ -79,8 +79,7 @@ public class ListChatsCommandHandler : IRequestHandler<ListChatsCommand, ListCha
             totalCount,
             _userContext.UserId
         );
-
-        // �������� ���������� � ������ ��� ���������� �������� � ��������� ����������
+        
         var fileIds = chats
             .Where(c => c.LastMessage?.Content?.Attachments != null)
             .SelectMany(c => c.LastMessage!.Content!.Attachments!)
