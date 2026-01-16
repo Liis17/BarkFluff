@@ -113,17 +113,32 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private void UpdateSendAsFileCheckbox()
         {
-            // Check if there are any non-image files
-            _hasNonImageFiles = _attachments.Any(a => !IsImageFileType(a.FileType));
+            // Проверяем есть ли картинки и не-картинки, используя оригинальный тип или расширение файла
+            bool hasImages = false;
+            bool hasNonImages = false;
 
-            // Check if there are any images
-            bool hasImages = _attachments.Any(a => IsImageFileType(a.FileType));
+            foreach (var item in _attachments)
+            {
+                // Используем оригинальный тип если он есть, иначе текущий
+                var typeToCheck = item.OriginalFileType ?? item.FileType;
+                
+                if (IsImageFileType(typeToCheck))
+                {
+                    hasImages = true;
+                }
+                else
+                {
+                    hasNonImages = true;
+                }
+            }
+
+            _hasNonImageFiles = hasNonImages;
 
             if (hasImages)
             {
                 SendAsFileCheckBox.Visibility = Visibility.Visible;
                 
-                if (_hasNonImageFiles)
+                if (hasNonImages)
                 {
                     // Force send as files when mixed content
                     SendAsFileCheckBox.IsChecked = true;
@@ -131,6 +146,7 @@ namespace BarkFluff.Client.WPF.UserControls
                 }
                 else
                 {
+                    // Only images - allow user to choose
                     SendAsFileCheckBox.IsEnabled = true;
                 }
             }
@@ -167,7 +183,9 @@ namespace BarkFluff.Client.WPF.UserControls
                     }
                 }
             }
-            UpdateHeader();
+            
+            // Обновляем весь UI чтобы превью переключилось между картинками и иконками
+            RefreshUI();
         }
 
         private void UpdateHeader()
@@ -211,6 +229,7 @@ namespace BarkFluff.Client.WPF.UserControls
         {
             Border previewBorder = new Border
             {
+                Width = 180,
                 Height = 180,
                 Margin = new Thickness(6),
                 CornerRadius = new CornerRadius(12),
@@ -224,41 +243,43 @@ namespace BarkFluff.Client.WPF.UserControls
                 // Show image preview
                 try
                 {
-                    var bitmap = new BitmapImage();
-                    bitmap.BeginInit();
-                    bitmap.UriSource = new Uri(Path.GetFullPath(item.FilePath));
-                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                    bitmap.EndInit();
-
-                    double width = 180;
-                    if (bitmap.PixelHeight > 0)
+                    if (!File.Exists(item.FilePath))
                     {
-                        double ratio = (double)bitmap.PixelWidth / bitmap.PixelHeight;
-                        width = 180 * ratio;
+                        ShowFileIcon(previewBorder, item);
                     }
-
-                    // Max 2:1
-                    if (width > 180 * 2) width = 180 * 2;
-
-                    previewBorder.Width = width;
-
-                    var image = new Image
+                    else
                     {
-                        Source = bitmap,
-                        Stretch = System.Windows.Media.Stretch.UniformToFill
-                    };
-                    previewBorder.Child = image;
+                        // Загружаем файл полностью в byte array
+                        byte[] imageBytes = File.ReadAllBytes(item.FilePath);
+                        
+                        var bitmap = new BitmapImage();
+                        using (var stream = new MemoryStream(imageBytes))
+                        {
+                            bitmap.BeginInit();
+                            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                            bitmap.StreamSource = stream;
+                            bitmap.EndInit();
+                        }
+                        
+                        // Замораживаем bitmap для thread-safety и производительности
+                        bitmap.Freeze();
+
+                        var image = new Image
+                        {
+                            Source = bitmap,
+                            Stretch = System.Windows.Media.Stretch.UniformToFill
+                        };
+                        previewBorder.Child = image;
+                    }
                 }
                 catch
                 {
                     // Fallback to file icon if image can't be loaded
-                    previewBorder.Width = 180;
                     ShowFileIcon(previewBorder, item);
                 }
             }
             else
             {
-                previewBorder.Width = 180;
                 if (item.FileType == UploadFileType.MessageAttachmentVideo)
                 {
                     // Show video icon with file name
