@@ -120,9 +120,7 @@
             Margin="-30"
             Panel.ZIndex="1002"
             Visibility="Collapsed">
-            <uc:ImageViewer
-                x:Name="ImageViewer"
-                Closed="OnImageViewerClosed" />
+            <uc:ImageViewer x:Name="ImageViewer" Closed="OnImageViewerClosed" />
         </Grid>
 
         <!--  Video Player Overlay  -->
@@ -131,9 +129,7 @@
             Margin="-30"
             Panel.ZIndex="1003"
             Visibility="Collapsed">
-            <uc:VideoPlayer
-                x:Name="VideoPlayer"
-                Closed="OnVideoPlayerClosed" />
+            <uc:VideoPlayer x:Name="VideoPlayer" Closed="OnVideoPlayerClosed" />
         </Grid>
 
         <!--  Боковая панель  -->
@@ -236,7 +232,7 @@
                             </Border.Background>
 
                         </Border>
-                        
+
                     </StackPanel>
 
                     <StackPanel Margin="30,0,0,0" Orientation="Horizontal">
@@ -292,8 +288,8 @@
                             HorizontalAlignment="Left"
                             VerticalAlignment="Center"
                             CornerRadius="15"
-                            Visibility="Collapsed"
-                            ToolTip="Проблемы с соединением">
+                            ToolTip="Проблемы с соединением"
+                            Visibility="Collapsed">
                             <ui:SymbolIcon
                                 FontSize="23"
                                 Foreground="#fd354a"
@@ -491,6 +487,11 @@
                         <Grid
                             x:Name="OpenedChat"
                             HorizontalAlignment="Stretch"
+                            AllowDrop="True"
+                            DragEnter="OpenedChat_DragEnter"
+                            DragOver="OpenedChat_DragOver"
+                            DragLeave="OpenedChat_DragLeave"
+                            Drop="OpenedChat_Drop"
                             Visibility="Visible">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="45" />
@@ -606,6 +607,33 @@
                                     <!--  Здесь будут добавляться элементы динамически  -->
                                 </StackPanel>
                             </ScrollViewer>
+
+                            <!--  Drag and Drop area  -->
+                            <Grid
+                                x:Name="DragDropOverlay"
+                                Grid.Row="1"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch"
+                                Panel.ZIndex="2"
+                                Visibility="Collapsed">
+                                <Border Background="#CC000000" />
+                                <StackPanel
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center">
+                                    <ui:SymbolIcon
+                                        FontSize="64"
+                                        Foreground="White"
+                                        Symbol="ArrowDownload24" />
+                                    <TextBlock
+                                        Margin="0,20,0,0"
+                                        HorizontalAlignment="Center"
+                                        FontFamily="{DynamicResource AdwaitaSans}"
+                                        FontSize="20"
+                                        FontWeight="SemiBold"
+                                        Foreground="White"
+                                        Text="Отпустите для добавления файлов" />
+                                </StackPanel>
+                            </Grid>
 
                             <!--  Панель ввода сообщения  -->
                             <Border
