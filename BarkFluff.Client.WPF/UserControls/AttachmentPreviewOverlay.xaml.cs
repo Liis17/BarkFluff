@@ -19,6 +19,7 @@ namespace BarkFluff.Client.WPF.UserControls
         private List<AttachmentPreviewItem> _attachments = new List<AttachmentPreviewItem>();
         private const int MaxAttachments = 10;
         private bool _hasNonImageFiles = false;
+        private bool _isDragging = false;
 
         public AttachmentPreviewOverlay()
         {
@@ -277,20 +278,23 @@ namespace BarkFluff.Client.WPF.UserControls
             // Add delete button overlay
             var deleteButton = new Wpf.Ui.Controls.Button
             {
-                Width = 28,
-                Height = 28,
+                Width = 32,
+                Height = 32,
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(6),
+                Margin = new Thickness(8),
                 Background = new System.Windows.Media.SolidColorBrush(
-                    System.Windows.Media.Color.FromArgb(200, 0, 0, 0)),
-                CornerRadius = new CornerRadius(14)
+                    System.Windows.Media.Color.FromArgb(220, 40, 40, 40)),
+                CornerRadius = new CornerRadius(16),
+                Padding = new Thickness(0),
+                Opacity = 0,
+                Tag = "DeleteButton"
             };
 
             var deleteIcon = new Wpf.Ui.Controls.SymbolIcon
             {
-                Symbol = Wpf.Ui.Controls.SymbolRegular.Delete24,
-                FontSize = 16,
+                Symbol = Wpf.Ui.Controls.SymbolRegular.Dismiss24,
+                FontSize = 18,
                 Foreground = System.Windows.Media.Brushes.White
             };
             deleteButton.Content = deleteIcon;
@@ -299,6 +303,29 @@ namespace BarkFluff.Client.WPF.UserControls
             {
                 _attachments.Remove(item);
                 RefreshUI();
+            };
+
+            // Add hover effect to show/hide delete button
+            grid.MouseEnter += (s, e) =>
+            {
+                foreach (var child in grid.Children)
+                {
+                    if (child is Wpf.Ui.Controls.Button btn && btn.Tag?.ToString() == "DeleteButton")
+                    {
+                        btn.Opacity = 1;
+                    }
+                }
+            };
+
+            grid.MouseLeave += (s, e) =>
+            {
+                foreach (var child in grid.Children)
+                {
+                    if (child is Wpf.Ui.Controls.Button btn && btn.Tag?.ToString() == "DeleteButton")
+                    {
+                        btn.Opacity = 0;
+                    }
+                }
             };
 
             grid.Children.Add(deleteButton);
@@ -412,6 +439,96 @@ namespace BarkFluff.Client.WPF.UserControls
             };
             OnSend?.Invoke(this, args);
         }
+
+        #region Drag & Drop handlers
+
+        private void UserControl_DragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                if (files != null && files.Length > 0 && _attachments.Count < MaxAttachments)
+                {
+                    e.Effects = DragDropEffects.Copy;
+                    _isDragging = true;
+                    UpdateDragVisualFeedback(true);
+                }
+                else
+                {
+                    e.Effects = DragDropEffects.None;
+                }
+            }
+            else
+            {
+                e.Effects = DragDropEffects.None;
+            }
+            e.Handled = true;
+        }
+
+        private void UserControl_DragOver(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                if (files != null && files.Length > 0 && _attachments.Count < MaxAttachments)
+                {
+                    e.Effects = DragDropEffects.Copy;
+                }
+                else
+                {
+                    e.Effects = DragDropEffects.None;
+                }
+            }
+            else
+            {
+                e.Effects = DragDropEffects.None;
+            }
+            e.Handled = true;
+        }
+
+        private void UserControl_DragLeave(object sender, DragEventArgs e)
+        {
+            _isDragging = false;
+            UpdateDragVisualFeedback(false);
+            e.Handled = true;
+        }
+
+        private void UserControl_Drop(object sender, DragEventArgs e)
+        {
+            _isDragging = false;
+            UpdateDragVisualFeedback(false);
+
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                if (files != null && files.Length > 0)
+                {
+                    AddAttachments(files.ToList());
+                }
+            }
+            e.Handled = true;
+        }
+
+        private void UpdateDragVisualFeedback(bool isDragging)
+        {
+            if (MainBorder != null)
+            {
+                if (isDragging)
+                {
+                    MainBorder.BorderBrush = new System.Windows.Media.SolidColorBrush(
+                        System.Windows.Media.Color.FromRgb(206, 100, 50)); // Orange accent
+                    MainBorder.BorderThickness = new Thickness(2);
+                }
+                else
+                {
+                    MainBorder.BorderBrush = new System.Windows.Media.SolidColorBrush(
+                        System.Windows.Media.Color.FromArgb(48, 255, 255, 255));
+                    MainBorder.BorderThickness = new Thickness(1);
+                }
+            }
+        }
+
+        #endregion
 
     }
 
