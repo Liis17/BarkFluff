@@ -20,6 +20,7 @@
 
         <!--  Document icon  -->
         <Border
+            x:Name="IconBorder"
             Grid.RowSpan="2"
             Width="40"
             Height="40"
@@ -27,6 +28,7 @@
             Background="#4A9FD4"
             CornerRadius="10">
             <ui:SymbolIcon
+                x:Name="DocumentIcon"
                 FontSize="20"
                 Foreground="White"
                 Symbol="Document16" />
