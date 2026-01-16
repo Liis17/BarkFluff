@@ -60,6 +60,7 @@
                     Grid.Column="1"
                     Width="32"
                     Height="32"
+                    Padding="0"
                     Margin="8,0"
                     Background="#FF3C3C3C"
                     Click="AddAttachmentButton_Click"
@@ -75,6 +76,7 @@
                     x:Name="CloseButton"
                     Grid.Column="2"
                     Width="32"
+                    Padding="0"
                     Height="32"
                     Background="Transparent"
                     Click="CancelButton_Click"
@@ -120,14 +122,13 @@
                         Grid.Column="0"
                         MinHeight="40"
                         MaxHeight="80"
-                        Padding="12,8"
+                        Padding="10 0"
                         Margin="0,0,8,0"
                         VerticalContentAlignment="Top"
                         AcceptsReturn="True"
                         Background="#FF3C3C3C"
                         BorderBrush="#FF505050"
                         BorderThickness="1"
-                        
                         FontFamily="{DynamicResource AdwaitaSans}"
                         FontSize="14"
                         Foreground="White"
@@ -164,7 +165,6 @@
                         Checked="SendAsFileCheckBox_Changed"
                         Unchecked="SendAsFileCheckBox_Changed"
                         Visibility="Collapsed" />
-
                     <CheckBox
                         x:Name="SendSeparatelyCheckBox"
                         Content="Отправить отдельно"
