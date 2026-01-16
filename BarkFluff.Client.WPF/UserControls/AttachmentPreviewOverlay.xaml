@@ -12,19 +12,19 @@
     <Border
         MaxWidth="800"
         MaxHeight="700"
-        Padding="24"
+        Padding="20"
         HorizontalAlignment="Center"
         VerticalAlignment="Center"
         Background="#FF202020"
         BorderBrush="#30FFFFFF"
         BorderThickness="1"
-        CornerRadius="12">
+        CornerRadius="16">
         <Border.Effect>
             <DropShadowEffect
-                BlurRadius="40"
+                BlurRadius="50"
                 Direction="270"
-                Opacity="0.4"
-                ShadowDepth="12"
+                Opacity="0.5"
+                ShadowDepth="15"
                 Color="#000000" />
         </Border.Effect>
 
@@ -33,19 +33,58 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <!--  Header  -->
-            <TextBlock
-                x:Name="HeaderTextBlock"
-                Grid.Row="0"
-                Margin="0,0,0,20"
-                FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="20"
-                FontWeight="SemiBold"
-                Foreground="White"
-                Text="Предпросмотр вложений" />
+            <Grid Grid.Row="0" Margin="0,0,0,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!--  Заголовок  -->
+                <TextBlock
+                    x:Name="HeaderTextBlock"
+                    Grid.Column="0"
+                    FontFamily="{DynamicResource AdwaitaSans}"
+                    FontSize="20"
+                    FontWeight="SemiBold"
+                    Foreground="White"
+                    Text="Предпросмотр вложений"
+                    VerticalAlignment="Center" />
+
+                <!--  Кнопка добавления вложений  -->
+                <ui:Button
+                    x:Name="AddAttachmentButton"
+                    Grid.Column="1"
+                    Width="32"
+                    Height="32"
+                    Margin="8,0"
+                    Background="#FF3C3C3C"
+                    Click="AddAttachmentButton_Click"
+                    CornerRadius="8">
+                    <ui:SymbolIcon
+                        FontSize="16"
+                        Foreground="White"
+                        Symbol="Add24" />
+                </ui:Button>
+
+                <!--  Кнопка закрытия  -->
+                <ui:Button
+                    x:Name="CloseButton"
+                    Grid.Column="2"
+                    Width="32"
+                    Height="32"
+                    Background="Transparent"
+                    Click="CancelButton_Click"
+                    CornerRadius="8">
+                    <ui:SymbolIcon
+                        FontSize="16"
+                        Foreground="White"
+                        Symbol="Dismiss24" />
+                </ui:Button>
+            </Grid>
 
             <!--  Preview Area  -->
             <ScrollViewer
@@ -56,7 +95,7 @@
                 <ItemsControl x:Name="PreviewItemsControl">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <WrapPanel Orientation="Horizontal" />
+                            <UniformGrid Columns="2" />
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                 </ItemsControl>
@@ -68,145 +107,74 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                
-                <ui:TextBox
-                    x:Name="MessageTextBox"
-                    Grid.Row="0"
-                    MinHeight="40"
-                    MaxHeight="80"
-                    Padding="12,8"
-                    VerticalContentAlignment="Top"
-                    AcceptsReturn="True"
-                    Background="#FF3C3C3C"
-                    BorderBrush="#FF505050"
-                    BorderThickness="1"
-                    FontFamily="{DynamicResource AdwaitaSans}"
-                    FontSize="14"
-                    Foreground="White"
-                    PlaceholderEnabled="True"
-                    PlaceholderText="Сообщение"
-                    Style="{StaticResource MessageInputTextBox}"
-                    TextWrapping="Wrap"
-                    VerticalScrollBarVisibility="Auto" />
-                    
-                <!--  Send as file checkbox  -->
-                <CheckBox
-                    x:Name="SendAsFileCheckBox"
-                    Grid.Row="1"
-                    Margin="0,8,0,0"
-                    Content="Отправить как файл (без сжатия)"
-                    FontFamily="{DynamicResource AdwaitaSans}"
-                    FontSize="13"
-                    Foreground="#FFAAAAAA"
-                    Checked="SendAsFileCheckBox_Changed"
-                    Unchecked="SendAsFileCheckBox_Changed"
-                    Visibility="Collapsed" />
-            </Grid>
 
-            <!--  Footer with buttons  -->
-            <Grid Grid.Row="3" Margin="0,16,0,0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-
-                <!--  Cancel Button  -->
-                <ui:Button
-                    x:Name="CancelButton"
-                    Grid.Column="0"
-                    Width="120"
-                    HorizontalAlignment="Left"
-                    Background="#FF6B6B6B"
-                    Click="CancelButton_Click"
-                    Content="отмена"
-                    CornerRadius="8"
-                    FontFamily="{DynamicResource AdwaitaSans}"
-                    FontSize="14"
-                    Foreground="White" />
-
-                <!--  Send Button with Dropdown  -->
-                <Grid Grid.Column="1">
+                <!--  Строка с текстовым полем и кнопкой отправки  -->
+                <Grid Grid.Row="0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <ui:Button
-                        x:Name="SendButton"
+                    <ui:TextBox
+                        x:Name="MessageTextBox"
                         Grid.Column="0"
-                        Width="120"
-                        Background="#FFCE6432"
-                        Click="SendButton_Click"
-                        Content="отправить"
-                        CornerRadius="8,0,0,8"
+                        MinHeight="40"
+                        MaxHeight="80"
+                        Padding="12,8"
+                        Margin="0,0,8,0"
+                        VerticalContentAlignment="Top"
+                        AcceptsReturn="True"
+                        Background="#FF3C3C3C"
+                        BorderBrush="#FF505050"
+                        BorderThickness="1"
+                        
                         FontFamily="{DynamicResource AdwaitaSans}"
                         FontSize="14"
-                        Foreground="White" />
+                        Foreground="White"
+                        PlaceholderEnabled="True"
+                        PlaceholderText="Сообщение"
+                        Style="{StaticResource MessageInputTextBox}"
+                        TextWrapping="Wrap"
+                        VerticalScrollBarVisibility="Auto" />
 
                     <ui:Button
-                        x:Name="SendOptionsButton"
+                        x:Name="SendButton"
                         Grid.Column="1"
-                        Width="30"
-                        Height="30"
-                        Padding="0"
+                        Width="50"
+                        Height="40"
                         Background="#FFCE6432"
-                        Click="SendOptionsButton_Click"
-                        CornerRadius="0,8,8,0"
-                        FontSize="12">
-                        <ui:SymbolIcon FontSize="16" Symbol="ChevronDown12" />
+                        Click="SendButton_Click"
+                        CornerRadius="8"
+                        ToolTip="Отправить">
+                        <ui:SymbolIcon
+                            FontSize="20"
+                            Foreground="White"
+                            Symbol="Send24" />
                     </ui:Button>
-
-                    <!--  Dropdown Popup  -->
-                    <Popup
-                        x:Name="SendOptionsPopup"
-                        AllowsTransparency="True"
-                        Placement="Top"
-                        PlacementTarget="{Binding ElementName=SendOptionsButton}"
-                        StaysOpen="False">
-                        <Border
-                            Background="#FF3C3C3C"
-                            BorderBrush="#FF505050"
-                            BorderThickness="1"
-                            CornerRadius="6">
-                            <StackPanel>
-                                <Button
-                                    x:Name="SendSeparatelyButton"
-                                    Padding="12,8"
-                                    Background="Transparent"
-                                    BorderThickness="0"
-                                    Click="SendSeparatelyButton_Click"
-                                    Content="отправить отдельно"
-                                    FontFamily="{DynamicResource AdwaitaSans}"
-                                    FontSize="13"
-                                    Foreground="White">
-                                    <Button.Style>
-                                        <Style TargetType="Button">
-                                            <Setter Property="Background" Value="Transparent" />
-                                            <Setter Property="Template">
-                                                <Setter.Value>
-                                                    <ControlTemplate TargetType="Button">
-                                                        <Border
-                                                            Padding="{TemplateBinding Padding}"
-                                                            Background="{TemplateBinding Background}"
-                                                            CornerRadius="4">
-                                                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center" />
-                                                        </Border>
-                                                    </ControlTemplate>
-                                                </Setter.Value>
-                                            </Setter>
-                                            <Style.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="Background" Value="#FF505050" />
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Button.Style>
-                                </Button>
-                            </StackPanel>
-                        </Border>
-                    </Popup>
                 </Grid>
+
+                <!--  Галочки с опциями  -->
+                <StackPanel Grid.Row="1" Margin="0,8,0,0">
+                    <CheckBox
+                        x:Name="SendAsFileCheckBox"
+                        Content="Отправить как файл (без сжатия)"
+                        FontFamily="{DynamicResource AdwaitaSans}"
+                        FontSize="13"
+                        Foreground="#FFAAAAAA"
+                        Checked="SendAsFileCheckBox_Changed"
+                        Unchecked="SendAsFileCheckBox_Changed"
+                        Visibility="Collapsed" />
+
+                    <CheckBox
+                        x:Name="SendSeparatelyCheckBox"
+                        Content="Отправить отдельно"
+                        FontFamily="{DynamicResource AdwaitaSans}"
+                        FontSize="13"
+                        Foreground="#FFAAAAAA"
+                        Margin="0,4,0,0" />
+                </StackPanel>
             </Grid>
+
         </Grid>
     </Border>
 </UserControl>

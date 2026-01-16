@@ -98,11 +98,7 @@ namespace BarkFluff.Client.WPF.UserControls
 
             UpdateHeader();
             UpdateSendAsFileCheckbox();
-
-            if (_attachments.Count < MaxAttachments)
-            {
-                AddPlusButton();
-            }
+            UpdateAddButton();
         }
 
         /// <summary>
@@ -191,64 +187,24 @@ namespace BarkFluff.Client.WPF.UserControls
             {
                 string suffix = "файлов";
                 int count = _attachments.Count;
-                
+
                 if (count == 1) suffix = "файл";
                 else if (count >= 2 && count <= 4) suffix = "файла";
-                
+
                 HeaderTextBlock.Text = $"Отправить {count} {suffix}";
             }
         }
 
-        private void AddPlusButton()
+        private void UpdateAddButton()
         {
-            var button = new Button
+            // Disable add button if max attachments reached
+            if (AddAttachmentButton != null)
             {
-                Width = 100,
-                Height = 156,
-                Margin = new Thickness(4),
-                Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(20, 255, 255, 255)),
-                BorderBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(50, 255, 255, 255)),
-                BorderThickness = new Thickness(1),
-                Cursor = System.Windows.Input.Cursors.Hand
-            };
-
-            string templateXaml = @"
-                <ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' TargetType='Button'>
-                    <Border Background='{TemplateBinding Background}' 
-                            BorderBrush='{TemplateBinding BorderBrush}' 
-                            BorderThickness='{TemplateBinding BorderThickness}' 
-                            CornerRadius='8'>
-                        <ContentPresenter HorizontalAlignment='Center' VerticalAlignment='Center'/>
-                    </Border>
-                </ControlTemplate>";
-
-            button.Template = (ControlTemplate)System.Windows.Markup.XamlReader.Parse(templateXaml);
-
-            var icon = new Wpf.Ui.Controls.SymbolIcon
-            {
-                Symbol = Wpf.Ui.Controls.SymbolRegular.Add24,
-                FontSize = 32,
-                Foreground = System.Windows.Media.Brushes.White
-            };
-
-            button.Content = icon;
-
-            button.Click += (s, e) =>
-            {
-                var openFileDialog = new OpenFileDialog
-                {
-                    Multiselect = true,
-                    Filter = "All files (*.*)|*.*"
-                };
-
-                if (openFileDialog.ShowDialog() == true)
-                {
-                    AddAttachments(openFileDialog.FileNames.ToList());
-                }
-            };
-
-            PreviewItemsControl.Items.Add(button);
+                AddAttachmentButton.IsEnabled = _attachments.Count < MaxAttachments;
+                AddAttachmentButton.Opacity = _attachments.Count < MaxAttachments ? 1.0 : 0.5;
+            }
         }
+
 
         private void AddPreviewItem(AttachmentPreviewItem item)
         {
@@ -389,6 +345,7 @@ namespace BarkFluff.Client.WPF.UserControls
             SendAsFileCheckBox.IsChecked = false;
             SendAsFileCheckBox.IsEnabled = true;
             SendAsFileCheckBox.Visibility = Visibility.Collapsed;
+            SendSeparatelyCheckBox.IsChecked = false;
             UpdateHeader();
         }
 
@@ -397,35 +354,32 @@ namespace BarkFluff.Client.WPF.UserControls
             OnCancel?.Invoke(this, EventArgs.Empty);
         }
 
+        private void AddAttachmentButton_Click(object sender, RoutedEventArgs e)
+        {
+            var openFileDialog = new OpenFileDialog
+            {
+                Multiselect = true,
+                Filter = "All files (*.*)|*.*"
+            };
+
+            if (openFileDialog.ShowDialog() == true)
+            {
+                AddAttachments(openFileDialog.FileNames.ToList());
+            }
+        }
+
         private void SendButton_Click(object sender, RoutedEventArgs e)
         {
             var args = new SendAttachmentsEventArgs
             {
                 Attachments = _attachments,
-                SendSeparately = false,
+                SendSeparately = SendSeparatelyCheckBox.IsChecked == true,
                 MessageText = MessageTextBox.Text ?? string.Empty,
                 SendAsFile = SendAsFileCheckBox.IsChecked == true
             };
             OnSend?.Invoke(this, args);
         }
 
-        private void SendSeparatelyButton_Click(object sender, RoutedEventArgs e)
-        {
-            SendOptionsPopup.IsOpen = false;
-            var args = new SendAttachmentsEventArgs
-            {
-                Attachments = _attachments,
-                SendSeparately = true,
-                MessageText = MessageTextBox.Text ?? string.Empty,
-                SendAsFile = SendAsFileCheckBox.IsChecked == true
-            };
-            OnSend?.Invoke(this, args);
-        }
-
-        private void SendOptionsButton_Click(object sender, RoutedEventArgs e)
-        {
-            SendOptionsPopup.IsOpen = !SendOptionsPopup.IsOpen;
-        }
     }
 
     public class AttachmentPreviewItem
