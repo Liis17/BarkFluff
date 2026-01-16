@@ -2378,6 +2378,72 @@ namespace BarkFluff.Client.WPF.Pages
 
         #endregion
 
+        #region Drag and Drop
+
+        private void OpenedChat_DragEnter(object sender, DragEventArgs e)
+        {
+            System.Diagnostics.Debug.WriteLine("=== DragEnter ===");
+
+            // Проверяем, содержит ли перетаскиваемый объект файлы
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                System.Diagnostics.Debug.WriteLine("FileDrop detected in drag");
+                e.Effects = DragDropEffects.Copy;
+                DragDropOverlay.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                e.Effects = DragDropEffects.None;
+            }
+
+            e.Handled = true;
+        }
+
+        private void OpenedChat_DragOver(object sender, DragEventArgs e)
+        {
+            // Проверяем, содержит ли перетаскиваемый объект файлы
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                e.Effects = DragDropEffects.Copy;
+            }
+            else
+            {
+                e.Effects = DragDropEffects.None;
+            }
+
+            e.Handled = true;
+        }
+
+        private void OpenedChat_DragLeave(object sender, DragEventArgs e)
+        {
+            System.Diagnostics.Debug.WriteLine("=== DragLeave ===");
+            DragDropOverlay.Visibility = Visibility.Collapsed;
+            e.Handled = true;
+        }
+
+        private void OpenedChat_Drop(object sender, DragEventArgs e)
+        {
+            System.Diagnostics.Debug.WriteLine("=== Drop ===");
+
+            // Скрываем визуальный индикатор
+            DragDropOverlay.Visibility = Visibility.Collapsed;
+
+            // Проверяем, содержит ли перетаскиваемый объект файлы
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                if (files != null && files.Length > 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Dropped {files.Length} файлов");
+                    ShowAttachmentPreview(files.ToList());
+                }
+            }
+
+            e.Handled = true;
+        }
+
+        #endregion
+
         #region Управление иконкой обновления
 
         /// <summary>
