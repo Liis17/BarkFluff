@@ -1,6 +1,7 @@
 using BarkFluff.Messages.Features.CreateGroupChat;
 using BarkFluff.Messages.Features.GetPersonChatId;
 using BarkFluff.Messages.Features.KickUser;
+using BarkFluff.Messages.Features.ListChatAttachments;
 using BarkFluff.Messages.Features.ListChatMembers;
 using BarkFluff.Messages.Features.ListChats;
 using BarkFluff.Messages.Features.ListMessages;
@@ -180,6 +181,33 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
         var command = new GetPersonChatIdCommand
         {
             UserId = request.UserId
+        };
+
+        return await _mediator.Send(command);
+    }
+
+    public override async Task<ListChatAttachmentsResponse> ListChatAttachments(ListChatAttachmentsRequest request, ServerCallContext context)
+    {
+        var parseGuidResult = Guid.TryParse(request.ChatId, out Guid chatId);
+
+        if (!parseGuidResult)
+        {
+            throw new ChatIdNotValidException();
+        }
+
+        request.Pagination ??= new PageRequest()
+        {
+            Size = 20,
+            Offset = 0
+        };
+
+        var command = new ListChatAttachmentsCommand
+        {
+            ChatId = chatId,
+            Skip = request.Pagination.Offset,
+            Size = request.Pagination.Size,
+            AttachmentType = request.AttachmentType == 0 ? null : (Domain.MessageAttachmentType?)(int)request.AttachmentType,
+            SortDescending = request.SortDescending
         };
 
         return await _mediator.Send(command);
