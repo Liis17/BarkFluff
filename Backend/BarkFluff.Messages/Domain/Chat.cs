@@ -18,4 +18,6 @@ public class Chat
     public List<ChatMember>? Members { get; set; }
     
     public int CountUnread { get; set; }
+    
+    public long? FirstUnreadMessageId { get; set; }
 }

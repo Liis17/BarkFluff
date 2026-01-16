@@ -14,6 +14,8 @@ public class ChatConfiguration : IEntityTypeConfiguration<Chat>
 
         builder.Ignore(x => x.CountUnread);
         
+        builder.Ignore(x => x.FirstUnreadMessageId);
+        
         builder
             .HasMany(x => x.Members)
             .WithOne(m => m.Chat)

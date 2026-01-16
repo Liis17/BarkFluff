@@ -20,7 +20,8 @@ public static class ChatMapping
             LastMessage = chat.LastMessage?.ToGrpc(filesInfoMap ?? new Dictionary<string, UploadFileInfo>()),
             Picture = chat.Picture ?? string.Empty,
             Title = chat.Title,
-            Members = { chat.Members?.Select(x => x.ToGrpc()) }
+            Members = { chat.Members?.Select(x => x.ToGrpc()) },
+            FirstUnreadMessageId = chat.FirstUnreadMessageId ?? 0
         };
     }
 }

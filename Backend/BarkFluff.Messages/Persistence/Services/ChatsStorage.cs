@@ -39,6 +39,9 @@ public class ChatsStorage
                 IsGroupChat = c.IsGroupChat,
                 Members = c.Members,
                 CountUnread = _context.Messages.Count(x => x.ChatId == c.Id && !x.ReadBy.Contains(userId)),
+                FirstUnreadMessageId = _context.Messages
+                    .Where(m => m.ChatId == c.Id && !m.ReadBy.Contains(userId))
+                    .Min(m => (long?)m.Id),
                 LastMessage = _context.Messages
                     .Where(m => m.ChatId == c.Id)
                     .OrderByDescending(m => m.SentAt)
