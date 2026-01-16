@@ -1,30 +1,30 @@
 ﻿<UserControl
-x:Class="BarkFluff.Client.WPF.UserControls.AttachmentPreviewOverlay"
-xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-xmlns:local="clr-namespace:BarkFluff.Client.WPF.UserControls"
-xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-d:DesignHeight="600"
-d:DesignWidth="500"
-mc:Ignorable="d"
-AllowDrop="True"
-DragEnter="UserControl_DragEnter"
-DragOver="UserControl_DragOver"
-DragLeave="UserControl_DragLeave"
-Drop="UserControl_Drop">
-<Border
-    x:Name="MainBorder"
-    MaxWidth="800"
-    MaxHeight="700"
-    Padding="20"
-    HorizontalAlignment="Center"
-    VerticalAlignment="Center"
-    Background="#FF202020"
-    BorderBrush="#30FFFFFF"
-    BorderThickness="1"
-    CornerRadius="16">
+    x:Class="BarkFluff.Client.WPF.UserControls.AttachmentPreviewOverlay"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:BarkFluff.Client.WPF.UserControls"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    d:DesignHeight="600"
+    d:DesignWidth="500"
+    AllowDrop="True"
+    DragEnter="UserControl_DragEnter"
+    DragLeave="UserControl_DragLeave"
+    DragOver="UserControl_DragOver"
+    Drop="UserControl_Drop"
+    mc:Ignorable="d">
+    <Border
+        x:Name="MainBorder"
+        MaxWidth="800"
+        MaxHeight="700"
+        Padding="20"
+        HorizontalAlignment="Center"
+        VerticalAlignment="Center"
+        Background="#FF202020"
+        BorderBrush="#30FFFFFF"
+        BorderThickness="1"
+        CornerRadius="16">
         <Border.Effect>
             <DropShadowEffect
                 BlurRadius="50"
@@ -53,12 +53,12 @@ Drop="UserControl_Drop">
                 <TextBlock
                     x:Name="HeaderTextBlock"
                     Grid.Column="0"
+                    VerticalAlignment="Center"
                     FontFamily="{DynamicResource AdwaitaSans}"
                     FontSize="20"
                     FontWeight="SemiBold"
                     Foreground="White"
-                    Text="Предпросмотр вложений"
-                    VerticalAlignment="Center" />
+                    Text="Предпросмотр вложений" />
 
                 <!--  Кнопка добавления вложений  -->
                 <ui:Button
@@ -66,8 +66,8 @@ Drop="UserControl_Drop">
                     Grid.Column="1"
                     Width="32"
                     Height="32"
-                    Padding="0"
                     Margin="8,0"
+                    Padding="0"
                     Background="#FF3C3C3C"
                     Click="AddAttachmentButton_Click"
                     CornerRadius="8">
@@ -82,8 +82,8 @@ Drop="UserControl_Drop">
                     x:Name="CloseButton"
                     Grid.Column="2"
                     Width="32"
-                    Padding="0"
                     Height="32"
+                    Padding="0"
                     Background="Transparent"
                     Click="CancelButton_Click"
                     CornerRadius="8">
@@ -95,19 +95,21 @@ Drop="UserControl_Drop">
             </Grid>
 
             <!--  Preview Area  -->
-            <ScrollViewer
-                Grid.Row="1"
-                MaxHeight="400"
-                HorizontalScrollBarVisibility="Disabled"
-                VerticalScrollBarVisibility="Auto">
-                <ItemsControl x:Name="PreviewItemsControl">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <UniformGrid Columns="2" />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                </ItemsControl>
-            </ScrollViewer>
+            <Border Grid.Row="1" Padding="8" Background="#1a1a1a">
+                <ScrollViewer
+                    MaxHeight="400"
+                    HorizontalScrollBarVisibility="Disabled"
+                    VerticalScrollBarVisibility="Auto">
+                    <ItemsControl x:Name="PreviewItemsControl">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="3" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+
 
             <!--  Message Text Input  -->
             <Grid Grid.Row="2" Margin="0,12,0,0">
@@ -128,13 +130,11 @@ Drop="UserControl_Drop">
                         Grid.Column="0"
                         MinHeight="40"
                         MaxHeight="80"
-                        Padding="10 0"
                         Margin="0,0,8,0"
+                        Padding="0,5"
                         VerticalContentAlignment="Top"
                         AcceptsReturn="True"
-                        Background="#FF3C3C3C"
-                        BorderBrush="#FF505050"
-                        BorderThickness="1"
+                        BorderThickness="0"
                         FontFamily="{DynamicResource AdwaitaSans}"
                         FontSize="14"
                         Foreground="White"
@@ -164,20 +164,20 @@ Drop="UserControl_Drop">
                 <StackPanel Grid.Row="1" Margin="0,8,0,0">
                     <CheckBox
                         x:Name="SendAsFileCheckBox"
-                        Content="Отправить как файл (без сжатия)"
+                        Checked="SendAsFileCheckBox_Changed"
+                        Content="Отправить без сжатия"
                         FontFamily="{DynamicResource AdwaitaSans}"
                         FontSize="13"
                         Foreground="#FFAAAAAA"
-                        Checked="SendAsFileCheckBox_Changed"
                         Unchecked="SendAsFileCheckBox_Changed"
                         Visibility="Collapsed" />
                     <CheckBox
                         x:Name="SendSeparatelyCheckBox"
-                        Content="Отправить отдельно"
+                        Margin="0,4,0,0"
+                        Content="Отправить без группировки"
                         FontFamily="{DynamicResource AdwaitaSans}"
                         FontSize="13"
-                        Foreground="#FFAAAAAA"
-                        Margin="0,4,0,0" />
+                        Foreground="#FFAAAAAA" />
                 </StackPanel>
             </Grid>
 
