@@ -25,6 +25,15 @@ namespace BarkFluff.Client.WPF.UserControls
             InitializeComponent();
         }
 
+        /// <summary>
+        /// Устанавливает текст сообщения в MessageTextBox
+        /// </summary>
+        /// <param name="text">Текст для установки, или пустая строка если null</param>
+        public void SetMessageText(string text)
+        {
+            MessageTextBox.Text = text ?? string.Empty;
+        }
+
         public void AddAttachments(List<string> filePaths)
         {
             bool added = false;
