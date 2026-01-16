@@ -140,6 +140,7 @@ message Chat {
   
   int64 count_unread = 7; // Количество непрочитанных сообщений
   
+  int64 first_unread_message_id = 8; // Идентификатор первого непрочитанного сообщения
 }
 
 message ChatMember {
