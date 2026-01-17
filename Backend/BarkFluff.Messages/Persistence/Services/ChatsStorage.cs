@@ -166,8 +166,41 @@ public class ChatsStorage
         {
             return;
         }
-        
+
         _context.ChatMembers.Remove(chatMember);
         await _context.SaveChangesAsync();
     }
+
+    public async Task<ChatInfoDto?> GetChatInfo(Guid chatId, long userId)
+    {
+        var chat = await _context.Chats
+            .Where(x => x.Id == chatId)
+            .Select(c => new ChatInfoDto
+            {
+                Title = c.Title,
+                Picture = c.Picture,
+                IsGroupChat = c.IsGroupChat,
+                CountUnread = _context.Messages
+                    .Count(m => m.ChatId == c.Id && !m.ReadBy.Contains(userId)),
+                FirstUnreadMessageId = _context.Messages
+                    .Where(m => m.ChatId == c.Id && !m.ReadBy.Contains(userId))
+                    .Min(m => (long?)m.Id) ?? 0,
+                LastMessageId = _context.Messages
+                    .Where(m => m.ChatId == c.Id)
+                    .Max(m => (long?)m.Id) ?? 0
+            })
+            .FirstOrDefaultAsync();
+
+        return chat;
+    }
+}
+
+public class ChatInfoDto
+{
+    public long LastMessageId { get; set; }
+    public long FirstUnreadMessageId { get; set; }
+    public string? Title { get; set; }
+    public string? Picture { get; set; }
+    public bool IsGroupChat { get; set; }
+    public long CountUnread { get; set; }
 }
