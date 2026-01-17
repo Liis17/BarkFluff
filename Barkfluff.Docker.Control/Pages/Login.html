@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход в систему</title>
+    <style>
+        :root {
+            --primary: #6c5ce7;
+            --primary-hover: #5649c0;
+            --text: #2d3436;
+            --text-muted: #636e72;
+            --bg-mesh: radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%),
+                       radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%),
+                       radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
+            --white: #ffffff;
+            --error: #e74c3c;
+            --success: #00b894;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #0f0c29;
+            background-image: var(--bg-mesh);
+            background-size: 200% 200%;
+            animation: gradientMove 15s ease infinite;
+            overflow: hidden;
+        }
+
+        @keyframes gradientMove {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 24px;
+            padding: 40px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 24px;
+            background: linear-gradient(135deg, var(--primary), #a29bfe);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo svg {
+            width: 40px;
+            height: 40px;
+            color: white;
+        }
+
+        h2 {
+            color: var(--text);
+            margin-bottom: 8px;
+            font-weight: 700;
+            font-size: 24px;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 32px;
+            line-height: 1.5;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            background: var(--primary);
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn:hover:not(:disabled) {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(108, 92, 231, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .status-container {
+            margin-top: 24px;
+            display: none;
+        }
+
+        .status-container.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            margin: 0 auto 16px;
+            border: 3px solid #dfe6e9;
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .status-text {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .status-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .status-icon.success {
+            animation: scaleIn 0.5s ease;
+        }
+
+        .status-icon.error {
+            animation: shake 0.5s ease;
+        }
+
+        @keyframes scaleIn {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .device-info {
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid #dfe6e9;
+            text-align: left;
+        }
+
+        .device-info p {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .device-info strong {
+            color: var(--text);
+        }
+
+        .retry-btn {
+            margin-top: 16px;
+            background: var(--text-muted);
+        }
+
+        .telegram-icon {
+            width: 24px;
+            height: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="logo">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+        </div>
+
+        <div id="loginForm">
+            <h2>Авторизация</h2>
+            <p class="subtitle">Нажмите кнопку ниже, чтобы отправить запрос на авторизацию через Telegram</p>
+
+            <button id="loginBtn" class="btn">
+                <svg class="telegram-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
+                </svg>
+                Войти через Telegram
+            </button>
+
+            <div class="device-info">
+                <p><strong>Ваше устройство:</strong> <span id="deviceName">-</span></p>
+                <p><strong>IP адрес:</strong> <span id="ipAddress">Определяется...</span></p>
+            </div>
+        </div>
+
+        <div id="statusContainer" class="status-container">
+            <div id="waitingState">
+                <div class="spinner"></div>
+                <p class="status-text">Ожидание подтверждения от администратора...</p>
+                <p class="status-text" style="margin-top: 8px; font-size: 12px;">Проверьте Telegram и подтвердите вход</p>
+            </div>
+
+            <div id="successState" style="display: none;">
+                <div class="status-icon success"></div>
+                <p class="status-text" style="color: var(--success); font-weight: 600;">Авторизация подтверждена!</p>
+                <p class="status-text">Перенаправление...</p>
+            </div>
+
+            <div id="errorState" style="display: none;">
+                <div class="status-icon error"></div>
+                <p class="status-text" style="color: var(--error); font-weight: 600;" id="errorText">Запрос отклонен</p>
+                <button id="retryBtn" class="btn retry-btn">Попробовать снова</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentRequestId = null;
+        let pollInterval = null;
+
+        const loginBtn = document.getElementById('loginBtn');
+        const loginForm = document.getElementById('loginForm');
+        const statusContainer = document.getElementById('statusContainer');
+        const waitingState = document.getElementById('waitingState');
+        const successState = document.getElementById('successState');
+        const errorState = document.getElementById('errorState');
+        const errorText = document.getElementById('errorText');
+        const retryBtn = document.getElementById('retryBtn');
+        const deviceNameEl = document.getElementById('deviceName');
+        const ipAddressEl = document.getElementById('ipAddress');
+
+        // Detect device info
+        function detectDevice() {
+            const ua = navigator.userAgent;
+            let browser = 'Unknown';
+            let os = 'Unknown';
+
+            if (ua.includes('Edg/')) browser = 'Edge';
+            else if (ua.includes('Chrome') && !ua.includes('Edg/')) browser = 'Chrome';
+            else if (ua.includes('Firefox')) browser = 'Firefox';
+            else if (ua.includes('Safari') && !ua.includes('Chrome')) browser = 'Safari';
+            else if (ua.includes('Opera') || ua.includes('OPR/')) browser = 'Opera';
+
+            if (ua.includes('Windows NT 10.0')) os = 'Windows 10/11';
+            else if (ua.includes('Windows NT 6.3')) os = 'Windows 8.1';
+            else if (ua.includes('Windows NT 6.1')) os = 'Windows 7';
+            else if (ua.includes('Windows')) os = 'Windows';
+            else if (ua.includes('Mac OS X')) os = 'macOS';
+            else if (ua.includes('Linux')) os = 'Linux';
+            else if (ua.includes('Android')) os = 'Android';
+            else if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS';
+
+            return `${browser} на ${os}`;
+        }
+
+        deviceNameEl.textContent = detectDevice();
+
+        // Get IP address
+        fetch('https://api.ipify.org?format=json')
+            .then(r => r.json())
+            .then(data => {
+                ipAddressEl.textContent = data.ip;
+            })
+            .catch(() => {
+                ipAddressEl.textContent = 'Не удалось определить';
+            });
+
+        // Show state
+        function showState(state) {
+            waitingState.style.display = state === 'waiting' ? 'block' : 'none';
+            successState.style.display = state === 'success' ? 'block' : 'none';
+            errorState.style.display = state === 'error' ? 'block' : 'none';
+        }
+
+        // Poll for status
+        function pollStatus(requestId) {
+            return fetch(`/api/auth/status/${requestId}`)
+                .then(r => r.json());
+        }
+
+        // Login button click
+        loginBtn.addEventListener('click', async () => {
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Отправка запроса...';
+
+            try {
+                const response = await fetch('/api/auth/request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userAgent: navigator.userAgent,
+                        tokenName: detectDevice()
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to create auth request');
+                }
+
+                const data = await response.json();
+                currentRequestId = data.requestId;
+
+                // Switch to status view
+                loginForm.style.display = 'none';
+                statusContainer.classList.add('active');
+                showState('waiting');
+
+                // Start polling
+                pollInterval = setInterval(async () => {
+                    try {
+                        const status = await pollStatus(currentRequestId);
+
+                        if (status.status === 0) { // Pending
+                            // Continue polling
+                        } else if (status.status === 1) { // Approved
+                            clearInterval(pollInterval);
+                            showState('success');
+                            document.querySelector('.status-icon.success').textContent = '';
+
+                            // Set cookie and redirect
+                            document.cookie = `auth_token=${status.token}; path=/; max-age=31536000; SameSite=Lax`;
+                            setTimeout(() => {
+                                window.location.href = '/Dashboard.html';
+                            }, 1000);
+                        } else if (status.status === 2) { // Rejected
+                            clearInterval(pollInterval);
+                            showState('error');
+                            errorText.textContent = 'Запрос отклонен администратором';
+                        } else if (status.status === 3) { // Expired
+                            clearInterval(pollInterval);
+                            showState('error');
+                            errorText.textContent = 'Время ожидания истекло';
+                        }
+                    } catch (e) {
+                        console.error('Polling error:', e);
+                    }
+                }, 2000);
+
+                // Timeout after 10 minutes
+                setTimeout(() => {
+                    if (pollInterval) {
+                        clearInterval(pollInterval);
+                        pollInterval = null;
+                        if (document.querySelector('.status-icon.success').textContent === '') {
+                            return; // Already succeeded
+                        }
+                        showState('error');
+                        errorText.textContent = 'Время ожидания истекло';
+                    }
+                }, 10 * 60 * 1000);
+
+            } catch (error) {
+                console.error('Auth request error:', error);
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = `
+                    <svg class="telegram-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
+                    </svg>
+                    Войти через Telegram
+                `;
+                alert('Не удалось отправить запрос. Проверьте подключение к интернету.');
+            }
+        });
+
+        // Retry button
+        retryBtn.addEventListener('click', () => {
+            loginForm.style.display = 'block';
+            statusContainer.classList.remove('active');
+            loginBtn.disabled = false;
+            loginBtn.innerHTML = `
+                <svg class="telegram-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
+                </svg>
+                Войти через Telegram
+            `;
+        });
+    </script>
+</body>
+</html>
