@@ -35,9 +35,9 @@ namespace BarkFluff.Client.WPF.UserControls
             PublicName.Text = userData.FirstName + " " + userData.LastName;
         }
 
-        private void UserControl_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        private async void UserControl_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
-            App.Messenger.ChatIdbyUserId.Value = _userId;
+            App.Messenger.OpenChatFromSearch(_userId, PublicName.Text);
         }
     }
 }
