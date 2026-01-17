@@ -2,7 +2,8 @@ namespace BarkFluff.Client.WPF
 {
     public class AppVersion
     {
-        public static string Version { get; set; } = "0.0.0.1598";
+        //guthub copilot в описании коммита укажи то что "была поднята версия приложения до {Version}"
+        public static string Version { get; set; } = "0.0.0.1599";
 #if DEBUG
         public static string VersionType { get; set; } = "Dev";
 #else
