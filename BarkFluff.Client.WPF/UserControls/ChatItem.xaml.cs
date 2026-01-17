@@ -52,6 +52,7 @@ namespace BarkFluff.Client.WPF.UserControls
         private int _unreadCount;
         private bool _isOnline;
         private DateTime? _lastSeen;
+        private bool _isDraggingFiles = false;
 
         /// <summary>
         /// URL аватара чата
@@ -442,6 +443,204 @@ namespace BarkFluff.Client.WPF.UserControls
             {
                 // Игнорируем ошибки - будем полагаться на stream обновления
             }
+        }
+
+        #endregion
+
+        #region Drag and Drop
+
+        /// <summary>
+        /// Обрабатывает начало перетаскивания файлов на этот ChatItem
+        /// </summary>
+        private void UserControl_DragEnter(object sender, DragEventArgs e)
+        {
+            System.Diagnostics.Debug.WriteLine($"ChatItem DragEnter: {_title}");
+
+            // Проверяем, содержит ли перетаскиваемый объект файлы
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                if (files != null && files.Length > 0)
+                {
+                    e.Effects = DragDropEffects.Copy;
+                    _isDraggingFiles = true;
+                    ShowDragDropOverlay();
+                }
+                else
+                {
+                    e.Effects = DragDropEffects.None;
+                }
+            }
+            else
+            {
+                e.Effects = DragDropEffects.None;
+            }
+
+            e.Handled = true;
+        }
+
+        /// <summary>
+        /// Обрабатывает непрерывное перетаскивание над ChatItem
+        /// </summary>
+        private void UserControl_DragOver(object sender, DragEventArgs e)
+        {
+            // Поддерживаем эффект копирования при наведении
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                e.Effects = DragDropEffects.Copy;
+
+                // Если overlay по какой-то причине скрыт, но мы над контролом - показываем его
+                if (!_isDraggingFiles && DragDropVisualOverlay != null && DragDropVisualOverlay.Visibility != Visibility.Visible)
+                {
+                    _isDraggingFiles = true;
+                    ShowDragDropOverlay();
+                }
+            }
+            else
+            {
+                e.Effects = DragDropEffects.None;
+            }
+
+            e.Handled = true;
+        }
+
+        /// <summary>
+        /// Обрабатывает уход курсора с перетаскиваемыми файлами от ChatItem
+        /// </summary>
+        private void UserControl_DragLeave(object sender, DragEventArgs e)
+        {
+            System.Diagnostics.Debug.WriteLine($"ChatItem DragLeave: {_title}");
+
+            // Всегда скрываем overlay при DragLeave
+            // DragOver восстановит его, если курсор все еще над контролом
+            _isDraggingFiles = false;
+            HideDragDropOverlay();
+
+            e.Handled = true;
+        }
+
+        /// <summary>
+        /// Обрабатывает отпускание файлов на ChatItem
+        /// </summary>
+        private void UserControl_Drop(object sender, DragEventArgs e)
+        {
+            System.Diagnostics.Debug.WriteLine($"ChatItem Drop: {_title}");
+
+            _isDraggingFiles = false;
+            HideDragDropOverlay();
+
+            // Проверяем, содержит ли сброшенный объект файлы
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                if (files != null && files.Length > 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Сброшено {files.Length} файлов на чат: {_title}");
+
+                    // Открываем чат и показываем превью вложений
+                    App.Messenger.OpenChatAndShowAttachments(
+                        ChatId,
+                        _lastMessageId,
+                        _isGroupChat,
+                        _userId,
+                        _title,
+                        files.ToList()
+                    );
+                }
+            }
+
+            e.Handled = true;
+        }
+
+        /// <summary>
+        /// Показывает визуальный overlay при drag & drop
+        /// </summary>
+        private void ShowDragDropOverlay()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                if (DragDropVisualOverlay == null) return;
+
+                // Скрываем основной контент чата
+                if (BaseChatGrid != null)
+                {
+                    BaseChatGrid.Visibility = Visibility.Collapsed;
+                }
+
+                // Обновляем контент overlay данными текущего чата
+                if (DragDropAvatar != null)
+                {
+                    DragDropAvatar.FileId = _avatarFileId;
+                    DragDropAvatar.FileUrl = _url;
+                }
+
+                if (DragDropTitle != null)
+                {
+                    DragDropTitle.Text = _title;
+                }
+
+                // Отменяем любые текущие анимации
+                DragDropVisualOverlay.BeginAnimation(UIElement.OpacityProperty, null);
+
+                // Показываем overlay
+                DragDropVisualOverlay.Visibility = Visibility.Visible;
+
+                // Если уже видим, просто устанавливаем полную непрозрачность
+                if (DragDropVisualOverlay.Opacity > 0.5)
+                {
+                    DragDropVisualOverlay.Opacity = 1.0;
+                }
+                else
+                {
+                    // Плавное появление только если был скрыт
+                    var fadeIn = new System.Windows.Media.Animation.DoubleAnimation
+                    {
+                        From = DragDropVisualOverlay.Opacity,
+                        To = 1.0,
+                        Duration = TimeSpan.FromMilliseconds(150)
+                    };
+                    DragDropVisualOverlay.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+                }
+            });
+        }
+
+        /// <summary>
+        /// Скрывает визуальный overlay drag & drop
+        /// </summary>
+        private void HideDragDropOverlay()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                if (DragDropVisualOverlay == null) return;
+
+                // Отменяем любые текущие анимации
+                DragDropVisualOverlay.BeginAnimation(UIElement.OpacityProperty, null);
+
+                // Плавное исчезновение
+                var fadeOut = new System.Windows.Media.Animation.DoubleAnimation
+                {
+                    From = DragDropVisualOverlay.Opacity,
+                    To = 0.0,
+                    Duration = TimeSpan.FromMilliseconds(100)
+                };
+
+                fadeOut.Completed += (s, e) =>
+                {
+                    // Проверяем, что за время анимации не началось новое перетаскивание
+                    if (!_isDraggingFiles)
+                    {
+                        DragDropVisualOverlay.Visibility = Visibility.Collapsed;
+
+                        // Показываем обратно основной контент чата
+                        if (BaseChatGrid != null)
+                        {
+                            BaseChatGrid.Visibility = Visibility.Visible;
+                        }
+                    }
+                };
+
+                DragDropVisualOverlay.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+            });
         }
 
         #endregion

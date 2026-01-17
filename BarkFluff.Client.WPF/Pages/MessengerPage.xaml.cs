@@ -2027,12 +2027,29 @@ namespace BarkFluff.Client.WPF.Pages
             }
         }
 
-        private void ShowAttachmentPreview(List<string> filePaths)
+        public void ShowAttachmentPreview(List<string> filePaths)
         {
             ShowAttachmentPreviewWithText(() =>
             {
                 AttachmentPreview.AddAttachments(filePaths);
             });
+        }
+
+        /// <summary>
+        /// Открывает чат по ID и сразу показывает превью вложений с файлами
+        /// Используется при перетаскивании файлов на ChatItem
+        /// </summary>
+        public void OpenChatAndShowAttachments(string chatId, long lastMessageId, bool isGroupChat, long userId, string title, List<string> filePaths)
+        {
+            // Сначала открываем чат
+            OpenChatById(chatId, lastMessageId, isGroupChat, userId, title);
+
+            // Затем показываем превью вложений
+            // Используем BeginInvoke чтобы дать чату время открыться
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                ShowAttachmentPreview(filePaths);
+            }), System.Windows.Threading.DispatcherPriority.Loaded);
         }
 
         /// <summary>
