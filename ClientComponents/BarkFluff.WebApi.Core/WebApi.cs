@@ -2,6 +2,7 @@ using BarkFluff.Proto.Updates;
 using BarkFluff.WebApi.Core.Managers;
 using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
+
 using Grpc.Net.Client;
 
 namespace BarkFluff.WebApi.Core
@@ -149,12 +150,14 @@ namespace BarkFluff.WebApi.Core
 
         #region Работа с сообщениями (делегирование к MessageManager)
         public async Task<(ErrorReturner error, List<Proto.Messages.Chat>? chats)> GetChats(GlobalParam globalParam) => await MessageManager.GetChats(globalParam);
+        public async Task<(ErrorReturner error, string title, long countUnread, long firstUnreadId, bool isGroup, long lastMessageId, string Picture)> GetChatInfo(GlobalParam globalParam, string chatId) => await MessageManager.GetChatInfo(globalParam, chatId);
         public async Task<(ErrorReturner error, MessageModel? message)> SendMessage(GlobalParam globalParam, (bool isUserId, string recipient) options, ForwardingLetter letter) => await MessageManager.SendMessage(globalParam, options, letter);
         public async Task<(bool, string?)> CreateGroupChat(GlobalParam globalParam, string chatName, List<long> userIds) => await MessageManager.CreateGroupChat(globalParam, chatName, userIds);
         public async Task<(bool, string?)> CreateChat(GlobalParam globalParam, string userId) => await MessageManager.CreateChat(globalParam, userId);
         public async Task<(ErrorReturner error, List<MessageModel>? messages)> GetMessages(GlobalParam globalParam, string chatId, long fromMessageId) => await MessageManager.GetMessages(globalParam, chatId, fromMessageId);
         public async Task<(ErrorReturner error, List<MessageModel>? messages)> GetMessagesWithOffset(GlobalParam globalParam, string chatId, long fromMessageId, int offsetBefore, int offsetAfter) => await MessageManager.GetMessagesWithOffset(globalParam, chatId, fromMessageId, offsetBefore, offsetAfter);
         public async Task<ErrorReturner> MarkMessageAsRead(GlobalParam globalParam, List<long> messageId) => await MessageManager.MarkMessageAsRead(globalParam, messageId);
+        public async Task<(ErrorReturner error, string chatId)> GetPersonChatId(GlobalParam globalParam, long userId) => await MessageManager.GetPersonChatId(globalParam, userId);
         #endregion
 
         #region Поиск (делегирование к SearchManager)

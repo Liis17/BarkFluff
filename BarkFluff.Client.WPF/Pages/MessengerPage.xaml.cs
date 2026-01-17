@@ -503,6 +503,9 @@ namespace BarkFluff.Client.WPF.Pages
 
         private async void ChatId_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
+            MessageArea.Children.Clear();
+            GC.Collect();
+
             if (string.IsNullOrEmpty(ChatId.Value) || IsOpenChatEmpty || _openedLastMessageId == 0)
             {
                 return;
@@ -733,17 +736,35 @@ namespace BarkFluff.Client.WPF.Pages
                     var arg = task.Split("=")[1];
                     if (command == "user-username")
                     {
-                        var result = await App.ServerCommunication.SearchUser(App.GParam, arg);
-                        if (result.userList.Count > 0)
+                        var result = await App.ServerCommunication.CheckUsername(arg, App.GParam);
+                        if (!result.error.IsSuccess)
                         {
-                            var user = result.userList[0];
+                            App.ErideMessage.AddMessage($"Что-то пошло не так {result.error.ErrorMessage}", new Erida { Type = MType.Warning });
+                            return;
+                        }
+                        if (result.exists)
+                        {
+                            var responseUserId = await App.ServerCommunication.SearchUser(App.GParam, arg);
+                            if (!responseUserId.error.IsSuccess)
+                            {
+                                App.ErideMessage.AddMessage($"Что-то пошло не так {responseUserId.error.ErrorMessage}", new Erida { Type = MType.Warning });
+                                return;
+                            }
+                            var responseChatId = await App.ServerCommunication.GetPersonChatId(App.GParam, responseUserId.userList[0].Id);
+                            if (!responseChatId.error.IsSuccess)
+                            {
+                                App.ErideMessage.AddMessage($"Что-то пошло не так {responseChatId.error.ErrorMessage}", new Erida { Type = MType.Warning });
+                                return;
+                            }
                             IsOpenChatEmpty = true;
                             IsOpenChat.Value = true;
-                            ChatIdbyUserId.Value = user.Id;
+                            ChatId.Value = responseChatId.chatId;
+                            OpenChatFromSearch(responseUserId.userList[0].Id, "чат тайтл");
+                            App.ErideMessage.AddMessage($"Открытие чата с {arg}", new Erida { Type = MType.Warning });
                         }
                         else
                         {
-                            MessageBox.Show("Пользователь не найден");
+                            App.ErideMessage.AddMessage($"Пользователь {arg} не найден", new Erida { Type = MType.Warning });
                         }
                     }
                 }
@@ -1894,6 +1915,23 @@ namespace BarkFluff.Client.WPF.Pages
         #endregion
 
         #region Чаты
+
+        public async void OpenChatFromSearch(long userId, string chatTitle)
+        {
+            var responseChatId = await App.ServerCommunication.GetPersonChatId(App.GParam, userId);
+            if (!responseChatId.error.IsSuccess)
+            {
+                App.ErideMessage.AddMessage($"Что-то пошло не так, {responseChatId.error.ErrorMessage}", new Erida { Type = MType.Warning });
+                return;
+            }
+            var responseChatInfo = await App.ServerCommunication.GetChatInfo(App.GParam, responseChatId.chatId);
+            if (!responseChatInfo.error.IsSuccess)
+            {
+                App.ErideMessage.AddMessage($"Что-то пошло не так, {responseChatId.error.ErrorMessage}", new Erida { Type = MType.Warning });
+                return;
+            }
+            OpenChatById(responseChatId.chatId, responseChatInfo.lastMessageId, responseChatInfo.isGroup, userId, responseChatInfo.title);
+        }
 
         public void OpenChatById(string chatId, long lastMessageId, bool isGroupChat, long userId, string title)
         {
