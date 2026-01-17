@@ -16,6 +16,11 @@ namespace BarkFluff.WebApi.Core.Managers
             _webApi = webApi;
         }
 
+        /// <summary>
+        /// Получение списка чатов
+        /// </summary>
+        /// <param name="globalParam"></param>
+        /// <returns></returns>
         public async Task<(ErrorReturner error, List<Proto.Messages.Chat>? chats)> GetChats(GlobalParam globalParam)
         {
             try
@@ -39,6 +44,46 @@ namespace BarkFluff.WebApi.Core.Managers
             catch (Exception ex)
             {
                 return (new ErrorReturner(false, "Ошибка получения чатов"), null);
+            }
+        }
+
+        /// <summary>
+        /// Получить информацию о чате по его идентификатору.
+        /// </summary>
+        public async Task<(ErrorReturner error, string title, long countUnread, long firstUnreadId, bool isGroup, long lastMessageId, string Picture)> GetChatInfo(GlobalParam globalParam, string chatId)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var response = await MessagesAC!.GetChatInfoAsync(new Proto.Messages.GetChatInfoRequest
+                    {
+                        ChatId = chatId,
+                    });
+
+                    return (new ErrorReturner(true), response.Title, response.CountUnread, response.FirstUnreadMessageId, response.IsGroupChat, response.LastMessageId, response.Picture);
+                }, globalParam);
+
+            }
+            catch (BarkFluff.Shared.Exceptions.Users.UserIsDraftException)
+            {
+                return (new ErrorReturner(false, "Пользователь не подтвержден"), string.Empty, 0, 0, false, 0, string.Empty);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.ChatIdNotValidException)
+            {
+                return (new ErrorReturner(false, "Неверный идентификатор чата"), string.Empty, 0, 0, false, 0, string.Empty);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.ChatNotFoundException)
+            {
+                return (new ErrorReturner(false, "Чат не найден"), string.Empty, 0, 0, false, 0, string.Empty);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.NoAccessToChatException)
+            {
+                return (new ErrorReturner(false, "Нет доступа к чату"), string.Empty, 0, 0, false, 0, string.Empty);
+            }
+            catch (Exception ex)
+            {
+                return (new ErrorReturner(false, "Ошибка получения информации о чате"), string.Empty, 0, 0, false, 0, string.Empty);
             }
         }
 
@@ -258,6 +303,9 @@ namespace BarkFluff.WebApi.Core.Managers
             }
         }
 
+        /// <summary>
+        /// Отметка сообщения как прочитанного.
+        /// </summary>
         public async Task<ErrorReturner> MarkMessageAsRead(GlobalParam globalParam, List<long> messageId)
         {
             try
@@ -279,6 +327,41 @@ namespace BarkFluff.WebApi.Core.Managers
             catch (Exception ex)
             {
                 return new ErrorReturner(false, "Ошибка отметки сообщения как прочитанного");
+            }
+        }
+
+        /// <summary>
+        /// Получить идентификатор персонального чата с указанным пользователем.
+        /// </summary>
+        public async Task<(ErrorReturner error, string chatId)> GetPersonChatId(GlobalParam globalParam, long userId)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var response = await MessagesAC!.GetPersonChatIdAsync(new Proto.Messages.GetPersonChatIdRequest { UserId = userId });
+                    return (new ErrorReturner(true), response.ChatId);
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.UserNotFoundException)
+            {
+                return (new ErrorReturner(false, "Пользователь не найден"), string.Empty);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.ChatNotFoundException)
+            {
+                return (new ErrorReturner(false, "Чат с данным пользователем не найден"), string.Empty);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.ChatIdNotValidException)
+            {
+                return (new ErrorReturner(false, "Неверный идентификатор чата"), string.Empty);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.NoAccessToChatException)
+            {
+                return (new ErrorReturner(false, "Нет доступа к чату"), string.Empty);
+            }
+            catch (Exception ex)
+            {
+                return (new ErrorReturner(false, "Ошибка получения идентификатора чата"), string.Empty);
             }
         }
     }
