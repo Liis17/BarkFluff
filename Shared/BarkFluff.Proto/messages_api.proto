@@ -35,6 +35,9 @@ service MessagesApi {
 
   // Получить ID личного чата с пользователем
   rpc GetPersonChatId(GetPersonChatIdRequest) returns(GetPersonChatIdResponse);
+
+  // Получить информацию о чате
+  rpc GetChatInfo(GetChatInfoRequest) returns(GetChatInfoResponse);
 }
 
 message MarkAsReadRequest {
@@ -186,4 +189,17 @@ message ChatAttachmentInfo {
   barkfluff.shared.MessageAttachment attachment = 3; // Данные вложения
   google.protobuf.Timestamp sent_at = 4; // Дата отправки
   int64 sender_id = 5; // ID отправителя
+}
+
+message GetChatInfoRequest {
+  string chat_id = 1; // Идентификатор чата
+}
+
+message GetChatInfoResponse {
+  int64 last_message_id = 1; // Идентификатор последнего сообщения
+  int64 first_unread_message_id = 2; // Идентификатор первого непрочитанного сообщения
+  string title = 3; // Название чата
+  string picture = 4; // Картинка чата
+  bool is_group_chat = 5; // Является ли групповым чатом
+  int64 count_unread = 6; // Количество непрочитанных сообщений
 }

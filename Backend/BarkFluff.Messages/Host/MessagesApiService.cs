@@ -1,4 +1,5 @@
 using BarkFluff.Messages.Features.CreateGroupChat;
+using BarkFluff.Messages.Features.GetChatInfo;
 using BarkFluff.Messages.Features.GetPersonChatId;
 using BarkFluff.Messages.Features.KickUser;
 using BarkFluff.Messages.Features.ListChatAttachments;
@@ -181,6 +182,23 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
         var command = new GetPersonChatIdCommand
         {
             UserId = request.UserId
+        };
+
+        return await _mediator.Send(command);
+    }
+
+    public override async Task<GetChatInfoResponse> GetChatInfo(GetChatInfoRequest request, ServerCallContext context)
+    {
+        var parseGuidResult = Guid.TryParse(request.ChatId, out Guid chatId);
+
+        if (!parseGuidResult)
+        {
+            throw new ChatIdNotValidException();
+        }
+
+        var command = new GetChatInfoCommand
+        {
+            ChatId = chatId
         };
 
         return await _mediator.Send(command);
