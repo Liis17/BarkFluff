@@ -22,6 +22,13 @@ public class TokenAuthMiddleware
     {
         var path = context.Request.Path.Value ?? string.Empty;
 
+        // Skip OTLP endpoints (/v1/*)
+        if (path.StartsWith("/v1/", StringComparison.OrdinalIgnoreCase))
+        {
+            await _next(context);
+            return;
+        }
+
         // API endpoints
         if (path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase))
         {
