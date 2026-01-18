@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messenger Admin Panel | System Logs</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        #loadingOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #dfe6e9;
+            border-top-color: #6c5ce7;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-slate-800 font-sans antialiased">
+
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+    </div>
+
+    <div class="flex h-screen overflow-hidden">
+
+        <!-- SIDEBAR -->
+        <aside class="w-64 bg-slate-900 text-white flex flex-col shadow-xl">
+            <div class="h-16 flex items-center justify-center border-b border-slate-700">
+                <h1 class="text-xl font-bold tracking-wider flex items-center gap-2">
+                    <i data-lucide="message-circle" class="text-blue-400"></i>
+                    MSG::ADMIN
+                </h1>
+            </div>
+
+            <nav class="flex-1 px-3 py-6 space-y-2 overflow-y-auto">
+                <a href="/" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                    Дашборд
+                </a>
+                <a href="/docker" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
+                    <i data-lucide="container" class="w-5 h-5"></i>
+                    Контейнеры
+                </a>
+                <a href="/users" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
+                    <i data-lucide="users" class="w-5 h-5"></i>
+                    Пользователи
+                </a>
+                <a href="/db" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
+                    <i data-lucide="database" class="w-5 h-5"></i>
+                    База данных
+                </a>
+                <a href="/logs" class="flex items-center gap-3 px-4 py-3 bg-blue-600 rounded-lg text-white transition-colors">
+                    <i data-lucide="terminal-square" class="w-5 h-5"></i>
+                    Логи системы
+                </a>
+                <a href="/statistic" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
+                    <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
+                    Статистика
+                </a>
+            </nav>
+
+            <div class="p-4 border-t border-slate-700">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center font-bold">A</div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium truncate" id="tokenName">Loading...</p>
+                        <p class="text-xs text-slate-400" id="tokenInfo">...</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="flex-1 flex flex-col overflow-hidden">
+
+            <!-- HEADER -->
+            <header class="h-16 bg-white shadow-sm flex items-center justify-between px-8 z-10">
+                <h2 class="text-xl font-semibold text-slate-700">Логи системы</h2>
+                <div class="flex items-center gap-4">
+                    <button id="logoutBtn" class="p-2 text-slate-400 hover:text-red-500" title="Выйти">
+                        <i data-lucide="log-out" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- SCROLLABLE CONTENT -->
+            <div class="flex-1 overflow-y-auto p-8">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-8 text-center">
+                    <i data-lucide="terminal-square" class="w-16 h-16 text-purple-400 mx-auto mb-4"></i>
+                    <h3 class="text-xl font-bold text-slate-700 mb-2">Логи системы</h3>
+                    <p class="text-slate-500">Страница в разработке...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        async function checkAuth() {
+            try {
+                const response = await fetch('/api/auth/me');
+                if (!response.ok) {
+                    window.location.href = '/';
+                    return;
+                }
+                const data = await response.json();
+                document.getElementById('tokenName').textContent = data.name || 'Unknown Session';
+                document.getElementById('tokenInfo').textContent = `Создан: ${formatDate(data.createdAt)}`;
+                document.getElementById('loadingOverlay').style.display = 'none';
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                window.location.href = '/';
+            }
+        }
+
+        function formatDate(isoDate) {
+            const date = new Date(isoDate);
+            return date.toLocaleDateString('ru-RU', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            if (!confirm('Вы уверены, что хотите выйти?')) return;
+            try {
+                await fetch('/api/auth/logout', { method: 'POST' });
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+            document.cookie = 'auth_token=; path=/; max-age=0';
+            window.location.href = '/';
+        });
+
+        checkAuth();
+    </script>
+</body>
+</html>

@@ -346,7 +346,7 @@
                             // Set cookie and redirect
                             document.cookie = `auth_token=${status.token}; path=/; max-age=31536000; SameSite=Lax`;
                             setTimeout(() => {
-                                window.location.href = '/Dashboard.html';
+                                window.location.href = '/';
                             }, 1000);
                         } else if (status.status === 2) { // Rejected
                             clearInterval(pollInterval);

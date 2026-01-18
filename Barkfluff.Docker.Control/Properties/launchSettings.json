@@ -4,10 +4,12 @@
       "commandName": "Project",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_HOSTINGSTARTUPASSEMBLIES": "",
         "Telegram__BotToken": "8539569051:AAHMs6TwTKOpYqcA8XkWTB7p6w8CO1RWQwQ"
       },
       "dotnetRunMessages": true,
-      "applicationUrl": "http://localhost:51888"
+      "applicationUrl": "http://localhost:51888",
+      "hotReloadEnabled": false
     }
   },
   "$schema": "https://json.schemastore.org/launchsettings.json"

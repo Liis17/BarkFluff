@@ -64,25 +64,29 @@
             </div>
 
             <nav class="flex-1 px-3 py-6 space-y-2 overflow-y-auto">
-                <a href="#" class="flex items-center gap-3 px-4 py-3 bg-blue-600 rounded-lg text-white transition-colors">
+                <a href="javascript:void(0)" class="flex items-center gap-3 px-4 py-3 bg-blue-600 rounded-lg text-white transition-colors">
                     <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
                     Дашборд
                 </a>
-                <a href="#" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
+                <a href="/docker" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
                     <i data-lucide="container" class="w-5 h-5"></i>
                     Контейнеры
                 </a>
-                <a href="#" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
+                <a href="/users" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
                     <i data-lucide="users" class="w-5 h-5"></i>
                     Пользователи
                 </a>
-                <a href="#" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
+                <a href="/db" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
                     <i data-lucide="database" class="w-5 h-5"></i>
                     База данных
                 </a>
-                <a href="#" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
+                <a href="/logs" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
                     <i data-lucide="terminal-square" class="w-5 h-5"></i>
                     Логи системы
+                </a>
+                <a href="/statistic" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
+                    <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
+                    Статистика
                 </a>
             </nav>
 
@@ -320,7 +324,7 @@
                 const response = await fetch('/api/auth/me');
                 if (!response.ok) {
                     // Не авторизован - редирект на Login
-                    window.location.href = '/Login.html';
+                    window.location.href = '/';
                     return;
                 }
 
@@ -335,7 +339,7 @@
 
             } catch (error) {
                 console.error('Auth check failed:', error);
-                window.location.href = '/Login.html';
+                window.location.href = '/';
             }
         }
 
@@ -363,7 +367,7 @@
 
             // Удаляем куку и редиректим
             document.cookie = 'auth_token=; path=/; max-age=0';
-            window.location.href = '/Login.html';
+            window.location.href = '/';
         });
 
         // Проверяем авторизацию при загрузке
