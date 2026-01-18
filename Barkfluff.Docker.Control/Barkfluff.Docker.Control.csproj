@@ -9,6 +9,11 @@
   <ItemGroup>
     <None Remove="Pages\dashboard.html" />
     <None Remove="Pages\Login.html" />
+    <None Remove="Pages\docker.html" />
+    <None Remove="Pages\users.html" />
+    <None Remove="Pages\db.html" />
+    <None Remove="Pages\logs.html" />
+    <None Remove="Pages\statistic.html" />
   </ItemGroup>
 
   <ItemGroup>
@@ -16,6 +21,21 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Pages\Login.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\docker.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\users.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\db.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\logs.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\statistic.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
