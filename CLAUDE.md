@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 BarkFluff is a distributed real-time messaging platform built on a microservices architecture using .NET 9.0, gRPC, and RabbitMQ. The system supports private/group chats, file attachments, user profiles, 2FA authentication, and real-time updates.
 
+Это крупный, распределенный проект .NET с микросервисной архитектурой. Система представляет собой платформу для общения в реальном времени с такими функциями, как обмен сообщениями, управление пользователями, обмен файлами и уведомления. Она также включает в себя функции на базе искусственного интеллекта, такие как перевод текста и модерация контента.
+
 ## Technology Stack
 
 - **Framework**: .NET 9.0
@@ -15,6 +17,7 @@ BarkFluff is a distributed real-time messaging platform built on a microservices
 - **Cache**: Redis
 - **File Storage**: Minio (S3-compatible)
 - **Containerization**: Docker
+- **Desktop Client**: WPF (Windows Presentation Foundation)
 
 ## Build and Run Commands
 
