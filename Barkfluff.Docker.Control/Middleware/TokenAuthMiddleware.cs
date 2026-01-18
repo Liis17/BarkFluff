@@ -8,23 +8,6 @@ public class TokenAuthMiddleware
     private readonly TokenService _tokenService;
     private readonly ILogger<TokenAuthMiddleware> _logger;
 
-    private static readonly string[] ProtectedPaths =
-    {
-        "/Dashboard.html",
-        "/dashboard.html"
-    };
-
-    private static readonly string[] ApiPrefixes =
-    {
-        "/api"
-    };
-
-    private static readonly string[] ExcludedPaths =
-    {
-        "/api/auth/request",
-        "/api/auth/status"
-    };
-
     public TokenAuthMiddleware(
         RequestDelegate next,
         TokenService tokenService,
@@ -39,77 +22,73 @@ public class TokenAuthMiddleware
     {
         var path = context.Request.Path.Value ?? string.Empty;
 
-        // Check if path requires authentication
-        var requiresAuth = RequiresAuthentication(path);
-
-        if (!requiresAuth)
+        // API endpoints
+        if (path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase))
         {
+            // Validate token for all API endpoints
+            var token = ValidateToken(context);
+            if (token != null)
+            {
+                context.Items["AuthToken"] = token;
+            }
+
+            // Allow unauthenticated access to public auth endpoints
+            if (path.StartsWith("/api/auth/request", StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWith("/api/auth/status", StringComparison.OrdinalIgnoreCase))
+            {
+                await _next(context);
+                return;
+            }
+
+            // All other API endpoints require authentication
+            if (token == null)
+            {
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return;
+            }
+
             await _next(context);
             return;
         }
 
-        // Try to get token from cookie
+        // HTML pages routing - validate token and store in context
+        // Actual file serving is handled by PageRoutingMiddleware
+        var pageToken = ValidateToken(context);
+        if (pageToken == null)
+        {
+            // No valid token - redirect to login
+            if (path != "/" && !path.Equals("/Login.html", StringComparison.OrdinalIgnoreCase))
+            {
+                context.Response.Redirect("/");
+                return;
+            }
+            // Let Login.html be served
+            await _next(context);
+            return;
+        }
+
+        // Valid token - store in context and continue
+        context.Items["AuthToken"] = pageToken;
+        await _next(context);
+    }
+
+    private Barkfluff.Docker.Control.Models.AuthToken? ValidateToken(HttpContext context)
+    {
         if (!context.Request.Cookies.TryGetValue("auth_token", out var tokenValue) ||
             !Guid.TryParse(tokenValue, out var tokenId))
         {
-            HandleUnauthorized(context, path);
-            return;
+            return null;
         }
 
         var token = _tokenService.ValidateToken(tokenId);
         if (token == null)
         {
-            // Token is invalid or expired
+            // Token is invalid or expired - delete cookie
             context.Response.Cookies.Delete("auth_token");
-            HandleUnauthorized(context, path);
-            return;
+            return null;
         }
 
-        // Store token in context for later use
-        context.Items["AuthToken"] = token;
-
-        // Special handling for Login.html with valid token - redirect to dashboard
-        if (path.Equals("/Login.html", StringComparison.OrdinalIgnoreCase) ||
-            path.Equals("/login.html", StringComparison.OrdinalIgnoreCase) ||
-            path == "/")
-        {
-            context.Response.Redirect("/Dashboard.html");
-            return;
-        }
-
-        await _next(context);
-    }
-
-    private bool RequiresAuthentication(string path)
-    {
-        // Exclude auth request and status endpoints
-        if (ExcludedPaths.Any(excluded => path.StartsWith(excluded, StringComparison.OrdinalIgnoreCase)))
-        {
-            return false;
-        }
-
-        // Check if it's an API endpoint
-        if (ApiPrefixes.Any(prefix => path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
-        {
-            return true;
-        }
-
-        // Check if it's a protected page
-        return ProtectedPaths.Any(protectedPath =>
-            path.Equals(protectedPath, StringComparison.OrdinalIgnoreCase));
-    }
-
-    private void HandleUnauthorized(HttpContext context, string path)
-    {
-        // For API endpoints, return 401
-        if (ApiPrefixes.Any(prefix => path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
-        {
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            return;
-        }
-
-        // For pages, redirect to login
-        context.Response.Redirect("/Login.html");
+        return token;
     }
 }
 

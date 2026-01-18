@@ -24,10 +24,10 @@ public class Program
         builder.Services.AddSingleton<TokenService>();
         builder.Services.AddSingleton<AuthService>();
 
-        // Сначала регистрируем TelegramBotService как Singleton
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ TelegramBotService пїЅпїЅпїЅ Singleton
         builder.Services.AddSingleton<TelegramBotService>();
 
-        // Затем регистрируем его же как Hosted Service
+        // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ Hosted Service
         builder.Services.AddHostedService(provider => provider.GetRequiredService<TelegramBotService>());
 
         var app = builder.Build();
@@ -41,21 +41,49 @@ public class Program
         // Map Auth Endpoints
         app.MapAuthEndpoints();
 
-        // Serve static files (HTML pages)
-        app.UseDefaultFiles(new DefaultFilesOptions
-        {
-            DefaultFileNames = new[] { "Login.html" },
-            FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
-                Path.Combine(AppContext.BaseDirectory, "Pages"))
-        });
-
+        // Static files for Pages directory
         app.UseStaticFiles(new StaticFileOptions
         {
             FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
-                Path.Combine(AppContext.BaseDirectory, "Pages"))
+                Path.Combine(AppContext.BaseDirectory, "Pages")),
+            RequestPath = ""
+        });
+
+        // Root path routing based on auth
+        app.MapGet("/", async context =>
+        {
+            var token = context.Items["AuthToken"] as Barkfluff.Docker.Control.Models.AuthToken;
+            if (token != null)
+            {
+                // Valid token - serve dashboard
+                await ServeHtmlFile(context, "dashboard.html");
+            }
+            else
+            {
+                // No token - serve login
+                await ServeHtmlFile(context, "Login.html");
+            }
         });
 
         app.Run();
+    }
+
+    // Helper function to serve HTML files
+    private static async Task ServeHtmlFile(HttpContext context, string fileName)
+    {
+        var pagesPath = Path.Combine(AppContext.BaseDirectory, "Pages");
+        var filePath = Path.Combine(pagesPath, fileName);
+
+        if (!File.Exists(filePath))
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            await context.Response.WriteAsync($"Page not found: {fileName}");
+            return;
+        }
+
+        context.Response.ContentType = "text/html; charset=utf-8";
+        var content = await File.ReadAllTextAsync(filePath);
+        await context.Response.WriteAsync(content);
     }
 }
 
