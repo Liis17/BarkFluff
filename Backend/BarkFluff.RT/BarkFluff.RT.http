@@ -1,6 +1,0 @@
-@BarkFluff.RT_HostAddress = http://localhost:5101
-
-GET {{BarkFluff.RT_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
