@@ -1,6 +1,7 @@
 using Barkfluff.Docker.Control.Data;
 using Barkfluff.Docker.Control.Endpoints;
 using Barkfluff.Docker.Control.Middleware;
+using Barkfluff.Docker.Control.Models;
 using Barkfluff.Docker.Control.Services;
 
 namespace Barkfluff.Docker.Control;
@@ -15,6 +16,7 @@ public class Program
         builder.Services.Configure<TelegramSettings>(builder.Configuration.GetSection("Telegram"));
         builder.Services.Configure<AuthSettings>(builder.Configuration.GetSection("Auth"));
         builder.Services.Configure<LiteDbSettings>(builder.Configuration.GetSection(LiteDbSettings.SectionName));
+        builder.Services.Configure<OtlpSettings>(builder.Configuration.GetSection(OtlpSettings.SectionName));
 
         // Register LiteDB DbContext as Singleton
         builder.Services.AddSingleton<TokenDbContext>();
@@ -40,6 +42,9 @@ public class Program
 
         // Map Auth Endpoints
         app.MapAuthEndpoints();
+
+        // Map OTLP Metrics Endpoints
+        app.MapMetricsEndpoints();
 
         // Static files for Pages directory
         app.UseStaticFiles(new StaticFileOptions
