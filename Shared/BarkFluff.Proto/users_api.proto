@@ -81,6 +81,9 @@ service UsersServerApi {
 
   // Получить все баджи
   rpc GetAllBadges(GetAllBadgesRequest) returns(GetAllBadgesResponse);
+
+  // Экспорт всех данных пользователя (для GDPR и других целей)
+  rpc ExportData(ExportDataRequest) returns(ExportDataResponse);
 }
 
 message SearchUsersRequest {
@@ -306,5 +309,20 @@ message GetAllBadgesRequest {
 
 message GetAllBadgesResponse {
   repeated Badge badges = 1; // список всех баджей
+}
+
+// Экспорт данных пользователя
+
+message ExportDataRequest {
+  int64 user_id = 1; // идентификатор пользователя
+}
+
+message ExportDataResponse {
+  repeated JsonFile files = 1; // массив JSON файлов с данными
+}
+
+message JsonFile {
+  string filename = 1; // имя файла (например, "profile.json", "messages.json")
+  string content = 2; // содержимое файла в формате JSON
 }
 
