@@ -103,6 +103,7 @@ public class Program
         app.UseXAuth();
 
         app.MapGrpcService<MessagesApiService>();
+        app.MapGrpcService<MessagesServerApiService>();
 
         app.Run();
     }
