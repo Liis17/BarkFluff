@@ -16,9 +16,9 @@
     mc:Ignorable="d">
     <Border
         x:Name="MainBorder"
-        MaxWidth="800"
+        MaxWidth="600"
         MaxHeight="700"
-        Padding="20"
+        Padding="16"
         HorizontalAlignment="Center"
         VerticalAlignment="Center"
         Background="#FF202020"
@@ -95,15 +95,20 @@
             </Grid>
 
             <!--  Preview Area  -->
-            <Border Grid.Row="1" Padding="8" Background="#1a1a1a">
+            <Border
+                Grid.Row="1"
+                Padding="8"
+                HorizontalAlignment="Center"
+                Background="#1a1a1a">
                 <ScrollViewer
                     MaxHeight="400"
+                    HorizontalAlignment="Center"
                     HorizontalScrollBarVisibility="Disabled"
                     VerticalScrollBarVisibility="Auto">
                     <ItemsControl x:Name="PreviewItemsControl">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <UniformGrid Columns="3" />
+                                <UniformGrid HorizontalAlignment="Center" Columns="3" />
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                     </ItemsControl>

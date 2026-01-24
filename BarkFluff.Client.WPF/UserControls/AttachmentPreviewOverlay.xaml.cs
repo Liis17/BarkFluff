@@ -227,15 +227,39 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private void AddPreviewItem(AttachmentPreviewItem item)
         {
+            // Gradient background matching IncomingMessageStyle
+            var gradientBrush = new System.Windows.Media.LinearGradientBrush
+            {
+                StartPoint = new System.Windows.Point(0, 0),
+                EndPoint = new System.Windows.Point(1, 1),
+                GradientStops = new System.Windows.Media.GradientStopCollection
+                {
+                    new System.Windows.Media.GradientStop(
+                        System.Windows.Media.Color.FromRgb(0x3A, 0x3A, 0x3D), 0.0),
+                    new System.Windows.Media.GradientStop(
+                        System.Windows.Media.Color.FromRgb(0x2D, 0x2D, 0x30), 1.0)
+                }
+            };
+
             Border previewBorder = new Border
             {
                 Width = 180,
                 Height = 180,
                 Margin = new Thickness(6),
-                CornerRadius = new CornerRadius(12),
-                Background = System.Windows.Media.Brushes.Black,
+                CornerRadius = new CornerRadius(18, 18, 18, 6),
+                Background = gradientBrush,
                 Tag = item,
                 ClipToBounds = true
+            };
+
+            // Drop shadow effect matching MessageBubble
+            previewBorder.Effect = new System.Windows.Media.Effects.DropShadowEffect
+            {
+                BlurRadius = 12,
+                Direction = 270,
+                Opacity = 0.12,
+                ShadowDepth = 3,
+                Color = System.Windows.Media.Colors.Black
             };
 
             if (IsImageFileType(item.FileType))
