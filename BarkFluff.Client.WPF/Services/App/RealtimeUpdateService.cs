@@ -200,6 +200,38 @@ namespace BarkFluff.Client.WPF.Services.App
             var delay = CalculateBackoffDelay(_reconnectAttempts);
             WPF.App.ErideMessage.AddMessage($"Reconnection attempt {_reconnectAttempts} in {delay / 1000} seconds", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
 
+            // Перед переподключением проверяем и обновляем токен при необходимости
+            if (_currentGlobalParam != null)
+            {
+                try
+                {
+                    var tokenResult = await WPF.App.ServerCommunication.EnsureTokenValidAsync(_currentGlobalParam);
+                    if (!tokenResult.IsSuccess)
+                    {
+                        WPF.App.ErideMessage.AddMessage($"Token refresh failed: {tokenResult.ErrorMessage}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Warning });
+
+                        // Если обычное обновление не помогло и уже было несколько попыток - пробуем принудительное
+                        if (_reconnectAttempts >= 3)
+                        {
+                            WPF.App.ErideMessage.AddMessage("Attempting forced token refresh...", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
+                            var forceResult = await WPF.App.ServerCommunication.ForceRefreshTokenAsync(_currentGlobalParam);
+                            if (forceResult.IsSuccess)
+                            {
+                                WPF.App.ErideMessage.AddMessage("Token forcefully refreshed", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
+                            }
+                        }
+                    }
+                    else
+                    {
+                        WPF.App.ErideMessage.AddMessage("Token validated/refreshed before reconnection", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    WPF.App.ErideMessage.AddMessage($"Error refreshing token: {ex.Message}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Warning });
+                }
+            }
+
             try
             {
                 await Task.Delay(delay, cancellationToken);
@@ -366,6 +398,10 @@ namespace BarkFluff.Client.WPF.Services.App
                         NotifyConnectionFailureIfAllStreamsDown();
 
                         readReceiptReconnectAttempts++;
+
+                        // Проверяем и обновляем токен перед переподключением
+                        await EnsureTokenBeforeReconnectAsync(globalParam, readReceiptReconnectAttempts);
+
                         var delay = CalculateBackoffDelay(readReceiptReconnectAttempts);
                         await Task.Delay(delay, cancellationToken);
                         continue;
@@ -399,6 +435,10 @@ namespace BarkFluff.Client.WPF.Services.App
                     if (!cancellationToken.IsCancellationRequested)
                     {
                         readReceiptReconnectAttempts++;
+
+                        // Проверяем и обновляем токен перед переподключением
+                        await EnsureTokenBeforeReconnectAsync(globalParam, readReceiptReconnectAttempts);
+
                         var delay = CalculateBackoffDelay(readReceiptReconnectAttempts);
                         await Task.Delay(delay, cancellationToken);
                     }
@@ -406,6 +446,40 @@ namespace BarkFluff.Client.WPF.Services.App
             }
 
             _isReadReceiptConnected = false;
+        }
+
+        /// <summary>
+        /// Проверяет и обновляет токен перед переподключением streaming соединения
+        /// </summary>
+        private async Task EnsureTokenBeforeReconnectAsync(GlobalParam globalParam, int reconnectAttempts)
+        {
+            try
+            {
+                var tokenResult = await WPF.App.ServerCommunication.EnsureTokenValidAsync(globalParam);
+                if (!tokenResult.IsSuccess)
+                {
+                    WPF.App.ErideMessage.AddMessage($"Token validation failed: {tokenResult.ErrorMessage}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Warning });
+
+                    // После нескольких неудачных попыток - принудительное обновление
+                    if (reconnectAttempts >= 3)
+                    {
+                        WPF.App.ErideMessage.AddMessage("Attempting forced token refresh...", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
+                        var forceResult = await WPF.App.ServerCommunication.ForceRefreshTokenAsync(globalParam);
+                        if (forceResult.IsSuccess)
+                        {
+                            WPF.App.ErideMessage.AddMessage("Token forcefully refreshed", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
+                        }
+                    }
+                }
+                else
+                {
+                    WPF.App.ErideMessage.AddMessage("Token validated/refreshed before reconnection", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
+                }
+            }
+            catch (Exception ex)
+            {
+                WPF.App.ErideMessage.AddMessage($"Error during token refresh: {ex.Message}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Warning });
+            }
         }
 
         private void ProcessReadReceiptUpdate(MessageReadEvent update)
