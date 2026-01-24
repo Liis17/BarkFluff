@@ -203,3 +203,48 @@ message GetChatInfoResponse {
   bool is_group_chat = 5; // Является ли групповым чатом
   int64 count_unread = 6; // Количество непрочитанных сообщений
 }
+
+// Server API для межсервисного взаимодействия
+
+service MessagesServerApi {
+
+  // Получить все сообщения пользователя для экспорта
+  rpc GetUserAllMessages(GetUserAllMessagesRequest) returns(GetUserAllMessagesResponse);
+}
+
+message GetUserAllMessagesRequest {
+  int64 user_id = 1; // идентификатор пользователя
+}
+
+message GetUserAllMessagesResponse {
+  repeated ExportMessage messages = 1; // все сообщения пользователя
+  repeated ExportChat chats = 2; // все чаты пользователя
+}
+
+message ExportMessage {
+  int64 id = 1; // идентификатор сообщения
+  string chat_id = 2; // идентификатор чата
+  int64 sender_id = 3; // идентификатор отправителя
+  repeated int64 read_by = 4; // идентификаторы пользователей, прочитавших сообщение
+  google.protobuf.Timestamp sent_at = 5; // дата отправки
+  string text = 6; // текст сообщения
+  repeated ExportAttachment attachments = 7; // вложения
+  int32 content_type = 8; // тип содержимого (0 = unknown, 1 = generic, 2 = system)
+}
+
+message ExportAttachment {
+  int64 id = 1; // идентификатор вложения
+  int32 type = 2; // тип вложения (0 = unknown, 1 = image, 2 = video, 3 = gif, 4 = document)
+  string file_id = 3; // идентификатор файла
+  string preview_url = 4; // ссылка на превью
+  int64 attachment_size = 5; // размер файла в байтах
+  string preview_file_id = 6; // идентификатор файла превью
+  string file_name = 7; // оригинальное имя файла
+}
+
+message ExportChat {
+  string id = 1; // идентификатор чата
+  string title = 2; // название чата
+  bool is_group_chat = 3; // является ли групповым чатом
+  repeated int64 member_ids = 4; // идентификаторы участников
+}

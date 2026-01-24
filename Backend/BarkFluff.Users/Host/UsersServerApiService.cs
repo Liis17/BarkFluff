@@ -9,6 +9,7 @@ using BarkFluff.Users.Features.Badges.UpdateUserBadgesPriority;
 using BarkFluff.Users.Features.CheckExistEmail;
 using BarkFluff.Users.Features.CheckExistUsername;
 using BarkFluff.Users.Features.ConfirmUser;
+using BarkFluff.Users.Features.ExportData;
 using BarkFluff.Users.Features.FindByLogin;
 using BarkFluff.Users.Features.GetUser;
 using BarkFluff.Users.Features.GetUserContacts;
@@ -169,5 +170,15 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
         };
 
         return _mediator.Send(query);
+    }
+
+    public override Task<ExportDataResponse> ExportData(ExportDataRequest request, ServerCallContext context)
+    {
+        var command = new ExportDataCommand
+        {
+            UserId = request.UserId
+        };
+
+        return _mediator.Send(command);
     }
 }
