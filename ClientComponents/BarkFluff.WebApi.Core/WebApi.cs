@@ -101,6 +101,18 @@ namespace BarkFluff.WebApi.Core
         #region Работа с токенами (делегирование к TokenManager)
         public async Task<(ErrorReturner, string)> TokenUpdate(GlobalParam globalParam) => await TokenManager.TokenUpdate(globalParam);
         public async Task<TResponse> SafeCallAsync<TResponse>(Func<Task<TResponse>> apiCall, GlobalParam globalParam) => await TokenManager.SafeCallAsync(apiCall, globalParam);
+        /// <summary>
+        /// Проверяет срок действия токена и обновляет его при необходимости.
+        /// Используется перед переподключением streaming соединений.
+        /// </summary>
+        public async Task<ErrorReturner> EnsureTokenValidAsync(GlobalParam globalParam, int bufferMinutes = 5)
+            => await TokenManager.EnsureTokenValidAsync(globalParam, bufferMinutes);
+        /// <summary>
+        /// Принудительно обновляет токен и переинициализирует клиентов.
+        /// Используется когда известно, что токен недействителен.
+        /// </summary>
+        public async Task<ErrorReturner> ForceRefreshTokenAsync(GlobalParam globalParam)
+            => await TokenManager.ForceRefreshTokenAsync(globalParam);
         #endregion
 
         #region Обслуживание

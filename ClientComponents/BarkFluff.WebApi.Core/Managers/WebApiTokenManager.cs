@@ -93,5 +93,78 @@ namespace BarkFluff.WebApi.Core.Managers
         {
             return await ExecuteWithTokenRefresh(globalParam, apiCall);
         }
+
+        /// <summary>
+        /// Проверяет срок действия токена и обновляет его при необходимости.
+        /// Используется перед переподключением streaming соединений.
+        /// </summary>
+        /// <param name="globalParam">Глобальные параметры с токеном</param>
+        /// <param name="bufferMinutes">Запас времени до истечения токена (по умолчанию 5 минут)</param>
+        /// <returns>Результат операции</returns>
+        public async Task<ErrorReturner> EnsureTokenValidAsync(GlobalParam globalParam, int bufferMinutes = 5)
+        {
+            if (globalParam?.AccessToken == null)
+                return new ErrorReturner(false, "AccessToken is null");
+
+            // Проверяем срок действия токена с запасом
+            var expirationTime = globalParam.AccessToken.ExpirationDate?.ToDateTime();
+            if (expirationTime.HasValue && expirationTime.Value <= DateTime.UtcNow.AddMinutes(bufferMinutes))
+            {
+                // Токен истёк или скоро истечёт - обновляем
+                var (result, _) = await TokenUpdate(globalParam);
+                if (!result.IsSuccess)
+                    return result;
+
+                // Переинициализируем клиентов с новым токеном
+                if (_webApi.ClientManager._initParams.HasValue)
+                {
+                    var initParams = _webApi.ClientManager._initParams.Value;
+                    var reinitResult = _webApi.ClientManager.AddInterceptor(
+                        globalParam,
+                        initParams.DeviceName,
+                        initParams.Os,
+                        initParams.AppName,
+                        initParams.AppVersion,
+                        initParams.Ip);
+
+                    if (!reinitResult.IsSuccess)
+                        return reinitResult;
+                }
+            }
+
+            return new ErrorReturner(true);
+        }
+
+        /// <summary>
+        /// Принудительно обновляет токен и переинициализирует клиентов.
+        /// Используется когда известно, что токен недействителен.
+        /// </summary>
+        public async Task<ErrorReturner> ForceRefreshTokenAsync(GlobalParam globalParam)
+        {
+            if (globalParam?.RefreshToken == null)
+                return new ErrorReturner(false, "RefreshToken is null");
+
+            var (result, _) = await TokenUpdate(globalParam);
+            if (!result.IsSuccess)
+                return result;
+
+            // Переинициализируем клиентов с новым токеном
+            if (_webApi.ClientManager._initParams.HasValue)
+            {
+                var initParams = _webApi.ClientManager._initParams.Value;
+                var reinitResult = _webApi.ClientManager.AddInterceptor(
+                    globalParam,
+                    initParams.DeviceName,
+                    initParams.Os,
+                    initParams.AppName,
+                    initParams.AppVersion,
+                    initParams.Ip);
+
+                if (!reinitResult.IsSuccess)
+                    return reinitResult;
+            }
+
+            return new ErrorReturner(true);
+        }
     }
 }
