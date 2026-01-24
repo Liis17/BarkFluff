@@ -2423,11 +2423,28 @@ namespace BarkFluff.Client.WPF.Pages
                     });
                 }
             }
-            else
+            else if (clipboard.GetDataPresent(DataFormats.Text) || clipboard.GetDataPresent(DataFormats.UnicodeText))
             {
-                // Обычный текст - позволяем стандартную обработку
-                System.Diagnostics.Debug.WriteLine("Обработка обычного текста - стандартная вставка");
-                // НЕ устанавливаем e.Handled = true, чтобы текст вставился как обычно
+                // Обычный текст - выполняем вставку вручную
+                System.Diagnostics.Debug.WriteLine("Обработка обычного текста - ручная вставка");
+                var text = Clipboard.GetText();
+                if (!string.IsNullOrEmpty(text))
+                {
+                    // Получаем текущую позицию каретки и выделение
+                    var textBox = TextForMessage;
+                    int selectionStart = textBox.SelectionStart;
+                    int selectionLength = textBox.SelectionLength;
+                    string currentText = textBox.Text ?? string.Empty;
+
+                    // Вставляем текст с заменой выделенного фрагмента
+                    string newText = currentText.Substring(0, selectionStart) + text + currentText.Substring(selectionStart + selectionLength);
+                    textBox.Text = newText;
+
+                    // Устанавливаем каретку после вставленного текста
+                    textBox.SelectionStart = selectionStart + text.Length;
+                    textBox.SelectionLength = 0;
+                }
+                e.Handled = true;
             }
         }
 
