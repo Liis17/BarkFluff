@@ -1,0 +1,131 @@
+<local:BaseSettingsPage
+    x:Class="BarkFluff.Client.WPF.UserControls.SettingsPages.CacheSettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:BarkFluff.Client.WPF.UserControls.SettingsPages"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    Height="550"
+    d:DesignHeight="550"
+    d:DesignWidth="500"
+    mc:Ignorable="d">
+    <Grid Background="#1f1f1f">
+        <StackPanel Margin="20">
+            <!-- Кнопка "Назад" -->
+            <Button
+                HorizontalAlignment="Left"
+                Click="GoBack_Click"
+                Cursor="Hand"
+                Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}">
+                <StackPanel Orientation="Horizontal">
+                    <ui:SymbolIcon
+                        Margin="0,0,8,0"
+                        Foreground="#E0E0E0"
+                        Symbol="ArrowLeft24" />
+                    <TextBlock Foreground="#E0E0E0" Text="Назад" />
+                </StackPanel>
+            </Button>
+
+            <!-- Заголовок страницы -->
+            <TextBlock Style="{DynamicResource HeaderSettings}" Text="Кеш" />
+
+            <!-- Настройки кеша -->
+            <StackPanel Margin="0,10,0,0">
+                <Border
+                    Padding="16"
+                    Background="#2D2D2D"
+                    CornerRadius="8"
+                    Margin="0,8">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Размер кеша" />
+                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,4,0,0" Text="2.4 ГБ" />
+                        </StackPanel>
+                        <ui:SymbolIcon
+                            Grid.Column="1"
+                            Foreground="#FF68A540"
+                            Symbol="DatabaseStack16" />
+                    </Grid>
+                </Border>
+
+                <Border
+                    Padding="16"
+                    Background="#2D2D2D"
+                    CornerRadius="8"
+                    Margin="0,8">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Медиа файлы" />
+                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,4,0,0" Text="1.8 ГБ" />
+                        </StackPanel>
+                        <ui:SymbolIcon
+                            Grid.Column="1"
+                            Foreground="#FF68A540"
+                            Symbol="Image24" />
+                    </Grid>
+                </Border>
+
+                <Border
+                    Padding="16"
+                    Background="#2D2D2D"
+                    CornerRadius="8"
+                    Margin="0,8">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Временные файлы" />
+                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,4,0,0" Text="600 МБ" />
+                        </StackPanel>
+                        <ui:SymbolIcon
+                            Grid.Column="1"
+                            Foreground="#FF68A540"
+                            Symbol="Document24" />
+                    </Grid>
+                </Border>
+
+                <Border
+                    Padding="16"
+                    Background="#2D2D2D"
+                    CornerRadius="8"
+                    Margin="0,8">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Автоочистка" />
+                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,4,0,0" Text="При достижении 5 ГБ" />
+                        </StackPanel>
+                        <ui:SymbolIcon
+                            Grid.Column="1"
+                            Foreground="#FF68A540"
+                            Symbol="Delete24" />
+                    </Grid>
+                </Border>
+
+                <Button
+                    Width="200"
+                    Margin="0,20,0,0"
+                    HorizontalAlignment="Center"
+                    Background="#df5000"
+                    Content="Очистить кеш"
+                    Cursor="Hand"
+                    Foreground="White"
+                    Padding="16,8" />
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</local:BaseSettingsPage>
