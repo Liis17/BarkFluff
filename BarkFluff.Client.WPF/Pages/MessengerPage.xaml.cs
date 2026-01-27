@@ -1214,6 +1214,7 @@ namespace BarkFluff.Client.WPF.Pages
                     unReaded: item.CountUnread,
                     chatId: item.Id,
                     lastMessageId: item.LastMessage?.Id ?? 0,
+                    firstUnreadId: item.FirstUnreadMessageId,
                     isGroupChat: item.IsGroupChat,
                     userId: userId
                 );
@@ -1803,6 +1804,7 @@ namespace BarkFluff.Client.WPF.Pages
                             unReaded: message.SenderId != App.GParam.UserId ? 1 : 0,
                             chatId: chatId,
                             lastMessageId: message.MessageId,
+                            firstUnreadId: newChat.FirstUnreadMessageId,
                             isGroupChat: newChat.IsGroupChat,
                             userId: userId
                         );
