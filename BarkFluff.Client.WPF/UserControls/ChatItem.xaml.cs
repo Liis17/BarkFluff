@@ -2,7 +2,6 @@
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
 using System.Globalization;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -84,7 +83,7 @@ namespace BarkFluff.Client.WPF.UserControls
         /// </summary>
         public string? AvatarFileId => _avatarFileId;
 
-        public ChatItem(string imageUrl, string chatName, string lastMessageText, string time, ReadingStatus reading, List<long> readBy, long unReaded, string chatId, long lastMessageId, bool isGroupChat, long userId)
+        public ChatItem(string imageUrl, string chatName, string lastMessageText, string time, ReadingStatus reading, List<long> readBy, long unReaded, string chatId, long lastMessageId, long firstUnreadId, bool isGroupChat, long userId)
         {
             InitializeComponent();
             ChatId = chatId;
@@ -125,7 +124,7 @@ namespace BarkFluff.Client.WPF.UserControls
             LastMessage.Text = ProcessText(GetDisplayText(TransferMessage));
             var time = TransferMessage.SentAt.ToString();
             TimeMessage.Text = FormatDateTime(time.Length >= 2 ? time.Substring(1, time.Length - 2) : time);
-            
+
             // Update read status
             _lastMessageReadBy = TransferMessage.ReadBy ?? new List<long>();
             _lastMessageSenderId = TransferMessage.SenderId;
