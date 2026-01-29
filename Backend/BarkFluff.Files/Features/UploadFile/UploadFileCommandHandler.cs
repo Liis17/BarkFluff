@@ -6,6 +6,7 @@ using BarkFluff.Files.Infrastructure;
 using BarkFluff.Files.Persistence;
 using BarkFluff.Files.Services;
 using MediatR;
+
 using UploadFileType = BarkFluff.Files.Domain.UploadFileType;
 
 namespace BarkFluff.Files.Features.UploadFile;
@@ -15,11 +16,12 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
     private readonly UploadedFilesStorage _filesStorage;
     private readonly FileHashesStorage _hashesStorage;
     private readonly S3Uploader _s3Uploader;
+    private readonly S3BucketRegistry _bucketRegistry;
     private readonly ImageCompressor _imageCompressor;
     private readonly ILogger<UploadFileCommandHandler> _logger;
-    
 
-    private readonly List<UploadFileType> _filesToNeedGeneratePreview 
+
+    private readonly List<UploadFileType> _filesToNeedGeneratePreview
         = [UploadFileType.ChatPicture, UploadFileType.MessageAttachmentImage, UploadFileType.UserAvatar];
 
     private readonly Dictionary<UploadFileType, int> _customFileTypeWidth = new()
@@ -30,13 +32,15 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
     public UploadFileCommandHandler(
         UploadedFilesStorage filesStorage,
         FileHashesStorage hashesStorage,
-        S3Uploader s3Uploader, 
+        S3Uploader s3Uploader,
+        S3BucketRegistry bucketRegistry,
         ImageCompressor imageCompressor,
         ILogger<UploadFileCommandHandler> logger)
     {
         _filesStorage = filesStorage;
         _hashesStorage = hashesStorage;
         _s3Uploader = s3Uploader;
+        _bucketRegistry = bucketRegistry;
         _imageCompressor = imageCompressor;
         _logger = logger;
     }
@@ -66,7 +70,7 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
         var contentType = request.FileName.GetContentType();
         
         // Получаем имя бакета в зависимости от типа файла
-        var bucketName = S3BucketHelper.GetBucketName(file.Type);
+        var bucketName = _bucketRegistry.GetBucketName(file.Type);
         
         _logger.LogInformation("Загрузка файла {FileName} с типом {ContentType} в бакет {BucketName}", 
             request.FileName, contentType, bucketName);
