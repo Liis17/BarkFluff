@@ -30,6 +30,7 @@ namespace BarkFluff.Client.WPF.Pages
         public string TitleChat { get; set; } = string.Empty;
         private long _openedLastMessageId { get; set; } = 0;
         private long _oldestLoadedMessageId { get; set; } = 0;
+        private long _firstUnreadMessageId = 0;
         private bool _isLoadingHistory = false;
         private bool _hasMoreHistory = true;
 
@@ -518,7 +519,7 @@ namespace BarkFluff.Client.WPF.Pages
             if (cachedMessages != null && cachedMessages.Count > 0)
             {
                 App.ErideMessage.AddMessage($"Показываем {cachedMessages.Count} кешированных сообщений", new Erida { Type = MType.Debug });
-                DisplayMessages(cachedMessages);
+                DisplayMessages(cachedMessages, _firstUnreadMessageId != 0);
             }
 
             // Затем загружаем актуальные сообщения с сервера
@@ -540,13 +541,13 @@ namespace BarkFluff.Client.WPF.Pages
                     App.CacheManager.SaveMessage(ChatId.Value, TitleChat, msg, MessageOperation.Added);
                 }
 
-                DisplayMessages(response.messages);
+                DisplayMessages(response.messages, _firstUnreadMessageId != 0);
             }
 
             // Глобальная подписка на уведомления о прочтении уже запущена в ProcessMessages
         }
 
-        private void DisplayMessages(List<MessageModel> messages)
+        private void DisplayMessages(List<MessageModel> messages, bool scrollToFirstUnread = false)
         {
             if (messages == null || messages.Count == 0)
             {
@@ -567,6 +568,8 @@ namespace BarkFluff.Client.WPF.Pages
             var groupedMessages = sortedMessages.GroupBy(m => m.SentAt.ToDateTime().ToLocalTime().Date)
                                               .OrderBy(g => g.Key);
 
+            bool foundFirstUnread = false;
+
             foreach (var group in groupedMessages)
             {
                 // Добавляем контрол с датой по центру
@@ -574,7 +577,7 @@ namespace BarkFluff.Client.WPF.Pages
                 var dateControl = new DateHeaderControl { Text = dateHeader };
                 dateControl.HorizontalAlignment = HorizontalAlignment.Center;
                 dateControl.Margin = new Thickness(0, 10, 0, 10);
-                MessageArea.Children.Add(dateControl);
+                AddMessageWithoutScroll(dateControl);
 
                 // Добавляем сообщения группы
                 foreach (var item in group)
@@ -582,8 +585,30 @@ namespace BarkFluff.Client.WPF.Pages
                     var owner = item.SenderId == App.GParam.UserId ? MessageBubble.MessageOwner.Me : MessageBubble.MessageOwner.Interlocutor;
                     var type = GetMessageType(item);
                     var messageItem = new MessageBubble(owner, type, item, IsGroup);
-                    AddMessage(messageItem);
+
+                    // Добавляем сообщение БЕЗ автоматического скролла
+                    AddMessageWithoutScroll(messageItem);
+
+                    // Если это первое непрочитанное - добавляем разделитель после него
+                    if (scrollToFirstUnread && !foundFirstUnread && item.MessageId == _firstUnreadMessageId)
+                    {
+                        foundFirstUnread = true;
+                        AddUnreadSeparator();
+                    }
                 }
+            }
+
+            // Выполняем скролл после добавления всех сообщений
+            if (scrollToFirstUnread && _firstUnreadMessageId != 0)
+            {
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    ScrollToMessage(_firstUnreadMessageId);
+                }), System.Windows.Threading.DispatcherPriority.Loaded);
+            }
+            else
+            {
+                MessageScrollViewer.ScrollToEnd();
             }
         }
 
@@ -616,6 +641,67 @@ namespace BarkFluff.Client.WPF.Pages
             if (date.Date == DateTime.Today.AddDays(-1)) return "Вчера";
             return date.ToString("dd.MM.yyyy");
         }
+
+        /// <summary>
+        /// Добавляет разделитель непрочитанных сообщений
+        /// </summary>
+        private void AddUnreadSeparator()
+        {
+            var separator = new UnreadSeparatorControl
+            {
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Margin = new Thickness(0, 10, 0, 10)
+            };
+            AddMessageWithoutScroll(separator);
+        }
+
+        /// <summary>
+        /// Прокручивает чат к сообщению с указанным ID, центрируя его на экране
+        /// </summary>
+        private void ScrollToMessage(long messageId)
+        {
+            MessageBubble targetBubble = null;
+            foreach (var child in MessageArea.Children)
+            {
+                if (child is MessageBubble bubble && long.TryParse(bubble.MessageId, out long id) && id == messageId)
+                {
+                    targetBubble = bubble;
+                    break;
+                }
+            }
+
+            if (targetBubble != null)
+            {
+                MessageArea.UpdateLayout();
+                MessageScrollViewer.UpdateLayout();
+
+                var position = targetBubble.TransformToVisual(MessageArea)
+                                           .Transform(new Point(0, 0));
+                var targetOffset = position.Y - (MessageScrollViewer.ActualHeight / 2) + (targetBubble.ActualHeight / 2);
+                var clampedOffset = Math.Max(0, targetOffset);
+
+                var animation = new DoubleAnimation
+                {
+                    From = MessageScrollViewer.VerticalOffset,
+                    To = clampedOffset,
+                    Duration = TimeSpan.FromMilliseconds(300),
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                };
+
+                var story = new Storyboard();
+                story.Children.Add(animation);
+                Storyboard.SetTarget(animation, MessageScrollViewer);
+                Storyboard.SetTargetProperty(animation, new PropertyPath(ScrollAnimationBehavior.VerticalOffsetProperty));
+
+                story.Completed += (s, e) =>
+                {
+                    MessageScrollViewer.ScrollToVerticalOffset(clampedOffset);
+                };
+
+                story.Begin();
+            }
+        }
+
         private void IsOpenChat_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             if (IsOpenChat.Value)
@@ -884,6 +970,18 @@ namespace BarkFluff.Client.WPF.Pages
                 MarkVisibleMessagesAsRead();
             };
             delayTimer.Start();
+        }
+
+        /// <summary>
+        /// Добавляет сообщение в область сообщений без автоматического скролла
+        /// Используется при начальной загрузке сообщений для позиционирования скролла
+        /// </summary>
+        private void AddMessageWithoutScroll(UserControl control)
+        {
+            MessageArea.Children.Add(control);
+            var animation = (Storyboard)FindResource("MessageAppearAnimation");
+            Storyboard.SetTarget(animation, control);
+            animation.Begin();
         }
 
         private System.Windows.Threading.DispatcherTimer? _markAsReadDebounceTimer;
@@ -1932,10 +2030,10 @@ namespace BarkFluff.Client.WPF.Pages
                 App.ErideMessage.AddMessage($"Что-то пошло не так, {responseChatId.error.ErrorMessage}", new Erida { Type = MType.Warning });
                 return;
             }
-            OpenChatById(responseChatId.chatId, responseChatInfo.lastMessageId, responseChatInfo.isGroup, userId, responseChatInfo.title);
+            OpenChatById(responseChatId.chatId, responseChatInfo.lastMessageId, responseChatInfo.isGroup, userId, responseChatInfo.title, 0);
         }
 
-        public void OpenChatById(string chatId, long lastMessageId, bool isGroupChat, long userId, string title)
+        public void OpenChatById(string chatId, long lastMessageId, bool isGroupChat, long userId, string title, long firstUnreadId = 0)
         {
 
             IsOpenChatEmpty = false;
@@ -1943,6 +2041,7 @@ namespace BarkFluff.Client.WPF.Pages
             TitleChat = title;
             _openedLastMessageId = lastMessageId;
             _oldestLoadedMessageId = 0;
+            _firstUnreadMessageId = firstUnreadId;
             _hasMoreHistory = true;
             ChatId.Value = chatId;
             IsGroup = isGroupChat;
@@ -2012,7 +2111,8 @@ namespace BarkFluff.Client.WPF.Pages
                     targetChatItem.LastMessageId,
                     targetChatItem.IsGroupChat,
                     targetChatItem.UserId,
-                    targetChatItem.ChatTitle);
+                    targetChatItem.ChatTitle,
+                    targetChatItem.FirstUnreadId);
             }
             else
             {
@@ -2082,7 +2182,7 @@ namespace BarkFluff.Client.WPF.Pages
         public void OpenChatAndShowAttachments(string chatId, long lastMessageId, bool isGroupChat, long userId, string title, List<string> filePaths)
         {
             // Сначала открываем чат
-            OpenChatById(chatId, lastMessageId, isGroupChat, userId, title);
+            OpenChatById(chatId, lastMessageId, isGroupChat, userId, title, 0);
 
             // Затем показываем превью вложений
             // Используем BeginInvoke чтобы дать чату время открыться
@@ -2641,5 +2741,33 @@ namespace BarkFluff.Client.WPF.Pages
         }
 
         #endregion
+    }
+
+    public static class ScrollAnimationBehavior
+    {
+        public static readonly DependencyProperty VerticalOffsetProperty =
+            DependencyProperty.RegisterAttached(
+                "VerticalOffset",
+                typeof(double),
+                typeof(ScrollAnimationBehavior),
+                new UIPropertyMetadata(0.0, OnVerticalOffsetChanged));
+
+        public static void SetVerticalOffset(DependencyObject target, double value)
+        {
+            target.SetValue(VerticalOffsetProperty, value);
+        }
+
+        public static double GetVerticalOffset(DependencyObject target)
+        {
+            return (double)target.GetValue(VerticalOffsetProperty);
+        }
+
+        private static void OnVerticalOffsetChanged(DependencyObject target, DependencyPropertyChangedEventArgs e)
+        {
+            if (target is ScrollViewer scrollViewer)
+            {
+                scrollViewer.ScrollToVerticalOffset((double)e.NewValue);
+            }
+        }
     }
 }
