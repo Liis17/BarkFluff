@@ -13,14 +13,17 @@ public class DownloadFileCommandHandler : IRequestHandler<DownloadFileCommand, D
 {
     private readonly UploadedFilesStorage _filesStorage;
     private readonly S3Uploader _s3Uploader;
+    private readonly S3BucketRegistry _bucketRegistry;
     private readonly TempFilesStorage _tempFilesStorage;
     private readonly ILogger<DownloadFileCommandHandler> _logger;
 
     public DownloadFileCommandHandler(UploadedFilesStorage filesStorage, S3Uploader s3Uploader,
-        TempFilesStorage tempFilesStorage, ILogger<DownloadFileCommandHandler> logger)
+        S3BucketRegistry bucketRegistry, TempFilesStorage tempFilesStorage,
+        ILogger<DownloadFileCommandHandler> logger)
     {
         _filesStorage = filesStorage;
         _s3Uploader = s3Uploader;
+        _bucketRegistry = bucketRegistry;
         _tempFilesStorage = tempFilesStorage;
         _logger = logger;
     }
@@ -91,7 +94,7 @@ public class DownloadFileCommandHandler : IRequestHandler<DownloadFileCommand, D
         var extension = Path.GetExtension(file.Filename).ToLowerInvariant();
 
         // Получаем имя бакета в зависимости от типа файла
-        var bucketName = S3BucketHelper.GetBucketName(file.Type);
+        var bucketName = _bucketRegistry.GetBucketName(file.Type);
 
         _logger.LogDebug(
             "Скачивание файла {FileId} из S3. Bucket: {BucketName}, Размер: {FileSize} байт",

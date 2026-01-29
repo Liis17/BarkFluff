@@ -48,9 +48,6 @@ public class Program
 
         builder.Services.AddMinioS3(builder.Configuration);
 
-        // Регистрируем S3Uploader
-        builder.Services.AddScoped<S3Uploader>();
-
         builder.Services.AddDbContext<FilesContext>(options =>
             options.UseNpgsql(builder.Configuration["FilesDb"]));
 
