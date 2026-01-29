@@ -21,65 +21,72 @@ namespace BarkFluff.Client.WPF.Services.Erida
                 return;
             }
 #if (!DEBUG)
-            if (messageType.Type == MessageType.MessageTypeEnum.Debug || messageType.Type == MessageType.MessageTypeEnum.Warning)
+            if (messageType.Type == MessageType.MessageTypeEnum.Debug)
             {
                 return;
             }
 #endif
 
-
-            Application.Current.Dispatcher.Invoke(() =>
+            try
             {
-                var messageControl = new UserControl
+                Application.Current.Dispatcher.Invoke(() =>
                 {
-                    Content = new EridaMessage
+                    var messageControl = new UserControl
                     {
-                        Text = text,
-                        MsgType = messageType
-                    },
-                    Opacity = 0,
-                    Margin = new Thickness(5)
-                };
-                _stackPanel.Children.Add(messageControl);
+                        Content = new EridaMessage
+                        {
+                            Text = text,
+                            MsgType = messageType
+                        },
+                        Opacity = 0,
+                        Margin = new Thickness(5)
+                    };
+                    _stackPanel.Children.Add(messageControl);
 
-                var fadeInAnimation = new DoubleAnimation
-                {
-                    From = 0,
-                    To = 1,
-                    Duration = TimeSpan.FromSeconds(0.5)
-                };
-
-                messageControl.BeginAnimation(UIElement.OpacityProperty, fadeInAnimation);
-
-                var fadeOutAnimation = new DoubleAnimation
-                {
-                    From = 1,
-                    To = 0,
-                    BeginTime = TimeSpan.FromSeconds(2),
-                    Duration = TimeSpan.FromSeconds(0.5)
-                };
-
-                fadeOutAnimation.Completed += (s, e) =>
-                {
-                    Application.Current.Dispatcher.Invoke(() =>
+                    var fadeInAnimation = new DoubleAnimation
                     {
-                        _stackPanel.Children.Remove(messageControl);
-                    });
-                };
+                        From = 0,
+                        To = 1,
+                        Duration = TimeSpan.FromSeconds(0.5)
+                    };
 
-                var dispatcherTimer = new DispatcherTimer
-                {
-                    Interval = TimeSpan.FromSeconds(2.5)
-                };
+                    messageControl.BeginAnimation(UIElement.OpacityProperty, fadeInAnimation);
 
-                dispatcherTimer.Tick += (sender, args) =>
-                {
-                    dispatcherTimer.Stop();
-                    messageControl.BeginAnimation(UIElement.OpacityProperty, fadeOutAnimation);
-                };
+                    var fadeOutAnimation = new DoubleAnimation
+                    {
+                        From = 1,
+                        To = 0,
+                        BeginTime = TimeSpan.FromSeconds(2),
+                        Duration = TimeSpan.FromSeconds(0.5)
+                    };
 
-                dispatcherTimer.Start();
-            });
+                    fadeOutAnimation.Completed += (s, e) =>
+                    {
+                        Application.Current.Dispatcher.Invoke(() =>
+                        {
+                            _stackPanel.Children.Remove(messageControl);
+                        });
+                    };
+
+                    var dispatcherTimer = new DispatcherTimer
+                    {
+                        Interval = TimeSpan.FromSeconds(2.5)
+                    };
+
+                    dispatcherTimer.Tick += (sender, args) =>
+                    {
+                        dispatcherTimer.Stop();
+                        messageControl.BeginAnimation(UIElement.OpacityProperty, fadeOutAnimation);
+                    };
+
+                    dispatcherTimer.Start();
+                });
+            }
+            catch
+            {
+                // Ignore exceptions to prevent crashes from UI thread issues
+            }
+
         }
     }
 }
