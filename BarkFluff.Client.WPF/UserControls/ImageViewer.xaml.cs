@@ -528,10 +528,9 @@ namespace BarkFluff.Client.WPF.UserControls
             }
         }
 
-        private void OnImageContainerClick(object sender, MouseButtonEventArgs e)
+        private void OnUiElementClick(object sender, MouseButtonEventArgs e)
         {
-            // Предотвратить всплытие до фона при клике на область изображения
-            e.Handled = true;
+            e.Handled = true; // Предотвратить всплытие к фону
         }
 
         public void Close()
