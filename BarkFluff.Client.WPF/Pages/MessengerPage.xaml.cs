@@ -586,15 +586,15 @@ namespace BarkFluff.Client.WPF.Pages
                     var type = GetMessageType(item);
                     var messageItem = new MessageBubble(owner, type, item, IsGroup);
 
-                    // Добавляем сообщение БЕЗ автоматического скролла
-                    AddMessageWithoutScroll(messageItem);
-
-                    // Если это первое непрочитанное - добавляем разделитель после него
+                    // Если это первое непрочитанное - добавляем разделитель ПЕРЕД ним
                     if (scrollToFirstUnread && !foundFirstUnread && item.MessageId == _firstUnreadMessageId)
                     {
                         foundFirstUnread = true;
                         AddUnreadSeparator();
                     }
+
+                    // Добавляем сообщение БЕЗ автоматического скролла
+                    AddMessageWithoutScroll(messageItem);
                 }
             }
 
@@ -604,11 +604,15 @@ namespace BarkFluff.Client.WPF.Pages
                 Dispatcher.BeginInvoke(new Action(() =>
                 {
                     ScrollToMessage(_firstUnreadMessageId);
+                    // После скролла отмечаем видимые сообщения как прочитанные
+                    MarkVisibleMessagesAsRead();
                 }), System.Windows.Threading.DispatcherPriority.Loaded);
             }
             else
             {
                 MessageScrollViewer.ScrollToEnd();
+                // При обычной загрузке тоже отмечаем сообщения
+                MarkVisibleMessagesAsRead();
             }
         }
 
@@ -1054,6 +1058,7 @@ namespace BarkFluff.Client.WPF.Pages
                                 if (child is ChatItem chatItem && chatItem.ChatId == ChatId.Value)
                                 {
                                     chatItem.ResetUnreadCount();
+                                    chatItem.ResetFirstUnreadId();
                                     break;
                                 }
                             }
@@ -1768,6 +1773,8 @@ namespace BarkFluff.Client.WPF.Pages
                     if (message.SenderId != App.GParam.UserId && ChatId.Value != chatId)
                     {
                         existingChatItem.IncrementUnreadCount();
+                        // Устанавливаем FirstUnreadId если он равен 0
+                        existingChatItem.SetFirstUnreadIdIfZero(message.MessageId);
                     }
 
                     // Показываем уведомление если сообщение не от текущего пользователя
