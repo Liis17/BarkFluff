@@ -187,6 +187,25 @@ namespace BarkFluff.Client.WPF.UserControls
         }
 
         /// <summary>
+        /// Сбрасывает ID первого непрочитанного сообщения
+        /// </summary>
+        public void ResetFirstUnreadId()
+        {
+            _firstUnreadId = 0;
+        }
+
+        /// <summary>
+        /// Устанавливает ID первого непрочитанного сообщения (только если текущий равен 0)
+        /// </summary>
+        public void SetFirstUnreadIdIfZero(long messageId)
+        {
+            if (_firstUnreadId == 0)
+            {
+                _firstUnreadId = messageId;
+            }
+        }
+
+        /// <summary>
         /// Updates the read status for a specific message by ID (called when read receipt is received)
         /// </summary>
         public void UpdateLastMessageReadStatus(long messageId, List<long> readBy)
