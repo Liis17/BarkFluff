@@ -52,6 +52,7 @@ namespace BarkFluff.Client.WPF.UserControls
         private bool _isOnline;
         private DateTime? _lastSeen;
         private bool _isDraggingFiles = false;
+        private long _firstUnreadId;
 
         /// <summary>
         /// URL аватара чата
@@ -83,6 +84,11 @@ namespace BarkFluff.Client.WPF.UserControls
         /// </summary>
         public string? AvatarFileId => _avatarFileId;
 
+        /// <summary>
+        /// ID первого непрочитанного сообщения
+        /// </summary>
+        public long FirstUnreadId => _firstUnreadId;
+
         public ChatItem(string imageUrl, string chatName, string lastMessageText, string time, ReadingStatus reading, List<long> readBy, long unReaded, string chatId, long lastMessageId, long firstUnreadId, bool isGroupChat, long userId)
         {
             InitializeComponent();
@@ -109,6 +115,9 @@ namespace BarkFluff.Client.WPF.UserControls
             // Устанавливаем данные для CachedAvatar
             AvatarControl.FileId = _avatarFileId;
             AvatarControl.FileUrl = imageUrl;
+
+            // Сохраняем ID первого непрочитанного сообщения
+            _firstUnreadId = firstUnreadId;
 
             UpdateUnreadBadge();
 
@@ -277,7 +286,7 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private void UserControl_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
-            App.Messenger.OpenChatById(ChatId, _lastMessageId, _isGroupChat, _userId, _title);
+            App.Messenger.OpenChatById(ChatId, _lastMessageId, _isGroupChat, _userId, _title, _firstUnreadId);
         }
 
         private string ProcessText(string input)
