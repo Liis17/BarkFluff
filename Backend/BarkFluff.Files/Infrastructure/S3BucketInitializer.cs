@@ -1,21 +1,20 @@
 using Amazon.S3;
 using Amazon.S3.Model;
 
-using BarkFluff.Files.Domain;
-
 namespace BarkFluff.Files.Infrastructure;
 
 /// <summary>
-/// Сервис для автоматической инициализации S3 бакетов при запуске приложения
+/// Сервис для автоматической инициализации S3 бакетов при запуске приложения.
+/// Поддерживает бакеты на разных S3-совместимых хранилищах.
 /// </summary>
 public class S3BucketInitializer
 {
-    private readonly IAmazonS3 _s3Client;
+    private readonly S3BucketRegistry _registry;
     private readonly ILogger<S3BucketInitializer> _logger;
 
-    public S3BucketInitializer(IAmazonS3 s3Client, ILogger<S3BucketInitializer> logger)
+    public S3BucketInitializer(S3BucketRegistry registry, ILogger<S3BucketInitializer> logger)
     {
-        _s3Client = s3Client;
+        _registry = registry;
         _logger = logger;
     }
 
@@ -26,14 +25,11 @@ public class S3BucketInitializer
     {
         _logger.LogInformation("Начинается инициализация S3 бакетов...");
 
-        // Получаем все уникальные имена бакетов из S3BucketHelper
-        var bucketNames = GetAllBucketNames();
-
-        foreach (var bucketName in bucketNames)
+        foreach (var (bucketName, client) in _registry.GetAllBuckets())
         {
             try
             {
-                await EnsureBucketExistsAsync(bucketName);
+                await EnsureBucketExistsAsync(client, bucketName);
             }
             catch (Exception ex)
             {
@@ -48,14 +44,14 @@ public class S3BucketInitializer
     /// <summary>
     /// Проверяет существование бакета и создает его при необходимости
     /// </summary>
-    private async Task EnsureBucketExistsAsync(string bucketName)
+    private async Task EnsureBucketExistsAsync(IAmazonS3 client, string bucketName)
     {
         try
         {
             // Проверяем существование бакета через попытку получить его локацию
             try
             {
-                await _s3Client.GetBucketLocationAsync(bucketName);
+                await client.GetBucketLocationAsync(bucketName);
                 _logger.LogInformation("Бакет {BucketName} уже существует", bucketName);
                 return;
             }
@@ -72,11 +68,11 @@ public class S3BucketInitializer
                 UseClientRegion = false
             };
 
-            await _s3Client.PutBucketAsync(putBucketRequest);
+            await client.PutBucketAsync(putBucketRequest);
             _logger.LogInformation("Бакет {BucketName} успешно создан", bucketName);
 
             // Устанавливаем политику доступа для публичного чтения
-            await SetBucketPolicyAsync(bucketName);
+            await SetBucketPolicyAsync(client, bucketName);
         }
         catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.Conflict)
         {
@@ -88,7 +84,7 @@ public class S3BucketInitializer
     /// <summary>
     /// Устанавливает политику публичного чтения для бакета
     /// </summary>
-    private async Task SetBucketPolicyAsync(string bucketName)
+    private async Task SetBucketPolicyAsync(IAmazonS3 client, string bucketName)
     {
         try
         {
@@ -114,7 +110,7 @@ public class S3BucketInitializer
                 Policy = policy
             };
 
-            await _s3Client.PutBucketPolicyAsync(request);
+            await client.PutBucketPolicyAsync(request);
             _logger.LogInformation("Политика доступа для бакета {BucketName} установлена", bucketName);
         }
         catch (Exception ex)
@@ -122,22 +118,5 @@ public class S3BucketInitializer
             _logger.LogWarning(ex, "Не удалось установить политику доступа для бакета {BucketName}", bucketName);
             // Не бросаем исключение, так как бакет уже создан
         }
-    }
-
-    /// <summary>
-    /// Получает все уникальные имена бакетов из S3BucketHelper
-    /// </summary>
-    private static HashSet<string> GetAllBucketNames()
-    {
-        var bucketNames = new HashSet<string>();
-
-        // Проходим по всем типам файлов и собираем уникальные имена бакетов
-        foreach (UploadFileType fileType in Enum.GetValues<UploadFileType>())
-        {
-            var bucketName = S3BucketHelper.GetBucketName(fileType);
-            bucketNames.Add(bucketName);
-        }
-
-        return bucketNames;
     }
 }
