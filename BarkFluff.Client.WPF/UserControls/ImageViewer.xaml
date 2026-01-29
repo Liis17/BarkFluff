@@ -97,8 +97,14 @@
         <!--  Контейнер изображения  -->
         <Grid
             x:Name="ImageContainer"
-            Background="Transparent"
-            MouseLeftButtonDown="OnImageContainerClick">
+            RenderTransformOrigin="0.5,0.5">
+            <Grid.RenderTransform>
+                <ScaleTransform x:Name="OpenCloseScale"
+                                ScaleX="1"
+                                ScaleY="1"
+                                CenterX="0"
+                                CenterY="0"/>
+            </Grid.RenderTransform>
             <!--  Image с трансформациями для зума  -->
             <Image
                 x:Name="MainImage"
@@ -164,7 +170,8 @@
             Margin="20"
             HorizontalAlignment="Center"
             VerticalAlignment="Bottom"
-            Orientation="Horizontal">
+            Orientation="Horizontal"
+            MouseLeftButtonDown="OnUiElementClick">
             <!--  Previous Button  -->
             <Button
                 x:Name="PrevButton"
@@ -210,7 +217,8 @@
         <Grid
             x:Name="LoadingOverlay"
             Background="#40000000"
-            Visibility="Collapsed">
+            Visibility="Collapsed"
+            MouseLeftButtonDown="OnUiElementClick">
             <StackPanel
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center">
