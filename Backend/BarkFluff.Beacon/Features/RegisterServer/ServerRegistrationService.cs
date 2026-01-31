@@ -41,6 +41,7 @@ public class ServerRegistrationService : BackgroundService
                     Name = serverProps.Name,
                     Description = serverProps.Description,
                     ServerPublicName = serverProps.PublicName ?? string.Empty,
+                    Location = serverProps.Location ?? string.Empty,
                     AccountsCount = 0, // Можно доработать, если нужно
                     BeaconUri = new ServiceEndpoint
                     {
