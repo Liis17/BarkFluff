@@ -36,6 +36,7 @@ public class NavigatorApiService : NavigatorApi.NavigatorApiBase
             Name = protoServer?.Name ?? string.Empty,
             Description = protoServer?.Description ?? string.Empty,
             ServerPublicName = protoServer?.ServerPublicName ?? string.Empty,
+            Location = protoServer?.Location ?? string.Empty,
             CreatedAt = DateTime.UtcNow,
             AddedBy = _userContext.IsAuthenticated ? _userContext.UserId.ToString() : "Anonymous"
         };
