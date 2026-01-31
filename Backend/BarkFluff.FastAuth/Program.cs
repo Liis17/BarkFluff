@@ -11,7 +11,7 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        builder.LoadConfiguration(ServiceId.Users);
+        builder.LoadConfiguration(ServiceId.FastAuth);
         builder.SetRunningAddress(builder.Configuration);
 
         // Регистрируем gRPC сервисы с интерцепторами

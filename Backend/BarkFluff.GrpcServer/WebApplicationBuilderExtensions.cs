@@ -48,16 +48,17 @@ public static class WebApplicationBuilderExtensions
 
     public static WebApplicationBuilder LoadConfiguration(this WebApplicationBuilder builder, ServiceId serviceId)
     {
-        var configurationServiceAddress = Environment.GetEnvironmentVariable("CONFIGURATION_SERVICE_URL") 
-                                          ?? "http://configuration:7003";
-        
+        var configurationServiceAddress = Environment.GetEnvironmentVariable("CONFIGURATION_SERVICE_URL")
+                                          ?? builder.Configuration["ConfigurationServiceAddr"]
+                                          ?? "http://localhost:7003";
+
         builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
-        
+
         var channel = GrpcChannel.ForAddress(configurationServiceAddress);
         var configurationApiClient = new ConfigurationApi.ConfigurationApiClient(channel);
 
         var config = configurationApiClient.GetConfiguration(new GetConfigurationRequest {ServiceId = (int)serviceId});
-        
+
         var configurationDictionary = new Dictionary<string, string>();
 
         foreach (var configurationItem in config.Configurations)
@@ -68,14 +69,14 @@ public static class WebApplicationBuilderExtensions
             {
                 key += $":{configurationItem.Key}";
             }
-            
+
             configurationDictionary.Add(key, configurationItem.Value);
         }
-        
+
         configurationDictionary.Add("ConfigurationServiceAddr", configurationServiceAddress);
-        
+
         builder.Configuration.AddInMemoryCollection(configurationDictionary);
-        
+
         return builder;
     }
 }
