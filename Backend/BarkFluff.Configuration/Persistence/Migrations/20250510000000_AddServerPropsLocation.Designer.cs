@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace BarkFluff.Configuration.Persistence.Migrations
 {
     [DbContext(typeof(ConfigurationContext))]
-    [Migration("20250201000000_AddServerPropsLocation")]
+    [Migration("20250510000000_AddServerPropsLocation")]
     partial class AddServerPropsLocation
     {
         /// <inheritdoc />
