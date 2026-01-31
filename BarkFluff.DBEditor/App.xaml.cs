@@ -1,6 +1,8 @@
-﻿using BarkFluff.DBEditor.Services;
+using BarkFluff.DBEditor.Models;
+using BarkFluff.DBEditor.Services;
 using BarkFluff.DBEditor.Views;
 
+using System.Linq;
 using System.Windows;
 
 namespace BarkFluff.DBEditor
@@ -10,37 +12,146 @@ namespace BarkFluff.DBEditor
     /// </summary>
     public partial class App : Application
     {
+        private CredentialsService _credentialsService = new();
+
+        private void OnDispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+        {
+            MessageBox.Show($"Unhandled exception: {e.Exception.Message}\n\n{e.Exception.StackTrace}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            e.Handled = true;
+        }
+
         private void OnStartup(object sender, StartupEventArgs e)
         {
-            // Проверяем сохраненные данные
-            var creds = CredentialsService.LoadCredentials();
+            var accounts = _credentialsService.GetAllAccounts();
 
-            if (creds != null)
+            if (accounts.Count == 0)
             {
-                // Если есть данные, пробуем сразу открыть главное окно
-                // В идеале тут можно сделать быструю проверку коннекта
-                OpenMainWindow(creds);
+                // No accounts - show login window
+                ShowLoginWindow();
             }
             else
             {
-                // Если данных нет, открываем окно входа
-                var loginWindow = new LoginWindow();
-                loginWindow.Show();
+                // Has accounts - show account selector
+                ShowAccountSelectorWindow();
             }
         }
 
-        public void OpenMainWindow(Models.DbCredentials creds)
+        public void ShowLoginWindow(SavedAccount? editingAccount = null)
         {
-            // Создаем главное окно и передаем креды
-            var mainWindow = new MainWindow(creds);
-            mainWindow.Show();
+            var loginWindow = new LoginWindow(_credentialsService, editingAccount);
+            loginWindow.Closed += (s, e) =>
+            {
+                // If login was successful, MainWindow was opened by the login window logic
+                // If login was cancelled and no accounts exist, show login again
+                if (!IsMainWindowOpen() && !HasAccounts())
+                {
+                    var newLoginWindow = new LoginWindow(_credentialsService, null);
+                    newLoginWindow.Show();
+                }
+                // If login was cancelled and accounts exist, show selector
+                else if (!IsMainWindowOpen() && HasAccounts())
+                {
+                    ShowAccountSelectorWindow();
+                }
+            };
+            loginWindow.Show();
+        }
 
-            // Закрываем окна входа, если они открыты
+        public void ShowAccountSelectorWindow()
+        {
+            // Prevent app from closing when selector closes
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
+            var selectorWindow = new AccountSelectorWindow(_credentialsService);
+            var result = selectorWindow.ShowDialog();
+
+            if (result == true && selectorWindow.SelectedAccount != null)
+            {
+                // Account selected - open main window
+                OpenMainWindow(selectorWindow.SelectedAccount);
+            }
+            // If selector was closed without action
+            else if (!IsMainWindowOpen())
+            {
+                if (HasAccounts())
+                {
+                    ShowAccountSelectorWindow();
+                }
+                else
+                {
+                    ShowLoginWindow();
+                }
+            }
+            else
+            {
+                // MainWindow is open, restore normal shutdown mode
+                ShutdownMode = ShutdownMode.OnMainWindowClose;
+            }
+        }
+
+        public void ShowAccountSelectorFromMainWindow(ViewModels.MainViewModel callerViewModel)
+        {
+            var selectorWindow = new AccountSelectorWindow(_credentialsService);
+            var mainWindow = Application.Current.Windows.OfType<MainWindow>().FirstOrDefault();
+
+            if (mainWindow != null)
+            {
+                selectorWindow.Owner = mainWindow;
+            }
+
+            var result = selectorWindow.ShowDialog();
+
+            if (result == true && selectorWindow.SelectedAccount != null)
+            {
+                // Switch account in existing main window
+                callerViewModel.SwitchToAccount(selectorWindow.SelectedAccount);
+            }
+        }
+
+        public void OpenMainWindow(SavedAccount account)
+        {
+            try
+            {
+                MessageBox.Show($"Opening MainWindow for account: {account.DisplayName}", "Debug", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                _credentialsService.UpdateLastUsed(account.Id);
+
+                var mainWindow = new MainWindow(account, _credentialsService);
+                MessageBox.Show("MainWindow created, showing...", "Debug", MessageBoxButton.OK, MessageBoxImage.Information);
+                mainWindow.Show();
+                MessageBox.Show("MainWindow shown", "Debug", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                // Restore normal shutdown mode now that MainWindow is open
+                ShutdownMode = ShutdownMode.OnMainWindowClose;
+
+                // Close all non-main windows
+                CloseAllWindowsExcept<MainWindow>();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error in OpenMainWindow: {ex.Message}\n\n{ex.StackTrace}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private bool HasAccounts()
+        {
+            return _credentialsService.GetAllAccounts().Count > 0;
+        }
+
+        private bool IsMainWindowOpen()
+        {
+            return Application.Current.Windows.OfType<MainWindow>().Any();
+        }
+
+        private void CloseAllWindowsExcept<T>() where T : Window
+        {
             foreach (Window win in Application.Current.Windows)
             {
-                if (win is LoginWindow) win.Close();
+                if (win is not T)
+                {
+                    win.Close();
+                }
             }
         }
     }
-
 }
