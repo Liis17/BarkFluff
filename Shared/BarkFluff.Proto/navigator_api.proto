@@ -26,6 +26,7 @@ message ServerInfo {
   int64 accounts_count = 3; // Количество пользователей
   ServiceEndpoint beacon_uri = 4; // Адрес маяка
   string server_public_name = 5; // Публичное имя сервера
+  string location = 6; // Локация сервера
 }
 
 message ServiceEndpoint {

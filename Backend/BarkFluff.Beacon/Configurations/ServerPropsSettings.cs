@@ -7,4 +7,6 @@ public class ServerPropsSettings
     public string Description { get; set; }
 
     public string PublicName { get; set; }
+
+    public string Location { get; set; }
 }

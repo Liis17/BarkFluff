@@ -23,34 +23,35 @@ namespace BarkFluff.Client.WPF.UserControls
 
             ServerTitle.Text = serverData.Title;
             ServerDescription.Text = serverData.Description;
-            ServerUserCount.Text = FormatUserCount(serverData.UserCount);
 
-            // Display public name as @servername if available
+            // Build location and public name string
+            var locationAndPublicName = new System.Text.StringBuilder();
+
+            if (!string.IsNullOrWhiteSpace(serverData.Location))
+            {
+                locationAndPublicName.Append(serverData.Location);
+            }
+
             if (!string.IsNullOrWhiteSpace(serverData.PublicName))
             {
-                ServerPublicName.Text = $"@{serverData.PublicName}";
-                ServerPublicName.Visibility = Visibility.Visible;
+                if (locationAndPublicName.Length > 0)
+                {
+                    locationAndPublicName.Append(" • ");
+                }
+                locationAndPublicName.Append($"@{serverData.PublicName}");
+            }
+
+            if (locationAndPublicName.Length > 0)
+            {
+                ServerLocationAndPublicName.Text = locationAndPublicName.ToString();
+                ServerLocationAndPublicName.Visibility = Visibility.Visible;
             }
             else
             {
-                ServerPublicName.Visibility = Visibility.Collapsed;
+                ServerLocationAndPublicName.Visibility = Visibility.Collapsed;
             }
 
             _ip = serverData.Ip;
-        }
-
-        private static string FormatUserCount(string userCount)
-        {
-            if (long.TryParse(userCount, out var count))
-            {
-                return count switch
-                {
-                    >= 1_000_000 => $"{count / 1_000_000.0:0.#}M",
-                    >= 1_000 => $"{count / 1_000.0:0.#}K",
-                    _ => count.ToString()
-                };
-            }
-            return userCount;
         }
 
         /// <summary>

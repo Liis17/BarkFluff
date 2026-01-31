@@ -51,7 +51,6 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <!--  Цветовой индикатор сервера  -->
@@ -78,15 +77,6 @@
                         Foreground="White"
                         Text="Название сервера" />
 
-                    <!--  Публичное имя @servername  -->
-                    <TextBlock
-                        x:Name="ServerPublicName"
-                        Margin="0,2,0,0"
-                        FontFamily="{DynamicResource AdwaitaSans}"
-                        FontSize="13"
-                        Foreground="#FFF39E6D"
-                        Text="@servername" />
-
                     <!--  Описание  -->
                     <TextBlock
                         x:Name="ServerDescription"
@@ -97,27 +87,16 @@
                         Text="Описание сервера"
                         TextTrimming="CharacterEllipsis"
                         TextWrapping="NoWrap" />
-                </StackPanel>
 
-                <!--  Количество пользователей  -->
-                <StackPanel
-                    Grid.Column="2"
-                    Margin="12,0,0,0"
-                    VerticalAlignment="Center"
-                    Orientation="Horizontal"
-                    ToolTip="Количество пользователей скрыто">
-                    <ui:SymbolIcon
-                        Margin="0,0,4,0"
-                        FontSize="14"
-                        Foreground="#9E9E9E"
-                        Symbol="People20" />
+                    <!--  Локация и публичное имя  -->
                     <TextBlock
-                        x:Name="ServerUserCount"
-                        VerticalAlignment="Center"
+                        x:Name="ServerLocationAndPublicName"
+                        Margin="0,4,0,0"
                         FontFamily="{DynamicResource AdwaitaSans}"
                         FontSize="12"
                         Foreground="#9E9E9E"
-                        Text="0" />
+                        TextTrimming="CharacterEllipsis"
+                        TextWrapping="NoWrap" />
                 </StackPanel>
             </Grid>
         </Button>

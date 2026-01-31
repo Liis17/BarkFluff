@@ -55,7 +55,8 @@ namespace BarkFluff.WebApi.Core.Managers
                             Title = item.Name,
                             UserCount = item.AccountsCount.ToString(),
                             Description = item.Description,
-                            PublicName = item.ServerPublicName
+                            PublicName = item.ServerPublicName,
+                            Location = item.Location
                         })
                         .ToList();
 

@@ -11,5 +11,6 @@ namespace BarkFluff.WebApi.Core.MessengerData.NonSavedData
         public string Ip { get; set; } = string.Empty;
         public string UserCount { get; set; } = string.Empty;
         public string PublicName { get; set; } = string.Empty;
+        public string Location { get; set; } = string.Empty;
     }
 }
