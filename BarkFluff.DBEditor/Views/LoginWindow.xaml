@@ -22,6 +22,7 @@
             <TextBlock Margin="0,20,0,20" HorizontalAlignment="Center" FontSize="24" FontWeight="Bold" Text="Configuration Setup" />
 
             <StackPanel Grid.Row="1" VerticalAlignment="Center">
+                <ui:TextBox x:Name="TbDisplayName" Icon="Label24" PlaceholderText="Account Name (e.g. Production DB)" Margin="0,0,0,15" />
                 <ui:TextBox x:Name="TbHost" ClearButtonEnabled="False" Icon="Server24" PlaceholderText="Host (e.g. 127.0.0.1:5432)" Margin="0,0,0,15" />
                 <ui:TextBox x:Name="TbDatabase" Icon="Database24" PlaceholderText="Database Name" Margin="0,0,0,15" />
                 <ui:TextBox x:Name="TbUser" Icon="Person24" PlaceholderText="Username" Margin="0,0,0,15" />

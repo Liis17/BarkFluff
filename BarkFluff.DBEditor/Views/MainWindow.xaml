@@ -18,7 +18,18 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <ui:TitleBar Title="System Configuration" Grid.Row="0" />
+        <ui:TitleBar Title="System Configuration" Grid.Row="0">
+            <ui:TitleBar.Header>
+                <ui:Button
+                    HorizontalAlignment="Right"
+                    Margin="0,5,100,0"
+                    Appearance="Secondary"
+                    Icon="Switch24"
+                    Content="{Binding CurrentAccountName}"
+                    Command="{Binding SwitchAccountCommand}"
+                    ToolTip="Switch Account" />
+            </ui:TitleBar.Header>
+        </ui:TitleBar>
 
         <TabControl Grid.Row="1" Margin="10">
             <!-- Вкладка 1: Raw Table -->

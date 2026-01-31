@@ -1,17 +1,21 @@
-﻿using BarkFluff.DBEditor.Models;
+using BarkFluff.DBEditor.Models;
 using BarkFluff.DBEditor.Services;
+using BarkFluff.DBEditor.Views;
 
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Windows;
 
 namespace BarkFluff.DBEditor.ViewModels
 {
     public partial class MainViewModel : ObservableObject
     {
-        private readonly DatabaseService _dbService;
+        private readonly CredentialsService _credentialsService;
+        private readonly Window _mainWindow;
+        private SavedAccount _currentAccount;
 
         [ObservableProperty]
         private ObservableCollection<ConfigItem> _configs;
@@ -25,12 +29,35 @@ namespace BarkFluff.DBEditor.ViewModels
         [ObservableProperty]
         private bool _hasChanges;
 
-        public MainViewModel(DbCredentials creds)
+        [ObservableProperty]
+        private string _currentAccountName;
+
+        private DatabaseService _dbService;
+
+        public MainViewModel(SavedAccount account, CredentialsService credentialsService, Window mainWindow)
         {
-            _dbService = new DatabaseService(creds);
-            Configs = new ObservableCollection<ConfigItem>();
-            ServiceGroups = new ObservableCollection<ServiceGroup>();
-            LoadDataCommand.Execute(null);
+            try
+            {
+                MessageBox.Show("MainViewModel constructor started", "Debug", MessageBoxButton.OK, MessageBoxImage.Information);
+                _currentAccount = account;
+                _credentialsService = credentialsService;
+                _mainWindow = mainWindow;
+                CurrentAccountName = account.DisplayName;
+
+                _dbService = new DatabaseService(DbCredentials.FromSavedAccount(account));
+                Configs = new ObservableCollection<ConfigItem>();
+                ServiceGroups = new ObservableCollection<ServiceGroup>();
+
+                MessageBox.Show("About to start LoadDataAsync", "Debug", MessageBoxButton.OK, MessageBoxImage.Information);
+                // Load data asynchronously
+                _ = Task.Run(async () => await LoadDataAsync());
+                MessageBox.Show("LoadDataAsync started", "Debug", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error in MainViewModel constructor: {ex.Message}\n\n{ex.StackTrace}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                throw;
+            }
         }
 
         [RelayCommand]
@@ -131,6 +158,42 @@ namespace BarkFluff.DBEditor.ViewModels
             {
                 IsLoading = false;
             }
+        }
+
+        [RelayCommand]
+        private void SwitchAccount()
+        {
+            // Check for unsaved changes
+            if (HasChanges)
+            {
+                var result = MessageBox.Show(
+                    "You have unsaved changes. Do you want to continue?",
+                    "Unsaved Changes",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+
+                if (result != MessageBoxResult.Yes)
+                {
+                    return;
+                }
+            }
+
+            // Use App's method to show selector
+            ((App)Application.Current).ShowAccountSelectorFromMainWindow(this);
+        }
+
+        public void SwitchToAccount(SavedAccount newAccount)
+        {
+            // Update current account
+            _currentAccount = newAccount;
+            CurrentAccountName = newAccount.DisplayName;
+            _credentialsService.UpdateLastUsed(newAccount.Id);
+
+            // Recreate database service
+            _dbService = new DatabaseService(DbCredentials.FromSavedAccount(newAccount));
+
+            // Reload data
+            LoadDataCommand.Execute(null);
         }
     }
 }
