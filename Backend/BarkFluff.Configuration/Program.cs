@@ -38,6 +38,7 @@ public class Program
         builder.Services.AddGrpcReflection();
 
         var host = builder.Configuration["CONFIGURATION_HOST"];
+        var port = builder.Configuration["CONFIGURATION_DBPORT"];
         var database = builder.Configuration["CONFIGURATION_DATABASE"];
         var username = builder.Configuration["CONFIGURATION_USERNAME"];
         var password = builder.Configuration["CONFIGURATION_PASSWORD"];
@@ -49,7 +50,9 @@ public class Program
                 "Database settings are not configured. Set CONFIGURATION_HOST, CONFIGURATION_DATABASE, CONFIGURATION_USERNAME, CONFIGURATION_PASSWORD.");
         }
 
-        var configurationDb = $"Host={host};Database={database};Username={username};Password={password}";
+        var configurationDb = string.IsNullOrWhiteSpace(port)
+            ? $"Host={host};Database={database};Username={username};Password={password}"
+            : $"Host={host};Port={port};Database={database};Username={username};Password={password}";
 
         builder.Services.AddDbContext<ConfigurationContext>(c => c.UseNpgsql(configurationDb));
 
@@ -62,7 +65,35 @@ public class Program
         using (var scope = app.Services.CreateScope())
         {
             var ctx = scope.ServiceProvider.GetRequiredService<ConfigurationContext>();
-            ctx.Database.Migrate();
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+            var retryCount = 0;
+            const int maxRetries = 5;
+            var delay = TimeSpan.FromSeconds(2);
+
+            while (retryCount < maxRetries)
+            {
+                try
+                {
+                    logger.LogInformation("Attempting to connect to database and apply migrations (attempt {Attempt}/{MaxRetries})...", retryCount + 1, maxRetries);
+                    ctx.Database.Migrate();
+                    logger.LogInformation("Database migrations applied successfully.");
+                    break;
+                }
+                catch (Npgsql.NpgsqlException ex)
+                {
+                    retryCount++;
+                    if (retryCount >= maxRetries)
+                    {
+                        logger.LogError(ex, "Failed to connect to database after {MaxRetries} attempts. Please ensure PostgreSQL is running and connection settings are correct.", maxRetries);
+                        throw;
+                    }
+
+                    logger.LogWarning(ex, "Failed to connect to database. Retrying in {Delay} seconds... (attempt {Attempt}/{MaxRetries})", delay.TotalSeconds, retryCount + 1, maxRetries);
+                    Thread.Sleep(delay);
+                    delay = TimeSpan.FromSeconds(delay.TotalSeconds * 2);
+                }
+            }
         }
 
         app.MapGrpcReflectionService();
