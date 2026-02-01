@@ -98,7 +98,7 @@ namespace BarkFluff.WebApi.Core.Managers
             {
                 return (new ErrorReturner(false, "Пользователь не подтвержден."), false);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 return (new ErrorReturner(false, "Ошибка проверки имени пользователя"), false);
             }
