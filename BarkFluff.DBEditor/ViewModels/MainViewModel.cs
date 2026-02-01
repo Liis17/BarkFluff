@@ -36,28 +36,17 @@ namespace BarkFluff.DBEditor.ViewModels
 
         public MainViewModel(SavedAccount account, CredentialsService credentialsService, Window mainWindow)
         {
-            try
-            {
-                MessageBox.Show("MainViewModel constructor started", "Debug", MessageBoxButton.OK, MessageBoxImage.Information);
-                _currentAccount = account;
-                _credentialsService = credentialsService;
-                _mainWindow = mainWindow;
-                CurrentAccountName = account.DisplayName;
+            _currentAccount = account;
+            _credentialsService = credentialsService;
+            _mainWindow = mainWindow;
+            CurrentAccountName = account.DisplayName;
 
-                _dbService = new DatabaseService(DbCredentials.FromSavedAccount(account));
-                Configs = new ObservableCollection<ConfigItem>();
-                ServiceGroups = new ObservableCollection<ServiceGroup>();
+            _dbService = new DatabaseService(DbCredentials.FromSavedAccount(account));
+            Configs = new ObservableCollection<ConfigItem>();
+            ServiceGroups = new ObservableCollection<ServiceGroup>();
 
-                MessageBox.Show("About to start LoadDataAsync", "Debug", MessageBoxButton.OK, MessageBoxImage.Information);
-                // Load data asynchronously
-                _ = Task.Run(async () => await LoadDataAsync());
-                MessageBox.Show("LoadDataAsync started", "Debug", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error in MainViewModel constructor: {ex.Message}\n\n{ex.StackTrace}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                throw;
-            }
+            // Load data asynchronously
+            _ = Task.Run(async () => await LoadDataAsync());
         }
 
         [RelayCommand]
