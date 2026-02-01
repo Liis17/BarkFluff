@@ -82,11 +82,6 @@ namespace BarkFluff.DBEditor
                     ShowLoginWindow();
                 }
             }
-            else
-            {
-                // MainWindow is open, restore normal shutdown mode
-                ShutdownMode = ShutdownMode.OnMainWindowClose;
-            }
         }
 
         public void ShowAccountSelectorFromMainWindow(ViewModels.MainViewModel callerViewModel)
@@ -110,27 +105,16 @@ namespace BarkFluff.DBEditor
 
         public void OpenMainWindow(SavedAccount account)
         {
-            try
-            {
-                MessageBox.Show($"Opening MainWindow for account: {account.DisplayName}", "Debug", MessageBoxButton.OK, MessageBoxImage.Information);
+            _credentialsService.UpdateLastUsed(account.Id);
 
-                _credentialsService.UpdateLastUsed(account.Id);
+            var mainWindow = new MainWindow(account, _credentialsService);
+            mainWindow.Show();
 
-                var mainWindow = new MainWindow(account, _credentialsService);
-                MessageBox.Show("MainWindow created, showing...", "Debug", MessageBoxButton.OK, MessageBoxImage.Information);
-                mainWindow.Show();
-                MessageBox.Show("MainWindow shown", "Debug", MessageBoxButton.OK, MessageBoxImage.Information);
+            // Restore normal shutdown mode now that MainWindow is open
+            ShutdownMode = ShutdownMode.OnMainWindowClose;
 
-                // Restore normal shutdown mode now that MainWindow is open
-                ShutdownMode = ShutdownMode.OnMainWindowClose;
-
-                // Close all non-main windows
-                CloseAllWindowsExcept<MainWindow>();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error in OpenMainWindow: {ex.Message}\n\n{ex.StackTrace}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            // Close all non-main windows
+            CloseAllWindowsExcept<MainWindow>();
         }
 
         private bool HasAccounts()
