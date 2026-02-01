@@ -16,9 +16,20 @@ public static class WebApplicationBuilderExtensions
         IConfiguration configuration)
     {
         builder.Services.AddSettings<RunSettings>(configuration, "RunSettings");
-        
+
         var runSettings = configuration.GetSection("RunSettings").Get<RunSettings>();
-        
+
+        // Проверяем, что порт задан корректно
+        if (runSettings == null || runSettings.Port <= 0)
+        {
+            var portValue = configuration["RunSettings:Port"];
+            throw new InvalidOperationException(
+                $"Некорректное значение порта в конфигурации. " +
+                $"RunSettings:Port = '{portValue}'. " +
+                $"Ожидается числовое значение (например, 7009). " +
+                $"Проверьте переменные окружения Docker или файл appsettings.json");
+        }
+
         builder.WebHost.ConfigureKestrel(options =>
         {
             options.ListenAnyIP(runSettings.Port, listenOptions =>
