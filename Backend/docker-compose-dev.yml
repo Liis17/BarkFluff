@@ -146,9 +146,7 @@ services:
     image: rabbitmq:latest
     container_name: rabbitmq
     restart: always
-    ports:
-      - "${RABBITMQ_1PORT}:${RABBITMQ_1PORT}"
-      - "${RABBITMQ_2PORT}:${RABBITMQ_2PORT}"
+    # Порты не проброшены наружу — доступен только внутри Docker-сети
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     environment:
@@ -161,8 +159,7 @@ services:
     image: redis:latest
     container_name: redis
     restart: always
-    ports:
-      - "${REDIS_PORT}:${REDIS_PORT}"
+    # Порты не проброшены наружу — доступен только внутри Docker-сети
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes

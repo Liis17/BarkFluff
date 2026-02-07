@@ -89,18 +89,28 @@ public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand,
 
     private Service ParseService(ServiceId id, List<ConfigurationItem> settings)
     {
+        // Внешний адрес сервиса (субдомен через nginx, порт 443)
+        var externalHost = settings
+            .FirstOrDefault(x => x.Section == "ExternalEndpoint" && x.Key == "Host")?.Value;
+
+        // Если ExternalEndpoint не задан, фолбэк на RunSettings (обратная совместимость)
+        if (string.IsNullOrWhiteSpace(externalHost))
+        {
+            externalHost = settings
+                .FirstOrDefault(x => x.Section == "RunSettings" && x.Key == "Host")?.Value
+                ?? $"https://{id.ToString().ToLower()}.example.com";
+        }
+
         return new Service
         {
             Name = id.ToString(),
             Endpoint = new ServiceEndpoint
             {
-                Host = settings.First(x => x.Section == "RunSettings"
-                                           && x.Key == "Host").Value,
-                Port = int.Parse(settings.First(x => x.Section == "RunSettings"
-                                                     && x.Key == "Port").Value)
+                Host = externalHost,
+                Port = 443
             },
             Status = ServiceStatus.Healthy,
-            TlsEnabled = false
+            TlsEnabled = true
         };
     }
 }

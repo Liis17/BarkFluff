@@ -36,6 +36,14 @@ public class ServerRegistrationService : BackgroundService
                 var serverProps = scope.ServiceProvider.GetRequiredService<ServerPropsSettings>();
 
                 // Преобразуем в ServerInfo для RegisterServerRequest
+                // Используем внешний адрес Beacon (субдомен через nginx, порт 443)
+                var externalHost = config["ExternalEndpoint:Host"];
+                if (string.IsNullOrWhiteSpace(externalHost))
+                {
+                    // Фолбэк на RunSettings для обратной совместимости
+                    externalHost = config["RunSettings:Host"] ?? "https://beacon.example.com";
+                }
+
                 var serverInfo = new ServerInfo
                 {
                     Name = serverProps.Name,
@@ -45,8 +53,8 @@ public class ServerRegistrationService : BackgroundService
                     AccountsCount = 0, // Можно доработать, если нужно
                     BeaconUri = new ServiceEndpoint
                     {
-                        Host = config["RunSettings:Host"],
-                        Port = int.Parse(config["RunSettings:Port"])
+                        Host = externalHost,
+                        Port = 443
                     }
                 };
 
