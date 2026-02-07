@@ -39,6 +39,7 @@ public class Program
             => c.UseNpgsql(builder.Configuration["UsersDb"]));
 
         builder.Services.AddTransient<UsersStorage>();
+        builder.Services.AddTransient<DevicesStorage>();
         builder.Services.AddScoped<UserInfoQueueSender>();
 
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());

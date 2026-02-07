@@ -11,7 +11,7 @@ public class RefreshToken
     
     public long UserId { get; set; }
     
-    public string DeviceName { get; set; }
+    public string DeviceId { get; set; }
     
     public DateTime CreatedAt { get; set; }
     

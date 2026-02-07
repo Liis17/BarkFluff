@@ -101,7 +101,7 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
     {
         var command = new RemoveActiveSessionCommand()
         {
-            Id = request.SessionId
+            DeviceId = request.DeviceId
         };
 
         return _mediator.Send(command);

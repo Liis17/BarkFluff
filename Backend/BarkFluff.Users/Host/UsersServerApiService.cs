@@ -14,6 +14,9 @@ using BarkFluff.Users.Features.FindByLogin;
 using BarkFluff.Users.Features.GetUser;
 using BarkFluff.Users.Features.GetUserContacts;
 using BarkFluff.Users.Features.ListByIds;
+using BarkFluff.Users.Features.Devices.DeleteUserDevice;
+using BarkFluff.Users.Features.Devices.GetUserDevices;
+using BarkFluff.Users.Features.Devices.RegisterDevice;
 using BarkFluff.Users.Features.OverrideDraftUser;
 
 using Grpc.Core;
@@ -176,6 +179,44 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
     {
         var command = new ExportDataCommand
         {
+            UserId = request.UserId
+        };
+
+        return _mediator.Send(command);
+    }
+
+    // Методы для работы с устройствами
+
+    public override Task<RegisterDeviceResponse> RegisterDevice(RegisterDeviceRequest request, ServerCallContext context)
+    {
+        var command = new RegisterDeviceCommand
+        {
+            DeviceId = Guid.Parse(request.DeviceId),
+            UserId = request.UserId,
+            OriginalName = request.OriginalName,
+            AppName = request.AppName,
+            OperationSystem = request.OperationSystem,
+            Location = request.Location
+        };
+
+        return _mediator.Send(command);
+    }
+
+    public override Task<GetUserDevicesResponse> GetUserDevices(GetUserDevicesRequest request, ServerCallContext context)
+    {
+        var query = new GetUserDevicesQuery
+        {
+            UserId = request.UserId
+        };
+
+        return _mediator.Send(query);
+    }
+
+    public override Task<DeleteUserDeviceResponse> DeleteUserDevice(DeleteUserDeviceRequest request, ServerCallContext context)
+    {
+        var command = new DeleteUserDeviceCommand
+        {
+            DeviceId = Guid.Parse(request.DeviceId),
             UserId = request.UserId
         };
 

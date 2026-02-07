@@ -88,7 +88,7 @@ namespace BarkFluff.Identity.Persistence.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("DeviceName")
+                    b.Property<string>("DeviceId")
                         .IsRequired()
                         .HasColumnType("text");
 

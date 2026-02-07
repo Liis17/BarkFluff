@@ -8,6 +8,9 @@ using BarkFluff.Users.Features.CheckExistUsername;
 using BarkFluff.Users.Features.GetUser;
 using BarkFluff.Users.Features.SetProfilePicture;
 using BarkFluff.Users.Features.Badges.GetUserBadges;
+using BarkFluff.Users.Features.Devices.GetCurrentDevice;
+using BarkFluff.Users.Features.Devices.GetDevices;
+using BarkFluff.Users.Features.Devices.RenameDevice;
 using Grpc.Core;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -116,5 +119,30 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
         };
 
         return _mediator.Send(query);
+    }
+
+    // Методы для работы с устройствами
+
+    public override Task<GetDevicesResponse> GetDevices(GetDevicesRequest request, ServerCallContext context)
+    {
+        var query = new GetDevicesQuery();
+        return _mediator.Send(query);
+    }
+
+    public override Task<GetCurrentDeviceResponse> GetCurrentDevice(GetCurrentDeviceRequest request, ServerCallContext context)
+    {
+        var query = new GetCurrentDeviceQuery();
+        return _mediator.Send(query);
+    }
+
+    public override Task<RenameDeviceResponse> RenameDevice(RenameDeviceRequest request, ServerCallContext context)
+    {
+        var command = new RenameDeviceCommand
+        {
+            DeviceId = Guid.Parse(request.DeviceId),
+            CustomName = request.CustomName
+        };
+
+        return _mediator.Send(command);
     }
 }

@@ -211,7 +211,7 @@ fun ActiveSessionsScreen(
                             SessionCard(
                                 session = session,
                                 onTerminate = {
-                                    if (!session.isCurrent) {
+                                    if (!false) {
                                         showTerminateDialog = session
                                     }
                                 }
@@ -249,12 +249,12 @@ fun ActiveSessionsScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "Устройство: ${session.deviceName}",
+                        "Устройство: ${session.displayName}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        "IP: ${session.ip}",
+                        "Местоположение: ${session.location}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -264,7 +264,7 @@ fun ActiveSessionsScreen(
                 FilledTonalButton(
                     onClick = {
                         scope.launch {
-                            authRepository.removeActiveSession(session.id)
+                            authRepository.removeActiveSession(session.deviceId)
                                 .onSuccess {
                                     loadSessions()
                                     showTerminateDialog = null
@@ -326,11 +326,11 @@ fun SessionCard(
             .fillMaxWidth()
             .scale(animatedScale),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = if (session.isCurrent) 3.dp else 1.dp,
+            defaultElevation = if (false) 3.dp else 1.dp,
             pressedElevation = 4.dp
         ),
         colors = CardDefaults.cardColors(
-            containerColor = if (session.isCurrent)
+            containerColor = if (false)
                 MaterialTheme.colorScheme.primaryContainer
             else
                 MaterialTheme.colorScheme.surfaceVariant
@@ -348,7 +348,7 @@ fun SessionCard(
                 Surface(
                     modifier = Modifier.size(48.dp),
                     shape = MaterialTheme.shapes.medium,
-                    color = if (session.isCurrent)
+                    color = if (false)
                         MaterialTheme.colorScheme.primary
                     else
                         MaterialTheme.colorScheme.secondaryContainer
@@ -356,13 +356,13 @@ fun SessionCard(
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             when {
-                                session.deviceName.contains("Android", ignoreCase = true) -> Icons.Default.PhoneAndroid
-                                session.deviceName.contains("iPhone", ignoreCase = true) -> Icons.Default.PhoneIphone
-                                session.deviceName.contains("Desktop", ignoreCase = true) -> Icons.Default.Computer
+                                session.displayName.contains("Android", ignoreCase = true) -> Icons.Default.PhoneAndroid
+                                session.displayName.contains("iPhone", ignoreCase = true) -> Icons.Default.PhoneIphone
+                                session.displayName.contains("Desktop", ignoreCase = true) -> Icons.Default.Computer
                                 else -> Icons.Default.Devices
                             },
                             contentDescription = null,
-                            tint = if (session.isCurrent)
+                            tint = if (false)
                                 MaterialTheme.colorScheme.onPrimary
                             else
                                 MaterialTheme.colorScheme.onSecondaryContainer,
@@ -372,7 +372,7 @@ fun SessionCard(
                 }
 
                 // Current device indicator
-                if (session.isCurrent) {
+                if (false) {
                     Surface(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
@@ -398,14 +398,14 @@ fun SessionCard(
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = session.deviceName,
+                        text = session.displayName,
                         style = MaterialTheme.typography.titleMedium,
-                        color = if (session.isCurrent)
+                        color = if (false)
                             MaterialTheme.colorScheme.onPrimaryContainer
                         else
                             MaterialTheme.colorScheme.onSurface
                     )
-                    if (session.isCurrent) {
+                    if (false) {
                         Spacer(modifier = Modifier.width(8.dp))
                         Surface(
                             shape = MaterialTheme.shapes.small,
@@ -428,16 +428,16 @@ fun SessionCard(
                         Icons.Default.Language,
                         contentDescription = null,
                         modifier = Modifier.size(14.dp),
-                        tint = if (session.isCurrent)
+                        tint = if (false)
                             MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                         else
                             MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = session.ip,
+                        text = session.location,
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (session.isCurrent)
+                        color = if (false)
                             MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                         else
                             MaterialTheme.colorScheme.onSurfaceVariant
@@ -451,7 +451,7 @@ fun SessionCard(
                         Icons.Default.Schedule,
                         contentDescription = null,
                         modifier = Modifier.size(14.dp),
-                        tint = if (session.isCurrent)
+                        tint = if (false)
                             MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                         else
                             MaterialTheme.colorScheme.onSurfaceVariant
@@ -460,7 +460,7 @@ fun SessionCard(
                     Text(
                         text = dateFormatter.format(session.createdAt.atZone(ZoneId.systemDefault())),
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (session.isCurrent)
+                        color = if (false)
                             MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                         else
                             MaterialTheme.colorScheme.onSurfaceVariant
@@ -469,7 +469,7 @@ fun SessionCard(
             }
 
             // Terminate button (only for non-current sessions)
-            if (!session.isCurrent) {
+            if (!false) {
                 FilledIconButton(
                     onClick = onTerminate,
                     colors = IconButtonDefaults.filledIconButtonColors(

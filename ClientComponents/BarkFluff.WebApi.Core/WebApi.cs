@@ -137,7 +137,10 @@ namespace BarkFluff.WebApi.Core
         public async Task<ErrorReturner> ChangeUsername(string username, GlobalParam globalParam) => await UserManager.ChangeUsername(username, globalParam);
         public async Task<(ErrorReturner error, bool exists)> CheckEmail(string email, GlobalParam globalParam) => await UserManager.CheckEmail(email, globalParam);
         public async Task<(ErrorReturner error, bool exists)> CheckUsername(string username, GlobalParam globalParam) => await UserManager.CheckUsername(username, globalParam);
-        public async Task<(ErrorReturner error, List<string>? devicesList)> GetDevicesList(GlobalParam globalParam) => await UserManager.GetDevicesList(globalParam);
+        public async Task<(ErrorReturner error, List<Proto.Identity.GetActiveSessionsResponse.Types.Session>? sessions)> GetDevicesList(GlobalParam globalParam) => await UserManager.GetDevicesList(globalParam);
+        public async Task<(ErrorReturner error, Proto.Users.Device? device)> GetCurrentDevice(GlobalParam globalParam) => await UserManager.GetCurrentDevice(globalParam);
+        public async Task<ErrorReturner> RenameDevice(string deviceId, string customName, GlobalParam globalParam) => await UserManager.RenameDevice(deviceId, customName, globalParam);
+        public async Task<ErrorReturner> RemoveActiveSession(string deviceId, GlobalParam globalParam) => await UserManager.RemoveActiveSession(deviceId, globalParam);
         public async Task<(ErrorReturner, string?)> GetUserAvatar(GlobalParam globalParam, long userId = 0) => await UserManager.GetUserAvatar(globalParam, userId);
         public async Task<(ErrorReturner Error, UserData? Data)> GetUserData(GlobalParam globalParam, long userId = 0) => await UserManager.GetUserData(globalParam, userId);
         public async Task<(ErrorReturner Error, Proto.Identity.Token? refreshToken, Proto.Identity.Token? accessToken, bool getMeOtpCode)> Authorizations(string _email, string _username, string _password, string _otpCode, GlobalParam global) => await UserManager.Authorizations(_email, _username, _password, _otpCode, global);

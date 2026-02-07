@@ -16,24 +16,24 @@ public class RefreshTokensStorage(IdentityContext context)
         return refreshTokenEntity;
     }
 
-    public async Task<RefreshToken?> CreateNewRefreshToken(string refreshToken, long userId, string deviceName, int expiresDays)
+    public async Task<RefreshToken?> CreateNewRefreshToken(string refreshToken, long userId, string deviceId, int expiresDays)
     {
         var refreshTokenEntity = new RefreshToken()
         {
             CreatedAt = DateTime.UtcNow,
-            DeviceName = deviceName,
+            DeviceId = deviceId,
             ExpiresAt = DateTime.UtcNow.AddDays(expiresDays),
             UserId = userId,
             Value = refreshToken
         };
-        
+
         var token = await context.RefreshTokens.AddAsync(refreshTokenEntity);
-        
+
         await context.SaveChangesAsync();
-        
+
         return token.Entity;
     }
-    
+
     public async Task<List<RefreshToken>> GetRefreshTokens(long userId)
     {
         return await context.RefreshTokens.Where(x => x.UserId == userId).ToListAsync();
@@ -47,9 +47,25 @@ public class RefreshTokensStorage(IdentityContext context)
         {
             throw new RefreshTokenNotFoundException();
         }
-        
+
         context.RefreshTokens.Remove(refreshToken);
-        
+
+        await context.SaveChangesAsync();
+    }
+
+    public async Task DeleteRefreshTokensByDeviceId(string deviceId, long userId)
+    {
+        var refreshTokens = await context.RefreshTokens
+            .Where(x => x.DeviceId == deviceId && x.UserId == userId)
+            .ToListAsync();
+
+        if (refreshTokens.Count == 0)
+        {
+            throw new RefreshTokenNotFoundException();
+        }
+
+        context.RefreshTokens.RemoveRange(refreshTokens);
+
         await context.SaveChangesAsync();
     }
 }

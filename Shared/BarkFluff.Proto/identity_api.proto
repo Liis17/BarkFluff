@@ -133,7 +133,7 @@ message EnableOtpVerificationResponse {
 }
 
 message RemoveActiveSessionRequest {
-  int64 session_id = 1; // Идентификатор сессии
+  string device_id = 1; // Идентификатор устройства (GUID)
 }
 
 message RemoveActiveSessionResponse { }
@@ -143,12 +143,17 @@ message GetActiveSessionsRequest { }
 message GetActiveSessionsResponse {
 
   message Session {
-    int64 id = 1; // Идентификатор 
+    int64 id = 1; // Идентификатор сессии
     google.protobuf.Timestamp created_at = 2; // Когда был первый вход
     google.protobuf.Timestamp expiration_at = 3; // Когда сессия станет недействительной
-    string device_name = 4; // Имя устройства
+    string device_id = 4; // Идентификатор устройства (GUID)
+    string original_name = 5; // Оригинальное имя устройства
+    string custom_name = 6; // Кастомное имя устройства
+    string app_name = 7; // Имя приложения
+    string operation_system = 8; // Операционная система
+    string location = 9; // Страна/город
   }
-  
+
   repeated Session sessions = 1; // Список сессий
 }
 

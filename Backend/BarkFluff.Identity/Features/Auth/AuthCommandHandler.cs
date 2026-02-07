@@ -63,6 +63,11 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
             throw new XAppInfoIsRequiedException();
         }
 
+        if (string.IsNullOrEmpty(requestContext.DeviceId))
+        {
+            throw new XDeviceNameIsRequiredException();
+        }
+
         var usersRequest = new FindByLoginRequest();
 
         if (!string.IsNullOrEmpty(request.Username))
@@ -250,13 +255,11 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
         logger.LogDebug("Генерация refresh token для пользователя {UserId}", user.User.Id);
 
         var refreshTokenString = RefreshTokenGenerator.GenerateRefreshToken();
-        await refreshTokensStorage.CreateNewRefreshToken(refreshTokenString, user.User.Id, requestContext.DeviceName, ExpDaysRefreshToken);
+        await refreshTokensStorage.CreateNewRefreshToken(refreshTokenString, user.User.Id, requestContext.DeviceId, ExpDaysRefreshToken);
 
         var accessTokenResponse = await mediator.Send(new CreateTokenCommand { RefreshToken = refreshTokenString }, cancellationToken);
 
-        // Отправка уведомления об успешном входе
-        var successUserContactInfo = await usersClient.GetUserContactsAsync(new GetUserContactsRequest { UserId = user.User.Id });
-
+        // Регистрация устройства в Users сервисе
         string successLocationInfo = "-";
         if (!string.IsNullOrEmpty(requestContext.IpAddress))
         {
@@ -266,6 +269,27 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                 successLocationInfo = $"{ipLocation.Country}, {ipLocation.RegionName}, {ipLocation.City}";
             }
         }
+
+        try
+        {
+            await usersClient.RegisterDeviceAsync(new RegisterDeviceRequest
+            {
+                DeviceId = requestContext.DeviceId,
+                UserId = user.User.Id,
+                OriginalName = requestContext.DeviceName ?? "Unknown",
+                AppName = $"{requestContext.AppName} v.{requestContext.AppVersion}",
+                OperationSystem = requestContext.OperationSystem ?? "",
+                Location = successLocationInfo
+            });
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Не удалось зарегистрировать устройство {DeviceId} для пользователя {UserId}",
+                requestContext.DeviceId, user.User.Id);
+        }
+
+        // Отправка уведомления об успешном входе
+        var successUserContactInfo = await usersClient.GetUserContactsAsync(new GetUserContactsRequest { UserId = user.User.Id });
 
         var successfulLoginNotification = new EmailNotification
         {

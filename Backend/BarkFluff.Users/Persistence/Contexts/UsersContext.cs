@@ -14,6 +14,8 @@ public class UsersContext : DbContext
     public DbSet<Badge> Badges { get; set; }
 
     public DbSet<UserBadge> UserBadges { get; set; }
+
+    public DbSet<UserDevice> UserDevices { get; set; }
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -40,6 +42,13 @@ public class UsersContext : DbContext
         modelBuilder.Entity<UserBadge>()
             .HasIndex(ub => new { ub.UserId, ub.BadgeId })
             .IsUnique();
+
+        // Настройка связей для UserDevice
+        modelBuilder.Entity<UserDevice>()
+            .HasOne(ud => ud.User)
+            .WithMany()
+            .HasForeignKey(ud => ud.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         base.OnModelCreating(modelBuilder);
     
