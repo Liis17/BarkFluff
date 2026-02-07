@@ -66,12 +66,15 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
 
         private async void SettingsMenuDeviceBlock_Loaded(object sender, RoutedEventArgs e)
         {
-            var response = await App.ServerCommunication.GetDevicesList(App.GParam);
-            if (!response.error.IsSuccess)
+            var response = await App.ServerCommunication.GetCurrentDevice(App.GParam);
+            if (!response.error.IsSuccess || response.device == null)
             {
+                CurrentDevice.Text = "Unknown Device";
                 return;
             }
-            CurrentDevice.Text = response.devicesList.FirstOrDefault() ?? "Unknown Device";
+            CurrentDevice.Text = !string.IsNullOrEmpty(response.device.CustomName)
+                ? response.device.CustomName
+                : response.device.OriginalName;
         }
 
         private void OnMouseEnter(object sender, MouseEventArgs e)

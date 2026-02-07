@@ -152,6 +152,41 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.ToTable("UserContacts");
                 });
 
+            modelBuilder.Entity("BarkFluff.Users.Domain.UserDevice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AppName")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("AuthorizedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CustomName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Location")
+                        .HasColumnType("text");
+
+                    b.Property<string>("OperationSystem")
+                        .HasColumnType("text");
+
+                    b.Property<string>("OriginalName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserDevices");
+                });
+
             modelBuilder.Entity("BarkFluff.Users.Domain.UserBadge", b =>
                 {
                     b.HasOne("BarkFluff.Users.Domain.Badge", "Badge")
@@ -176,6 +211,17 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.HasOne("BarkFluff.Users.Domain.User", "User")
                         .WithOne("Contact")
                         .HasForeignKey("BarkFluff.Users.Domain.UserContact", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("BarkFluff.Users.Domain.UserDevice", b =>
+                {
+                    b.HasOne("BarkFluff.Users.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

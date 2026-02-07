@@ -19,7 +19,7 @@ public class CreateTokenCommandHandler(RefreshTokensStorage refreshTokensStorage
 
         if (accessToken == null
             || accessToken.ExpiresAt < DateTime.UtcNow
-            || string.IsNullOrEmpty(accessToken.DeviceName))
+            || string.IsNullOrEmpty(accessToken.DeviceId))
         {
             logger.LogWarning(
                 "Невалидный refresh token. Token найден: {TokenFound}, Истек: {IsExpired}",
@@ -34,9 +34,9 @@ public class CreateTokenCommandHandler(RefreshTokensStorage refreshTokensStorage
         var token = jwtService.GenerateUserToken(accessToken.UserId);
 
         logger.LogInformation(
-            "Access token успешно обновлен для пользователя {UserId}, устройство: {DeviceName}",
+            "Access token успешно обновлен для пользователя {UserId}, устройство: {DeviceId}",
             accessToken.UserId,
-            accessToken.DeviceName
+            accessToken.DeviceId
         );
 
         return new CreateTokenResponse { AccessToken = token, };

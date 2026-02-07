@@ -36,6 +36,15 @@ service UsersApi {
 
   // Получить баджи пользователя
   rpc GetUserBadges(GetUserBadgesRequest) returns(GetUserBadgesResponse);
+
+  // Получить список устройств текущего пользователя
+  rpc GetDevices(GetDevicesRequest) returns(GetDevicesResponse);
+
+  // Получить текущее устройство
+  rpc GetCurrentDevice(GetCurrentDeviceRequest) returns(GetCurrentDeviceResponse);
+
+  // Переименовать устройство
+  rpc RenameDevice(RenameDeviceRequest) returns(RenameDeviceResponse);
 }
 
 service UsersServerApi {
@@ -307,3 +316,34 @@ message GetAllBadgesResponse {
   repeated Badge badges = 1; // список всех баджей
 }
 
+// Сообщения для работы с устройствами
+
+message Device {
+  string device_id = 1; // Уникальный идентификатор устройства (GUID)
+  int64 user_id = 2; // Идентификатор пользователя
+  string original_name = 3; // Оригинальное имя устройства
+  string custom_name = 4; // Кастомное имя устройства (задается пользователем)
+  google.protobuf.Timestamp authorized_at = 5; // Дата и время авторизации
+  string app_name = 6; // Имя приложения
+  string operation_system = 7; // Операционная система
+  string location = 8; // Страна/город
+}
+
+message GetDevicesRequest { }
+
+message GetDevicesResponse {
+  repeated Device devices = 1; // Список устройств пользователя
+}
+
+message GetCurrentDeviceRequest { }
+
+message GetCurrentDeviceResponse {
+  Device device = 1; // Текущее устройство
+}
+
+message RenameDeviceRequest {
+  string device_id = 1; // Идентификатор устройства
+  string custom_name = 2; // Новое кастомное имя
+}
+
+message RenameDeviceResponse { }
