@@ -1,6 +1,5 @@
 using BarkFluff.Files.Domain;
 using BarkFluff.Files.Helpers;
-using BarkFluff.GrpcServer.Settings;
 using BarkFluff.Proto.Files;
 using Google.Protobuf.WellKnownTypes;
 using UploadFileType = BarkFluff.Proto.Files.UploadFileType;
@@ -9,7 +8,7 @@ namespace BarkFluff.Files.Mapping;
 
 public static class UploadFileMapping
 {
-    public static UploadFileInfo ToGrpc(this UploadFile file, RunSettings? runSettings = null)
+    public static UploadFileInfo ToGrpc(this UploadFile file, string? publicBaseUrl = null)
     {
         var info = new UploadFileInfo
         {
@@ -20,13 +19,17 @@ public static class UploadFileMapping
             Type = (UploadFileType)(int)file.Type,
             UploadedAt = Timestamp.FromDateTime(file.UploadedAt ?? DateTime.MinValue),
             FileSize = file.Size,
-            PreviewUrl = runSettings is null || file.PreviewId is null ? string.Empty : FileUrlHelper.GenerateDownloadUrl(runSettings.Host, runSettings.Http1Port, file.PreviewId!.Value),
-            FileUrl = runSettings is null ? string.Empty : FileUrlHelper.GenerateDownloadUrl(runSettings.Host, runSettings.Http1Port, file.Id),
+            PreviewUrl = publicBaseUrl is null || file.PreviewId is null
+                ? string.Empty
+                : FileUrlHelper.GenerateDownloadUrl(publicBaseUrl, file.PreviewId!.Value),
+            FileUrl = publicBaseUrl is null
+                ? string.Empty
+                : FileUrlHelper.GenerateDownloadUrl(publicBaseUrl, file.Id),
             PreviewFileId = file.PreviewId?.ToString() ?? string.Empty
         };
-        
+
         info.Uploaders.AddRange(file.Uploaders);
-        
+
         return info;
     }
 }

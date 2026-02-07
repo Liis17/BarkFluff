@@ -1,8 +1,10 @@
+using BarkFluff.Files.Helpers;
 using BarkFluff.Files.Mapping;
 using BarkFluff.Files.Persistence;
 using BarkFluff.GrpcServer.Settings;
 using BarkFluff.Proto.Files;
 using MediatR;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Files.Features.GetFilesData;
@@ -10,15 +12,16 @@ namespace BarkFluff.Files.Features.GetFilesData;
 public class GetFilesDataCommandHandler : IRequestHandler<GetFilesDataCommand, GetFilesDataResponse>
 {
     private readonly UploadedFilesStorage _uploadedFilesStorage;
-
     private readonly RunSettings _runSettings;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<GetFilesDataCommandHandler> _logger;
 
     public GetFilesDataCommandHandler(UploadedFilesStorage uploadedFilesStorage, RunSettings runSettings,
-        ILogger<GetFilesDataCommandHandler> logger)
+        IConfiguration configuration, ILogger<GetFilesDataCommandHandler> logger)
     {
         _uploadedFilesStorage = uploadedFilesStorage;
         _runSettings = runSettings;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -37,9 +40,11 @@ public class GetFilesDataCommandHandler : IRequestHandler<GetFilesDataCommand, G
             request.FileIds.Count()
         );
 
+        var baseUrl = FileUrlHelper.GetPublicBaseUrl(_configuration, _runSettings);
+
         return new GetFilesDataResponse
         {
-            FilesInfos = { files.Select(x => x.ToGrpc(_runSettings)) }
+            FilesInfos = { files.Select(x => x.ToGrpc(baseUrl)) }
         };
     }
 }
