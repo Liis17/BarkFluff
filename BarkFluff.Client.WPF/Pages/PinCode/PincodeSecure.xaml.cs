@@ -197,6 +197,12 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
             App.GParam.AppPath = exeDirectory ?? string.Empty;
             App.GParam.IpAddress = await SystemInfo.GetExternalIp();
 
+            // Генерируем DeviceId если его нет (обратная совместимость со старыми данными)
+            if (string.IsNullOrEmpty(App.GParam.DeviceId))
+            {
+                App.GParam.DeviceId = Guid.NewGuid().ToString();
+            }
+
             Box0.Focusable = false;
             Box1.Focusable = false;
             Box2.Focusable = false;
