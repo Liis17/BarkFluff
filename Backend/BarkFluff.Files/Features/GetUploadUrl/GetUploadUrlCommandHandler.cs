@@ -1,8 +1,10 @@
+using BarkFluff.Files.Helpers;
 using BarkFluff.Files.Persistence;
 using BarkFluff.GrpcServer.Settings;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Proto.Files;
 using MediatR;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 
@@ -13,16 +15,19 @@ public class GetUploadUrlCommandHandler : IRequestHandler<GetUploadUrlCommand, G
 
     private readonly UploadedFilesStorage _uploadedFilesStorage;
     private readonly RunSettings _runSettings;
+    private readonly IConfiguration _configuration;
     private readonly UserContext _userContext;
     private readonly ILogger<GetUploadUrlCommandHandler> _logger;
 
 
-    public GetUploadUrlCommandHandler(UploadedFilesStorage uploadedFilesStorage, UserContext userContext, RunSettings runSettings,
+    public GetUploadUrlCommandHandler(UploadedFilesStorage uploadedFilesStorage, UserContext userContext,
+        RunSettings runSettings, IConfiguration configuration,
         ILogger<GetUploadUrlCommandHandler> logger)
     {
         _uploadedFilesStorage = uploadedFilesStorage;
         _userContext = userContext;
         _runSettings = runSettings;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -43,7 +48,8 @@ public class GetUploadUrlCommandHandler : IRequestHandler<GetUploadUrlCommand, G
 
         var file = await _uploadedFilesStorage.AddToStorage(uploadFile);
 
-        var uploadUrl = $"{_runSettings.Host}:{_runSettings.Http1Port}/upload/{file.Id}";
+        var baseUrl = FileUrlHelper.GetPublicBaseUrl(_configuration, _runSettings);
+        var uploadUrl = FileUrlHelper.GenerateUploadUrl(baseUrl, file.Id);
 
         _logger.LogInformation(
             "URL для загрузки создан. FileId: {FileId}, Тип: {FileType}, URL: {UploadUrl}",
