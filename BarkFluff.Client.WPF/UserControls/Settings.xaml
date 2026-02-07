@@ -7,227 +7,257 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:settingsControls="clr-namespace:BarkFluff.Client.WPF.UserControls.SettingsPages"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    HorizontalAlignment="Stretch"
+    VerticalAlignment="Stretch"
     d:DesignHeight="700"
     d:DesignWidth="500"
     mc:Ignorable="d">
     <Border
         HorizontalAlignment="Stretch"
-        VerticalAlignment="Top"
+        VerticalAlignment="Stretch"
         Background="#1f1f1f"
-        CornerRadius="12"
-        ClipToBounds="True">
-        <Grid x:Name="ContentContainer">
-            <!-- Главное меню настроек -->
-            <StackPanel x:Name="MainMenuPanel" VerticalAlignment="Top" Orientation="Vertical">
-                <Border
-                    x:Name="Avatar"
-                    Height="140"
+        ClipToBounds="True"
+        CornerRadius="12">
+        <Grid
+            x:Name="ContentContainer"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch">
+            <ScrollViewer
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                HorizontalScrollBarVisibility="Disabled"
+                VerticalScrollBarVisibility="Visible">
+                <Grid
+                    Margin="10,0,10,0"
                     HorizontalAlignment="Stretch"
-                    VerticalAlignment="Top">
-                    <local:CachedAvatar
-                        x:Name="AvatarCachedImage"
-                        Width="110"
-                        Height="110"
-                        Margin="0,0,0,16"
-                        HorizontalAlignment="Center"
-                        CornerRadius="55"
-                        EnableDynamicShadow="True"
-                        ShadowBlurRadius="25"
-                        ShadowOpacity="0.5" />
-                </Border>
-                <settingsControls:UsedSpaceProgressBar HorizontalAlignment="Stretch" />
+                    VerticalAlignment="Stretch">
+                    <StackPanel
+                        x:Name="MainMenuPanel"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch"
+                        Orientation="Vertical">
+                        <Border
+                            x:Name="Avatar"
+                            Height="140"
+                            Margin="0 50 0 0"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Top">
+                            <local:CachedAvatar
+                                x:Name="AvatarCachedImage"
+                                Width="110"
+                                Height="110"
+                                Margin="0,0,0,16"
+                                HorizontalAlignment="Center"
+                                CornerRadius="55"
+                                EnableDynamicShadow="True"
+                                ShadowBlurRadius="25"
+                                ShadowOpacity="0.5" />
+                        </Border>
+                        <settingsControls:UsedSpaceProgressBar HorizontalAlignment="Stretch" />
 
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
 
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="*" />
 
-                    </Grid.RowDefinitions>
-                    <TextBlock
-                        Grid.Row="0"
-                        Grid.Column="0"
-                        Style="{DynamicResource HeaderSettings}"
-                        Text="Оформление" />
-                    <Border
-                        Grid.Row="1"
-                        Grid.Column="0"
-                        Margin="5"
-                        Padding="5,0,5,0"
-                        Background="#1f1f1f"
-                        Style="{DynamicResource Win11CardStyle}">
-                        <settingsControls:SettingsMenuBlock
-                            Command="{Binding NavigateCommand}"
-                            CommandParameter="Chats"
-                            IconColor="#FF5086B5"
-                            IconSymbol="ChatEmpty24"
-                            Text="Чаты" />
-                    </Border>
-                    <Border
-                        Grid.Row="1"
-                        Grid.Column="1"
-                        Margin="5"
-                        Padding="5,0,5,0"
-                        Background="#1f1f1f"
-                        Style="{DynamicResource Win11CardStyle}">
-                        <settingsControls:SettingsMenuBlock
-                            Command="{Binding NavigateCommand}"
-                            CommandParameter="Profile"
-                            IconColor="#FFDA5151"
-                            IconSymbol="Person24"
-                            Text="Профиль" />
-                    </Border>
+                            </Grid.RowDefinitions>
+                            <TextBlock
+                                Grid.Row="0"
+                                Grid.Column="0"
+                                Style="{DynamicResource HeaderSettings}"
+                                Text="Оформление" />
+                            <Border
+                                Grid.Row="1"
+                                Grid.Column="0"
+                                Margin="5"
+                                Padding="5,0,5,0"
+                                Background="#1f1f1f"
+                                Style="{DynamicResource Win11CardStyle}">
+                                <settingsControls:SettingsMenuBlock
+                                    Command="{Binding NavigateCommand}"
+                                    CommandParameter="Chats"
+                                    IconColor="#FF5086B5"
+                                    IconSymbol="ChatEmpty24"
+                                    Text="Чаты" />
+                            </Border>
+                            <Border
+                                Grid.Row="1"
+                                Grid.Column="1"
+                                Margin="5"
+                                Padding="5,0,5,0"
+                                Background="#1f1f1f"
+                                Style="{DynamicResource Win11CardStyle}">
+                                <settingsControls:SettingsMenuBlock
+                                    Command="{Binding NavigateCommand}"
+                                    CommandParameter="Profile"
+                                    IconColor="#FFDA5151"
+                                    IconSymbol="Person24"
+                                    Text="Профиль" />
+                            </Border>
 
-                    <TextBlock
-                        Grid.Row="2"
-                        Grid.Column="0"
-                        Style="{DynamicResource HeaderSettings}"
-                        Text="Приложение" />
+                            <TextBlock
+                                Grid.Row="2"
+                                Grid.Column="0"
+                                Style="{DynamicResource HeaderSettings}"
+                                Text="Приложение" />
 
-                    <Border
-                        Grid.Row="3"
-                        Grid.Column="1"
-                        Margin="5"
-                        Padding="5,0,5,0"
-                        Background="#1f1f1f"
-                        Style="{DynamicResource Win11CardStyle}">
-                        <settingsControls:SettingsMenuBlock
-                            Command="{Binding NavigateCommand}"
-                            CommandParameter="Language"
-                            IconColor="#FF8E469A"
-                            IconSymbol="Globe24"
-                            Text="Язык" />
-                    </Border>
-                    <Border
-                        Grid.Row="3"
-                        Grid.Column="0"
-                        Margin="5"
-                        Padding="5,0,5,0"
-                        Background="#1f1f1f"
-                        Style="{DynamicResource Win11CardStyle}">
-                        <settingsControls:SettingsMenuBlock
-                            Command="{Binding NavigateCommand}"
-                            CommandParameter="Notifications"
-                            IconColor="#FFB35844"
-                            IconSymbol="CommentNote24"
-                            Text="Уведомления" />
-                    </Border>
-
-
-                    <TextBlock
-                        Grid.Row="4"
-                        Grid.Column="0"
-                        Style="{DynamicResource HeaderSettings}"
-                        Text="Безопасность" />
-                    <Border
-                        Grid.Row="5"
-                        Grid.Column="0"
-                        Margin="5"
-                        Padding="5,0,5,0"
-                        Background="#1f1f1f"
-                        Style="{DynamicResource Win11CardStyle}">
-                        <settingsControls:SettingsMenuBlock
-                            Command="{Binding NavigateCommand}"
-                            CommandParameter="Security"
-                            IconColor="#FFC58C39"
-                            IconSymbol="LockClosed32"
-                            Text="Защита" />
-                    </Border>
-                    <Border
-                        Grid.Row="5"
-                        Grid.Column="1"
-                        Margin="5"
-                        Padding="5,0,5,0"
-                        Background="#1f1f1f"
-                        Style="{DynamicResource Win11CardStyle}">
-                        <settingsControls:SettingsMenuBlock
-                            Command="{Binding NavigateCommand}"
-                            CommandParameter="Privacy"
-                            IconColor="#FF3FA29F"
-                            IconSymbol="ShieldLock28"
-                            Text="Конфиденциальность" />
-                    </Border>
+                            <Border
+                                Grid.Row="3"
+                                Grid.Column="1"
+                                Margin="5"
+                                Padding="5,0,5,0"
+                                Background="#1f1f1f"
+                                Style="{DynamicResource Win11CardStyle}">
+                                <settingsControls:SettingsMenuBlock
+                                    Command="{Binding NavigateCommand}"
+                                    CommandParameter="Language"
+                                    IconColor="#FF8E469A"
+                                    IconSymbol="Globe24"
+                                    Text="Язык" />
+                            </Border>
+                            <Border
+                                Grid.Row="3"
+                                Grid.Column="0"
+                                Margin="5"
+                                Padding="5,0,5,0"
+                                Background="#1f1f1f"
+                                Style="{DynamicResource Win11CardStyle}">
+                                <settingsControls:SettingsMenuBlock
+                                    Command="{Binding NavigateCommand}"
+                                    CommandParameter="Notifications"
+                                    IconColor="#FFB35844"
+                                    IconSymbol="CommentNote24"
+                                    Text="Уведомления" />
+                            </Border>
 
 
+                            <TextBlock
+                                Grid.Row="4"
+                                Grid.Column="0"
+                                Style="{DynamicResource HeaderSettings}"
+                                Text="Безопасность" />
+                            <Border
+                                Grid.Row="5"
+                                Grid.Column="0"
+                                Margin="5"
+                                Padding="5,0,5,0"
+                                Background="#1f1f1f"
+                                Style="{DynamicResource Win11CardStyle}">
+                                <settingsControls:SettingsMenuBlock
+                                    Command="{Binding NavigateCommand}"
+                                    CommandParameter="Security"
+                                    IconColor="#FFC58C39"
+                                    IconSymbol="LockClosed32"
+                                    Text="Защита" />
+                            </Border>
+                            <Border
+                                Grid.Row="5"
+                                Grid.Column="1"
+                                Margin="5"
+                                Padding="5,0,5,0"
+                                Background="#1f1f1f"
+                                Style="{DynamicResource Win11CardStyle}">
+                                <settingsControls:SettingsMenuBlock
+                                    Command="{Binding NavigateCommand}"
+                                    CommandParameter="Privacy"
+                                    IconColor="#FF3FA29F"
+                                    IconSymbol="ShieldLock28"
+                                    Text="Конфиденциальность" />
+                            </Border>
 
+
+
+                        </Grid>
+                        <Border
+                            Grid.Row="6"
+                            Grid.Column="3"
+                            Margin="5"
+                            Padding="5,0,5,0"
+                            Background="#1f1f1f"
+                            Style="{DynamicResource Win11CardStyle}">
+                            <settingsControls:SettingsMenuDeviceBlock
+                                Command="{Binding NavigateCommand}"
+                                CommandParameter="Devices"
+                                IconColor="#FF156ADC"
+                                IconSymbol="PhoneDesktop28"
+                                Text="Устройства" />
+                        </Border>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <TextBlock
+                                Grid.Row="0"
+                                Grid.Column="0"
+                                Style="{DynamicResource HeaderSettings}"
+                                Text="Данные и память" />
+
+                            <Border
+                                Grid.Row="1"
+                                Grid.Column="1"
+                                Margin="5"
+                                Padding="5,0,5,0"
+                                Background="#1f1f1f"
+                                Style="{DynamicResource Win11CardStyle}">
+                                <settingsControls:SettingsMenuBlock
+                                    Command="{Binding NavigateCommand}"
+                                    CommandParameter="Cache"
+                                    IconColor="#FF68A540"
+                                    IconSymbol="DatabaseStack16"
+                                    Text="Кеш" />
+                            </Border>
+                            <Border
+                                Grid.Row="1"
+                                Grid.Column="0"
+                                Margin="5"
+                                Padding="5,0,5,0"
+                                Background="#1f1f1f"
+                                Style="{DynamicResource Win11CardStyle}">
+                                <settingsControls:SettingsMenuBlock
+                                    Command="{Binding NavigateCommand}"
+                                    CommandParameter="Cloud"
+                                    IconColor="#FF79AEDC"
+                                    IconSymbol="Cloud24"
+                                    Text="Облако" />
+                            </Border>
+                        </Grid>
+
+
+                    </StackPanel>
+
+                    <!--  Контейнер для страниц настроек  -->
+                    <Grid
+                        x:Name="PageContainer"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch"
+                        Visibility="Collapsed">
+                        <ContentControl
+                            x:Name="PageContentControl"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch" />
+                    </Grid>
                 </Grid>
-                <Border
-                    Grid.Row="6"
-                    Grid.Column="3"
-                    Margin="5"
-                    Padding="5,0,5,0"
-                    Background="#1f1f1f"
-                    Style="{DynamicResource Win11CardStyle}">
-                    <settingsControls:SettingsMenuDeviceBlock
-                        Command="{Binding NavigateCommand}"
-                        CommandParameter="Devices"
-                        IconColor="#FF156ADC"
-                        IconSymbol="PhoneDesktop28"
-                        Text="Устройства" />
-                </Border>
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-                    <TextBlock
-                        Grid.Row="0"
-                        Grid.Column="0"
-                        Style="{DynamicResource HeaderSettings}"
-                        Text="Данные и память" />
 
-                    <Border
-                        Grid.Row="1"
-                        Grid.Column="1"
-                        Margin="5"
-                        Padding="5,0,5,0"
-                        Background="#1f1f1f"
-                        Style="{DynamicResource Win11CardStyle}">
-                        <settingsControls:SettingsMenuBlock
-                            Command="{Binding NavigateCommand}"
-                            CommandParameter="Cache"
-                            IconColor="#FF68A540"
-                            IconSymbol="DatabaseStack16"
-                            Text="Кеш" />
-                    </Border>
-                    <Border
-                        Grid.Row="1"
-                        Grid.Column="0"
-                        Margin="5"
-                        Padding="5,0,5,0"
-                        Background="#1f1f1f"
-                        Style="{DynamicResource Win11CardStyle}">
-                        <settingsControls:SettingsMenuBlock
-                            Command="{Binding NavigateCommand}"
-                            CommandParameter="Cloud"
-                            IconColor="#FF79AEDC"
-                            IconSymbol="Cloud24"
-                            Text="Облако" />
-                    </Border>
-                </Grid>
+            </ScrollViewer>
+            <!--  Главное меню настроек  -->
 
-
-            </StackPanel>
-
-            <!-- Контейнер для страниц настроек -->
-            <Grid x:Name="PageContainer" Visibility="Collapsed">
-                <ContentControl x:Name="PageContentControl" />
-            </Grid>
         </Grid>
     </Border>
 </UserControl>

@@ -42,37 +42,4 @@
         </StackPanel>
     </Grid>
 
-    <UserControl.Triggers>
-        <EventTrigger RoutedEvent="MouseEnter">
-            <BeginStoryboard>
-                <Storyboard>
-                    <DoubleAnimation
-                        Storyboard.TargetName="BlurEffectElement"
-                        Storyboard.TargetProperty="Radius"
-                        To="20"
-                        Duration="0:0:0.3">
-                        <DoubleAnimation.EasingFunction>
-                            <CubicEase EasingMode="EaseOut" />
-                        </DoubleAnimation.EasingFunction>
-                    </DoubleAnimation>
-                </Storyboard>
-            </BeginStoryboard>
-        </EventTrigger>
-        <EventTrigger RoutedEvent="MouseLeave">
-            <BeginStoryboard>
-                <Storyboard>
-                    <DoubleAnimation
-                        Storyboard.TargetName="BlurEffectElement"
-                        Storyboard.TargetProperty="Radius"
-                        To="0"
-                        Duration="0:0:0.3">
-                        <DoubleAnimation.EasingFunction>
-                            <CubicEase EasingMode="EaseIn" />
-                        </DoubleAnimation.EasingFunction>
-                    </DoubleAnimation>
-                </Storyboard>
-            </BeginStoryboard>
-        </EventTrigger>
-    </UserControl.Triggers>
-
 </UserControl>
