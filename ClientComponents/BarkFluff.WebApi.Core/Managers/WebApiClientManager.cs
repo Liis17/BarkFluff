@@ -119,6 +119,7 @@ namespace BarkFluff.WebApi.Core.Managers
                     token = _gParam.AccessToken.Value;
                 }
                 var deviceInterceptor = new Shared.Auth.XDeviceClientInterceptor(deviceName: _deviceName);
+                var deviceIdInterceptor = new Shared.Auth.XDeviceIdInterceptor(_gParam.DeviceId);
                 var osInterceptor = new Shared.Auth.XOsClientInterceptor(os);
                 var jwtInterceptor = new Shared.Auth.JwtClientInterceptor(token);
                 var appInterceptor = new Shared.Auth.XAppClientInterceptor(appName, appVersion);
@@ -141,12 +142,12 @@ namespace BarkFluff.WebApi.Core.Managers
                 _webApi.UpdatesChannel = GrpcChannel.ForAddress(_gParam.SocketUpdates);
                 _webApi.OnlinerChannel = GrpcChannel.ForAddress(_gParam.SocketOnliner);
 
-                var identityInvoker = _webApi.IdentityChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
-                var userInvoker = _webApi.UserChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
-                var filesInvoker = _webApi.FilesChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
-                var messageInvoker = _webApi.MessagesChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
-                var updatesInvoker = _webApi.UpdatesChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
-                var onlinerInvoker = _webApi.OnlinerChannel.Intercept(deviceInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
+                var identityInvoker = _webApi.IdentityChannel.Intercept(deviceInterceptor).Intercept(deviceIdInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
+                var userInvoker = _webApi.UserChannel.Intercept(deviceInterceptor).Intercept(deviceIdInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
+                var filesInvoker = _webApi.FilesChannel.Intercept(deviceInterceptor).Intercept(deviceIdInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
+                var messageInvoker = _webApi.MessagesChannel.Intercept(deviceInterceptor).Intercept(deviceIdInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
+                var updatesInvoker = _webApi.UpdatesChannel.Intercept(deviceInterceptor).Intercept(deviceIdInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
+                var onlinerInvoker = _webApi.OnlinerChannel.Intercept(deviceInterceptor).Intercept(deviceIdInterceptor).Intercept(jwtInterceptor).Intercept(osInterceptor).Intercept(appInterceptor).Intercept(errorInterceptor).Intercept(ipInterceptor);
 
                 _webApi.IdentityAC = new BarkFluff.Proto.Identity.IdentityApi.IdentityApiClient(identityInvoker);
                 _webApi.UsersAC = new BarkFluff.Proto.Users.UsersApi.UsersApiClient(userInvoker);

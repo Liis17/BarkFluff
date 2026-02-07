@@ -20,6 +20,7 @@ namespace BarkFluff.WebApi.Core.MessengerData
         public string ServerName { get; set; } = string.Empty;
         public string ServerDescription { get; set; } = string.Empty;
         public string MachineName { get; set; } = string.Empty;
+        public string DeviceId { get; set; } = string.Empty;
         public ClientColors Colors { get; set; } = new ClientColors();
         public string IpAddress { get; set; } = string.Empty;
 

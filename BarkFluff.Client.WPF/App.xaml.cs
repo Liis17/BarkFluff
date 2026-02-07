@@ -199,6 +199,7 @@ namespace BarkFluff.Client.WPF
                 GParam.AppPath = Path.GetDirectoryName(AppContext.BaseDirectory) ?? string.Empty;
                 var machineName = Environment.MachineName;
                 GParam.MachineName = machineName;
+                GParam.DeviceId = Guid.NewGuid().ToString();
                 MessengerWindow.FirstStart();
             }
             else

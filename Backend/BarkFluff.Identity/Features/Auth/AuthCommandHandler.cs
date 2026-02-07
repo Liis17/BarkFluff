@@ -63,9 +63,10 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
             throw new XAppInfoIsRequiedException();
         }
 
+        // Если DeviceId не передан, генерируем временный для обратной совместимости
         if (string.IsNullOrEmpty(requestContext.DeviceId))
         {
-            throw new XDeviceNameIsRequiredException();
+            requestContext.DeviceId = Guid.NewGuid().ToString();
         }
 
         var usersRequest = new FindByLoginRequest();
