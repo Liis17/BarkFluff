@@ -208,13 +208,16 @@ class AuthRepository @Inject constructor(
             val sessions = response.sessionsList.map { session ->
                 ActiveSession(
                     id = session.id,
-                    deviceName = session.deviceName,
-                    ip = session.ip,
+                    deviceId = session.deviceId,
+                    originalName = session.originalName,
+                    customName = session.customName,
+                    appName = session.appName,
+                    operationSystem = session.operationSystem,
+                    location = session.location,
                     createdAt = Instant.ofEpochSecond(
                         session.createdAt.seconds,
                         session.createdAt.nanos.toLong()
-                    ),
-                    isCurrent = session.isCurrent
+                    )
                 )
             }
 
@@ -224,12 +227,12 @@ class AuthRepository @Inject constructor(
         }
     }
 
-    suspend fun removeActiveSession(sessionId: String): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun removeActiveSession(deviceId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val stub = identity_api.IdentityApiGrpc.newBlockingStub(identityChannel)
 
             val request = identity_api.IdentityApi.RemoveActiveSessionRequest.newBuilder()
-                .setSessionId(sessionId)
+                .setDeviceId(deviceId)
                 .build()
 
             stub.removeActiveSession(request)
@@ -335,12 +338,18 @@ class AuthRepository @Inject constructor(
 }
 
 data class ActiveSession(
-    val id: String,
-    val deviceName: String,
-    val ip: String,
-    val createdAt: Instant,
-    val isCurrent: Boolean
-)
+    val id: Long,
+    val deviceId: String,
+    val originalName: String,
+    val customName: String,
+    val appName: String,
+    val operationSystem: String,
+    val location: String,
+    val createdAt: Instant
+) {
+    val displayName: String
+        get() = customName.ifBlank { originalName }
+}
 
 enum class OtpType {
     AUTHENTICATOR,
