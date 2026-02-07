@@ -78,6 +78,25 @@ public class Program
                     logger.LogInformation("Attempting to connect to database and apply migrations (attempt {Attempt}/{MaxRetries})...", retryCount + 1, maxRetries);
                     ctx.Database.Migrate();
                     logger.LogInformation("Database migrations applied successfully.");
+
+                    // Авто-заполнение пустых конфигураций значениями по умолчанию
+                    try
+                    {
+                        // Извлекаем данные postgres из connection string Configuration-сервиса
+                        var pgHostOnly = host.Contains(':') ? host.Split(':')[0] : host;
+
+                        var populatorLogger = scope.ServiceProvider.GetRequiredService<ILogger<ConfigurationDefaultsPopulator>>();
+                        var populator = new ConfigurationDefaultsPopulator(
+                            ctx, populatorLogger, pgHostOnly, username, password);
+
+                        populator.PopulateDefaultsAsync().GetAwaiter().GetResult();
+                    }
+                    catch (Exception populateEx)
+                    {
+                        logger.LogWarning(populateEx,
+                            "Ошибка при авто-заполнении конфигураций. Сервис продолжит работу.");
+                    }
+
                     break;
                 }
                 catch (Npgsql.NpgsqlException ex)
