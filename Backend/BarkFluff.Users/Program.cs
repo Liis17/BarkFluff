@@ -26,10 +26,7 @@ public class Program
         builder.SetRunningAddress(builder.Configuration);
 
         // Регистрируем gRPC сервисы с интерцепторами
-        builder.Services.AddGrpc(options =>
-        {
-            options.Interceptors.Add<ServerExceptionInterceptor>();
-        });
+        builder.Services.AddBarkFluffGrpc();
 
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
 
