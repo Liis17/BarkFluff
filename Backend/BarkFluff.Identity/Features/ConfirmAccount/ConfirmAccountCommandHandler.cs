@@ -119,7 +119,7 @@ public class ConfirmAccountCommandHandler(ConfirmationCodesStorage confirmationC
 
         var refreshTokenString = RefreshTokenGenerator.GenerateRefreshToken();
 
-        await refreshTokensStorage.CreateNewRefreshToken(refreshTokenString, code.OwnerId!.Value, requestContext.DeviceName, ExpDaysRefreshToken);
+        await refreshTokensStorage.CreateNewRefreshToken(refreshTokenString, code.OwnerId!.Value, requestContext.DeviceId ?? requestContext.DeviceName, ExpDaysRefreshToken);
 
         logger.LogInformation(
             "Аккаунт успешно подтвержден. UserId: {UserId}, Username: {Username}, Устройство: {DeviceName}",

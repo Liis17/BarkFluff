@@ -105,19 +105,17 @@ namespace BarkFluff.WebApi.Core.Managers
         }
 
         /// <summary>
-        /// Возвращает список активных устройств пользователя.
+        /// Возвращает список активных сессий пользователя с информацией об устройствах.
         /// </summary>
-        public async Task<(ErrorReturner error, List<string>? devicesList)> GetDevicesList(GlobalParam globalParam)
+        public async Task<(ErrorReturner error, List<Proto.Identity.GetActiveSessionsResponse.Types.Session>? sessions)> GetDevicesList(GlobalParam globalParam)
         {
             try
             {
                 return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
                     var response = await IdentityAC!.GetActiveSessionsAsync(new Proto.Identity.GetActiveSessionsRequest { });
-                    var devicesList = response.Sessions
-                        .Select(session => session.DeviceName ?? "Неизвестное устройство")
-                        .ToList();
-                    return (new ErrorReturner(true), devicesList);
+                    var sessions = response.Sessions.ToList();
+                    return (new ErrorReturner(true), sessions);
                 }, globalParam);
             }
             catch (BarkFluff.Shared.Exceptions.Identity.InvalidRefreshTokenException)
@@ -131,17 +129,16 @@ namespace BarkFluff.WebApi.Core.Managers
         }
 
         /// <summary>
-        /// Возвращает активное устройство.
+        /// Возвращает текущее устройство.
         /// </summary>
-        public async Task<(ErrorReturner error, string device)> GetCurrentDevice(GlobalParam globalParam)
+        public async Task<(ErrorReturner error, Proto.Users.Device? device)> GetCurrentDevice(GlobalParam globalParam)
         {
             try
             {
                 return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
-                    var response = "";
-
-                    return (new ErrorReturner(true), "");
+                    var response = await UsersAC!.GetCurrentDeviceAsync(new Proto.Users.GetCurrentDeviceRequest { });
+                    return (new ErrorReturner(true), response.Device);
                 }, globalParam);
             }
             catch (BarkFluff.Shared.Exceptions.Identity.InvalidRefreshTokenException)
@@ -150,7 +147,56 @@ namespace BarkFluff.WebApi.Core.Managers
             }
             catch (Exception)
             {
-                return (new ErrorReturner(false, "Ошибка получения списка устройств"), null);
+                return (new ErrorReturner(false, "Ошибка получения текущего устройства"), null);
+            }
+        }
+
+        /// <summary>
+        /// Переименовывает устройство по его идентификатору.
+        /// </summary>
+        public async Task<ErrorReturner> RenameDevice(string deviceId, string customName, GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    await UsersAC!.RenameDeviceAsync(new Proto.Users.RenameDeviceRequest
+                    {
+                        DeviceId = deviceId,
+                        CustomName = customName
+                    });
+                    return new ErrorReturner(true);
+                }, globalParam);
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка переименования устройства");
+            }
+        }
+
+        /// <summary>
+        /// Удаляет активную сессию по идентификатору устройства.
+        /// </summary>
+        public async Task<ErrorReturner> RemoveActiveSession(string deviceId, GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    await IdentityAC!.RemoveActiveSessionAsync(new Proto.Identity.RemoveActiveSessionRequest
+                    {
+                        DeviceId = deviceId
+                    });
+                    return new ErrorReturner(true);
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.SessionNotFoundException)
+            {
+                return new ErrorReturner(false, "Сессия не найдена.");
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка удаления сессии");
             }
         }
 

@@ -36,6 +36,15 @@ service UsersApi {
 
   // Получить баджи пользователя
   rpc GetUserBadges(GetUserBadgesRequest) returns(GetUserBadgesResponse);
+
+  // Получить список устройств текущего пользователя
+  rpc GetDevices(GetDevicesRequest) returns(GetDevicesResponse);
+
+  // Получить текущее устройство
+  rpc GetCurrentDevice(GetCurrentDeviceRequest) returns(GetCurrentDeviceResponse);
+
+  // Переименовать устройство
+  rpc RenameDevice(RenameDeviceRequest) returns(RenameDeviceResponse);
 }
 
 service UsersServerApi {
@@ -84,6 +93,15 @@ service UsersServerApi {
 
   // Экспорт всех данных пользователя (для GDPR и других целей)
   rpc ExportData(ExportDataRequest) returns(ExportDataResponse);
+
+  // Зарегистрировать устройство (вызывается Identity при авторизации)
+  rpc RegisterDevice(RegisterDeviceRequest) returns(RegisterDeviceResponse);
+
+  // Получить устройства пользователя по userId
+  rpc GetUserDevices(GetUserDevicesRequest) returns(GetUserDevicesResponse);
+
+  // Удалить устройство пользователя
+  rpc DeleteUserDevice(DeleteUserDeviceRequest) returns(DeleteUserDeviceResponse);
 }
 
 message SearchUsersRequest {
@@ -325,4 +343,76 @@ message JsonFile {
   string filename = 1; // имя файла (например, "profile.json", "messages.json")
   string content = 2; // содержимое файла в формате JSON
 }
+
+// Сообщения для работы с устройствами
+
+message Device {
+  string device_id = 1; // Уникальный идентификатор устройства (GUID)
+  int64 user_id = 2; // Идентификатор пользователя
+  string original_name = 3; // Оригинальное имя устройства
+  string custom_name = 4; // Кастомное имя устройства (задается пользователем)
+  google.protobuf.Timestamp authorized_at = 5; // Дата и время авторизации
+  string app_name = 6; // Имя приложения
+  string operation_system = 7; // Операционная система
+  string location = 8; // Страна/город
+}
+
+// Запросы и ответы для получения списка устройств
+
+message GetDevicesRequest { }
+
+message GetDevicesResponse {
+  repeated Device devices = 1; // Список устройств пользователя
+}
+
+// Запросы и ответы для получения текущего устройства
+
+message GetCurrentDeviceRequest { }
+
+message GetCurrentDeviceResponse {
+  Device device = 1; // Текущее устройство
+}
+
+// Запросы и ответы для переименования устройства
+
+message RenameDeviceRequest {
+  string device_id = 1; // Идентификатор устройства
+  string custom_name = 2; // Новое кастомное имя
+}
+
+message RenameDeviceResponse { }
+
+// Запросы и ответы для регистрации устройства (внутренний эндпоинт)
+
+message RegisterDeviceRequest {
+  string device_id = 1; // Уникальный идентификатор устройства (GUID)
+  int64 user_id = 2; // Идентификатор пользователя
+  string original_name = 3; // Оригинальное имя устройства
+  string app_name = 4; // Имя приложения
+  string operation_system = 5; // Операционная система
+  string location = 6; // Страна/город
+}
+
+message RegisterDeviceResponse {
+  Device device = 1; // Зарегистрированное устройство
+}
+
+// Запросы и ответы для получения устройств пользователя (внутренний эндпоинт)
+
+message GetUserDevicesRequest {
+  int64 user_id = 1; // Идентификатор пользователя
+}
+
+message GetUserDevicesResponse {
+  repeated Device devices = 1; // Список устройств
+}
+
+// Запросы и ответы для удаления устройства пользователя (внутренний эндпоинт)
+
+message DeleteUserDeviceRequest {
+  string device_id = 1; // Идентификатор устройства
+  int64 user_id = 2; // Идентификатор пользователя
+}
+
+message DeleteUserDeviceResponse { }
 
