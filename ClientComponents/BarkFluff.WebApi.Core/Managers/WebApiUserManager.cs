@@ -131,6 +131,30 @@ namespace BarkFluff.WebApi.Core.Managers
         }
 
         /// <summary>
+        /// Возвращает активное устройство.
+        /// </summary>
+        public async Task<(ErrorReturner error, string device)> GetCurrentDevice(GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var response = "";
+
+                    return (new ErrorReturner(true), "");
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Identity.InvalidRefreshTokenException)
+            {
+                return (new ErrorReturner(false, "Неверный токен обновления."), null);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка получения списка устройств"), null);
+            }
+        }
+
+        /// <summary>
         /// Получает ссылку на аватар пользователя по его ID.
         /// </summary>
         public async Task<(ErrorReturner, string?)> GetUserAvatar(GlobalParam globalParam, long userId = 0)

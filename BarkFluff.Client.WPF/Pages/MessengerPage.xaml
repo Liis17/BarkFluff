@@ -142,15 +142,17 @@
             Background="Transparent"
             Loaded="SidePanel_Loaded" />
 
+        <!--  Центральный блок для оверлеев  -->
         <Border
             x:Name="CenterPanel"
-            Width="900"
+            Width="550"
             MaxHeight="1200"
+            Margin="30,50,30,30"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             Panel.ZIndex="1000"
             CornerRadius="16"
-            Visibility="Collapsed">
+            Visibility="Visible">
             <Border.Effect>
                 <DropShadowEffect
                     BlurRadius="30"
