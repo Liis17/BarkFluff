@@ -145,7 +145,7 @@ namespace BarkFluff.WebApi.Core.Managers
             {
                 return (new ErrorReturner(false, "Неверный токен обновления."), null);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 return (new ErrorReturner(false, "Ошибка получения текущего устройства"), null);
             }
