@@ -91,14 +91,52 @@
                     Height="50"
                     Margin="0,0,16,0"
                     VerticalAlignment="Center">
+
                     <local:CachedAvatar
                         x:Name="AvatarControl"
                         Width="50"
                         Height="50"
+                        Panel.ZIndex="1"
                         CornerRadius="23"
                         EnableDynamicShadow="False"
                         ShadowBlurRadius="12"
                         ShadowOpacity="0.9" />
+                    <Border
+                        x:Name="SavedChatAvatar"
+                        Width="50"
+                        Height="50"
+                        Panel.ZIndex="2"
+                        Background="#508fd6"
+                        CornerRadius="23"
+                        Visibility="Collapsed">
+                        <ui:SymbolIcon
+                            Width="34"
+                            Height="34"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Filled="True"
+                            FontSize="30"
+                            Foreground="White"
+                            Symbol="Bookmark32" />
+                    </Border>
+                    <Border
+                        x:Name="UserWithoutAvatar"
+                        Width="50"
+                        Height="50"
+                        Panel.ZIndex="3"
+                        Background="#508fd6"
+                        CornerRadius="23"
+                        Visibility="Collapsed">
+                        <ui:SymbolIcon
+                            Width="34"
+                            Height="34"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Filled="True"
+                            FontSize="30"
+                            Foreground="White"
+                            Symbol="Person32" />
+                    </Border>
 
                     <!--  Индикатор онлайна  -->
                     <Ellipse
@@ -108,10 +146,11 @@
                         Margin="0,0,-2,-2"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Bottom"
+                        Panel.ZIndex="4"
                         Fill="#44D62C"
                         Stroke="#1E1E1E"
                         StrokeThickness="2"
-                        Visibility="Collapsed" />
+                        Visibility="Visible" />
                 </Grid>
 
                 <!--  Контент сообщения  -->
