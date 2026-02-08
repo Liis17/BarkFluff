@@ -1,4 +1,5 @@
 using BarkFluff.WebApi.Core.MessengerData;
+
 using Grpc.Core;
 
 namespace BarkFluff.WebApi.Core.Managers
@@ -152,7 +153,7 @@ namespace BarkFluff.WebApi.Core.Managers
             if (_webApi.ClientManager._initParams.HasValue)
             {
                 var initParams = _webApi.ClientManager._initParams.Value;
-                var reinitResult = _webApi.ClientManager.AddInterceptor(
+                var reInitResult = _webApi.ClientManager.AddInterceptor(
                     globalParam,
                     initParams.DeviceName,
                     initParams.Os,
@@ -160,8 +161,8 @@ namespace BarkFluff.WebApi.Core.Managers
                     initParams.AppVersion,
                     initParams.Ip);
 
-                if (!reinitResult.IsSuccess)
-                    return reinitResult;
+                if (!reInitResult.IsSuccess)
+                    return reInitResult;
             }
 
             return new ErrorReturner(true);
