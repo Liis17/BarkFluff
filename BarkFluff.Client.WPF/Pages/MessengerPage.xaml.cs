@@ -1282,29 +1282,37 @@ namespace BarkFluff.Client.WPF.Pages
                     continue;
                 }
 
-                // Определяем аватар
-                string avatar = string.IsNullOrEmpty(item.Picture)
-                    ? "pack://application:,,,/BarkFluff;component/Resources/Placeholders/userplaceholder.png"
-                    : item.Picture;
-
                 // Определяем статус чтения и заголовок
                 var isRead = ChatItem.ReadingStatus.ForMe;
                 var title = item.Title;
                 var membersId = item.Members.Select(m => m.UserId).ToList();
-                if (App.GParam.UserId == item.Members[0].UserId && App.GParam.UserId == item.Members[1].UserId)
+                bool isSelfChat = (item.Members.Count >= 2 &&
+                                   App.GParam.UserId == item.Members[0].UserId &&
+                                   App.GParam.UserId == item.Members[1].UserId);
+
+                long userId;
+                string avatar;
+                if (isSelfChat)
                 {
+                    // Для чата с собой используем id текущего пользователя
                     isRead = ChatItem.ReadingStatus.My;
                     title = "Избранное";
                     avatar = "pack://application:,,,/BarkFluff;component/Resources/Placeholders/savedplaceholder.png";
+                    userId = App.GParam.UserId;
                 }
-
-                membersId.Remove(App.GParam.UserId);
-                long userId = membersId.FirstOrDefault(); // Возвращаем 0, если список пуст
-
-                if (userId == 0)
+                else
                 {
-                    App.ErideMessage.AddMessage($"Ошибка: нет доступных userId для чата {item.Id}", new Erida { Type = MType.Error });
-                    continue;
+                    avatar = string.IsNullOrEmpty(item.Picture)
+                        ? "pack://application:,,,/BarkFluff;component/Resources/Placeholders/userplaceholder.png"
+                        : item.Picture;
+                    membersId.Remove(App.GParam.UserId);
+                    userId = membersId.FirstOrDefault(); // Возвращаем 0, если список пуст
+
+                    if (userId == 0)
+                    {
+                        App.ErideMessage.AddMessage($"Ошибка: нет доступных userId для чата {item.Id}", new Erida { Type = MType.Error });
+                        continue;
+                    }
                 }
 
                 var messageItem = new ChatItem(
@@ -1880,26 +1888,44 @@ namespace BarkFluff.Client.WPF.Pages
             try
             {
                 // Получаем полную информацию о чате с сервера
-                var response = await App.ServerCommunication.GetChats(App.GParam);
-                if (response.error.IsSuccess && response.chats != null)
+                var chat = await App.ServerCommunication.GetChatInfo(App.GParam, chatId);
+                //var response = await App.ServerCommunication.GetChats(App.GParam);
+                if (chat.error.IsSuccess)
                 {
-                    var newChat = response.chats.FirstOrDefault(c => c.Id == chatId);
-                    if (newChat != null)
+                    if (chat.chatInfo.IsGroup)
                     {
-                        // Determine avatar and title
-                        string avatar = string.IsNullOrEmpty(newChat.Picture)
-                            ? "pack://application:,,,/BarkFluff;component/Resources/Placeholders/userplaceholder.png"
-                            : newChat.Picture;
+                        MessageBox.Show("Групповые чаты не реализованны, пропускаем, для поиска по коду 73248334");
+                        return;
+                    }
+                    if (chat.chatInfo.ChatId != string.Empty)
+                    {
+                        var title = chat.chatInfo.Title;
 
-                        var title = newChat.Title;
-                        var membersId = newChat.Members.Select(m => m.UserId).ToList();
-                        membersId.Remove(App.GParam.UserId);
-                        long userId = membersId.FirstOrDefault();
+                        // Проверяем, является ли чат self-chat (Избранное)
+                        bool isSelfChat = (chat.chatInfo.Members.Count >= 2 &&
+                                           chat.chatInfo.Members[0] == App.GParam.UserId &&
+                                           chat.chatInfo.Members[1] == App.GParam.UserId);
 
-                        if (userId == 0)
+                        long userId;
+                        string avatar;
+                        if (isSelfChat)
                         {
-                            // Try to get userId from message sender
-                            userId = message.SenderId != App.GParam.UserId ? message.SenderId : 0;
+                            avatar = "pack://application:,,,/BarkFluff;component/Resources/Placeholders/savedplaceholder.png";
+                            title = "Избранное";
+                            userId = App.GParam.UserId;
+                        }
+                        else
+                        {
+                            avatar = string.IsNullOrEmpty(chat.chatInfo.Picture)
+                                ? "pack://application:,,,/BarkFluff;component/Resources/Placeholders/userplaceholder.png"
+                                : chat.chatInfo.Picture;
+                            userId = chat.chatInfo.Members.FirstOrDefault(m => m != App.GParam.UserId); // Получаем ID другого участника
+
+                            if (userId == 0)
+                            {
+                                // Try to get userId from message sender
+                                userId = message.SenderId != App.GParam.UserId ? message.SenderId : 0;
+                            }
                         }
 
                         var messageItem = new ChatItem(
@@ -1912,8 +1938,8 @@ namespace BarkFluff.Client.WPF.Pages
                             unReaded: message.SenderId != App.GParam.UserId ? 1 : 0,
                             chatId: chatId,
                             lastMessageId: message.MessageId,
-                            firstUnreadId: newChat.FirstUnreadMessageId,
-                            isGroupChat: newChat.IsGroupChat,
+                            firstUnreadId: chat.chatInfo.FirstUnreadId,
+                            isGroupChat: chat.chatInfo.IsGroup,
                             userId: userId
                         );
 
@@ -2041,7 +2067,7 @@ namespace BarkFluff.Client.WPF.Pages
                 App.ErideMessage.AddMessage($"Что-то пошло не так, {responseChatId.error.ErrorMessage}", new Erida { Type = MType.Warning });
                 return;
             }
-            OpenChatById(responseChatId.chatId, responseChatInfo.lastMessageId, responseChatInfo.isGroup, userId, responseChatInfo.title, 0);
+            OpenChatById(responseChatId.chatId, responseChatInfo.chatInfo.LastMessageId, responseChatInfo.chatInfo.IsGroup, userId, responseChatInfo.chatInfo.Title, 0);
         }
 
         public void OpenChatById(string chatId, long lastMessageId, bool isGroupChat, long userId, string title, long firstUnreadId = 0)
