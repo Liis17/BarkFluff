@@ -202,6 +202,7 @@ message GetChatInfoResponse {
   string picture = 4; // Картинка чата
   bool is_group_chat = 5; // Является ли групповым чатом
   int64 count_unread = 6; // Количество непрочитанных сообщений
+  repeated int64 members_id = 7; // Идентификаторы участников чата
 }
 
 // Server API для межсервисного взаимодействия
