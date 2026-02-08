@@ -117,6 +117,13 @@ public class GetChatInfoCommandHandler : IRequestHandler<GetChatInfoCommand, Get
             response.Picture = chatInfo.Picture ?? string.Empty;
         }
 
+        // Получение списка участников чата
+        var chatWithMembers = await _chatsStorage.GetChat(request.ChatId);
+        if (chatWithMembers?.Members != null)
+        {
+            response.MembersId.AddRange(chatWithMembers.Members.Select(m => m.UserId));
+        }
+
         _logger.LogInformation(
             "Информация о чате {ChatId} успешно получена. Непрочитанных: {CountUnread}",
             request.ChatId,
