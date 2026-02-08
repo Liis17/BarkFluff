@@ -63,7 +63,7 @@ namespace BarkFluff.WebApi.Core.Managers
                     var chatInfo = new ChatInfo
                     {
                         ChatId = chatId,
-                        Members = new List<long>(), // тут вернуть участников чата (Backend task)
+                        Members = response.MembersId.ToList(),
                         Title = response.Title,
                         Picture = response.Picture,
                         IsGroup = response.IsGroupChat,
