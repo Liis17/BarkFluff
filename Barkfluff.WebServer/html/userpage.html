@@ -442,7 +442,6 @@
 
                     <div class="sub-links">
                         <a href="https://github.com/Liis17/BarkFluff.Releases/releases/" class="btn-sub">Portable (.zip)</a>
-                        <a href="#" class="btn-sub" onclick="openProtocol(); return false;">Попробовать открыть</a>
                     </div>
                 </div>
             </div>
@@ -463,7 +462,7 @@
 
     <script>
         const USERNAME = "%%username%%";
-        const PROTOCOL_URL = "bf://profile/" + USERNAME;
+        const PROTOCOL_URL = "bf://user-username=" + USERNAME;
         const REVEAL_DELAY = 5000;
         const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394a3b8'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E";
 

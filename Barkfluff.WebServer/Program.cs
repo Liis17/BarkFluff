@@ -1,5 +1,7 @@
 using Barkfluff.WebServer.Services;
+
 using BarkFluff.Proto.Users;
+
 using Grpc.Net.Client;
 
 namespace Barkfluff.WebServer
@@ -18,8 +20,8 @@ namespace Barkfluff.WebServer
             builder.Services.AddControllers();
 
             // === gRPC: подключение к Users-сервису бекенда ===
-            var usersServiceHost = builder.Configuration["UsersService:Host"] ?? "http://localhost:7001";
-            var usersServiceToken = builder.Configuration["UsersService:Token"] ?? "";
+            var usersServiceHost = "https://users.barkfluff.com";
+            var usersServiceToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ4LXRva2VuLXR5cGUiOiJTZXJ2aWNlIiwieC11c2VyLWlkIjoiMCIsInNlcnZpY2UtbmFtZSI6IlVzZXJzU2VydmljZUNsaWVudCIsImV4cCI6MjA4NjAxNDc5NiwiaXNzIjoiQmFya0ZsdWZmIiwiYXVkIjoiQmFya0ZsdWZmTWljcm9zZXJ2aWNlcyJ9.lRnigSSA4x8BL5Fxr4s3-Kc1MOt2Dqk_6Ozz_neTE_g";
 
             var usersChannel = GrpcChannel.ForAddress(usersServiceHost);
             builder.Services.AddSingleton(new UsersServerApi.UsersServerApiClient(usersChannel));
