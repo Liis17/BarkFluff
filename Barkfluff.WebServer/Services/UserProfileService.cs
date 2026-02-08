@@ -17,13 +17,13 @@ public class UserProfileService
     public UserProfileService(
         UsersServerApi.UsersServerApiClient client,
         IMemoryCache cache,
-        IConfiguration configuration,
+        string serviceToken,
         ILogger<UserProfileService> logger)
     {
         _client = client;
         _cache = cache;
         _logger = logger;
-        _serviceToken = configuration["UsersService:Token"] ?? "";
+        _serviceToken = serviceToken;
     }
 
     public async Task<UserProfileData?> GetUserProfileAsync(string username)
