@@ -331,6 +331,252 @@
             object-fit: contain;
             display: block;
         }
+
+        /* Support Chat Widget */
+        .chat-support-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+            z-index: 1000;
+            animation: chatPulse 3s infinite;
+        }
+
+        .chat-support-btn:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 12px 30px rgba(37, 99, 235, 0.6);
+        }
+
+        .chat-support-btn.chat-btn-active {
+            animation: none;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        }
+
+        .chat-support-btn svg {
+            width: 24px;
+            height: 24px;
+            fill: white;
+        }
+
+        @keyframes chatPulse {
+            0% { box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4); }
+            50% { box-shadow: 0 8px 25px rgba(37, 99, 235, 0.6), 0 0 0 10px rgba(59, 130, 246, 0.08); }
+            100% { box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4); }
+        }
+
+        .chat-dialog {
+            position: fixed;
+            bottom: 96px;
+            right: 24px;
+            width: 370px;
+            max-height: 500px;
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            animation: chatSlideUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        .chat-dialog.chat-visible {
+            display: flex;
+        }
+
+        @keyframes chatSlideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .chat-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--card-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-header-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .chat-header-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #22c55e;
+        }
+
+        .chat-header-title span {
+            font-weight: 600;
+            font-size: 15px;
+            color: var(--text-main);
+        }
+
+        .chat-close-btn {
+            background: none;
+            border: none;
+            color: var(--text-sub);
+            font-size: 22px;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            transition: 0.2s;
+            line-height: 1;
+        }
+
+        .chat-close-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            max-height: 340px;
+            min-height: 180px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .chat-messages::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+        }
+
+        .chat-msg {
+            padding: 10px 14px;
+            border-radius: 14px;
+            max-width: 80%;
+            font-size: 13px;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+
+        .chat-msg-user {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+
+        .chat-msg-admin {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-main);
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+
+        .chat-msg-system {
+            background: transparent;
+            color: var(--text-sub);
+            align-self: center;
+            font-size: 12px;
+            text-align: center;
+            padding: 8px;
+        }
+
+        .chat-input-area {
+            padding: 12px;
+            border-top: 1px solid var(--card-border);
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .chat-input-area input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 10px 14px;
+            color: var(--text-main);
+            font-size: 13px;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .chat-input-area input:focus {
+            border-color: var(--primary);
+        }
+
+        .chat-input-area input::placeholder {
+            color: #475569;
+        }
+
+        .chat-send-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            transition: transform 0.2s, box-shadow 0.2s;
+            flex-shrink: 0;
+        }
+
+        .chat-send-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+        }
+
+        .chat-send-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: none;
+            stroke: white;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        @media (max-width: 420px) {
+            .chat-dialog {
+                width: calc(100vw - 16px);
+                right: 8px;
+                bottom: 88px;
+                max-height: 70vh;
+            }
+            .chat-support-btn {
+                bottom: 16px;
+                right: 16px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1162,6 +1408,152 @@
         </div>
 
     </main>
+
+    <!-- Support Chat Widget -->
+    <button class="chat-support-btn" id="chatSupportBtn" onclick="toggleChat()" title="Поддержка">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/><path d="M7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>
+    </button>
+
+    <div class="chat-dialog" id="chatDialog">
+        <div class="chat-header">
+            <div class="chat-header-title">
+                <div class="chat-header-dot"></div>
+                <span>Поддержка Barkfluff</span>
+            </div>
+            <button class="chat-close-btn" onclick="toggleChat()">&times;</button>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="chat-msg chat-msg-system">Напишите нам, и мы ответим в ближайшее время</div>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chatInput" placeholder="Напишите сообщение..." autocomplete="off" />
+            <button class="chat-send-btn" onclick="sendChatMessage()">
+                <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Support Chat
+        (function() {
+            let chatId = getChatCookie();
+            let messageCount = 0;
+            let chatOpen = false;
+            let pollInterval = null;
+            let initialLoad = true;
+
+            function getChatCookie() {
+                const match = document.cookie.match(/(^| )barkfluff_chat_id=([^;]+)/);
+                return match ? match[2] : null;
+            }
+
+            function setChatCookie(value) {
+                const expires = new Date(Date.now() + 365 * 864e5).toUTCString();
+                document.cookie = 'barkfluff_chat_id=' + value + '; expires=' + expires + '; path=/; SameSite=Lax';
+            }
+
+            function generateGuid() {
+                return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                    var r = Math.random() * 16 | 0;
+                    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+                });
+            }
+
+            window.toggleChat = function() {
+                var dialog = document.getElementById('chatDialog');
+                var btn = document.getElementById('chatSupportBtn');
+
+                if (!chatId) {
+                    chatId = generateGuid();
+                    setChatCookie(chatId);
+                }
+
+                chatOpen = !chatOpen;
+
+                if (chatOpen) {
+                    dialog.classList.add('chat-visible');
+                    btn.classList.add('chat-btn-active');
+                    var msgs = document.getElementById('chatMessages');
+                    msgs.innerHTML = '<div class="chat-msg chat-msg-system">Напишите нам, и мы ответим в ближайшее время</div>';
+                    messageCount = 0;
+                    initialLoad = true;
+                    startPolling();
+                    document.getElementById('chatInput').focus();
+                } else {
+                    dialog.classList.remove('chat-visible');
+                    btn.classList.remove('chat-btn-active');
+                    stopPolling();
+                }
+            };
+
+            window.sendChatMessage = function() {
+                var input = document.getElementById('chatInput');
+                var text = input.value.trim();
+                if (!text) return;
+
+                input.value = '';
+                appendMsg(text, false);
+
+                fetch('/api/support/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chatId: chatId, message: text })
+                }).catch(function(e) {
+                    console.error('Send failed:', e);
+                });
+            };
+
+            function appendMsg(text, isAdmin) {
+                var container = document.getElementById('chatMessages');
+                var msg = document.createElement('div');
+                msg.className = 'chat-msg ' + (isAdmin ? 'chat-msg-admin' : 'chat-msg-user');
+                msg.textContent = text;
+                container.appendChild(msg);
+                container.scrollTop = container.scrollHeight;
+            }
+
+            function pollMessages() {
+                if (!chatId || !chatOpen) return;
+
+                fetch('/api/support/messages/' + chatId + '?after=' + messageCount)
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (data.messages && data.messages.length > 0) {
+                            data.messages.forEach(function(m) {
+                                if (initialLoad || m.isAdmin) {
+                                    appendMsg(m.text, m.isAdmin);
+                                }
+                            });
+                            messageCount = data.total;
+                            initialLoad = false;
+                        } else if (initialLoad) {
+                            initialLoad = false;
+                        }
+                    })
+                    .catch(function(e) {
+                        console.error('Poll failed:', e);
+                    });
+            }
+
+            function startPolling() {
+                pollMessages();
+                pollInterval = setInterval(pollMessages, 3000);
+            }
+
+            function stopPolling() {
+                if (pollInterval) {
+                    clearInterval(pollInterval);
+                    pollInterval = null;
+                }
+            }
+
+            document.getElementById('chatInput').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    window.sendChatMessage();
+                }
+            });
+        })();
+    </script>
 
     <script>
         function copyCmd() {
