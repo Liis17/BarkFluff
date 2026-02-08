@@ -55,9 +55,20 @@ public class ChatsStorage
 
     public async Task<Guid?> GetUserChatIdWithPerson(long person, long userId)
     {
+        if (person == userId)
+        {
+            // Самочат: ищем личный чат, где оба участника — один и тот же пользователь
+            var selfChat = await _context.Chats
+                .Include(x => x.Members)
+                .FirstOrDefaultAsync(x => !x.IsGroupChat
+                                          && x.Members!.Count == 2
+                                          && x.Members!.All(m => m.UserId == userId));
+            return selfChat?.Id;
+        }
+
         var chat = await _context.Chats
             .Include(x => x.Members)
-            .FirstOrDefaultAsync(x => !x.IsGroupChat 
+            .FirstOrDefaultAsync(x => !x.IsGroupChat
                                       && x.Members!.Any(m => m.UserId == person)
                                       && x.Members!.Any(m => m.UserId == userId));
 
