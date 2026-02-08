@@ -1,4 +1,5 @@
 using Telegram.Bot;
+using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 
@@ -34,7 +35,14 @@ namespace Barkfluff.WebServer.Services
 
             _bot.OnMessage += HandleMessage;
             _bot.OnError += HandleError;
+
             _logger.LogInformation("Telegram support bot started");
+        }
+
+        private async Task HandleError(Exception ex, HandleErrorSource source)
+        {
+            _logger.LogError(ex, "Telegram bot error ({Source})", source);
+            return;
         }
 
         private Task HandleMessage(Message message, UpdateType type)
@@ -78,12 +86,6 @@ namespace Barkfluff.WebServer.Services
             var text = $"{chatId}\n\n{userMessage}";
             var sent = await _bot.SendMessage(_adminId, text);
             _chatService.TrackTelegramMessage(sent.Id, chatId);
-        }
-
-        private Task HandleError(Exception ex, HandleErrorSource source)
-        {
-            _logger.LogError(ex, "Telegram bot error ({Source})", source);
-            return Task.CompletedTask;
         }
     }
 }
