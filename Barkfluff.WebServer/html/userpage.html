@@ -4,19 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Barkfluff: @%%username%%</title>
-
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 
     <style>
         :root {
             --bg-dark: #0f172a;
+            --text-main: #ffffff;
+            --text-sub: #94a3b8;
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
             --card-bg: rgba(30, 41, 59, 0.6);
             --card-border: rgba(255, 255, 255, 0.1);
-            --text-main: #f1f5f9;
-            --text-sub: #94a3b8;
-            --accent: #3b82f6;
+            --code-bg: rgba(15, 23, 42, 0.6);
+            --error-red: #ef4444;
         }
 
         * {
@@ -32,9 +35,10 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            overflow: hidden;
+            overflow-x: hidden;
             color: var(--text-main);
             position: relative;
+            padding: 20px 0;
         }
 
         /* === ФОНОВЫЕ ПЯТНА === */
@@ -74,38 +78,65 @@
         }
 
         @keyframes float {
-            0% {
-                transform: translate(0, 0);
-            }
-
-            100% {
-                transform: translate(40px, -40px);
-            }
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(40px, -40px); }
         }
 
-        /* === КАРТОЧКА === */
-        .card {
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* === КОНТЕЙНЕР-КАРТОЧКА === */
+        .container {
             background: var(--card-bg);
             backdrop-filter: blur(24px);
             -webkit-backdrop-filter: blur(24px);
             border: 1px solid var(--card-border);
-            width: 90%;
-            max-width: 380px;
-            border-radius: 28px;
             padding: 40px 30px;
+            border-radius: 32px;
             text-align: center;
+            width: 90%;
+            max-width: 440px;
             box-shadow: 0 30px 60px -15px rgba(0,0,0,0.6);
-            transition: all 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
-            overflow: hidden;
-            position: relative;
+            animation: fadeIn 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
         }
 
-        /* === АВАТАР И ИМЯ === */
+        /* === СОСТОЯНИЯ === */
+        .state { display: none; width: 100%; }
+        .state.active { display: flex; flex-direction: column; align-items: center; }
+
+        /* === ЗАГРУЗКА === */
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 15px;
+            color: var(--text-sub);
+            font-weight: 500;
+        }
+
+        /* === ПРОФИЛЬ === */
         .avatar-wrap {
             position: relative;
-            width: 86px;
-            height: 86px;
-            margin: 0 auto 16px;
+            width: 100px;
+            height: 100px;
+            margin-bottom: 16px;
         }
 
         .avatar {
@@ -113,173 +144,167 @@
             height: 100%;
             border-radius: 50%;
             object-fit: cover;
-            border: 3px solid rgba(255,255,255,0.1);
+            border: 3px solid rgba(255,255,255,0.15);
+            background: #1e293b;
             position: relative;
             z-index: 2;
-            background: #1e293b;
         }
 
-        /* Пульсация */
-        .pulse {
+        .avatar-glow {
             position: absolute;
-            inset: -4px;
+            inset: -6px;
             border-radius: 50%;
-            border: 2px solid var(--accent);
-            opacity: 0;
+            background: linear-gradient(135deg, var(--primary), #8b5cf6);
+            opacity: 0.3;
             z-index: 1;
-            animation: pulse 2s infinite;
+            filter: blur(12px);
         }
 
-        @keyframes pulse {
-            0% {
-                transform: scale(1);
-                opacity: 1;
-            }
-
-            100% {
-                transform: scale(1.8);
-                opacity: 0;
-            }
-        }
-
-        /* Имя пользователя */
-        h1 {
-            font-size: 20px;
+        .user-fullname {
+            font-size: 22px;
             font-weight: 700;
             margin-bottom: 2px;
+            line-height: 1.3;
         }
 
-        .tag {
-            color: var(--accent);
+        .user-tag {
+            color: var(--primary);
             font-weight: 600;
-            font-size: 14px;
-            margin-bottom: 20px;
+            font-size: 15px;
+            margin-bottom: 12px;
             display: block;
-            opacity: 0.9;
         }
 
-        /* Статус (исчезает через 5 сек) */
-        .status-msg {
+        .user-bio {
             font-size: 14px;
             color: var(--text-sub);
-            transition: opacity 0.5s ease;
-            height: 20px;
+            line-height: 1.5;
+            max-width: 340px;
+            margin-bottom: 4px;
+            word-break: break-word;
         }
 
-        .loading-dots::after {
-            content: ' .';
-            animation: dots 1.5s steps(5, end) infinite;
+        /* === КНОПКИ === */
+        .divider {
+            width: 100%;
+            height: 1px;
+            background: var(--card-border);
+            margin: 16px 0;
         }
 
-        @keyframes dots {
-            0%, 20% {
-                content: ' .';
-            }
-
-            40% {
-                content: ' ..';
-            }
-
-            60% {
-                content: ' ...';
-            }
-
-            80%, 100% {
-                content: ' .';
-            }
+        .btn-open {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 14px 20px;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            text-decoration: none;
+            border-radius: 14px;
+            border: none;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(37, 99, 235, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
         }
 
-        /* === СЕКЦИЯ СКАЧИВАНИЯ (Скрыта) === */
+        .btn-open:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(37, 99, 235, 0.6);
+        }
+
+        .btn-open:active {
+            transform: translateY(0);
+        }
+
+        .btn-open svg {
+            width: 18px;
+            height: 18px;
+            fill: white;
+            flex-shrink: 0;
+        }
+
+        /* Скачивание */
         .downloads {
             display: grid;
-            grid-template-rows: 0fr; /* Трюк для анимации height */
+            grid-template-rows: 0fr;
             opacity: 0;
-            transition: grid-template-rows 0.8s ease, opacity 0.8s ease, margin-top 0.8s ease;
+            transition: grid-template-rows 0.6s ease, opacity 0.6s ease, margin-top 0.6s ease;
             margin-top: 0;
+            width: 100%;
+        }
+
+        .downloads.show {
+            grid-template-rows: 1fr;
+            opacity: 1;
+            margin-top: 8px;
         }
 
         .downloads-inner {
             overflow: hidden;
         }
-        /* Внутренний контейнер для анимации */
-
-        /* Активное состояние карточки */
-        .card.show-download .downloads {
-            grid-template-rows: 1fr;
-            opacity: 1;
-            margin-top: 24px;
-            padding-top: 24px;
-            border-top: 1px solid var(--card-border);
-        }
-
-        /* Скрываем статус при открытии загрузок */
-        .card.show-download .status-msg {
-            opacity: 0;
-        }
-        /* Останавливаем пульсацию плавно */
-        .card.show-download .pulse {
-            animation: none;
-            opacity: 0;
-            transition: opacity 0.5s;
-        }
 
         .dl-label {
-            font-size: 14px;
-            color: var(--text-main);
-            margin-bottom: 12px;
+            font-size: 13px;
+            color: var(--text-sub);
+            margin-bottom: 10px;
             font-weight: 500;
         }
 
-        /* Кнопка */
         .btn-dl {
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 12px;
             width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            padding: 12px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid var(--card-border);
             color: white;
             text-decoration: none;
-            border-radius: 14px;
-            box-shadow: 0 4px 20px rgba(37, 99, 235, 0.4);
-            transition: transform 0.2s, box-shadow 0.2s;
+            border-radius: 12px;
+            transition: background 0.2s, transform 0.2s;
         }
 
-            .btn-dl:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 8px 25px rgba(37, 99, 235, 0.6);
-            }
+        .btn-dl:hover {
+            background: rgba(255,255,255,0.1);
+            transform: translateY(-1px);
+        }
 
-        .btn-content {
+        .btn-dl svg {
+            width: 20px;
+            height: 20px;
+            fill: white;
+            flex-shrink: 0;
+        }
+
+        .btn-dl-text {
             text-align: left;
             line-height: 1.2;
         }
 
-        .btn-top {
-            font-size: 11px;
-            opacity: 0.8;
+        .btn-dl-top {
+            font-size: 10px;
+            opacity: 0.6;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
             display: block;
         }
 
-        .btn-bot {
-            font-size: 16px;
+        .btn-dl-bot {
+            font-size: 14px;
             font-weight: 600;
             display: block;
         }
 
-        svg.win {
-            width: 24px;
-            height: 24px;
-            fill: white;
-        }
-
-        /* Доп ссылки */
         .sub-links {
             display: flex;
             gap: 8px;
-            margin-top: 12px;
+            margin-top: 8px;
         }
 
         .btn-sub {
@@ -291,28 +316,83 @@
             border-radius: 8px;
             border: 1px solid var(--card-border);
             transition: 0.2s;
-            background: rgba(0,0,0,0.2);
+            background: rgba(0,0,0,0.15);
+            text-align: center;
         }
 
-            .btn-sub:hover {
-                background: rgba(255,255,255,0.1);
-                color: white;
-            }
+        .btn-sub:hover {
+            background: rgba(255,255,255,0.08);
+            color: white;
+        }
 
-        /* Кнопка ручного открытия */
-        .manual-link {
-            display: block;
-            margin-top: 16px;
-            font-size: 13px;
+        /* === 404 === */
+        .error-code {
+            font-size: 72px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary), #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+            margin-bottom: 8px;
+            opacity: 0.8;
+        }
+
+        .error-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .error-desc {
+            font-size: 14px;
             color: var(--text-sub);
-            text-decoration: underline;
-            cursor: pointer;
-            opacity: 0.6;
+            line-height: 1.5;
+            margin-bottom: 24px;
+            max-width: 300px;
         }
 
-            .manual-link:hover {
-                opacity: 1;
+        .btn-home {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            text-decoration: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s, transform 0.2s;
+        }
+
+        .btn-home:hover {
+            background: rgba(255,255,255,0.1);
+            transform: translateY(-1px);
+        }
+
+        .btn-home svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        /* === АДАПТИВНОСТЬ === */
+        @media (max-width: 480px) {
+            .container {
+                padding: 32px 20px;
+                border-radius: 24px;
             }
+
+            .user-fullname { font-size: 20px; }
+            .error-code { font-size: 56px; }
+
+            .avatar-wrap {
+                width: 80px;
+                height: 80px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -322,69 +402,131 @@
         <div class="blob b2"></div>
     </div>
 
-    <div class="card" id="card">
+    <div class="container">
 
-        <div class="avatar-wrap">
-            <img src="https://icon-library.com/images/default-user-icon/default-user-icon-23.jpg" alt="Avatar" class="avatar">
-            <div class="pulse"></div>
+        <!-- Загрузка -->
+        <div id="state-loading" class="state active">
+            <div class="spinner"></div>
+            <div class="loading-text">Загружаем профиль...</div>
         </div>
 
-        <h1>%%username%%</h1>
-        <span class="tag">@%%username%%</span>
+        <!-- Профиль найден -->
+        <div id="state-profile" class="state">
+            <div class="avatar-wrap">
+                <div class="avatar-glow"></div>
+                <img id="profile-avatar" src="" alt="Avatar" class="avatar">
+            </div>
 
-        <!-- Этот текст исчезнет через 5 сек -->
-        <div class="status-msg">
-            Открываем приложение<span class="loading-dots"></span>
-        </div>
+            <div id="profile-fullname" class="user-fullname"></div>
+            <span class="user-tag">@%%username%%</span>
+            <div id="profile-bio" class="user-bio"></div>
 
-        <!-- Секция скачивания -->
-        <div class="downloads">
-            <div class="downloads-inner">
-                <div class="dl-label">Нет приложения?</div>
+            <div class="divider"></div>
 
-                <a href="https://barkfluff.com" class="btn-dl">
-                    <svg class="win" viewBox="0 0 24 24"><path d="M3 12V6.75L9 5.43V12H3ZM21 3V11.75H10.5V4.78L21 3ZM10.5 21.66V13.25H21V21L10.5 21.66ZM3 18.25V13.25H9V19.95L3 18.25Z" /></svg>
-                    <div class="btn-content">
-                        <span class="btn-top">Скачать для</span>
-                        <span class="btn-bot">Windows</span>
+            <button class="btn-open" onclick="openProtocol()">
+                <svg viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zM8 15c0-1.66 1.34-3 3-3 .35 0 .69.07 1 .18V6h5v2h-3v7.03A3.003 3.003 0 0 1 11 18c-1.66 0-3-1.34-3-3z"/></svg>
+                Открыть в Barkfluff
+            </button>
+
+            <div id="downloads" class="downloads">
+                <div class="downloads-inner">
+                    <div class="dl-label">Нет приложения? Скачайте:</div>
+
+                    <a href="https://barkfluff.com/download/installer" class="btn-dl">
+                        <svg viewBox="0 0 24 24"><path d="M3 12V6.75L9 5.43V12H3ZM21 3V11.75H10.5V4.78L21 3ZM10.5 21.66V13.25H21V21L10.5 21.66ZM3 18.25V13.25H9V19.95L3 18.25Z"/></svg>
+                        <div class="btn-dl-text">
+                            <span class="btn-dl-top">Скачать для</span>
+                            <span class="btn-dl-bot">Windows</span>
+                        </div>
+                    </a>
+
+                    <div class="sub-links">
+                        <a href="https://github.com/Liis17/BarkFluff.Releases/releases/" class="btn-sub">Portable (.zip)</a>
+                        <a href="#" class="btn-sub" onclick="openProtocol(); return false;">Попробовать открыть</a>
                     </div>
-                </a>
-
-                <div class="sub-links">
-                    <a href="https://github.com/Liis17/BarkFluff.Releases/releases/" class="btn-sub">Portable (.zip)</a>
-                    <a href="#" class="btn-sub" onclick="openProtocol()">Попробовать открыть</a>
                 </div>
             </div>
+        </div>
+
+        <!-- 404 -->
+        <div id="state-notfound" class="state">
+            <div class="error-code">404</div>
+            <div class="error-title">Пользователь не найден</div>
+            <div class="error-desc">Пользователь <strong>@%%username%%</strong> не зарегистрирован в Barkfluff или удалил аккаунт.</div>
+            <a href="/" class="btn-home">
+                <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+                На главную
+            </a>
         </div>
 
     </div>
 
     <script>
-        // === НАСТРОЙКИ ===
-        const PROTOCOL_URL = "bf://profile/%%username%%";
-        const REVEAL_DELAY = 5000; // 5 секунд
+        const USERNAME = "%%username%%";
+        const PROTOCOL_URL = "bf://profile/" + USERNAME;
+        const REVEAL_DELAY = 5000;
+        const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394a3b8'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E";
 
-        const card = document.getElementById('card');
+        function showState(id) {
+            document.querySelectorAll('.state').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
 
-        // Функция запуска протокола
         function openProtocol() {
             window.location.href = PROTOCOL_URL;
         }
 
-        // Запуск при загрузке
-        window.addEventListener('load', () => {
-            // 1. Пытаемся открыть
-            openProtocol();
+        async function loadProfile() {
+            try {
+                const res = await fetch('/api/user/' + encodeURIComponent(USERNAME));
+                const data = await res.json();
 
-            // 2. Ставим таймер на 5 секунд
-            setTimeout(() => {
-                // Если страница всё еще видна пользователю
-                if (document.visibilityState === 'visible') {
-                    // Просто добавляем класс, CSS сделает всю магию (раскроет меню, скроет статус)
-                    card.classList.add('show-download');
+                if (!data.found) {
+                    showState('state-notfound');
+                    document.title = 'Barkfluff: пользователь не найден';
+                    return;
                 }
-            }, REVEAL_DELAY);
-        });
+
+                // Заполняем профиль
+                const fullName = [data.firstName, data.lastName].filter(Boolean).join(' ') || USERNAME;
+                document.getElementById('profile-fullname').textContent = fullName;
+                document.title = 'Barkfluff: ' + fullName + ' (@' + data.username + ')';
+
+                const avatarEl = document.getElementById('profile-avatar');
+                if (data.profilePicture && data.profilePicture.length > 0) {
+                    avatarEl.src = data.profilePicture;
+                    avatarEl.onerror = function() { this.src = DEFAULT_AVATAR; };
+                } else {
+                    avatarEl.src = DEFAULT_AVATAR;
+                }
+
+                const bioEl = document.getElementById('profile-bio');
+                if (data.bio && data.bio.length > 0) {
+                    bioEl.textContent = data.bio;
+                    bioEl.style.display = 'block';
+                } else {
+                    bioEl.style.display = 'none';
+                }
+
+                showState('state-profile');
+
+                // Пытаемся открыть протокол
+                openProtocol();
+
+                // Через 5 секунд показываем секцию скачивания
+                setTimeout(() => {
+                    if (document.visibilityState === 'visible') {
+                        document.getElementById('downloads').classList.add('show');
+                    }
+                }, REVEAL_DELAY);
+
+            } catch (err) {
+                console.error('Failed to load profile:', err);
+                showState('state-notfound');
+            }
+        }
+
+        window.addEventListener('load', loadProfile);
     </script>
 </body>
 </html>

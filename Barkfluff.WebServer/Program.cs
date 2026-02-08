@@ -1,4 +1,6 @@
 using Barkfluff.WebServer.Services;
+using BarkFluff.Proto.Users;
+using Grpc.Net.Client;
 
 namespace Barkfluff.WebServer
 {
@@ -14,6 +16,17 @@ namespace Barkfluff.WebServer
             });
 
             builder.Services.AddControllers();
+
+            // === gRPC: подключение к Users-сервису бекенда ===
+            var usersServiceHost = builder.Configuration["UsersService:Host"] ?? "http://localhost:7001";
+            var usersServiceToken = builder.Configuration["UsersService:Token"] ?? "";
+
+            var usersChannel = GrpcChannel.ForAddress(usersServiceHost);
+            builder.Services.AddSingleton(new UsersServerApi.UsersServerApiClient(usersChannel));
+
+            // === Кеширование профилей пользователей (30 минут) ===
+            builder.Services.AddMemoryCache();
+            builder.Services.AddSingleton<UserProfileService>();
 
             builder.Services.AddSingleton<UserPageService>();
             builder.Services.AddSingleton<SupportChatService>();
