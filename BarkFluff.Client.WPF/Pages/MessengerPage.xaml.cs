@@ -846,11 +846,10 @@ namespace BarkFluff.Client.WPF.Pages
                                 App.ErideMessage.AddMessage($"Что-то пошло не так {responseChatId.error.ErrorMessage}", new Erida { Type = MType.Warning });
                                 return;
                             }
-                            IsOpenChatEmpty = true;
-                            IsOpenChat.Value = true;
-                            ChatId.Value = responseChatId.chatId;
-                            OpenChatFromSearch(responseUserId.userList[0].Id, "чат тайтл");
-                            App.ErideMessage.AddMessage($"Открытие чата с {arg}", new Erida { Type = MType.Warning });
+
+                            OpenChatFromSearch(responseUserId.userList[0].Id);
+
+                            App.ErideMessage.AddMessage($"Открытие чата с {arg}", new Erida { Type = MType.Info });
                         }
                         else
                         {
@@ -2053,7 +2052,7 @@ namespace BarkFluff.Client.WPF.Pages
 
         #region Чаты
 
-        public async void OpenChatFromSearch(long userId, string chatTitle)
+        public async void OpenChatFromSearch(long userId)
         {
             var responseChatId = await App.ServerCommunication.GetPersonChatId(App.GParam, userId);
             if (!responseChatId.error.IsSuccess)
@@ -2072,6 +2071,7 @@ namespace BarkFluff.Client.WPF.Pages
 
         public void OpenChatById(string chatId, long lastMessageId, bool isGroupChat, long userId, string title, long firstUnreadId = 0)
         {
+            NoDialogMessage.Visibility = Visibility.Collapsed;
 
             IsOpenChatEmpty = false;
             IsOpenChat.Value = true;
@@ -2119,6 +2119,7 @@ namespace BarkFluff.Client.WPF.Pages
             ChatId.Value = string.Empty;
             ChatIdbyUserId.Dispose();
             ChatIdbyUserId = new ReactiveLong(0);
+            NoDialogMessage.Visibility = Visibility.Visible;
         }
 
         /// <summary>

@@ -37,7 +37,7 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private async void UserControl_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
-            App.Messenger.OpenChatFromSearch(_userId, PublicName.Text);
+            App.Messenger.OpenChatFromSearch(_userId);
         }
     }
 }
