@@ -1344,6 +1344,9 @@ namespace BarkFluff.Client.WPF.Pages
                             }).ToList() ?? new List<AttachmentsModel>()
                     };
 
+                    // Инициализируем статус прочтения (галочки)
+                    messageItem.UpdateMessage();
+
                     // Добавляем в буфер для быстрого поиска при обновлении статуса прочтения
                     lock (_chatBufferLock)
                     {
@@ -1915,6 +1918,7 @@ namespace BarkFluff.Client.WPF.Pages
                         );
 
                         messageItem.TransferMessage = message;
+                        messageItem.UpdateMessage();
 
                         // Добавляем в буфер для отслеживания последнего сообщения
                         lock (_chatBufferLock)
@@ -2135,38 +2139,12 @@ namespace BarkFluff.Client.WPF.Pages
 
         private void AttachFileButton_Click(object sender, RoutedEventArgs e)
         {
-            AttachmentMenuPopup.IsOpen = !AttachmentMenuPopup.IsOpen;
-        }
-
-        private void AttachMediaButton_Click(object sender, RoutedEventArgs e)
-        {
-            AttachmentMenuPopup.IsOpen = false;
-            OpenFileDialog("фото или видео");
-        }
-
-        private void AttachDocumentButton_Click(object sender, RoutedEventArgs e)
-        {
-            AttachmentMenuPopup.IsOpen = false;
-            OpenFileDialog("файл");
-        }
-
-        private void OpenFileDialog(string fileType)
-        {
             var dialog = new Microsoft.Win32.OpenFileDialog
             {
-                Multiselect = true
+                Multiselect = true,
+                Filter = "Все файлы (*.*)|*.*",
+                Title = "Выберите файл"
             };
-
-            if (fileType == "фото или видео")
-            {
-                dialog.Filter = "Изображения и видео|*.jpg;*.jpeg;*.png;*.gif;*.bmp;*.webp;*.mp4;*.avi;*.mov;*.mkv;*.webm|Все файлы (*.*)|*.*";
-                dialog.Title = "Выберите фото или видео";
-            }
-            else
-            {
-                dialog.Filter = "Все файлы (*.*)|*.*";
-                dialog.Title = "Выберите файл";
-            }
 
             if (dialog.ShowDialog() == true)
             {
