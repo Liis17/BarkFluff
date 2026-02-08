@@ -102,6 +102,9 @@ service UsersServerApi {
 
   // Удалить устройство пользователя
   rpc DeleteUserDevice(DeleteUserDeviceRequest) returns(DeleteUserDeviceResponse);
+
+  // Получить публичную информацию пользователя по юзернейму (для веб-сервера)
+  rpc GetUserByUsername(GetUserByUsernameRequest) returns(GetUserByUsernameResponse);
 }
 
 message SearchUsersRequest {
@@ -415,4 +418,19 @@ message DeleteUserDeviceRequest {
 }
 
 message DeleteUserDeviceResponse { }
+
+// Получить публичную информацию пользователя по юзернейму
+
+message GetUserByUsernameRequest {
+  string username = 1; // юзернейм
+}
+
+message GetUserByUsernameResponse {
+  bool found = 1; // найден ли пользователь
+  string first_name = 2; // имя
+  string last_name = 3; // фамилия
+  string username = 4; // юзернейм
+  string bio = 5; // био
+  string profile_picture = 6; // ссылка на аватарку
+}
 

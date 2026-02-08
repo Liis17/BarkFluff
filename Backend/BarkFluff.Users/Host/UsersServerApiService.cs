@@ -18,6 +18,7 @@ using BarkFluff.Users.Features.Devices.DeleteUserDevice;
 using BarkFluff.Users.Features.Devices.GetUserDevices;
 using BarkFluff.Users.Features.Devices.RegisterDevice;
 using BarkFluff.Users.Features.OverrideDraftUser;
+using BarkFluff.Users.Persistence.Services;
 
 using Grpc.Core;
 
@@ -31,10 +32,12 @@ namespace BarkFluff.Users.Host;
 public class UsersServerApiService : UsersServerApi.UsersServerApiBase
 {
     private readonly IMediator _mediator;
+    private readonly UsersStorage _usersStorage;
 
-    public UsersServerApiService(IMediator mediator)
+    public UsersServerApiService(IMediator mediator, UsersStorage usersStorage)
     {
         _mediator = mediator;
+        _usersStorage = usersStorage;
     }
 
 
@@ -221,5 +224,28 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
         };
 
         return _mediator.Send(command);
+    }
+
+    // Получение публичной информации пользователя по юзернейму (для веб-сервера)
+
+    public override async Task<GetUserByUsernameResponse> GetUserByUsername(
+        GetUserByUsernameRequest request, ServerCallContext context)
+    {
+        var user = await _usersStorage.GetUserByUsername(request.Username);
+
+        if (user is null || user.IsDraft)
+        {
+            return new GetUserByUsernameResponse { Found = false };
+        }
+
+        return new GetUserByUsernameResponse
+        {
+            Found = true,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Username = user.Username,
+            Bio = user.Bio ?? string.Empty,
+            ProfilePicture = user.ProfilePicture ?? string.Empty,
+        };
     }
 }

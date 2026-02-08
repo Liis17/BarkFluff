@@ -30,6 +30,17 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.2" />
     <PackageReference Include="Telegram.Bot" Version="22.8.1" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.71.0" />
+    <PackageReference Include="Google.Protobuf" Version="3.29.3" />
+    <PackageReference Include="Grpc.Tools" Version="2.72.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="..\Shared\BarkFluff.Proto\users_api.proto" GrpcServices="Client" />
+    <Protobuf Include="..\Shared\BarkFluff.Proto\shared.proto" GrpcServices="None" />
   </ItemGroup>
 
 </Project>
