@@ -54,7 +54,6 @@ namespace BarkFluff.Client.WPF.UserControls
         private bool _isDraggingFiles = false;
         private long _firstUnreadId;
         private bool _isSelfChat;
-        private const string SelfChatAvatarUrl = "pack://application:,,,/BarkFluff;component/Resources/Placeholders/savedplaceholder.png";
 
         /// <summary>
         /// URL аватара чата
@@ -107,6 +106,7 @@ namespace BarkFluff.Client.WPF.UserControls
             _lastMessageSenderId = 0; // Will be set later via TransferMessage
             _unreadCount = (int)unReaded;
             TimeMessage.Text = FormatDateTime(time.Length >= 2 ? time.Substring(1, time.Length - 2) : time);
+            OnlineIndicator.Visibility = Visibility.Collapsed; // Скрываем онлайн-статус по умолчанию
 
             // Пытаемся извлечь fileId из URL если это не placeholder
             if (!string.IsNullOrEmpty(imageUrl) && !FileCacheService.IsPlaceholder(imageUrl))
@@ -115,8 +115,33 @@ namespace BarkFluff.Client.WPF.UserControls
             }
 
             // Устанавливаем данные для CachedAvatar
-            AvatarControl.FileId = _avatarFileId;
-            AvatarControl.FileUrl = imageUrl;
+
+            if (imageUrl != "UserWithoutAvatar" && imageUrl != "SavedChat")
+            {
+                AvatarControl.FileId = _avatarFileId;
+                AvatarControl.FileUrl = imageUrl;
+                AvatarControl.Visibility = Visibility.Visible;
+                SavedChatAvatar.Visibility = Visibility.Collapsed;
+                UserWithoutAvatar.Visibility = Visibility.Collapsed;
+            }
+            else if (imageUrl == "SavedChat")
+            {
+                AvatarControl.FileId = null;
+                AvatarControl.FileUrl = null;
+                AvatarControl.Visibility = Visibility.Collapsed;
+                SavedChatAvatar.Visibility = Visibility.Visible;
+                UserWithoutAvatar.Visibility = Visibility.Collapsed;
+            }
+            else if (imageUrl == "UserWithoutAvatar")
+            {
+                AvatarControl.FileId = null;
+                AvatarControl.FileUrl = null;
+                AvatarControl.Visibility = Visibility.Collapsed;
+                SavedChatAvatar.Visibility = Visibility.Collapsed;
+                UserWithoutAvatar.Visibility = Visibility.Visible;
+            }
+
+
 
             // Сохраняем ID первого непрочитанного сообщения
             _firstUnreadId = firstUnreadId;
@@ -145,12 +170,6 @@ namespace BarkFluff.Client.WPF.UserControls
             // Принудительно устанавливаем название
             Title.Text = "Избранное";
             _title = "Избранное";
-
-            // Устанавливаем специальный аватар
-            _url = SelfChatAvatarUrl;
-            _avatarFileId = null; // Не используем fileId для placeholder
-            AvatarControl.FileId = null;
-            AvatarControl.FileUrl = SelfChatAvatarUrl;
 
             // Скрываем галочки прочтения
             ReadStatusPanel.Visibility = Visibility.Collapsed;
