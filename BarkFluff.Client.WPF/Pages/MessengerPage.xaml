@@ -503,8 +503,6 @@
 
                             <!--  Заголовок диалога  -->
                             <Border Grid.Row="0">
-
-
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
@@ -783,6 +781,33 @@
                                 </Grid>
                             </Border>
                         </Grid>
+                        <Border
+                            x:Name="NoDialogMessage"
+                            Width="400"
+                            Height="200"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Background="#1e1e1e"
+                            BorderBrush="#272727"
+                            BorderThickness="2"
+                            CornerRadius="15">
+                            <StackPanel
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch"
+                                Orientation="Vertical">
+                                <ui:SymbolIcon
+                                    Margin="30,20,30,10"
+                                    Filled="True"
+                                    FontSize="85"
+                                    Symbol="ChatMultiple32" />
+                                <ui:TextBlock
+                                    Margin="30,0,30,0"
+                                    Style="{DynamicResource HeaderSettings}"
+                                    Text="Чтобы начать диалог выберите чат из списка слева"
+                                    TextAlignment="Center"
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
                     </Grid>
                 </Border>
             </Grid>
