@@ -1297,13 +1297,13 @@ namespace BarkFluff.Client.WPF.Pages
                     // Для чата с собой используем id текущего пользователя
                     isRead = ChatItem.ReadingStatus.My;
                     title = "Избранное";
-                    avatar = "pack://application:,,,/BarkFluff;component/Resources/Placeholders/savedplaceholder.png";
+                    avatar = "SavedChat";
                     userId = App.GParam.UserId;
                 }
                 else
                 {
                     avatar = string.IsNullOrEmpty(item.Picture)
-                        ? "pack://application:,,,/BarkFluff;component/Resources/Placeholders/userplaceholder.png"
+                        ? "UserWithoutAvatar"
                         : item.Picture;
                     membersId.Remove(App.GParam.UserId);
                     userId = membersId.FirstOrDefault(); // Возвращаем 0, если список пуст
@@ -1910,14 +1910,14 @@ namespace BarkFluff.Client.WPF.Pages
                         string avatar;
                         if (isSelfChat)
                         {
-                            avatar = "pack://application:,,,/BarkFluff;component/Resources/Placeholders/savedplaceholder.png";
+                            avatar = "SavedChat";
                             title = "Избранное";
                             userId = App.GParam.UserId;
                         }
                         else
                         {
                             avatar = string.IsNullOrEmpty(chat.chatInfo.Picture)
-                                ? "pack://application:,,,/BarkFluff;component/Resources/Placeholders/userplaceholder.png"
+                                ? "UserWithoutAvatar"
                                 : chat.chatInfo.Picture;
                             userId = chat.chatInfo.Members.FirstOrDefault(m => m != App.GParam.UserId); // Получаем ID другого участника
 
