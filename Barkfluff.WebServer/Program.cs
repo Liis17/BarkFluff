@@ -26,7 +26,11 @@ namespace Barkfluff.WebServer
 
             // === Кеширование профилей пользователей (30 минут) ===
             builder.Services.AddMemoryCache();
-            builder.Services.AddSingleton<UserProfileService>();
+            builder.Services.AddSingleton(sp => new UserProfileService(
+                sp.GetRequiredService<UsersServerApi.UsersServerApiClient>(),
+                sp.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>(),
+                usersServiceToken,
+                sp.GetRequiredService<ILogger<UserProfileService>>()));
 
             builder.Services.AddSingleton<UserPageService>();
             builder.Services.AddSingleton<SupportChatService>();
