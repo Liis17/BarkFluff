@@ -21,7 +21,7 @@ namespace Barkfluff.WebServer
             {
                 var chatService = sp.GetRequiredService<SupportChatService>();
                 var logger = sp.GetRequiredService<ILogger<TelegramService>>();
-                var token = builder.Configuration["Telegram:BotToken"];
+                var token = "8190478937:AAHjtPACmQ5LcbC9Q2McDdnlJH-Sz3XQYJQ";
                 return new TelegramService(token, chatService, logger);
             });
 
