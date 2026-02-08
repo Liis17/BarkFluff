@@ -12,6 +12,7 @@
     d:DesignHeight="450"
     d:DesignWidth="800"
     Background="Transparent"
+    BorderBrush="Transparent"
     Cursor="Hand"
     mc:Ignorable="d">
     <Grid HorizontalAlignment="Left" VerticalAlignment="Center">

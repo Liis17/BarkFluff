@@ -13,11 +13,11 @@
     <Grid Background="#1f1f1f">
         <StackPanel Margin="20">
             <!-- Кнопка "Назад" -->
-            <Button
+            <ui:Button
                 HorizontalAlignment="Left"
                 Click="GoBack_Click"
                 Cursor="Hand"
-                Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}">
+                Style="{DynamicResource Win11Default}">
                 <StackPanel Orientation="Horizontal">
                     <ui:SymbolIcon
                         Margin="0,0,8,0"
@@ -25,7 +25,7 @@
                         Symbol="ArrowLeft24" />
                     <TextBlock Foreground="#E0E0E0" Text="Назад" />
                 </StackPanel>
-            </Button>
+            </ui:Button>
 
             <!-- Заголовок страницы -->
             <TextBlock Style="{DynamicResource HeaderSettings}" Text="Профиль" />

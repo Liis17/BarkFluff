@@ -420,6 +420,77 @@
         <Setter Property="UseLayoutRounding" Value="True" />
     </Style>
 
+    <!--  Windows 11 style accent button for PIN code pages  -->
+    <Style x:Key="Win11Default" TargetType="{x:Type ui:Button}">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="MinWidth" Value="100" />
+        <Setter Property="Height" Value="35" />
+        <Setter Property="Margin" Value="0,0,0,0" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="Background" Value="#2d2d2d" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="MouseOverBackground" Value="#2f2f2f" />
+        <Setter Property="PressedBackground" Value="#3d3d3d" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ui:Button}">
+                    <Grid>
+                        <Border
+                            x:Name="ShadowBorder"
+                            Background="Transparent"
+                            CornerRadius="{TemplateBinding CornerRadius}">
+                            <Border.Effect>
+                                <DropShadowEffect
+                                    BlurRadius="12"
+                                    Direction="270"
+                                    Opacity="0.4"
+                                    ShadowDepth="3"
+                                    Color="#2d2d2d" />
+                            </Border.Effect>
+                        </Border>
+                        <Border
+                            x:Name="Border"
+                            Background="{TemplateBinding Background}"
+                            BorderThickness="0"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Border" Property="Background" Value="{Binding MouseOverBackground, RelativeSource={RelativeSource TemplatedParent}}" />
+                            <Setter TargetName="ShadowBorder" Property="Effect">
+                                <Setter.Value>
+                                    <DropShadowEffect
+                                        BlurRadius="16"
+                                        Direction="270"
+                                        Opacity="0.5"
+                                        ShadowDepth="4"
+                                        Color="#1f1f1f" />
+                                </Setter.Value>
+                            </Setter>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Border" Property="Background" Value="{Binding PressedBackground, RelativeSource={RelativeSource TemplatedParent}}" />
+                            <Setter TargetName="ShadowBorder" Property="Effect">
+                                <Setter.Value>
+                                    <DropShadowEffect
+                                        BlurRadius="8"
+                                        Direction="270"
+                                        Opacity="0.3"
+                                        ShadowDepth="2"
+                                        Color="#2d2d2d" />
+                                </Setter.Value>
+                            </Setter>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="UseLayoutRounding" Value="True" />
+    </Style>
+
     <!--  Windows 11 style danger button  -->
     <Style x:Key="Win11DangerButton" TargetType="{x:Type ui:Button}">
         <Setter Property="Cursor" Value="Hand" />
