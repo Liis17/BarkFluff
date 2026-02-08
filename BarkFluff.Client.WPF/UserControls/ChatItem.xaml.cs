@@ -53,6 +53,8 @@ namespace BarkFluff.Client.WPF.UserControls
         private DateTime? _lastSeen;
         private bool _isDraggingFiles = false;
         private long _firstUnreadId;
+        private bool _isSelfChat;
+        private const string SelfChatAvatarUrl = "pack://application:,,,/BarkFluff;component/Resources/Placeholders/savedplaceholder.png";
 
         /// <summary>
         /// URL аватара чата
@@ -119,11 +121,42 @@ namespace BarkFluff.Client.WPF.UserControls
             // Сохраняем ID первого непрочитанного сообщения
             _firstUnreadId = firstUnreadId;
 
+            // Определяем, является ли чат чатом с собой (Избранное)
+            _isSelfChat = (_userId == _currentUserId);
+
+            // Применяем специальный стиль для чата с собой
+            if (_isSelfChat)
+            {
+                ConfigureSelfChatAppearance();
+            }
+
             UpdateUnreadBadge();
 
             // Subscribe to online status events
             this.Loaded += ChatItem_Loaded;
             this.Unloaded += ChatItem_Unloaded;
+        }
+
+        /// <summary>
+        /// Настраивает специальный внешний вид для чата с собой ("Избранное")
+        /// </summary>
+        private void ConfigureSelfChatAppearance()
+        {
+            // Принудительно устанавливаем название
+            Title.Text = "Избранное";
+            _title = "Избранное";
+
+            // Устанавливаем специальный аватар
+            _url = SelfChatAvatarUrl;
+            _avatarFileId = null; // Не используем fileId для placeholder
+            AvatarControl.FileId = null;
+            AvatarControl.FileUrl = SelfChatAvatarUrl;
+
+            // Скрываем галочки прочтения
+            ReadStatusPanel.Visibility = Visibility.Collapsed;
+
+            // Скрываем онлайн-индикатор
+            OnlineIndicator.Visibility = Visibility.Collapsed;
         }
 
         public void UpdateMessage()
@@ -234,6 +267,13 @@ namespace BarkFluff.Client.WPF.UserControls
         {
             Dispatcher.Invoke(() =>
             {
+                // Не показываем галочки прочтения для чата с собой
+                if (_isSelfChat)
+                {
+                    ReadStatusPanel.Visibility = Visibility.Collapsed;
+                    return;
+                }
+
                 // Only show read status for messages sent by current user
                 if (_lastMessageSenderId != _currentUserId)
                 {
@@ -378,8 +418,8 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private void ChatItem_Loaded(object sender, RoutedEventArgs e)
         {
-            // Only track online status for non-group chats
-            if (!_isGroupChat && _userId > 0)
+            // Only track online status for non-group chats and not for self-chat
+            if (!_isGroupChat && _userId > 0 && !_isSelfChat)
             {
                 App.OnlineStatusService.OnlineStatusChanged += OnOnlineStatusChanged;
                 App.OnlineStatusService.TrackUser(_userId);
@@ -401,8 +441,8 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private void ChatItem_Unloaded(object sender, RoutedEventArgs e)
         {
-            // Unsubscribe from online status events
-            if (!_isGroupChat && _userId > 0)
+            // Unsubscribe from online status events (only if we were subscribed)
+            if (!_isGroupChat && _userId > 0 && !_isSelfChat)
             {
                 App.OnlineStatusService.OnlineStatusChanged -= OnOnlineStatusChanged;
                 App.OnlineStatusService.UntrackUser(_userId);
@@ -427,6 +467,13 @@ namespace BarkFluff.Client.WPF.UserControls
         {
             _isOnline = isOnline;
             _lastSeen = lastSeen;
+
+            // Не показываем онлайн-статус для чата с собой
+            if (_isSelfChat)
+            {
+                OnlineIndicator.Visibility = Visibility.Collapsed;
+                return;
+            }
 
             // ИСПРАВЛЕНИЕ: Используем CheckAccess вместо всегда вызывать Invoke
             if (!Dispatcher.CheckAccess())
@@ -481,7 +528,7 @@ namespace BarkFluff.Client.WPF.UserControls
         /// </summary>
         private void UserControl_DragEnter(object sender, DragEventArgs e)
         {
-            System.Diagnostics.Debug.WriteLine($"ChatItem DragEnter: {_title}");
+            System.Diagnostics.Debug.WriteLine($"Перетаскивание: {_title}");
 
             // Проверяем, содержит ли перетаскиваемый объект файлы
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
