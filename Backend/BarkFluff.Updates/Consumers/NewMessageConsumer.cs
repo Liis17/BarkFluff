@@ -1,5 +1,6 @@
 namespace BarkFluff.Updates.Consumers;
 
+using BarkFluff.GrpcServer.Metrics;
 using Features.SubscribeNewMessages;
 using MassTransit;
 using MediatR;
@@ -11,15 +12,19 @@ public class NewMessageConsumer : IConsumer<NewMessageEvent>
 {
     private readonly IMediator _mediator;
     private readonly ILogger<NewMessageConsumer> _logger;
+    private readonly MetricsCollector _metrics;
 
-    public NewMessageConsumer(IMediator mediator, ILogger<NewMessageConsumer> logger)
+    public NewMessageConsumer(IMediator mediator, ILogger<NewMessageConsumer> logger, MetricsCollector metrics)
     {
         _mediator = mediator;
         _logger = logger;
+        _metrics = metrics;
     }
 
     public async Task Consume(ConsumeContext<NewMessageEvent> context)
     {
+        _metrics.Increment("rabbitmq_events_consumed");
+        _metrics.Increment("events_broadcast");
         _logger.LogInformation(
             "Получено событие нового сообщения для чата {ChatId} с {MemberCount} участниками",
             context.Message.ChatId,

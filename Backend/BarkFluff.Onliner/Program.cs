@@ -7,6 +7,7 @@ using BarkFluff.Onliner.Persistence.Contexts;
 using BarkFluff.Shared.Exceptions.Interceptors;
 using BarkFluff.Shared.Identity;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace BarkFluff.Onliner;
 
@@ -17,6 +18,7 @@ public class Program
         var builder = WebApplication.CreateBuilder(args);
 
         builder.LoadConfiguration(ServiceId.Onliner);
+        builder.AddBarkFluffSerilog("BarkFluff.Onliner");
         builder.SetRunningAddress(builder.Configuration);
 
         // Регистрируем gRPC сервисы с интерцепторами
@@ -24,6 +26,7 @@ public class Program
         {
             options.Interceptors.Add<ServerExceptionInterceptor>();
         });
+        builder.Services.AddBarkFluffMetrics("BarkFluff.Onliner");
 
         builder.Services.AddGrpcReflection();
 
@@ -51,6 +54,7 @@ public class Program
         // Регистрируем gRPC сервисы
         app.MapGrpcService<OnlinerApiService>();
 
+        app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
         app.Run();
     }
 }

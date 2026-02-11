@@ -3,6 +3,7 @@ using BarkFluff.Configuration.Infrastructure;
 using BarkFluff.GrpcServer;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace BarkFluff.Configuration;
 
@@ -11,6 +12,9 @@ public class Program
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
+
+        builder.AddBarkFluffSerilog("BarkFluff.Configuration");
+        builder.Services.AddBarkFluffMetrics("BarkFluff.Configuration");
 
         var envPort = Environment.GetEnvironmentVariable("CONFIGURATION_PORT")
                       ?? Environment.GetEnvironmentVariable("RunSettings__Port");
@@ -120,6 +124,7 @@ public class Program
 
         app.MapGrpcService<ConfigurationApiService>();
 
+        app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
         app.Run();
     }
 }

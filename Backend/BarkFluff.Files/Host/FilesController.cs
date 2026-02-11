@@ -1,6 +1,7 @@
 using BarkFluff.Files.Exceptions;
 using BarkFluff.Files.Features.DownloadFile;
 using BarkFluff.Files.Features.UploadFile;
+using BarkFluff.GrpcServer.Metrics;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,10 +10,12 @@ namespace BarkFluff.Files.Host;
 public class FilesController : Controller
 {
     private readonly IMediator _mediator;
+    private readonly MetricsCollector _metrics;
 
-    public FilesController(IMediator mediator)
+    public FilesController(IMediator mediator, MetricsCollector metrics)
     {
         _mediator = mediator;
+        _metrics = metrics;
     }
 
     [HttpPost("upload/{uploadId}")]
@@ -36,9 +39,11 @@ public class FilesController : Controller
             FileName = file.FileName
         };
         
-        try 
+        try
         {
             await _mediator.Send(command);
+            _metrics.Increment("files_uploaded");
+            _metrics.Add("upload_bytes_total", file.Length);
             return Ok(new { fileId = uploadId });
         }
         catch (FileAlreadyUploadedException ex)

@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Identity;
 using BarkFluff.Users.Features.AddDraftUser;
@@ -33,11 +34,13 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
 {
     private readonly IMediator _mediator;
     private readonly UsersStorage _usersStorage;
+    private readonly MetricsCollector _metrics;
 
-    public UsersServerApiService(IMediator mediator, UsersStorage usersStorage)
+    public UsersServerApiService(IMediator mediator, UsersStorage usersStorage, MetricsCollector metrics)
     {
         _mediator = mediator;
         _usersStorage = usersStorage;
+        _metrics = metrics;
     }
 
 
@@ -80,6 +83,7 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
 
     public override async Task<GetByIdResponse> GetById(GetByIdRequest request, ServerCallContext context)
     {
+        _metrics.Increment("user_lookups");
         var query = new GetUserQuery { UserId = request.UserId };
         var res = await _mediator.Send(query);
 
@@ -111,6 +115,7 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
 
     public override async Task<ListByIdsResponse> ListByIds(ListByIdsRequest request, ServerCallContext context)
     {
+        _metrics.Increment("user_lookups");
         var command = new ListByIdsCommand()
         {
             Ids = request.Ids.ToList()
@@ -192,6 +197,7 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
 
     public override Task<RegisterDeviceResponse> RegisterDevice(RegisterDeviceRequest request, ServerCallContext context)
     {
+        _metrics.Increment("device_registrations");
         var command = new RegisterDeviceCommand
         {
             DeviceId = Guid.Parse(request.DeviceId),

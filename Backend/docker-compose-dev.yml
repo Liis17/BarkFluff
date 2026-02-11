@@ -126,6 +126,20 @@ services:
 
   # === Инфраструктурные сервисы ===
 
+  seq:
+    image: datalust/seq:latest
+    container_name: seq
+    restart: always
+    ports:
+      - "${SEQ_WEBPORT}:80"
+    environment:
+      ACCEPT_EULA: "Y"
+      SEQ_FIRSTRUN_ADMINPASSWORD: "${SEQ_ADMIN_PASSWORD}"
+    volumes:
+      - seq_data:/data
+    networks:
+      - barkfluff-network
+
   minio:
     image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z-cpuv1
     container_name: minio
@@ -193,3 +207,4 @@ volumes:
   redis_data:
   minio_data:
   backup_volume:
+  seq_data:

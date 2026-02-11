@@ -13,6 +13,7 @@ using BarkFluff.Users.Persistence.Services;
 using MassTransit;
 
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace BarkFluff.Users;
 
@@ -23,10 +24,12 @@ public class Program
         var builder = WebApplication.CreateBuilder(args);
 
         builder.LoadConfiguration(ServiceId.Users);
+        builder.AddBarkFluffSerilog("BarkFluff.Users");
         builder.SetRunningAddress(builder.Configuration);
 
         // Регистрируем gRPC сервисы с интерцепторами
         builder.Services.AddBarkFluffGrpc();
+        builder.Services.AddBarkFluffMetrics("BarkFluff.Users");
 
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
 
@@ -88,6 +91,7 @@ public class Program
         app.MapGrpcService<UsersServerApiService>();
         app.MapGrpcService<UsersApiService>();
 
+        app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
         app.Run();
     }
 }

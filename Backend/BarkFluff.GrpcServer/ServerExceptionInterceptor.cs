@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Shared.Exceptions;
 using Grpc.Core;
 using Grpc.Core.Interceptors;
@@ -8,10 +9,12 @@ namespace BarkFluff.GrpcServer;
 public class ServerExceptionInterceptor : Interceptor
 {
     private readonly ILogger<ServerExceptionInterceptor> _logger;
+    private readonly MetricsCollector? _metrics;
 
-    public ServerExceptionInterceptor(ILogger<ServerExceptionInterceptor> logger)
+    public ServerExceptionInterceptor(ILogger<ServerExceptionInterceptor> logger, MetricsCollector? metrics = null)
     {
         _logger = logger;
+        _metrics = metrics;
     }
 
     public override async Task<TResponse> UnaryServerHandler<TRequest, TResponse>(
@@ -20,6 +23,7 @@ public class ServerExceptionInterceptor : Interceptor
         UnaryServerMethod<TRequest, TResponse> continuation)
     {
         var methodName = context.Method;
+        _metrics?.Increment("grpc_requests_total");
 
         try
         {
@@ -27,6 +31,8 @@ public class ServerExceptionInterceptor : Interceptor
         }
         catch (BaseGrpcException ex)
         {
+            _metrics?.Increment("grpc_requests_failed");
+
             _logger.LogWarning(
                 "Бизнес-ошибка при вызове {Method}: {ErrorCode} - {ErrorMessage}",
                 methodName,
@@ -43,6 +49,8 @@ public class ServerExceptionInterceptor : Interceptor
         }
         catch (Exception ex)
         {
+            _metrics?.Increment("grpc_requests_errors");
+
             _logger.LogError(
                 ex,
                 "КРИТИЧЕСКАЯ ОШИБКА при вызове {Method}. Тип: {ExceptionType}",

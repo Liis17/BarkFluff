@@ -14,6 +14,7 @@ using BarkFluff.Shared.Identity;
 using MassTransit;
 
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace BarkFluff.Identity;
 
@@ -24,9 +25,11 @@ public class Program
         var builder = WebApplication.CreateBuilder(args);
 
         builder.LoadConfiguration(ServiceId.Identity);
+        builder.AddBarkFluffSerilog("BarkFluff.Identity");
         builder.SetRunningAddress(builder.Configuration);
 
         builder.Services.AddBarkFluffGrpc();
+        builder.Services.AddBarkFluffMetrics("BarkFluff.Identity");
         builder.Services.AddGrpcReflection();
 
         builder.Services.AddDbContext<IdentityContext>(c
@@ -81,6 +84,7 @@ public class Program
 
         app.MapGrpcService<IdentityApiService>();
 
+        app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
         app.Run();
 
     }

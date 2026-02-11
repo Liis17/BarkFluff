@@ -1,5 +1,6 @@
 namespace BarkFluff.Messages.Consumers;
 
+using BarkFluff.GrpcServer.Metrics;
 using MassTransit;
 using Microsoft.Extensions.Logging;
 using Persistence.Services;
@@ -10,16 +11,19 @@ public class UserChangedNameConsumer : IConsumer<UserChangedName>
     private readonly ChatsStorage _chatsStorage;
     private readonly ChatCache _chatCache;
     private readonly ILogger<UserChangedNameConsumer> _logger;
+    private readonly MetricsCollector _metrics;
 
-    public UserChangedNameConsumer(ChatsStorage chatsStorage, ChatCache chatCache, ILogger<UserChangedNameConsumer> logger)
+    public UserChangedNameConsumer(ChatsStorage chatsStorage, ChatCache chatCache, ILogger<UserChangedNameConsumer> logger, MetricsCollector metrics)
     {
         _chatsStorage = chatsStorage;
         _chatCache = chatCache;
         _logger = logger;
+        _metrics = metrics;
     }
 
     public async Task Consume(ConsumeContext<UserChangedName> context)
     {
+        _metrics.Increment("rabbitmq_events_consumed");
         var userId = context.Message.UserId;
         var newName = $"{context.Message.NewFirstName} {context.Message.NewLastName}";
 

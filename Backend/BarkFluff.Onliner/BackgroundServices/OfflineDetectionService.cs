@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Onliner.Services;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -13,6 +14,7 @@ public class OfflineDetectionService : BackgroundService
     private readonly OnlineStatusStorage _storage;
     private readonly OnlineStatusNotifier _notifier;
     private readonly ILogger<OfflineDetectionService> _logger;
+    private readonly MetricsCollector _metrics;
 
     private static readonly TimeSpan CheckInterval = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan OfflineThreshold = TimeSpan.FromSeconds(5);
@@ -20,11 +22,13 @@ public class OfflineDetectionService : BackgroundService
     public OfflineDetectionService(
         OnlineStatusStorage storage,
         OnlineStatusNotifier notifier,
-        ILogger<OfflineDetectionService> logger)
+        ILogger<OfflineDetectionService> logger,
+        MetricsCollector metrics)
     {
         _storage = storage;
         _notifier = notifier;
         _logger = logger;
+        _metrics = metrics;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -69,6 +73,7 @@ public class OfflineDetectionService : BackgroundService
 
             if (statusChanged)
             {
+                _metrics.Increment("offline_detections");
                 // Получаем обновленный статус для уведомления
                 var status = _storage.GetStatus(userId);
 
