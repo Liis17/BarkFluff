@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Identity.Domain;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Identity.Features.Auth;
@@ -27,15 +28,19 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
 {
     private readonly IMediator _mediator;
     private readonly JwtService _jwtService;
+    private readonly MetricsCollector _metrics;
 
-    public IdentityApiService(IMediator mediator, JwtService jwtService)
+    public IdentityApiService(IMediator mediator, JwtService jwtService, MetricsCollector metrics)
     {
         _mediator = mediator;
         _jwtService = jwtService;
+        _metrics = metrics;
     }
 
     public override async Task<AuthResponse> Auth(AuthRequest request, ServerCallContext context)
     {
+        _metrics.Increment("auth_login_attempts");
+
         var command = new AuthCommand
         {
             Username = request.Username,
@@ -44,11 +49,15 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
             Password = request.Password,
         };
 
-        return await _mediator.Send(command);
+        var result = await _mediator.Send(command);
+        _metrics.Increment("auth_login_success");
+        return result;
     }
 
     public override async Task<CreateTokenResponse> CreateToken(CreateTokenRequest request, ServerCallContext context)
     {
+        _metrics.Increment("tokens_refreshed");
+
         var command = new CreateTokenCommand
         {
             RefreshToken = request.RefreshToken,
@@ -59,6 +68,8 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
 
     public override async Task<CreateAccountResponse> CreateAccount(CreateAccountRequest request, ServerCallContext context)
     {
+        _metrics.Increment("sessions_created");
+
         var command = new CreateAccountCommand
         {
             Username = request.Username,
@@ -99,6 +110,8 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
     [Authorize(Policy = nameof(TokenType.User))]
     public override Task<RemoveActiveSessionResponse> RemoveActiveSession(RemoveActiveSessionRequest request, ServerCallContext context)
     {
+        _metrics.Increment("sessions_removed");
+
         var command = new RemoveActiveSessionCommand()
         {
             DeviceId = request.DeviceId
@@ -153,6 +166,8 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
     public override async Task<ResetPasswordResponse> ResetPassword(ResetPasswordRequest request,
         ServerCallContext context)
     {
+        _metrics.Increment("otp_codes_sent");
+
         var command = new ResetPasswordCommand()
         {
             Email = request.Email, OtpType = (OtpType)(int)request.OtpType, Username = request.Username

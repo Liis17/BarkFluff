@@ -5,6 +5,7 @@ using BarkFluff.Notification.Parsers;
 using BarkFluff.Notification.Senders;
 using BarkFluff.Shared.Identity;
 using MassTransit;
+using Serilog;
 
 namespace BarkFluff.Notification;
 
@@ -15,8 +16,10 @@ public class Program
         var builder = WebApplication.CreateBuilder(args);
 
         builder.LoadConfiguration(ServiceId.Notifications);
+        builder.AddBarkFluffSerilog("BarkFluff.Notification");
         builder.SetRunningAddress(builder.Configuration);
-        
+        builder.Services.AddBarkFluffMetrics("BarkFluff.Notification");
+
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
 
         builder.Services.AddSettings<EmailConfiguration>(builder.Configuration, "Email");
@@ -45,6 +48,7 @@ public class Program
         var app = builder.Build();
         app.UseRouting();
 
+        app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
         app.Run();
     }
 }

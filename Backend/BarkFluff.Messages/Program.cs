@@ -13,6 +13,7 @@ using BarkFluff.Shared.Identity;
 using MassTransit;
 
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace BarkFluff.Messages;
 
@@ -25,12 +26,14 @@ public class Program
         var builder = WebApplication.CreateBuilder(args);
 
         builder.LoadConfiguration(ServiceId.Messages);
+        builder.AddBarkFluffSerilog("BarkFluff.Messages");
         builder.SetRunningAddress(builder.Configuration);
 
         builder.Services.AddGrpc(options =>
         {
             options.Interceptors.Add<ServerExceptionInterceptor>();
         });
+        builder.Services.AddBarkFluffMetrics("BarkFluff.Messages");
         builder.Services.AddGrpcReflection();
 
         builder.Services.AddDbContext<MessagesContext>(c
@@ -105,6 +108,7 @@ public class Program
         app.MapGrpcService<MessagesApiService>();
         app.MapGrpcService<MessagesServerApiService>();
 
+        app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
         app.Run();
     }
 }

@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Onliner.Features.ChangeUsersInSubscription;
 using BarkFluff.Onliner.Features.GetOnlineStatus;
 using BarkFluff.Onliner.Features.SetOnlineStatus;
@@ -15,13 +16,16 @@ public class OnlinerApiService : OnlinerApi.OnlinerApiBase
 {
     private readonly IMediator _mediator;
     private readonly SubscribeToOnlineStatusQueryHandler _subscribeHandler;
+    private readonly MetricsCollector _metrics;
 
     public OnlinerApiService(
         IMediator mediator,
-        SubscribeToOnlineStatusQueryHandler subscribeHandler)
+        SubscribeToOnlineStatusQueryHandler subscribeHandler,
+        MetricsCollector metrics)
     {
         _mediator = mediator;
         _subscribeHandler = subscribeHandler;
+        _metrics = metrics;
     }
 
     public override Task<GetOnlineStatusResponse> GetOnlineStatus(
@@ -40,6 +44,7 @@ public class OnlinerApiService : OnlinerApi.OnlinerApiBase
         SetOnlineStatusRequest request,
         ServerCallContext context)
     {
+        _metrics.Increment("status_changes");
         var command = new SetOnlineStatusCommand();
 
         return _mediator.Send(command, context.CancellationToken);
@@ -50,6 +55,7 @@ public class OnlinerApiService : OnlinerApi.OnlinerApiBase
         IServerStreamWriter<UserOnlineStatus> responseStream,
         ServerCallContext context)
     {
+        _metrics.Increment("active_subscriptions");
         var query = new SubscribeToOnlineStatusQuery
         {
             UserIds = request.UserIds.ToList(),

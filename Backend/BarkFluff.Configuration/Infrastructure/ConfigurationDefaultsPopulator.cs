@@ -231,6 +231,12 @@ public class ConfigurationDefaultsPopulator
             return "redis:6379";
         }
 
+        // --- Seq (агрегатор логов) ---
+        if (config.Section == "Seq" && config.Key == "ServerUrl")
+        {
+            return "http://seq:5341";
+        }
+
         // --- Database connection strings ---
         foreach (var (sId, (section, dbName)) in DatabaseNames)
         {
