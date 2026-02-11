@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Navigator;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,13 +16,15 @@ public class ServerRegistrationService : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ServerRegistrationService> _logger;
+    private readonly MetricsCollector _metrics;
     private readonly TimeSpan _interval = TimeSpan.FromMinutes(5);
 
     public ServerRegistrationService(IServiceProvider serviceProvider,
-        ILogger<ServerRegistrationService> logger)
+        ILogger<ServerRegistrationService> logger, MetricsCollector metrics)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
+        _metrics = metrics;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -60,6 +63,7 @@ public class ServerRegistrationService : BackgroundService
 
                 var request = new RegisterServerRequest { Server = serverInfo };
                 await navigatorClient.RegisterServerAsync(request, cancellationToken: stoppingToken);
+                _metrics.Increment("navigator_registrations");
                 _logger.LogInformation("RegisterServer успешно отправлен в Navigator");
             }
             catch (Exception ex)

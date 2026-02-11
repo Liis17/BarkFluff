@@ -1,5 +1,6 @@
 namespace BarkFluff.Messages.Consumers;
 
+using BarkFluff.GrpcServer.Metrics;
 using MassTransit;
 using Microsoft.Extensions.Logging;
 using Persistence.Services;
@@ -10,16 +11,19 @@ public class UserChangedAvatarConsumer : IConsumer<UserChangedAvatar>
     private readonly ChatsStorage _chatsStorage;
     private readonly ChatCache _chatCache;
     private readonly ILogger<UserChangedAvatarConsumer> _logger;
+    private readonly MetricsCollector _metrics;
 
-    public UserChangedAvatarConsumer(ChatsStorage chatsStorage, ChatCache chatCache, ILogger<UserChangedAvatarConsumer> logger)
+    public UserChangedAvatarConsumer(ChatsStorage chatsStorage, ChatCache chatCache, ILogger<UserChangedAvatarConsumer> logger, MetricsCollector metrics)
     {
         _chatsStorage = chatsStorage;
         _chatCache = chatCache;
         _logger = logger;
+        _metrics = metrics;
     }
 
     public async Task Consume(ConsumeContext<UserChangedAvatar> context)
     {
+        _metrics.Increment("rabbitmq_events_consumed");
         var userId = context.Message.UserId;
         var profilePictureUrl = context.Message.ProfilePictureUrl;
 

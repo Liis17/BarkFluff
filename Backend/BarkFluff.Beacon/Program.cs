@@ -5,6 +5,7 @@ using BarkFluff.Proto.Configuration;
 using BarkFluff.Shared.Identity;
 
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Serilog;
 
 namespace BarkFluff.Beacon;
 /// <summary>
@@ -17,6 +18,7 @@ public class Program
         var builder = WebApplication.CreateBuilder(args);
 
         builder.LoadConfiguration(ServiceId.Beacon);
+        builder.AddBarkFluffSerilog("BarkFluff.Beacon");
 
         var envPort = Environment.GetEnvironmentVariable("BEACON_PORT")
                       ?? Environment.GetEnvironmentVariable("RunSettings__Port");
@@ -37,6 +39,7 @@ public class Program
         }
 
         builder.Services.AddBarkFluffGrpc();
+        builder.Services.AddBarkFluffMetrics("BarkFluff.Beacon");
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
         builder.Services.AddGrpcReflection();
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
@@ -57,6 +60,7 @@ public class Program
         app.MapGrpcReflectionService();
         app.UseRouting();
         app.MapGrpcService<BeaconApiService>();
+        app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
         app.Run();
     }
 }

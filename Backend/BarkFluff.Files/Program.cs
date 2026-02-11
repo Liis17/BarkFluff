@@ -8,6 +8,7 @@ using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Shared.Identity;
 
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace BarkFluff.Files;
 
@@ -18,6 +19,7 @@ public class Program
         var builder = WebApplication.CreateBuilder(args);
 
         builder.LoadConfiguration(ServiceId.Files);
+        builder.AddBarkFluffSerilog("BarkFluff.Files");
         builder.SetRunningAddress(builder.Configuration);
 
         // Регистрируем gRPC сервисы с интерцепторами
@@ -25,6 +27,7 @@ public class Program
         {
             options.Interceptors.Add<ServerExceptionInterceptor>();
         });
+        builder.Services.AddBarkFluffMetrics("BarkFluff.Files");
 
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
 
@@ -72,6 +75,7 @@ public class Program
         app.MapGrpcService<FilesApiService>();
         app.MapGrpcService<FilesServerApiService>();
 
+        app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
         app.Run();
     }
 }

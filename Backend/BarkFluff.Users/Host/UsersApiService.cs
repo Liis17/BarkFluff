@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Identity;
 using BarkFluff.Users.Features.ChangeBio;
@@ -24,20 +25,24 @@ using Proto.Shared;
 public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
 {
     private readonly IMediator _mediator;
+    private readonly MetricsCollector _metrics;
 
-    public UsersApiService(IMediator mediator)
+    public UsersApiService(IMediator mediator, MetricsCollector metrics)
     {
         _mediator = mediator;
+        _metrics = metrics;
     }
 
     public override async Task<GetUserResponse> GetUser(GetUserRequest request, ServerCallContext context)
     {
+        _metrics.Increment("user_lookups");
         var query = new GetUserQuery { UserId = request.UserId == 0 ? null : request.UserId };
         return await _mediator.Send(query);
     }
 
     public override Task<SetProfilePictureResponse> SetProfilePicture(SetProfilePictureRequest request, ServerCallContext context)
     {
+        _metrics.Increment("profile_updates");
         var command = new SetProfilePictureCommand
         {
             FileId = string.IsNullOrEmpty(request.FileId) ? null : Guid.Parse(request.FileId)
@@ -65,6 +70,7 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
 
     public override async Task<ChangeNameResponse> ChangeName(ChangeNameRequest request, ServerCallContext context)
     {
+        _metrics.Increment("profile_updates");
         var command = new ChangeNameCommand()
         {
             FirstName = request.FirstName,
@@ -78,6 +84,7 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
 
     public override async Task<ChangeUsernameResponse> ChangeUsername(ChangeUsernameRequest request, ServerCallContext context)
     {
+        _metrics.Increment("profile_updates");
         var command = new ChangeUsernameCommand()
         {
             Username = request.Username
@@ -90,6 +97,7 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
 
     public override async Task<ChangeBioResponse> ChangeBio(ChangeBioRequest request, ServerCallContext context)
     {
+        _metrics.Increment("profile_updates");
         var command = new ChangeBioCommand() { Bio = request.Bio };
 
         await _mediator.Send(command);
@@ -99,6 +107,7 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
 
     public override Task<SearchUsersResponse> SearchUsers(SearchUsersRequest request, ServerCallContext context)
     {
+        _metrics.Increment("user_searches");
         request.Pagination ??= new PageRequest()
         {
             Size = 10,

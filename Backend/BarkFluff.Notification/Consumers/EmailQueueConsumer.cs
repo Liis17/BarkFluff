@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Notification.Senders;
 using BarkFluff.Shared.Queue.Notifications;
 using MassTransit;
@@ -9,15 +10,18 @@ public class EmailQueueConsumer : IConsumer<EmailNotification>
 {
     private readonly EmailSender _emailSender;
     private readonly ILogger<EmailQueueConsumer> _logger;
+    private readonly MetricsCollector _metrics;
 
-    public EmailQueueConsumer(EmailSender emailSender, ILogger<EmailQueueConsumer> logger)
+    public EmailQueueConsumer(EmailSender emailSender, ILogger<EmailQueueConsumer> logger, MetricsCollector metrics)
     {
         _emailSender = emailSender;
         _logger = logger;
+        _metrics = metrics;
     }
 
     public async Task Consume(ConsumeContext<EmailNotification> context)
     {
+        _metrics.Increment("rabbitmq_events_consumed");
         var notification = context.Message;
 
         _logger.LogInformation(
@@ -30,6 +34,7 @@ public class EmailQueueConsumer : IConsumer<EmailNotification>
         try
         {
             await _emailSender.SendEmail(notification);
+            _metrics.Increment("emails_sent");
 
             _logger.LogInformation(
                 "Email успешно отправлен на адрес {Email}",
@@ -38,6 +43,7 @@ public class EmailQueueConsumer : IConsumer<EmailNotification>
         }
         catch (Exception ex)
         {
+            _metrics.Increment("emails_failed");
             _logger.LogError(
                 ex,
                 "Ошибка при отправке email на адрес {Email}",
