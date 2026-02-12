@@ -1,4 +1,4 @@
-namespace Barkfluff.Docker.Control.Models.Dtos;
+namespace Barkfluff.AdminPanel.Models.Dtos;
 
 public class AuthStatusResponse
 {

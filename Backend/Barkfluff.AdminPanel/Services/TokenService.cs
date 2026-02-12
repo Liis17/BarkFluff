@@ -1,8 +1,8 @@
-using Barkfluff.Docker.Control.Data;
-using Barkfluff.Docker.Control.Models;
+using Barkfluff.AdminPanel.Data;
+using Barkfluff.AdminPanel.Models;
 using Microsoft.Extensions.Options;
 
-namespace Barkfluff.Docker.Control.Services;
+namespace Barkfluff.AdminPanel.Services;
 
 public class TokenService
 {
