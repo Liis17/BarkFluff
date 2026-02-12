@@ -1,10 +1,10 @@
-using Barkfluff.Docker.Control.Data;
-using Barkfluff.Docker.Control.Endpoints;
-using Barkfluff.Docker.Control.Middleware;
-using Barkfluff.Docker.Control.Models;
-using Barkfluff.Docker.Control.Services;
+using Barkfluff.AdminPanel.Data;
+using Barkfluff.AdminPanel.Endpoints;
+using Barkfluff.AdminPanel.Middleware;
+using Barkfluff.AdminPanel.Models;
+using Barkfluff.AdminPanel.Services;
 
-namespace Barkfluff.Docker.Control;
+namespace Barkfluff.AdminPanel;
 
 public class Program
 {
@@ -16,7 +16,7 @@ public class Program
         builder.Services.Configure<TelegramSettings>(builder.Configuration.GetSection("Telegram"));
         builder.Services.Configure<AuthSettings>(builder.Configuration.GetSection("Auth"));
         builder.Services.Configure<LiteDbSettings>(builder.Configuration.GetSection(LiteDbSettings.SectionName));
-        builder.Services.Configure<OtlpSettings>(builder.Configuration.GetSection(OtlpSettings.SectionName));
+        builder.Services.Configure<SeqSettings>(builder.Configuration.GetSection(SeqSettings.SectionName));
 
         // Register LiteDB DbContext as Singleton
         builder.Services.AddSingleton<TokenDbContext>();
@@ -26,10 +26,13 @@ public class Program
         builder.Services.AddSingleton<TokenService>();
         builder.Services.AddSingleton<AuthService>();
 
-        // ������� ������������ TelegramBotService ��� Singleton
+        // Register HttpClient for SeqService
+        builder.Services.AddHttpClient<SeqService>();
+
+        // Register TelegramBotService as Singleton
         builder.Services.AddSingleton<TelegramBotService>();
 
-        // ����� ������������ ��� �� ��� Hosted Service
+        // Also register it as Hosted Service
         builder.Services.AddHostedService(provider => provider.GetRequiredService<TelegramBotService>());
 
         var app = builder.Build();
@@ -43,8 +46,8 @@ public class Program
         // Map Auth Endpoints
         app.MapAuthEndpoints();
 
-        // Map OTLP Metrics Endpoints
-        app.MapMetricsEndpoints();
+        // Map Seq Endpoints
+        app.MapSeqEndpoints();
 
         // Static files for Pages directory
         app.UseStaticFiles(new StaticFileOptions
@@ -57,18 +60,20 @@ public class Program
         // Root path routing based on auth
         app.MapGet("/", async context =>
         {
-            var token = context.Items["AuthToken"] as Barkfluff.Docker.Control.Models.AuthToken;
+            var token = context.Items["AuthToken"] as Barkfluff.AdminPanel.Models.AuthToken;
             if (token != null)
             {
-                // Valid token - serve dashboard
                 await ServeHtmlFile(context, "dashboard.html");
             }
             else
             {
-                // No token - serve login
                 await ServeHtmlFile(context, "Login.html");
             }
         });
+
+        // Page routes
+        app.MapGet("/services", async context => await ServeHtmlFile(context, "services.html"));
+        app.MapGet("/logs", async context => await ServeHtmlFile(context, "logs.html"));
 
         app.Run();
     }

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Messenger Admin Panel | System Logs</title>
+    <title>BarkFluff Admin Panel | System Logs</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -41,6 +41,7 @@
 </head>
 <body class="bg-gray-50 text-slate-800 font-sans antialiased">
 
+    <!-- Loading Overlay -->
     <div id="loadingOverlay">
         <div class="spinner"></div>
     </div>
@@ -52,7 +53,7 @@
             <div class="h-16 flex items-center justify-center border-b border-slate-700">
                 <h1 class="text-xl font-bold tracking-wider flex items-center gap-2">
                     <i data-lucide="message-circle" class="text-blue-400"></i>
-                    MSG::ADMIN
+                    BF::ADMIN
                 </h1>
             </div>
 
@@ -61,25 +62,13 @@
                     <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
                     Дашборд
                 </a>
-                <a href="/docker" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
-                    <i data-lucide="container" class="w-5 h-5"></i>
-                    Контейнеры
-                </a>
-                <a href="/users" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
-                    <i data-lucide="users" class="w-5 h-5"></i>
-                    Пользователи
-                </a>
-                <a href="/db" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
-                    <i data-lucide="database" class="w-5 h-5"></i>
-                    База данных
+                <a href="/services" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
+                    <i data-lucide="server" class="w-5 h-5"></i>
+                    Сервисы
                 </a>
                 <a href="/logs" class="flex items-center gap-3 px-4 py-3 bg-blue-600 rounded-lg text-white transition-colors">
                     <i data-lucide="terminal-square" class="w-5 h-5"></i>
-                    Логи системы
-                </a>
-                <a href="/statistic" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
-                    <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
-                    Статистика
+                    Логи
                 </a>
             </nav>
 
@@ -109,11 +98,81 @@
 
             <!-- SCROLLABLE CONTENT -->
             <div class="flex-1 overflow-y-auto p-8">
-                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-8 text-center">
-                    <i data-lucide="terminal-square" class="w-16 h-16 text-purple-400 mx-auto mb-4"></i>
-                    <h3 class="text-xl font-bold text-slate-700 mb-2">Логи системы</h3>
-                    <p class="text-slate-500">Страница в разработке...</p>
+
+                <!-- FILTERS ROW -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-4 mb-6">
+                    <div class="flex flex-wrap items-center gap-4">
+                        <!-- Service Dropdown -->
+                        <select id="serviceFilter" class="px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">Все сервисы</option>
+                        </select>
+
+                        <!-- Level Filter Buttons -->
+                        <div class="flex items-center gap-1">
+                            <button data-level="" class="level-btn px-3 py-2 text-sm rounded-lg font-medium bg-slate-800 text-white">Все</button>
+                            <button data-level="Information" class="level-btn px-3 py-2 text-sm rounded-lg font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors">Information</button>
+                            <button data-level="Warning" class="level-btn px-3 py-2 text-sm rounded-lg font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100 transition-colors">Warning</button>
+                            <button data-level="Error" class="level-btn px-3 py-2 text-sm rounded-lg font-medium text-red-700 bg-red-50 hover:bg-red-100 transition-colors">Error</button>
+                        </div>
+
+                        <!-- Search Input -->
+                        <div class="flex-1 min-w-[200px]">
+                            <input id="searchInput" type="text" placeholder="Поиск по сообщению..."
+                                class="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+
+                        <!-- Auto-refresh Toggle -->
+                        <label class="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none">
+                            <input id="autoRefreshToggle" type="checkbox" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
+                            Авто (10с)
+                        </label>
+
+                        <!-- Refresh Button -->
+                        <button id="refreshBtn" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
+                            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                            Обновить
+                        </button>
+                    </div>
                 </div>
+
+                <!-- LOGS TABLE -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="text-xs text-slate-400 border-b border-slate-100 bg-slate-50">
+                                    <th class="py-3 px-4 font-semibold uppercase w-44">Время</th>
+                                    <th class="py-3 px-4 font-semibold uppercase w-32">Уровень</th>
+                                    <th class="py-3 px-4 font-semibold uppercase w-48">Сервис</th>
+                                    <th class="py-3 px-4 font-semibold uppercase">Сообщение</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logsTableBody" class="text-sm">
+                                <!-- Log entries will be rendered here -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div id="emptyState" class="hidden p-12 text-center">
+                        <i data-lucide="inbox" class="w-12 h-12 text-slate-300 mx-auto mb-3"></i>
+                        <p class="text-slate-400">Нет записей для отображения</p>
+                    </div>
+
+                    <!-- Loading State -->
+                    <div id="tableLoading" class="hidden p-8 text-center">
+                        <div class="inline-block w-6 h-6 border-2 border-slate-200 border-t-blue-600 rounded-full animate-spin"></div>
+                        <p class="text-slate-400 mt-2 text-sm">Загрузка логов...</p>
+                    </div>
+                </div>
+
+                <!-- LOAD MORE -->
+                <div class="mt-4 text-center">
+                    <button id="loadMoreBtn" class="hidden px-6 py-3 bg-white border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-colors">
+                        Загрузить ещё
+                    </button>
+                </div>
+
             </div>
         </main>
     </div>
@@ -121,6 +180,14 @@
     <script>
         lucide.createIcons();
 
+        // --- State ---
+        let allLogs = [];
+        let currentLevelFilter = '';
+        let currentSearchText = '';
+        let autoRefreshInterval = null;
+        let loadCount = 50;
+
+        // --- Auth ---
         async function checkAuth() {
             try {
                 const response = await fetch('/api/auth/me');
@@ -149,6 +216,276 @@
             });
         }
 
+        function formatLogTime(isoDate) {
+            const date = new Date(isoDate);
+            return date.toLocaleDateString('ru-RU', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+
+        // --- Services Dropdown ---
+        async function loadServices() {
+            try {
+                const response = await fetch('/api/seq/services');
+                if (!response.ok) return;
+                const services = await response.json();
+                const select = document.getElementById('serviceFilter');
+                services.forEach(service => {
+                    const option = document.createElement('option');
+                    option.value = service;
+                    option.textContent = service;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Failed to load services:', error);
+            }
+        }
+
+        // --- Load Logs ---
+        async function loadLogs(append = false) {
+            const serviceFilter = document.getElementById('serviceFilter').value;
+            const tableBody = document.getElementById('logsTableBody');
+            const tableLoading = document.getElementById('tableLoading');
+            const emptyState = document.getElementById('emptyState');
+            const loadMoreBtn = document.getElementById('loadMoreBtn');
+
+            if (!append) {
+                tableBody.innerHTML = '';
+                loadCount = 50;
+            }
+
+            tableLoading.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+            loadMoreBtn.classList.add('hidden');
+
+            try {
+                let url = `/api/seq/events?count=${loadCount}`;
+                if (serviceFilter) {
+                    url += `&application=${encodeURIComponent(serviceFilter)}`;
+                }
+
+                const response = await fetch(url);
+                if (!response.ok) {
+                    console.error('Failed to load logs:', response.status);
+                    tableLoading.classList.add('hidden');
+                    return;
+                }
+
+                const data = await response.json();
+                allLogs = extractEvents(data);
+                renderLogs();
+
+                // Show "Load more" button if we got a full page of results
+                if (allLogs.length >= loadCount) {
+                    loadMoreBtn.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Failed to load logs:', error);
+            } finally {
+                tableLoading.classList.add('hidden');
+            }
+        }
+
+        // --- Extract events from Seq API response ---
+        function extractEvents(data) {
+            // Seq API may return events as an array or within a wrapper
+            if (Array.isArray(data)) return data;
+            if (data && Array.isArray(data.Events)) return data.Events;
+            if (data && Array.isArray(data.events)) return data.events;
+            return [];
+        }
+
+        // --- Get log level from event ---
+        function getLevel(event) {
+            return event.Level || event.level || event.MinimumLevel || 'Information';
+        }
+
+        // --- Get message from event ---
+        function getMessage(event) {
+            return event.RenderedMessage || event.renderedMessage || event.MessageTemplate || event.messageTemplate || event.Message || event.message || '';
+        }
+
+        // --- Get timestamp from event ---
+        function getTimestamp(event) {
+            return event.Timestamp || event.timestamp || event.TimestampUtc || '';
+        }
+
+        // --- Get application/service from event ---
+        function getApplication(event) {
+            if (event.Properties && event.Properties.Application) return event.Properties.Application;
+            if (event.properties && event.properties.Application) return event.properties.Application;
+            if (event.Application) return event.Application;
+            return '';
+        }
+
+        // --- Level badge ---
+        function getLevelBadge(level) {
+            const levelLower = (level || '').toLowerCase();
+            if (levelLower === 'information' || levelLower === 'info') {
+                return '<span class="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-md font-medium">Information</span>';
+            } else if (levelLower === 'warning' || levelLower === 'warn') {
+                return '<span class="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-md font-medium">Warning</span>';
+            } else if (levelLower === 'error' || levelLower === 'fatal' || levelLower === 'critical') {
+                return '<span class="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-md font-medium">Error</span>';
+            } else if (levelLower === 'debug' || levelLower === 'verbose' || levelLower === 'trace') {
+                return '<span class="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-md font-medium">Debug</span>';
+            }
+            return `<span class="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-md font-medium">${level || 'Unknown'}</span>`;
+        }
+
+        // --- Render Logs ---
+        function renderLogs() {
+            const tableBody = document.getElementById('logsTableBody');
+            const emptyState = document.getElementById('emptyState');
+
+            // Apply client-side filters
+            let filtered = allLogs;
+
+            if (currentLevelFilter) {
+                filtered = filtered.filter(event => {
+                    const level = getLevel(event).toLowerCase();
+                    const filterLower = currentLevelFilter.toLowerCase();
+                    if (filterLower === 'error') {
+                        return level === 'error' || level === 'fatal' || level === 'critical';
+                    }
+                    if (filterLower === 'warning') {
+                        return level === 'warning' || level === 'warn';
+                    }
+                    if (filterLower === 'information') {
+                        return level === 'information' || level === 'info';
+                    }
+                    return level === filterLower;
+                });
+            }
+
+            if (currentSearchText) {
+                const search = currentSearchText.toLowerCase();
+                filtered = filtered.filter(event => {
+                    const msg = getMessage(event).toLowerCase();
+                    return msg.includes(search);
+                });
+            }
+
+            tableBody.innerHTML = '';
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+
+            filtered.forEach((event, index) => {
+                const level = getLevel(event);
+                const message = getMessage(event);
+                const timestamp = getTimestamp(event);
+                const application = getApplication(event);
+
+                const row = document.createElement('tr');
+                row.className = `border-b border-slate-50 hover:bg-slate-50 transition ${index % 2 === 1 ? 'bg-slate-25' : ''}`;
+                row.style.backgroundColor = index % 2 === 1 ? '#fafbfc' : '';
+
+                row.innerHTML = `
+                    <td class="py-3 px-4 text-slate-500 font-mono text-xs whitespace-nowrap">${timestamp ? formatLogTime(timestamp) : '-'}</td>
+                    <td class="py-3 px-4">${getLevelBadge(level)}</td>
+                    <td class="py-3 px-4 text-slate-600 text-xs font-medium">${escapeHtml(application) || '<span class="text-slate-300">-</span>'}</td>
+                    <td class="py-3 px-4 font-mono text-xs text-slate-700 break-all">${escapeHtml(message)}</td>
+                `;
+
+                tableBody.appendChild(row);
+            });
+
+            // Re-initialize lucide icons for dynamically added content
+            lucide.createIcons();
+        }
+
+        // --- Escape HTML ---
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // --- Level Filter Buttons ---
+        document.querySelectorAll('.level-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentLevelFilter = btn.dataset.level;
+
+                // Update button styles
+                document.querySelectorAll('.level-btn').forEach(b => {
+                    const level = b.dataset.level;
+                    if (b === btn) {
+                        if (level === '') {
+                            b.className = 'level-btn px-3 py-2 text-sm rounded-lg font-medium bg-slate-800 text-white';
+                        } else if (level === 'Information') {
+                            b.className = 'level-btn px-3 py-2 text-sm rounded-lg font-medium bg-blue-600 text-white';
+                        } else if (level === 'Warning') {
+                            b.className = 'level-btn px-3 py-2 text-sm rounded-lg font-medium bg-yellow-500 text-white';
+                        } else if (level === 'Error') {
+                            b.className = 'level-btn px-3 py-2 text-sm rounded-lg font-medium bg-red-600 text-white';
+                        }
+                    } else {
+                        if (level === '') {
+                            b.className = 'level-btn px-3 py-2 text-sm rounded-lg font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors';
+                        } else if (level === 'Information') {
+                            b.className = 'level-btn px-3 py-2 text-sm rounded-lg font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors';
+                        } else if (level === 'Warning') {
+                            b.className = 'level-btn px-3 py-2 text-sm rounded-lg font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100 transition-colors';
+                        } else if (level === 'Error') {
+                            b.className = 'level-btn px-3 py-2 text-sm rounded-lg font-medium text-red-700 bg-red-50 hover:bg-red-100 transition-colors';
+                        }
+                    }
+                });
+
+                renderLogs();
+            });
+        });
+
+        // --- Search Input ---
+        let searchTimeout = null;
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                currentSearchText = e.target.value.trim();
+                renderLogs();
+            }, 300);
+        });
+
+        // --- Service Filter ---
+        document.getElementById('serviceFilter').addEventListener('change', () => {
+            loadLogs();
+        });
+
+        // --- Refresh Button ---
+        document.getElementById('refreshBtn').addEventListener('click', () => {
+            loadLogs();
+        });
+
+        // --- Load More ---
+        document.getElementById('loadMoreBtn').addEventListener('click', () => {
+            loadCount += 50;
+            loadLogs();
+        });
+
+        // --- Auto-refresh Toggle ---
+        document.getElementById('autoRefreshToggle').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                autoRefreshInterval = setInterval(() => {
+                    loadLogs();
+                }, 10000);
+            } else {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+            }
+        });
+
+        // --- Logout ---
         document.getElementById('logoutBtn').addEventListener('click', async () => {
             if (!confirm('Вы уверены, что хотите выйти?')) return;
             try {
@@ -160,7 +497,10 @@
             window.location.href = '/';
         });
 
+        // --- Initialize ---
         checkAuth();
+        loadServices();
+        loadLogs();
     </script>
 </body>
 </html>

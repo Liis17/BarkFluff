@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
-using Barkfluff.Docker.Control.Models;
+using Barkfluff.AdminPanel.Models;
 using Microsoft.Extensions.Options;
 
-namespace Barkfluff.Docker.Control.Services;
+namespace Barkfluff.AdminPanel.Services;
 
 public class PendingAuthService
 {
@@ -14,7 +14,6 @@ public class PendingAuthService
     {
         _settings = settings;
 
-        // Cleanup timer runs every 10 minutes
         _cleanupTimer = new Timer(
             CleanupExpiredRequests,
             null,
@@ -22,7 +21,7 @@ public class PendingAuthService
             TimeSpan.FromMinutes(10));
     }
 
-    public PendingAuthRequest CreateRequest(string? ipAddress, string? browser, string? os, string? userAgent, string? tokenName)
+    public PendingAuthRequest CreateRequest(string? ipAddress, string? browser, string? os, string? userAgent, string? tokenName, string? nickname)
     {
         var request = new PendingAuthRequest
         {
@@ -30,7 +29,8 @@ public class PendingAuthService
             Browser = browser,
             Os = os,
             UserAgent = userAgent,
-            TokenName = tokenName
+            TokenName = tokenName,
+            Nickname = nickname
         };
 
         _requests[request.RequestId] = request;
@@ -51,7 +51,6 @@ public class PendingAuthService
             request.ApprovedByTelegramUserId = approvedBy;
             request.CompletedAt = DateTime.UtcNow;
 
-            // Remove from pending list after a delay (keep for potential re-query)
             _ = Task.Run(async () =>
             {
                 await Task.Delay(TimeSpan.FromMinutes(5));

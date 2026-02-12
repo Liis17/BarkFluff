@@ -1,8 +1,8 @@
 using LiteDB;
-using Barkfluff.Docker.Control.Models;
+using Barkfluff.AdminPanel.Models;
 using Microsoft.Extensions.Options;
 
-namespace Barkfluff.Docker.Control.Data;
+namespace Barkfluff.AdminPanel.Data;
 
 public class TokenDbContext : IDisposable
 {
@@ -10,7 +10,6 @@ public class TokenDbContext : IDisposable
 
     public TokenDbContext(IOptions<LiteDbSettings> settings)
     {
-        // Если путь относительный, делаем его относительно папки исполняемого файла
         var dbPath = settings.Value.Path;
         if (!Path.IsPathRooted(dbPath))
         {

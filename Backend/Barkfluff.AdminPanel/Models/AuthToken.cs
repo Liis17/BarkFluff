@@ -1,6 +1,6 @@
 using LiteDB;
 
-namespace Barkfluff.Docker.Control.Models;
+namespace Barkfluff.AdminPanel.Models;
 
 public class AuthToken
 {

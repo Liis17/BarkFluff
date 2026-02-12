@@ -1,4 +1,4 @@
-namespace Barkfluff.Docker.Control.Models;
+namespace Barkfluff.AdminPanel.Models;
 
 public class PendingAuthRequest
 {
@@ -7,6 +7,7 @@ public class PendingAuthRequest
     public string? Browser { get; set; }
     public string? Os { get; set; }
     public string? UserAgent { get; set; }
+    public string? Nickname { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public AuthRequestStatus Status { get; set; } = AuthRequestStatus.Pending;
     public int? TelegramMessageId { get; set; }

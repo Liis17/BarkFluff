@@ -3,116 +3,269 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Вход в систему</title>
+    <title>BarkFluff Admin — Авторизация</title>
     <style>
         :root {
             --primary: #6c5ce7;
             --primary-hover: #5649c0;
-            --text: #2d3436;
-            --text-muted: #636e72;
-            --bg-mesh: radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%),
-                       radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%),
-                       radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
-            --white: #ffffff;
-            --error: #e74c3c;
-            --success: #00b894;
+            --bg-card: rgba(255, 255, 255, 0.08);
+            --text: #fff;
+            --text-secondary: rgba(255, 255, 255, 0.6);
+            --border: rgba(255, 255, 255, 0.12);
+            --error: #ff6b6b;
+            --success: #51cf66;
         }
 
-        * {
-            box-sizing: border-box;
+        *, *::before, *::after {
             margin: 0;
             padding: 0;
-            font-family: 'Segoe UI', Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+            box-sizing: border-box;
         }
 
         body {
-            height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            background-color: #0f0c29;
-            background-image: var(--bg-mesh);
-            background-size: 200% 200%;
-            animation: gradientMove 15s ease infinite;
+            overflow: hidden;
+            background: #0a0a1a;
+            color: var(--text);
+        }
+
+        /* Gradient mesh background */
+        .bg-mesh {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
             overflow: hidden;
         }
 
-        @keyframes gradientMove {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+        .bg-mesh .blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.5;
+            animation: blobMove 12s ease-in-out infinite alternate;
         }
 
-        .card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 24px;
-            padding: 40px;
+        .bg-mesh .blob:nth-child(1) {
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, #6c5ce7, transparent 70%);
+            top: -10%;
+            left: -10%;
+            animation-duration: 14s;
+        }
+
+        .bg-mesh .blob:nth-child(2) {
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, #3b82f6, transparent 70%);
+            bottom: -15%;
+            right: -10%;
+            animation-duration: 16s;
+            animation-delay: -4s;
+        }
+
+        .bg-mesh .blob:nth-child(3) {
+            width: 450px;
+            height: 450px;
+            background: radial-gradient(circle, #8b5cf6, transparent 70%);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation-duration: 18s;
+            animation-delay: -8s;
+        }
+
+        .bg-mesh .blob:nth-child(4) {
+            width: 350px;
+            height: 350px;
+            background: radial-gradient(circle, #4f46e5, transparent 70%);
+            top: 20%;
+            right: 15%;
+            animation-duration: 13s;
+            animation-delay: -2s;
+        }
+
+        .bg-mesh .blob:nth-child(5) {
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, #2563eb, transparent 70%);
+            bottom: 10%;
+            left: 20%;
+            animation-duration: 15s;
+            animation-delay: -6s;
+        }
+
+        @keyframes blobMove {
+            0% {
+                transform: translate(0, 0) scale(1);
+            }
+            33% {
+                transform: translate(60px, -40px) scale(1.1);
+            }
+            66% {
+                transform: translate(-30px, 50px) scale(0.95);
+            }
+            100% {
+                transform: translate(40px, 20px) scale(1.05);
+            }
+        }
+
+        /* Card */
+        .login-card {
+            position: relative;
+            z-index: 1;
             width: 100%;
             max-width: 420px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            margin: 20px;
+            padding: 48px 40px;
+            background: var(--bg-card);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            box-shadow: 0 32px 64px rgba(0, 0, 0, 0.3);
             text-align: center;
         }
 
-        .logo {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 24px;
-            background: linear-gradient(135deg, var(--primary), #a29bfe);
+        /* Lock icon */
+        .lock-icon {
+            width: 72px;
+            height: 72px;
+            margin: 0 auto 28px;
+            background: linear-gradient(135deg, var(--primary), #3b82f6);
             border-radius: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
+            box-shadow: 0 8px 24px rgba(108, 92, 231, 0.35);
         }
 
-        .logo svg {
-            width: 40px;
-            height: 40px;
-            color: white;
+        .lock-icon svg {
+            width: 34px;
+            height: 34px;
+            fill: #fff;
         }
 
-        h2 {
-            color: var(--text);
-            margin-bottom: 8px;
+        .login-card h1 {
+            font-size: 26px;
             font-weight: 700;
-            font-size: 24px;
+            margin-bottom: 8px;
+            letter-spacing: -0.3px;
         }
 
-        p.subtitle {
-            color: var(--text-muted);
+        .login-card .subtitle {
             font-size: 14px;
+            color: var(--text-secondary);
             margin-bottom: 32px;
             line-height: 1.5;
         }
 
-        .btn {
+        /* Nickname input */
+        .nickname-input {
             width: 100%;
-            padding: 16px;
-            border: none;
-            border-radius: 12px;
-            background: var(--primary);
-            color: white;
-            font-size: 16px;
+            padding: 14px 20px;
+            font-size: 15px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            outline: none;
+            transition: border-color 0.25s ease, box-shadow 0.25s ease;
+            margin-bottom: 16px;
+        }
+
+        .nickname-input::placeholder {
+            color: rgba(255, 255, 255, 0.35);
+        }
+
+        .nickname-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.2);
+        }
+
+        .nickname-input.input-error {
+            border-color: var(--error);
+            box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.15);
+        }
+
+        .validation-message {
+            font-size: 12px;
+            color: var(--error);
+            margin-top: -10px;
+            margin-bottom: 12px;
+            text-align: left;
+            padding-left: 4px;
+            display: none;
+        }
+
+        .validation-message.visible {
+            display: block;
+        }
+
+        /* Login button */
+        .login-btn {
+            width: 100%;
+            padding: 14px 20px;
+            font-size: 15px;
             font-weight: 600;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #fff;
+            background: linear-gradient(135deg, var(--primary), #4f46e5);
+            border: none;
+            border-radius: 14px;
             cursor: pointer;
-            transition: all 0.3s ease;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 10px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.25s ease;
+            box-shadow: 0 4px 16px rgba(108, 92, 231, 0.3);
         }
 
-        .btn:hover:not(:disabled) {
-            background: var(--primary-hover);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(108, 92, 231, 0.3);
+        .login-btn:hover {
+            background: linear-gradient(135deg, var(--primary-hover), #4338ca);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 24px rgba(108, 92, 231, 0.45);
         }
 
-        .btn:disabled {
-            opacity: 0.7;
+        .login-btn:active {
+            transform: translateY(0);
+        }
+
+        .login-btn:disabled {
+            opacity: 0.5;
             cursor: not-allowed;
+            transform: none;
         }
 
+        .login-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: #fff;
+            flex-shrink: 0;
+        }
+
+        /* Device info */
+        .device-info {
+            margin-top: 28px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.8;
+        }
+
+        .device-info .label {
+            color: rgba(255, 255, 255, 0.35);
+            margin-right: 4px;
+        }
+
+        /* Status container */
         .status-container {
             margin-top: 24px;
             display: none;
@@ -122,284 +275,461 @@
             display: block;
         }
 
+        /* Waiting spinner */
+        .status-waiting {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .status-waiting.active {
+            display: flex;
+        }
+
         .spinner {
             width: 40px;
             height: 40px;
-            margin: 0 auto 16px;
-            border: 3px solid #dfe6e9;
+            border: 3px solid rgba(255, 255, 255, 0.1);
             border-top-color: var(--primary);
             border-radius: 50%;
-            animation: spin 1s linear infinite;
+            animation: spin 0.8s linear infinite;
         }
 
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
 
-        .status-text {
-            color: var(--text-muted);
+        .status-waiting .status-text {
             font-size: 14px;
+            color: var(--text-secondary);
         }
 
-        .status-icon {
-            font-size: 48px;
-            margin-bottom: 16px;
+        /* Success state */
+        .status-success {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
         }
 
-        .status-icon.success {
-            animation: scaleIn 0.5s ease;
+        .status-success.active {
+            display: flex;
         }
 
-        .status-icon.error {
-            animation: shake 0.5s ease;
+        .status-success .check-circle {
+            width: 48px;
+            height: 48px;
+            background: rgba(81, 207, 102, 0.15);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        @keyframes scaleIn {
-            0% { transform: scale(0); opacity: 0; }
-            50% { transform: scale(1.2); }
-            100% { transform: scale(1); opacity: 1; }
-        }
-
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-10px); }
-            75% { transform: translateX(10px); }
-        }
-
-        .device-info {
-            margin-top: 24px;
-            padding-top: 24px;
-            border-top: 1px solid #dfe6e9;
-            text-align: left;
-        }
-
-        .device-info p {
-            font-size: 12px;
-            color: var(--text-muted);
-            margin-bottom: 4px;
-        }
-
-        .device-info strong {
-            color: var(--text);
-        }
-
-        .retry-btn {
-            margin-top: 16px;
-            background: var(--text-muted);
-        }
-
-        .telegram-icon {
+        .status-success .check-circle svg {
             width: 24px;
             height: 24px;
+            fill: var(--success);
+        }
+
+        .status-success .status-text {
+            font-size: 14px;
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        /* Error state */
+        .status-error {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-error.active {
+            display: flex;
+        }
+
+        .status-error .error-circle {
+            width: 48px;
+            height: 48px;
+            background: rgba(255, 107, 107, 0.15);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .status-error .error-circle svg {
+            width: 24px;
+            height: 24px;
+            fill: var(--error);
+        }
+
+        .status-error .status-text {
+            font-size: 14px;
+            color: var(--error);
+            font-weight: 500;
+        }
+
+        /* Retry button */
+        .retry-btn {
+            margin-top: 8px;
+            padding: 10px 28px;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.2s ease, border-color 0.2s ease;
+        }
+
+        .retry-btn:hover {
+            background: rgba(255, 255, 255, 0.14);
+            border-color: rgba(255, 255, 255, 0.2);
         }
     </style>
 </head>
 <body>
-    <div class="card">
-        <div class="logo">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+
+    <!-- Gradient mesh background -->
+    <div class="bg-mesh">
+        <div class="blob"></div>
+        <div class="blob"></div>
+        <div class="blob"></div>
+        <div class="blob"></div>
+        <div class="blob"></div>
+    </div>
+
+    <!-- Login card -->
+    <div class="login-card">
+
+        <!-- Lock icon -->
+        <div class="lock-icon">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 1C8.676 1 6 3.676 6 7v2H4a1 1 0 0 0-1 1v11a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V10a1 1 0 0 0-1-1h-2V7c0-3.324-2.676-6-6-6zm0 2c2.276 0 4 1.724 4 4v2H8V7c0-2.276 1.724-4 4-4zm0 10a2 2 0 0 1 1 3.732V18a1 1 0 1 1-2 0v-1.268A2 2 0 0 1 12 13z"/>
             </svg>
         </div>
 
-        <div id="loginForm">
-            <h2>Авторизация</h2>
-            <p class="subtitle">Нажмите кнопку ниже, чтобы отправить запрос на авторизацию через Telegram</p>
+        <h1>Авторизация</h1>
+        <p class="subtitle">Для входа в панель администратора подтвердите запрос через Telegram</p>
 
-            <button id="loginBtn" class="btn">
-                <svg class="telegram-icon" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
-                </svg>
-                Войти через Telegram
-            </button>
+        <!-- Nickname input -->
+        <input
+            type="text"
+            id="nicknameInput"
+            class="nickname-input"
+            placeholder="Введите ваш никнейм"
+            autocomplete="off"
+            spellcheck="false"
+        >
+        <div id="validationMessage" class="validation-message">Введите ваш никнейм</div>
 
-            <div class="device-info">
-                <p><strong>Ваше устройство:</strong> <span id="deviceName">-</span></p>
-                <p><strong>IP адрес:</strong> <span id="ipAddress">Определяется...</span></p>
-            </div>
-        </div>
+        <!-- Login button -->
+        <button id="loginBtn" class="login-btn">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+            </svg>
+            Войти через Telegram
+        </button>
 
+        <!-- Status container -->
         <div id="statusContainer" class="status-container">
-            <div id="waitingState">
+            <!-- Waiting -->
+            <div id="statusWaiting" class="status-waiting">
                 <div class="spinner"></div>
-                <p class="status-text">Ожидание подтверждения от администратора...</p>
-                <p class="status-text" style="margin-top: 8px; font-size: 12px;">Проверьте Telegram и подтвердите вход</p>
+                <span class="status-text">Ожидание подтверждения в Telegram...</span>
             </div>
 
-            <div id="successState" style="display: none;">
-                <div class="status-icon success"></div>
-                <p class="status-text" style="color: var(--success); font-weight: 600;">Авторизация подтверждена!</p>
-                <p class="status-text">Перенаправление...</p>
+            <!-- Success -->
+            <div id="statusSuccess" class="status-success">
+                <div class="check-circle">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                    </svg>
+                </div>
+                <span class="status-text">Авторизация успешна! Перенаправление...</span>
             </div>
 
-            <div id="errorState" style="display: none;">
-                <div class="status-icon error"></div>
-                <p class="status-text" style="color: var(--error); font-weight: 600;" id="errorText">Запрос отклонен</p>
-                <button id="retryBtn" class="btn retry-btn">Попробовать снова</button>
+            <!-- Error -->
+            <div id="statusError" class="status-error">
+                <div class="error-circle">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                    </svg>
+                </div>
+                <span id="errorText" class="status-text">Произошла ошибка</span>
+                <button id="retryBtn" class="retry-btn">Попробовать снова</button>
             </div>
         </div>
+
+        <!-- Device info -->
+        <div class="device-info">
+            <div>
+                <span class="label">Устройство:</span>
+                <span id="deviceInfo">—</span>
+            </div>
+            <div>
+                <span class="label">IP-адрес:</span>
+                <span id="ipAddress">загрузка...</span>
+            </div>
+        </div>
+
     </div>
 
     <script>
-        let currentRequestId = null;
-        let pollInterval = null;
+        (function () {
+            // Elements
+            var nicknameInput = document.getElementById('nicknameInput');
+            var validationMessage = document.getElementById('validationMessage');
+            var loginBtn = document.getElementById('loginBtn');
+            var statusContainer = document.getElementById('statusContainer');
+            var statusWaiting = document.getElementById('statusWaiting');
+            var statusSuccess = document.getElementById('statusSuccess');
+            var statusError = document.getElementById('statusError');
+            var errorText = document.getElementById('errorText');
+            var retryBtn = document.getElementById('retryBtn');
+            var deviceInfoEl = document.getElementById('deviceInfo');
+            var ipAddressEl = document.getElementById('ipAddress');
 
-        const loginBtn = document.getElementById('loginBtn');
-        const loginForm = document.getElementById('loginForm');
-        const statusContainer = document.getElementById('statusContainer');
-        const waitingState = document.getElementById('waitingState');
-        const successState = document.getElementById('successState');
-        const errorState = document.getElementById('errorState');
-        const errorText = document.getElementById('errorText');
-        const retryBtn = document.getElementById('retryBtn');
-        const deviceNameEl = document.getElementById('deviceName');
-        const ipAddressEl = document.getElementById('ipAddress');
+            var pollInterval = null;
+            var pollTimeout = null;
 
-        // Detect device info
-        function detectDevice() {
-            const ua = navigator.userAgent;
-            let browser = 'Unknown';
-            let os = 'Unknown';
+            // Detect device info from user agent
+            function detectDevice() {
+                var ua = navigator.userAgent;
+                var browser = 'Неизвестный браузер';
+                var os = 'Неизвестная ОС';
 
-            if (ua.includes('Edg/')) browser = 'Edge';
-            else if (ua.includes('Chrome') && !ua.includes('Edg/')) browser = 'Chrome';
-            else if (ua.includes('Firefox')) browser = 'Firefox';
-            else if (ua.includes('Safari') && !ua.includes('Chrome')) browser = 'Safari';
-            else if (ua.includes('Opera') || ua.includes('OPR/')) browser = 'Opera';
+                // Detect browser
+                if (ua.indexOf('Firefox/') !== -1) {
+                    browser = 'Firefox';
+                } else if (ua.indexOf('Edg/') !== -1) {
+                    browser = 'Edge';
+                } else if (ua.indexOf('OPR/') !== -1 || ua.indexOf('Opera/') !== -1) {
+                    browser = 'Opera';
+                } else if (ua.indexOf('YaBrowser/') !== -1) {
+                    browser = 'Yandex Browser';
+                } else if (ua.indexOf('Chrome/') !== -1) {
+                    browser = 'Chrome';
+                } else if (ua.indexOf('Safari/') !== -1 && ua.indexOf('Chrome') === -1) {
+                    browser = 'Safari';
+                }
 
-            if (ua.includes('Windows NT 10.0')) os = 'Windows 10/11';
-            else if (ua.includes('Windows NT 6.3')) os = 'Windows 8.1';
-            else if (ua.includes('Windows NT 6.1')) os = 'Windows 7';
-            else if (ua.includes('Windows')) os = 'Windows';
-            else if (ua.includes('Mac OS X')) os = 'macOS';
-            else if (ua.includes('Linux')) os = 'Linux';
-            else if (ua.includes('Android')) os = 'Android';
-            else if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS';
+                // Detect OS
+                if (ua.indexOf('Windows NT 10') !== -1) {
+                    os = 'Windows 10/11';
+                } else if (ua.indexOf('Windows NT') !== -1) {
+                    os = 'Windows';
+                } else if (ua.indexOf('Mac OS X') !== -1) {
+                    os = 'macOS';
+                } else if (ua.indexOf('Linux') !== -1 && ua.indexOf('Android') !== -1) {
+                    os = 'Android';
+                } else if (ua.indexOf('Linux') !== -1) {
+                    os = 'Linux';
+                } else if (ua.indexOf('iPhone') !== -1 || ua.indexOf('iPad') !== -1) {
+                    os = 'iOS';
+                }
 
-            return `${browser} на ${os}`;
-        }
+                return browser + ' / ' + os;
+            }
 
-        deviceNameEl.textContent = detectDevice();
+            // Fetch IP address
+            function fetchIP() {
+                fetch('https://api.ipify.org?format=json')
+                    .then(function (res) { return res.json(); })
+                    .then(function (data) {
+                        ipAddressEl.textContent = data.ip || '—';
+                    })
+                    .catch(function () {
+                        ipAddressEl.textContent = 'не удалось определить';
+                    });
+            }
 
-        // Get IP address
-        fetch('https://api.ipify.org?format=json')
-            .then(r => r.json())
-            .then(data => {
-                ipAddressEl.textContent = data.ip;
-            })
-            .catch(() => {
-                ipAddressEl.textContent = 'Не удалось определить';
+            // Initialize device info
+            var deviceString = detectDevice();
+            deviceInfoEl.textContent = deviceString;
+            fetchIP();
+
+            // Clear validation on input
+            nicknameInput.addEventListener('input', function () {
+                nicknameInput.classList.remove('input-error');
+                validationMessage.classList.remove('visible');
             });
 
-        // Show state
-        function showState(state) {
-            waitingState.style.display = state === 'waiting' ? 'block' : 'none';
-            successState.style.display = state === 'success' ? 'block' : 'none';
-            errorState.style.display = state === 'error' ? 'block' : 'none';
-        }
+            // Show a specific status panel
+            function showStatus(state) {
+                statusContainer.classList.add('active');
+                statusWaiting.classList.remove('active');
+                statusSuccess.classList.remove('active');
+                statusError.classList.remove('active');
 
-        // Poll for status
-        function pollStatus(requestId) {
-            return fetch(`/api/auth/status/${requestId}`)
-                .then(r => r.json());
-        }
+                if (state === 'waiting') {
+                    statusWaiting.classList.add('active');
+                } else if (state === 'success') {
+                    statusSuccess.classList.add('active');
+                } else if (state === 'error') {
+                    statusError.classList.add('active');
+                }
+            }
 
-        // Login button click
-        loginBtn.addEventListener('click', async () => {
-            loginBtn.disabled = true;
-            loginBtn.textContent = 'Отправка запроса...';
+            // Hide all statuses
+            function hideStatus() {
+                statusContainer.classList.remove('active');
+                statusWaiting.classList.remove('active');
+                statusSuccess.classList.remove('active');
+                statusError.classList.remove('active');
+            }
 
-            try {
-                const response = await fetch('/api/auth/request', {
+            // Show error with message
+            function showError(message) {
+                errorText.textContent = message;
+                showStatus('error');
+            }
+
+            // Stop polling
+            function stopPolling() {
+                if (pollInterval) {
+                    clearInterval(pollInterval);
+                    pollInterval = null;
+                }
+                if (pollTimeout) {
+                    clearTimeout(pollTimeout);
+                    pollTimeout = null;
+                }
+            }
+
+            // Reset to initial state
+            function resetState() {
+                stopPolling();
+                hideStatus();
+                loginBtn.disabled = false;
+                nicknameInput.disabled = false;
+                nicknameInput.value = '';
+                nicknameInput.classList.remove('input-error');
+                validationMessage.classList.remove('visible');
+            }
+
+            // Set cookie
+            function setCookie(name, value, days) {
+                var expires = '';
+                if (days) {
+                    var date = new Date();
+                    date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
+                    expires = '; expires=' + date.toUTCString();
+                }
+                document.cookie = name + '=' + encodeURIComponent(value) + expires + '; path=/';
+            }
+
+            // Poll auth status
+            function pollAuthStatus(requestId) {
+                showStatus('waiting');
+
+                // 10 minute timeout
+                pollTimeout = setTimeout(function () {
+                    stopPolling();
+                    loginBtn.disabled = false;
+                    nicknameInput.disabled = false;
+                    showError('Время ожидания истекло');
+                }, 10 * 60 * 1000);
+
+                pollInterval = setInterval(function () {
+                    fetch('/api/auth/status/' + requestId)
+                        .then(function (res) { return res.json(); })
+                        .then(function (data) {
+                            // status 1 = approved
+                            if (data.status === 1) {
+                                stopPolling();
+                                showStatus('success');
+                                setCookie('auth_token', data.token, 7);
+                                setTimeout(function () {
+                                    window.location.href = '/';
+                                }, 1000);
+                            }
+                            // status 2 = rejected
+                            else if (data.status === 2) {
+                                stopPolling();
+                                loginBtn.disabled = false;
+                                nicknameInput.disabled = false;
+                                showError('Запрос отклонен администратором');
+                            }
+                            // status 3 = expired
+                            else if (data.status === 3) {
+                                stopPolling();
+                                loginBtn.disabled = false;
+                                nicknameInput.disabled = false;
+                                showError('Время ожидания истекло');
+                            }
+                        })
+                        .catch(function () {
+                            stopPolling();
+                            loginBtn.disabled = false;
+                            nicknameInput.disabled = false;
+                            showError('Ошибка соединения с сервером');
+                        });
+                }, 2000);
+            }
+
+            // Login button click
+            loginBtn.addEventListener('click', function () {
+                var nickname = nicknameInput.value.trim();
+
+                // Validate nickname
+                if (!nickname) {
+                    nicknameInput.classList.add('input-error');
+                    validationMessage.classList.add('visible');
+                    nicknameInput.focus();
+                    return;
+                }
+
+                loginBtn.disabled = true;
+                nicknameInput.disabled = true;
+
+                fetch('/api/auth/request', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         userAgent: navigator.userAgent,
-                        tokenName: detectDevice()
+                        tokenName: detectDevice(),
+                        nickname: nickname
                     })
+                })
+                .then(function (res) {
+                    if (!res.ok) throw new Error('Request failed');
+                    return res.json();
+                })
+                .then(function (data) {
+                    if (data.requestId) {
+                        pollAuthStatus(data.requestId);
+                    } else {
+                        loginBtn.disabled = false;
+                        nicknameInput.disabled = false;
+                        showError('Не удалось создать запрос авторизации');
+                    }
+                })
+                .catch(function () {
+                    loginBtn.disabled = false;
+                    nicknameInput.disabled = false;
+                    showError('Ошибка соединения с сервером');
                 });
+            });
 
-                if (!response.ok) {
-                    throw new Error('Failed to create auth request');
+            // Enter key on nickname input
+            nicknameInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    loginBtn.click();
                 }
+            });
 
-                const data = await response.json();
-                currentRequestId = data.requestId;
-
-                // Switch to status view
-                loginForm.style.display = 'none';
-                statusContainer.classList.add('active');
-                showState('waiting');
-
-                // Start polling
-                pollInterval = setInterval(async () => {
-                    try {
-                        const status = await pollStatus(currentRequestId);
-
-                        if (status.status === 0) { // Pending
-                            // Continue polling
-                        } else if (status.status === 1) { // Approved
-                            clearInterval(pollInterval);
-                            showState('success');
-                            document.querySelector('.status-icon.success').textContent = '';
-
-                            // Set cookie and redirect
-                            document.cookie = `auth_token=${status.token}; path=/; max-age=31536000; SameSite=Lax`;
-                            setTimeout(() => {
-                                window.location.href = '/';
-                            }, 1000);
-                        } else if (status.status === 2) { // Rejected
-                            clearInterval(pollInterval);
-                            showState('error');
-                            errorText.textContent = 'Запрос отклонен администратором';
-                        } else if (status.status === 3) { // Expired
-                            clearInterval(pollInterval);
-                            showState('error');
-                            errorText.textContent = 'Время ожидания истекло';
-                        }
-                    } catch (e) {
-                        console.error('Polling error:', e);
-                    }
-                }, 2000);
-
-                // Timeout after 10 minutes
-                setTimeout(() => {
-                    if (pollInterval) {
-                        clearInterval(pollInterval);
-                        pollInterval = null;
-                        if (document.querySelector('.status-icon.success').textContent === '') {
-                            return; // Already succeeded
-                        }
-                        showState('error');
-                        errorText.textContent = 'Время ожидания истекло';
-                    }
-                }, 10 * 60 * 1000);
-
-            } catch (error) {
-                console.error('Auth request error:', error);
-                loginBtn.disabled = false;
-                loginBtn.innerHTML = `
-                    <svg class="telegram-icon" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
-                    </svg>
-                    Войти через Telegram
-                `;
-                alert('Не удалось отправить запрос. Проверьте подключение к интернету.');
-            }
-        });
-
-        // Retry button
-        retryBtn.addEventListener('click', () => {
-            loginForm.style.display = 'block';
-            statusContainer.classList.remove('active');
-            loginBtn.disabled = false;
-            loginBtn.innerHTML = `
-                <svg class="telegram-icon" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
-                </svg>
-                Войти через Telegram
-            `;
-        });
+            // Retry button
+            retryBtn.addEventListener('click', function () {
+                resetState();
+            });
+        })();
     </script>
 </body>
 </html>

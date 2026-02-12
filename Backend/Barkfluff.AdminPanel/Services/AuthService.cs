@@ -1,7 +1,7 @@
-using Barkfluff.Docker.Control.Models;
-using Barkfluff.Docker.Control.Models.Dtos;
+using Barkfluff.AdminPanel.Models;
+using Barkfluff.AdminPanel.Models.Dtos;
 
-namespace Barkfluff.Docker.Control.Services;
+namespace Barkfluff.AdminPanel.Services;
 
 public class AuthService
 {
@@ -21,7 +21,6 @@ public class AuthService
 
     public async Task<string> CreateAuthRequestAsync(AuthRequestDto dto)
     {
-        // Detect browser and OS from user agent
         var (browser, os) = ParseUserAgent(dto.UserAgent);
 
         var request = _pendingAuthService.CreateRequest(
@@ -29,9 +28,9 @@ public class AuthService
             browser,
             os,
             dto.UserAgent,
-            dto.TokenName ?? "Web Session");
+            dto.TokenName ?? "Web Session",
+            dto.Nickname);
 
-        // Send notification to Telegram
         await _telegramBotService.SendAuthRequestAsync(request);
 
         return request.RequestId;
@@ -79,7 +78,6 @@ public class AuthService
         string browser = null;
         string os = null;
 
-        // Simple browser detection
         if (userAgent.Contains("Edg/")) browser = "Edge";
         else if (userAgent.Contains("Chrome") && !userAgent.Contains("Edg/")) browser = "Chrome";
         else if (userAgent.Contains("Firefox")) browser = "Firefox";
@@ -87,7 +85,6 @@ public class AuthService
         else if (userAgent.Contains("Opera") || userAgent.Contains("OPR/")) browser = "Opera";
         else browser = "Unknown";
 
-        // Simple OS detection
         if (userAgent.Contains("Windows NT 10.0")) os = "Windows 10/11";
         else if (userAgent.Contains("Windows NT 6.3")) os = "Windows 8.1";
         else if (userAgent.Contains("Windows NT 6.1")) os = "Windows 7";
