@@ -3,350 +3,212 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Messenger Admin Panel | Docker Dashboard</title>
-    <!-- Подключаем Tailwind CSS -->
+    <title>BarkFluff Admin - Дашборд</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Подключаем иконки (Heroicons) -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Подключаем Chart.js для графиков -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* Кастомный скроллбар */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
         /* Loading overlay */
-        #loadingOverlay {
+        #loading-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(255, 255, 255, 0.9);
+            inset: 0;
+            background: rgba(255, 255, 255, 0.85);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 9999;
+            transition: opacity 0.3s ease;
+        }
+
+        #loading-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
         }
 
         .spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid #dfe6e9;
-            border-top-color: #6c5ce7;
+            width: 48px;
+            height: 48px;
+            border: 4px solid #e2e8f0;
+            border-top-color: #3b82f6;
             border-radius: 50%;
-            animation: spin 1s linear infinite;
+            animation: spin 0.8s linear infinite;
         }
 
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-    </style>
-</head>
-<body class="bg-gray-50 text-slate-800 font-sans antialiased">
 
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay">
-        <div class="spinner"></div>
-    </div>
-
-    <div class="flex h-screen overflow-hidden">
-
-        <!-- SIDEBAR -->
-        <aside class="w-64 bg-slate-900 text-white flex flex-col shadow-xl">
-            <div class="h-16 flex items-center justify-center border-b border-slate-700">
-                <h1 class="text-xl font-bold tracking-wider flex items-center gap-2">
-                    <i data-lucide="message-circle" class="text-blue-400"></i>
-                    MSG::ADMIN
-                </h1>
-            </div>
-
-            <nav class="flex-1 px-3 py-6 space-y-2 overflow-y-auto">
-                <a href="javascript:void(0)" class="flex items-center gap-3 px-4 py-3 bg-blue-600 rounded-lg text-white transition-colors">
-                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
-                    Дашборд
-                </a>
-                <a href="/docker" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
-                    <i data-lucide="container" class="w-5 h-5"></i>
-                    Контейнеры
-                </a>
-                <a href="/users" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
-                    <i data-lucide="users" class="w-5 h-5"></i>
-                    Пользователи
-                </a>
-                <a href="/db" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
-                    <i data-lucide="database" class="w-5 h-5"></i>
-                    База данных
-                </a>
-                <a href="/logs" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
-                    <i data-lucide="terminal-square" class="w-5 h-5"></i>
-                    Логи системы
-                </a>
-                <a href="/statistic" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
-                    <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
-                    Статистика
-                </a>
-            </nav>
-
-            <div class="p-4 border-t border-slate-700">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center font-bold">A</div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium truncate" id="tokenName">Loading...</p>
-                        <p class="text-xs text-slate-400" id="tokenInfo">...</p>
-                    </div>
-                </div>
-            </div>
-        </aside>
-
-        <!-- MAIN CONTENT -->
-        <main class="flex-1 flex flex-col overflow-hidden">
-
-            <!-- HEADER -->
-            <header class="h-16 bg-white shadow-sm flex items-center justify-between px-8 z-10">
-                <h2 class="text-xl font-semibold text-slate-700">Обзор системы</h2>
-                <div class="flex items-center gap-4">
-                    <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium flex items-center gap-1">
-                        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                        System Stable
-                    </span>
-                    <button class="p-2 text-slate-400 hover:text-slate-600">
-                        <i data-lucide="bell" class="w-5 h-5"></i>
-                    </button>
-                    <button id="logoutBtn" class="p-2 text-slate-400 hover:text-red-500" title="Выйти">
-                        <i data-lucide="log-out" class="w-5 h-5"></i>
-                    </button>
-                </div>
-            </header>
-
-            <!-- SCROLLABLE CONTENT -->
-            <div class="flex-1 overflow-y-auto p-8">
-
-                <!-- KPI CARDS -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <!-- Card 1 -->
-                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="text-xs font-semibold text-slate-400 uppercase">Онлайн (WebSocket)</p>
-                                <h3 class="text-3xl font-bold text-slate-800 mt-2">12,405</h3>
-                                <p class="text-sm text-green-500 mt-1 flex items-center gap-1">
-                                    <i data-lucide="trending-up" class="w-3 h-3"></i> +5.2%
-                                </p>
-                            </div>
-                            <div class="p-2 bg-blue-50 text-blue-600 rounded-lg">
-                                <i data-lucide="zap" class="w-6 h-6"></i>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Card 2 -->
-                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="text-xs font-semibold text-slate-400 uppercase">Сообщений / сек</p>
-                                <h3 class="text-3xl font-bold text-slate-800 mt-2">840</h3>
-                                <p class="text-sm text-slate-500 mt-1">Пик: 1,200 RPS</p>
-                            </div>
-                            <div class="p-2 bg-purple-50 text-purple-600 rounded-lg">
-                                <i data-lucide="activity" class="w-6 h-6"></i>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Card 3 -->
-                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="text-xs font-semibold text-slate-400 uppercase">Очередь (RabbitMQ)</p>
-                                <h3 class="text-3xl font-bold text-slate-800 mt-2">24</h3>
-                                <p class="text-sm text-green-500 mt-1">Норма (< 100)</p>
-                            </div>
-                            <div class="p-2 bg-orange-50 text-orange-600 rounded-lg">
-                                <i data-lucide="layers" class="w-6 h-6"></i>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Card 4 -->
-                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="text-xs font-semibold text-slate-400 uppercase">Хранилище Медиа</p>
-                                <h3 class="text-3xl font-bold text-slate-800 mt-2">84%</h3>
-                                <p class="text-sm text-red-500 mt-1">Внимание: мало места</p>
-                            </div>
-                            <div class="p-2 bg-red-50 text-red-600 rounded-lg">
-                                <i data-lucide="hard-drive" class="w-6 h-6"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- DOCKER STATUS & CHARTS GRID -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-                    <!-- DOCKER CONTAINERS TABLE (Takes 2 columns) -->
-                    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-100 p-6">
-                        <div class="flex items-center justify-between mb-6">
-                            <h3 class="font-bold text-lg text-slate-700">Состояние Docker Контейнеров</h3>
-                            <button class="text-sm text-blue-600 hover:underline">Обновить статусы</button>
-                        </div>
-
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse">
-                                <thead>
-                                    <tr class="text-xs text-slate-400 border-b border-slate-100">
-                                        <th class="py-3 font-semibold uppercase">Container Name</th>
-                                        <th class="py-3 font-semibold uppercase">Image</th>
-                                        <th class="py-3 font-semibold uppercase">Status</th>
-                                        <th class="py-3 font-semibold uppercase">CPU / MEM</th>
-                                        <th class="py-3 font-semibold uppercase text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="text-sm">
-                                    <!-- Container Row -->
-                                    <tr class="border-b border-slate-50 hover:bg-slate-50 transition">
-                                        <td class="py-4 font-medium text-slate-700 flex items-center gap-2">
-                                            <i data-lucide="box" class="w-4 h-4 text-blue-400"></i>
-                                            messenger-api-v1
-                                        </td>
-                                        <td class="py-4 text-slate-500">node:18-alpine</td>
-                                        <td class="py-4">
-                                            <span class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-md font-medium">Running (4d)</span>
-                                        </td>
-                                        <td class="py-4 text-slate-600 font-mono text-xs">12% / 240MB</td>
-                                        <td class="py-4 text-right">
-                                            <button class="p-1 text-slate-400 hover:text-blue-600" title="Restart"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
-                                            <button class="p-1 text-slate-400 hover:text-red-600" title="Stop"><i data-lucide="square" class="w-4 h-4"></i></button>
-                                        </td>
-                                    </tr>
-                                    <!-- Container Row -->
-                                    <tr class="border-b border-slate-50 hover:bg-slate-50 transition">
-                                        <td class="py-4 font-medium text-slate-700 flex items-center gap-2">
-                                            <i data-lucide="box" class="w-4 h-4 text-blue-400"></i>
-                                            socket-server
-                                        </td>
-                                        <td class="py-4 text-slate-500">go-ws:latest</td>
-                                        <td class="py-4">
-                                            <span class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-md font-medium">Running (2h)</span>
-                                        </td>
-                                        <td class="py-4 text-slate-600 font-mono text-xs">45% / 1.2GB</td>
-                                        <td class="py-4 text-right">
-                                            <button class="p-1 text-slate-400 hover:text-blue-600" title="Restart"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
-                                            <button class="p-1 text-slate-400 hover:text-red-600" title="Stop"><i data-lucide="square" class="w-4 h-4"></i></button>
-                                        </td>
-                                    </tr>
-                                    <!-- Container Row -->
-                                    <tr class="border-b border-slate-50 hover:bg-slate-50 transition">
-                                        <td class="py-4 font-medium text-slate-700 flex items-center gap-2">
-                                            <i data-lucide="database" class="w-4 h-4 text-orange-400"></i>
-                                            postgres-main
-                                        </td>
-                                        <td class="py-4 text-slate-500">postgres:15</td>
-                                        <td class="py-4">
-                                            <span class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-md font-medium">Running (30d)</span>
-                                        </td>
-                                        <td class="py-4 text-slate-600 font-mono text-xs">8% / 4.1GB</td>
-                                        <td class="py-4 text-right">
-                                            <button class="p-1 text-slate-400 hover:text-blue-600"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
-                                        </td>
-                                    </tr>
-                                    <!-- Container Row (Problematic) -->
-                                    <tr class="border-b border-slate-50 hover:bg-slate-50 transition">
-                                        <td class="py-4 font-medium text-slate-700 flex items-center gap-2">
-                                            <i data-lucide="server-off" class="w-4 h-4 text-red-400"></i>
-                                            push-worker
-                                        </td>
-                                        <td class="py-4 text-slate-500">python:3.9</td>
-                                        <td class="py-4">
-                                            <span class="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-md font-medium">Exited (1)</span>
-                                        </td>
-                                        <td class="py-4 text-slate-600 font-mono text-xs">-- / --</td>
-                                        <td class="py-4 text-right">
-                                            <button class="p-1 text-slate-400 hover:text-blue-600" title="Restart"><i data-lucide="play" class="w-4 h-4"></i></button>
-                                            <button class="p-1 text-slate-400 hover:text-blue-600" title="Logs"><i data-lucide="file-text" class="w-4 h-4"></i></button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- TRAFFIC CHART (Takes 1 column) -->
-                    <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 flex flex-col">
-                        <h3 class="font-bold text-lg text-slate-700 mb-4">Трафик сообщений</h3>
-                        <div class="flex-1 min-h-[200px]">
-                            <canvas id="trafficChart"></canvas>
-                        </div>
-                        <div class="mt-4 space-y-3">
-                            <div class="flex items-center justify-between text-sm">
-                                <span class="text-slate-500">Текстовые</span>
-                                <span class="font-medium">78%</span>
-                            </div>
-                            <div class="w-full bg-slate-100 rounded-full h-2">
-                                <div class="bg-blue-500 h-2 rounded-full" style="width: 78%"></div>
-                            </div>
-
-                            <div class="flex items-center justify-between text-sm">
-                                <span class="text-slate-500">Медиа (Фото/Видео)</span>
-                                <span class="font-medium">15%</span>
-                            </div>
-                            <div class="w-full bg-slate-100 rounded-full h-2">
-                                <div class="bg-purple-500 h-2 rounded-full" style="width: 15%"></div>
-                            </div>
-
-                            <div class="flex items-center justify-between text-sm">
-                                <span class="text-slate-500">Голосовые</span>
-                                <span class="font-medium">7%</span>
-                            </div>
-                            <div class="w-full bg-slate-100 rounded-full h-2">
-                                <div class="bg-orange-500 h-2 rounded-full" style="width: 7%"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <!-- Initialization Scripts -->
-    <script>
-        // Инициализация иконок
-        lucide.createIcons();
-
-        // Проверка токена при загрузке
-        async function checkAuth() {
-            try {
-                const response = await fetch('/api/auth/me');
-                if (!response.ok) {
-                    // Не авторизован - редирект на Login
-                    window.location.href = '/';
-                    return;
-                }
-
-                const data = await response.json();
-
-                // Обновить UI с информацией о токене
-                document.getElementById('tokenName').textContent = data.name || 'Unknown Session';
-                document.getElementById('tokenInfo').textContent = `Создан: ${formatDate(data.createdAt)}`;
-
-                // Скрыть загрузочный экран
-                document.getElementById('loadingOverlay').style.display = 'none';
-
-            } catch (error) {
-                console.error('Auth check failed:', error);
-                window.location.href = '/';
-            }
+        /* Scrollbar customization */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
         }
 
-        // Форматирование даты
-        function formatDate(isoDate) {
-            const date = new Date(isoDate);
-            return date.toLocaleDateString('ru-RU', {
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: #94a3b8 transparent;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex">
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay">
+        <div class="flex flex-col items-center gap-4">
+            <div class="spinner"></div>
+            <span class="text-slate-500 text-sm font-medium">Загрузка...</span>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-slate-900 text-white flex flex-col min-h-screen fixed inset-y-0 left-0 z-50">
+        <!-- Sidebar Header -->
+        <div class="px-6 py-5 border-b border-slate-700">
+            <div class="flex items-center gap-3">
+                <i data-lucide="message-circle" class="w-7 h-7 text-blue-400"></i>
+                <span class="text-xl font-bold tracking-wide">BF::ADMIN</span>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="flex-1 px-3 py-4 space-y-1">
+            <a href="/"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-blue-600 text-white font-medium transition-colors">
+                <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                <span>Дашборд</span>
+            </a>
+            <a href="/services"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
+                <i data-lucide="server" class="w-5 h-5"></i>
+                <span>Сервисы</span>
+            </a>
+            <a href="/logs"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
+                <i data-lucide="terminal-square" class="w-5 h-5"></i>
+                <span>Логи</span>
+            </a>
+        </nav>
+
+        <!-- Sidebar Footer -->
+        <div class="px-4 py-4 border-t border-slate-700">
+            <div class="text-xs text-slate-400 space-y-1">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="key-round" class="w-3.5 h-3.5"></i>
+                    <span id="token-name" class="truncate">-</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
+                    <span id="token-created">-</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 ml-64">
+        <!-- Header -->
+        <header class="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between sticky top-0 z-40">
+            <div class="flex items-center gap-4">
+                <h1 class="text-2xl font-bold text-gray-900">Обзор системы</h1>
+                <span id="system-status-badge"
+                      class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                    Система активна
+                </span>
+            </div>
+            <button id="logout-btn"
+                    class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-red-600 hover:border-red-300 transition-colors">
+                <i data-lucide="log-out" class="w-4 h-4"></i>
+                Выйти
+            </button>
+        </header>
+
+        <!-- Content -->
+        <div class="p-8 space-y-8">
+            <!-- KPI Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                <!-- gRPC Requests -->
+                <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-sm font-medium text-gray-500">gRPC запросов</span>
+                        <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                            <i data-lucide="zap" class="w-5 h-5 text-blue-500"></i>
+                        </div>
+                    </div>
+                    <div class="text-3xl font-bold text-gray-900" id="kpi-grpc">Загрузка...</div>
+                    <div class="mt-2 text-xs text-gray-400">За последний период</div>
+                </div>
+
+                <!-- Messages Sent -->
+                <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-sm font-medium text-gray-500">Отправлено сообщений</span>
+                        <div class="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
+                            <i data-lucide="activity" class="w-5 h-5 text-purple-500"></i>
+                        </div>
+                    </div>
+                    <div class="text-3xl font-bold text-gray-900" id="kpi-messages">Загрузка...</div>
+                    <div class="mt-2 text-xs text-gray-400">За последний период</div>
+                </div>
+
+                <!-- Files Uploaded -->
+                <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-sm font-medium text-gray-500">Загружено файлов</span>
+                        <div class="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center">
+                            <i data-lucide="upload" class="w-5 h-5 text-orange-500"></i>
+                        </div>
+                    </div>
+                    <div class="text-3xl font-bold text-gray-900" id="kpi-files">Загрузка...</div>
+                    <div class="mt-2 text-xs text-gray-400">За последний период</div>
+                </div>
+
+                <!-- Active Subscriptions -->
+                <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-sm font-medium text-gray-500">Активных подписок</span>
+                        <div class="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
+                            <i data-lucide="radio" class="w-5 h-5 text-green-500"></i>
+                        </div>
+                    </div>
+                    <div class="text-3xl font-bold text-gray-900" id="kpi-subscriptions">Загрузка...</div>
+                    <div class="mt-2 text-xs text-gray-400">За последний период</div>
+                </div>
+            </div>
+
+            <!-- Traffic Chart -->
+            <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-lg font-semibold text-gray-900">Трафик запросов</h2>
+                    <span class="text-xs text-gray-400">Обновляется каждые 30 секунд</span>
+                </div>
+                <div class="relative" style="height: 320px;">
+                    <canvas id="traffic-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // ---- Helpers ----
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return '-';
+            return d.toLocaleDateString('ru-RU', {
                 day: '2-digit',
                 month: '2-digit',
                 year: 'numeric',
@@ -355,54 +217,210 @@
             });
         }
 
-        // Выход из системы
-        document.getElementById('logoutBtn').addEventListener('click', async () => {
-            if (!confirm('Вы уверены, что хотите выйти?')) return;
+        // ---- Auth ----
+        async function checkAuth() {
+            try {
+                const res = await fetch('/api/auth/me');
+                if (!res.ok) {
+                    window.location.href = '/';
+                    return null;
+                }
+                const data = await res.json();
+                return data;
+            } catch {
+                window.location.href = '/';
+                return null;
+            }
+        }
 
+        // ---- Dashboard Data ----
+        let trafficChart = null;
+
+        async function loadDashboardData() {
+            try {
+                const res = await fetch('/api/seq/events?count=100');
+                if (!res.ok) throw new Error('Failed to fetch Seq events');
+                const data = await res.json();
+
+                const events = Array.isArray(data) ? data : (data.events || data.Events || []);
+
+                let grpcCount = 0;
+                let messageCount = 0;
+                let fileCount = 0;
+                let subscriptionCount = 0;
+                const trafficBuckets = {};
+
+                for (const event of events) {
+                    const msg = event.RenderedMessage || event.renderedMessage || event.MessageTemplate || event.messageTemplate || '';
+                    const ts = event.Timestamp || event.timestamp || '';
+
+                    // Count gRPC requests
+                    if (msg.toLowerCase().includes('grpc') || msg.toLowerCase().includes('request')) {
+                        grpcCount++;
+                    }
+
+                    // Count messages sent
+                    if (msg.toLowerCase().includes('message') || msg.toLowerCase().includes('send') || msg.toLowerCase().includes('сообщен')) {
+                        messageCount++;
+                    }
+
+                    // Count file uploads
+                    if (msg.toLowerCase().includes('file') || msg.toLowerCase().includes('upload') || msg.toLowerCase().includes('файл')) {
+                        fileCount++;
+                    }
+
+                    // Count active subscriptions
+                    if (msg.toLowerCase().includes('subscri') || msg.toLowerCase().includes('подписк') || msg.toLowerCase().includes('stream')) {
+                        subscriptionCount++;
+                    }
+
+                    // Build traffic timeline buckets
+                    if (ts) {
+                        const d = new Date(ts);
+                        const key = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+                        trafficBuckets[key] = (trafficBuckets[key] || 0) + 1;
+                    }
+                }
+
+                // Update KPI cards
+                document.getElementById('kpi-grpc').textContent = grpcCount.toLocaleString('ru-RU');
+                document.getElementById('kpi-messages').textContent = messageCount.toLocaleString('ru-RU');
+                document.getElementById('kpi-files').textContent = fileCount.toLocaleString('ru-RU');
+                document.getElementById('kpi-subscriptions').textContent = subscriptionCount.toLocaleString('ru-RU');
+
+                // Update chart
+                const sortedLabels = Object.keys(trafficBuckets).sort();
+                const chartData = sortedLabels.map(k => trafficBuckets[k]);
+
+                if (trafficChart) {
+                    trafficChart.data.labels = sortedLabels;
+                    trafficChart.data.datasets[0].data = chartData;
+                    trafficChart.update();
+                } else {
+                    initChart(sortedLabels, chartData);
+                }
+
+            } catch (err) {
+                console.error('Ошибка загрузки данных дашборда:', err);
+                document.getElementById('kpi-grpc').textContent = '\u2014';
+                document.getElementById('kpi-messages').textContent = '\u2014';
+                document.getElementById('kpi-files').textContent = '\u2014';
+                document.getElementById('kpi-subscriptions').textContent = '\u2014';
+            }
+        }
+
+        function initChart(labels, data) {
+            const ctx = document.getElementById('traffic-chart').getContext('2d');
+            trafficChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Запросы',
+                        data: data,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#3b82f6',
+                        pointHoverRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: '#1e293b',
+                            titleFont: { size: 12 },
+                            bodyFont: { size: 12 },
+                            padding: 10,
+                            cornerRadius: 8,
+                            displayColors: false,
+                            callbacks: {
+                                label: function(ctx) {
+                                    return ctx.parsed.y + ' запросов';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#94a3b8',
+                                font: { size: 11 }
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(148, 163, 184, 0.1)'
+                            },
+                            ticks: {
+                                color: '#94a3b8',
+                                font: { size: 11 },
+                                precision: 0
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    }
+                }
+            });
+        }
+
+        // ---- Logout ----
+        document.getElementById('logout-btn').addEventListener('click', async () => {
             try {
                 await fetch('/api/auth/logout', { method: 'POST' });
-            } catch (error) {
-                console.error('Logout error:', error);
+            } catch {
+                // Ignore errors on logout
             }
-
-            // Удаляем куку и редиректим
-            document.cookie = 'auth_token=; path=/; max-age=0';
             window.location.href = '/';
         });
 
-        // Проверяем авторизацию при загрузке
-        checkAuth();
+        // ---- Init ----
+        (async function init() {
+            const authData = await checkAuth();
+            if (!authData) return;
 
-        // Инициализация графика (после успешной авторизации)
-        const ctx = document.getElementById('trafficChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: ['10:00', '10:05', '10:10', '10:15', '10:20', '10:25'],
-                datasets: [{
-                    label: 'Requests',
-                    data: [650, 780, 750, 840, 1100, 950],
-                    borderColor: '#3b82f6',
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    tension: 0.4,
-                    fill: true,
-                    pointRadius: 0
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
-                },
-                scales: {
-                    x: { display: false },
-                    y: {
-                        display: true,
-                        grid: { display: false }
-                    }
-                }
+            // Populate token info in sidebar
+            if (authData.name || authData.Name) {
+                document.getElementById('token-name').textContent = authData.name || authData.Name;
             }
+            if (authData.createdAt || authData.CreatedAt || authData.created_at) {
+                const created = authData.createdAt || authData.CreatedAt || authData.created_at;
+                document.getElementById('token-created').textContent = formatDate(created);
+            }
+
+            // Load dashboard data
+            await loadDashboardData();
+
+            // Hide loading overlay
+            const overlay = document.getElementById('loading-overlay');
+            overlay.classList.add('hidden');
+            setTimeout(() => overlay.remove(), 300);
+
+            // Initialize Lucide icons
+            lucide.createIcons();
+
+            // Auto-refresh every 30 seconds
+            setInterval(loadDashboardData, 30000);
+        })();
+
+        // Initialize Lucide icons on DOM ready
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
         });
     </script>
 </body>

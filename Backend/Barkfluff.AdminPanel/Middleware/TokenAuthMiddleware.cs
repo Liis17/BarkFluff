@@ -1,6 +1,6 @@
-using Barkfluff.Docker.Control.Services;
+using Barkfluff.AdminPanel.Services;
 
-namespace Barkfluff.Docker.Control.Middleware;
+namespace Barkfluff.AdminPanel.Middleware;
 
 public class TokenAuthMiddleware
 {
@@ -21,13 +21,6 @@ public class TokenAuthMiddleware
     public async Task InvokeAsync(HttpContext context)
     {
         var path = context.Request.Path.Value ?? string.Empty;
-
-        // Skip OTLP endpoints (/v1/*)
-        if (path.StartsWith("/v1/", StringComparison.OrdinalIgnoreCase))
-        {
-            await _next(context);
-            return;
-        }
 
         // API endpoints
         if (path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase))
@@ -59,7 +52,6 @@ public class TokenAuthMiddleware
         }
 
         // HTML pages routing - validate token and store in context
-        // Actual file serving is handled by PageRoutingMiddleware
         var pageToken = ValidateToken(context);
         if (pageToken == null)
         {
@@ -79,7 +71,7 @@ public class TokenAuthMiddleware
         await _next(context);
     }
 
-    private Barkfluff.Docker.Control.Models.AuthToken? ValidateToken(HttpContext context)
+    private Barkfluff.AdminPanel.Models.AuthToken? ValidateToken(HttpContext context)
     {
         if (!context.Request.Cookies.TryGetValue("auth_token", out var tokenValue) ||
             !Guid.TryParse(tokenValue, out var tokenId))

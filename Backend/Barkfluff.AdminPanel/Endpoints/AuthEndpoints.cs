@@ -1,10 +1,10 @@
-using Barkfluff.Docker.Control.Models;
-using Barkfluff.Docker.Control.Models.Dtos;
-using Barkfluff.Docker.Control.Services;
+using Barkfluff.AdminPanel.Models;
+using Barkfluff.AdminPanel.Models.Dtos;
+using Barkfluff.AdminPanel.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http.HttpResults;
 
-namespace Barkfluff.Docker.Control.Endpoints;
+namespace Barkfluff.AdminPanel.Endpoints;
 
 public static class AuthEndpoints
 {
@@ -14,7 +14,6 @@ public static class AuthEndpoints
             .WithName("Auth")
             .WithTags("Auth");
 
-        // POST /api/auth/request - Create new auth request
         group.MapPost("/request", async (
             [FromBody] AuthRequestDto dto,
             HttpContext context,
@@ -23,7 +22,6 @@ public static class AuthEndpoints
         {
             try
             {
-                // Get IP address
                 dto.IpAddress = GetIpAddress(context);
 
                 var requestId = await authService.CreateAuthRequestAsync(dto);
@@ -40,7 +38,6 @@ public static class AuthEndpoints
         .WithName("CreateAuthRequest")
         .WithOpenApi();
 
-        // GET /api/auth/status/{requestId} - Check auth request status
         group.MapGet("/status/{requestId}", (string requestId, AuthService authService) =>
         {
             var status = authService.GetStatus(requestId);
@@ -49,7 +46,6 @@ public static class AuthEndpoints
         .WithName("GetAuthStatus")
         .WithOpenApi();
 
-        // GET /api/auth/me - Get current token info (protected)
         group.MapGet("/me", (HttpContext context) =>
         {
             if (context.Items["AuthToken"] is not AuthToken token)
@@ -68,16 +64,14 @@ public static class AuthEndpoints
         .WithName("GetCurrentToken")
         .WithOpenApi();
 
-        // POST /api/auth/logout - Logout (clears cookie)
         group.MapPost("/logout", (HttpContext context) =>
         {
             context.Response.Cookies.Delete("auth_token");
             return Results.Ok(new { message = "Logged out successfully" });
         })
         .WithName("Logout")
-            .WithOpenApi();
+        .WithOpenApi();
 
-        // GET /api/auth/tokens - List all tokens (protected, admin only)
         group.MapGet("/tokens", (TokenService tokenService, HttpContext context) =>
         {
             if (context.Items["AuthToken"] is not AuthToken token)
@@ -99,7 +93,6 @@ public static class AuthEndpoints
         .WithName("ListTokens")
         .WithOpenApi();
 
-        // POST /api/auth/tokens/{id}/rename - Rename token (protected, admin only)
         group.MapPost("/tokens/{id:guid}/rename", async (
             Guid id,
             [FromBody] RenameRequestDto dto,
@@ -127,7 +120,6 @@ public static class AuthEndpoints
         .WithName("RenameToken")
         .WithOpenApi();
 
-        // DELETE /api/auth/tokens/{id} - Delete token (protected, admin only)
         group.MapDelete("/tokens/{id:guid}", async (
             Guid id,
             TokenService tokenService,
@@ -135,7 +127,6 @@ public static class AuthEndpoints
         {
             if (context.Items["AuthToken"] is AuthToken currentToken)
             {
-                // Prevent deleting your own token through this endpoint
                 if (id == currentToken.Id)
                 {
                     return Results.BadRequest(new { error = "Cannot delete your own token through this endpoint. Use logout instead." });
@@ -160,7 +151,6 @@ public static class AuthEndpoints
 
     private static string? GetIpAddress(HttpContext context)
     {
-        // Check for forwarded headers (proxy, load balancer)
         if (context.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
         {
             return forwardedFor.FirstOrDefault()?.Split(',').FirstOrDefault()?.Trim();
