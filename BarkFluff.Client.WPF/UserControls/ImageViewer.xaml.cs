@@ -3,11 +3,8 @@ using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
 using Microsoft.Win32;
 
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -370,18 +367,21 @@ namespace BarkFluff.Client.WPF.UserControls
 
             try
             {
-                var bitmapImage = new BitmapImage();
-                bitmapImage.BeginInit();
-                // Использовать RelativeOrAbsolute для поддержки pack:// URI
-                bitmapImage.UriSource = new Uri(path, UriKind.RelativeOrAbsolute);
-                bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
-                // НЕ устанавливать DecodePixelWidth - показываем полное разрешение!
-                bitmapImage.EndInit();
+                var decoder = new PngBitmapDecoder(
+                    new Uri(path, UriKind.RelativeOrAbsolute),
+                    BitmapCreateOptions.IgnoreColorProfile,
+                    BitmapCacheOption.OnLoad);
 
-                if (bitmapImage.CanFreeze)
-                    bitmapImage.Freeze();
+                var frame = decoder.Frames[0];
 
-                MainImage.Source = bitmapImage;
+                var converted = new FormatConvertedBitmap();
+                converted.BeginInit();
+                converted.Source = frame;
+                converted.DestinationFormat = PixelFormats.Bgra32;
+                converted.EndInit();
+                converted.Freeze();
+
+                MainImage.Source = converted;
             }
             catch (Exception ex)
             {

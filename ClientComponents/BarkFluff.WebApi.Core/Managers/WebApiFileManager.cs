@@ -151,7 +151,7 @@ namespace BarkFluff.WebApi.Core.Managers
 
                     streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
 
-                    var sanitizedFileName = Path.GetFileName(filePath);
+                    var sanitizedFileName = Path.GetFileName(fileToUpload);
                     sanitizedFileName = System.Text.RegularExpressions.Regex.Replace(sanitizedFileName, @"[^\w\.-]", "_");
                     System.Diagnostics.Debug.WriteLine($"WebApi: Original filename: {Path.GetFileName(filePath)}, Sanitized: {sanitizedFileName}");
 
