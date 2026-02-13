@@ -184,8 +184,10 @@
         let allLogs = [];
         let currentLevelFilter = '';
         let currentSearchText = '';
+        let currentServiceFilter = '';
         let autoRefreshInterval = null;
         let loadCount = 50;
+        let lastAfterId = null;
 
         // --- Auth ---
         async function checkAuth() {
@@ -246,9 +248,8 @@
             }
         }
 
-        // --- Load Logs ---
+        // --- Load Logs (server-side filtering) ---
         async function loadLogs(append = false) {
-            const serviceFilter = document.getElementById('serviceFilter').value;
             const tableBody = document.getElementById('logsTableBody');
             const tableLoading = document.getElementById('tableLoading');
             const emptyState = document.getElementById('emptyState');
@@ -257,6 +258,7 @@
             if (!append) {
                 tableBody.innerHTML = '';
                 loadCount = 50;
+                lastAfterId = null;
             }
 
             tableLoading.classList.remove('hidden');
@@ -265,8 +267,17 @@
 
             try {
                 let url = `/api/seq/events?count=${loadCount}`;
-                if (serviceFilter) {
-                    url += `&application=${encodeURIComponent(serviceFilter)}`;
+                if (currentServiceFilter) {
+                    url += `&application=${encodeURIComponent(currentServiceFilter)}`;
+                }
+                if (currentLevelFilter) {
+                    url += `&level=${encodeURIComponent(currentLevelFilter)}`;
+                }
+                if (currentSearchText) {
+                    url += `&search=${encodeURIComponent(currentSearchText)}`;
+                }
+                if (lastAfterId) {
+                    url += `&afterId=${encodeURIComponent(lastAfterId)}`;
                 }
 
                 const response = await fetch(url);
@@ -277,11 +288,17 @@
                 }
 
                 const data = await response.json();
-                allLogs = extractEvents(data);
-                renderLogs();
+                const events = extractEvents(data);
+
+                if (events.length > 0) {
+                    // Store the last event's ID for pagination
+                    lastAfterId = events[events.length - 1].Id || events[events.length - 1].id;
+                }
+
+                renderLogs(events, append);
 
                 // Show "Load more" button if we got a full page of results
-                if (allLogs.length >= loadCount) {
+                if (events.length >= loadCount) {
                     loadMoreBtn.classList.remove('hidden');
                 }
             } catch (error) {
@@ -339,48 +356,25 @@
         }
 
         // --- Render Logs ---
-        function renderLogs() {
+        function renderLogs(events, append = false) {
             const tableBody = document.getElementById('logsTableBody');
             const emptyState = document.getElementById('emptyState');
 
-            // Apply client-side filters
-            let filtered = allLogs;
-
-            if (currentLevelFilter) {
-                filtered = filtered.filter(event => {
-                    const level = getLevel(event).toLowerCase();
-                    const filterLower = currentLevelFilter.toLowerCase();
-                    if (filterLower === 'error') {
-                        return level === 'error' || level === 'fatal' || level === 'critical';
-                    }
-                    if (filterLower === 'warning') {
-                        return level === 'warning' || level === 'warn';
-                    }
-                    if (filterLower === 'information') {
-                        return level === 'information' || level === 'info';
-                    }
-                    return level === filterLower;
-                });
+            if (!append) {
+                tableBody.innerHTML = '';
+                allLogs = events;
+            } else {
+                allLogs = allLogs.concat(events);
             }
 
-            if (currentSearchText) {
-                const search = currentSearchText.toLowerCase();
-                filtered = filtered.filter(event => {
-                    const msg = getMessage(event).toLowerCase();
-                    return msg.includes(search);
-                });
-            }
-
-            tableBody.innerHTML = '';
-
-            if (filtered.length === 0) {
+            if (allLogs.length === 0) {
                 emptyState.classList.remove('hidden');
                 return;
             }
 
             emptyState.classList.add('hidden');
 
-            filtered.forEach((event, index) => {
+            events.forEach((event, index) => {
                 const level = getLevel(event);
                 const message = getMessage(event);
                 const timestamp = getTimestamp(event);
@@ -443,22 +437,24 @@
                     }
                 });
 
-                renderLogs();
+                // Reload logs from server with new filter
+                loadLogs();
             });
         });
 
-        // --- Search Input ---
+        // --- Search Input (debounced, server-side search) ---
         let searchTimeout = null;
         document.getElementById('searchInput').addEventListener('input', (e) => {
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(() => {
                 currentSearchText = e.target.value.trim();
-                renderLogs();
-            }, 300);
+                loadLogs(); // Reload from server with search filter
+            }, 500);
         });
 
         // --- Service Filter ---
-        document.getElementById('serviceFilter').addEventListener('change', () => {
+        document.getElementById('serviceFilter').addEventListener('change', (e) => {
+            currentServiceFilter = e.target.value;
             loadLogs();
         });
 
@@ -469,8 +465,7 @@
 
         // --- Load More ---
         document.getElementById('loadMoreBtn').addEventListener('click', () => {
-            loadCount += 50;
-            loadLogs();
+            loadLogs(true);
         });
 
         // --- Auto-refresh Toggle ---
