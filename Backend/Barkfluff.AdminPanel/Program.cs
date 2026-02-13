@@ -12,6 +12,8 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
+        builder.WebHost.UseUrls("http://0.0.0.0:51888");
+
         // Configure Settings
         builder.Services.Configure<TelegramSettings>(builder.Configuration.GetSection("Telegram"));
         builder.Services.Configure<AuthSettings>(builder.Configuration.GetSection("Auth"));
