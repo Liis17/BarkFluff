@@ -184,6 +184,34 @@ public static class SeqEndpoints
         .WithName("GetDashboardTraffic")
         .WithOpenApi();
 
+        group.MapGet("/dashboard/metrics", async (
+            SeqService seqService,
+            HttpContext context,
+            int hours = 1) =>
+        {
+            if (context.Items["AuthToken"] is not AuthToken)
+                return Results.Unauthorized();
+
+            var fromDateUtc = DateTime.UtcNow.AddHours(-hours);
+
+            var result = await seqService.RunSqlQueryAsync(
+                "select @Timestamp, Application, Metrics from stream where @Message like 'ServiceMetrics%' order by @Timestamp desc limit 500",
+                fromDateUtc);
+
+            if (result == null)
+                return Results.StatusCode(502);
+
+            var services = ExtractServiceMetrics(result.Value);
+
+            return Results.Ok(new
+            {
+                periodHours = hours,
+                services
+            });
+        })
+        .WithName("GetDashboardMetrics")
+        .WithOpenApi();
+
         group.MapGet("/services/status", async (
             SeqService seqService,
             HttpContext context,
@@ -340,6 +368,107 @@ public static class SeqEndpoints
         }
 
         return result.OrderBy(x => x.Timestamp).ToList();
+    }
+
+    /// <summary>
+    /// Extracts service metrics from Seq SQL query result.
+    /// Expected format: { Columns: [...], Rows: [["2025-02-13T10:00:00Z", "ServiceName", "{...metrics...}"], ...] }
+    /// Groups by service name and returns the latest metrics for each service.
+    /// </summary>
+    private static List<object> ExtractServiceMetrics(JsonElement response)
+    {
+        var serviceMetrics = new Dictionary<string, (DateTime Timestamp, Dictionary<string, object> Metrics)>(StringComparer.OrdinalIgnoreCase);
+        var now = DateTime.UtcNow;
+
+        if (!response.TryGetProperty("Rows", out var rows))
+            return [];
+
+        foreach (var row in rows.EnumerateArray())
+        {
+            if (row.GetArrayLength() < 3) continue;
+
+            // Parse timestamp
+            DateTime? timestamp = null;
+            if (row[0].ValueKind == JsonValueKind.String)
+            {
+                var tsStr = row[0].GetString();
+                if (DateTime.TryParse(tsStr, out var ts))
+                    timestamp = ts;
+            }
+
+            // Get service name
+            var serviceName = row[1].ValueKind == JsonValueKind.String
+                ? row[1].GetString()
+                : null;
+
+            if (string.IsNullOrEmpty(serviceName) || !timestamp.HasValue)
+                continue;
+
+            // Skip if we already have more recent metrics for this service
+            if (serviceMetrics.ContainsKey(serviceName) && serviceMetrics[serviceName].Timestamp >= timestamp.Value)
+                continue;
+
+            // Parse metrics JSON
+            var metrics = new Dictionary<string, object>();
+            if (row[2].ValueKind == JsonValueKind.Object)
+            {
+                foreach (var prop in row[2].EnumerateObject())
+                {
+                    metrics[prop.Name] = prop.Value.ValueKind switch
+                    {
+                        JsonValueKind.Number => prop.Value.TryGetInt64(out var l) ? l : prop.Value.GetDouble(),
+                        JsonValueKind.String => prop.Value.GetString() ?? "",
+                        JsonValueKind.True => true,
+                        JsonValueKind.False => false,
+                        _ => prop.Value.ToString()
+                    };
+                }
+            }
+            else if (row[2].ValueKind == JsonValueKind.String)
+            {
+                try
+                {
+                    var metricsJson = row[2].GetString();
+                    if (!string.IsNullOrEmpty(metricsJson))
+                    {
+                        using var doc = JsonDocument.Parse(metricsJson);
+                        foreach (var prop in doc.RootElement.EnumerateObject())
+                        {
+                            metrics[prop.Name] = prop.Value.ValueKind switch
+                            {
+                                JsonValueKind.Number => prop.Value.TryGetInt64(out var l) ? l : prop.Value.GetDouble(),
+                                JsonValueKind.String => prop.Value.GetString() ?? "",
+                                JsonValueKind.True => true,
+                                JsonValueKind.False => false,
+                                _ => prop.Value.ToString()
+                            };
+                        }
+                    }
+                }
+                catch
+                {
+                    // Ignore parse errors
+                }
+            }
+
+            serviceMetrics[serviceName] = (timestamp.Value, metrics);
+        }
+
+        // Convert to result format
+        var result = new List<object>();
+        foreach (var (serviceName, (timestamp, metrics)) in serviceMetrics)
+        {
+            var isActive = (now - timestamp).TotalMinutes < 5;
+            result.Add(new
+            {
+                name = serviceName,
+                isActive,
+                metrics,
+                lastReportTime = timestamp.ToString("o")
+            });
+        }
+
+        return result;
     }
 
     /// <summary>
