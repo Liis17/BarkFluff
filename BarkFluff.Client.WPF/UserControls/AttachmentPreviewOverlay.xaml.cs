@@ -67,11 +67,11 @@ namespace BarkFluff.Client.WPF.UserControls
         {
             if (_attachments.Count >= MaxAttachments) return;
 
-            // Save clipboard image to temp file
-            var tempPath = Path.Combine(Path.GetTempPath(), $"clipboard_{Guid.NewGuid()}.png");
+            // Save clipboard image to temp file as JPEG
+            var tempPath = Path.Combine(Path.GetTempPath(), $"clipboard_{Guid.NewGuid()}.jpg");
             using (var fileStream = new FileStream(tempPath, FileMode.Create))
             {
-                BitmapEncoder encoder = new PngBitmapEncoder();
+                var encoder = new JpegBitmapEncoder { QualityLevel = 85 };
                 encoder.Frames.Add(BitmapFrame.Create(image));
                 encoder.Save(fileStream);
             }
