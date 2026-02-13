@@ -135,6 +135,7 @@ services:
       Telegram__BotToken: "${TELEGRAM_BOT_TOKEN}"
       Telegram__Admins: "${TELEGRAM_ADMINS}"
       Seq__ServerUrl: "http://seq:80"
+      Seq__ApiKey: "${SEQ_API_KEY:-}"
     volumes:
       - admin_panel_data:/app/db
     networks:
