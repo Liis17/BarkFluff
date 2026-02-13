@@ -40,8 +40,12 @@ public class SeqService
         try
         {
             var response = await _httpClient.GetAsync(query);
-            response.EnsureSuccessStatusCode();
             var json = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError("Seq events API returned {StatusCode}: {Body}", (int)response.StatusCode, json);
+                return null;
+            }
             return JsonSerializer.Deserialize<JsonElement>(json);
         }
         catch (Exception ex)
@@ -64,8 +68,12 @@ public class SeqService
         try
         {
             var response = await _httpClient.GetAsync(query);
-            response.EnsureSuccessStatusCode();
             var json = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError("Seq SQL API returned {StatusCode} for query '{Query}': {Body}", (int)response.StatusCode, sqlQuery, json);
+                return null;
+            }
             return JsonSerializer.Deserialize<JsonElement>(json);
         }
         catch (Exception ex)
