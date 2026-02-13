@@ -15,6 +15,12 @@ public class PendingAuthRequest
     public string? TokenName { get; set; }
     public long? ApprovedByTelegramUserId { get; set; }
     public DateTime? CompletedAt { get; set; }
+
+    /// <summary>
+    /// The target Telegram user ID who should receive and approve this request.
+    /// If null, the request targets all admins (legacy behavior).
+    /// </summary>
+    public long? TargetTelegramUserId { get; set; }
 }
 
 public enum AuthRequestStatus

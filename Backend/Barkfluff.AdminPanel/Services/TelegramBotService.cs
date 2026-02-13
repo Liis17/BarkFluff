@@ -45,6 +45,12 @@ public class TelegramBotService : IHostedService
     {
         _logger.LogInformation("Starting Telegram Bot Service...");
 
+        // Validate that admins are configured
+        if (_settings.Value.ParsedAdmins.Count == 0)
+        {
+            throw new InvalidOperationException("No admins configured. Please set 'Telegram:Admins' with format 'userId1:username1,userId2:username2'");
+        }
+
         var updateHandler = new UpdateHandler(
             _botClient,
             _settings,
@@ -66,6 +72,11 @@ public class TelegramBotService : IHostedService
         {
             var me = await _botClient.GetMe(cancellationToken);
             _logger.LogInformation("Telegram bot connected: @{BotUsername}", me.Username);
+            _logger.LogInformation("Configured admins: {AdminCount}", _settings.Value.ParsedAdmins.Count);
+            foreach (var admin in _settings.Value.ParsedAdmins)
+            {
+                _logger.LogInformation("  - {Username} (ID: {TelegramUserId})", admin.Username, admin.TelegramUserId);
+            }
         }
         catch (Exception ex)
         {
@@ -80,13 +91,88 @@ public class TelegramBotService : IHostedService
         await Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Result of checking if the bot can reach a user
+    /// </summary>
+    public class BotReachabilityResult
+    {
+        public bool CanSend { get; set; }
+        public string? ErrorCode { get; set; }
+        public string? ErrorMessage { get; set; }
+
+        public static BotReachabilityResult Success() => new() { CanSend = true };
+
+        public static BotReachabilityResult Blocked(string message) => new()
+        {
+            CanSend = false,
+            ErrorCode = "bot_blocked",
+            ErrorMessage = message
+        };
+
+        public static BotReachabilityResult NotFound(string message) => new()
+        {
+            CanSend = false,
+            ErrorCode = "bot_not_started",
+            ErrorMessage = message
+        };
+
+        public static BotReachabilityResult UnknownError(string message) => new()
+        {
+            CanSend = false,
+            ErrorCode = "unknown_error",
+            ErrorMessage = message
+        };
+    }
+
+    /// <summary>
+    /// Checks if the bot can send messages to a specific user
+    /// </summary>
+    public async Task<BotReachabilityResult> CheckBotReachabilityAsync(long userId)
+    {
+        try
+        {
+            // SendChatAction is a lightweight way to check if we can reach the user
+            await _botClient.SendChatAction(userId, ChatAction.Typing);
+
+            return BotReachabilityResult.Success();
+        }
+        catch (Telegram.Bot.Exceptions.ApiRequestException ex) when (ex.ErrorCode == 403)
+        {
+            // User blocked the bot
+            return BotReachabilityResult.Blocked("Бот заблокирован пользователем");
+        }
+        catch (Telegram.Bot.Exceptions.ApiRequestException ex) when (ex.ErrorCode == 400)
+        {
+            // Chat not found - user hasn't started the bot
+            return BotReachabilityResult.NotFound("Начните диалог с ботом");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error checking bot reachability for user {UserId}", userId);
+            return BotReachabilityResult.UnknownError($"Ошибка проверки: {ex.Message}");
+        }
+    }
+
     public async Task SendAuthRequestAsync(PendingAuthRequest request)
     {
-        if (_settings.Value.AdminUserIds.Count == 0)
+        if (request.TargetTelegramUserId.HasValue)
         {
-            throw new InvalidOperationException("No admin user IDs configured.");
+            // Send only to the target admin
+            await SendAuthRequestToAdmin(request, request.TargetTelegramUserId.Value);
         }
+        else
+        {
+            // Legacy behavior: send to all admins
+            foreach (var admin in _settings.Value.ParsedAdmins)
+            {
+                await SendAuthRequestToAdmin(request, admin.TelegramUserId);
+            }
+        }
+    }
 
+    private async Task SendAuthRequestToAdmin(PendingAuthRequest request, long targetUserId)
+    {
+        var targetAdmin = _settings.Value.GetAdminByTelegramId(targetUserId);
         var nickname = request.Nickname ?? "Unknown";
         var browser = request.Browser ?? "Unknown";
         var os = request.Os ?? "Unknown";
@@ -96,7 +182,7 @@ public class TelegramBotService : IHostedService
         message.AppendLine("\ud83d\udd10 *\u0417\u0430\u043f\u0440\u043e\u0441 \u043d\u0430 \u0432\u0445\u043e\u0434 \u0432 \u043f\u0430\u043d\u0435\u043b\u044c*");
         message.AppendLine();
         message.AppendLine($"\ud83d\udc64 \u0410\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0430\u0442\u043e\u0440: {nickname}");
-        message.AppendLine($"\ud83d\udda5 \u0423\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u043e: {browser} \u043d\u0430 {os}");
+        message.AppendLine($"\ud83d\udde5 \u0423\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u043e: {browser} \u043d\u0430 {os}");
         message.AppendLine($"\ud83d\udd50 \u0412\u0440\u0435\u043c\u044f: {time} UTC");
         message.AppendLine();
         message.AppendLine("\u041f\u043e\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0435 \u0438\u043b\u0438 \u043e\u0442\u043a\u043b\u043e\u043d\u0438\u0442\u0435 \u0432\u0445\u043e\u0434.");
@@ -110,23 +196,20 @@ public class TelegramBotService : IHostedService
             }
         });
 
-        foreach (var adminId in _settings.Value.AdminUserIds)
+        try
         {
-            try
-            {
-                var msg = await _botClient.SendMessage(
-                    adminId,
-                    message.ToString(),
-                    parseMode: ParseMode.Markdown,
-                    replyMarkup: keyboard);
+            var msg = await _botClient.SendMessage(
+                targetUserId,
+                message.ToString(),
+                parseMode: ParseMode.Markdown,
+                replyMarkup: keyboard);
 
-                _pendingAuthService.SetTelegramMessageId(request.RequestId, msg.MessageId);
-                _logger.LogInformation("Auth request sent to Telegram admin {AdminId}", adminId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to send auth request to admin {AdminId}", adminId);
-            }
+            _pendingAuthService.SetTelegramMessageId(request.RequestId, msg.MessageId);
+            _logger.LogInformation("Auth request sent to Telegram admin {AdminId} ({Username})", targetUserId, targetAdmin?.Username ?? "Unknown");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send auth request to admin {AdminId}", targetUserId);
         }
     }
 }
@@ -178,7 +261,7 @@ public class UpdateHandler : IUpdateHandler
     private async Task HandleCallbackQueryAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
     {
         var userId = callbackQuery.From.Id;
-        if (!_settings.Value.AdminUserIds.Contains(userId))
+        if (!_settings.Value.IsAdmin(userId))
         {
             await botClient.AnswerCallbackQuery(
                 callbackQuery.Id,
@@ -207,17 +290,31 @@ public class UpdateHandler : IUpdateHandler
                 return;
             }
 
+            // Verify that this admin is the target admin (if targeted)
+            if (request.TargetTelegramUserId.HasValue && request.TargetTelegramUserId.Value != userId)
+            {
+                await botClient.AnswerCallbackQuery(
+                    callbackQuery.Id,
+                    "Этот запрос адресован другому администратору.",
+                    showAlert: true,
+                    cancellationToken: cancellationToken);
+                return;
+            }
+
             var nickname = request.Nickname ?? "Unknown";
             var browser = request.Browser ?? "Unknown";
             var os = request.Os ?? "Unknown";
             var time = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
+            var adminUsername = _settings.Value.GetUsername(userId) ?? "Unknown";
 
             if (action == "approve")
             {
                 var tokenId = _tokenService.CreateToken(
                     request.IpAddress,
                     request.UserAgent,
-                    request.TokenName ?? "Web Session");
+                    request.TokenName ?? "Web Session",
+                    adminUsername,
+                    userId);
 
                 _pendingAuthService.UpdateRequestStatus(
                     requestId,
@@ -229,7 +326,7 @@ public class UpdateHandler : IUpdateHandler
                 await botClient.EditMessageText(
                     callbackQuery.Message!.Chat.Id,
                     callbackQuery.Message.MessageId,
-                    $"\u2705 *\u0412\u0445\u043e\u0434 \u0432\u044b\u043f\u043e\u043b\u043d\u0435\u043d*\n\n\ud83d\udc64 {nickname} \u0432\u043e\u0448\u0451\u043b \u0432 \u043f\u0430\u043d\u0435\u043b\u044c \u0443\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0438\u044f\n\ud83d\udda5 {browser} \u043d\u0430 {os}\n\ud83d\udd50 {time} UTC",
+                    $"\u2705 *\u0412\u0445\u043e\u0434 \u0432\u044b\u043f\u043e\u043b\u043d\u0435\u043d*\n\n\ud83d\udc64 {nickname} \u0432\u043e\u0448\u0451\u043b \u0432 \u043f\u0430\u043d\u0435\u043b\u044c \u0443\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0438\u044f\n\ud83d\udde5 {browser} \u043d\u0430 {os}\n\ud83d\udd50 {time} UTC",
                     parseMode: ParseMode.Markdown,
                     cancellationToken: cancellationToken);
 
@@ -263,7 +360,7 @@ public class UpdateHandler : IUpdateHandler
     private async Task HandleMessageAsync(ITelegramBotClient botClient, Message message, CancellationToken cancellationToken)
     {
         var userId = message.From!.Id;
-        if (!_settings.Value.AdminUserIds.Contains(userId))
+        if (!_settings.Value.IsAdmin(userId))
         {
             await botClient.SendMessage(
                 message.Chat.Id,
@@ -282,18 +379,18 @@ public class UpdateHandler : IUpdateHandler
                     message.Chat.Id,
                     "*BarkFluff Admin Panel Bot*\n\n" +
                     "Commands:\n" +
-                    "/tokens - List all active tokens\n" +
+                    "/tokens - List your active tokens\n" +
                     "/kill `<guid>` - Revoke a token\n" +
                     "/rename `<guid>` `<name>` - Rename a token\n" +
-                    "/pending - Show pending auth requests",
+                    "/pending - Show your pending auth requests",
                     parseMode: ParseMode.Markdown,
                     cancellationToken: cancellationToken);
                 break;
 
             case "/tokens":
-                var tokens = _tokenService.GetAllTokens();
+                var tokens = _tokenService.GetTokensByAdmin(userId);
                 var sb = new StringBuilder();
-                sb.AppendLine("*Active Tokens:*\n");
+                sb.AppendLine("*Your Active Tokens:*\n");
 
                 if (tokens.Count == 0)
                 {
@@ -336,7 +433,7 @@ public class UpdateHandler : IUpdateHandler
                 }
                 else if (Guid.TryParse(args[1], out var tokenId))
                 {
-                    if (_tokenService.DeleteToken(tokenId))
+                    if (_tokenService.DeleteTokenByAdmin(tokenId, userId))
                     {
                         await botClient.SendMessage(
                             message.Chat.Id,
@@ -348,7 +445,7 @@ public class UpdateHandler : IUpdateHandler
                     {
                         await botClient.SendMessage(
                             message.Chat.Id,
-                            $"\u274c Token `{tokenId}` not found.",
+                            $"\u274c Token `{tokenId}` not found or doesn't belong to you.",
                             parseMode: ParseMode.Markdown,
                             cancellationToken: cancellationToken);
                     }
@@ -374,7 +471,7 @@ public class UpdateHandler : IUpdateHandler
                 else if (Guid.TryParse(args[1], out var renameTokenId))
                 {
                     var newName = string.Join(" ", args.Skip(2));
-                    if (_tokenService.RenameToken(renameTokenId, newName))
+                    if (_tokenService.RenameTokenByAdmin(renameTokenId, newName, userId))
                     {
                         await botClient.SendMessage(
                             message.Chat.Id,
@@ -385,7 +482,7 @@ public class UpdateHandler : IUpdateHandler
                     {
                         await botClient.SendMessage(
                             message.Chat.Id,
-                            $"\u274c Token not found.",
+                            $"\u274c Token not found or doesn't belong to you.",
                             cancellationToken: cancellationToken);
                     }
                 }
@@ -399,9 +496,9 @@ public class UpdateHandler : IUpdateHandler
                 break;
 
             case "/pending":
-                var pending = _pendingAuthService.GetAllPending();
+                var pending = _pendingAuthService.GetPendingByAdmin(userId);
                 var psb = new StringBuilder();
-                psb.AppendLine("*Pending Auth Requests:*\n");
+                psb.AppendLine("*Your Pending Auth Requests:*\n");
 
                 if (pending.Count == 0)
                 {
