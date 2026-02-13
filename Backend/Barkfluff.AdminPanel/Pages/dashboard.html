@@ -337,35 +337,37 @@
         let trafficChart = null;
 
         async function loadDashboardData() {
-            try {
-                const [kpisRes, trafficRes, metricsRes] = await Promise.all([
-                    fetch('/api/seq/dashboard/kpis?hours=24'),
-                    fetch('/api/seq/dashboard/traffic?hours=24&interval=1h'),
-                    fetch('/api/seq/dashboard/metrics?hours=1')
-                ]);
+            // Fetch all three endpoints independently so partial failures don't break everything
+            const [kpisRes, trafficRes, metricsRes] = await Promise.allSettled([
+                fetch('/api/seq/dashboard/kpis?hours=24').then(r => r.ok ? r.json() : Promise.reject(r.status)),
+                fetch('/api/seq/dashboard/traffic?hours=24&interval=1h').then(r => r.ok ? r.json() : Promise.reject(r.status)),
+                fetch('/api/seq/dashboard/metrics?hours=1').then(r => r.ok ? r.json() : Promise.reject(r.status))
+            ]);
 
-                if (!kpisRes.ok || !trafficRes.ok) {
-                    throw new Error('Failed to fetch dashboard data');
-                }
-
-                const kpis = await kpisRes.json();
-                const traffic = await trafficRes.json();
-                const metrics = metricsRes.ok ? await metricsRes.json() : null;
-
-                // Update KPI cards
+            // KPI cards
+            if (kpisRes.status === 'fulfilled') {
+                const kpis = kpisRes.value;
                 document.getElementById('kpi-total').textContent = formatNumber(kpis.totalEvents);
                 document.getElementById('kpi-errors').textContent = formatNumber(kpis.errorCount);
                 document.getElementById('kpi-warnings').textContent = formatNumber(kpis.warningCount);
                 document.getElementById('kpi-services').textContent = formatNumber(
                     kpis.perService ? Object.keys(kpis.perService).length : 0
                 );
+            } else {
+                console.error('Ошибка загрузки KPI:', kpisRes.reason);
+                document.getElementById('kpi-total').textContent = '\u2014';
+                document.getElementById('kpi-errors').textContent = '\u2014';
+                document.getElementById('kpi-warnings').textContent = '\u2014';
+                document.getElementById('kpi-services').textContent = '\u2014';
+            }
 
-                // Prepare chart data
+            // Traffic chart
+            if (trafficRes.status === 'fulfilled') {
+                const traffic = trafficRes.value;
                 const chartLabels = traffic.all.map(p => formatTime(p.timestamp));
                 const allData = traffic.all.map(p => p.count);
                 const errorData = traffic.errors.map(p => p.count);
 
-                // Update chart
                 if (trafficChart) {
                     trafficChart.data.labels = chartLabels;
                     trafficChart.data.datasets[0].data = allData;
@@ -374,18 +376,15 @@
                 } else {
                     initChart(chartLabels, allData, errorData);
                 }
+            } else {
+                console.error('Ошибка загрузки трафика:', trafficRes.reason);
+            }
 
-                // Render business metrics
-                if (metrics) {
-                    renderBusinessMetrics(metrics);
-                }
-
-            } catch (err) {
-                console.error('Ошибка загрузки данных дашборда:', err);
-                document.getElementById('kpi-total').textContent = '\u2014';
-                document.getElementById('kpi-errors').textContent = '\u2014';
-                document.getElementById('kpi-warnings').textContent = '\u2014';
-                document.getElementById('kpi-services').textContent = '\u2014';
+            // Business metrics
+            if (metricsRes.status === 'fulfilled') {
+                renderBusinessMetrics(metricsRes.value);
+            } else {
+                console.error('Ошибка загрузки бизнес-метрик:', metricsRes.reason);
             }
         }
 
