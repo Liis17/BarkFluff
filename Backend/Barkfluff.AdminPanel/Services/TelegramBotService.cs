@@ -178,21 +178,21 @@ public class TelegramBotService : IHostedService
         var os = request.Os ?? "Unknown";
         var time = request.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss");
 
-        var message = new StringBuilder();
-        message.AppendLine("\ud83d\udd10 *\u0417\u0430\u043f\u0440\u043e\u0441 \u043d\u0430 \u0432\u0445\u043e\u0434 \u0432 \u043f\u0430\u043d\u0435\u043b\u044c*");
-        message.AppendLine();
-        message.AppendLine($"\ud83d\udc64 \u0410\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0430\u0442\u043e\u0440: {nickname}");
-        message.AppendLine($"\ud83d\udde5 \u0423\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u043e: {browser} \u043d\u0430 {os}");
-        message.AppendLine($"\ud83d\udd50 \u0412\u0440\u0435\u043c\u044f: {time} UTC");
-        message.AppendLine();
-        message.AppendLine("\u041f\u043e\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0435 \u0438\u043b\u0438 \u043e\u0442\u043a\u043b\u043e\u043d\u0438\u0442\u0435 \u0432\u0445\u043e\u0434.");
+        // Using HTML format instead of Markdown to avoid parsing issues with emojis
+        var message = $"🔐 <b>Запрос на вход в панель</b>\n" +
+                      $"\n" +
+                      $"👤 Администратор: {nickname}\n" +
+                      $"🖥 Устройство: {browser} на {os}\n" +
+                      $"🕐 Время: {time} UTC\n" +
+                      $"\n" +
+                      $"Подтвердите или отклоните вход.";
 
         var keyboard = new InlineKeyboardMarkup(new[]
         {
             new[]
             {
-                InlineKeyboardButton.WithCallbackData("\u2705 \u0420\u0430\u0437\u0440\u0435\u0448\u0438\u0442\u044c", $"auth:{request.RequestId}:approve"),
-                InlineKeyboardButton.WithCallbackData("\u274c \u041e\u0442\u043a\u043b\u043e\u043d\u0438\u0442\u044c", $"auth:{request.RequestId}:reject")
+                InlineKeyboardButton.WithCallbackData("✅ Разрешить", $"auth:{request.RequestId}:approve"),
+                InlineKeyboardButton.WithCallbackData("❌ Отклонить", $"auth:{request.RequestId}:reject")
             }
         });
 
@@ -200,8 +200,8 @@ public class TelegramBotService : IHostedService
         {
             var msg = await _botClient.SendMessage(
                 targetUserId,
-                message.ToString(),
-                parseMode: ParseMode.Markdown,
+                message,
+                parseMode: ParseMode.Html,
                 replyMarkup: keyboard);
 
             _pendingAuthService.SetTelegramMessageId(request.RequestId, msg.MessageId);
@@ -323,16 +323,21 @@ public class UpdateHandler : IUpdateHandler
                     userId);
 
                 // Update original message
+                var approvedMsg = $"✅ <b>Вход выполнен</b>\n\n" +
+                                  $"👤 {nickname} вошёл в панель управления\n" +
+                                  $"🖥 {browser} на {os}\n" +
+                                  $"🕐 {time} UTC";
+
                 await botClient.EditMessageText(
                     callbackQuery.Message!.Chat.Id,
                     callbackQuery.Message.MessageId,
-                    $"\u2705 *\u0412\u0445\u043e\u0434 \u0432\u044b\u043f\u043e\u043b\u043d\u0435\u043d*\n\n\ud83d\udc64 {nickname} \u0432\u043e\u0448\u0451\u043b \u0432 \u043f\u0430\u043d\u0435\u043b\u044c \u0443\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0438\u044f\n\ud83d\udde5 {browser} \u043d\u0430 {os}\n\ud83d\udd50 {time} UTC",
-                    parseMode: ParseMode.Markdown,
+                    approvedMsg,
+                    parseMode: ParseMode.Html,
                     cancellationToken: cancellationToken);
 
                 await botClient.AnswerCallbackQuery(
                     callbackQuery.Id,
-                    "\u0412\u0445\u043e\u0434 \u0440\u0430\u0437\u0440\u0435\u0448\u0451\u043d!",
+                    "Вход разрешён!",
                     cancellationToken: cancellationToken);
             }
             else if (action == "reject")
@@ -342,16 +347,20 @@ public class UpdateHandler : IUpdateHandler
                     AuthRequestStatus.Rejected,
                     approvedBy: userId);
 
+                var rejectedMsg = $"❌ <b>Вход отклонён</b>\n\n" +
+                                  $"👤 {nickname} — запрос отклонён\n" +
+                                  $"🕐 {time} UTC";
+
                 await botClient.EditMessageText(
                     callbackQuery.Message!.Chat.Id,
                     callbackQuery.Message.MessageId,
-                    $"\u274c *\u0412\u0445\u043e\u0434 \u043e\u0442\u043a\u043b\u043e\u043d\u0451\u043d*\n\n\ud83d\udc64 {nickname} \u2014 \u0437\u0430\u043f\u0440\u043e\u0441 \u043e\u0442\u043a\u043b\u043e\u043d\u0451\u043d\n\ud83d\udd50 {time} UTC",
-                    parseMode: ParseMode.Markdown,
+                    rejectedMsg,
+                    parseMode: ParseMode.Html,
                     cancellationToken: cancellationToken);
 
                 await botClient.AnswerCallbackQuery(
                     callbackQuery.Id,
-                    "\u0412\u0445\u043e\u0434 \u043e\u0442\u043a\u043b\u043e\u043d\u0451\u043d.",
+                    "Вход отклонён.",
                     cancellationToken: cancellationToken);
             }
         }
