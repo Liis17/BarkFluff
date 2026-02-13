@@ -371,6 +371,84 @@ public static class SeqEndpoints
     }
 
     /// <summary>
+    /// Extracts service metrics from Seq events API result.
+    /// Expected format: { Events: [{ Timestamp, Properties: { Application, ...metrics... } }, ...] }
+    /// Groups by service name and returns the latest metrics for each service.
+    /// </summary>
+    private static List<object> ExtractServiceMetricsFromEvents(JsonElement response)
+    {
+        var serviceMetrics = new Dictionary<string, (DateTime Timestamp, Dictionary<string, object> Metrics)>(StringComparer.OrdinalIgnoreCase);
+        var now = DateTime.UtcNow;
+
+        if (!response.TryGetProperty("Events", out var events))
+            return [];
+
+        foreach (var evt in events.EnumerateArray())
+        {
+            // Parse timestamp
+            DateTime? timestamp = null;
+            if (evt.TryGetProperty("Timestamp", out var tsProp) && tsProp.ValueKind == JsonValueKind.String)
+            {
+                var tsStr = tsProp.GetString();
+                if (DateTime.TryParse(tsStr, out var ts))
+                    timestamp = ts;
+            }
+
+            // Get service name from Properties.Application
+            string? serviceName = null;
+            if (evt.TryGetProperty("Properties", out var props))
+            {
+                if (props.TryGetProperty("Application", out var appProp) && appProp.ValueKind == JsonValueKind.String)
+                    serviceName = appProp.GetString();
+            }
+
+            if (string.IsNullOrEmpty(serviceName) || !timestamp.HasValue)
+                continue;
+
+            // Skip if we already have more recent metrics for this service
+            if (serviceMetrics.ContainsKey(serviceName) && serviceMetrics[serviceName].Timestamp >= timestamp.Value)
+                continue;
+
+            // Extract all properties as metrics (excluding Application)
+            var metrics = new Dictionary<string, object>();
+            if (evt.TryGetProperty("Properties", out props))
+            {
+                foreach (var prop in props.EnumerateObject())
+                {
+                    if (prop.NameEquals("Application")) continue;
+
+                    metrics[prop.Name] = prop.Value.ValueKind switch
+                    {
+                        JsonValueKind.Number => prop.Value.TryGetInt64(out var l) ? l : prop.Value.GetDouble(),
+                        JsonValueKind.String => prop.Value.GetString() ?? "",
+                        JsonValueKind.True => true,
+                        JsonValueKind.False => false,
+                        _ => prop.Value.ToString()
+                    };
+                }
+            }
+
+            serviceMetrics[serviceName] = (timestamp.Value, metrics);
+        }
+
+        // Convert to result format
+        var result = new List<object>();
+        foreach (var (serviceName, (timestamp, metrics)) in serviceMetrics)
+        {
+            var isActive = (now - timestamp).TotalMinutes < 5;
+            result.Add(new
+            {
+                name = serviceName,
+                isActive,
+                metrics,
+                lastReportTime = timestamp.ToString("o")
+            });
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// Extracts service metrics from Seq SQL query result.
     /// Expected format: { Columns: [...], Rows: [["2025-02-13T10:00:00Z", "ServiceName", "{...metrics...}"], ...] }
     /// Groups by service name and returns the latest metrics for each service.
