@@ -194,14 +194,14 @@ public static class SeqEndpoints
 
             var fromDateUtc = DateTime.UtcNow.AddHours(-hours);
 
-            var result = await seqService.RunSqlQueryAsync(
-                "select @Timestamp, Application, Metrics from stream where @Message like 'ServiceMetrics%' order by @Timestamp desc limit 500",
-                fromDateUtc);
+            // Сначала получаем события через events API, затем парсим
+            var filter = "@Message like 'ServiceMetrics%'";
+            var eventsResult = await seqService.GetEventsAsync(filter, 200, fromDateUtc);
 
-            if (result == null)
+            if (eventsResult == null)
                 return Results.StatusCode(502);
 
-            var services = ExtractServiceMetrics(result.Value);
+            var services = ExtractServiceMetricsFromEvents(eventsResult.Value);
 
             return Results.Ok(new
             {
