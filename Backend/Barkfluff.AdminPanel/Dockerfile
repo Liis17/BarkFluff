@@ -11,7 +11,9 @@ COPY . .
 WORKDIR "/src/Backend/Barkfluff.AdminPanel"
 RUN dotnet publish "./Barkfluff.AdminPanel.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
-FROM base AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 COPY --from=build /app/publish .
+RUN mkdir -p /app/db && chown $APP_UID /app/db
+USER $APP_UID
 ENTRYPOINT ["dotnet", "Barkfluff.AdminPanel.dll"]
