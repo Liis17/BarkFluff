@@ -107,7 +107,7 @@ public static class SeqEndpoints
                 fromDateUtc);
 
             var errorsTask = seqService.RunSqlQueryAsync(
-                "select count(*) as Count from stream where @Level in ['Error', 'Fatal']",
+                "select count(*) as Count from stream where @Level = 'Error' or @Level = 'Fatal'",
                 fromDateUtc);
 
             var warningsTask = seqService.RunSqlQueryAsync(
@@ -161,7 +161,7 @@ public static class SeqEndpoints
                 fromDateUtc);
 
             var errorsTask = seqService.RunSqlQueryAsync(
-                $"select count(*) as Count from stream where @Level in ['Error', 'Fatal'] group by time({interval})",
+                $"select count(*) as Count from stream where (@Level = 'Error' or @Level = 'Fatal') group by time({interval})",
                 fromDateUtc);
 
             await Task.WhenAll(allTask, errorsTask);
@@ -223,7 +223,7 @@ public static class SeqEndpoints
             var fromDateUtc = DateTime.UtcNow.AddHours(-hours);
 
             var errorsTask = seqService.RunSqlQueryAsync(
-                "select count(*) as Count, Application from stream where @Level in ['Error', 'Fatal'] group by Application",
+                "select count(*) as Count, Application from stream where (@Level = 'Error' or @Level = 'Fatal') group by Application",
                 fromDateUtc);
 
             var eventsTask = seqService.RunSqlQueryAsync(
@@ -334,13 +334,14 @@ public static class SeqEndpoints
     /// <summary>
     /// Extracts time series data from Seq SQL query result with time() grouping.
     /// Expected format: { Columns: [{Name: "Count"}, {Name: "..."}], Rows: [[123, "2025-02-13T10:00:00Z"], ...] }
+    /// Returns anonymous objects with "timestamp" and "count" properties for correct JSON serialization.
     /// </summary>
-    private static List<(DateTime Timestamp, long Count)> ExtractTimeSeriesData(JsonElement? response)
+    private static List<object> ExtractTimeSeriesData(JsonElement? response)
     {
         var result = new List<(DateTime Timestamp, long Count)>();
 
-        if (response == null) return result;
-        if (!response.Value.TryGetProperty("Rows", out var rows)) return result;
+        if (response == null) return [];
+        if (!response.Value.TryGetProperty("Rows", out var rows)) return [];
 
         foreach (var row in rows.EnumerateArray())
         {
@@ -367,7 +368,10 @@ public static class SeqEndpoints
             }
         }
 
-        return result.OrderBy(x => x.Timestamp).ToList();
+        return result
+            .OrderBy(x => x.Timestamp)
+            .Select(x => (object)new { timestamp = x.Timestamp.ToString("o"), count = x.Count })
+            .ToList();
     }
 
     /// <summary>
