@@ -199,6 +199,20 @@
                     <canvas id="traffic-chart"></canvas>
                 </div>
             </div>
+
+            <!-- Business Metrics -->
+            <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-lg font-semibold text-gray-900">Бизнес-метрики</h2>
+                    <span class="text-xs text-gray-400">Последний час</span>
+                </div>
+                <div id="business-metrics-container" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    <!-- Service metric cards will be rendered here -->
+                    <div class="text-center text-gray-400 py-8">
+                        Загрузка метрик...
+                    </div>
+                </div>
+            </div>
         </div>
     </main>
 
@@ -229,6 +243,80 @@
             return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
         }
 
+        function formatMetricName(name) {
+            if (!name) return name;
+            // Convert snake_case to Title Case
+            return name
+                .split('_')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                .join(' ');
+        }
+
+        function getShortServiceName(fullName) {
+            if (!fullName) return fullName;
+            // Extract short name: "BarkFluff.Identity" -> "Identity"
+            const parts = fullName.split('.');
+            return parts.length > 1 ? parts[parts.length - 1] : fullName;
+        }
+
+        function renderBusinessMetrics(data) {
+            const container = document.getElementById('business-metrics-container');
+            if (!data.services || data.services.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full text-center text-gray-400 py-8">
+                        Нет данных о метриках за последний час
+                    </div>
+                `;
+                return;
+            }
+
+            // Sort services: active first, then by name
+            const sortedServices = [...data.services].sort((a, b) => {
+                if (a.isActive !== b.isActive) return b.isActive ? 1 : -1;
+                return a.name.localeCompare(b.name);
+            });
+
+            container.innerHTML = sortedServices.map(service => createServiceMetricCard(service)).join('');
+        }
+
+        function createServiceMetricCard(service) {
+            const statusClass = service.isActive
+                ? 'bg-green-100 text-green-700'
+                : 'bg-gray-100 text-gray-500';
+            const statusText = service.isActive ? 'Активен' : 'Неактивен';
+            const statusDot = service.isActive
+                ? '<span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>'
+                : '<span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>';
+
+            const metricsHtml = Object.entries(service.metrics || {})
+                .map(([key, value]) => `
+                    <div class="flex justify-between items-center py-1.5 border-b border-gray-100 last:border-0">
+                        <span class="text-sm text-gray-600">${formatMetricName(key)}</span>
+                        <span class="text-sm font-medium text-gray-900">${formatNumber(value)}</span>
+                    </div>
+                `).join('');
+
+            const noMetricsHtml = '<div class="text-sm text-gray-400 py-2">Нет метрик</div>';
+
+            return `
+                <div class="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+                    <div class="bg-gray-50 px-4 py-3 flex items-center justify-between border-b border-gray-200">
+                        <span class="font-semibold text-gray-900">${getShortServiceName(service.name)}</span>
+                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${statusClass}">
+                            ${statusDot}
+                            ${statusText}
+                        </span>
+                    </div>
+                    <div class="px-4 py-3">
+                        ${metricsHtml || noMetricsHtml}
+                    </div>
+                    <div class="px-4 py-2 bg-gray-50 border-t border-gray-200 text-xs text-gray-400">
+                        Обновлено: ${formatTime(service.lastReportTime)}
+                    </div>
+                </div>
+            `;
+        }
+
         // ---- Auth ----
         async function checkAuth() {
             try {
@@ -250,9 +338,10 @@
 
         async function loadDashboardData() {
             try {
-                const [kpisRes, trafficRes] = await Promise.all([
+                const [kpisRes, trafficRes, metricsRes] = await Promise.all([
                     fetch('/api/seq/dashboard/kpis?hours=24'),
-                    fetch('/api/seq/dashboard/traffic?hours=24&interval=1h')
+                    fetch('/api/seq/dashboard/traffic?hours=24&interval=1h'),
+                    fetch('/api/seq/dashboard/metrics?hours=1')
                 ]);
 
                 if (!kpisRes.ok || !trafficRes.ok) {
@@ -261,6 +350,7 @@
 
                 const kpis = await kpisRes.json();
                 const traffic = await trafficRes.json();
+                const metrics = metricsRes.ok ? await metricsRes.json() : null;
 
                 // Update KPI cards
                 document.getElementById('kpi-total').textContent = formatNumber(kpis.totalEvents);
@@ -283,6 +373,11 @@
                     trafficChart.update();
                 } else {
                     initChart(chartLabels, allData, errorData);
+                }
+
+                // Render business metrics
+                if (metrics) {
+                    renderBusinessMetrics(metrics);
                 }
 
             } catch (err) {
