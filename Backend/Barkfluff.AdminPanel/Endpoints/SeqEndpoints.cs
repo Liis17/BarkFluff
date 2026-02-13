@@ -372,7 +372,10 @@ public static class SeqEndpoints
 
     /// <summary>
     /// Extracts service metrics from Seq events API result.
-    /// Expected format: { Events: [{ Timestamp, Properties: { Application, ...metrics... } }, ...] }
+    /// MetricsReporterService logs: "ServiceMetrics {@Metrics}" where @Metrics is
+    /// { ServiceName, Metrics: { metric_name: value, ... }, Timestamp }.
+    /// In Seq events the structure is: Properties.Metrics.Metrics for actual counters,
+    /// Properties.Application for the service name.
     /// Groups by service name and returns the latest metrics for each service.
     /// </summary>
     private static List<object> ExtractServiceMetricsFromEvents(JsonElement response)
@@ -396,7 +399,8 @@ public static class SeqEndpoints
 
             // Get service name from Properties.Application
             string? serviceName = null;
-            if (evt.TryGetProperty("Properties", out var props))
+            JsonElement props = default;
+            if (evt.TryGetProperty("Properties", out props))
             {
                 if (props.TryGetProperty("Application", out var appProp) && appProp.ValueKind == JsonValueKind.String)
                     serviceName = appProp.GetString();
@@ -409,22 +413,42 @@ public static class SeqEndpoints
             if (serviceMetrics.ContainsKey(serviceName) && serviceMetrics[serviceName].Timestamp >= timestamp.Value)
                 continue;
 
-            // Extract all properties as metrics (excluding Application)
+            // Extract metrics from Properties.Metrics.Metrics (the actual counters dictionary)
+            // MetricsReporterService logs: {@Metrics} = { ServiceName, Metrics: {dict}, Timestamp }
             var metrics = new Dictionary<string, object>();
-            if (evt.TryGetProperty("Properties", out props))
-            {
-                foreach (var prop in props.EnumerateObject())
-                {
-                    if (prop.NameEquals("Application")) continue;
 
-                    metrics[prop.Name] = prop.Value.ValueKind switch
+            if (props.TryGetProperty("Metrics", out var metricsWrapper))
+            {
+                // Try nested structure: Metrics.Metrics (the actual Dictionary<string, long>)
+                if (metricsWrapper.ValueKind == JsonValueKind.Object &&
+                    metricsWrapper.TryGetProperty("Metrics", out var innerMetrics) &&
+                    innerMetrics.ValueKind == JsonValueKind.Object)
+                {
+                    foreach (var prop in innerMetrics.EnumerateObject())
                     {
-                        JsonValueKind.Number => prop.Value.TryGetInt64(out var l) ? l : prop.Value.GetDouble(),
-                        JsonValueKind.String => prop.Value.GetString() ?? "",
-                        JsonValueKind.True => true,
-                        JsonValueKind.False => false,
-                        _ => prop.Value.ToString()
-                    };
+                        metrics[prop.Name] = prop.Value.ValueKind switch
+                        {
+                            JsonValueKind.Number => prop.Value.TryGetInt64(out var l) ? l : prop.Value.GetDouble(),
+                            JsonValueKind.String => prop.Value.GetString() ?? "",
+                            _ => prop.Value.ToString()
+                        };
+                    }
+                }
+                // Fallback: Metrics is directly the dictionary (flat structure)
+                else if (metricsWrapper.ValueKind == JsonValueKind.Object)
+                {
+                    foreach (var prop in metricsWrapper.EnumerateObject())
+                    {
+                        // Skip known non-metric properties
+                        if (prop.Name is "ServiceName" or "Timestamp") continue;
+
+                        metrics[prop.Name] = prop.Value.ValueKind switch
+                        {
+                            JsonValueKind.Number => prop.Value.TryGetInt64(out var l) ? l : prop.Value.GetDouble(),
+                            JsonValueKind.String => prop.Value.GetString() ?? "",
+                            _ => prop.Value.ToString()
+                        };
+                    }
                 }
             }
 
