@@ -24,8 +24,18 @@ public static class AuthEndpoints
             {
                 dto.IpAddress = GetIpAddress(context);
 
-                var requestId = await authService.CreateAuthRequestAsync(dto);
-                return Results.Ok(new { requestId });
+                var result = await authService.CreateAuthRequestAsync(dto);
+
+                if (!result.Success)
+                {
+                    return Results.BadRequest(new
+                    {
+                        error = result.ErrorCode,
+                        message = result.ErrorMessage
+                    });
+                }
+
+                return Results.Ok(new { requestId = result.RequestId });
             }
             catch (Exception ex)
             {
@@ -57,6 +67,7 @@ public static class AuthEndpoints
             {
                 id = token.Id,
                 name = token.Name,
+                adminUsername = token.AdminUsername,
                 createdAt = token.CreatedAt,
                 lastActivity = token.LastActivity
             });
@@ -74,12 +85,23 @@ public static class AuthEndpoints
 
         group.MapGet("/tokens", (TokenService tokenService, HttpContext context) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken token)
+            if (context.Items["AuthToken"] is not AuthToken currentToken)
             {
                 return Results.Unauthorized();
             }
 
-            var tokens = tokenService.GetAllTokens();
+            // Only show tokens that belong to the current admin (or all tokens if current token has no admin association for backward compatibility)
+            List<AuthToken> tokens;
+            if (currentToken.ApprovedByTelegramUserId.HasValue)
+            {
+                tokens = tokenService.GetTokensByAdmin(currentToken.ApprovedByTelegramUserId.Value);
+            }
+            else
+            {
+                // Legacy: show all tokens for tokens created before multi-admin support
+                tokens = tokenService.GetAllTokens().Where(t => t.ApprovedByTelegramUserId.HasValue).ToList();
+            }
+
             return Results.Ok(tokens.Select(t => new
             {
                 id = t.Id,
@@ -87,7 +109,8 @@ public static class AuthEndpoints
                 createdAt = t.CreatedAt,
                 lastActivity = t.LastActivity,
                 ipAddress = t.IpAddress,
-                isCurrent = t.Id == token.Id
+                adminUsername = t.AdminUsername,
+                isCurrent = t.Id == currentToken.Id
             }));
         })
         .WithName("ListTokens")
@@ -99,7 +122,7 @@ public static class AuthEndpoints
             TokenService tokenService,
             HttpContext context) =>
         {
-            if (context.Items["AuthToken"] is not AuthToken)
+            if (context.Items["AuthToken"] is not AuthToken currentToken)
             {
                 return Results.Unauthorized();
             }
@@ -109,10 +132,26 @@ public static class AuthEndpoints
                 return Results.BadRequest(new { error = "Name cannot be empty" });
             }
 
-            var success = tokenService.RenameToken(id, dto.Name);
+            // Check if the user can rename this token
+            bool success;
+            if (currentToken.ApprovedByTelegramUserId.HasValue)
+            {
+                success = tokenService.RenameTokenByAdmin(id, dto.Name, currentToken.ApprovedByTelegramUserId.Value);
+            }
+            else
+            {
+                // Legacy: allow renaming any token for tokens created before multi-admin support
+                var token = tokenService.GetToken(id);
+                if (token == null)
+                {
+                    return Results.NotFound(new { error = "Token not found" });
+                }
+                success = tokenService.RenameToken(id, dto.Name);
+            }
+
             if (!success)
             {
-                return Results.NotFound(new { error = "Token not found" });
+                return Results.NotFound(new { error = "Token not found or you don't have permission" });
             }
 
             return Results.Ok(new { message = "Token renamed successfully" });
@@ -125,22 +164,36 @@ public static class AuthEndpoints
             TokenService tokenService,
             HttpContext context) =>
         {
-            if (context.Items["AuthToken"] is AuthToken currentToken)
-            {
-                if (id == currentToken.Id)
-                {
-                    return Results.BadRequest(new { error = "Cannot delete your own token through this endpoint. Use logout instead." });
-                }
-            }
-            else
+            if (context.Items["AuthToken"] is not AuthToken currentToken)
             {
                 return Results.Unauthorized();
             }
 
-            var success = tokenService.DeleteToken(id);
+            if (id == currentToken.Id)
+            {
+                return Results.BadRequest(new { error = "Cannot delete your own token through this endpoint. Use logout instead." });
+            }
+
+            // Check if the user can delete this token
+            bool success;
+            if (currentToken.ApprovedByTelegramUserId.HasValue)
+            {
+                success = tokenService.DeleteTokenByAdmin(id, currentToken.ApprovedByTelegramUserId.Value);
+            }
+            else
+            {
+                // Legacy: allow deleting any token for tokens created before multi-admin support
+                var token = tokenService.GetToken(id);
+                if (token == null)
+                {
+                    return Results.NotFound(new { error = "Token not found" });
+                }
+                success = tokenService.DeleteToken(id);
+            }
+
             if (!success)
             {
-                return Results.NotFound(new { error = "Token not found" });
+                return Results.NotFound(new { error = "Token not found or you don't have permission" });
             }
 
             return Results.Ok(new { message = "Token deleted successfully" });

@@ -423,11 +423,11 @@
             type="text"
             id="nicknameInput"
             class="nickname-input"
-            placeholder="Введите ваш никнейм"
+            placeholder="Введите ваше имя пользователя"
             autocomplete="off"
             spellcheck="false"
         >
-        <div id="validationMessage" class="validation-message">Введите ваш никнейм</div>
+        <div id="validationMessage" class="validation-message">Введите ваше имя пользователя</div>
 
         <!-- Login button -->
         <button id="loginBtn" class="login-btn">
@@ -699,7 +699,12 @@
                     })
                 })
                 .then(function (res) {
-                    if (!res.ok) throw new Error('Request failed');
+                    if (!res.ok) {
+                        // Error response - parse the error message
+                        return res.json().then(function (data) {
+                            throw new Error(data.message || 'Ошибка запроса');
+                        });
+                    }
                     return res.json();
                 })
                 .then(function (data) {
@@ -711,10 +716,10 @@
                         showError('Не удалось создать запрос авторизации');
                     }
                 })
-                .catch(function () {
+                .catch(function (err) {
                     loginBtn.disabled = false;
                     nicknameInput.disabled = false;
-                    showError('Ошибка соединения с сервером');
+                    showError(err.message || 'Ошибка соединения с сервером');
                 });
             });
 
