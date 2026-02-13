@@ -22,6 +22,12 @@ public class AuthToken
     [BsonField("user_agent")]
     public string? UserAgent { get; set; }
 
+    [BsonField("admin_username")]
+    public string? AdminUsername { get; set; }
+
+    [BsonField("approved_by")]
+    public long? ApprovedByTelegramUserId { get; set; }
+
     public AuthToken()
     {
         Id = Guid.NewGuid();
@@ -32,5 +38,17 @@ public class AuthToken
     public bool IsExpired(int expirationDays)
     {
         return (DateTime.UtcNow - LastActivity).TotalDays > expirationDays;
+    }
+
+    /// <summary>
+    /// Checks if this token is visible to the specified admin.
+    /// Tokens without AdminUsername are not visible (will expire naturally).
+    /// </summary>
+    public bool IsVisibleToAdmin(long adminTelegramUserId, string adminUsername)
+    {
+        if (string.IsNullOrEmpty(AdminUsername) || !ApprovedByTelegramUserId.HasValue)
+            return false;
+
+        return ApprovedByTelegramUserId.Value == adminTelegramUserId;
     }
 }

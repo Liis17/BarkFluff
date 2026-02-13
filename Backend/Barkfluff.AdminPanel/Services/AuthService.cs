@@ -1,25 +1,97 @@
 using Barkfluff.AdminPanel.Models;
 using Barkfluff.AdminPanel.Models.Dtos;
+using Microsoft.Extensions.Options;
 
 namespace Barkfluff.AdminPanel.Services;
+
+/// <summary>
+/// Result of creating an auth request
+/// </summary>
+public class CreateAuthRequestResult
+{
+    public bool Success { get; set; }
+    public string? RequestId { get; set; }
+    public string? ErrorCode { get; set; }
+    public string? ErrorMessage { get; set; }
+
+    public static CreateAuthRequestResult Ok(string requestId) => new()
+    {
+        Success = true,
+        RequestId = requestId
+    };
+
+    public static CreateAuthRequestResult Fail(string errorCode, string errorMessage) => new()
+    {
+        Success = false,
+        ErrorCode = errorCode,
+        ErrorMessage = errorMessage
+    };
+}
 
 public class AuthService
 {
     private readonly PendingAuthService _pendingAuthService;
     private readonly TokenService _tokenService;
     private readonly TelegramBotService _telegramBotService;
+    private readonly IOptions<TelegramSettings> _telegramSettings;
 
     public AuthService(
         PendingAuthService pendingAuthService,
         TokenService tokenService,
-        TelegramBotService telegramBotService)
+        TelegramBotService telegramBotService,
+        IOptions<TelegramSettings> telegramSettings)
     {
         _pendingAuthService = pendingAuthService;
         _tokenService = tokenService;
         _telegramBotService = telegramBotService;
+        _telegramSettings = telegramSettings;
     }
 
-    public async Task<string> CreateAuthRequestAsync(AuthRequestDto dto)
+    public async Task<CreateAuthRequestResult> CreateAuthRequestAsync(AuthRequestDto dto)
+    {
+        // Validate nickname (username) is provided
+        var nickname = dto.Nickname?.Trim();
+        if (string.IsNullOrEmpty(nickname))
+        {
+            return CreateAuthRequestResult.Fail("missing_username", "Введите имя пользователя");
+        }
+
+        // Find the admin by username
+        var targetAdmin = _telegramSettings.Value.GetAdminByUsername(nickname);
+        if (targetAdmin == null)
+        {
+            return CreateAuthRequestResult.Fail("unknown_user", "Пользователь не найден");
+        }
+
+        // Check if the bot can reach the admin
+        var reachability = await _telegramBotService.CheckBotReachabilityAsync(targetAdmin.TelegramUserId);
+        if (!reachability.CanSend)
+        {
+            return CreateAuthRequestResult.Fail(
+                reachability.ErrorCode ?? "unknown_error",
+                reachability.ErrorMessage ?? "Не удалось отправить запрос");
+        }
+
+        var (browser, os) = ParseUserAgent(dto.UserAgent);
+
+        var request = _pendingAuthService.CreateRequest(
+            dto.IpAddress,
+            browser,
+            os,
+            dto.UserAgent,
+            dto.TokenName ?? "Web Session",
+            nickname,
+            targetAdmin.TelegramUserId);
+
+        await _telegramBotService.SendAuthRequestAsync(request);
+
+        return CreateAuthRequestResult.Ok(request.RequestId);
+    }
+
+    /// <summary>
+    /// Legacy method for backward compatibility
+    /// </summary>
+    public async Task<string> CreateAuthRequestAsyncLegacy(AuthRequestDto dto)
     {
         var (browser, os) = ParseUserAgent(dto.UserAgent);
 

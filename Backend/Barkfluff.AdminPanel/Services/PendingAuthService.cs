@@ -37,6 +37,26 @@ public class PendingAuthService
         return request;
     }
 
+    /// <summary>
+    /// Creates a request targeted to a specific admin
+    /// </summary>
+    public PendingAuthRequest CreateRequest(string? ipAddress, string? browser, string? os, string? userAgent, string? tokenName, string? nickname, long? targetTelegramUserId)
+    {
+        var request = new PendingAuthRequest
+        {
+            IpAddress = ipAddress,
+            Browser = browser,
+            Os = os,
+            UserAgent = userAgent,
+            TokenName = tokenName,
+            Nickname = nickname,
+            TargetTelegramUserId = targetTelegramUserId
+        };
+
+        _requests[request.RequestId] = request;
+        return request;
+    }
+
     public PendingAuthRequest? GetRequest(string requestId)
     {
         return _requests.TryGetValue(requestId, out var request) ? request : null;
@@ -76,6 +96,17 @@ public class PendingAuthService
     {
         return _requests.Values
             .Where(r => r.Status == AuthRequestStatus.Pending)
+            .OrderBy(r => r.CreatedAt)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Gets pending requests targeted to a specific admin
+    /// </summary>
+    public List<PendingAuthRequest> GetPendingByAdmin(long telegramUserId)
+    {
+        return _requests.Values
+            .Where(r => r.Status == AuthRequestStatus.Pending && r.TargetTelegramUserId == telegramUserId)
             .OrderBy(r => r.CreatedAt)
             .ToList();
     }

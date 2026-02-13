@@ -133,7 +133,7 @@ services:
     environment:
       <<: *common-variables
       Telegram__BotToken: "${TELEGRAM_BOT_TOKEN}"
-      Telegram__AdminUserIds__0: "${TELEGRAM_ADMIN_ID}"
+      Telegram__Admins: "${TELEGRAM_ADMINS}"
       Seq__ServerUrl: "http://seq:80"
     volumes:
       - admin_panel_data:/app/db
