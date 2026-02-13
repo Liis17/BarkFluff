@@ -367,21 +367,26 @@ namespace BarkFluff.Client.WPF.UserControls
 
             try
             {
-                var decoder = new PngBitmapDecoder(
-                    new Uri(path, UriKind.RelativeOrAbsolute),
-                    BitmapCreateOptions.IgnoreColorProfile,
-                    BitmapCacheOption.OnLoad);
+                var bitmapImage = new BitmapImage();
+                bitmapImage.BeginInit();
+                bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
 
-                var frame = decoder.Frames[0];
+                if (path.StartsWith("pack://"))
+                {
+                    bitmapImage.UriSource = new Uri(path);
+                }
+                else
+                {
+                    // Загрузка через поток — автоопределение формата (JPEG, PNG и др.)
+                    // и отсутствие проблем с относительными путями
+                    bitmapImage.StreamSource = File.OpenRead(path);
+                }
 
-                var converted = new FormatConvertedBitmap();
-                converted.BeginInit();
-                converted.Source = frame;
-                converted.DestinationFormat = PixelFormats.Bgra32;
-                converted.EndInit();
-                converted.Freeze();
+                bitmapImage.EndInit();
+                bitmapImage.StreamSource?.Dispose();
+                bitmapImage.Freeze();
 
-                MainImage.Source = converted;
+                MainImage.Source = bitmapImage;
             }
             catch (Exception ex)
             {
