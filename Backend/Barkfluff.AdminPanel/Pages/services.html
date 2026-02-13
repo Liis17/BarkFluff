@@ -120,7 +120,7 @@
                                     <th class="py-3 font-semibold uppercase">Статус</th>
                                     <th class="py-3 font-semibold uppercase">Последний лог</th>
                                     <th class="py-3 font-semibold uppercase">Ошибки</th>
-                                    <th class="py-3 font-semibold uppercase">gRPC запросы</th>
+                                    <th class="py-3 font-semibold uppercase">Событий</th>
                                 </tr>
                             </thead>
                             <tbody id="servicesTableBody" class="text-sm">
@@ -178,33 +178,35 @@
             });
         }
 
-        // Загрузка списка сервисов и их событий
+        // Форматирование относительного времени
+        function formatRelativeTime(isoDate) {
+            if (!isoDate) return 'Нет данных';
+            const date = new Date(isoDate);
+            const now = new Date();
+            const diff = Math.floor((now - date) / 1000); // seconds
+
+            if (diff < 60) return 'только что';
+            if (diff < 3600) return `${Math.floor(diff / 60)} мин назад`;
+            if (diff < 86400) return `${Math.floor(diff / 3600)} ч назад`;
+            return formatDate(isoDate);
+        }
+
+        // Загрузка статуса сервисов одним запросом
         async function loadServices() {
+            const tbody = document.getElementById('servicesTableBody');
+
             try {
-                const servicesResponse = await fetch('/api/seq/services');
-                if (!servicesResponse.ok) {
-                    throw new Error(`Failed to fetch services: ${servicesResponse.status}`);
+                const response = await fetch('/api/seq/services/status');
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch services status: ${response.status}`);
                 }
-                const serviceNames = await servicesResponse.json();
 
-                // Загружаем события для каждого сервиса параллельно
-                const servicePromises = serviceNames.map(async (name) => {
-                    try {
-                        const eventsResponse = await fetch(`/api/seq/events?application=${encodeURIComponent(name)}&count=5`);
-                        const events = eventsResponse.ok ? await eventsResponse.json() : [];
-                        return { name, events };
-                    } catch (err) {
-                        console.error(`Failed to fetch events for ${name}:`, err);
-                        return { name, events: [] };
-                    }
-                });
-
-                servicesData = await Promise.all(servicePromises);
+                servicesData = await response.json();
                 renderServicesTable();
 
             } catch (error) {
                 console.error('Failed to load services:', error);
-                document.getElementById('servicesTableBody').innerHTML = `
+                tbody.innerHTML = `
                     <tr>
                         <td colspan="5" class="py-8 text-center text-red-400">
                             <div class="flex flex-col items-center gap-2">
@@ -237,31 +239,8 @@
                 return;
             }
 
-            const rows = servicesData.map(service => {
-                const events = service.events || [];
-                const now = new Date();
-
-                // Определяем последний лог
-                let lastLogTimestamp = null;
-                if (events.length > 0 && events[0].Timestamp) {
-                    lastLogTimestamp = new Date(events[0].Timestamp);
-                }
-
-                // Статус: активен, если последний лог менее 5 минут назад
-                const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
-                const isActive = lastLogTimestamp && lastLogTimestamp > fiveMinutesAgo;
-
-                // Считаем ошибки (уровни Error, Fatal)
-                const errorCount = events.filter(e =>
-                    e.Level === 'Error' || e.Level === 'Fatal'
-                ).length;
-
-                // Приблизительное количество gRPC запросов (события уровня Information/Debug)
-                const requestCount = events.filter(e =>
-                    e.Level === 'Information' || e.Level === 'Debug'
-                ).length;
-
-                const statusBadge = isActive
+            const rows = servicesData.map(svc => {
+                const statusBadge = svc.isActive
                     ? `<span class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-md font-medium inline-flex items-center gap-1">
                            <span class="w-2 h-2 bg-green-500 rounded-full"></span>
                            Активен
@@ -271,25 +250,27 @@
                            Неактивен
                        </span>`;
 
-                const errorBadge = errorCount > 0
-                    ? `<span class="px-2 py-1 bg-red-50 text-red-600 text-xs rounded-md font-medium">${errorCount}</span>`
+                const errorBadge = (svc.errorCount || 0) > 0
+                    ? `<span class="px-2 py-1 bg-red-50 text-red-600 text-xs rounded-md font-medium">${svc.errorCount}</span>`
                     : `<span class="px-2 py-1 bg-green-50 text-green-600 text-xs rounded-md font-medium">0</span>`;
+
+                const eventCount = svc.eventCount || 0;
 
                 return `
                     <tr class="border-b border-slate-50 hover:bg-slate-50 transition">
                         <td class="py-4 font-medium text-slate-700">
                             <div class="flex items-center gap-2">
                                 <i data-lucide="server" class="w-4 h-4 text-blue-400"></i>
-                                ${escapeHtml(service.name)}
+                                ${escapeHtml(svc.name)}
                             </div>
                         </td>
                         <td class="py-4">${statusBadge}</td>
-                        <td class="py-4 text-slate-500 text-xs font-mono">
-                            ${lastLogTimestamp ? formatDate(lastLogTimestamp.toISOString()) : '<span class="text-slate-300">Нет данных</span>'}
+                        <td class="py-4 text-slate-500 text-xs font-mono" title="${svc.lastSeen || ''}">
+                            ${svc.lastSeen ? formatRelativeTime(svc.lastSeen) : '<span class="text-slate-300">Нет данных</span>'}
                         </td>
                         <td class="py-4">${errorBadge}</td>
                         <td class="py-4">
-                            <span class="px-2 py-1 bg-blue-50 text-blue-600 text-xs rounded-md font-medium">${requestCount}</span>
+                            <span class="px-2 py-1 bg-blue-50 text-blue-600 text-xs rounded-md font-medium">${eventCount}</span>
                         </td>
                     </tr>
                 `;

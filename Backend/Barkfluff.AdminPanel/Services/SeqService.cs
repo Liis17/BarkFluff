@@ -16,17 +16,26 @@ public class SeqService
         _settings = settings;
         _logger = logger;
         _httpClient.BaseAddress = new Uri(settings.Value.ServerUrl);
+
+        // Add API key header if configured
+        if (!string.IsNullOrEmpty(settings.Value.ApiKey))
+        {
+            _httpClient.DefaultRequestHeaders.Add("X-Seq-ApiKey", settings.Value.ApiKey);
+        }
     }
 
-    public async Task<JsonElement?> GetEventsAsync(string? filter = null, int count = 50, DateTime? fromDateUtc = null)
+    public async Task<JsonElement?> GetEventsAsync(string? filter = null, int count = 50, DateTime? fromDateUtc = null, string? afterId = null)
     {
-        var query = $"/api/events?count={count}";
+        var query = $"/api/events?count={count}&render=true";
 
         if (!string.IsNullOrEmpty(filter))
             query += $"&filter={Uri.EscapeDataString(filter)}";
 
         if (fromDateUtc.HasValue)
             query += $"&fromDateUtc={fromDateUtc.Value:O}";
+
+        if (!string.IsNullOrEmpty(afterId))
+            query += $"&afterId={Uri.EscapeDataString(afterId)}";
 
         try
         {
@@ -38,6 +47,30 @@ public class SeqService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to fetch events from Seq");
+            return null;
+        }
+    }
+
+    public async Task<JsonElement?> RunSqlQueryAsync(string sqlQuery, DateTime? fromDateUtc = null, DateTime? toDateUtc = null)
+    {
+        var query = $"/api/sqlquery?q={Uri.EscapeDataString(sqlQuery)}";
+
+        if (fromDateUtc.HasValue)
+            query += $"&fromDateUtc={fromDateUtc.Value:O}";
+
+        if (toDateUtc.HasValue)
+            query += $"&toDateUtc={toDateUtc.Value:O}";
+
+        try
+        {
+            var response = await _httpClient.GetAsync(query);
+            response.EnsureSuccessStatusCode();
+            var json = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<JsonElement>(json);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to execute SQL query on Seq: {Query}", sqlQuery);
             return null;
         }
     }

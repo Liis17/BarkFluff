@@ -140,59 +140,59 @@
         <div class="p-8 space-y-8">
             <!-- KPI Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-                <!-- gRPC Requests -->
+                <!-- Total Events -->
                 <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
                     <div class="flex items-center justify-between mb-4">
-                        <span class="text-sm font-medium text-gray-500">gRPC запросов</span>
+                        <span class="text-sm font-medium text-gray-500">Всего событий</span>
                         <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                            <i data-lucide="zap" class="w-5 h-5 text-blue-500"></i>
+                            <i data-lucide="activity" class="w-5 h-5 text-blue-500"></i>
                         </div>
                     </div>
-                    <div class="text-3xl font-bold text-gray-900" id="kpi-grpc">Загрузка...</div>
-                    <div class="mt-2 text-xs text-gray-400">За последний период</div>
+                    <div class="text-3xl font-bold text-gray-900" id="kpi-total">Загрузка...</div>
+                    <div class="mt-2 text-xs text-gray-400">За последние 24 часа</div>
                 </div>
 
-                <!-- Messages Sent -->
+                <!-- Errors -->
                 <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
                     <div class="flex items-center justify-between mb-4">
-                        <span class="text-sm font-medium text-gray-500">Отправлено сообщений</span>
-                        <div class="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
-                            <i data-lucide="activity" class="w-5 h-5 text-purple-500"></i>
+                        <span class="text-sm font-medium text-gray-500">Ошибки</span>
+                        <div class="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center">
+                            <i data-lucide="alert-octagon" class="w-5 h-5 text-red-500"></i>
                         </div>
                     </div>
-                    <div class="text-3xl font-bold text-gray-900" id="kpi-messages">Загрузка...</div>
-                    <div class="mt-2 text-xs text-gray-400">За последний период</div>
+                    <div class="text-3xl font-bold text-gray-900" id="kpi-errors">Загрузка...</div>
+                    <div class="mt-2 text-xs text-gray-400">Error + Fatal</div>
                 </div>
 
-                <!-- Files Uploaded -->
+                <!-- Warnings -->
                 <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
                     <div class="flex items-center justify-between mb-4">
-                        <span class="text-sm font-medium text-gray-500">Загружено файлов</span>
-                        <div class="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center">
-                            <i data-lucide="upload" class="w-5 h-5 text-orange-500"></i>
+                        <span class="text-sm font-medium text-gray-500">Предупреждения</span>
+                        <div class="w-10 h-10 rounded-lg bg-yellow-50 flex items-center justify-center">
+                            <i data-lucide="alert-triangle" class="w-5 h-5 text-yellow-500"></i>
                         </div>
                     </div>
-                    <div class="text-3xl font-bold text-gray-900" id="kpi-files">Загрузка...</div>
-                    <div class="mt-2 text-xs text-gray-400">За последний период</div>
+                    <div class="text-3xl font-bold text-gray-900" id="kpi-warnings">Загрузка...</div>
+                    <div class="mt-2 text-xs text-gray-400">Warning уровень</div>
                 </div>
 
-                <!-- Active Subscriptions -->
+                <!-- Active Services -->
                 <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
                     <div class="flex items-center justify-between mb-4">
-                        <span class="text-sm font-medium text-gray-500">Активных подписок</span>
+                        <span class="text-sm font-medium text-gray-500">Активных сервисов</span>
                         <div class="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
-                            <i data-lucide="radio" class="w-5 h-5 text-green-500"></i>
+                            <i data-lucide="server" class="w-5 h-5 text-green-500"></i>
                         </div>
                     </div>
-                    <div class="text-3xl font-bold text-gray-900" id="kpi-subscriptions">Загрузка...</div>
-                    <div class="mt-2 text-xs text-gray-400">За последний период</div>
+                    <div class="text-3xl font-bold text-gray-900" id="kpi-services">Загрузка...</div>
+                    <div class="mt-2 text-xs text-gray-400">С логами за 24ч</div>
                 </div>
             </div>
 
             <!-- Traffic Chart -->
             <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
                 <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-lg font-semibold text-gray-900">Трафик запросов</h2>
+                    <h2 class="text-lg font-semibold text-gray-900">Трафик системы</h2>
                     <span class="text-xs text-gray-400">Обновляется каждые 30 секунд</span>
                 </div>
                 <div class="relative" style="height: 320px;">
@@ -217,6 +217,18 @@
             });
         }
 
+        function formatNumber(num) {
+            if (num == null) return '—';
+            return num.toLocaleString('ru-RU');
+        }
+
+        function formatTime(isoDate) {
+            if (!isoDate) return '';
+            const d = new Date(isoDate);
+            if (isNaN(d.getTime())) return '';
+            return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        }
+
         // ---- Auth ----
         async function checkAuth() {
             try {
@@ -238,102 +250,96 @@
 
         async function loadDashboardData() {
             try {
-                const res = await fetch('/api/seq/events?count=100');
-                if (!res.ok) throw new Error('Failed to fetch Seq events');
-                const data = await res.json();
+                const [kpisRes, trafficRes] = await Promise.all([
+                    fetch('/api/seq/dashboard/kpis?hours=24'),
+                    fetch('/api/seq/dashboard/traffic?hours=24&interval=1h')
+                ]);
 
-                const events = Array.isArray(data) ? data : (data.events || data.Events || []);
-
-                let grpcCount = 0;
-                let messageCount = 0;
-                let fileCount = 0;
-                let subscriptionCount = 0;
-                const trafficBuckets = {};
-
-                for (const event of events) {
-                    const msg = event.RenderedMessage || event.renderedMessage || event.MessageTemplate || event.messageTemplate || '';
-                    const ts = event.Timestamp || event.timestamp || '';
-
-                    // Count gRPC requests
-                    if (msg.toLowerCase().includes('grpc') || msg.toLowerCase().includes('request')) {
-                        grpcCount++;
-                    }
-
-                    // Count messages sent
-                    if (msg.toLowerCase().includes('message') || msg.toLowerCase().includes('send') || msg.toLowerCase().includes('сообщен')) {
-                        messageCount++;
-                    }
-
-                    // Count file uploads
-                    if (msg.toLowerCase().includes('file') || msg.toLowerCase().includes('upload') || msg.toLowerCase().includes('файл')) {
-                        fileCount++;
-                    }
-
-                    // Count active subscriptions
-                    if (msg.toLowerCase().includes('subscri') || msg.toLowerCase().includes('подписк') || msg.toLowerCase().includes('stream')) {
-                        subscriptionCount++;
-                    }
-
-                    // Build traffic timeline buckets
-                    if (ts) {
-                        const d = new Date(ts);
-                        const key = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-                        trafficBuckets[key] = (trafficBuckets[key] || 0) + 1;
-                    }
+                if (!kpisRes.ok || !trafficRes.ok) {
+                    throw new Error('Failed to fetch dashboard data');
                 }
 
+                const kpis = await kpisRes.json();
+                const traffic = await trafficRes.json();
+
                 // Update KPI cards
-                document.getElementById('kpi-grpc').textContent = grpcCount.toLocaleString('ru-RU');
-                document.getElementById('kpi-messages').textContent = messageCount.toLocaleString('ru-RU');
-                document.getElementById('kpi-files').textContent = fileCount.toLocaleString('ru-RU');
-                document.getElementById('kpi-subscriptions').textContent = subscriptionCount.toLocaleString('ru-RU');
+                document.getElementById('kpi-total').textContent = formatNumber(kpis.totalEvents);
+                document.getElementById('kpi-errors').textContent = formatNumber(kpis.errorCount);
+                document.getElementById('kpi-warnings').textContent = formatNumber(kpis.warningCount);
+                document.getElementById('kpi-services').textContent = formatNumber(
+                    kpis.perService ? Object.keys(kpis.perService).length : 0
+                );
+
+                // Prepare chart data
+                const chartLabels = traffic.all.map(p => formatTime(p.timestamp));
+                const allData = traffic.all.map(p => p.count);
+                const errorData = traffic.errors.map(p => p.count);
 
                 // Update chart
-                const sortedLabels = Object.keys(trafficBuckets).sort();
-                const chartData = sortedLabels.map(k => trafficBuckets[k]);
-
                 if (trafficChart) {
-                    trafficChart.data.labels = sortedLabels;
-                    trafficChart.data.datasets[0].data = chartData;
+                    trafficChart.data.labels = chartLabels;
+                    trafficChart.data.datasets[0].data = allData;
+                    trafficChart.data.datasets[1].data = errorData;
                     trafficChart.update();
                 } else {
-                    initChart(sortedLabels, chartData);
+                    initChart(chartLabels, allData, errorData);
                 }
 
             } catch (err) {
                 console.error('Ошибка загрузки данных дашборда:', err);
-                document.getElementById('kpi-grpc').textContent = '\u2014';
-                document.getElementById('kpi-messages').textContent = '\u2014';
-                document.getElementById('kpi-files').textContent = '\u2014';
-                document.getElementById('kpi-subscriptions').textContent = '\u2014';
+                document.getElementById('kpi-total').textContent = '\u2014';
+                document.getElementById('kpi-errors').textContent = '\u2014';
+                document.getElementById('kpi-warnings').textContent = '\u2014';
+                document.getElementById('kpi-services').textContent = '\u2014';
             }
         }
 
-        function initChart(labels, data) {
+        function initChart(labels, allData, errorData) {
             const ctx = document.getElementById('traffic-chart').getContext('2d');
             trafficChart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: labels,
-                    datasets: [{
-                        label: 'Запросы',
-                        data: data,
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.08)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 3,
-                        pointBackgroundColor: '#3b82f6',
-                        pointHoverRadius: 5
-                    }]
+                    datasets: [
+                        {
+                            label: 'Все события',
+                            data: allData,
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 3,
+                            pointBackgroundColor: '#3b82f6',
+                            pointHoverRadius: 5
+                        },
+                        {
+                            label: 'Ошибки',
+                            data: errorData,
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 3,
+                            pointBackgroundColor: '#ef4444',
+                            pointHoverRadius: 5
+                        }
+                    ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
                         legend: {
-                            display: false
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: '#64748b',
+                                font: { size: 11 },
+                                usePointStyle: true,
+                                padding: 15
+                            }
                         },
                         tooltip: {
                             backgroundColor: '#1e293b',
@@ -341,12 +347,7 @@
                             bodyFont: { size: 12 },
                             padding: 10,
                             cornerRadius: 8,
-                            displayColors: false,
-                            callbacks: {
-                                label: function(ctx) {
-                                    return ctx.parsed.y + ' запросов';
-                                }
-                            }
+                            displayColors: true
                         }
                     },
                     scales: {
