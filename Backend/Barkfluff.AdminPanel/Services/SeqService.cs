@@ -86,6 +86,7 @@ public class SeqService
     /// <summary>
     /// Fetches events from Seq with pagination, returning a flat list of event JSON elements.
     /// Uses the Events API which is available in all Seq editions.
+    /// Handles both response formats: bare array [...] and wrapped {"Events": [...]}.
     /// </summary>
     public async Task<List<JsonElement>?> GetAllEventsListAsync(
         string? filter = null,
@@ -104,27 +105,56 @@ public class SeqService
             if (result == null)
                 return allEvents.Count > 0 ? allEvents : null;
 
-            if (result.Value.ValueKind != JsonValueKind.Object ||
-                !result.Value.TryGetProperty("Events", out var events) ||
-                events.ValueKind != JsonValueKind.Array)
+            // Seq may return events as a bare array [...] or wrapped {"Events": [...]}
+            var pageEvents = ExtractEventsArray(result.Value);
+            if (pageEvents == null)
                 return allEvents.Count > 0 ? allEvents : null;
 
-            var pageEvents = events.EnumerateArray().ToList();
             if (pageEvents.Count == 0) break;
 
             allEvents.AddRange(pageEvents);
 
-            // Get afterId for next page
+            // Get afterId for next page (Seq uses "Id" or "id")
             var lastEvent = pageEvents[^1];
-            if (lastEvent.TryGetProperty("Id", out var idProp) && idProp.ValueKind == JsonValueKind.String)
-                afterId = idProp.GetString();
-            else
-                break;
+            afterId = GetEventId(lastEvent);
+            if (afterId == null) break;
 
             if (pageEvents.Count < remaining) break; // Last page
         }
 
         return allEvents;
+    }
+
+    /// <summary>
+    /// Extracts events array from Seq response, handling both formats:
+    /// bare array [...] and wrapped {"Events": [...]}.
+    /// </summary>
+    public static List<JsonElement>? ExtractEventsArray(JsonElement response)
+    {
+        // Format 1: bare array [...]
+        if (response.ValueKind == JsonValueKind.Array)
+            return response.EnumerateArray().ToList();
+
+        // Format 2: wrapped {"Events": [...]}
+        if (response.ValueKind == JsonValueKind.Object)
+        {
+            if (response.TryGetProperty("Events", out var events) && events.ValueKind == JsonValueKind.Array)
+                return events.EnumerateArray().ToList();
+            if (response.TryGetProperty("events", out var eventsLower) && eventsLower.ValueKind == JsonValueKind.Array)
+                return eventsLower.EnumerateArray().ToList();
+        }
+
+        return null;
+    }
+
+    private static string? GetEventId(JsonElement evt)
+    {
+        if (evt.ValueKind != JsonValueKind.Object) return null;
+        if (evt.TryGetProperty("Id", out var id) && id.ValueKind == JsonValueKind.String)
+            return id.GetString();
+        if (evt.TryGetProperty("id", out var idLower) && idLower.ValueKind == JsonValueKind.String)
+            return idLower.GetString();
+        return null;
     }
 
     public async Task<JsonElement?> GetSignalsAsync()
