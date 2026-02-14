@@ -334,10 +334,16 @@
 
         // --- Get application/service from event ---
         function getApplication(event) {
-            if (event.Properties && event.Properties.Application) return event.Properties.Application;
-            if (event.properties && event.properties.Application) return event.properties.Application;
-            if (event.Application) return event.Application;
-            return '';
+            const props = event.Properties || event.properties;
+            if (props) {
+                if (Array.isArray(props)) {
+                    const found = props.find(p => (p.Name || p.name) === 'Application');
+                    if (found) return found.Value || found.value || '';
+                } else if (props.Application) {
+                    return props.Application;
+                }
+            }
+            return event.Application || '';
         }
 
         // --- Level badge ---
