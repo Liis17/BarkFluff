@@ -73,6 +73,7 @@
                 <Image
                     Width="28"
                     Height="28"
+                    SnapsToDevicePixels="True"
                     Source="/Resources/Images/barkfluff_logo.png" />
                 <TextBlock
                     Margin="12,0,0,0"
