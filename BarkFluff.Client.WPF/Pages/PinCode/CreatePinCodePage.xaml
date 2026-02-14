@@ -255,13 +255,13 @@
 
             <ui:Button
                 x:Name="ContinueButton"
-                MinWidth="200"
-                Appearance="Caution"
+                Margin="10"
                 Click="ContinueButton_Click"
-                IsEnabled="False">
+                IsEnabled="False"
+                Style="{DynamicResource RequiredButton}">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="Продолжить" />
-                    <ui:SymbolIcon Symbol="ArrowRight24" />
+                    <TextBlock Style="{DynamicResource RequiredButtonTextStyle}" Text="Продолжить" />
+                    <ui:SymbolIcon Style="{DynamicResource RequiredButtonIconStyle}" Symbol="ArrowRight24" />
                 </StackPanel>
             </ui:Button>
         </StackPanel>

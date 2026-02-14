@@ -99,18 +99,8 @@
                     </ui:Button.RenderTransform>
                     <ui:Button.Content>
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock
-                                VerticalAlignment="Center"
-                                FontFamily="{DynamicResource AdwaitaSans}"
-                                FontSize="15"
-                                FontWeight="SemiBold"
-                                Foreground="{DynamicResource RequiredButtonText}"
-                                Text="Начать" />
-                            <ui:SymbolIcon
-                                Margin="12,0,0,0"
-                                FontSize="16"
-                                Foreground="{DynamicResource RequiredButtonText}"
-                                Symbol="ArrowRight24" />
+                            <TextBlock Style="{DynamicResource RequiredButtonTextStyle}" Text="Начать" />
+                            <ui:SymbolIcon Style="{DynamicResource RequiredButtonIconStyle}" Symbol="ArrowRight24" />
                         </StackPanel>
                     </ui:Button.Content>
                 </ui:Button>
