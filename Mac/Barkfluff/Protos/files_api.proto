@@ -1,0 +1,116 @@
+syntax = "proto3";
+
+option csharp_namespace = "BarkFluff.Proto.Files";
+
+import "google/protobuf/timestamp.proto";
+
+package barkfluff.files;
+
+service FilesApi {
+  rpc GetUploadUrl(GetUploadUrlRequest) returns(GetUploadUrlResponse); // Получить ссылку для загрузки файла
+  
+  rpc GetTempDownloadUrl(GetTempDownloadUrlRequest) returns(GetTempDownloadUrlResponse); // Получить ссылку для скачивания файла
+  
+  rpc CheckFileHash(CheckFileHashRequest) returns(CheckFileHashResponse); // Проверить существует ли файл с таким хешем
+  
+  rpc GetUserStorageInfo(GetUserStorageInfoRequest) returns(GetUserStorageInfoResponse); // Получить информацию о хранилище пользователя
+}
+
+service FilesServerApi {
+  rpc GetFileData(GetFileDataRequest) returns(GetFileDataResponse); // Получить информацию о загруженном файле
+  
+  rpc GetFilesData(GetFilesDataRequest) returns(GetFilesDataResponse); // Получить информацию о загруженных файлах
+}
+
+message GetTempDownloadUrlRequest {
+  repeated string file_ids = 1; // Идентификаторы файлов
+}
+
+message GetTempDownloadUrlResponse {
+  
+  message DownloadFileData {
+    string file_id = 1; // идентификатор файла
+    string url = 2; // ссылка на загрузку
+    string preview_url = 3; // ссылка на превью файла
+  }
+  
+  repeated DownloadFileData file_urls = 1; // ссылки на файлы
+  
+}
+
+message GetFilesDataRequest {
+  repeated string file_ids = 1; // Идентификаторы файлов
+}
+
+message GetFilesDataResponse {
+  repeated UploadFileInfo files_infos = 1; // Информация о файлах
+}
+
+message GetFileDataRequest {
+  string file_id = 1;
+}
+
+message GetFileDataResponse {
+    UploadFileInfo file_info = 1;
+}
+
+message UploadFileInfo {
+  string id = 1; // Идентификатор файла
+  repeated int64 uploaders = 2; // Идентификаторы пользователей загрузивших файл
+  google.protobuf.Timestamp created_at = 3; // Время создания
+  google.protobuf.Timestamp uploaded_at = 4; // время загрузки
+  string etag = 5; // Etag S3
+  UploadFileType type = 6; // Тип загруженного файла
+  string file_name = 7; // Имя файла
+  string file_url = 8; // Ссылка на загрузку файла
+  string preview_url = 9; // Ссылка на превью, если есть
+  int64 file_size = 10; // Размер файла в байтах
+  string preview_file_id = 11; // Идентификатор файла превью, если есть
+}
+
+message GetUploadUrlRequest {
+  UploadFileType file_type = 1; // Тип загружаемого файла
+}
+
+message GetUploadUrlResponse {
+  string url = 1; // адрес для загрузки файла
+  string file_id = 2; // идентификатор файла
+}
+
+enum UploadFileType {
+  UPLOAD_FILE_TYPE_UNKNOWN = 0; 
+  
+  USER_AVATAR = 1; // Аватарка пользователя
+  
+  MESSAGE_ATTACHMENT_IMAGE = 2; // Вложение сообщения - изображение
+  
+  MESSAGE_ATTACHMENT_VIDEO = 3; // Вложение сообщения - видео
+  
+  MESSAGE_ATTACHMENT_GIF = 4; // Вложение сообщения - гифка 
+  
+  MESSAGE_ATTACHMENT_DOCUMENT = 5; // Вложение сообщения - документ
+  
+  CHAT_PICTURE = 6; // Обложка группового чата
+}
+
+message CheckFileHashRequest {
+  string file_hash = 1; // SHA256 хеш файла (hex строка, 64 символа)
+}
+
+message CheckFileHashResponse {
+  string file_id = 1; // Идентификатор файла если найден, пустая строка если не найден
+}
+
+message GetUserStorageInfoRequest {
+}
+
+message GetUserStorageInfoResponse {
+  message StorageByType {
+    UploadFileType file_type = 1; // Тип файла
+    int64 used_storage = 2; // Занятое пространство для данного типа в байтах
+  }
+  
+  int64 total_used_storage = 1; // Общее занятое пространство в байтах
+  int64 storage_limit = 2; // Лимит хранилища в байтах
+  repeated StorageByType storage_by_types = 3; // Использованное пространство по типам файлов
+}
