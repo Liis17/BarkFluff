@@ -19,11 +19,8 @@
             x:Name="ContentCard"
             Margin="40"
             Padding="60,50"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
-            Background="{DynamicResource BorderBlock}"
-            CornerRadius="16"
-            Opacity="0">
+            Opacity="0"
+            Style="{StaticResource MainStyleBorder}">
             <Border.RenderTransform>
                 <TranslateTransform Y="20" />
             </Border.RenderTransform>
@@ -59,12 +56,8 @@
                 <TextBlock
                     x:Name="TitleText"
                     Margin="0,0,0,12"
-                    HorizontalAlignment="Center"
-                    FontFamily="{DynamicResource AdwaitaSans}"
-                    FontSize="42"
-                    FontWeight="Bold"
-                    Foreground="{DynamicResource TitleText}"
                     Opacity="0"
+                    Style="{DynamicResource BigTitleTextStyle}"
                     Text="BarkFluff">
                     <TextBlock.RenderTransform>
                         <TranslateTransform Y="20" />
@@ -74,15 +67,10 @@
                 <!--  Subtitle with accent color  -->
                 <TextBlock
                     x:Name="SubtitleText"
-                    Margin="0,0,0,24"
-                    HorizontalAlignment="Center"
-                    FontFamily="{DynamicResource AdwaitaSans}"
-                    FontSize="18"
-                    FontWeight="Medium"
-                    Foreground="{DynamicResource SubtitleText}"
+                    Margin="0,0,0,6"
                     Opacity="0"
-                    Text="Мессенджер для твоей стаи"
-                    TextAlignment="Center">
+                    Style="{DynamicResource SubtitleTextStyle}"
+                    Text="Мессенджер для твоей стаи">
                     <TextBlock.RenderTransform>
                         <TranslateTransform Y="20" />
                     </TextBlock.RenderTransform>
@@ -91,18 +79,10 @@
                 <!--  Description text  -->
                 <TextBlock
                     x:Name="DescriptionText"
-                    MaxWidth="420"
-                    Margin="0,0,0,40"
-                    HorizontalAlignment="Center"
-                    FontFamily="{DynamicResource AdwaitaSans}"
-                    FontSize="14"
-                    FontWeight="Normal"
-                    Foreground="{DynamicResource DescriptionText}"
-                    LineHeight="22"
+                    Margin="0,0,0,20"
                     Opacity="0"
-                    Text="Общайтесь с друзьями, делитесь моментами и оставайтесь на связи с теми, кто важен"
-                    TextAlignment="Center"
-                    TextWrapping="Wrap">
+                    Style="{DynamicResource DescriptionTextStyle}"
+                    Text="Общайтесь с друзьями, делитесь моментами и оставайтесь на связи с теми, кто важен">
                     <TextBlock.RenderTransform>
                         <TranslateTransform Y="20" />
                     </TextBlock.RenderTransform>
