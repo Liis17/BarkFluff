@@ -56,7 +56,7 @@ namespace BarkFluff.Client.WPF
 #endif
 
             //применение темы
-            ThemeLoader();
+            //ThemeLoader(); //функция избыточная, так как библиотека Wpf.Ui уже применяет системную тему, но на всякий случай оставлю её, если в будущем понадобится более тонкая настройка темы
         }
         private void ThemeLoader()
         {
