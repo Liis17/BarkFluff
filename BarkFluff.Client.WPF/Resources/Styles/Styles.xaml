@@ -888,22 +888,138 @@
         <Setter Property="Effect">
             <Setter.Value>
                 <DropShadowEffect
-                BlurRadius="16"
-                Direction="270"
-                Opacity="0.3"
-                ShadowDepth="4"
-                Color="#df5000" />
+                    BlurRadius="16"
+                    Direction="270"
+                    Opacity="0.3"
+                    ShadowDepth="4"
+                    Color="#df5000" />
             </Setter.Value>
         </Setter>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type ui:Button}">
                     <Border
-                    x:Name="Border"
-                    Background="{TemplateBinding Background}"
-                    BorderThickness="0"
-                    CornerRadius="{TemplateBinding CornerRadius}"
-                    SnapsToDevicePixels="True">
+                        x:Name="Border"
+                        Background="{TemplateBinding Background}"
+                        BorderThickness="0"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Border" Property="Background" Value="{Binding MouseOverBackground, RelativeSource={RelativeSource TemplatedParent}}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Border" Property="Background" Value="{Binding PressedBackground, RelativeSource={RelativeSource TemplatedParent}}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="UseLayoutRounding" Value="True" />
+    </Style>
+
+
+    <!--  //////////////////////////////////////////////////////////////////////  -->
+    <!--  //////////////////////////////////////////////////////////////////////  -->
+    <!--  //////////////////////////////////////////////////////////////////////  -->
+    <!--  //////////////////////////////////////////////////////////////////////  -->
+    <!--  //////////////////////////////////////////////////////////////////////  -->
+    <!--  //////////////////////////////////////////////////////////////////////  -->
+    <!--  //////////////////////////////////////////////////////////////////////  -->
+    <!--  //////////////////////////////////////////////////////////////////////  -->
+    <!--  //////////////////////////////////////////////////////////////////////  -->
+    <!--  //////////////////////////////////////////////////////////////////////  -->
+    <!--  //////////////////////////////////////////////////////////////////////  -->
+    <!--  //////////////////////////////////////////////////////////////////////  -->
+    <!--  //////////////////////////////////////////////////////////////////////  -->
+    <!--  //////////////////////////////////////////////////////////////////////  -->
+    <!--  //////////////////////////////////////////////////////////////////////  -->
+    <!--  //////////////////////////////////////////////////////////////////////  -->
+    <!--  //////////////////////////////////////////////////////////////////////  -->
+    <!--  //////////////////////////////////////////////////////////////////////  -->
+    <!--  //////////////////////////////////////////////////////////////////////  -->
+    <!--  //////////////////////////////////////////////////////////////////////  -->
+    <!--  //////////////////////////////////////////////////////////////////////  -->
+
+    <!--  новые стили  -->
+
+    <!--  Windows 11 style modern button  -->
+    <Style x:Key="AdaptiveButton" TargetType="{x:Type ui:Button}">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="MinWidth" Value="160" />
+        <Setter Property="Height" Value="48" />
+        <Setter Property="Padding" Value="24,0" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="Background" Value="#df5000" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="MouseOverBackground" Value="#FFC54700" />
+        <Setter Property="PressedBackground" Value="#FFAB3D00" />
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect
+                    BlurRadius="16"
+                    Direction="270"
+                    Opacity="0.3"
+                    ShadowDepth="4"
+                    Color="#df5000" />
+            </Setter.Value>
+        </Setter>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ui:Button}">
+                    <Border
+                        x:Name="Border"
+                        Background="{TemplateBinding Background}"
+                        BorderThickness="0"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Border" Property="Background" Value="{Binding MouseOverBackground, RelativeSource={RelativeSource TemplatedParent}}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Border" Property="Background" Value="{Binding PressedBackground, RelativeSource={RelativeSource TemplatedParent}}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="UseLayoutRounding" Value="True" />
+    </Style>
+
+    <Style x:Key="RequiredButton" TargetType="{x:Type ui:Button}">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="MinWidth" Value="160" />
+        <Setter Property="Height" Value="48" />
+        <Setter Property="Padding" Value="24,0" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="Background" Value="#df5000" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="MouseOverBackground" Value="#FFC54700" />
+        <Setter Property="PressedBackground" Value="#FFAB3D00" />
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect
+                    BlurRadius="16"
+                    Direction="270"
+                    Opacity="0.3"
+                    ShadowDepth="4"
+                    Color="#df5000" />
+            </Setter.Value>
+        </Setter>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ui:Button}">
+                    <Border
+                        x:Name="Border"
+                        Background="{TemplateBinding Background}"
+                        BorderThickness="0"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        SnapsToDevicePixels="True">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
