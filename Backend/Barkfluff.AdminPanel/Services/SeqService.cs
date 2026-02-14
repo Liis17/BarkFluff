@@ -83,6 +83,50 @@ public class SeqService
         }
     }
 
+    /// <summary>
+    /// Fetches events from Seq with pagination, returning a flat list of event JSON elements.
+    /// Uses the Events API which is available in all Seq editions.
+    /// </summary>
+    public async Task<List<JsonElement>?> GetAllEventsListAsync(
+        string? filter = null,
+        DateTime? fromDateUtc = null,
+        int maxEvents = 5000)
+    {
+        var allEvents = new List<JsonElement>();
+        string? afterId = null;
+        const int pageSize = 500;
+
+        while (allEvents.Count < maxEvents)
+        {
+            var remaining = Math.Min(pageSize, maxEvents - allEvents.Count);
+            var result = await GetEventsAsync(filter, remaining, fromDateUtc, afterId);
+
+            if (result == null)
+                return allEvents.Count > 0 ? allEvents : null;
+
+            if (result.Value.ValueKind != JsonValueKind.Object ||
+                !result.Value.TryGetProperty("Events", out var events) ||
+                events.ValueKind != JsonValueKind.Array)
+                return allEvents.Count > 0 ? allEvents : null;
+
+            var pageEvents = events.EnumerateArray().ToList();
+            if (pageEvents.Count == 0) break;
+
+            allEvents.AddRange(pageEvents);
+
+            // Get afterId for next page
+            var lastEvent = pageEvents[^1];
+            if (lastEvent.TryGetProperty("Id", out var idProp) && idProp.ValueKind == JsonValueKind.String)
+                afterId = idProp.GetString();
+            else
+                break;
+
+            if (pageEvents.Count < remaining) break; // Last page
+        }
+
+        return allEvents;
+    }
+
     public async Task<JsonElement?> GetSignalsAsync()
     {
         try

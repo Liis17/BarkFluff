@@ -102,36 +102,18 @@ public static class SeqEndpoints
 
             var fromDateUtc = DateTime.UtcNow.AddHours(-hours);
 
-            var totalTask = seqService.RunSqlQueryAsync(
-                "select count(*) as Count from stream",
-                fromDateUtc);
-
-            var errorsTask = seqService.RunSqlQueryAsync(
-                "select count(*) as Count from stream where @Level = 'Error' or @Level = 'Fatal'",
-                fromDateUtc);
-
-            var warningsTask = seqService.RunSqlQueryAsync(
-                "select count(*) as Count from stream where @Level = 'Warning'",
-                fromDateUtc);
-
-            var perServiceTask = seqService.RunSqlQueryAsync(
-                "select count(*) as Count, Application from stream group by Application",
-                fromDateUtc);
-
-            await Task.WhenAll(totalTask, errorsTask, warningsTask, perServiceTask);
-
-            var totalResult = await totalTask;
-            var errorsResult = await errorsTask;
-            var warningsResult = await warningsTask;
-            var perServiceResult = await perServiceTask;
-
-            if (totalResult == null || errorsResult == null || warningsResult == null || perServiceResult == null)
+            var events = await seqService.GetAllEventsListAsync(null, fromDateUtc, 5000);
+            if (events == null)
                 return Results.StatusCode(502);
 
-            var totalCount = ExtractScalarCount(totalResult.Value);
-            var errorCount = ExtractScalarCount(errorsResult.Value);
-            var warningCount = ExtractScalarCount(warningsResult.Value);
-            var perService = ExtractGroupedCounts(perServiceResult.Value);
+            long totalCount = events.Count;
+            long errorCount = events.Count(e => GetEventLevel(e) is "Error" or "Fatal");
+            long warningCount = events.Count(e => GetEventLevel(e) == "Warning");
+            var perService = events
+                .Select(GetEventApplication)
+                .Where(a => !string.IsNullOrEmpty(a))
+                .GroupBy(a => a!)
+                .ToDictionary(g => g.Key, g => (long)g.Count());
 
             return Results.Ok(new
             {
@@ -156,24 +138,41 @@ public static class SeqEndpoints
 
             var fromDateUtc = DateTime.UtcNow.AddHours(-hours);
 
-            var allTask = seqService.RunSqlQueryAsync(
-                $"select count(*) as Count from stream group by time({interval})",
-                fromDateUtc);
-
-            var errorsTask = seqService.RunSqlQueryAsync(
-                $"select count(*) as Count from stream where (@Level = 'Error' or @Level = 'Fatal') group by time({interval})",
-                fromDateUtc);
-
-            await Task.WhenAll(allTask, errorsTask);
-
-            var allResult = await allTask;
-            var errorsResult = await errorsTask;
-
-            if (allResult == null || errorsResult == null)
+            var events = await seqService.GetAllEventsListAsync(null, fromDateUtc, 5000);
+            if (events == null)
                 return Results.StatusCode(502);
 
-            var allData = ExtractTimeSeriesData(allResult.Value);
-            var errorsData = ExtractTimeSeriesData(errorsResult.Value);
+            var intervalMinutes = ParseIntervalMinutes(interval);
+
+            // Bucket events by time
+            var allBuckets = new Dictionary<DateTime, long>();
+            var errorBuckets = new Dictionary<DateTime, long>();
+
+            foreach (var evt in events)
+            {
+                var ts = GetEventTimestamp(evt);
+                if (!ts.HasValue) continue;
+
+                var bucket = TruncateToInterval(ts.Value, intervalMinutes);
+                allBuckets[bucket] = allBuckets.GetValueOrDefault(bucket) + 1;
+
+                var level = GetEventLevel(evt);
+                if (level is "Error" or "Fatal")
+                    errorBuckets[bucket] = errorBuckets.GetValueOrDefault(bucket) + 1;
+            }
+
+            // Generate continuous time series with all buckets filled
+            var allData = new List<object>();
+            var errorsData = new List<object>();
+            var bucketTime = TruncateToInterval(fromDateUtc, intervalMinutes);
+            var now = DateTime.UtcNow;
+
+            while (bucketTime <= now)
+            {
+                allData.Add(new { timestamp = bucketTime.ToString("o"), count = allBuckets.GetValueOrDefault(bucketTime) });
+                errorsData.Add(new { timestamp = bucketTime.ToString("o"), count = errorBuckets.GetValueOrDefault(bucketTime) });
+                bucketTime = bucketTime.AddMinutes(intervalMinutes);
+            }
 
             return Results.Ok(new
             {
@@ -192,22 +191,31 @@ public static class SeqEndpoints
             if (context.Items["AuthToken"] is not AuthToken)
                 return Results.Unauthorized();
 
-            var fromDateUtc = DateTime.UtcNow.AddHours(-hours);
-
-            // Сначала получаем события через events API, затем парсим
-            var filter = "@Message like 'ServiceMetrics%'";
-            var eventsResult = await seqService.GetEventsAsync(filter, 200, fromDateUtc);
-
-            if (eventsResult == null)
-                return Results.StatusCode(502);
-
-            var services = ExtractServiceMetricsFromEvents(eventsResult.Value);
-
-            return Results.Ok(new
+            try
             {
-                periodHours = hours,
-                services
-            });
+                var fromDateUtc = DateTime.UtcNow.AddHours(-hours);
+
+                var filter = "@Message like 'ServiceMetrics%'";
+                var eventsResult = await seqService.GetEventsAsync(filter, 200, fromDateUtc);
+
+                if (eventsResult == null)
+                    return Results.StatusCode(502);
+
+                var services = ExtractServiceMetricsFromEvents(eventsResult.Value);
+
+                return Results.Ok(new
+                {
+                    periodHours = hours,
+                    services
+                });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(
+                    detail: ex.Message,
+                    statusCode: 500,
+                    title: "Failed to extract metrics");
+            }
         })
         .WithName("GetDashboardMetrics")
         .WithOpenApi();
@@ -222,53 +230,47 @@ public static class SeqEndpoints
 
             var fromDateUtc = DateTime.UtcNow.AddHours(-hours);
 
-            var errorsTask = seqService.RunSqlQueryAsync(
-                "select count(*) as Count, Application from stream where (@Level = 'Error' or @Level = 'Fatal') group by Application",
-                fromDateUtc);
-
-            var eventsTask = seqService.RunSqlQueryAsync(
-                "select count(*) as Count, Application from stream group by Application",
-                fromDateUtc);
-
-            var lastSeenTask = seqService.RunSqlQueryAsync(
-                "select max(@Timestamp) as LastSeen, Application from stream group by Application",
-                fromDateUtc);
-
-            await Task.WhenAll(errorsTask, eventsTask, lastSeenTask);
-
-            var errorsResult = await errorsTask;
-            var eventsResult = await eventsTask;
-            var lastSeenResult = await lastSeenTask;
-
-            if (errorsResult == null || eventsResult == null || lastSeenResult == null)
+            var events = await seqService.GetAllEventsListAsync(null, fromDateUtc, 5000);
+            if (events == null)
                 return Results.StatusCode(502);
 
-            var errorCounts = ExtractGroupedCounts(errorsResult.Value);
-            var eventCounts = ExtractGroupedCounts(eventsResult.Value);
-            var lastSeens = ExtractGroupedTimestamps(lastSeenResult.Value);
+            // Aggregate per-service stats
+            var serviceData = new Dictionary<string, (long eventCount, long errorCount, DateTime? lastSeen)>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var evt in events)
+            {
+                var app = GetEventApplication(evt);
+                if (string.IsNullOrEmpty(app)) continue;
+
+                var ts = GetEventTimestamp(evt);
+                var level = GetEventLevel(evt);
+
+                if (!serviceData.TryGetValue(app, out var data))
+                    data = (0, 0, null);
+
+                data.eventCount++;
+                if (level is "Error" or "Fatal") data.errorCount++;
+                if (ts.HasValue && (!data.lastSeen.HasValue || ts.Value > data.lastSeen.Value))
+                    data.lastSeen = ts.Value;
+
+                serviceData[app] = data;
+            }
 
             var now = DateTime.UtcNow;
-            var result = new List<object>();
-
-            // Include all known services even if they have no data
-            var allServiceNames = KnownServices.Concat(eventCounts.Keys).Distinct();
-
-            foreach (var serviceName in allServiceNames)
-            {
-                lastSeens.TryGetValue(serviceName, out var lastSeenValue);
-                var isActive = lastSeens.ContainsKey(serviceName) && (now - lastSeens[serviceName]).TotalMinutes < 5;
-                errorCounts.TryGetValue(serviceName, out var errorCount);
-                eventCounts.TryGetValue(serviceName, out var eventCount);
-
-                result.Add(new
+            var result = KnownServices.Concat(serviceData.Keys).Distinct()
+                .Select(name =>
                 {
-                    name = serviceName,
-                    isActive,
-                    lastSeen = lastSeens.ContainsKey(serviceName) ? lastSeens[serviceName].ToString("o") : null,
-                    errorCount,
-                    eventCount
-                });
-            }
+                    serviceData.TryGetValue(name, out var data);
+                    return new
+                    {
+                        name,
+                        isActive = data.lastSeen.HasValue && (now - data.lastSeen.Value).TotalMinutes < 5,
+                        lastSeen = data.lastSeen?.ToString("o"),
+                        errorCount = data.errorCount,
+                        eventCount = data.eventCount
+                    };
+                })
+                .ToList();
 
             return Results.Ok(result);
         })
@@ -276,110 +278,60 @@ public static class SeqEndpoints
         .WithOpenApi();
     }
 
-    #region SQL Response Parsers
+    #region Event Helpers
 
-    /// <summary>
-    /// Extracts a single scalar count value from Seq SQL query result.
-    /// Expected format: { Columns: [{Name: "Count"}], Rows: [[123]] }
-    /// </summary>
-    private static long ExtractScalarCount(JsonElement? response)
+    private static string? GetEventLevel(JsonElement evt)
     {
-        if (response == null) return 0;
-        if (!response.Value.TryGetProperty("Rows", out var rows)) return 0;
-        if (rows.GetArrayLength() == 0) return 0;
-        if (rows[0].GetArrayLength() == 0) return 0;
-
-        var value = rows[0][0];
-        if (value.ValueKind == JsonValueKind.Number)
-            return value.GetInt64();
-        if (value.ValueKind == JsonValueKind.String && long.TryParse(value.GetString(), out var num))
-            return num;
-
-        return 0;
+        if (evt.ValueKind != JsonValueKind.Object) return null;
+        return evt.TryGetProperty("Level", out var level) && level.ValueKind == JsonValueKind.String
+            ? level.GetString()
+            : null;
     }
 
-    /// <summary>
-    /// Extracts grouped counts from Seq SQL query result.
-    /// Expected format: { Columns: [{Name: "Count"}, {Name: "Application"}], Rows: [[123, "ServiceName"], ...] }
-    /// Assumes the second column is the group key and first is the count.
-    /// </summary>
-    private static Dictionary<string, long> ExtractGroupedCounts(JsonElement? response)
+    private static string? GetEventApplication(JsonElement evt)
     {
-        var result = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
-
-        if (response == null) return result;
-        if (!response.Value.TryGetProperty("Rows", out var rows)) return result;
-
-        foreach (var row in rows.EnumerateArray())
-        {
-            if (row.GetArrayLength() < 2) continue;
-
-            var count = row[0].ValueKind == JsonValueKind.Number
-                ? row[0].GetInt64()
-                : 0L;
-
-            var key = row[1].ValueKind == JsonValueKind.String
-                ? row[1].GetString()
-                : null;
-
-            if (!string.IsNullOrEmpty(key))
-            {
-                result[key] = count;
-            }
-        }
-
-        return result;
+        if (evt.ValueKind != JsonValueKind.Object) return null;
+        if (!evt.TryGetProperty("Properties", out var props) || props.ValueKind != JsonValueKind.Object)
+            return null;
+        return props.TryGetProperty("Application", out var app) && app.ValueKind == JsonValueKind.String
+            ? app.GetString()
+            : null;
     }
 
-    /// <summary>
-    /// Extracts time series data from Seq SQL query result with time() grouping.
-    /// Expected format: { Columns: [{Name: "Count"}, {Name: "..."}], Rows: [[123, "2025-02-13T10:00:00Z"], ...] }
-    /// Returns anonymous objects with "timestamp" and "count" properties for correct JSON serialization.
-    /// </summary>
-    private static List<object> ExtractTimeSeriesData(JsonElement? response)
+    private static DateTime? GetEventTimestamp(JsonElement evt)
     {
-        var result = new List<(DateTime Timestamp, long Count)>();
-
-        if (response == null) return [];
-        if (!response.Value.TryGetProperty("Rows", out var rows)) return [];
-
-        foreach (var row in rows.EnumerateArray())
-        {
-            if (row.GetArrayLength() < 2) continue;
-
-            var count = row[0].ValueKind == JsonValueKind.Number
-                ? row[0].GetInt64()
-                : 0L;
-
-            // Try to parse timestamp from second column
-            DateTime? timestamp = null;
-            if (row[1].ValueKind == JsonValueKind.String)
-            {
-                var tsStr = row[1].GetString();
-                if (DateTime.TryParse(tsStr, out var ts))
-                {
-                    timestamp = ts;
-                }
-            }
-
-            if (timestamp.HasValue)
-            {
-                result.Add((timestamp.Value, count));
-            }
-        }
-
-        return result
-            .OrderBy(x => x.Timestamp)
-            .Select(x => (object)new { timestamp = x.Timestamp.ToString("o"), count = x.Count })
-            .ToList();
+        if (evt.ValueKind != JsonValueKind.Object) return null;
+        if (!evt.TryGetProperty("Timestamp", out var ts) || ts.ValueKind != JsonValueKind.String)
+            return null;
+        return DateTime.TryParse(ts.GetString(), null, System.Globalization.DateTimeStyles.RoundtripKind, out var dt)
+            ? dt
+            : null;
     }
+
+    private static int ParseIntervalMinutes(string interval)
+    {
+        if (string.IsNullOrEmpty(interval)) return 60;
+        if (interval.EndsWith('h') && int.TryParse(interval[..^1], out var h)) return h * 60;
+        if (interval.EndsWith('m') && int.TryParse(interval[..^1], out var m)) return m;
+        if (interval.EndsWith('d') && int.TryParse(interval[..^1], out var d)) return d * 24 * 60;
+        return 60;
+    }
+
+    private static DateTime TruncateToInterval(DateTime dt, int intervalMinutes)
+    {
+        var totalMinutes = (long)(dt - DateTime.MinValue).TotalMinutes;
+        var truncated = totalMinutes / intervalMinutes * intervalMinutes;
+        return DateTime.MinValue.AddMinutes(truncated);
+    }
+
+    #endregion
+
+    #region Metrics Extraction
 
     /// <summary>
     /// Extracts service metrics from Seq events API result.
     /// MetricsReporterService logs: "ServiceMetrics {@Metrics}" where @Metrics is
     /// { ServiceName, Metrics: { metric_name: value, ... }, Timestamp }.
-    /// In Seq events the structure is: Properties.Metrics.Metrics for actual counters,
-    /// Properties.Application for the service name.
     /// Groups by service name and returns the latest metrics for each service.
     /// </summary>
     private static List<object> ExtractServiceMetricsFromEvents(JsonElement response)
@@ -387,24 +339,25 @@ public static class SeqEndpoints
         var serviceMetrics = new Dictionary<string, (DateTime Timestamp, Dictionary<string, object> Metrics)>(StringComparer.OrdinalIgnoreCase);
         var now = DateTime.UtcNow;
 
-        if (!response.TryGetProperty("Events", out var events))
+        if (response.ValueKind != JsonValueKind.Object)
+            return [];
+
+        if (!response.TryGetProperty("Events", out var events) || events.ValueKind != JsonValueKind.Array)
             return [];
 
         foreach (var evt in events.EnumerateArray())
         {
+            if (evt.ValueKind != JsonValueKind.Object) continue;
+
             // Parse timestamp
-            DateTime? timestamp = null;
-            if (evt.TryGetProperty("Timestamp", out var tsProp) && tsProp.ValueKind == JsonValueKind.String)
-            {
-                var tsStr = tsProp.GetString();
-                if (DateTime.TryParse(tsStr, out var ts))
-                    timestamp = ts;
-            }
+            var timestamp = GetEventTimestamp(evt);
 
             // Get service name from Properties.Application
             string? serviceName = null;
             JsonElement props = default;
-            if (evt.TryGetProperty("Properties", out props))
+            var hasProps = evt.TryGetProperty("Properties", out props) && props.ValueKind == JsonValueKind.Object;
+
+            if (hasProps)
             {
                 if (props.TryGetProperty("Application", out var appProp) && appProp.ValueKind == JsonValueKind.String)
                     serviceName = appProp.GetString();
@@ -418,10 +371,9 @@ public static class SeqEndpoints
                 continue;
 
             // Extract metrics from Properties.Metrics.Metrics (the actual counters dictionary)
-            // MetricsReporterService logs: {@Metrics} = { ServiceName, Metrics: {dict}, Timestamp }
             var metrics = new Dictionary<string, object>();
 
-            if (props.TryGetProperty("Metrics", out var metricsWrapper))
+            if (hasProps && props.TryGetProperty("Metrics", out var metricsWrapper))
             {
                 // Try nested structure: Metrics.Metrics (the actual Dictionary<string, long>)
                 if (metricsWrapper.ValueKind == JsonValueKind.Object &&
@@ -471,146 +423,6 @@ public static class SeqEndpoints
                 metrics,
                 lastReportTime = timestamp.ToString("o")
             });
-        }
-
-        return result;
-    }
-
-    /// <summary>
-    /// Extracts service metrics from Seq SQL query result.
-    /// Expected format: { Columns: [...], Rows: [["2025-02-13T10:00:00Z", "ServiceName", "{...metrics...}"], ...] }
-    /// Groups by service name and returns the latest metrics for each service.
-    /// </summary>
-    private static List<object> ExtractServiceMetrics(JsonElement response)
-    {
-        var serviceMetrics = new Dictionary<string, (DateTime Timestamp, Dictionary<string, object> Metrics)>(StringComparer.OrdinalIgnoreCase);
-        var now = DateTime.UtcNow;
-
-        if (!response.TryGetProperty("Rows", out var rows))
-            return [];
-
-        foreach (var row in rows.EnumerateArray())
-        {
-            if (row.GetArrayLength() < 3) continue;
-
-            // Parse timestamp
-            DateTime? timestamp = null;
-            if (row[0].ValueKind == JsonValueKind.String)
-            {
-                var tsStr = row[0].GetString();
-                if (DateTime.TryParse(tsStr, out var ts))
-                    timestamp = ts;
-            }
-
-            // Get service name
-            var serviceName = row[1].ValueKind == JsonValueKind.String
-                ? row[1].GetString()
-                : null;
-
-            if (string.IsNullOrEmpty(serviceName) || !timestamp.HasValue)
-                continue;
-
-            // Skip if we already have more recent metrics for this service
-            if (serviceMetrics.ContainsKey(serviceName) && serviceMetrics[serviceName].Timestamp >= timestamp.Value)
-                continue;
-
-            // Parse metrics JSON
-            var metrics = new Dictionary<string, object>();
-            if (row[2].ValueKind == JsonValueKind.Object)
-            {
-                foreach (var prop in row[2].EnumerateObject())
-                {
-                    metrics[prop.Name] = prop.Value.ValueKind switch
-                    {
-                        JsonValueKind.Number => prop.Value.TryGetInt64(out var l) ? l : prop.Value.GetDouble(),
-                        JsonValueKind.String => prop.Value.GetString() ?? "",
-                        JsonValueKind.True => true,
-                        JsonValueKind.False => false,
-                        _ => prop.Value.ToString()
-                    };
-                }
-            }
-            else if (row[2].ValueKind == JsonValueKind.String)
-            {
-                try
-                {
-                    var metricsJson = row[2].GetString();
-                    if (!string.IsNullOrEmpty(metricsJson))
-                    {
-                        using var doc = JsonDocument.Parse(metricsJson);
-                        foreach (var prop in doc.RootElement.EnumerateObject())
-                        {
-                            metrics[prop.Name] = prop.Value.ValueKind switch
-                            {
-                                JsonValueKind.Number => prop.Value.TryGetInt64(out var l) ? l : prop.Value.GetDouble(),
-                                JsonValueKind.String => prop.Value.GetString() ?? "",
-                                JsonValueKind.True => true,
-                                JsonValueKind.False => false,
-                                _ => prop.Value.ToString()
-                            };
-                        }
-                    }
-                }
-                catch
-                {
-                    // Ignore parse errors
-                }
-            }
-
-            serviceMetrics[serviceName] = (timestamp.Value, metrics);
-        }
-
-        // Convert to result format
-        var result = new List<object>();
-        foreach (var (serviceName, (timestamp, metrics)) in serviceMetrics)
-        {
-            var isActive = (now - timestamp).TotalMinutes < 5;
-            result.Add(new
-            {
-                name = serviceName,
-                isActive,
-                metrics,
-                lastReportTime = timestamp.ToString("o")
-            });
-        }
-
-        return result;
-    }
-
-    /// <summary>
-    /// Extracts grouped timestamp values from Seq SQL query result.
-    /// Expected format: { Columns: [{Name: "LastSeen"}, {Name: "Application"}], Rows: [["2025-02-13T10:00:00Z", "ServiceName"], ...] }
-    /// </summary>
-    private static Dictionary<string, DateTime> ExtractGroupedTimestamps(JsonElement? response)
-    {
-        var result = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
-
-        if (response == null) return result;
-        if (!response.Value.TryGetProperty("Rows", out var rows)) return result;
-
-        foreach (var row in rows.EnumerateArray())
-        {
-            if (row.GetArrayLength() < 2) continue;
-
-            // First column is timestamp, second is key
-            DateTime? timestamp = null;
-            if (row[0].ValueKind == JsonValueKind.String)
-            {
-                var tsStr = row[0].GetString();
-                if (DateTime.TryParse(tsStr, out var ts))
-                {
-                    timestamp = ts;
-                }
-            }
-
-            var key = row[1].ValueKind == JsonValueKind.String
-                ? row[1].GetString()
-                : null;
-
-            if (!string.IsNullOrEmpty(key) && timestamp.HasValue)
-            {
-                result[key] = timestamp.Value;
-            }
         }
 
         return result;
