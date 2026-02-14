@@ -95,8 +95,9 @@ public static class SeqEndpoints
 
         // ---- Cache-based dashboard endpoints ----
 
-        group.MapGet("/dashboard/kpis", (
+        group.MapGet("/dashboard/kpis", async (
             MetricsCacheDbContext cache,
+            SeqService seqService,
             HttpContext context,
             int hours = 24) =>
         {
@@ -105,6 +106,33 @@ public static class SeqEndpoints
 
             var cutoff = TruncateToHour(DateTime.UtcNow).AddHours(-hours);
             var stats = cache.HourlyStats.Find(x => x.HourUtc >= cutoff).ToList();
+
+            // Fallback: if cache is empty, query Seq directly
+            if (stats.Count == 0)
+            {
+                var fromDateUtc = DateTime.UtcNow.AddHours(-hours);
+                var events = await seqService.GetAllEventsListAsync(null, fromDateUtc, 50000);
+                if (events == null)
+                    return Results.StatusCode(502);
+
+                long total = events.Count;
+                long errors = events.Count(e => GetEventLevel(e) is "Error" or "Fatal");
+                long warnings = events.Count(e => GetEventLevel(e) == "Warning");
+                var perSvc = events
+                    .Select(GetEventApplication)
+                    .Where(a => !string.IsNullOrEmpty(a))
+                    .GroupBy(a => a!)
+                    .ToDictionary(g => g.Key, g => (long)g.Count());
+
+                return Results.Ok(new
+                {
+                    totalEvents = total,
+                    errorCount = errors,
+                    warningCount = warnings,
+                    perService = perSvc,
+                    periodHours = hours
+                });
+            }
 
             long totalEvents = stats.Sum(x => x.TotalEvents);
             long errorCount = stats.Sum(x => x.ErrorCount);
@@ -131,8 +159,9 @@ public static class SeqEndpoints
         .WithName("GetDashboardKpis")
         .WithOpenApi();
 
-        group.MapGet("/dashboard/traffic", (
+        group.MapGet("/dashboard/traffic", async (
             MetricsCacheDbContext cache,
+            SeqService seqService,
             HttpContext context,
             int hours = 24,
             string interval = "1h") =>
@@ -148,7 +177,49 @@ public static class SeqEndpoints
                 .OrderBy(x => x.HourUtc)
                 .ToDictionary(x => x.HourUtc);
 
-            // Generate continuous time series
+            // Fallback: if cache is empty, query Seq directly
+            if (trafficData.Count == 0)
+            {
+                var fromDateUtc = DateTime.UtcNow.AddHours(-hours);
+                var events = await seqService.GetAllEventsListAsync(null, fromDateUtc, 50000);
+                if (events == null)
+                    return Results.StatusCode(502);
+
+                var allBuckets = new Dictionary<DateTime, long>();
+                var errorBuckets = new Dictionary<DateTime, long>();
+                var warningBuckets = new Dictionary<DateTime, long>();
+
+                foreach (var evt in events)
+                {
+                    var ts = GetEventTimestamp(evt);
+                    if (!ts.HasValue) continue;
+
+                    var bucket = TruncateToHour(ts.Value);
+                    allBuckets[bucket] = allBuckets.GetValueOrDefault(bucket) + 1;
+
+                    var level = GetEventLevel(evt);
+                    if (level is "Error" or "Fatal")
+                        errorBuckets[bucket] = errorBuckets.GetValueOrDefault(bucket) + 1;
+                    if (level == "Warning")
+                        warningBuckets[bucket] = warningBuckets.GetValueOrDefault(bucket) + 1;
+                }
+
+                var fbAll = new List<object>();
+                var fbErrors = new List<object>();
+                var fbWarnings = new List<object>();
+                var fbBucket = cutoff;
+                while (fbBucket <= currentHour)
+                {
+                    fbAll.Add(new { timestamp = fbBucket.ToString("o"), count = allBuckets.GetValueOrDefault(fbBucket) });
+                    fbErrors.Add(new { timestamp = fbBucket.ToString("o"), count = errorBuckets.GetValueOrDefault(fbBucket) });
+                    fbWarnings.Add(new { timestamp = fbBucket.ToString("o"), count = warningBuckets.GetValueOrDefault(fbBucket) });
+                    fbBucket = fbBucket.AddHours(1);
+                }
+
+                return Results.Ok(new { all = fbAll, errors = fbErrors, warnings = fbWarnings });
+            }
+
+            // Generate continuous time series from cache
             var allData = new List<object>();
             var errorsData = new List<object>();
             var warningsData = new List<object>();
@@ -210,8 +281,9 @@ public static class SeqEndpoints
         .WithName("GetDashboardMetrics")
         .WithOpenApi();
 
-        group.MapGet("/dashboard/service-metrics", (
+        group.MapGet("/dashboard/service-metrics", async (
             MetricsCacheDbContext cache,
+            SeqService seqService,
             HttpContext context,
             int hours = 12) =>
         {
@@ -226,7 +298,51 @@ public static class SeqEndpoints
                 .OrderBy(x => x.HourUtc)
                 .ToList();
 
-            // Group by service name
+            // Fallback: if cache is empty, query Seq directly for ServiceMetrics events
+            if (entries.Count == 0)
+            {
+                var fromDateUtc = DateTime.UtcNow.AddHours(-hours);
+                var filter = "@Message like 'ServiceMetrics%'";
+                var events = await seqService.GetAllEventsListAsync(filter, fromDateUtc, 5000);
+
+                if (events == null || events.Count == 0)
+                    return Results.Ok(new { periodHours = hours, services = new List<object>() });
+
+                // Group by service + hour
+                var grouped = new Dictionary<(string svc, DateTime hour), Dictionary<string, long>>();
+
+                foreach (var evt in events)
+                {
+                    var svcName = GetEventApplication(evt);
+                    var ts = GetEventTimestamp(evt);
+                    if (string.IsNullOrEmpty(svcName) || !ts.HasValue) continue;
+
+                    var hour = TruncateToHour(ts.Value);
+                    var key = (svcName, hour);
+
+                    var metrics = ExtractMetricValuesLong(evt);
+                    if (metrics.Count > 0)
+                        grouped[key] = metrics; // last write wins (latest per hour)
+                }
+
+                var fbGroups = grouped
+                    .GroupBy(kv => kv.Key.svc, StringComparer.OrdinalIgnoreCase)
+                    .Select(g => new
+                    {
+                        name = g.Key,
+                        timeSeries = g.OrderBy(kv => kv.Key.hour).Select(kv => new
+                        {
+                            hour = kv.Key.hour.ToString("o"),
+                            metrics = kv.Value
+                        }).ToList()
+                    })
+                    .OrderBy(x => x.name)
+                    .ToList();
+
+                return Results.Ok(new { periodHours = hours, services = fbGroups });
+            }
+
+            // Group by service name from cache
             var serviceGroups = entries
                 .GroupBy(x => x.ServiceName, StringComparer.OrdinalIgnoreCase)
                 .Select(g => new
@@ -429,6 +545,38 @@ public static class SeqEndpoints
         }
 
         return result;
+    }
+
+    #endregion
+
+    #region Metric Value Extraction (for fallback)
+
+    private static Dictionary<string, long> ExtractMetricValuesLong(JsonElement evt)
+    {
+        var metrics = new Dictionary<string, long>();
+        if (evt.ValueKind != JsonValueKind.Object) return metrics;
+
+        if (!evt.TryGetProperty("Properties", out var props) || props.ValueKind != JsonValueKind.Object)
+            return metrics;
+
+        if (!props.TryGetProperty("Metrics", out var metricsWrapper) || metricsWrapper.ValueKind != JsonValueKind.Object)
+            return metrics;
+
+        // Try nested structure: Metrics.Metrics
+        JsonElement metricsObj;
+        if (metricsWrapper.TryGetProperty("Metrics", out var innerMetrics) && innerMetrics.ValueKind == JsonValueKind.Object)
+            metricsObj = innerMetrics;
+        else
+            metricsObj = metricsWrapper;
+
+        foreach (var prop in metricsObj.EnumerateObject())
+        {
+            if (prop.Name is "ServiceName" or "Timestamp") continue;
+            if (prop.Value.ValueKind == JsonValueKind.Number && prop.Value.TryGetInt64(out var val))
+                metrics[prop.Name] = val;
+        }
+
+        return metrics;
     }
 
     #endregion
