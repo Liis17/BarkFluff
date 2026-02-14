@@ -1,0 +1,24 @@
+<Window
+    x:Class="BarkFluff.Client.WPF.Debugs.ThemeDebugWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Тема"
+    Width="220"
+    Height="120"
+    ResizeMode="NoResize"
+    WindowStartupLocation="Manual"
+    Left="20"
+    Top="20"
+    Topmost="True">
+    <StackPanel Margin="10" VerticalAlignment="Center">
+        <Button
+            Height="36"
+            Margin="0,0,0,6"
+            Click="ApplyLight"
+            Content="Светлая тема" />
+        <Button
+            Height="36"
+            Click="ApplyDark"
+            Content="Тёмная тема" />
+    </StackPanel>
+</Window>

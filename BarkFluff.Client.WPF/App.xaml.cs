@@ -11,8 +11,11 @@ using BarkFluff.WebApi.Core.MessengerData;
 
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+
+using Wpf.Ui.Appearance;
 
 namespace BarkFluff.Client.WPF
 {
@@ -95,11 +98,10 @@ namespace BarkFluff.Client.WPF
                     Owner = dummyWindow
                 };
                 var tb = new Wpf.Ui.Controls.TextBlock();
-#if (DEBUG)
-                tb.Text = "Для корректной работы приложения необходимо зарегистрировать или обновить системный протокол (bfdev://).\n\nПротокол либо не зарегистрирован, либо указывает на неактуальный путь приложения.\n\nСейчас будут запрошены права администратора. Пожалуйста, подтвердите действие.";
-#else
-                tb.Text = "Для корректной работы приложения необходимо зарегистрировать или обновить системный протокол (bf://).\n\nПротокол либо не зарегистрирован, либо указывает на неактуальный путь приложения.\n\nСейчас будут запрошены права администратора. Пожалуйста, подтвердите действие.";
-#endif
+
+                tb.Text = "Для корректной работы приложения необходимо сделать некоторые вещи, обычно их делает установщик, но что-то пошло не так или кто-то намеренно изменил окружение.\n\n" +
+                    "Для исправления будут запрошены права администратора. Пожалуйста, подтвердите действие. Отклонение запроса может привести к неправильной работе Barkfluff";
+
                 tb.TextWrapping = TextWrapping.Wrap;
                 tb.HorizontalAlignment = HorizontalAlignment.Left;
                 messageBox.Content = tb;
@@ -363,5 +365,21 @@ namespace BarkFluff.Client.WPF
         }
 
         public static string AppUserModelIdPublic => AppUserModelId;
+
+        public static void ApplyTheme(ApplicationTheme theme)
+        {
+            ApplicationThemeManager.Apply(theme);
+
+            var dicts = Application.Current.Resources.MergedDictionaries;
+            var existing = dicts.FirstOrDefault(d =>
+                d.Source?.OriginalString.Contains("/Themes/") == true);
+            if (existing != null)
+                dicts.Remove(existing);
+
+            string path = theme == ApplicationTheme.Dark
+                ? "Resources/Styles/Themes/DarkTheme.xaml"
+                : "Resources/Styles/Themes/LightTheme.xaml";
+            dicts.Add(new ResourceDictionary { Source = new Uri(path, UriKind.Relative) });
+        }
     }
 }

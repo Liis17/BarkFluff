@@ -40,6 +40,10 @@ namespace BarkFluff.Client.WPF
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             App.WindowStateService.IsApplicationActive.PropertyChanged += OnApplicationActiveChanged;
+#if DEBUG
+            var themeDebug = new ThemeDebugWindow();
+            themeDebug.Show();
+#endif
         }
 
         private void OnApplicationActiveChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -55,20 +59,15 @@ namespace BarkFluff.Client.WPF
             DebugBootstap();
 #endif
 
-            //применение темы
-            //ThemeLoader(); //функция избыточная, так как библиотека Wpf.Ui уже применяет системную тему, но на всякий случай оставлю её, если в будущем понадобится более тонкая настройка темы
+            ThemeLoader();
         }
         private void ThemeLoader()
         {
-            ApplicationThemeManager.ApplySystemTheme();
-            var systemAccentColor = SystemParameters.WindowGlassColor;
-            var accentBrush = new SolidColorBrush(systemAccentColor);
-            accentBrush.Freeze(); // Для производительности
-
-            // Перезаписываем ресурсы библиотеки Wpf.Ui на системный цвет
-            Application.Current.Resources["SystemAccentColorPrimaryBrush"] = accentBrush;
-            Application.Current.Resources["SystemAccentBrush"] = accentBrush; // Для совместимости
-            Application.Current.Resources["AccentTextFillColorPrimaryBrush"] = accentBrush; // Для текста
+            var systemTheme = ApplicationThemeManager.GetSystemTheme();
+            var appTheme = systemTheme == SystemTheme.Dark
+                ? ApplicationTheme.Dark
+                : ApplicationTheme.Light;
+            App.ApplyTheme(appTheme);
         }
 
 #if DEBUG
