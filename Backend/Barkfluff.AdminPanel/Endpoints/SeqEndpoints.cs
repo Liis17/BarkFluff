@@ -1,3 +1,4 @@
+using Barkfluff.AdminPanel.Data;
 using Barkfluff.AdminPanel.Models;
 using Barkfluff.AdminPanel.Services;
 using System.Text.Json;
@@ -92,32 +93,35 @@ public static class SeqEndpoints
         .WithName("GetSeqServices")
         .WithOpenApi();
 
-        group.MapGet("/dashboard/kpis", async (
-            SeqService seqService,
+        // ---- Cache-based dashboard endpoints ----
+
+        group.MapGet("/dashboard/kpis", (
+            MetricsCacheDbContext cache,
             HttpContext context,
             int hours = 24) =>
         {
             if (context.Items["AuthToken"] is not AuthToken)
                 return Results.Unauthorized();
 
-            var fromDateUtc = DateTime.UtcNow.AddHours(-hours);
+            var cutoff = TruncateToHour(DateTime.UtcNow).AddHours(-hours);
+            var stats = cache.HourlyStats.Find(x => x.HourUtc >= cutoff).ToList();
 
-            var events = await seqService.GetAllEventsListAsync(null, fromDateUtc, 5000);
-            if (events == null)
-                return Results.StatusCode(502);
+            long totalEvents = stats.Sum(x => x.TotalEvents);
+            long errorCount = stats.Sum(x => x.ErrorCount);
+            long warningCount = stats.Sum(x => x.WarningCount);
 
-            long totalCount = events.Count;
-            long errorCount = events.Count(e => GetEventLevel(e) is "Error" or "Fatal");
-            long warningCount = events.Count(e => GetEventLevel(e) == "Warning");
-            var perService = events
-                .Select(GetEventApplication)
-                .Where(a => !string.IsNullOrEmpty(a))
-                .GroupBy(a => a!)
-                .ToDictionary(g => g.Key, g => (long)g.Count());
+            var perService = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+            foreach (var s in stats)
+            {
+                foreach (var (svc, count) in s.PerService)
+                {
+                    perService[svc] = perService.GetValueOrDefault(svc) + count;
+                }
+            }
 
             return Results.Ok(new
             {
-                totalEvents = totalCount,
+                totalEvents,
                 errorCount,
                 warningCount,
                 perService,
@@ -127,8 +131,8 @@ public static class SeqEndpoints
         .WithName("GetDashboardKpis")
         .WithOpenApi();
 
-        group.MapGet("/dashboard/traffic", async (
-            SeqService seqService,
+        group.MapGet("/dashboard/traffic", (
+            MetricsCacheDbContext cache,
             HttpContext context,
             int hours = 24,
             string interval = "1h") =>
@@ -136,48 +140,34 @@ public static class SeqEndpoints
             if (context.Items["AuthToken"] is not AuthToken)
                 return Results.Unauthorized();
 
-            var fromDateUtc = DateTime.UtcNow.AddHours(-hours);
+            var now = DateTime.UtcNow;
+            var currentHour = TruncateToHour(now);
+            var cutoff = currentHour.AddHours(-hours);
 
-            var events = await seqService.GetAllEventsListAsync(null, fromDateUtc, 5000);
-            if (events == null)
-                return Results.StatusCode(502);
+            var trafficData = cache.HourlyTraffic.Find(x => x.HourUtc >= cutoff)
+                .OrderBy(x => x.HourUtc)
+                .ToDictionary(x => x.HourUtc);
 
-            var intervalMinutes = ParseIntervalMinutes(interval);
-
-            // Bucket events by time
-            var allBuckets = new Dictionary<DateTime, long>();
-            var errorBuckets = new Dictionary<DateTime, long>();
-
-            foreach (var evt in events)
-            {
-                var ts = GetEventTimestamp(evt);
-                if (!ts.HasValue) continue;
-
-                var bucket = TruncateToInterval(ts.Value, intervalMinutes);
-                allBuckets[bucket] = allBuckets.GetValueOrDefault(bucket) + 1;
-
-                var level = GetEventLevel(evt);
-                if (level is "Error" or "Fatal")
-                    errorBuckets[bucket] = errorBuckets.GetValueOrDefault(bucket) + 1;
-            }
-
-            // Generate continuous time series with all buckets filled
+            // Generate continuous time series
             var allData = new List<object>();
             var errorsData = new List<object>();
-            var bucketTime = TruncateToInterval(fromDateUtc, intervalMinutes);
-            var now = DateTime.UtcNow;
+            var warningsData = new List<object>();
 
-            while (bucketTime <= now)
+            var bucketTime = cutoff;
+            while (bucketTime <= currentHour)
             {
-                allData.Add(new { timestamp = bucketTime.ToString("o"), count = allBuckets.GetValueOrDefault(bucketTime) });
-                errorsData.Add(new { timestamp = bucketTime.ToString("o"), count = errorBuckets.GetValueOrDefault(bucketTime) });
-                bucketTime = bucketTime.AddMinutes(intervalMinutes);
+                trafficData.TryGetValue(bucketTime, out var bucket);
+                allData.Add(new { timestamp = bucketTime.ToString("o"), count = bucket?.AllCount ?? 0 });
+                errorsData.Add(new { timestamp = bucketTime.ToString("o"), count = bucket?.ErrorCount ?? 0 });
+                warningsData.Add(new { timestamp = bucketTime.ToString("o"), count = bucket?.WarningCount ?? 0 });
+                bucketTime = bucketTime.AddHours(1);
             }
 
             return Results.Ok(new
             {
                 all = allData,
-                errors = errorsData
+                errors = errorsData,
+                warnings = warningsData
             });
         })
         .WithName("GetDashboardTraffic")
@@ -218,6 +208,46 @@ public static class SeqEndpoints
             }
         })
         .WithName("GetDashboardMetrics")
+        .WithOpenApi();
+
+        group.MapGet("/dashboard/service-metrics", (
+            MetricsCacheDbContext cache,
+            HttpContext context,
+            int hours = 12) =>
+        {
+            if (context.Items["AuthToken"] is not AuthToken)
+                return Results.Unauthorized();
+
+            var currentHour = TruncateToHour(DateTime.UtcNow);
+            var cutoff = currentHour.AddHours(-hours);
+
+            var entries = cache.HourlyServiceMetrics
+                .Find(x => x.HourUtc >= cutoff)
+                .OrderBy(x => x.HourUtc)
+                .ToList();
+
+            // Group by service name
+            var serviceGroups = entries
+                .GroupBy(x => x.ServiceName, StringComparer.OrdinalIgnoreCase)
+                .Select(g => new
+                {
+                    name = g.Key,
+                    timeSeries = g.Select(e => new
+                    {
+                        hour = e.HourUtc.ToString("o"),
+                        metrics = e.Metrics
+                    }).ToList()
+                })
+                .OrderBy(x => x.name)
+                .ToList();
+
+            return Results.Ok(new
+            {
+                periodHours = hours,
+                services = serviceGroups
+            });
+        })
+        .WithName("GetDashboardServiceMetrics")
         .WithOpenApi();
 
         group.MapGet("/services/status", async (
@@ -278,7 +308,12 @@ public static class SeqEndpoints
         .WithOpenApi();
     }
 
-    #region Event Helpers
+    #region Helpers
+
+    private static DateTime TruncateToHour(DateTime dt)
+    {
+        return new DateTime(dt.Year, dt.Month, dt.Day, dt.Hour, 0, 0, DateTimeKind.Utc);
+    }
 
     private static string? GetEventLevel(JsonElement evt)
     {
@@ -308,38 +343,15 @@ public static class SeqEndpoints
             : null;
     }
 
-    private static int ParseIntervalMinutes(string interval)
-    {
-        if (string.IsNullOrEmpty(interval)) return 60;
-        if (interval.EndsWith('h') && int.TryParse(interval[..^1], out var h)) return h * 60;
-        if (interval.EndsWith('m') && int.TryParse(interval[..^1], out var m)) return m;
-        if (interval.EndsWith('d') && int.TryParse(interval[..^1], out var d)) return d * 24 * 60;
-        return 60;
-    }
-
-    private static DateTime TruncateToInterval(DateTime dt, int intervalMinutes)
-    {
-        var totalMinutes = (long)(dt - DateTime.MinValue).TotalMinutes;
-        var truncated = totalMinutes / intervalMinutes * intervalMinutes;
-        return DateTime.MinValue.AddMinutes(truncated);
-    }
-
     #endregion
 
     #region Metrics Extraction
 
-    /// <summary>
-    /// Extracts service metrics from Seq events API result.
-    /// MetricsReporterService logs: "ServiceMetrics {@Metrics}" where @Metrics is
-    /// { ServiceName, Metrics: { metric_name: value, ... }, Timestamp }.
-    /// Groups by service name and returns the latest metrics for each service.
-    /// </summary>
     private static List<object> ExtractServiceMetricsFromEvents(JsonElement response)
     {
         var serviceMetrics = new Dictionary<string, (DateTime Timestamp, Dictionary<string, object> Metrics)>(StringComparer.OrdinalIgnoreCase);
         var now = DateTime.UtcNow;
 
-        // Handle both formats: bare array [...] and wrapped {"Events": [...]}
         var eventsList = SeqService.ExtractEventsArray(response);
         if (eventsList == null || eventsList.Count == 0)
             return [];
@@ -348,10 +360,8 @@ public static class SeqEndpoints
         {
             if (evt.ValueKind != JsonValueKind.Object) continue;
 
-            // Parse timestamp
             var timestamp = GetEventTimestamp(evt);
 
-            // Get service name from Properties.Application
             string? serviceName = null;
             JsonElement props = default;
             var hasProps = evt.TryGetProperty("Properties", out props) && props.ValueKind == JsonValueKind.Object;
@@ -365,16 +375,13 @@ public static class SeqEndpoints
             if (string.IsNullOrEmpty(serviceName) || !timestamp.HasValue)
                 continue;
 
-            // Skip if we already have more recent metrics for this service
             if (serviceMetrics.ContainsKey(serviceName) && serviceMetrics[serviceName].Timestamp >= timestamp.Value)
                 continue;
 
-            // Extract metrics from Properties.Metrics.Metrics (the actual counters dictionary)
             var metrics = new Dictionary<string, object>();
 
             if (hasProps && props.TryGetProperty("Metrics", out var metricsWrapper))
             {
-                // Try nested structure: Metrics.Metrics (the actual Dictionary<string, long>)
                 if (metricsWrapper.ValueKind == JsonValueKind.Object &&
                     metricsWrapper.TryGetProperty("Metrics", out var innerMetrics) &&
                     innerMetrics.ValueKind == JsonValueKind.Object)
@@ -389,12 +396,10 @@ public static class SeqEndpoints
                         };
                     }
                 }
-                // Fallback: Metrics is directly the dictionary (flat structure)
                 else if (metricsWrapper.ValueKind == JsonValueKind.Object)
                 {
                     foreach (var prop in metricsWrapper.EnumerateObject())
                     {
-                        // Skip known non-metric properties
                         if (prop.Name is "ServiceName" or "Timestamp") continue;
 
                         metrics[prop.Name] = prop.Value.ValueKind switch
@@ -410,7 +415,6 @@ public static class SeqEndpoints
             serviceMetrics[serviceName] = (timestamp.Value, metrics);
         }
 
-        // Convert to result format
         var result = new List<object>();
         foreach (var (serviceName, (timestamp, metrics)) in serviceMetrics)
         {

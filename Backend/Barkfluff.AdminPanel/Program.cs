@@ -21,8 +21,12 @@ public class Program
         builder.Services.Configure<LiteDbSettings>(builder.Configuration.GetSection(LiteDbSettings.SectionName));
         builder.Services.Configure<SeqSettings>(builder.Configuration.GetSection(SeqSettings.SectionName));
 
-        // Register LiteDB DbContext as Singleton
+        // Register LiteDB DbContexts as Singletons
         builder.Services.AddSingleton<TokenDbContext>();
+
+        var metricsCacheSettings = builder.Configuration.GetSection(MetricsCacheSettings.SectionName).Get<MetricsCacheSettings>() ?? new MetricsCacheSettings();
+        builder.Services.AddSingleton(metricsCacheSettings);
+        builder.Services.AddSingleton<MetricsCacheDbContext>();
 
         // Register Services
         builder.Services.AddSingleton<PendingAuthService>();
@@ -31,6 +35,9 @@ public class Program
 
         // Register HttpClient for SeqService
         builder.Services.AddHttpClient<SeqService>();
+
+        // Register MetricsCollectorService as background service
+        builder.Services.AddHostedService<MetricsCollectorService>();
 
         // Register TelegramBotService as Singleton
         builder.Services.AddSingleton<TelegramBotService>();
