@@ -339,13 +339,12 @@ public static class SeqEndpoints
         var serviceMetrics = new Dictionary<string, (DateTime Timestamp, Dictionary<string, object> Metrics)>(StringComparer.OrdinalIgnoreCase);
         var now = DateTime.UtcNow;
 
-        if (response.ValueKind != JsonValueKind.Object)
+        // Handle both formats: bare array [...] and wrapped {"Events": [...]}
+        var eventsList = SeqService.ExtractEventsArray(response);
+        if (eventsList == null || eventsList.Count == 0)
             return [];
 
-        if (!response.TryGetProperty("Events", out var events) || events.ValueKind != JsonValueKind.Array)
-            return [];
-
-        foreach (var evt in events.EnumerateArray())
+        foreach (var evt in eventsList)
         {
             if (evt.ValueKind != JsonValueKind.Object) continue;
 
