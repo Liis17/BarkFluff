@@ -1,0 +1,121 @@
+//
+//  AppCoordinator.swift
+//  Barkfluff
+//
+//  Координатор навигации приложения
+//
+
+import SwiftUI
+import Observation
+import BFCore
+
+/// Координатор состояния приложения.
+/// Управляет навигацией между основными экранами.
+@Observable
+final class AppCoordinator {
+    // MARK: - Sidebar Navigation
+
+    /// Вкладки сайдбара
+    enum SidebarTab: String, CaseIterable {
+        case chats
+        case profile
+    }
+
+    /// Активная вкладка сайдбара
+    var activeTab: SidebarTab = .chats
+
+    /// Выбранная категория настроек в профиле
+    var selectedSettingsCategory: SettingsCategory?
+
+    // MARK: - App State
+
+    /// Состояние приложения
+    enum AppState {
+        case loading
+        case serverSelection
+        case authentication
+        case main
+    }
+
+    /// Экран авторизации
+    enum AuthScreen {
+        case login
+        case register
+    }
+
+    /// Текущее состояние
+    var currentState: AppState = .loading
+
+    /// Текущий экран авторизации
+    var authScreen: AuthScreen = .login
+
+    /// Выбранный чат для отображения в detail
+    var selectedChat: Chat?
+
+    /// Тип модального окна
+    enum SheetType: Identifiable {
+        case createGroupChat
+        case userSearch
+
+        var id: String {
+            switch self {
+            case .createGroupChat: return "createGroupChat"
+            case .userSearch: return "userSearch"
+            }
+        }
+    }
+
+    /// Активное модальное окно
+    var presentedSheet: SheetType?
+
+    /// Запуск приложения: auto-reconnect + auto-login
+    func onAppLaunch(
+        serverDiscovery: ServerDiscoveryServiceProtocol,
+        authService: AuthServiceProtocol
+    ) async {
+        // 1. Попробовать переподключиться к последнему серверу
+        let reconnected = await serverDiscovery.tryReconnect()
+        guard reconnected else {
+            currentState = .serverSelection
+            return
+        }
+
+        // 2. Попробовать восстановить сессию (auto-login)
+        let restored = await authService.tryRestoreSession()
+        guard restored else {
+            currentState = .authentication
+            authScreen = .login
+            return
+        }
+
+        // 3. Всё ОК — главный экран
+        currentState = .main
+    }
+
+    /// Сессия истекла — вернуться на логин
+    func handleSessionExpired() {
+        currentState = .authentication
+        authScreen = .login
+    }
+
+    /// Запустить прослушивание обновлений
+    func startUpdates(updatesService: UpdatesServiceProtocol) async {
+        await updatesService.start()
+    }
+
+    /// Остановить прослушивание обновлений
+    func stopUpdates(updatesService: UpdatesServiceProtocol) async {
+        await updatesService.stop()
+    }
+
+    /// Выход из аккаунта
+    func logout(authService: AuthServiceProtocol, updatesService: UpdatesServiceProtocol) async {
+        await updatesService.stop()
+        await authService.logout()
+        selectedChat = nil
+        activeTab = .chats
+        selectedSettingsCategory = nil
+        currentState = .authentication
+        authScreen = .login
+    }
+}
