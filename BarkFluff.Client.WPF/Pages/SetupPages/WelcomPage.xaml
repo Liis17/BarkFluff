@@ -117,14 +117,9 @@
                     x:Name="LogoImage"
                     Width="120"
                     Height="120"
-                    Margin="0,0,0,32"
-                    Opacity="0"
-                    RenderTransformOrigin="0.5,0.5"
-                    Source="/BarkFluff.Client.WPF;component/Resources/Images/barkfluff_logo.png">
-                    <Image.RenderTransform>
-                        <TranslateTransform Y="20" />
-                    </Image.RenderTransform>
-                </Image>
+                    Margin="0,0,0,32" SnapsToDevicePixels="True"
+                    Panel.ZIndex="10"
+                    Source="/Resources/Images/barkfluff_logo.png" />
 
                 <!--  Main title with larger font  -->
                 <TextBlock
