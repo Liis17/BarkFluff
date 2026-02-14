@@ -8,6 +8,7 @@
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     d:DesignHeight="720"
     d:DesignWidth="1280"
+    Background="{DynamicResource BackgroundWindow}"
     mc:Ignorable="d">
 
     <Grid>
@@ -30,21 +31,10 @@
                     Source="/Resources/Images/barkfluff_logo.png" />
                 <TextBlock
                     Margin="12,0,0,0"
-                    VerticalAlignment="Center"
-                    FontFamily="{DynamicResource AdwaitaSans}"
-                    FontSize="18"
-                    FontWeight="SemiBold"
-                    Foreground="White"
+                    Style="{DynamicResource LittleTitleTextStyle}"
                     Text="BarkFluff" />
             </StackPanel>
-            <TextBlock
-                Margin="0,8,0,0"
-                HorizontalAlignment="Center"
-                FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="14"
-                FontWeight="Normal"
-                Foreground="#B0B0B0"
-                Text="Настройка безопасности" />
+
         </StackPanel>
 
         <!--  Основной контент  -->
@@ -56,24 +46,15 @@
 
             <TextBlock
                 Margin="0,0,0,10"
-                HorizontalAlignment="Center"
-                FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="22"
-                FontWeight="SemiBold"
-                Foreground="#E8E8E8"
+                Style="{DynamicResource TitleTextStyle}"
                 Text="Создание кода доступа" />
 
             <!--  Статус текст  -->
             <TextBlock
                 x:Name="statusText"
                 Margin="0,0,0,25"
-                HorizontalAlignment="Center"
-                FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="14"
-                FontWeight="Normal"
-                Foreground="#A0A0A0"
-                Text="Введите четырехзначный пин-код и подтвердите его"
-                TextAlignment="Center" />
+                Style="{DynamicResource DescriptionTextStyle}"
+                Text="Введите четырехзначный пин-код и подтвердите его" />
 
             <!--  Индикатор шагов  -->
             <StackPanel
@@ -100,11 +81,7 @@
                     <TextBlock
                         x:Name="Step1Text"
                         Margin="10,0,0,0"
-                        VerticalAlignment="Center"
-                        FontFamily="{DynamicResource AdwaitaSans}"
-                        FontSize="14"
-                        FontWeight="Medium"
-                        Foreground="#E8E8E8"
+                        Style="{DynamicResource DescriptionTextStyle}"
                         Text="Придумайте" />
                 </StackPanel>
 
@@ -114,7 +91,7 @@
                     Height="1"
                     Margin="15,0"
                     VerticalAlignment="Center"
-                    Background="#333333" />
+                    Background="{DynamicResource SeparatorBackground}" />
 
                 <!--  Шаг 2  -->
                 <StackPanel Orientation="Horizontal">
@@ -137,31 +114,27 @@
                     <TextBlock
                         x:Name="Step2Text"
                         Margin="10,0,0,0"
-                        VerticalAlignment="Center"
-                        FontFamily="{DynamicResource AdwaitaSans}"
-                        FontSize="14"
-                        Foreground="#888888"
+                        Style="{DynamicResource DescriptionTextStyle}"
                         Text="Подтвердите" />
                 </StackPanel>
             </StackPanel>
 
             <!--  Карточка ввода  -->
-            <Border
-                Padding="40,30"
-                Background="#1F1F1F"
-                BorderBrush="#333333"
-                BorderThickness="1"
-                CornerRadius="12">
+            <Border Style="{DynamicResource MainStyleBorder}">
+                <Border.Effect>
+                    <DropShadowEffect
+                        BlurRadius="40"
+                        Direction="270"
+                        Opacity="0.25"
+                        ShadowDepth="8"
+                        Color="Black" />
+                </Border.Effect>
                 <StackPanel Orientation="Vertical">
 
                     <!--  Блок 1: Ввод нового PIN  -->
                     <TextBlock
                         Margin="0,0,0,15"
-                        HorizontalAlignment="Center"
-                        FontFamily="{DynamicResource AdwaitaSans}"
-                        FontSize="13"
-                        FontWeight="Medium"
-                        Foreground="#D0D0D0"
+                        Style="{DynamicResource DescriptionTextStyle}"
                         Text="Введите комбинацию" />
 
                     <StackPanel
@@ -175,28 +148,28 @@
                             Loaded="FocusFirstBoxZero"
                             PreviewKeyDown="FirstPinBox_PreviewKeyDown"
                             PreviewTextInput="PinBox_PreviewTextInput"
-                            Style="{StaticResource PinCodeTextBoxWin11}"
+                            Style="{StaticResource PinCodeTextBox}"
                             TextChanged="FirstPinBox_TextChanged" />
                         <TextBox
                             x:Name="FirstBox1"
                             GotFocus="PinBox_GotFocus"
                             PreviewKeyDown="FirstPinBox_PreviewKeyDown"
                             PreviewTextInput="PinBox_PreviewTextInput"
-                            Style="{StaticResource PinCodeTextBoxWin11}"
+                            Style="{StaticResource PinCodeTextBox}"
                             TextChanged="FirstPinBox_TextChanged" />
                         <TextBox
                             x:Name="FirstBox2"
                             GotFocus="PinBox_GotFocus"
                             PreviewKeyDown="FirstPinBox_PreviewKeyDown"
                             PreviewTextInput="PinBox_PreviewTextInput"
-                            Style="{StaticResource PinCodeTextBoxWin11}"
+                            Style="{StaticResource PinCodeTextBox}"
                             TextChanged="FirstPinBox_TextChanged" />
                         <TextBox
                             x:Name="FirstBox3"
                             GotFocus="PinBox_GotFocus"
                             PreviewKeyDown="FirstPinBox_PreviewKeyDown"
                             PreviewTextInput="PinBox_PreviewTextInput"
-                            Style="{StaticResource PinCodeTextBoxWin11}"
+                            Style="{StaticResource PinCodeTextBox}"
                             TextChanged="FirstPinBox_TextChanged" />
                     </StackPanel>
 
@@ -204,16 +177,12 @@
                     <Border
                         Height="1"
                         Margin="10,0,10,25"
-                        Background="#333333" />
+                        Background="{DynamicResource SeparatorBackground}" />
 
                     <!--  Блок 2: Подтверждение  -->
                     <TextBlock
                         Margin="0,0,0,15"
-                        HorizontalAlignment="Center"
-                        FontFamily="{DynamicResource AdwaitaSans}"
-                        FontSize="13"
-                        FontWeight="Medium"
-                        Foreground="#D0D0D0"
+                        Style="{DynamicResource DescriptionTextStyle}"
                         Text="Повторите комбинацию" />
 
                     <StackPanel
@@ -225,28 +194,28 @@
                             GotFocus="PinBox_GotFocus"
                             PreviewKeyDown="SecondPinBox_PreviewKeyDown"
                             PreviewTextInput="PinBox_PreviewTextInput"
-                            Style="{StaticResource PinCodeTextBoxWin11}"
+                            Style="{StaticResource PinCodeTextBox}"
                             TextChanged="SecondPinBox_TextChanged" />
                         <TextBox
                             x:Name="SecondBox1"
                             GotFocus="PinBox_GotFocus"
                             PreviewKeyDown="SecondPinBox_PreviewKeyDown"
                             PreviewTextInput="PinBox_PreviewTextInput"
-                            Style="{StaticResource PinCodeTextBoxWin11}"
+                            Style="{StaticResource PinCodeTextBox}"
                             TextChanged="SecondPinBox_TextChanged" />
                         <TextBox
                             x:Name="SecondBox2"
                             GotFocus="PinBox_GotFocus"
                             PreviewKeyDown="SecondPinBox_PreviewKeyDown"
                             PreviewTextInput="PinBox_PreviewTextInput"
-                            Style="{StaticResource PinCodeTextBoxWin11}"
+                            Style="{StaticResource PinCodeTextBox}"
                             TextChanged="SecondPinBox_TextChanged" />
                         <TextBox
                             x:Name="SecondBox3"
                             GotFocus="PinBox_GotFocus"
                             PreviewKeyDown="SecondPinBox_PreviewKeyDown"
                             PreviewTextInput="PinBox_PreviewTextInput"
-                            Style="{StaticResource PinCodeTextBoxWin11}"
+                            Style="{StaticResource PinCodeTextBox}"
                             TextChanged="SecondPinBox_TextChanged" />
                     </StackPanel>
 
@@ -259,25 +228,17 @@
                                 Foreground="#888888"
                                 Symbol="Info16" />
                             <TextBlock
-                                FontFamily="{DynamicResource AdwaitaSans}"
-                                FontSize="12"
                                 FontWeight="SemiBold"
-                                Foreground="#888888"
+                                Style="{DynamicResource TipsStyle}"
                                 Text="Советы по безопасности:" />
                         </StackPanel>
                         <TextBlock
                             Margin="0,5,0,0"
-                            HorizontalAlignment="Center"
-                            FontFamily="{DynamicResource AdwaitaSans}"
-                            FontSize="11"
-                            Foreground="#666666"
+                            Style="{DynamicResource TipsStyle}"
                             Text="• Не используйте простые комбинации (1111, 1234)" />
                         <TextBlock
                             Margin="0,2,0,0"
-                            HorizontalAlignment="Center"
-                            FontFamily="{DynamicResource AdwaitaSans}"
-                            FontSize="11"
-                            Foreground="#666666"
+                            Style="{DynamicResource TipsStyle}"
                             Text="• Используйте комбинацию, которую легко запомнить" />
                     </StackPanel>
 
