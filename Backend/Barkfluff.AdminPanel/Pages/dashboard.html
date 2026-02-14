@@ -200,16 +200,19 @@
                 </div>
             </div>
 
-            <!-- Business Metrics -->
+            <!-- Service Metrics (lazy loaded) -->
             <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
                 <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-lg font-semibold text-gray-900">Бизнес-метрики</h2>
-                    <span class="text-xs text-gray-400">Последний час</span>
+                    <h2 class="text-lg font-semibold text-gray-900">Метрики сервисов</h2>
+                    <span class="text-xs text-gray-400">Последние 12 часов</span>
                 </div>
-                <div id="business-metrics-container" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    <!-- Service metric cards will be rendered here -->
-                    <div class="text-center text-gray-400 py-8">
-                        Загрузка метрик...
+                <div id="service-metrics-container">
+                    <div class="text-center">
+                        <button id="show-metrics-btn"
+                                class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors">
+                            <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+                            Показать больше
+                        </button>
                     </div>
                 </div>
             </div>
@@ -232,7 +235,7 @@
         }
 
         function formatNumber(num) {
-            if (num == null) return '—';
+            if (num == null) return '\u2014';
             return num.toLocaleString('ru-RU');
         }
 
@@ -245,7 +248,6 @@
 
         function formatMetricName(name) {
             if (!name) return name;
-            // Convert snake_case to Title Case
             return name
                 .split('_')
                 .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
@@ -254,68 +256,16 @@
 
         function getShortServiceName(fullName) {
             if (!fullName) return fullName;
-            // Extract short name: "BarkFluff.Identity" -> "Identity"
             const parts = fullName.split('.');
             return parts.length > 1 ? parts[parts.length - 1] : fullName;
         }
 
-        function renderBusinessMetrics(data) {
-            const container = document.getElementById('business-metrics-container');
-            if (!data.services || data.services.length === 0) {
-                container.innerHTML = `
-                    <div class="col-span-full text-center text-gray-400 py-8">
-                        Нет данных о метриках за последний час
-                    </div>
-                `;
-                return;
-            }
-
-            // Sort services: active first, then by name
-            const sortedServices = [...data.services].sort((a, b) => {
-                if (a.isActive !== b.isActive) return b.isActive ? 1 : -1;
-                return a.name.localeCompare(b.name);
-            });
-
-            container.innerHTML = sortedServices.map(service => createServiceMetricCard(service)).join('');
-        }
-
-        function createServiceMetricCard(service) {
-            const statusClass = service.isActive
-                ? 'bg-green-100 text-green-700'
-                : 'bg-gray-100 text-gray-500';
-            const statusText = service.isActive ? 'Активен' : 'Неактивен';
-            const statusDot = service.isActive
-                ? '<span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>'
-                : '<span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>';
-
-            const metricsHtml = Object.entries(service.metrics || {})
-                .map(([key, value]) => `
-                    <div class="flex justify-between items-center py-1.5 border-b border-gray-100 last:border-0">
-                        <span class="text-sm text-gray-600">${formatMetricName(key)}</span>
-                        <span class="text-sm font-medium text-gray-900">${formatNumber(value)}</span>
-                    </div>
-                `).join('');
-
-            const noMetricsHtml = '<div class="text-sm text-gray-400 py-2">Нет метрик</div>';
-
-            return `
-                <div class="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
-                    <div class="bg-gray-50 px-4 py-3 flex items-center justify-between border-b border-gray-200">
-                        <span class="font-semibold text-gray-900">${getShortServiceName(service.name)}</span>
-                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${statusClass}">
-                            ${statusDot}
-                            ${statusText}
-                        </span>
-                    </div>
-                    <div class="px-4 py-3">
-                        ${metricsHtml || noMetricsHtml}
-                    </div>
-                    <div class="px-4 py-2 bg-gray-50 border-t border-gray-200 text-xs text-gray-400">
-                        Обновлено: ${formatTime(service.lastReportTime)}
-                    </div>
-                </div>
-            `;
-        }
+        // ---- Chart colors for service metric lines ----
+        const metricColors = [
+            '#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6',
+            '#ec4899', '#06b6d4', '#f97316', '#14b8a6', '#6366f1',
+            '#84cc16', '#e11d48'
+        ];
 
         // ---- Auth ----
         async function checkAuth() {
@@ -325,8 +275,7 @@
                     window.location.href = '/';
                     return null;
                 }
-                const data = await res.json();
-                return data;
+                return await res.json();
             } catch {
                 window.location.href = '/';
                 return null;
@@ -337,11 +286,9 @@
         let trafficChart = null;
 
         async function loadDashboardData() {
-            // Fetch all three endpoints independently so partial failures don't break everything
-            const [kpisRes, trafficRes, metricsRes] = await Promise.allSettled([
+            const [kpisRes, trafficRes] = await Promise.allSettled([
                 fetch('/api/seq/dashboard/kpis?hours=24').then(r => r.ok ? r.json() : Promise.reject(r.status)),
-                fetch('/api/seq/dashboard/traffic?hours=24&interval=1h').then(r => r.ok ? r.json() : Promise.reject(r.status)),
-                fetch('/api/seq/dashboard/metrics?hours=1').then(r => r.ok ? r.json() : Promise.reject(r.status))
+                fetch('/api/seq/dashboard/traffic?hours=24&interval=1h').then(r => r.ok ? r.json() : Promise.reject(r.status))
             ]);
 
             // KPI cards
@@ -354,7 +301,7 @@
                     kpis.perService ? Object.keys(kpis.perService).length : 0
                 );
             } else {
-                console.error('Ошибка загрузки KPI:', kpisRes.reason);
+                console.error('KPI load error:', kpisRes.reason);
                 document.getElementById('kpi-total').textContent = '\u2014';
                 document.getElementById('kpi-errors').textContent = '\u2014';
                 document.getElementById('kpi-warnings').textContent = '\u2014';
@@ -367,28 +314,23 @@
                 const chartLabels = traffic.all.map(p => formatTime(p.timestamp));
                 const allData = traffic.all.map(p => p.count);
                 const errorData = traffic.errors.map(p => p.count);
+                const warningData = traffic.warnings ? traffic.warnings.map(p => p.count) : [];
 
                 if (trafficChart) {
                     trafficChart.data.labels = chartLabels;
                     trafficChart.data.datasets[0].data = allData;
                     trafficChart.data.datasets[1].data = errorData;
+                    trafficChart.data.datasets[2].data = warningData;
                     trafficChart.update();
                 } else {
-                    initChart(chartLabels, allData, errorData);
+                    initChart(chartLabels, allData, errorData, warningData);
                 }
             } else {
-                console.error('Ошибка загрузки трафика:', trafficRes.reason);
-            }
-
-            // Business metrics
-            if (metricsRes.status === 'fulfilled') {
-                renderBusinessMetrics(metricsRes.value);
-            } else {
-                console.error('Ошибка загрузки бизнес-метрик:', metricsRes.reason);
+                console.error('Traffic load error:', trafficRes.reason);
             }
         }
 
-        function initChart(labels, allData, errorData) {
+        function initChart(labels, allData, errorData, warningData) {
             const ctx = document.getElementById('traffic-chart').getContext('2d');
             trafficChart = new Chart(ctx, {
                 type: 'line',
@@ -417,6 +359,18 @@
                             tension: 0.4,
                             pointRadius: 3,
                             pointBackgroundColor: '#ef4444',
+                            pointHoverRadius: 5
+                        },
+                        {
+                            label: 'Предупреждения',
+                            data: warningData,
+                            borderColor: '#eab308',
+                            backgroundColor: 'rgba(234, 179, 8, 0.08)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 3,
+                            pointBackgroundColor: '#eab308',
                             pointHoverRadius: 5
                         }
                     ]
@@ -471,6 +425,153 @@
                         mode: 'index'
                     }
                 }
+            });
+        }
+
+        // ---- Service Metrics (lazy loaded) ----
+        let serviceMetricsLoaded = false;
+        const serviceMetricCharts = [];
+
+        document.getElementById('show-metrics-btn').addEventListener('click', async () => {
+            if (serviceMetricsLoaded) return;
+
+            const btn = document.getElementById('show-metrics-btn');
+            btn.textContent = 'Загрузка...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/seq/dashboard/service-metrics?hours=12');
+                if (!res.ok) throw new Error('Failed to fetch service metrics');
+                const data = await res.json();
+                renderServiceMetrics(data);
+                serviceMetricsLoaded = true;
+            } catch (err) {
+                console.error('Service metrics error:', err);
+                document.getElementById('service-metrics-container').innerHTML =
+                    '<div class="text-center text-red-500 py-4">Ошибка загрузки метрик сервисов</div>';
+            }
+        });
+
+        function renderServiceMetrics(data) {
+            const container = document.getElementById('service-metrics-container');
+
+            if (!data.services || data.services.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-400 py-8">Нет данных о метриках сервисов</div>';
+                return;
+            }
+
+            // Build HTML for all service cards
+            let html = '<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">';
+
+            data.services.forEach((service, svcIdx) => {
+                const shortName = getShortServiceName(service.name);
+
+                // Collect all unique metric names across time series
+                const metricNames = new Set();
+                service.timeSeries.forEach(ts => {
+                    Object.keys(ts.metrics).forEach(k => metricNames.add(k));
+                });
+
+                if (metricNames.size === 0) return;
+
+                const canvasId = `svc-chart-${svcIdx}`;
+                html += `
+                    <div class="border border-gray-200 rounded-lg overflow-hidden">
+                        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                            <span class="font-semibold text-gray-900">${shortName}</span>
+                        </div>
+                        <div class="p-4">
+                            <div class="relative" style="height: 220px;">
+                                <canvas id="${canvasId}"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            container.innerHTML = html;
+
+            // Render charts after DOM update
+            requestAnimationFrame(() => {
+                data.services.forEach((service, svcIdx) => {
+                    const metricNames = new Set();
+                    service.timeSeries.forEach(ts => {
+                        Object.keys(ts.metrics).forEach(k => metricNames.add(k));
+                    });
+
+                    if (metricNames.size === 0) return;
+
+                    const canvasId = `svc-chart-${svcIdx}`;
+                    const canvas = document.getElementById(canvasId);
+                    if (!canvas) return;
+
+                    const labels = service.timeSeries.map(ts => formatTime(ts.hour));
+                    const datasets = [];
+                    let colorIdx = 0;
+
+                    metricNames.forEach(metricName => {
+                        const color = metricColors[colorIdx % metricColors.length];
+                        colorIdx++;
+                        datasets.push({
+                            label: formatMetricName(metricName),
+                            data: service.timeSeries.map(ts => ts.metrics[metricName] || 0),
+                            borderColor: color,
+                            backgroundColor: color + '14',
+                            borderWidth: 1.5,
+                            fill: false,
+                            tension: 0.3,
+                            pointRadius: 2,
+                            pointHoverRadius: 4
+                        });
+                    });
+
+                    const chart = new Chart(canvas.getContext('2d'), {
+                        type: 'line',
+                        data: { labels, datasets },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    display: true,
+                                    position: 'bottom',
+                                    labels: {
+                                        color: '#64748b',
+                                        font: { size: 10 },
+                                        usePointStyle: true,
+                                        padding: 8,
+                                        boxWidth: 6
+                                    }
+                                },
+                                tooltip: {
+                                    backgroundColor: '#1e293b',
+                                    titleFont: { size: 11 },
+                                    bodyFont: { size: 11 },
+                                    padding: 8,
+                                    cornerRadius: 6,
+                                    displayColors: true
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    grid: { display: false },
+                                    ticks: { color: '#94a3b8', font: { size: 10 } }
+                                },
+                                y: {
+                                    beginAtZero: true,
+                                    grid: { color: 'rgba(148, 163, 184, 0.1)' },
+                                    ticks: { color: '#94a3b8', font: { size: 10 }, precision: 0 }
+                                }
+                            },
+                            interaction: { intersect: false, mode: 'index' }
+                        }
+                    });
+
+                    serviceMetricCharts.push(chart);
+                });
+
+                lucide.createIcons();
             });
         }
 

@@ -24,7 +24,7 @@ public class SeqService
         }
     }
 
-    public async Task<JsonElement?> GetEventsAsync(string? filter = null, int count = 50, DateTime? fromDateUtc = null, string? afterId = null)
+    public async Task<JsonElement?> GetEventsAsync(string? filter = null, int count = 50, DateTime? fromDateUtc = null, string? afterId = null, DateTime? toDateUtc = null)
     {
         var query = $"/api/events?count={count}&render=true";
 
@@ -33,6 +33,9 @@ public class SeqService
 
         if (fromDateUtc.HasValue)
             query += $"&fromDateUtc={fromDateUtc.Value:O}";
+
+        if (toDateUtc.HasValue)
+            query += $"&toDateUtc={toDateUtc.Value:O}";
 
         if (!string.IsNullOrEmpty(afterId))
             query += $"&afterId={Uri.EscapeDataString(afterId)}";
@@ -91,7 +94,8 @@ public class SeqService
     public async Task<List<JsonElement>?> GetAllEventsListAsync(
         string? filter = null,
         DateTime? fromDateUtc = null,
-        int maxEvents = 5000)
+        int maxEvents = 5000,
+        DateTime? toDateUtc = null)
     {
         var allEvents = new List<JsonElement>();
         string? afterId = null;
@@ -100,7 +104,7 @@ public class SeqService
         while (allEvents.Count < maxEvents)
         {
             var remaining = Math.Min(pageSize, maxEvents - allEvents.Count);
-            var result = await GetEventsAsync(filter, remaining, fromDateUtc, afterId);
+            var result = await GetEventsAsync(filter, remaining, fromDateUtc, afterId, toDateUtc);
 
             if (result == null)
                 return allEvents.Count > 0 ? allEvents : null;
