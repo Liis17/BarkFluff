@@ -11,6 +11,7 @@
     Height="730"
     MinWidth="460"
     MinHeight="700"
+    Background="{DynamicResource BackgroundWindow}"
     ExtendsContentIntoTitleBar="True"
     SizeChanged="FluentWindow_SizeChanged"
     WindowBackdropType="Mica"

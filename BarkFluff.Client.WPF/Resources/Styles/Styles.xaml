@@ -238,97 +238,6 @@
         </Setter>
     </Style>
 
-    <!--  Windows 11 style PIN code input field  -->
-    <Style x:Key="PinCodeTextBoxWin11" TargetType="TextBox">
-        <Setter Property="Background" Value="#2D2D2D" />
-        <Setter Property="Width" Value="64" />
-        <Setter Property="Height" Value="64" />
-        <Setter Property="Margin" Value="8" />
-        <Setter Property="MaxLength" Value="1" />
-        <Setter Property="Foreground" Value="White" />
-        <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
-        <Setter Property="FontSize" Value="26" />
-        <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="BorderBrush" Value="#3D3D3D" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CaretBrush" Value="#df5000" />
-        <Setter Property="HorizontalContentAlignment" Value="Center" />
-        <Setter Property="VerticalContentAlignment" Value="Center" />
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="TextBox">
-                    <Grid>
-                        <!--  Shadow effect layer  -->
-                        <Border
-                            x:Name="ShadowBorder"
-                            Background="Transparent"
-                            CornerRadius="14">
-                            <Border.Effect>
-                                <DropShadowEffect
-                                    BlurRadius="12"
-                                    Direction="270"
-                                    Opacity="0.2"
-                                    ShadowDepth="4"
-                                    Color="Black" />
-                            </Border.Effect>
-                        </Border>
-                        <!--  Main content border  -->
-                        <Border
-                            x:Name="ContentBorder"
-                            Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="14">
-                            <Grid>
-                                <ScrollViewer
-                                    x:Name="PART_ContentHost"
-                                    Margin="0"
-                                    Padding="0"
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Center" />
-                            </Grid>
-                        </Border>
-                        <!--  Focus glow effect  -->
-                        <Border
-                            x:Name="FocusGlow"
-                            Background="Transparent"
-                            BorderBrush="#df5000"
-                            BorderThickness="2"
-                            CornerRadius="14"
-                            Opacity="0">
-                            <Border.Effect>
-                                <DropShadowEffect
-                                    BlurRadius="15"
-                                    Direction="0"
-                                    Opacity="0.6"
-                                    ShadowDepth="0"
-                                    Color="#df5000" />
-                            </Border.Effect>
-                        </Border>
-                    </Grid>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsFocused" Value="True">
-                            <Setter TargetName="ContentBorder" Property="BorderBrush" Value="#df5000" />
-                            <Setter TargetName="ContentBorder" Property="BorderThickness" Value="2" />
-                            <Setter TargetName="ContentBorder" Property="Background" Value="#363636" />
-                            <Setter TargetName="FocusGlow" Property="Opacity" Value="0.4" />
-                        </Trigger>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="ContentBorder" Property="BorderBrush" Value="#505050" />
-                            <Setter TargetName="ContentBorder" Property="Background" Value="#333333" />
-                        </Trigger>
-                        <MultiTrigger>
-                            <MultiTrigger.Conditions>
-                                <Condition Property="IsFocused" Value="False" />
-                                <Condition Property="Text" Value="" />
-                            </MultiTrigger.Conditions>
-                            <Setter TargetName="ContentBorder" Property="Background" Value="#2D2D2D" />
-                        </MultiTrigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
 
     <!--  Windows 11 style card container  -->
     <Style x:Key="Win11CardStyle" TargetType="Border">
@@ -848,21 +757,6 @@
         <Setter Property="Foreground" Value="#FFE6E6E6" />
     </Style>
 
-    <!--  Windows 11 style footer link with hover animation  -->
-    <Style x:Key="FooterLinkStyle" TargetType="TextBlock">
-        <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
-        <Setter Property="FontSize" Value="12" />
-        <Setter Property="FontWeight" Value="Normal" />
-        <Setter Property="Foreground" Value="#FFF39E6D" />
-        <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="Opacity" Value="0.85" />
-        <Style.Triggers>
-            <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="Foreground" Value="#FFFFB088" />
-                <Setter Property="Opacity" Value="1" />
-            </Trigger>
-        </Style.Triggers>
-    </Style>
 
     <!--  Footer separator style  -->
     <Style x:Key="FooterSeparatorStyle" TargetType="TextBlock">
@@ -874,51 +768,7 @@
         <Setter Property="Margin" Value="12,0" />
     </Style>
 
-    <!--  Windows 11 style modern button  -->
-    <Style x:Key="Windows11AccentButton" TargetType="{x:Type ui:Button}">
-        <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="MinWidth" Value="160" />
-        <Setter Property="Height" Value="48" />
-        <Setter Property="Padding" Value="24,0" />
-        <Setter Property="HorizontalAlignment" Value="Center" />
-        <Setter Property="Background" Value="#df5000" />
-        <Setter Property="CornerRadius" Value="8" />
-        <Setter Property="MouseOverBackground" Value="#FFC54700" />
-        <Setter Property="PressedBackground" Value="#FFAB3D00" />
-        <Setter Property="Effect">
-            <Setter.Value>
-                <DropShadowEffect
-                    BlurRadius="16"
-                    Direction="270"
-                    Opacity="0.3"
-                    ShadowDepth="4"
-                    Color="#df5000" />
-            </Setter.Value>
-        </Setter>
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="{x:Type ui:Button}">
-                    <Border
-                        x:Name="Border"
-                        Background="{TemplateBinding Background}"
-                        BorderThickness="0"
-                        CornerRadius="{TemplateBinding CornerRadius}"
-                        SnapsToDevicePixels="True">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Border" Property="Background" Value="{Binding MouseOverBackground, RelativeSource={RelativeSource TemplatedParent}}" />
-                        </Trigger>
-                        <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="Border" Property="Background" Value="{Binding PressedBackground, RelativeSource={RelativeSource TemplatedParent}}" />
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-        <Setter Property="UseLayoutRounding" Value="True" />
-    </Style>
+
 
 
     <!--  //////////////////////////////////////////////////////////////////////  -->
@@ -945,14 +795,14 @@
 
     <!--  новые стили  -->
 
-    <!--  Windows 11 style modern button  -->
+    <!--  Адаптивный цвет кнопки под цвет приложения  -->
     <Style x:Key="AdaptiveButton" TargetType="{x:Type ui:Button}">
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="MinWidth" Value="160" />
         <Setter Property="Height" Value="48" />
         <Setter Property="Padding" Value="24,0" />
         <Setter Property="HorizontalAlignment" Value="Center" />
-        <Setter Property="Background" Value="#df5000" />
+        <Setter Property="Background" Value="{DynamicResource ButtonBackground}" />
         <Setter Property="CornerRadius" Value="8" />
         <Setter Property="MouseOverBackground" Value="#FFC54700" />
         <Setter Property="PressedBackground" Value="#FFAB3D00" />
@@ -991,16 +841,17 @@
         <Setter Property="UseLayoutRounding" Value="True" />
     </Style>
 
+    <!--  Цвет кнопки для обязательного действия  -->
     <Style x:Key="RequiredButton" TargetType="{x:Type ui:Button}">
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="MinWidth" Value="160" />
         <Setter Property="Height" Value="48" />
         <Setter Property="Padding" Value="24,0" />
         <Setter Property="HorizontalAlignment" Value="Center" />
-        <Setter Property="Background" Value="#df5000" />
+        <Setter Property="Background" Value="{DynamicResource RequiredButtonBackground}" />
         <Setter Property="CornerRadius" Value="8" />
-        <Setter Property="MouseOverBackground" Value="#FFC54700" />
-        <Setter Property="PressedBackground" Value="#FFAB3D00" />
+        <Setter Property="MouseOverBackground" Value="{DynamicResource RequiredButtonMouseOverBackground}" />
+        <Setter Property="PressedBackground" Value="{DynamicResource RequiredButtonPressedBackground}" />
         <Setter Property="Effect">
             <Setter.Value>
                 <DropShadowEffect
@@ -1008,7 +859,7 @@
                     Direction="270"
                     Opacity="0.3"
                     ShadowDepth="4"
-                    Color="#df5000" />
+                    Color="{DynamicResource RequiredButtonDropShadow}" />
             </Setter.Value>
         </Setter>
         <Setter Property="Template">
@@ -1034,6 +885,186 @@
             </Setter.Value>
         </Setter>
         <Setter Property="UseLayoutRounding" Value="True" />
+    </Style>
+
+    <!--  Стиль текста описания  -->
+    <Style x:Key="DescriptionTextStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="TextAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="LineHeight" Value="14" />
+        <Setter Property="Foreground" Value="{DynamicResource DescriptionText}" />
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+
+    <!--  Стиль текста подписей  -->
+    <Style x:Key="SubtitleTextStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
+        <Setter Property="FontSize" Value="18" />
+        <Setter Property="TextAlignment" Value="Center" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="LineHeight" Value="18" />
+        <Setter Property="Foreground" Value="{DynamicResource SubtitleText}" />
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+
+    <!--  Стиль текста заголовков  -->
+    <Style x:Key="BigTitleTextStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
+        <Setter Property="FontSize" Value="42" />
+        <Setter Property="TextAlignment" Value="Center" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="LineHeight" Value="42" />
+        <Setter Property="Foreground" Value="{DynamicResource TitleText}" />
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style x:Key="TitleTextStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
+        <Setter Property="FontSize" Value="22" />
+        <Setter Property="TextAlignment" Value="Center" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="LineHeight" Value="22" />
+        <Setter Property="Foreground" Value="{DynamicResource TitleText}" />
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style x:Key="LittleTitleTextStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="TextAlignment" Value="Center" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="FontWeight" Value="UltraBold" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="LineHeight" Value="14" />
+        <Setter Property="Foreground" Value="{DynamicResource TitleText}" />
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+
+    <!--  Стиль нижнего колонтитула для ссылок  -->
+    <Style x:Key="FooterLinkStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="Foreground" Value="#FFF39E6D" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Opacity" Value="0.85" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Foreground" Value="#FFFFB088" />
+                <Setter Property="Opacity" Value="1" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="TipsStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="TextAlignment" Value="Center" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="FontWeight" Value="Light" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="LineHeight" Value="12" />
+        <Setter Property="Foreground" Value="{DynamicResource TipsColor}" />
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+
+    <!--  Бордеры  -->
+
+    <Style x:Key="MainStyleBorder" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource BorderBlock}" />
+        <Setter Property="CornerRadius" Value="16" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Padding" Value="40" />
+    </Style>
+
+
+    <Style x:Key="PinCodeTextBox" TargetType="TextBox">
+        <Setter Property="Background" Value="{DynamicResource Textbackground}" />
+        <Setter Property="Width" Value="64" />
+        <Setter Property="Height" Value="64" />
+        <Setter Property="Margin" Value="8" />
+        <Setter Property="MaxLength" Value="1" />
+        <Setter Property="Foreground" Value="{DynamicResource TextForegraund}" />
+        <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
+        <Setter Property="FontSize" Value="26" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="BorderBrush" Value="{DynamicResource TextBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CaretBrush" Value="{DynamicResource TextCaretBrush}" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Grid>
+                        <!--  Shadow effect layer  -->
+                        <Border
+                            x:Name="ShadowBorder"
+                            Background="Transparent"
+                            CornerRadius="14" />
+                        <!--  Main content border  -->
+                        <Border
+                            x:Name="ContentBorder"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="14">
+                            <Grid>
+                                <ScrollViewer
+                                    x:Name="PART_ContentHost"
+                                    Margin="0"
+                                    Padding="0"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <!--  Focus glow effect  -->
+                        <Border
+                            x:Name="FocusGlow"
+                            Background="Transparent"
+                            BorderBrush="{DynamicResource TextGlowBrush}"
+                            BorderThickness="2"
+                            CornerRadius="14"
+                            Opacity="0" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsFocused" Value="True">
+                            <Setter TargetName="ContentBorder" Property="BorderBrush" Value="{DynamicResource TextGlowBrush}" />
+                            <Setter TargetName="ContentBorder" Property="BorderThickness" Value="2" />
+                            <Setter TargetName="ContentBorder" Property="Background" Value="{DynamicResource Textbackground}" />
+                            <Setter TargetName="FocusGlow" Property="Opacity" Value="0.4" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="ContentBorder" Property="BorderBrush" Value="{DynamicResource TextBorderBrush}" />
+                            <Setter TargetName="ContentBorder" Property="Background" Value="{DynamicResource Textbackground}" />
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsFocused" Value="False" />
+                                <Condition Property="Text" Value="" />
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="ContentBorder" Property="Background" Value="{DynamicResource Textbackground}" />
+                        </MultiTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
 </ResourceDictionary>

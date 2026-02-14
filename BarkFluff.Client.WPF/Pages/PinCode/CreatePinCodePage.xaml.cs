@@ -254,29 +254,21 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
                 // Активируем шаг 2
                 Step2Circle.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#C87E5B"));
                 Step2CircleText.Foreground = Brushes.White;
-                Step2Text.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#D0D0D0"));
-                Step2Text.FontWeight = FontWeights.Medium;
 
                 // Делаем шаг 1 завершенным
                 if (isFirstStepComplete)
                 {
                     Step1Circle.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#5DBE6A"));
-                    Step1Text.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#B0B0B0"));
-                    Step1Text.FontWeight = FontWeights.Normal;
                 }
             }
             else
             {
                 // Активен шаг 1
                 Step1Circle.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#C87E5B"));
-                Step1Text.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#D0D0D0"));
-                Step1Text.FontWeight = FontWeights.Medium;
 
                 // Шаг 2 неактивен
                 Step2Circle.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#404040"));
                 Step2CircleText.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#808080"));
-                Step2Text.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#808080"));
-                Step2Text.FontWeight = FontWeights.Normal;
             }
         }
     }
