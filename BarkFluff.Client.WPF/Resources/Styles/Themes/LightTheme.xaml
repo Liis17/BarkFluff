@@ -1,14 +1,20 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <SolidColorBrush x:Key="BackgroundPrimary" Color="#ffffff" />
-    <SolidColorBrush x:Key="BackgroundSecondary" Color="#F5F5F5" />
-    <SolidColorBrush x:Key="BackgroundTertiary" Color="#EBEBEB" />
-    <SolidColorBrush x:Key="BackgroundHover" Color="#E0E0E0" />
-    <SolidColorBrush x:Key="BackgroundOverlay" Color="#F0F0F0" />
-    <SolidColorBrush x:Key="TextPrimary" Color="#1A1A1A" />
-    <SolidColorBrush x:Key="TextSecondary" Color="#555555" />
-    <SolidColorBrush x:Key="TextMuted" Color="#999999" />
-    <SolidColorBrush x:Key="BorderColor" Color="#CFCFCF" />
-    <SolidColorBrush x:Key="BorderActive" Color="#BABABA" />
+    <!--  главное  -->
+    <SolidColorBrush x:Key="BackgroundWindow" Color="#ffffff" />
+    <SolidColorBrush x:Key="SubtitleText" Color="#FFF39E6D" />
+    <SolidColorBrush x:Key="TitleText" Color="#1a1a1a" />
+    <SolidColorBrush x:Key="DescriptionText" Color="#FF565656" />
+    <SolidColorBrush x:Key="BorderBlock" Color="#FFEDEDED" />
+
+    <!--  кнопки  -->
+    <SolidColorBrush x:Key="ButtonText" Color="#1a1a1a" />
+    <SolidColorBrush x:Key="ButtonBackground" Color="#B0B0B0" />
+    <SolidColorBrush x:Key="ButtonBorder" Color="#B0B0B0" />
+
+    <SolidColorBrush x:Key="RequiredButtonText" Color="White" />
+
+
+
 
 </ResourceDictionary>
