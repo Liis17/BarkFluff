@@ -226,14 +226,30 @@ public class MetricsCollectorService : BackgroundService
             : null;
     }
 
+    private static JsonElement? GetPropertyFromSeqProps(JsonElement props, string name)
+    {
+        if (props.ValueKind == JsonValueKind.Object)
+        {
+            return props.TryGetProperty(name, out var val) ? val : null;
+        }
+        if (props.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in props.EnumerateArray())
+            {
+                if (item.TryGetProperty("Name", out var n) && n.GetString() == name
+                    && item.TryGetProperty("Value", out var v))
+                    return v;
+            }
+        }
+        return null;
+    }
+
     private static string? GetEventApplication(JsonElement evt)
     {
         if (evt.ValueKind != JsonValueKind.Object) return null;
-        if (!evt.TryGetProperty("Properties", out var props) || props.ValueKind != JsonValueKind.Object)
-            return null;
-        return props.TryGetProperty("Application", out var app) && app.ValueKind == JsonValueKind.String
-            ? app.GetString()
-            : null;
+        if (!evt.TryGetProperty("Properties", out var props)) return null;
+        var app = GetPropertyFromSeqProps(props, "Application");
+        return app?.ValueKind == JsonValueKind.String ? app.Value.GetString() : null;
     }
 
     private static Dictionary<string, long> ExtractMetricValues(JsonElement evt)
@@ -241,11 +257,13 @@ public class MetricsCollectorService : BackgroundService
         var metrics = new Dictionary<string, long>();
         if (evt.ValueKind != JsonValueKind.Object) return metrics;
 
-        if (!evt.TryGetProperty("Properties", out var props) || props.ValueKind != JsonValueKind.Object)
+        if (!evt.TryGetProperty("Properties", out var props)) return metrics;
+
+        var metricsVal = GetPropertyFromSeqProps(props, "Metrics");
+        if (metricsVal == null || metricsVal.Value.ValueKind != JsonValueKind.Object)
             return metrics;
 
-        if (!props.TryGetProperty("Metrics", out var metricsWrapper) || metricsWrapper.ValueKind != JsonValueKind.Object)
-            return metrics;
+        var metricsWrapper = metricsVal.Value;
 
         // Try nested structure: Metrics.Metrics
         JsonElement metricsObj;
