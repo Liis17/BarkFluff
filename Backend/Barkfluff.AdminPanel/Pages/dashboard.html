@@ -63,7 +63,7 @@
         }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen flex">
+<body class="bg-gray-50 min-h-screen flex overflow-x-hidden">
 
     <!-- Loading Overlay -->
     <div id="loading-overlay">
@@ -74,7 +74,7 @@
     </div>
 
     <!-- Sidebar -->
-    <aside class="w-64 bg-slate-900 text-white flex flex-col min-h-screen fixed inset-y-0 left-0 z-50">
+    <aside class="w-64 bg-slate-900 text-white flex flex-col min-h-screen fixed inset-y-0 left-0 z-50 flex-shrink-0">
         <!-- Sidebar Header -->
         <div class="px-6 py-5 border-b border-slate-700">
             <div class="flex items-center gap-3">
@@ -118,7 +118,7 @@
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 ml-64">
+    <main class="flex-1 ml-64 min-w-0">
         <!-- Header -->
         <header class="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between sticky top-0 z-40">
             <div class="flex items-center gap-4">
@@ -428,61 +428,44 @@
             });
         }
 
-        // ---- Service Metrics (lazy loaded) ----
+        // ---- Service Metrics (lazy loaded, per-service) ----
         let serviceMetricsLoaded = false;
         const serviceMetricCharts = [];
 
+        const knownServices = [
+            'BarkFluff.Identity', 'BarkFluff.Users', 'BarkFluff.Messages',
+            'BarkFluff.Files', 'BarkFluff.Updates', 'BarkFluff.Notification',
+            'BarkFluff.Beacon', 'BarkFluff.FastAuth', 'BarkFluff.Onliner',
+            'BarkFluff.Configuration'
+        ];
+
         document.getElementById('show-metrics-btn').addEventListener('click', async () => {
             if (serviceMetricsLoaded) return;
-
-            const btn = document.getElementById('show-metrics-btn');
-            btn.textContent = 'Загрузка...';
-            btn.disabled = true;
-
-            try {
-                const res = await fetch('/api/seq/dashboard/service-metrics?hours=12');
-                if (!res.ok) throw new Error('Failed to fetch service metrics');
-                const data = await res.json();
-                renderServiceMetrics(data);
-                serviceMetricsLoaded = true;
-            } catch (err) {
-                console.error('Service metrics error:', err);
-                document.getElementById('service-metrics-container').innerHTML =
-                    '<div class="text-center text-red-500 py-4">Ошибка загрузки метрик сервисов</div>';
-            }
+            serviceMetricsLoaded = true;
+            loadServiceMetrics();
         });
 
-        function renderServiceMetrics(data) {
+        function renderEmptyServiceCards(services) {
             const container = document.getElementById('service-metrics-container');
-
-            if (!data.services || data.services.length === 0) {
-                container.innerHTML = '<div class="text-center text-gray-400 py-8">Нет данных о метриках сервисов</div>';
-                return;
-            }
-
-            // Build HTML for all service cards
             let html = '<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">';
 
-            data.services.forEach((service, svcIdx) => {
-                const shortName = getShortServiceName(service.name);
+            services.forEach((svc) => {
+                const shortName = getShortServiceName(svc);
+                const cardId = `svc-card-${svc.replace(/\./g, '-')}`;
+                const canvasId = `svc-chart-${svc.replace(/\./g, '-')}`;
 
-                // Collect all unique metric names across time series
-                const metricNames = new Set();
-                service.timeSeries.forEach(ts => {
-                    Object.keys(ts.metrics).forEach(k => metricNames.add(k));
-                });
-
-                if (metricNames.size === 0) return;
-
-                const canvasId = `svc-chart-${svcIdx}`;
                 html += `
-                    <div class="border border-gray-200 rounded-lg overflow-hidden">
-                        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                    <div id="${cardId}" class="border border-gray-200 rounded-lg overflow-hidden min-w-0">
+                        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
                             <span class="font-semibold text-gray-900">${shortName}</span>
+                            <span class="svc-loading-indicator inline-block w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin"></span>
                         </div>
                         <div class="p-4">
                             <div class="relative" style="height: 220px;">
                                 <canvas id="${canvasId}"></canvas>
+                                <div class="svc-placeholder absolute inset-0 flex items-center justify-center text-gray-300 text-sm">
+                                    Загрузка...
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -491,88 +474,139 @@
 
             html += '</div>';
             container.innerHTML = html;
+        }
 
-            // Render charts after DOM update
-            requestAnimationFrame(() => {
-                data.services.forEach((service, svcIdx) => {
-                    const metricNames = new Set();
-                    service.timeSeries.forEach(ts => {
-                        Object.keys(ts.metrics).forEach(k => metricNames.add(k));
-                    });
+        function renderServiceChart(svc, data) {
+            const cardId = `svc-card-${svc.replace(/\./g, '-')}`;
+            const canvasId = `svc-chart-${svc.replace(/\./g, '-')}`;
+            const card = document.getElementById(cardId);
+            if (!card) return;
 
-                    if (metricNames.size === 0) return;
+            // Hide loading indicator
+            const spinner = card.querySelector('.svc-loading-indicator');
+            if (spinner) spinner.remove();
 
-                    const canvasId = `svc-chart-${svcIdx}`;
-                    const canvas = document.getElementById(canvasId);
-                    if (!canvas) return;
+            const placeholder = card.querySelector('.svc-placeholder');
 
-                    const labels = service.timeSeries.map(ts => formatTime(ts.hour));
-                    const datasets = [];
-                    let colorIdx = 0;
+            if (!data.timeSeries || data.timeSeries.length === 0) {
+                if (placeholder) placeholder.textContent = 'Нет данных';
+                return;
+            }
 
-                    metricNames.forEach(metricName => {
-                        const color = metricColors[colorIdx % metricColors.length];
-                        colorIdx++;
-                        datasets.push({
-                            label: formatMetricName(metricName),
-                            data: service.timeSeries.map(ts => ts.metrics[metricName] || 0),
-                            borderColor: color,
-                            backgroundColor: color + '14',
-                            borderWidth: 1.5,
-                            fill: false,
-                            tension: 0.3,
-                            pointRadius: 2,
-                            pointHoverRadius: 4
-                        });
-                    });
-
-                    const chart = new Chart(canvas.getContext('2d'), {
-                        type: 'line',
-                        data: { labels, datasets },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: {
-                                    display: true,
-                                    position: 'bottom',
-                                    labels: {
-                                        color: '#64748b',
-                                        font: { size: 10 },
-                                        usePointStyle: true,
-                                        padding: 8,
-                                        boxWidth: 6
-                                    }
-                                },
-                                tooltip: {
-                                    backgroundColor: '#1e293b',
-                                    titleFont: { size: 11 },
-                                    bodyFont: { size: 11 },
-                                    padding: 8,
-                                    cornerRadius: 6,
-                                    displayColors: true
-                                }
-                            },
-                            scales: {
-                                x: {
-                                    grid: { display: false },
-                                    ticks: { color: '#94a3b8', font: { size: 10 } }
-                                },
-                                y: {
-                                    beginAtZero: true,
-                                    grid: { color: 'rgba(148, 163, 184, 0.1)' },
-                                    ticks: { color: '#94a3b8', font: { size: 10 }, precision: 0 }
-                                }
-                            },
-                            interaction: { intersect: false, mode: 'index' }
-                        }
-                    });
-
-                    serviceMetricCharts.push(chart);
-                });
-
-                lucide.createIcons();
+            // Collect all metric names
+            const metricNames = new Set();
+            data.timeSeries.forEach(ts => {
+                Object.keys(ts.metrics).forEach(k => metricNames.add(k));
             });
+
+            if (metricNames.size === 0) {
+                if (placeholder) placeholder.textContent = 'Нет данных';
+                return;
+            }
+
+            // Remove placeholder
+            if (placeholder) placeholder.remove();
+
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+
+            const labels = data.timeSeries.map(ts => formatTime(ts.hour));
+            const datasets = [];
+            let colorIdx = 0;
+
+            metricNames.forEach(metricName => {
+                const color = metricColors[colorIdx % metricColors.length];
+                colorIdx++;
+                datasets.push({
+                    label: formatMetricName(metricName),
+                    data: data.timeSeries.map(ts => ts.metrics[metricName] || 0),
+                    borderColor: color,
+                    backgroundColor: color + '14',
+                    borderWidth: 1.5,
+                    fill: false,
+                    tension: 0.3,
+                    pointRadius: 2,
+                    pointHoverRadius: 4
+                });
+            });
+
+            const chart = new Chart(canvas.getContext('2d'), {
+                type: 'line',
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom',
+                            labels: {
+                                color: '#64748b',
+                                font: { size: 10 },
+                                usePointStyle: true,
+                                padding: 8,
+                                boxWidth: 6
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#1e293b',
+                            titleFont: { size: 11 },
+                            bodyFont: { size: 11 },
+                            padding: 8,
+                            cornerRadius: 6,
+                            displayColors: true
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8', font: { size: 10 } }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(148, 163, 184, 0.1)' },
+                            ticks: { color: '#94a3b8', font: { size: 10 }, precision: 0 }
+                        }
+                    },
+                    interaction: { intersect: false, mode: 'index' }
+                }
+            });
+
+            serviceMetricCharts.push(chart);
+        }
+
+        function renderServiceError(svc) {
+            const cardId = `svc-card-${svc.replace(/\./g, '-')}`;
+            const card = document.getElementById(cardId);
+            if (!card) return;
+
+            const spinner = card.querySelector('.svc-loading-indicator');
+            if (spinner) spinner.remove();
+
+            const placeholder = card.querySelector('.svc-placeholder');
+            if (placeholder) {
+                placeholder.textContent = 'Ошибка загрузки';
+                placeholder.classList.remove('text-gray-300');
+                placeholder.classList.add('text-red-400');
+            }
+        }
+
+        async function loadServiceMetrics() {
+            // 1. Render all cards with spinners
+            renderEmptyServiceCards(knownServices);
+
+            // 2. Load data for each service sequentially
+            for (const svc of knownServices) {
+                try {
+                    const res = await fetch(`/api/seq/dashboard/service-metrics/${encodeURIComponent(svc)}?hours=12`);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const data = await res.json();
+                    renderServiceChart(svc, data);
+                } catch (err) {
+                    console.error(`Service metrics error for ${svc}:`, err);
+                    renderServiceError(svc);
+                }
+            }
         }
 
         // ---- Logout ----

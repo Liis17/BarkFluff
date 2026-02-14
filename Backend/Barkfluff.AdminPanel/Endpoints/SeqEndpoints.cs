@@ -61,12 +61,8 @@ public static class SeqEndpoints
 
             if (!string.IsNullOrEmpty(search))
             {
-                // Sanitize search input - escape single quotes and remove SQL wildcards
-                var sanitized = search
-                    .Replace("'", "''")
-                    .Replace("%", "")
-                    .Replace("_", "");
-                filterParts.Add($"@Message like '%{sanitized}%'");
+                var sanitized = search.Replace("'", "''");
+                filterParts.Add($"IndexOf(@Message, '{sanitized}') >= 0");
             }
 
             var filter = filterParts.Count > 0
@@ -364,6 +360,113 @@ public static class SeqEndpoints
             });
         })
         .WithName("GetDashboardServiceMetrics")
+        .WithOpenApi();
+
+        group.MapGet("/dashboard/service-metrics/{serviceName}", async (
+            MetricsCacheDbContext cache,
+            SeqService seqService,
+            HttpContext context,
+            string serviceName,
+            int hours = 12) =>
+        {
+            if (context.Items["AuthToken"] is not AuthToken)
+                return Results.Unauthorized();
+
+            var now = DateTime.UtcNow;
+            var currentHour = TruncateToHour(now);
+            var cutoff = currentHour.AddHours(-hours);
+
+            // Determine which hours we need
+            var neededHours = new List<DateTime>();
+            var cachedData = new Dictionary<DateTime, Dictionary<string, long>>();
+
+            for (var h = cutoff; h <= currentHour; h = h.AddHours(1))
+            {
+                if (h == currentHour)
+                {
+                    // Current (incomplete) hour — always re-fetch
+                    neededHours.Add(h);
+                    continue;
+                }
+
+                var cached = cache.HourlyServiceMetrics
+                    .FindOne(x => x.HourUtc == h && x.ServiceName == serviceName);
+
+                if (cached != null)
+                {
+                    cachedData[h] = cached.Metrics;
+                }
+                else
+                {
+                    neededHours.Add(h);
+                }
+            }
+
+            // Fetch missing hours from Seq
+            if (neededHours.Count > 0)
+            {
+                var fetchFrom = neededHours.Min();
+                var fetchTo = neededHours.Max().AddHours(1);
+
+                var filter = $"Application = '{serviceName.Replace("'", "''")}' and @Message like 'ServiceMetrics%'";
+                var events = await seqService.GetAllEventsListAsync(filter, fetchFrom, 5000);
+
+                if (events != null)
+                {
+                    // Group fetched events by hour
+                    var grouped = new Dictionary<DateTime, Dictionary<string, long>>();
+                    foreach (var evt in events)
+                    {
+                        var ts = GetEventTimestamp(evt);
+                        if (!ts.HasValue) continue;
+
+                        var hour = TruncateToHour(ts.Value);
+                        if (!neededHours.Contains(hour)) continue;
+
+                        var metrics = ExtractMetricValuesLong(evt);
+                        if (metrics.Count > 0)
+                            grouped[hour] = metrics; // last write wins
+                    }
+
+                    // Save completed hours to cache, merge into result
+                    foreach (var h in neededHours)
+                    {
+                        if (grouped.TryGetValue(h, out var metrics))
+                        {
+                            cachedData[h] = metrics;
+
+                            // Only cache completed hours (not the current one)
+                            if (h != currentHour)
+                            {
+                                // Remove old entry if exists, then insert
+                                cache.HourlyServiceMetrics.DeleteMany(x =>
+                                    x.HourUtc == h && x.ServiceName == serviceName);
+                                cache.HourlyServiceMetrics.Insert(new HourlyServiceMetrics
+                                {
+                                    HourUtc = h,
+                                    ServiceName = serviceName,
+                                    Metrics = metrics
+                                });
+                            }
+                        }
+                        // If no data for this hour, leave it empty (no cache entry)
+                    }
+                }
+            }
+
+            // Build time series response
+            var timeSeries = new List<object>();
+            for (var h = cutoff; h <= currentHour; h = h.AddHours(1))
+            {
+                if (cachedData.TryGetValue(h, out var m))
+                {
+                    timeSeries.Add(new { hour = h.ToString("o"), metrics = m });
+                }
+            }
+
+            return Results.Ok(new { serviceName, periodHours = hours, timeSeries });
+        })
+        .WithName("GetDashboardServiceMetricsPerService")
         .WithOpenApi();
 
         group.MapGet("/services/status", async (
