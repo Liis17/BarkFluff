@@ -44,6 +44,12 @@ public class Program
 
         var app = builder.Build();
 
+        using (var scope = app.Services.CreateScope())
+        {
+            var ctx = scope.ServiceProvider.GetRequiredService<OnlineStatusContext>();
+            ctx.Database.Migrate();
+        }
+
         app.MapGrpcReflectionService();
 
         // Настраиваем middleware pipeline
