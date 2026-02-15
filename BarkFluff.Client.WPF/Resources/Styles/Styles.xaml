@@ -804,8 +804,8 @@
         <Setter Property="HorizontalAlignment" Value="Center" />
         <Setter Property="Background" Value="{DynamicResource ButtonBackground}" />
         <Setter Property="CornerRadius" Value="8" />
-        <Setter Property="MouseOverBackground" Value="#FFC54700" />
-        <Setter Property="PressedBackground" Value="#FFAB3D00" />
+        <Setter Property="MouseOverBackground" Value="{DynamicResource ButtonMouseOverBackground}" />
+        <Setter Property="PressedBackground" Value="{DynamicResource ButtonPressedBackground}" />
         <Setter Property="Effect">
             <Setter.Value>
                 <DropShadowEffect
@@ -813,7 +813,7 @@
                     Direction="270"
                     Opacity="0.3"
                     ShadowDepth="4"
-                    Color="#df5000" />
+                    Color="{DynamicResource ButtonDropShadow}" />
             </Setter.Value>
         </Setter>
         <Setter Property="Template">
@@ -840,13 +840,34 @@
         </Setter>
         <Setter Property="UseLayoutRounding" Value="True" />
     </Style>
+    <Style x:Key="AdaptiveButtonTextStyle" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource ButtonText}" />
+        <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="Margin" Value="5,0,5,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="FontSize" Value="16" />
+    </Style>
+    <Style x:Key="AdaptiveButtonIconStyle" TargetType="{x:Type ui:SymbolIcon}">
+        <Setter Property="Foreground" Value="{DynamicResource ButtonText}" />
+        <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="Margin" Value="5,0,5,0" />
+        <Setter Property="Filled" Value="True" />
+    </Style>
 
     <!--  Цвет кнопки для обязательного действия  -->
     <Style x:Key="RequiredButton" TargetType="{x:Type ui:Button}">
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="MinWidth" Value="160" />
         <Setter Property="Height" Value="48" />
-        <Setter Property="Padding" Value="24,0" />
+        <Setter Property="Padding" Value="24,0,24,0" />
         <Setter Property="HorizontalAlignment" Value="Center" />
         <Setter Property="Background" Value="{DynamicResource RequiredButtonBackground}" />
         <Setter Property="CornerRadius" Value="8" />
@@ -891,6 +912,7 @@
         <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="FontSize" Value="16" />
+        <Setter Property="Margin" Value="5,0,5,0" />
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="HorizontalAlignment" Value="Center" />
         <Setter Property="FontSize" Value="16" />
@@ -903,7 +925,7 @@
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="HorizontalAlignment" Value="Center" />
         <Setter Property="FontSize" Value="16" />
-        <Setter Property="Margin" Value="6,0,0,0" />
+        <Setter Property="Margin" Value="5,0,5,0" />
         <Setter Property="Filled" Value="True" />
     </Style>
 
@@ -1010,7 +1032,17 @@
         <Setter Property="CornerRadius" Value="16" />
         <Setter Property="HorizontalAlignment" Value="Center" />
         <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="Padding" Value="40" />
+        <Setter Property="Padding" Value="30" />
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect
+                    BlurRadius="40"
+                    Direction="270"
+                    Opacity="0.25"
+                    ShadowDepth="8"
+                    Color="Black" />
+            </Setter.Value>
+        </Setter>
     </Style>
 
 
