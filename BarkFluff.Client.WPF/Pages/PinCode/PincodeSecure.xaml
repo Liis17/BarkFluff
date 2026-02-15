@@ -77,20 +77,12 @@
                     Source="/Resources/Images/barkfluff_logo.png" />
                 <TextBlock
                     Margin="12,0,0,0"
-                    VerticalAlignment="Center"
-                    FontFamily="{DynamicResource AdwaitaSans}"
-                    FontSize="18"
-                    FontWeight="SemiBold"
-                    Foreground="White"
+                    Style="{DynamicResource LittleTitleTextStyle}"
                     Text="BarkFluff" />
             </StackPanel>
             <TextBlock
                 Margin="0,8,0,0"
-                HorizontalAlignment="Center"
-                FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="14"
-                FontWeight="Normal"
-                Foreground="#B0B0B0"
+                Style="{DynamicResource DescriptionTextStyle}"
                 Text="Вход в приложение" />
         </StackPanel>
 
@@ -103,20 +95,11 @@
 
             <TextBlock
                 Margin="0,0,0,20"
-                HorizontalAlignment="Center"
-                FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="20"
-                FontWeight="SemiBold"
-                Foreground="White"
+                Style="{DynamicResource TitleTextStyle}"
                 Text="Код доступа" />
 
             <!--  Карточка в стиле SetupPages  -->
-            <Border
-                Padding="40,35"
-                Background="#1F1F1F"
-                BorderBrush="#333333"
-                BorderThickness="1"
-                CornerRadius="12">
+            <Border Style="{DynamicResource MainStyleBorder}">
                 <StackPanel Orientation="Vertical">
 
                     <!--  Контейнер PIN (С RenderTransform для анимации тряски)  -->
@@ -135,28 +118,28 @@
                             Loaded="FocusBoxZero"
                             PreviewKeyDown="PinBox_PreviewKeyDown"
                             PreviewTextInput="PinBox_PreviewTextInput"
-                            Style="{StaticResource PinCodeTextBoxWin11}"
+                            Style="{StaticResource PinCodeTextBox}"
                             TextChanged="PinBox_TextChanged" />
                         <TextBox
                             x:Name="Box1"
                             GotFocus="PinBox_GotFocus"
                             PreviewKeyDown="PinBox_PreviewKeyDown"
                             PreviewTextInput="PinBox_PreviewTextInput"
-                            Style="{StaticResource PinCodeTextBoxWin11}"
+                            Style="{StaticResource PinCodeTextBox}"
                             TextChanged="PinBox_TextChanged" />
                         <TextBox
                             x:Name="Box2"
                             GotFocus="PinBox_GotFocus"
                             PreviewKeyDown="PinBox_PreviewKeyDown"
                             PreviewTextInput="PinBox_PreviewTextInput"
-                            Style="{StaticResource PinCodeTextBoxWin11}"
+                            Style="{StaticResource PinCodeTextBox}"
                             TextChanged="PinBox_TextChanged" />
                         <TextBox
                             x:Name="Box3"
                             GotFocus="PinBox_GotFocus"
                             PreviewKeyDown="PinBox_PreviewKeyDown"
                             PreviewTextInput="PinBox_PreviewTextInput"
-                            Style="{StaticResource PinCodeTextBoxWin11}"
+                            Style="{StaticResource PinCodeTextBox}"
                             TextChanged="PinBox_TextChanged" />
                     </StackPanel>
 
@@ -167,34 +150,30 @@
                         Orientation="Horizontal">
                         <TextBlock
                             Margin="0,0,15,0"
-                            VerticalAlignment="Center"
-                            FontFamily="{DynamicResource AdwaitaSans}"
-                            FontSize="13"
-                            FontWeight="Normal"
-                            Foreground="#888888"
+                            Style="{DynamicResource DescriptionTextStyle}"
                             Text="Попытки:" />
 
-                        <!--  Индикаторы (Borders используются в коде для смены цвета)  -->
+                        <!--  Индикаторы  -->
                         <Border
                             x:Name="key3"
                             Width="10"
                             Height="10"
                             Margin="4,0"
-                            Background="#2D4A20"
+                            Background="{DynamicResource PasswordAttemptIndicator}"
                             CornerRadius="5" />
                         <Border
                             x:Name="key2"
                             Width="10"
                             Height="10"
                             Margin="4,0"
-                            Background="#2D4A20"
+                            Background="{DynamicResource PasswordAttemptIndicator}"
                             CornerRadius="5" />
                         <Border
                             x:Name="key1"
                             Width="10"
                             Height="10"
                             Margin="4,0"
-                            Background="#2D4A20"
+                            Background="{DynamicResource PasswordAttemptIndicator}"
                             CornerRadius="5" />
                     </StackPanel>
 
@@ -202,13 +181,9 @@
                     <TextBlock
                         x:Name="helper"
                         Margin="0,20,0,0"
-                        HorizontalAlignment="Center"
-                        FontFamily="{DynamicResource AdwaitaSans}"
-                        FontSize="13"
-                        FontWeight="Normal"
                         Foreground="#FF9800"
-                        Text=""
-                        TextAlignment="Center" />
+                        Style="{DynamicResource TipsStyle}"
+                        Text="" />
                 </StackPanel>
             </Border>
         </StackPanel>
@@ -219,25 +194,38 @@
             Grid.Row="2"
             Margin="0,0,0,30"
             HorizontalAlignment="Center"
-            Loaded="ButtonStack_Loaded"
+            VerticalAlignment="Bottom"
             Orientation="Vertical">
 
             <TextBlock
                 Margin="0,0,0,10"
-                HorizontalAlignment="Center"
-                FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="12"
-                Foreground="#666666"
+                Style="{DynamicResource DescriptionTextStyle}"
                 Text="Забыли код доступа?" />
 
-            <!--  Кнопка в стиле регистрации (используем ui:Button для единства стиля)  -->
             <ui:Button
                 HorizontalAlignment="Center"
-                Appearance="Danger"
-                Click="RemoveSettings">
-                <StackPanel Orientation="Horizontal" >
-                    <ui:SymbolIcon Symbol="Delete24" />
-                    <TextBlock Text="Сбросить настройки и войти" />
+                Click="RemoveSettings"
+                Style="{DynamicResource RequiredButton}">
+                <StackPanel Margin="10,0,10,0" Orientation="Horizontal">
+                    <ui:SymbolIcon
+                        Filled="False"
+                        Style="{DynamicResource RequiredButtonIconStyle}"
+                        Symbol="Delete24" />
+                    <TextBlock Style="{DynamicResource RequiredButtonTextStyle}" Text="Сбросить приложение и выйти" />
+                </StackPanel>
+            </ui:Button>
+
+            <ui:Button
+                Margin="0,10,0,0"
+                HorizontalAlignment="Center"
+                Click="OpenDebugWindow"
+                Style="{DynamicResource AdaptiveButton}">
+                <StackPanel Margin="10,0,10,0" Orientation="Horizontal">
+                    <ui:SymbolIcon
+                        Filled="False"
+                        Style="{DynamicResource AdaptiveButtonIconStyle}"
+                        Symbol="Bug24" />
+                    <TextBlock Style="{DynamicResource AdaptiveButtonTextStyle}" Text="Окно отладки" />
                 </StackPanel>
             </ui:Button>
         </StackPanel>

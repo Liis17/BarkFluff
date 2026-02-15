@@ -25,8 +25,16 @@
 
     <!--  КНОПКИ  -->
     <SolidColorBrush x:Key="ButtonText" Color="#1a1a1a" />
-    <SolidColorBrush x:Key="ButtonBackground" Color="#B0B0B0" />
+    <SolidColorBrush x:Key="ButtonBackground" Color="#e6e6e6" />
     <SolidColorBrush x:Key="ButtonBorder" Color="#B2B2B2" />
+    <Color
+        x:Key="ButtonDropShadow"
+        A="255"
+        B="118"
+        G="118"
+        R="118" />
+    <SolidColorBrush x:Key="ButtonMouseOverBackground" Color="#cccaca" />
+    <SolidColorBrush x:Key="ButtonPressedBackground" Color="#cccaca" />
 
     <!--  Всегда статичные  -->
     <SolidColorBrush x:Key="RequiredButtonText" Color="White" />
@@ -43,11 +51,13 @@
     <!--  текстовые поля (+пинкод триггеры)  -->
     <SolidColorBrush x:Key="TextCaretBrush" Color="#df5000" />
     <SolidColorBrush x:Key="TextGlowBrush" Color="#df5000" />
-    <SolidColorBrush x:Key="TextBorderBrush" Color="#3D3D3D" />
+    <SolidColorBrush x:Key="TextBorderBrush" Color="#8c8c8c" />
     <SolidColorBrush x:Key="TextForegraund" Color="#1a1a1a" />
     <SolidColorBrush x:Key="Textbackground" Color="#EDEDED" />
 
     <!--  Сепараторы  -->
     <SolidColorBrush x:Key="SeparatorBackground" Color="#777777" />
 
+    <!--  Индикатор попыток пароля  -->
+    <SolidColorBrush x:Key="PasswordAttemptIndicator" Color="#51ab29" />
 </ResourceDictionary>
