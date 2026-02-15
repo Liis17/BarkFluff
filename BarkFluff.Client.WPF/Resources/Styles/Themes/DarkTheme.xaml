@@ -54,11 +54,14 @@
     <SolidColorBrush x:Key="TextBorderBrush" Color="#3D3D3D" />
     <SolidColorBrush x:Key="TextForegraund" Color="#f1f1f1" />
     <SolidColorBrush x:Key="Textbackground" Color="#2D2D2D" />
+    <SolidColorBrush x:Key="TextPlaceholder" Color="#999999" />
+    <SolidColorBrush x:Key="TextIcon" Color="#FFF39E6D" />
+    <SolidColorBrush x:Key="TextHyperlink" Color="#FFF39E6D" />
 
     <!--  Сепараторы  -->
     <SolidColorBrush x:Key="SeparatorBackground" Color="#333333" />
 
-    <!--Индикатор попыток пароля-->
+    <!--  Индикатор попыток пароля  -->
     <SolidColorBrush x:Key="PasswordAttemptIndicator" Color="#2D4A20" />
 
 </ResourceDictionary>

@@ -8,6 +8,7 @@
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     d:DesignHeight="1280"
     d:DesignWidth="1280"
+    Background="{DynamicResource BackgroundWindow}"
     mc:Ignorable="d">
 
     <UserControl.Resources>
@@ -39,131 +40,42 @@
                 <!--  Заголовок  -->
                 <TextBlock
                     Margin="0,0,0,5"
-                    HorizontalAlignment="Center"
-                    FontFamily="{DynamicResource AdwaitaSans}"
-                    FontSize="34"
-                    FontWeight="SemiBold"
-                    Foreground="White"
+                    Style="{DynamicResource TitleTextStyle}"
                     Text="Подключение к серверу" />
 
                 <!--  Подзаголовок  -->
                 <TextBlock
                     Margin="0,0,0,40"
-                    HorizontalAlignment="Center"
-                    FontFamily="{DynamicResource AdwaitaSans}"
-                    FontSize="16"
-                    FontWeight="Normal"
-                    Foreground="#E0E0E0"
-                    Opacity="0.8"
-                    Text="Выберите публичный сервер"
-                    TextAlignment="Center" />
+                    Style="{DynamicResource DescriptionTextStyle}"
+                    Text="Выберите публичный сервер" />
 
                 <!--  Публичные серверы  -->
                 <TextBlock
                     Margin="0,0,0,15"
                     HorizontalAlignment="Left"
-                    FontFamily="{DynamicResource AdwaitaSans}"
-                    FontSize="18"
-                    FontWeight="Normal"
-                    Foreground="#E0E0E0"
+                    Foreground="{DynamicResource TitleText}"
+                    Style="{DynamicResource DescriptionTextStyle}"
                     Text="Публичные серверы" />
 
-                <StackPanel x:Name="ServerList" Margin="0,0,0,30">
-
-                    <Border
-                        x:Name="NoServer"
-                        Margin="14,14,14,0"
-                        Padding="25"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        Background="#1a1a1a"
-                        CornerRadius="22">
-
-                        <StackPanel
-                            MaxWidth="300"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center">
-
-                            <!--  Удивленная иконка сервера  -->
-                            <Border
-                                Width="72"
-                                Height="72"
-                                Margin="0,0,0,20"
-                                HorizontalAlignment="Center"
-                                Background="#FF3C3C3C"
-                                CornerRadius="36">
-                                <Border.Effect>
-                                    <DropShadowEffect
-                                        BlurRadius="16"
-                                        Opacity="0.3"
-                                        ShadowDepth="4"
-                                        Color="Black" />
-                                </Border.Effect>
-
-                                <Grid>
-                                    <!--  Основная иконка сервера  -->
-                                    <ui:SymbolIcon
-                                        Margin="0,-4,0,0"
-                                        HorizontalAlignment="Center"
-                                        VerticalAlignment="Center"
-                                        FontSize="28"
-                                        Foreground="#FFFF9800"
-                                        Symbol="Server20" />
-                                </Grid>
-                            </Border>
-
-                            <!--  Удивленный заголовок  -->
-                            <TextBlock
-                                Margin="0,0,0,8"
-                                HorizontalAlignment="Center"
-                                FontFamily="{DynamicResource AdwaitaSans}"
-                                FontSize="18"
-                                FontWeight="SemiBold"
-                                Foreground="White"
-                                Text="А где же серверы?"
-                                TextAlignment="Center" />
-
-                            <!--  Описание с удивлением  -->
-                            <TextBlock
-                                Margin="0,0,0,10"
-                                HorizontalAlignment="Center"
-                                FontFamily="{DynamicResource AdwaitaSans}"
-                                FontSize="13"
-                                Foreground="#FF9E9E9E"
-                                LineHeight="18"
-                                TextAlignment="Center"
-                                TextWrapping="Wrap">
-                                <Run Text="Странно... Тут должны были быть серверы..." />
-                            </TextBlock>
-
-                        </StackPanel>
-                    </Border>
-
-                </StackPanel>
+                <StackPanel x:Name="ServerList" Margin="0,0,0,30" />
 
                 <!--  Разделитель  -->
-                <Rectangle
+                <Border
                     Height="1"
-                    Margin="0,10,0,30"
-                    Fill="#383838" />
+                    Margin="0,10,0,10"
+                    Background="{DynamicResource SeparatorBackground}" />
 
                 <!--  Свой сервер  -->
                 <TextBlock
                     Margin="0,0,0,15"
-                    HorizontalAlignment="Left"
-                    FontFamily="{DynamicResource AdwaitaSans}"
-                    FontSize="18"
-                    FontWeight="Normal"
-                    Foreground="#E0E0E0"
+                    Style="{DynamicResource DescriptionTextStyle}"
                     Text="Подключиться к другому серверу" />
 
                 <ui:TextBox
                     x:Name="ServerAddressTextBox"
                     Margin="0,0,0,10"
-                    Padding="12,10"
-                    Loaded="ServerAddressTextBox_Loaded"
-                    PlaceholderEnabled="True"
-                    PlaceholderText="myserver.com:8080" />
+                    PlaceholderText="https://myserver.com:443"
+                    Style="{DynamicResource InputTextBoxStyle}" />
 
                 <!--  Кнопки действий  -->
                 <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
@@ -171,11 +83,11 @@
                     <ui:Button
                         x:Name="ConnectButton"
                         Click="ConnectButton_Click"
-                        Style="{StaticResource MainButton}">
+                        Style="{DynamicResource RequiredButton}">
                         <ui:Button.Content>
                             <StackPanel Orientation="Horizontal">
-                                <ui:TextBlock Style="{StaticResource MainButtonTextLeft}" Text="Подключиться" />
-                                <ui:SymbolIcon Style="{StaticResource ButtonSymbolRight}" Symbol="ArrowRight24" />
+                                <ui:TextBlock Style="{StaticResource RequiredButtonTextStyle}" Text="Подключиться" />
+                                <ui:SymbolIcon Style="{StaticResource RequiredButtonIconStyle}" Symbol="ArrowRight24" />
                             </StackPanel>
                         </ui:Button.Content>
                     </ui:Button>
@@ -193,42 +105,28 @@
                 <!--  Информация о self-hosted  -->
                 <Border
                     Margin="0,0,0,15"
-                    Padding="15,10"
-                    Background="#252525"
-                    CornerRadius="10">
+                    Padding="15"
+                    Style="{DynamicResource MainStyleBorder}">
                     <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
                         <ui:SymbolIcon
                             Margin="0,0,8,0"
                             FontSize="16"
-                            Foreground="#FFF39E6D"
+                            Foreground="{DynamicResource TextIcon}"
                             Symbol="Server20" />
+                        <TextBlock Style="{DynamicResource DescriptionTextStyle}" Text="Хотите развернуть собственный сервер? " />
                         <TextBlock
-                            VerticalAlignment="Center"
-                            FontFamily="{DynamicResource AdwaitaSans}"
-                            FontSize="13"
-                            Foreground="#B0B0B0">
-                            <Run Text="Хотите развернуть собственный сервер? " />
-                            <Hyperlink
-                                x:Name="SelfHostedLink"
-                                Click="SelfHostedLink_Click"
-                                Foreground="#FFF39E6D"
-                                TextDecorations="None">
-                                <Run Text="Узнайте больше" />
-                            </Hyperlink>
-                        </TextBlock>
+                            Foreground="{DynamicResource TextHyperlink}"
+                            MouseUp="TextBlock_MouseUp"
+                            Style="{DynamicResource DescriptionTextStyle}"
+                            Text="Узнайте больше" />
+
                     </StackPanel>
                 </Border>
 
                 <TextBlock
-                    MaxWidth="600"
-                    HorizontalAlignment="Center"
-                    FontFamily="{DynamicResource AdwaitaSans}"
-                    FontSize="14"
-                    FontWeight="Light"
-                    Foreground="#9E9E9E"
-                    Text="Возникли проблемы с подключением? Ознакомьтесь с нашим руководством по настройке сервера."
-                    TextAlignment="Center"
-                    TextWrapping="Wrap" />
+                    Margin="100,0,100,0"
+                    Style="{DynamicResource DescriptionTextStyle}"
+                    Text="Возникли проблемы с подключением? Ознакомьтесь с нашим руководством по настройке сервера." />
             </StackPanel>
         </Grid>
     </ScrollViewer>
