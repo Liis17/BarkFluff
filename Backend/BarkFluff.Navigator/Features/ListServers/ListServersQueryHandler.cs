@@ -43,6 +43,12 @@ public class ListServersQueryHandler : IRequestHandler<ListServersQuery, ListSer
                         BeaconUri = new ServiceEndpoint()
                         {
                             Host = server.BeaconHost, Port = server.BeaconPort
+                        },
+                        Color = new ServerColor
+                        {
+                            LiteHex = server.ColorLiteHex,
+                            MainHex = server.ColorMainHex,
+                            HardHex = server.ColorHardHex
                         }
                     })
             }

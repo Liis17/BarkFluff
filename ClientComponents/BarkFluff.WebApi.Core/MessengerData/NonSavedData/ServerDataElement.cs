@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace BarkFluff.WebApi.Core.MessengerData.NonSavedData
+﻿namespace BarkFluff.WebApi.Core.MessengerData.NonSavedData
 {
     public class ServerDataElement
     {
@@ -12,5 +8,6 @@ namespace BarkFluff.WebApi.Core.MessengerData.NonSavedData
         public string UserCount { get; set; } = string.Empty;
         public string PublicName { get; set; } = string.Empty;
         public string Location { get; set; } = string.Empty;
+        public string HexColor { get; set; } = string.Empty;
     }
 }

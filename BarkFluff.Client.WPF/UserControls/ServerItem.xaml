@@ -70,33 +70,31 @@
 
                     <!--  Название сервера  -->
                     <TextBlock
+                        HorizontalAlignment="Left"
                         x:Name="ServerTitle"
-                        FontFamily="{DynamicResource AdwaitaSans}"
-                        FontSize="16"
-                        FontWeight="SemiBold"
-                        Foreground="White"
+                        Style="{DynamicResource LittleTitleTextStyle}"
                         Text="Название сервера" />
 
                     <!--  Описание  -->
                     <TextBlock
                         x:Name="ServerDescription"
                         Margin="0,4,0,0"
-                        FontFamily="{DynamicResource AdwaitaSans}"
-                        FontSize="12"
-                        Foreground="#9E9E9E"
+                        HorizontalAlignment="Left"
                         Text="Описание сервера"
+                        Style="{DynamicResource DescriptionTextStyle}"
                         TextTrimming="CharacterEllipsis"
-                        TextWrapping="NoWrap" />
+                         />
 
                     <!--  Локация и публичное имя  -->
                     <TextBlock
+                        Text="Локация и публичное имя"
                         x:Name="ServerLocationAndPublicName"
                         Margin="0,4,0,0"
-                        FontFamily="{DynamicResource AdwaitaSans}"
-                        FontSize="12"
-                        Foreground="#9E9E9E"
+                       
+                        Style="{DynamicResource DescriptionTextStyle}"
+                        
                         TextTrimming="CharacterEllipsis"
-                        TextWrapping="NoWrap" />
+                         />
                 </StackPanel>
             </Grid>
         </Button>

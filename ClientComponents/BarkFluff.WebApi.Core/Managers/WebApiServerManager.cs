@@ -56,7 +56,8 @@ namespace BarkFluff.WebApi.Core.Managers
                             UserCount = item.AccountsCount.ToString(),
                             Description = item.Description,
                             PublicName = item.ServerPublicName,
-                            Location = item.Location
+                            Location = item.Location,
+                            HexColor = item.Color?.MainHex ?? string.Empty
                         })
                         .ToList();
 
