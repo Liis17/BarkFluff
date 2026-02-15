@@ -12,6 +12,9 @@ public class ServerInfo
     public required string Description { get; set; }
     public string ServerPublicName { get; set; } = string.Empty;
     public string Location { get; set; } = string.Empty;
+    public string ColorLiteHex { get; set; } = string.Empty;
+    public string ColorMainHex { get; set; } = string.Empty;
+    public string ColorHardHex { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public required string AddedBy { get; set; }
 }

@@ -37,6 +37,9 @@ public class NavigatorApiService : NavigatorApi.NavigatorApiBase
             Description = protoServer?.Description ?? string.Empty,
             ServerPublicName = protoServer?.ServerPublicName ?? string.Empty,
             Location = protoServer?.Location ?? string.Empty,
+            ColorLiteHex = protoServer?.Color?.LiteHex ?? string.Empty,
+            ColorMainHex = protoServer?.Color?.MainHex ?? string.Empty,
+            ColorHardHex = protoServer?.Color?.HardHex ?? string.Empty,
             CreatedAt = DateTime.UtcNow,
             AddedBy = _userContext.IsAuthenticated ? _userContext.UserId.ToString() : "Anonymous"
         };

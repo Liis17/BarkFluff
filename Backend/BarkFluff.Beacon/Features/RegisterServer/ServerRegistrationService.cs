@@ -37,6 +37,7 @@ public class ServerRegistrationService : BackgroundService
                 var navigatorClient = scope.ServiceProvider.GetRequiredService<NavigatorApi.NavigatorApiClient>();
                 var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
                 var serverProps = scope.ServiceProvider.GetRequiredService<ServerPropsSettings>();
+                var colorSettings = scope.ServiceProvider.GetRequiredService<ServerColorSettings>();
 
                 // Преобразуем в ServerInfo для RegisterServerRequest
                 // Используем внешний адрес Beacon (субдомен через nginx, порт 443)
@@ -58,6 +59,12 @@ public class ServerRegistrationService : BackgroundService
                     {
                         Host = externalHost,
                         Port = 443
+                    },
+                    Color = new ServerColor
+                    {
+                        LiteHex = colorSettings.Lite ?? string.Empty,
+                        MainHex = colorSettings.Main ?? string.Empty,
+                        HardHex = colorSettings.Hard ?? string.Empty
                     }
                 };
 

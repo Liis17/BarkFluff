@@ -23,6 +23,7 @@ namespace BarkFluff.Client.WPF.UserControls
 
             ServerTitle.Text = serverData.Title;
             ServerDescription.Text = serverData.Description;
+            SetAccentColor(serverData.HexColor);
 
             // Build location and public name string
             var locationAndPublicName = new System.Text.StringBuilder();
