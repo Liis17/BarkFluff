@@ -13,13 +13,14 @@
 
     <UserControl.Resources>
         <Style x:Key="ServerButton" TargetType="Button">
-            <Setter Property="Background" Value="#282828" />
-            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Background" Value="{DynamicResource BorderBlock}" />
+            <Setter Property="Foreground" Value="{DynamicResource TitleText}" />
             <Setter Property="FontFamily" Value="AdwaitaSans" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="FontWeight" Value="Normal" />
             <Setter Property="Padding" Value="15,12" />
-            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBlockBrush}" />
             <Setter Property="Margin" Value="0,5" />
             <Setter Property="HorizontalAlignment" Value="Stretch" />
             <Setter Property="HorizontalContentAlignment" Value="Left" />
@@ -34,13 +35,23 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#383838" />
+                                <Setter Property="Background" Value="{DynamicResource ButtonMouseOverBackground}" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#484848" />
+                                <Setter Property="Background" Value="{DynamicResource ButtonPressedBackground}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect
+            BlurRadius="40"
+            Direction="270"
+            Opacity="0.25"
+            ShadowDepth="8"
+            Color="Black" />
                 </Setter.Value>
             </Setter>
         </Style>
@@ -59,7 +70,7 @@
                     Grid.Column="0"
                     Width="4"
                     Margin="0,0,12,0"
-                    Background="#df5000"
+                    Background="#ffffff"
                     CornerRadius="2" />
 
                 <!--  Информация о сервере  -->
@@ -70,8 +81,8 @@
 
                     <!--  Название сервера  -->
                     <TextBlock
-                        HorizontalAlignment="Left"
                         x:Name="ServerTitle"
+                        HorizontalAlignment="Left"
                         Style="{DynamicResource LittleTitleTextStyle}"
                         Text="Название сервера" />
 
@@ -80,21 +91,18 @@
                         x:Name="ServerDescription"
                         Margin="0,4,0,0"
                         HorizontalAlignment="Left"
-                        Text="Описание сервера"
                         Style="{DynamicResource DescriptionTextStyle}"
-                        TextTrimming="CharacterEllipsis"
-                         />
+                        Text="Описание сервера"
+                        TextTrimming="CharacterEllipsis" />
 
                     <!--  Локация и публичное имя  -->
                     <TextBlock
-                        Text="Локация и публичное имя"
                         x:Name="ServerLocationAndPublicName"
                         Margin="0,4,0,0"
-                       
+                        HorizontalAlignment="Left"
                         Style="{DynamicResource DescriptionTextStyle}"
-                        
-                        TextTrimming="CharacterEllipsis"
-                         />
+                        Text="Локация и публичное имя"
+                        TextTrimming="CharacterEllipsis" />
                 </StackPanel>
             </Grid>
         </Button>

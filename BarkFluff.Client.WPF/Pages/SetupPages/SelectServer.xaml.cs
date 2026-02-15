@@ -40,7 +40,6 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                 return;
             }
 
-            NoServer.Visibility = Visibility.Collapsed;
             ServerList.Children.Clear();
 
             foreach (var item in response.ServerElements)
@@ -187,7 +186,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
             };
         }
 
-        private void SelfHostedLink_Click(object sender, RoutedEventArgs e)
+        private void TextBlock_MouseUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
             try
             {
@@ -207,16 +206,6 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                 // Expected when the process cannot be started (e.g., file not found).
                 // This is a non-critical failure - the user can manually navigate to the URL.
             }
-        }
-
-        private void ServerAddressTextBox_Loaded(object sender, RoutedEventArgs e)
-        {
-#if DEBUG
-            if (sender is TextBox serverIp)
-            {
-                serverIp.Text = string.Empty;
-            }
-#endif
         }
     }
 }
