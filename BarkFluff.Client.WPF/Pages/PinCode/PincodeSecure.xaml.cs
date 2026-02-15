@@ -1,12 +1,10 @@
 ﻿using BarkFluff.Client.WPF.Debugs;
 using BarkFluff.WebApi.Core.MessengerData;
 
-using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media;
 using System.Windows.Media.Animation;
 
 using Erida = BarkFluff.Client.WPF.Services.Erida.MessageType;
@@ -19,9 +17,6 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
         private char[] pinDigits = new char[4];
         private int attempts = 3;
 
-        // Cached brushes for key indicators
-        private static readonly SolidColorBrush ActiveKeyBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2D4A20"));
-        private static readonly SolidColorBrush InactiveKeyBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4A2020"));
 
         public PincodeSecure()
         {
@@ -123,7 +118,7 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
 
         private void UpdateKeyIndicatorStyle(Border keyBorder, bool isActive)
         {
-            keyBorder.Background = isActive ? ActiveKeyBrush : InactiveKeyBrush;
+            keyBorder.Visibility = isActive ? Visibility.Visible : Visibility.Hidden;
         }
 
         private void PinBox_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -236,25 +231,6 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
         private void FocusBoxZero(object sender, RoutedEventArgs e)
         {
             Box0.Focus();
-        }
-
-        private void ButtonStack_Loaded(object sender, RoutedEventArgs e)
-        {
-            if (Debugger.IsAttached)
-            {
-                var btn = new Button
-                {
-                    Content = "Открыть дебаг окно",
-                    Width = 165,
-                    Height = 35,
-                    Margin = new Thickness(5),
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                };
-
-                btn.Click += OpenDebugWindow;
-
-                ButtonStack.Children.Add(btn);
-            }
         }
 
         private void OpenDebugWindow(object sender, RoutedEventArgs e)
