@@ -2,8 +2,19 @@
     <!-- Base application theme. -->
     <style name="Base.Theme.BarkfluffClientAndroid" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
     </style>
 
     <style name="Theme.BarkfluffClientAndroid" parent="Base.Theme.BarkfluffClientAndroid" />
+
+    <!-- Splash Screen theme -->
+    <style name="Theme.BarkfluffClientAndroid.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/purple_700</item>
+        <item name="postSplashScreenTheme">@style/Theme.BarkfluffClientAndroid</item>
+    </style>
+
+    <!-- Circle image view shape -->
+    <style name="CircleImageView" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
 </resources>
