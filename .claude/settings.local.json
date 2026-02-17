@@ -18,7 +18,8 @@
       "Bash(if not exist \"F:\\\\Projects\\\\BarkFluff\\\\Backend\\\\BarkFluff.Messages\\\\Persistence\\\\Services\\\\Dtos\" mkdir \"F:\\\\Projects\\\\BarkFluff\\\\Backend\\\\BarkFluff.Messages\\\\Persistence\\\\Services\\\\Dtos\")",
       "Bash(find:*)",
       "Bash(tree:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []
