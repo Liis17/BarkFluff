@@ -1,26 +1,9 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme with Material You dynamic colors support (Android 12+) -->
     <style name="Base.Theme.BarkfluffClientAndroid" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Dynamic colors from system (Android 12+) - will fallback to brand colors on older devices -->
-        <item name="colorPrimary">@color/primary</item>
-        <item name="colorPrimaryVariant">@color/primary_variant</item>
-        <item name="colorOnPrimary">@color/white</item>
-        <item name="colorSecondary">@color/secondary</item>
-        <item name="colorSecondaryVariant">@color/secondary_variant</item>
-        <item name="colorOnSecondary">@color/white</item>
-        <item name="colorTertiary">@color/tertiary</item>
-        <item name="colorOnTertiary">@color/black</item>
-        
-        <!-- Background colors -->
-        <item name="android:colorBackground">@color/background_window</item>
-        <item name="colorSurface">@color/card_background</item>
-        <item name="colorOnBackground">@color/text_primary</item>
-        <item name="colorOnSurface">@color/text_primary</item>
-        <item name="colorOnSurfaceVariant">@color/text_secondary</item>
-        
         <!-- Status bar -->
-        <item name="android:statusBarColor">@color/background_window</item>
-        <item name="android:windowBackground">@color/background_window</item>
+        <item name="android:statusBarColor">?attr/colorSurface</item>
+        <item name="android:windowBackground">?android:attr/colorBackground</item>
     </style>
 
     <style name="Theme.BarkfluffClientAndroid" parent="Base.Theme.BarkfluffClientAndroid" />
