@@ -1,39 +1,57 @@
 package com.barkfluff.client
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.view.View
+import android.os.Environment
+import android.provider.Settings
 import android.view.animation.AccelerateDecelerateInterpolator
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.content.res.ResourcesCompat
 import com.barkfluff.client.databinding.ActivityWelcomeBinding
+import com.google.android.material.color.DynamicColors
 
 class WelcomeActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityWelcomeBinding
 
-    // Permission launcher
+    // Permission launcher for normal permissions
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val allGranted = permissions.values.all { it }
         if (allGranted) {
             Toast.makeText(this, "Все разрешения предоставлены", Toast.LENGTH_SHORT).show()
-        } else {
-            Toast.makeText(this, "Некоторые разрешения не предоставлены", Toast.LENGTH_SHORT).show()
         }
-        // Переход к MainActivity после запроса разрешений
         navigateToMain()
     }
 
+    // Launcher for MANAGE_EXTERNAL_STORAGE permission (Android 11+)
+    private val manageStorageLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (Environment.isExternalStorageManager()) {
+                Toast.makeText(this, "Доступ к хранилищу предоставлен", Toast.LENGTH_SHORT).show()
+                requestRemainingPermissions()
+            } else {
+                Toast.makeText(this, "Доступ к хранилищу не предоставлен", Toast.LENGTH_SHORT).show()
+                navigateToMain()
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Apply dynamic colors if available (Android 12+)
+        DynamicColors.applyToActivityIfAvailable(this)
+
         super.onCreate(savedInstanceState)
 
         binding = ActivityWelcomeBinding.inflate(layoutInflater)
@@ -41,6 +59,7 @@ class WelcomeActivity : AppCompatActivity() {
 
         setupAnimations()
         setupClickListeners()
+        applyDynamicColorsIfAvailable()
     }
 
     private fun setupAnimations() {
@@ -111,7 +130,7 @@ class WelcomeActivity : AppCompatActivity() {
 
     private fun setupClickListeners() {
         binding.startButton.setOnClickListener {
-            requestPermissions()
+            requestAllPermissions()
         }
 
         binding.aboutLink.setOnClickListener {
@@ -127,7 +146,30 @@ class WelcomeActivity : AppCompatActivity() {
         }
     }
 
-    private fun requestPermissions() {
+    private fun applyDynamicColorsIfAvailable() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // Android 12+ - dynamic colors are applied automatically via Material3 theme
+            // The colors will be extracted from the user's wallpaper
+        }
+    }
+
+    private fun requestAllPermissions() {
+        // First, request MANAGE_EXTERNAL_STORAGE for Android 11+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (!Environment.isExternalStorageManager()) {
+                val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                    data = Uri.parse("package:$packageName")
+                }
+                manageStorageLauncher.launch(intent)
+                return
+            }
+        }
+
+        // If we already have storage access or on older Android, request remaining permissions
+        requestRemainingPermissions()
+    }
+
+    private fun requestRemainingPermissions() {
         val permissionsToRequest = mutableListOf<String>()
 
         // Add notification permission for Android 13+
@@ -150,8 +192,22 @@ class WelcomeActivity : AppCompatActivity() {
             ) {
                 permissionsToRequest.add(Manifest.permission.READ_MEDIA_IMAGES)
             }
-        } else {
-            // For Android 12 and below
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.READ_MEDIA_VIDEO
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                permissionsToRequest.add(Manifest.permission.READ_MEDIA_VIDEO)
+            }
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.READ_MEDIA_AUDIO
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                permissionsToRequest.add(Manifest.permission.READ_MEDIA_AUDIO)
+            }
+        } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
+            // For Android 10 and below
             if (ContextCompat.checkSelfPermission(
                     this,
                     Manifest.permission.READ_EXTERNAL_STORAGE

@@ -3,14 +3,23 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     
-    <!-- Barkfluff Theme Colors -->
+    <!-- Barkfluff Brand Colors (fallback for Android < 12) -->
+    <color name="primary">#FF6B35</color>
+    <color name="primary_variant">#E55A2B</color>
+    <color name="secondary">#2196F3</color>
+    <color name="secondary_variant">#1976D2</color>
+    <color name="tertiary">#03DAC6</color>
+    
+    <!-- Neutral colors -->
     <color name="background_window">#F5F5F5</color>
     <color name="card_background">#FFFFFF</color>
     <color name="text_primary">#1A1A1A</color>
     <color name="text_secondary">#666666</color>
     <color name="text_accent">#FF6B35</color>
     <color name="text_link">#2196F3</color>
-    <color name="primary">#FF6B35</color>
-    <color name="primary_variant">#E55A2B</color>
-    <color name="secondary">#2196F3</color>
+    
+    <!-- Fallback color attribute -->
+    <color name="colorPrimaryFallback">#FF6B35</color>
+    <color name="colorPrimaryVariantFallback">#E55A2B</color>
+    <color name="colorSecondaryFallback">#2196F3</color>
 </resources>

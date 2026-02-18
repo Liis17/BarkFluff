@@ -44,4 +44,6 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.constraintlayout)
     implementation("androidx.cardview:cardview:1.0.0")
+    implementation(libs.androidx.recyclerview)
+    implementation(libs.androidx.fragment)
 }
