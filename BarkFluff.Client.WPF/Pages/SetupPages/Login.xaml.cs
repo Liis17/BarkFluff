@@ -1,4 +1,6 @@
-﻿using System.Text.RegularExpressions;
+﻿using BarkFluff.Client.WPF.Services.QR;
+
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -144,28 +146,28 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
 
         private void ShowError(Control control, TextBlock errorText, string message)
         {
-            if (control is TextBox textBox)
-            {
-                textBox.Style = (Style)FindResource("MinimalTextBoxError");
-            }
-            else if (control is PasswordBox passwordBox)
-            {
-                passwordBox.Style = (Style)FindResource("MinimalPasswordBoxError");
-            }
+            //if (control is TextBox textBox)
+            //{
+            //    textBox.Style = (Style)FindResource("MinimalTextBoxError");
+            //}
+            //else if (control is PasswordBox passwordBox)
+            //{
+            //    passwordBox.Style = (Style)FindResource("MinimalPasswordBoxError");
+            //}
             errorText.Text = message;
             errorText.Visibility = Visibility.Visible;
         }
 
         private void HideError(Control control, TextBlock errorText)
         {
-            if (control is TextBox textBox)
-            {
-                textBox.Style = (Style)FindResource("MinimalTextBox");
-            }
-            else if (control is PasswordBox passwordBox)
-            {
-                passwordBox.Style = (Style)FindResource("MinimalPasswordBox");
-            }
+            //if (control is TextBox textBox)
+            //{
+            //    textBox.Style = (Style)FindResource("MinimalTextBox");
+            //}
+            //else if (control is PasswordBox passwordBox)
+            //{
+            //    passwordBox.Style = (Style)FindResource("MinimalPasswordBox");
+            //}
             errorText.Visibility = Visibility.Collapsed;
         }
 
@@ -175,7 +177,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
             {
                 foreach (var box in codeBoxes)
                 {
-                    box.Style = (Style)FindResource("VerificationTextBoxError");
+                    //box.Style = (Style)FindResource("VerificationTextBoxError");
                 }
             }
             OtpErrorText.Text = message;
@@ -188,7 +190,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
             {
                 foreach (var box in codeBoxes)
                 {
-                    box.Style = (Style)FindResource("VerificationTextBox");
+                    //box.Style = (Style)FindResource("VerificationTextBox");
                 }
             }
             OtpErrorText.Visibility = Visibility.Collapsed;
@@ -439,6 +441,14 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
         private void VerifyBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
             e.Handled = !Regex.IsMatch(e.Text, @"^\d$");
+        }
+
+        private void QrTemplate(object sender, RoutedEventArgs e)
+        {
+            var color1 = System.Drawing.Color.FromArgb(128, 61, 61, 61); // Пурпурный
+            var color2 = System.Drawing.Color.FromArgb(128, 61, 61, 61); // Розовый
+            var qrCodeBitmap = RoundedQrGenerator.GenerateRoundedQrBitmap("https://barkfluff.com", color1, color2, "");
+            QrCodeImage.Source = qrCodeBitmap;
         }
     }
 }
