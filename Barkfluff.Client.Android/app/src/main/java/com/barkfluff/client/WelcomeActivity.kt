@@ -14,7 +14,6 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import androidx.core.content.res.ResourcesCompat
 import com.barkfluff.client.databinding.ActivityWelcomeBinding
 import com.google.android.material.color.DynamicColors
 
@@ -49,9 +48,7 @@ class WelcomeActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Apply dynamic colors if available (Android 12+)
         DynamicColors.applyToActivityIfAvailable(this)
-
         super.onCreate(savedInstanceState)
 
         binding = ActivityWelcomeBinding.inflate(layoutInflater)
@@ -59,7 +56,6 @@ class WelcomeActivity : AppCompatActivity() {
 
         setupAnimations()
         setupClickListeners()
-        applyDynamicColorsIfAvailable()
     }
 
     private fun setupAnimations() {
@@ -143,13 +139,6 @@ class WelcomeActivity : AppCompatActivity() {
 
         binding.helpLink.setOnClickListener {
             showHelp()
-        }
-    }
-
-    private fun applyDynamicColorsIfAvailable() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            // Android 12+ - dynamic colors are applied automatically via Material3 theme
-            // The colors will be extracted from the user's wallpaper
         }
     }
 
