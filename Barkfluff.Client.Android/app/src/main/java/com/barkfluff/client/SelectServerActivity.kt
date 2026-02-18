@@ -12,7 +12,7 @@ import com.barkfluff.client.adapter.ServerAdapter
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.ServerDataElement
 import com.barkfluff.client.databinding.ActivitySelectServerBinding
-import com.barkfluff.client.grpc.SimpleGrpcManager
+import com.barkfluff.client.grpc.GrpcManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
 import java.util.regex.Pattern
@@ -33,7 +33,7 @@ class SelectServerActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySelectServerBinding
     private lateinit var globalParam: GlobalParam
-    private lateinit var grpcManager: SimpleGrpcManager
+    private lateinit var grpcManager: GrpcManager
     private lateinit var serverAdapter: ServerAdapter
 
     private var isConnecting = false
@@ -46,7 +46,7 @@ class SelectServerActivity : AppCompatActivity() {
 
         // Инициализация
         globalParam = GlobalParam(this)
-        grpcManager = SimpleGrpcManager()
+        grpcManager = GrpcManager()
 
         setupRecyclerView()
         setupClickListeners()
@@ -84,12 +84,20 @@ class SelectServerActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
+                // Создаем Navigator клиент
+                val createResult = grpcManager.createNavigatorClient()
+                if (createResult.isFailure) {
+                    showError(createResult.exceptionOrNull()?.message ?: "Не удалось создать соединение с навигатором")
+                    return@launch
+                }
+
+                // Получаем список серверов
                 val result = grpcManager.getServerList()
 
                 if (result.isSuccess) {
                     val servers = result.getOrNull()
                     if (servers.isNullOrEmpty()) {
-                        // Показываем тестовые данные для демонстрации
+                        // Показываем тестовые данные если список пуст
                         val testServers = listOf(
                             ServerDataElement(
                                 ip = "test1.barkfluff.com:64646",
@@ -114,7 +122,7 @@ class SelectServerActivity : AppCompatActivity() {
                     } else {
                         serverAdapter.submitList(servers)
                     }
-                    Log.d(TAG, "Загружено ${servers?.size ?: 2} серверов")
+                    Log.d(TAG, "Загружено ${servers.size} серверов")
                 } else {
                     showError(result.exceptionOrNull()?.message ?: "Не удалось загрузить список серверов")
                     Log.e(TAG, "Ошибка загрузки списка серверов", result.exceptionOrNull())
@@ -147,8 +155,16 @@ class SelectServerActivity : AppCompatActivity() {
                 // Сохраняем адрес beacon
                 globalParam.socketBeacon = address
 
+                // Создаем Beacon клиент
+                val createResult = grpcManager.createOnlyBeaconClient(address)
+                if (createResult.isFailure) {
+                    showError(createResult.exceptionOrNull()?.message ?: "Не удалось подключиться к серверу")
+                    resetConnectionState()
+                    return@launch
+                }
+
                 // Получаем информацию о сервере
-                val infoResult = grpcManager.getServerInfo(address)
+                val infoResult = grpcManager.getServerInfo()
 
                 if (infoResult.isSuccess) {
                     val serverInfo = infoResult.getOrNull()
