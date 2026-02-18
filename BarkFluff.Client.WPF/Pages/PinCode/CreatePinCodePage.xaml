@@ -63,12 +63,7 @@
                 Orientation="Horizontal">
                 <!--  Шаг 1  -->
                 <StackPanel Orientation="Horizontal">
-                    <Border
-                        x:Name="Step1Circle"
-                        Width="32"
-                        Height="32"
-                        Background="#df5000"
-                        CornerRadius="16">
+                    <Border x:Name="Step1Circle" Style="{DynamicResource StepCircle}">
                         <TextBlock
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
@@ -95,12 +90,7 @@
 
                 <!--  Шаг 2  -->
                 <StackPanel Orientation="Horizontal">
-                    <Border
-                        x:Name="Step2Circle"
-                        Width="32"
-                        Height="32"
-                        Background="#333333"
-                        CornerRadius="16">
+                    <Border x:Name="Step2Circle" Style="{DynamicResource StepCircle}">
                         <TextBlock
                             x:Name="Step2CircleText"
                             HorizontalAlignment="Center"
