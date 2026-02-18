@@ -1,32 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     
-    <!-- Dog paw print -->
+    <!-- Barkfluff Logo - Three-armed spiral/triskelion shape -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M54,38m-10,0a10,10 0,1 1,20 0a10,10 0,1 1,-20 0" />
+        android:pathData="M54,54m-2,0a2,2 0,1 1,4 0a2,2 0,1 1,-4 0" />
     
+    <!-- Arm 1 - curves up and right -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M38,50m-8,0a8,8 0,1 1,16 0a8,8 0,1 1,-16 0" />
+        android:pathData="M54,54c0,0 8,-20 20,-20c2,0 3,1 3,3c0,3 -5,5 -10,8c-8,5 -13,9 -13,9z" />
     
+    <!-- Arm 2 - curves down and right -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M70,50m-8,0a8,8 0,1 1,16 0a8,8 0,1 1,-16 0" />
+        android:pathData="M54,54c0,0 20,8 20,20c0,2 -1,3 -3,3c-3,0 -5,-5 -8,-10c-5,-8 -9,-13 -9,-13z" />
     
+    <!-- Arm 3 - curves down and left -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M45,62m-9,0a9,9 0,1 1,18 0a9,9 0,1 1,-18 0" />
+        android:pathData="M54,54c0,0 -8,20 -20,20c-2,0 -3,-1 -3,-3c0,-3 5,-5 10,-8c8,-5 13,-9 13,-9z" />
     
+    <!-- Arm 4 - curves up and left -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M63,62m-9,0a9,9 0,1 1,18 0a9,9 0,1 1,-18 0" />
-    
-    <!-- Paw pad -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,58c-8,0 -14,6 -14,12s6,12 14,12s14,-6 14,-12S62,58 54,58z" />
+        android:pathData="M54,54c0,0 -20,-8 -20,-20c0,-2 1,-3 3,-3c3,0 5,5 8,10c5,8 9,13 9,13z" />
+        
 </vector>
