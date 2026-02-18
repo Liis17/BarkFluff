@@ -1,25 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Basic colors -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    
-    <!-- Barkfluff Brand Colors (fallback for Android < 12) - Dark Theme -->
-    <color name="primary">#FF8A50</color>
-    <color name="primary_variant">#FF6B35</color>
-    <color name="secondary">#64B5F6</color>
-    <color name="secondary_variant">#2196F3</color>
-    <color name="tertiary">#03DAC6</color>
-    
-    <!-- Neutral colors for dark theme -->
-    <color name="background_window">#121212</color>
-    <color name="card_background">#1E1E1E</color>
-    <color name="text_primary">#E0E0E0</color>
-    <color name="text_secondary">#A0A0A0</color>
-    <color name="text_accent">#FF8A50</color>
-    <color name="text_link">#64B5F6</color>
-    
-    <!-- Fallback color attribute -->
-    <color name="colorPrimaryFallback">#FF8A50</color>
-    <color name="colorPrimaryVariantFallback">#FF6B35</color>
-    <color name="colorSecondaryFallback">#64B5F6</color>
+
+    <!-- Barkfluff Brand Colors (seed for Material You) - Dark Theme -->
+    <color name="primary">#FFB5A0</color>
+    <color name="primary_container">#CC551A</color>
+    <color name="on_primary">#5F2E00</color>
+    <color name="on_primary_container">#FFDAD0</color>
+
+    <color name="secondary">#96C9FF</color>
+    <color name="secondary_container">#004C7F</color>
+    <color name="on_secondary">#003255</color>
+    <color name="on_secondary_container">#D0E4FF</color>
+
+    <color name="tertiary">#00E5D2</color>
+    <color name="tertiary_container">#00E5D2</color>
+    <color name="on_tertiary">#003733</color>
+    <color name="on_tertiary_container">#00202A</color>
+
+    <!-- Surface colors (dark theme) -->
+    <color name="surface">#191C1D</color>
+    <color name="surface_container">#2D3132</color>
+    <color name="surface_container_high">#3E4142</color>
+    <color name="on_surface">#E3E2E0</color>
+    <color name="on_surface_variant">#C9C4C2</color>
+
+    <!-- Background colors (dark theme) -->
+    <color name="background">#191C1D</color>
+    <color name="on_background">#E3E2E0</color>
+
+    <!-- Status bar color (dark theme) -->
+    <color name="status_bar">#121415</color>
+
+    <!-- Additional colors -->
+    <color name="text_accent">#FFB5A0</color>
+    <color name="text_link">#96C9FF</color>
 </resources>
