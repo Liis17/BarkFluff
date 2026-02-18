@@ -65,6 +65,7 @@
                 <StackPanel Orientation="Horizontal">
                     <Border x:Name="Step1Circle" Style="{DynamicResource StepCircle}">
                         <TextBlock
+                            x:Name="Step1CircleText"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             FontFamily="{DynamicResource AdwaitaSans}"
