@@ -11,214 +11,17 @@
     mc:Ignorable="d">
 
     <UserControl.Resources>
-        <Style x:Key="MinimalTextBox" TargetType="TextBox">
-            <Setter Property="Background" Value="#282828" />
-            <Setter Property="Foreground" Value="White" />
-            <Setter Property="FontFamily" Value="AdwaitaSans" />
-            <Setter Property="FontSize" Value="16" />
-            <Setter Property="Padding" Value="15,12" />
-            <Setter Property="BorderBrush" Value="#404040" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CaretBrush" Value="White" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="TextBox">
-                        <Border
-                            Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="8">
-                            <ScrollViewer x:Name="PART_ContentHost" Padding="{TemplateBinding Padding}" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsFocused" Value="True">
-                                <Setter Property="BorderBrush" Value="#6D90F3" />
-                            </Trigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="BorderBrush" Value="#505050" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
+        <Style
+            x:Key="VerificationTextBoxError"
+            BasedOn="{StaticResource VerificationTextBox}"
+            TargetType="TextBox">
+            <Setter Property="BorderBrush" Value="#E74856" />
         </Style>
 
-        <Style x:Key="MinimalTextBoxError" TargetType="TextBox" BasedOn="{StaticResource MinimalTextBox}">
-            <Setter Property="BorderBrush" Value="#E74856"/>
-        </Style>
 
-        <Style x:Key="MinimalPasswordBox" TargetType="PasswordBox">
-            <Setter Property="Background" Value="#282828" />
-            <Setter Property="Foreground" Value="White" />
-            <Setter Property="FontFamily" Value="AdwaitaSans" />
-            <Setter Property="FontSize" Value="16" />
-            <Setter Property="Padding" Value="15,12" />
-            <Setter Property="BorderBrush" Value="#404040" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="PasswordBox">
-                        <Border
-                            Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="8">
-                            <ScrollViewer x:Name="PART_ContentHost" Padding="{TemplateBinding Padding}" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsFocused" Value="True">
-                                <Setter Property="BorderBrush" Value="#6D90F3" />
-                            </Trigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="BorderBrush" Value="#505050" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="MinimalPasswordBoxError" TargetType="PasswordBox" BasedOn="{StaticResource MinimalPasswordBox}">
-            <Setter Property="BorderBrush" Value="#E74856"/>
-        </Style>
-
-        <Style x:Key="TwoFATextBox" TargetType="TextBox">
-            <Setter Property="Background" Value="#282828" />
-            <Setter Property="Foreground" Value="White" />
-            <Setter Property="FontFamily" Value="AdwaitaSans" />
-            <Setter Property="FontSize" Value="20" />
-            <Setter Property="FontWeight" Value="Medium" />
-            <Setter Property="BorderBrush" Value="#404040" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CaretBrush" Value="White" />
-            <Setter Property="HorizontalContentAlignment" Value="Center" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="TextBox">
-                        <Border
-                            Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="8">
-                            <ScrollViewer x:Name="PART_ContentHost" Padding="8" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsFocused" Value="True">
-                                <Setter Property="BorderBrush" Value="#6D90F3" />
-                            </Trigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="BorderBrush" Value="#505050" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="VerificationTextBox" TargetType="TextBox">
-            <Setter Property="Background" Value="#282828" />
-            <Setter Property="Foreground" Value="White" />
-            <Setter Property="FontFamily" Value="AdwaitaSans" />
-            <Setter Property="FontSize" Value="20" />
-            <Setter Property="FontWeight" Value="Medium" />
-            <Setter Property="BorderBrush" Value="#404040" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CaretBrush" Value="White" />
-            <Setter Property="HorizontalContentAlignment" Value="Center" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="TextBox">
-                        <Border
-                            Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="8">
-                            <ScrollViewer x:Name="PART_ContentHost" Padding="8" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsFocused" Value="True">
-                                <Setter Property="BorderBrush" Value="#6D90F3" />
-                            </Trigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="BorderBrush" Value="#505050" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="VerificationTextBoxError" TargetType="TextBox" BasedOn="{StaticResource VerificationTextBox}">
-            <Setter Property="BorderBrush" Value="#E74856"/>
-        </Style>
-
-        <Style x:Key="MinimalCheckBox" TargetType="CheckBox">
-            <Setter Property="Foreground" Value="#E0E0E0" />
-            <Setter Property="FontFamily" Value="AdwaitaSans" />
-            <Setter Property="FontSize" Value="14" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="CheckBox">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Border
-                                x:Name="checkBoxBorder"
-                                Width="18"
-                                Height="18"
-                                VerticalAlignment="Center"
-                                Background="#282828"
-                                BorderBrush="#404040"
-                                BorderThickness="1"
-                                CornerRadius="4">
-                                <Path
-                                    x:Name="checkMark"
-                                    Data="M3,8 L7,12 L15,4"
-                                    Stroke="#6D90F3"
-                                    StrokeThickness="2"
-                                    Visibility="Collapsed" />
-                            </Border>
-                            <ContentPresenter
-                                Grid.Column="1"
-                                Margin="10,0,0,0"
-                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
-                        </Grid>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="checkMark" Property="Visibility" Value="Visible" />
-                                <Setter TargetName="checkBoxBorder" Property="Background" Value="#1A2332" />
-                                <Setter TargetName="checkBoxBorder" Property="BorderBrush" Value="#6D90F3" />
-                            </Trigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="checkBoxBorder" Property="BorderBrush" Value="#6D90F3" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="LinkTextBlock" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#6D90F3" />
-            <Setter Property="FontFamily" Value="AdwaitaSans" />
-            <Setter Property="FontSize" Value="14" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="TextDecorations" Value="None" />
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Foreground" Value="#5A7AE6" />
-                </Trigger>
-            </Style.Triggers>
-        </Style>
     </UserControl.Resources>
 
-    <Grid Background="#1A1A1A">
+    <Grid Background="{DynamicResource BackgroundWindow}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -231,298 +34,239 @@
             HorizontalAlignment="Center"
             Orientation="Horizontal">
             <Image
-                Width="32"
-                Height="32"
+                Width="28"
+                Height="28"
                 Source="/Resources/Images/barkfluff_logo.png" />
             <TextBlock
                 Margin="12,0,0,0"
-                VerticalAlignment="Center"
-                FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="20"
-                FontWeight="SemiBold"
-                Foreground="#FFF39E6D"
+                Style="{DynamicResource LittleTitleTextStyle}"
                 Text="BarkFluff" />
         </StackPanel>
 
         <ScrollViewer
             Grid.Row="1"
-            Margin="0,40,0,40"
+            Margin="0,0,0,0"
             HorizontalAlignment="Stretch"
             VerticalAlignment="Center">
-            <Grid>
-                <StackPanel
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    Orientation="Vertical">
+            <StackPanel
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Orientation="Vertical">
 
-                    <TextBlock
-                        Margin="0,0,0,8"
-                        HorizontalAlignment="Center"
-                        FontFamily="{DynamicResource AdwaitaSans}"
-                        FontSize="32"
-                        FontWeight="SemiBold"
-                        Foreground="White"
-                        Text="Добро пожаловать" />
+                <TextBlock
+                    Margin="0,0,0,8"
+                    Style="{DynamicResource TitleTextStyle}"
+                    Text="Добро пожаловать" />
 
-                    <TextBlock
-                        Margin="0,0,0,40"
-                        HorizontalAlignment="Center"
-                        FontFamily="{DynamicResource AdwaitaSans}"
-                        FontSize="16"
-                        FontWeight="Normal"
-                        Foreground="#B0B0B0"
-                        Text="Войдите в свой аккаунт" />
+                <TextBlock
+                    Margin="0,0,0,40"
+                    Style="{DynamicResource DescriptionTextStyle}"
+                    Text="Войдите в свой аккаунт" />
 
-                    <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
-                        <StackPanel
-                            MinWidth="300"
-                            VerticalAlignment="Center"
-                            Orientation="Vertical">
-                            <StackPanel x:Name="LoginPasswordFields" Visibility="Visible">
-                                <TextBlock
-                                    Margin="0,0,0,8"
-                                    FontFamily="{DynamicResource AdwaitaSans}"
-                                    FontSize="14"
-                                    Foreground="#E0E0E0"
-                                    Text="@username или email" />
-                                <TextBox
-                                    x:Name="UsernameTextBox"
-                                    MaxLength="50"
-                                    LostFocus="UsernameTextBox_LostFocus"
-                                    Style="{StaticResource MinimalTextBox}" />
-                                <TextBlock x:Name="UsernameErrorText" 
-                                           Foreground="#E74856" 
-                                           FontFamily="{DynamicResource AdwaitaSans}"
-                                           FontSize="12" 
-                                           Margin="0,4,0,8"
-                                           Visibility="Collapsed"
-                                           Text=""/>
-
-                                <TextBlock
-                                    Margin="0,0,0,8"
-                                    FontFamily="{DynamicResource AdwaitaSans}"
-                                    FontSize="14"
-                                    Foreground="#E0E0E0"
-                                    Text="Пароль" />
-                                <PasswordBox
-                                    x:Name="PasswordBox"
-                                    LostFocus="PasswordBox_LostFocus"
-                                    Style="{StaticResource MinimalPasswordBox}" />
-                                <TextBlock x:Name="PasswordErrorText" 
-                                           Foreground="#E74856" 
-                                           FontFamily="{DynamicResource AdwaitaSans}"
-                                           FontSize="12" 
-                                           Margin="0,4,0,8"
-                                           Visibility="Collapsed"
-                                           Text=""/>
-
-                                <TextBlock
-                                    Margin="0,0,0,25"
-                                    HorizontalAlignment="Right"
-                                    Cursor="Hand"
-                                    Foreground="#FFF39E6D"
-                                    MouseLeftButtonDown="ResetPasswordClick"
-                                    Style="{StaticResource LinkTextBlock}"
-                                    Text="Забыли пароль?" />
-                            </StackPanel>
-
-
-                            <Border
-                                x:Name="OtpBlock"
-                                Margin="0,0,0,25"
-                                Padding="20"
-                                Background="#1F1F1F"
-                                BorderBrush="#333333"
-                                BorderThickness="1"
-                                CornerRadius="12"
-                                Visibility="Visible">
-                                <StackPanel
-                                    x:Name="Step2Panel"
-                                    Orientation="Vertical"
-                                    Visibility="Visible">
+                <WrapPanel VerticalAlignment="Center">
+                    <Grid>
+                        <Border Margin="10,20,40,40" Style="{DynamicResource MainStyleBorder}">
+                            <StackPanel
+                                MinWidth="300"
+                                VerticalAlignment="Center"
+                                Orientation="Vertical">
+                                <StackPanel x:Name="LoginPasswordFields" Visibility="Visible">
                                     <TextBlock
-                                        Margin="0,0,0,10"
-                                        HorizontalAlignment="Center"
+                                        Margin="0,0,0,8"
+                                        HorizontalAlignment="Left"
+                                        Style="{DynamicResource DescriptionTextStyle}"
+                                        Text="Почта или username" />
+                                    <ui:TextBox
+                                        x:Name="UsernameTextBox"
+                                        LostFocus="UsernameTextBox_LostFocus"
+                                        MaxLength="50"
+                                        Style="{DynamicResource InputTextBoxStyle}" />
+                                    <TextBlock
+                                        x:Name="UsernameErrorText"
+                                        Margin="0,4,0,8"
                                         FontFamily="{DynamicResource AdwaitaSans}"
-                                        FontSize="18"
-                                        FontWeight="Medium"
-                                        Foreground="White"
-                                        Text="Введите код подтверждения"
-                                        TextAlignment="Center" />
+                                        FontSize="12"
+                                        Foreground="#E74856"
+                                        Text=""
+                                        Visibility="Collapsed" />
+
+                                    <TextBlock
+                                        Margin="0,8,0,8"
+                                        HorizontalAlignment="Left"
+                                        Style="{DynamicResource DescriptionTextStyle}"
+                                        Text="Пароль" />
+                                    <ui:PasswordBox
+                                        x:Name="PasswordBox"
+                                        LostFocus="PasswordBox_LostFocus"
+                                        Style="{StaticResource InputTextBoxStyle}" />
+                                    <TextBlock
+                                        x:Name="PasswordErrorText"
+                                        Margin="0,4,0,8"
+                                        FontFamily="{DynamicResource AdwaitaSans}"
+                                        FontSize="12"
+                                        Foreground="#E74856"
+                                        Text=""
+                                        Visibility="Collapsed" />
 
                                     <TextBlock
                                         Margin="0,0,0,25"
-                                        HorizontalAlignment="Center"
-                                        FontFamily="{DynamicResource AdwaitaSans}"
-                                        FontSize="14"
-                                        Foreground="#B0B0B0"
-                                        Text="Введите 6-значный код подтверждения"
-                                        TextAlignment="Center" />
-
-                                    <!--  Verification Code Input  -->
-                                    <StackPanel
-                                        Margin="0,0,0,20"
-                                        HorizontalAlignment="Center"
-                                        Orientation="Horizontal">
-                                        <TextBox
-                                            x:Name="VerifyBox0"
-                                            Width="45"
-                                            Height="45"
-                                            Margin="4"
-                                            MaxLength="1"
-                                            GotFocus="VerifyBox_GotFocus"
-                                            PreviewKeyDown="VerifyBox_PreviewKeyDown"
-                                            PreviewTextInput="VerifyBox_PreviewTextInput"
-                                            Style="{StaticResource VerificationTextBox}"
-                                            TextChanged="VerifyBox_TextChanged" />
-                                        <TextBox
-                                            x:Name="VerifyBox1"
-                                            Width="45"
-                                            Height="45"
-                                            Margin="4"
-                                            MaxLength="1"
-                                            GotFocus="VerifyBox_GotFocus"
-                                            PreviewKeyDown="VerifyBox_PreviewKeyDown"
-                                            PreviewTextInput="VerifyBox_PreviewTextInput"
-                                            Style="{StaticResource VerificationTextBox}"
-                                            TextChanged="VerifyBox_TextChanged" />
-                                        <TextBox
-                                            x:Name="VerifyBox2"
-                                            Width="45"
-                                            Height="45"
-                                            Margin="4"
-                                            GotFocus="VerifyBox_GotFocus"
-                                            MaxLength="1"
-                                            PreviewKeyDown="VerifyBox_PreviewKeyDown"
-                                            PreviewTextInput="VerifyBox_PreviewTextInput"
-                                            Style="{StaticResource VerificationTextBox}"
-                                            TextChanged="VerifyBox_TextChanged" />
-                                        <TextBox
-                                            x:Name="VerifyBox3"
-                                            Width="45"
-                                            Height="45"
-                                            Margin="4"
-                                            GotFocus="VerifyBox_GotFocus"
-                                            MaxLength="1"
-                                            PreviewKeyDown="VerifyBox_PreviewKeyDown"
-                                            PreviewTextInput="VerifyBox_PreviewTextInput"
-                                            Style="{StaticResource VerificationTextBox}"
-                                            TextChanged="VerifyBox_TextChanged" />
-                                        <TextBox
-                                            x:Name="VerifyBox4"
-                                            Width="45"
-                                            Height="45"
-                                            Margin="4"
-                                            GotFocus="VerifyBox_GotFocus"
-                                            MaxLength="1"
-                                            PreviewKeyDown="VerifyBox_PreviewKeyDown"
-                                            PreviewTextInput="VerifyBox_PreviewTextInput"
-                                            Style="{StaticResource VerificationTextBox}"
-                                            TextChanged="VerifyBox_TextChanged" />
-                                        <TextBox
-                                            x:Name="VerifyBox5"
-                                            Width="45"
-                                            Height="45"
-                                            Margin="4"
-                                            GotFocus="VerifyBox_GotFocus"
-                                            MaxLength="1"
-                                            PreviewKeyDown="VerifyBox_PreviewKeyDown"
-                                            PreviewTextInput="VerifyBox_PreviewTextInput"
-                                            Style="{StaticResource VerificationTextBox}"
-                                            TextChanged="VerifyBox_TextChanged" />
-                                    </StackPanel>
-                                    <TextBlock x:Name="OtpErrorText" 
-                                               Foreground="#E74856" 
-                                               FontFamily="{DynamicResource AdwaitaSans}"
-                                               FontSize="12"
-                                               HorizontalAlignment="Center"
-                                               Margin="0,0,0,8"
-                                               Visibility="Collapsed"
-                                               Text=""/>
+                                        HorizontalAlignment="Right"
+                                        Cursor="Hand"
+                                        Foreground="{DynamicResource TextHyperlink}"
+                                        MouseLeftButtonDown="ResetPasswordClick"
+                                        Style="{DynamicResource DescriptionTextStyle}"
+                                        Text="Забыли пароль?" />
                                 </StackPanel>
-                            </Border>
-                            <ui:Button
-                                x:Name="SignInButton"
-                                Height="45"
-                                Margin="0,0,0,15"
-                                Padding="0,12"
-                                HorizontalAlignment="Stretch"
-                                Background="#df5000"
-                                BorderThickness="0"
-                                Click="SignInButton_Click"
-                                CornerRadius="22"
-                                MouseOverBackground="#FFC54700"
-                                PressedBackground="#FFAB3D00">
-                                <ui:Button.Content>
-                                    <Grid>
-                                        <StackPanel x:Name="SignInButtonContent" HorizontalAlignment="Center" Orientation="Horizontal">
-                                            <TextBlock
-                                                VerticalAlignment="Center"
-                                                FontFamily="{DynamicResource AdwaitaSans}"
-                                                FontSize="16"
-                                                FontWeight="SemiBold"
-                                                Foreground="White"
-                                                Text="Войти" />
-                                            <ui:SymbolIcon
-                                                Margin="10,0,0,0"
-                                                FontSize="16"
-                                                Foreground="White"
-                                                Symbol="ArrowRight24" />
+
+
+                                <Border
+                                    x:Name="OtpBlock"
+                                    Margin="0,0,0,25"
+                                    Padding="20"
+                                    Visibility="Visible">
+                                    <StackPanel
+                                        x:Name="Step2Panel"
+                                        Orientation="Vertical"
+                                        Visibility="Visible">
+                                        <TextBlock
+                                            Margin="0,0,0,10"
+                                            Style="{DynamicResource TitleTextStyle}"
+                                            Text="Введите код подтверждения" />
+
+                                        <TextBlock
+                                            Margin="0,0,0,25"
+                                            Style="{DynamicResource DescriptionTextStyle}"
+                                            Text="Введите 6-значный код подтверждения" />
+
+                                        <!--  Verification Code Input  -->
+                                        <StackPanel
+                                            Margin="0,0,0,20"
+                                            HorizontalAlignment="Center"
+                                            Orientation="Horizontal">
+                                            <TextBox
+                                                x:Name="VerifyBox0"
+                                                GotFocus="VerifyBox_GotFocus"
+                                                MaxLength="1"
+                                                PreviewKeyDown="VerifyBox_PreviewKeyDown"
+                                                PreviewTextInput="VerifyBox_PreviewTextInput"
+                                                Style="{StaticResource PinCodeTextBox}"
+                                                TextChanged="VerifyBox_TextChanged" />
+                                            <TextBox
+                                                x:Name="VerifyBox1"
+                                                GotFocus="VerifyBox_GotFocus"
+                                                MaxLength="1"
+                                                PreviewKeyDown="VerifyBox_PreviewKeyDown"
+                                                PreviewTextInput="VerifyBox_PreviewTextInput"
+                                                Style="{StaticResource PinCodeTextBox}"
+                                                TextChanged="VerifyBox_TextChanged" />
+                                            <TextBox
+                                                x:Name="VerifyBox2"
+                                                GotFocus="VerifyBox_GotFocus"
+                                                MaxLength="1"
+                                                PreviewKeyDown="VerifyBox_PreviewKeyDown"
+                                                PreviewTextInput="VerifyBox_PreviewTextInput"
+                                                Style="{StaticResource PinCodeTextBox}"
+                                                TextChanged="VerifyBox_TextChanged" />
+                                            <TextBox
+                                                x:Name="VerifyBox3"
+                                                GotFocus="VerifyBox_GotFocus"
+                                                MaxLength="1"
+                                                PreviewKeyDown="VerifyBox_PreviewKeyDown"
+                                                PreviewTextInput="VerifyBox_PreviewTextInput"
+                                                Style="{StaticResource PinCodeTextBox}"
+                                                TextChanged="VerifyBox_TextChanged" />
+                                            <TextBox
+                                                x:Name="VerifyBox4"
+                                                GotFocus="VerifyBox_GotFocus"
+                                                MaxLength="1"
+                                                PreviewKeyDown="VerifyBox_PreviewKeyDown"
+                                                PreviewTextInput="VerifyBox_PreviewTextInput"
+                                                Style="{StaticResource PinCodeTextBox}"
+                                                TextChanged="VerifyBox_TextChanged" />
+                                            <TextBox
+                                                x:Name="VerifyBox5"
+                                                GotFocus="VerifyBox_GotFocus"
+                                                MaxLength="1"
+                                                PreviewKeyDown="VerifyBox_PreviewKeyDown"
+                                                PreviewTextInput="VerifyBox_PreviewTextInput"
+                                                Style="{StaticResource PinCodeTextBox}"
+                                                TextChanged="VerifyBox_TextChanged" />
                                         </StackPanel>
-                                        <ui:ProgressRing x:Name="SignInLoadingIndicator"
-                                                         Width="24"
-                                                         Height="24"
-                                                         IsIndeterminate="True"
-                                                         Visibility="Collapsed" />
-                                    </Grid>
-                                </ui:Button.Content>
-                            </ui:Button>
+                                        <TextBlock
+                                            x:Name="OtpErrorText"
+                                            Margin="0,0,0,8"
+                                            HorizontalAlignment="Center"
+                                            FontFamily="{DynamicResource AdwaitaSans}"
+                                            FontSize="12"
+                                            Foreground="#E74856"
+                                            Text=""
+                                            Visibility="Collapsed" />
+                                    </StackPanel>
+                                </Border>
+                                <ui:Button
+                                    x:Name="SignInButton"
+                                    Margin="0,0,0,15"
+                                    Click="SignInButton_Click"
+                                    Style="{DynamicResource RequiredButton}">
+                                    <ui:Button.Content>
+                                        <Grid>
+                                            <StackPanel
+                                                x:Name="SignInButtonContent"
+                                                HorizontalAlignment="Center"
+                                                Orientation="Horizontal">
+                                                <TextBlock Style="{DynamicResource RequiredButtonTextStyle}" Text="Войти" />
+                                                <ui:SymbolIcon Style="{DynamicResource RequiredButtonIconStyle}" Symbol="ArrowRight24" />
+                                            </StackPanel>
+                                            <ui:ProgressRing
+                                                x:Name="SignInLoadingIndicator"
+                                                Width="24"
+                                                Height="24"
+                                                Foreground="Blue"
+                                                IsIndeterminate="True"
+                                                Visibility="Collapsed" />
+                                        </Grid>
+                                    </ui:Button.Content>
+                                </ui:Button>
 
 
-                        </StackPanel>
-                        <TextBlock
-                            Margin="35"
-                            VerticalAlignment="Center"
-                            FontFamily="{DynamicResource AdwaitaSans}"
-                            Foreground="White"
-                            Text="или" />
-                        <StackPanel VerticalAlignment="Center" Orientation="Vertical">
-                            <Border
-                                x:Name="QrCodeContainer"
-                                Width="250"
-                                Height="250"
-                                Margin="0,0,0,0"
-                                Padding="10"
-                                HorizontalAlignment="Center"
-                                Background="White"
-                                CornerRadius="16">
-                                <Grid>
-                                    <TextBlock
-                                        HorizontalAlignment="Center"
-                                        VerticalAlignment="Center"
-                                        FontFamily="{DynamicResource AdwaitaSans}"
-                                        FontSize="12"
-                                        FontWeight="Normal"
-                                        Foreground="#666666"
-                                        Text="QR Код"
-                                        TextAlignment="Center" />
-                                    <Image x:Name="QrCodeImage" Stretch="Uniform" />
-                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
 
-                            </Border>
-                        </StackPanel>
+
+                    <StackPanel
+                        Margin="40"
+                        VerticalAlignment="Center"
+                        Orientation="Vertical">
+                        <Border
+                            x:Name="QrCodeContainer"
+                            Width="250"
+                            Height="250"
+                            Padding="10"
+                            HorizontalAlignment="Center"
+                            CornerRadius="16"
+                            Loaded="QrTemplate"
+                            Style="{DynamicResource MainStyleBorder}">
+                            <Grid>
+
+                                <Image x:Name="QrCodeImage" Stretch="Uniform" />
+                                <ui:ProgressRing
+                                    Width="48"
+                                    Height="48"
+                                    IsIndeterminate="True"
+                                    Visibility="Visible" />
+                            </Grid>
+
+                        </Border>
                     </StackPanel>
+                </WrapPanel>
 
-                </StackPanel>
-
-
-            </Grid>
-
+            </StackPanel>
         </ScrollViewer>
 
         <StackPanel
             Grid.Row="2"
-            Margin="0,0,0,30"
+            Margin="0,0,0,0"
             HorizontalAlignment="Center"
             Orientation="Vertical">
 
@@ -530,49 +274,37 @@
                 <StackPanel>
                     <TextBlock
                         Margin="0,0,0,0"
-                        HorizontalAlignment="Center"
                         VerticalAlignment="Bottom"
                         Cursor="Hand"
-                        Foreground="#FFF39E6D"
+                        Foreground="{DynamicResource TextHyperlink}"
                         MouseLeftButtonDown="BackToServerList"
-                        Style="{StaticResource LinkTextBlock}"
+                        Style="{StaticResource DescriptionTextStyle}"
                         Text="Изменить подключение к серверу" />
                     <Separator Margin="-5,5,-5,5" />
                     <TextBlock
                         Margin="0,0,0,15"
-                        HorizontalAlignment="Center"
-                        FontFamily="{DynamicResource AdwaitaSans}"
-                        FontSize="14"
-                        Foreground="#9E9E9E"
+                        Style="{DynamicResource DescriptionTextStyle}"
                         Text="Еще нет аккаунта?" />
 
                     <ui:Button
                         x:Name="CreateAccountButton"
-                        Height="45"
-                        Margin="0,0,0,0"
-                        Padding="25,10"
-                        HorizontalAlignment="Center"
-                        Appearance="Secondary"
-                        Background="#df5000"
-                        BorderThickness="1"
                         Click="CreateAccountPageOpen"
-                        CornerRadius="22"
-                        MouseOverBackground="#FFC54700"
-                        PressedBackground="#FFAB3D00">
+                        Style="{DynamicResource AdaptiveButton}">
                         <ui:Button.Content>
-                            <TextBlock
-                                FontFamily="{DynamicResource AdwaitaSans}"
-                                FontSize="14"
-                                FontWeight="Medium"
-                                Text="Создать новый аккаунт" />
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{DynamicResource AdaptiveButtonTextStyle}" Text="Создать новый аккаунт" />
+                                <ui:SymbolIcon Style="{DynamicResource AdaptiveButtonIconStyle}" Symbol="ArrowRight24" />
+                            </StackPanel>
                         </ui:Button.Content>
+
+
                     </ui:Button>
                 </StackPanel>
             </Border>
 
 
             <TextBlock
-                Margin="0,20,0,0"
+                Margin="0,5,0,0"
                 HorizontalAlignment="Center"
                 FontFamily="{DynamicResource AdwaitaSans}"
                 FontSize="12"

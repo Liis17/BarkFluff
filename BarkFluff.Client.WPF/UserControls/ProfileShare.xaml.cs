@@ -34,7 +34,9 @@ namespace BarkFluff.Client.WPF.UserControls
             // Генерируем QR код
             try
             {
-                var qrCodeBitmap = RoundedQrGenerator.GenerateRoundedQrBitmap(qrUrl, logoPath);
+                var color1 = System.Drawing.Color.FromArgb(255, 63, 94, 251); // Пурпурный
+                var color2 = System.Drawing.Color.FromArgb(255, 252, 70, 107); // Розовый
+                var qrCodeBitmap = RoundedQrGenerator.GenerateRoundedQrBitmap(qrUrl, color1, color2, logoPath);
                 QrCodeSource = qrCodeBitmap;
             }
             catch (Exception ex)

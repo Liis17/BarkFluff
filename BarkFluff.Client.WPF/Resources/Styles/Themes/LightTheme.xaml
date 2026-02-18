@@ -53,7 +53,7 @@
     <SolidColorBrush x:Key="TextGlowBrush" Color="#df5000" />
     <SolidColorBrush x:Key="TextBorderBrush" Color="#9c9c9c" />
     <SolidColorBrush x:Key="TextForegraund" Color="#1a1a1a" />
-    <SolidColorBrush x:Key="Textbackground" Color="#EDEDED" />
+    <SolidColorBrush x:Key="TextBackground" Color="#EDEDED" />
     <SolidColorBrush x:Key="TextPlaceholder" Color="#333333" />
     <SolidColorBrush x:Key="TextIcon" Color="#FFF39E6D" />
     <SolidColorBrush x:Key="TextHyperlink" Color="#FFF39E6D" />
