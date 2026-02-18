@@ -126,7 +126,7 @@ class WelcomeActivity : AppCompatActivity() {
 
     private fun setupClickListeners() {
         binding.startButton.setOnClickListener {
-            requestAllPermissions()
+            navigateToSelectServer()
         }
 
         binding.aboutLink.setOnClickListener {
@@ -140,6 +140,13 @@ class WelcomeActivity : AppCompatActivity() {
         binding.helpLink.setOnClickListener {
             showHelp()
         }
+    }
+
+    private fun navigateToSelectServer() {
+        val intent = Intent(this, SelectServerActivity::class.java)
+        startActivity(intent)
+        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+        finish() // Блокируем возврат на эту страницу
     }
 
     private fun requestAllPermissions() {
