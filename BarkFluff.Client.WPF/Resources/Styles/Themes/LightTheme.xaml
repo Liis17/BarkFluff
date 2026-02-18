@@ -3,6 +3,10 @@
     <!--  Фон окна  -->
     <SolidColorBrush x:Key="BackgroundWindow" Color="Transparent" />
 
+    <!--  Цвета для главной страници мессенджера  -->
+    <SolidColorBrush x:Key="OverlayColor" Color="#80000000" />
+    <SolidColorBrush x:Key="OpenChatBackgroundColor" Color="#10000000" />
+
     <!--  Заголовоки  -->
     <SolidColorBrush x:Key="SubtitleText" Color="#FFF39E6D" />
     <SolidColorBrush x:Key="TitleText" Color="#1a1a1a" />

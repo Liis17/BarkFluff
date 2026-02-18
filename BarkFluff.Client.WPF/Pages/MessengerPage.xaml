@@ -88,7 +88,7 @@
             x:Name="OverlayPanel"
             Margin="-30"
             Panel.ZIndex="999"
-            Background="#80000000"
+            Background="{DynamicResource OverlayColor}"
             MouseDown="OverlayPanel_MouseDown"
             Visibility="Collapsed" />
 
@@ -97,7 +97,7 @@
             x:Name="OverlayCenter"
             Margin="-30"
             Panel.ZIndex="999"
-            Background="#80000000"
+            Background="{DynamicResource OverlayColor}"
             MouseDown="OverlayCenter_MouseDown"
             Visibility="Collapsed" />
 
@@ -106,7 +106,7 @@
             x:Name="AttachmentOverlay"
             Margin="-30"
             Panel.ZIndex="1001"
-            Background="#80000000"
+            Background="{DynamicResource OverlayColor}"
             Visibility="Collapsed">
             <uc:AttachmentPreviewOverlay
                 x:Name="AttachmentPreview"
@@ -476,15 +476,9 @@
                         <Border
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
+                            Background="{DynamicResource OpenChatBackgroundColor}"
                             CornerRadius="15 0 0 15">
-                            <Border.Background>
-                                <ImageBrush
-                                    x:Name="BackgroundChatImage"
-                                    AlignmentX="Center"
-                                    AlignmentY="Top"
-                                    ImageSource="https://image.barkfluff.com/background.png"
-                                    Stretch="UniformToFill" />
-                            </Border.Background>
+
                         </Border>
                         <Grid
                             x:Name="OpenedChat"
