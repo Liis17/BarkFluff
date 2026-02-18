@@ -38,17 +38,16 @@
                 Orientation="Vertical">
                 <ui:Button
                     Click="LoadButton_Click"
-                    Style="{StaticResource MainButton}"
+                    Style="{StaticResource RequiredButton}"
                     ToolTip="Выбрать картинку для аватара в проводнике">
                     <StackPanel Orientation="Horizontal">
-                        <ui:TextBlock Style="{StaticResource MainButtonTextLeft}" Text="Выбрать аватар" />
-                        <ui:SymbolIcon Style="{StaticResource ButtonSymbolRight}" Symbol="ArrowDownload20" />
+                        <ui:TextBlock Style="{StaticResource RequiredButtonTextStyle}" Text="Выбрать аватар" />
+                        <ui:SymbolIcon Style="{StaticResource RequiredButtonIconStyle}" Symbol="ArrowDownload20" />
                     </StackPanel>
                 </ui:Button>
                 <TextBlock
                     Margin="0,10,0,0"
-                    HorizontalAlignment="Center"
-                    Foreground="#888888"
+                    Style="{DynamicResource DescriptionTextStyle}"
                     Text="или перетащите файл сюда" />
             </StackPanel>
         </Grid>
@@ -60,54 +59,66 @@
                 Orientation="Vertical">
                 <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
                     <ui:Button
+                        Margin="5"
                         Click="Button_Click"
-                        Style="{StaticResource MainButton}"
+                        Style="{DynamicResource RequiredButton}"
                         ToolTip="Выбрать текущий вариант аварата и применить его для профиля">
                         <StackPanel Orientation="Horizontal">
-                            <ui:TextBlock Style="{StaticResource MainButtonTextLeft}" Text="Обрезать" />
-                            <ui:SymbolIcon Style="{StaticResource ButtonSymbolRight}" Symbol="Cut20" />
+                            <ui:TextBlock Style="{StaticResource RequiredButtonTextStyle}" Text="Обрезать" />
+                            <ui:SymbolIcon Style="{StaticResource RequiredButtonIconStyle}" Symbol="Cut20" />
                         </StackPanel>
 
                     </ui:Button>
                     <ui:Button
+                        Margin="5"
                         Click="ResetPosition"
-                        Style="{StaticResource MainButton}"
+                        Style="{DynamicResource AdaptiveButton}"
                         ToolTip="Вернуть картинку в исходное состояние">
                         <ui:SymbolIcon
                             Margin="25,0,25,0"
-                            Style="{StaticResource ButtonSymbolSingle}"
+                            Style="{StaticResource AdaptiveButtonIconStyle}"
                             Symbol="ArrowMoveInward20" />
                     </ui:Button>
                     <ui:Button
+                        Margin="5"
                         Click="LoadButton_Click"
-                        Style="{StaticResource MainButton}"
+                        Style="{DynamicResource AdaptiveButton}"
                         ToolTip="Выбрать другую картинку">
                         <ui:SymbolIcon
                             Margin="25,0,25,0"
-                            Style="{StaticResource ButtonSymbolSingle}"
+                            Filled="False"
+                            Style="{StaticResource AdaptiveButtonIconStyle}"
                             Symbol="ImageArrowCounterclockwise20" />
                     </ui:Button>
                     <ui:Button
                         x:Name="CancelButton"
+                        Margin="5"
                         Click="CancelButton_Click"
-                        Style="{StaticResource MainButton}"
+                        Style="{DynamicResource AdaptiveButton}"
                         ToolTip="Отменить и вернуться к выбору файла">
                         <ui:SymbolIcon
                             Margin="25,0,25,0"
-                            Style="{StaticResource ButtonSymbolSingle}"
+                            Style="{StaticResource AdaptiveButtonIconStyle}"
                             Symbol="Dismiss20" />
                     </ui:Button>
                 </StackPanel>
-                <Slider
-                    x:Name="ZoomSlider"
-                    Width="300"
-                    Margin="10"
-                    HorizontalAlignment="Center"
-                    Maximum="2.5"
-                    Minimum="0.5"
-                    TickFrequency="0.05"
-                    TickPlacement="BottomRight"
-                    Value="1.0" />
+                <Border
+                    Height="50"
+                    Margin="5"
+                    Padding="20,10,20,10"
+                    Background="{DynamicResource ButtonBackground}"
+                    Style="{DynamicResource MainStyleBorder}">
+                    <Slider
+                        x:Name="ZoomSlider"
+                        Width="300"
+                        HorizontalAlignment="Center"
+                        Maximum="2.5"
+                        Minimum="0.5"
+                        TickFrequency="0.05"
+                        TickPlacement="BottomRight"
+                        Value="1.0" />
+                </Border>
+
             </StackPanel>
             <Grid
                 Height="200"

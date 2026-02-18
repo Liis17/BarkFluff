@@ -202,7 +202,17 @@ namespace BarkFluff.Client.WPF.UserControls
             double currentZoom = ZoomSlider.Value;
             double delta = e.Delta > 0 ? ZoomStep : -ZoomStep;
             double minZoom = _dynamicMinZoom; // динамический минимум
-            double newZoom = Math.Clamp(currentZoom + delta, minZoom, MaxZoom);
+            double newZoom = 0;
+            try
+            {
+                newZoom = Math.Clamp(currentZoom + delta, minZoom, MaxZoom);
+                return;
+            }
+            catch (Exception ex)
+            {
+
+            }
+
 
             ZoomSlider.Value = newZoom;
             e.Handled = true;

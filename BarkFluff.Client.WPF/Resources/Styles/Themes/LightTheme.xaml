@@ -66,6 +66,8 @@
 
     <!--  Индикатор попыток пароля  -->
     <SolidColorBrush x:Key="PasswordAttemptIndicator" Color="#51ab29" />
-    
-    <!-- Успешний блок-->
+
+    <SolidColorBrush x:Key="ProgressRingColor" Color="#df5000" />
+    <SolidColorBrush x:Key="ProgressRingAlternativeColor" Color="#FF3D38DE" />
+
 </ResourceDictionary>
