@@ -646,12 +646,8 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
             ButtonBottomBar.Margin = new Thickness(left: 0, top: 0, right: 0, bottom: -620);
             TitleServerNameBar.Margin = new Thickness(left: 25, top: -650, right: 25, bottom: 0);
             ProgressIndicatorPanel.Visibility = Visibility.Collapsed;
-
-            MainGrid.MinWidth = 500;
-            MainGrid.MinHeight = 600;
-
-            MainGrid.MaxWidth = 500;
-            MainGrid.MaxHeight = 600;
+            MainGrid.VerticalAlignment = VerticalAlignment.Center;
+            MainGrid.HorizontalAlignment = HorizontalAlignment.Center;
         }
 
         #endregion
