@@ -2,4 +2,15 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    
+    <!-- Barkfluff Theme Colors -->
+    <color name="background_window">#F5F5F5</color>
+    <color name="card_background">#FFFFFF</color>
+    <color name="text_primary">#1A1A1A</color>
+    <color name="text_secondary">#666666</color>
+    <color name="text_accent">#FF6B35</color>
+    <color name="text_link">#2196F3</color>
+    <color name="primary">#FF6B35</color>
+    <color name="primary_variant">#E55A2B</color>
+    <color name="secondary">#2196F3</color>
 </resources>
