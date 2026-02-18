@@ -221,7 +221,7 @@
                                                 x:Name="SignInLoadingIndicator"
                                                 Width="24"
                                                 Height="24"
-                                                Foreground="Blue"
+                                                Foreground="{DynamicResource ProgressRingAlternativeColor}"
                                                 IsIndeterminate="True"
                                                 Visibility="Collapsed" />
                                         </Grid>
@@ -253,6 +253,7 @@
                                 <ui:ProgressRing
                                     Width="48"
                                     Height="48"
+                                    Foreground="{DynamicResource ProgressRingAlternativeColor}"
                                     IsIndeterminate="True"
                                     Visibility="Visible" />
                             </Grid>
