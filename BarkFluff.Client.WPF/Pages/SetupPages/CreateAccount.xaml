@@ -13,7 +13,7 @@
     d:DesignWidth="720"
     mc:Ignorable="d">
 
-    <Grid>
+    <Grid >
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -35,21 +35,13 @@
                 <TextBlock
                     x:Name="ServerNameBlock"
                     Margin="12,0,0,0"
-                    VerticalAlignment="Center"
-                    FontFamily="{DynamicResource AdwaitaSans}"
-                    FontSize="18"
-                    FontWeight="SemiBold"
-                    Foreground="White"
                     Loaded="TextBlock_Loaded"
+                    Style="{DynamicResource LittleTitleTextStyle}"
                     Text="servername" />
             </StackPanel>
             <TextBlock
                 Margin="0,8,0,0"
-                HorizontalAlignment="Center"
-                FontFamily="{DynamicResource AdwaitaSans}"
-                FontSize="14"
-                FontWeight="Normal"
-                Foreground="#B0B0B0"
+                Style="{DynamicResource DescriptionTextStyle}"
                 Text="Создание нового аккаунта" />
 
             <!--  Progress indicator  -->
@@ -60,11 +52,7 @@
                 Orientation="Vertical">
                 <TextBlock
                     x:Name="StepIndicatorText"
-                    HorizontalAlignment="Center"
-                    FontFamily="{DynamicResource AdwaitaSans}"
-                    FontSize="13"
-                    FontWeight="Normal"
-                    Foreground="#888888"
+                    Style="{DynamicResource DescriptionTextStyle}"
                     Text="Шаг 1 из 9" />
                 <ProgressBar
                     x:Name="StepProgressBar"
@@ -105,22 +93,24 @@
                 VerticalAlignment="Center"
                 Orientation="Vertical">
 
-                <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="Личная информация" />
+                <TextBlock
+                    Margin="0,0,0,10"
+                    Style="{StaticResource TitleTextStyle}"
+                    Text="Личная информация" />
 
-                <Border
-                    Padding="30,25"
-                    Background="#1F1F1F"
-                    BorderBrush="#333333"
-                    BorderThickness="1"
-                    CornerRadius="12">
+                <Border Style="{DynamicResource MainStyleBorder}">
                     <StackPanel>
                         <!--  Имя  -->
-                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Имя *" />
+                        <TextBlock
+                            HorizontalAlignment="Left"
+                            Style="{StaticResource LittleTitleTextStyle}"
+                            Text="Имя *" />
                         <ui:TextBox
                             x:Name="FirstNameEnter"
                             Margin="0,0,0,5"
                             KeyDown="TextBox_KeyDown"
                             PlaceholderText="Апогея"
+                            Style="{DynamicResource InputTextBoxStyle}"
                             Tag="Names"
                             TextChanged="FirstNameEnter_TextChanged" />
                         <TextBlock
@@ -132,12 +122,16 @@
                             Text="" />
 
                         <!--  Фамилия  -->
-                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Фамилия" />
+                        <TextBlock
+                            HorizontalAlignment="Left"
+                            Style="{StaticResource LittleTitleTextStyle}"
+                            Text="Фамилия" />
                         <ui:TextBox
                             x:Name="LastNameEnter"
                             Margin="0,0,0,5"
                             KeyDown="TextBox_KeyDown"
                             PlaceholderText="Тайнигейпиратовна"
+                            Style="{DynamicResource InputTextBoxStyle}"
                             TextChanged="LastNameEnter_TextChanged" />
                         <TextBlock
                             x:Name="LastNameValidationText"
@@ -149,10 +143,22 @@
 
                         <!--  Информация  -->
                         <StackPanel>
-                            <TextBlock Style="{StaticResource InfoTextStyle}" Text="• Имя может содержать любые символы" />
-                            <TextBlock Style="{StaticResource InfoTextStyle}" Text="• Минимально может быть 3 символа" />
-                            <TextBlock Style="{StaticResource InfoTextStyle}" Text="• Длина имени и фамилии ограничена 40 символами" />
-                            <TextBlock Style="{StaticResource InfoTextStyle}" Text="• Фамилия может отсутствовать" />
+                            <TextBlock
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource TipsStyle}"
+                                Text="• Имя может содержать любые символы" />
+                            <TextBlock
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource TipsStyle}"
+                                Text="• Минимально может быть 3 символа" />
+                            <TextBlock
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource TipsStyle}"
+                                Text="• Длина имени и фамилии ограничена 40 символами" />
+                            <TextBlock
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource TipsStyle}"
+                                Text="• Фамилия может отсутствовать" />
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -167,21 +173,23 @@
                 VerticalAlignment="Center"
                 Orientation="Vertical">
 
-                <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="Имя пользователя" />
+                <TextBlock
+                    Margin="0,0,0,10"
+                    Style="{StaticResource TitleTextStyle}"
+                    Text="Имя пользователя" />
 
-                <Border
-                    Padding="30,25"
-                    Background="#1F1F1F"
-                    BorderBrush="#333333"
-                    BorderThickness="1"
-                    CornerRadius="12">
+                <Border Style="{DynamicResource MainStyleBorder}">
                     <StackPanel>
-                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Логин *" />
+                        <TextBlock
+                            HorizontalAlignment="Left"
+                            Style="{StaticResource LittleTitleTextStyle}"
+                            Text="Логин *" />
                         <ui:TextBox
                             x:Name="LoginEnter"
                             Margin="0,0,0,5"
                             KeyDown="TextBox_KeyDown"
                             PlaceholderText="Apogee"
+                            Style="{DynamicResource InputTextBoxStyle}"
                             TextChanged="LoginEnter_TextChanged" />
                         <TextBlock
                             x:Name="LoginValidationText"
@@ -192,21 +200,33 @@
                             Text="" />
 
                         <StackPanel>
-                            <TextBlock Style="{StaticResource InfoTextStyle}" Text="• Логин может содержать:" />
+                            <TextBlock
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource TipsStyle}"
+                                Text="• Логин может содержать:" />
                             <TextBlock
                                 Margin="15,2,0,0"
-                                Style="{StaticResource InfoTextStyle}"
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource TipsStyle}"
                                 Text="- Символы латинского алфавита" />
                             <TextBlock
                                 Margin="15,2,0,0"
-                                Style="{StaticResource InfoTextStyle}"
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource TipsStyle}"
                                 Text="- Цифры" />
                             <TextBlock
                                 Margin="15,2,0,0"
-                                Style="{StaticResource InfoTextStyle}"
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource TipsStyle}"
                                 Text="- Нижнее подчеркивание ( _ ) и тире ( - )" />
-                            <TextBlock Style="{StaticResource InfoTextStyle}" Text="• Логин ограничен 30 символами" />
-                            <TextBlock Style="{StaticResource InfoTextStyle}" Text="• Логин будет преобразован в нижний регистр" />
+                            <TextBlock
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource TipsStyle}"
+                                Text="• Логин ограничен 30 символами" />
+                            <TextBlock
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource TipsStyle}"
+                                Text="• Логин будет преобразован в нижний регистр" />
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -221,21 +241,23 @@
                 VerticalAlignment="Center"
                 Orientation="Vertical">
 
-                <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="Электронная почта" />
+                <TextBlock
+                    Margin="0,0,0,10"
+                    Style="{StaticResource TitleTextStyle}"
+                    Text="Электронная почта" />
 
-                <Border
-                    Padding="30,25"
-                    Background="#1F1F1F"
-                    BorderBrush="#333333"
-                    BorderThickness="1"
-                    CornerRadius="12">
+                <Border Style="{DynamicResource MainStyleBorder}">
                     <StackPanel>
-                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Почта *" />
+                        <TextBlock
+                            HorizontalAlignment="Left"
+                            Style="{StaticResource LittleTitleTextStyle}"
+                            Text="Почта *" />
                         <ui:TextBox
                             x:Name="EmailEnter"
                             Margin="0,0,0,5"
                             KeyDown="TextBox_KeyDown"
                             PlaceholderText="apogee@barkfluff.ru"
+                            Style="{DynamicResource InputTextBoxStyle}"
                             TextChanged="EmailEnter_TextChanged" />
                         <TextBlock
                             x:Name="EmailValidationText"
@@ -246,9 +268,18 @@
                             Text="" />
 
                         <StackPanel>
-                            <TextBlock Style="{StaticResource InfoTextStyle}" Text="• Почта может использоваться для 2FA" />
-                            <TextBlock Style="{StaticResource InfoTextStyle}" Text="• Почта будет использоваться для сброса пароля" />
-                            <TextBlock Style="{StaticResource InfoTextStyle}" Text="• На почту будут отправляться уведомления о входе" />
+                            <TextBlock
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource TipsStyle}"
+                                Text="• Почта может использоваться для 2FA" />
+                            <TextBlock
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource TipsStyle}"
+                                Text="• Почта будет использоваться для сброса пароля" />
+                            <TextBlock
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource TipsStyle}"
+                                Text="• На почту будут отправляться уведомления о входе" />
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -263,22 +294,24 @@
                 VerticalAlignment="Center"
                 Orientation="Vertical">
 
-                <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="Подтверждение почты" />
+                <TextBlock
+                    Margin="0,0,0,10"
+                    Style="{StaticResource TitleTextStyle}"
+                    Text="Подтверждение почты" />
 
-                <Border
-                    Padding="30,25"
-                    Background="#1F1F1F"
-                    BorderBrush="#333333"
-                    BorderThickness="1"
-                    CornerRadius="12">
+                <Border Style="{DynamicResource MainStyleBorder}">
                     <StackPanel>
-                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Код подтверждения *" />
+                        <TextBlock
+                            HorizontalAlignment="Left"
+                            Style="{StaticResource LittleTitleTextStyle}"
+                            Text="Код подтверждения *" />
                         <ui:TextBox
                             x:Name="VerificationCodeEnter"
                             Margin="0,0,0,5"
                             KeyDown="TextBox_KeyDown"
                             MaxLength="6"
                             PlaceholderText="123456"
+                            Style="{DynamicResource InputTextBoxStyle}"
                             TextChanged="VerificationCodeEnter_TextChanged" />
                         <TextBlock
                             x:Name="VerificationCodeValidationText"
@@ -291,13 +324,18 @@
                         <StackPanel>
                             <TextBlock
                                 x:Name="EmailHelperText"
-                                Style="{StaticResource InfoTextStyle}"
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource TipsStyle}"
                                 Text="• Сообщение отправлено на вашу почту" />
-                            <TextBlock Style="{StaticResource InfoTextStyle}" Text="• Проверьте папку со спамом" />
+                            <TextBlock
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource TipsStyle}"
+                                Text="• Проверьте папку со спамом" />
                             <TextBlock
                                 x:Name="RemainingAttemptsText"
+                                HorizontalAlignment="Left"
                                 Foreground="#FF9800"
-                                Style="{StaticResource InfoTextStyle}"
+                                Style="{StaticResource TipsStyle}"
                                 Text=""
                                 Visibility="Collapsed" />
                         </StackPanel>
@@ -314,23 +352,25 @@
                 VerticalAlignment="Center"
                 Orientation="Vertical">
 
-                <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="Создание пароля" />
+                <TextBlock
+                    Margin="0,0,0,10"
+                    Style="{StaticResource TitleTextStyle}"
+                    Text="Создание пароля" />
 
-                <Border
-                    Padding="30,25"
-                    Background="#1F1F1F"
-                    BorderBrush="#333333"
-                    BorderThickness="1"
-                    CornerRadius="12">
+                <Border Style="{DynamicResource MainStyleBorder}">
                     <StackPanel>
                         <!--  Пароль  -->
-                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Пароль *" />
+                        <TextBlock
+                            HorizontalAlignment="Left"
+                            Style="{StaticResource LittleTitleTextStyle}"
+                            Text="Пароль *" />
                         <ui:PasswordBox
                             x:Name="PasswordEnter"
                             Margin="0,0,0,8"
                             KeyDown="TextBox_KeyDown"
                             PasswordChanged="PasswordEnter_TextChanged"
-                            PlaceholderText="Введите пароль" />
+                            PlaceholderText="Введите пароль"
+                            Style="{DynamicResource InputTextBoxStyle}" />
 
                         <!--  Индикатор силы пароля  -->
                         <ProgressBar
@@ -347,54 +387,51 @@
                         <TextBlock
                             x:Name="PasswordDifficultyIndicator"
                             Margin="0,0,0,10"
-                            FontFamily="{DynamicResource AdwaitaSans}"
-                            FontSize="12"
-                            FontWeight="Normal"
-                            Foreground="#B0B0B0"
+                            HorizontalAlignment="Left"
+                            Style="{StaticResource DescriptionTextStyle}"
                             Text="Начните вводить пароль" />
 
                         <!--  Password requirements checklist  -->
                         <StackPanel x:Name="PasswordRequirementsPanel" Margin="0,0,0,15">
                             <TextBlock
                                 x:Name="ReqMinLength"
-                                FontFamily="{DynamicResource AdwaitaSans}"
-                                FontSize="11"
-                                Foreground="#888888"
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource TipsStyle}"
                                 Text="○ Минимум 8 символов" />
                             <TextBlock
                                 x:Name="ReqUpperCase"
-                                FontFamily="{DynamicResource AdwaitaSans}"
-                                FontSize="11"
-                                Foreground="#888888"
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource TipsStyle}"
                                 Text="○ Заглавные буквы" />
                             <TextBlock
                                 x:Name="ReqLowerCase"
-                                FontFamily="{DynamicResource AdwaitaSans}"
-                                FontSize="11"
-                                Foreground="#888888"
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource TipsStyle}"
                                 Text="○ Строчные буквы" />
                             <TextBlock
                                 x:Name="ReqDigit"
-                                FontFamily="{DynamicResource AdwaitaSans}"
-                                FontSize="11"
-                                Foreground="#888888"
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource TipsStyle}"
                                 Text="○ Цифры" />
                             <TextBlock
                                 x:Name="ReqSpecialChar"
-                                FontFamily="{DynamicResource AdwaitaSans}"
-                                FontSize="11"
-                                Foreground="#888888"
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource TipsStyle}"
                                 Text="○ Специальные символы" />
                         </StackPanel>
 
                         <!--  Подтверждение пароля  -->
-                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Подтвердите пароль *" />
+                        <TextBlock
+                            HorizontalAlignment="Left"
+                            Style="{StaticResource LittleTitleTextStyle}"
+                            Text="Подтвердите пароль *" />
                         <ui:PasswordBox
                             x:Name="PasswordRepeatedEnter"
                             Margin="0,0,0,5"
                             KeyDown="TextBox_KeyDown"
                             PasswordChanged="PasswordRepeatedEnter_TextChanged"
-                            PlaceholderText="Повторите пароль" />
+                            PlaceholderText="Повторите пароль"
+                            Style="{DynamicResource InputTextBoxStyle}" />
                         <TextBlock
                             x:Name="PasswordMatchText"
                             Margin="0,0,0,20"
@@ -405,11 +442,18 @@
 
                         <StackPanel>
                             <TextBlock
-                                Style="{StaticResource InfoTextStyle}"
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource TipsStyle}"
                                 Text="• Используйте комбинацию букв разного регистра"
                                 TextWrapping="WrapWithOverflow" />
-                            <TextBlock Style="{StaticResource InfoTextStyle}" Text="• Добавьте цифры и специальные символы" />
-                            <TextBlock Style="{StaticResource InfoTextStyle}" Text="• Минимальная длина пароля 8 символов" />
+                            <TextBlock
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource TipsStyle}"
+                                Text="• Добавьте цифры и специальные символы" />
+                            <TextBlock
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource TipsStyle}"
+                                Text="• Минимальная длина пароля 8 символов" />
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -425,14 +469,12 @@
                 VerticalAlignment="Center"
                 Orientation="Vertical">
 
-                <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="Фото профиля" />
+                <TextBlock
+                    Margin="0,0,0,10"
+                    Style="{StaticResource TitleTextStyle}"
+                    Text="Фото профиля" />
 
-                <Border
-                    Padding="30,25"
-                    Background="#1F1F1F"
-                    BorderBrush="#333333"
-                    BorderThickness="1"
-                    CornerRadius="12">
+                <Border Style="{DynamicResource MainStyleBorder}">
                     <StackPanel HorizontalAlignment="Center">
                         <crop:CropImage
                             x:Name="Cropper"
@@ -443,8 +485,7 @@
                             Loaded="CropperLoaded" />
                         <TextBlock
                             Margin="0,15,0,0"
-                            HorizontalAlignment="Center"
-                            Style="{StaticResource InfoTextStyle}"
+                            Style="{StaticResource DescriptionTextStyle}"
                             Text="Загрузите фото профиля" />
                     </StackPanel>
                 </Border>
@@ -457,15 +498,25 @@
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Orientation="Vertical">
-                <preview:PreviewUser x:Name="PreviewUserElement" Loaded="PreviewUserElement_Loaded" />
+                <StackPanel Orientation="Vertical">
+                    <TextBlock
+                        Margin="0,0,0,10"
+                        Style="{StaticResource TitleTextStyle}"
+                        Text="Настройка профиля" />
+                    <preview:PreviewUser x:Name="PreviewUserElement" Loaded="PreviewUserElement_Loaded" />
+                </StackPanel>
+
             </StackPanel>
             <!--  Step 8: подключение 2fa  -->
             <ScrollViewer
-                x:Name="Step8"
+                x:Name="Step8" Width="800"
                 Margin="-30,-30,-30,-30"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Stretch">
-                <twofa:TwoFA x:Name="OtpSuggestion" VerticalAlignment="Stretch" Loaded="OtpSuggestion_Loaded" />
+                <twofa:TwoFA
+                    x:Name="OtpSuggestion"
+                    VerticalAlignment="Stretch"
+                    Loaded="OtpSuggestion_Loaded" />
             </ScrollViewer>
             <!--  Step 9: Завершение регистрации  -->
             <StackPanel

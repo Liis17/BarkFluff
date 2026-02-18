@@ -771,7 +771,7 @@
 
     <Style x:Key="ButtonStyle" TargetType="{x:Type ui:Button}">
         <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="MinWidth" Value="160" />
+
         <Setter Property="Height" Value="48" />
         <Setter Property="Padding" Value="24,0" />
         <Setter Property="HorizontalAlignment" Value="Center" />
@@ -823,7 +823,10 @@
                         BorderThickness="0"
                         CornerRadius="{TemplateBinding CornerRadius}"
                         SnapsToDevicePixels="True">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <ContentPresenter
+                            Margin="15,0,15,0"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -845,7 +848,10 @@
         <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
 
     </Style>
-    <Style x:Key="AdaptiveButtonIconStyle" BasedOn="{StaticResource ButtonIconStyle}" TargetType="{x:Type ui:SymbolIcon}">
+    <Style
+        x:Key="AdaptiveButtonIconStyle"
+        BasedOn="{StaticResource ButtonIconStyle}"
+        TargetType="{x:Type ui:SymbolIcon}">
         <Setter Property="Foreground" Value="{DynamicResource ButtonText}" />
         <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
     </Style>
@@ -877,7 +883,10 @@
                         BorderThickness="0"
                         CornerRadius="{TemplateBinding CornerRadius}"
                         SnapsToDevicePixels="True">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <ContentPresenter
+                            Margin="15,0,15,0"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -899,7 +908,10 @@
         <Setter Property="Foreground" Value="{DynamicResource RequiredButtonText}" />
         <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
     </Style>
-    <Style x:Key="RequiredButtonIconStyle" BasedOn="{StaticResource ButtonIconStyle}" TargetType="{x:Type ui:SymbolIcon}">
+    <Style
+        x:Key="RequiredButtonIconStyle"
+        BasedOn="{StaticResource ButtonIconStyle}"
+        TargetType="{x:Type ui:SymbolIcon}">
         <Setter Property="Foreground" Value="{DynamicResource RequiredButtonText}" />
         <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
     </Style>
@@ -1198,16 +1210,16 @@
         <Setter Property="BorderThickness" Value="2" />
     </Style>
     <Style
-    x:Key="ActiveStepIndicator"
-    BasedOn="{StaticResource StepIndicator}"
-    TargetType="Border">
+        x:Key="ActiveStepIndicator"
+        BasedOn="{StaticResource StepIndicator}"
+        TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource StepCircleBackground}" />
         <Setter Property="BorderBrush" Value="{DynamicResource StepCircleBackground}" />
     </Style>
     <Style
-    x:Key="CompletedStepIndicator"
-    BasedOn="{StaticResource StepIndicator}"
-    TargetType="Border">
+        x:Key="CompletedStepIndicator"
+        BasedOn="{StaticResource StepIndicator}"
+        TargetType="Border">
         <Setter Property="Background" Value="#28a745" />
         <Setter Property="BorderBrush" Value="#28a745" />
     </Style>

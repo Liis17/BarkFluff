@@ -31,6 +31,7 @@ namespace BarkFluff.Client.WPF.UserControls
                 var fileId = FileCacheService.ExtractFileIdFromUrl(avatarUrl);
                 AvatarCached.FileId = fileId;
                 AvatarCached.FileUrl = avatarUrl;
+                AvatarCached.Visibility = Visibility.Visible;
             }
         }
 

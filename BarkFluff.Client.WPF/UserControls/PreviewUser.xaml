@@ -29,57 +29,19 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!--  Section header  -->
-        <TextBlock
-            Margin="0,-480,0,0"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
-            FontFamily="{DynamicResource AdwaitaSans}"
-            FontWeight="SemiBold"
-            Foreground="White"
-            Style="{StaticResource SectionHeaderStyle}"
-            Text="Настройка профиля" />
-
         <!--  Main card with Windows 11 Mica-like effect  -->
-        <Border
-            Padding="40,32"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
-            CornerRadius="12">
-            <Border.Background>
-                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                    <GradientStop Offset="0" Color="#22252540" />
-                    <GradientStop Offset="1" Color="#1A1F2937" />
-                </LinearGradientBrush>
-            </Border.Background>
-            <Border.BorderBrush>
-                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                    <GradientStop Offset="0" Color="#25FFFFFF" />
-                    <GradientStop Offset="1" Color="#10FFFFFF" />
-                </LinearGradientBrush>
-            </Border.BorderBrush>
-            <Border.BorderThickness>1</Border.BorderThickness>
-            <Border.Effect>
-                <DropShadowEffect
-                    BlurRadius="32"
-                    Direction="270"
-                    Opacity="0.35"
-                    ShadowDepth="8"
-                    Color="#000000" />
-            </Border.Effect>
-
-            <Grid>
+        <Border Style="{DynamicResource MainStyleBorder}">
+            <StackPanel>
                 <StackPanel
                     Grid.Row="0"
-                    Margin="0,0,0,24"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
                     Orientation="Vertical">
 
                     <!--  User info section with avatar  -->
                     <StackPanel
-                        Margin="0,0,0,32"
-                        HorizontalAlignment="Center"
+                        Margin="0,0,0,10"
+                        HorizontalAlignment="Left"
                         Orientation="Horizontal">
 
                         <!--  Avatar with glow effect  -->
@@ -106,7 +68,8 @@
                                             Width="104"
                                             Height="104"
                                             CornerRadius="52"
-                                            EnableDynamicShadow="False" />
+                                            EnableDynamicShadow="False"
+                                            Visibility="Collapsed" />
 
                                         <!--  Placeholder icon with modern styling  -->
                                         <ui:SymbolIcon
@@ -126,24 +89,13 @@
                             <TextBlock
                                 x:Name="FullNameText"
                                 Margin="0,0,0,6"
-                                FontFamily="{DynamicResource AdwaitaSans}"
-                                FontSize="26"
-                                FontWeight="SemiBold"
-                                Foreground="White"
+                                Style="{DynamicResource TitleTextStyle}"
                                 Text="Загрузка..." />
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock
-                                    FontFamily="{DynamicResource AdwaitaSans}"
-                                    FontSize="15"
-                                    FontWeight="Normal"
-                                    Foreground="#80FFFFFF"
-                                    Text="@" />
+                                <TextBlock Style="{DynamicResource DescriptionTextStyle}" Text="@" />
                                 <TextBlock
                                     x:Name="UsernameText"
-                                    FontFamily="{DynamicResource AdwaitaSans}"
-                                    FontSize="15"
-                                    FontWeight="Normal"
-                                    Foreground="#80FFFFFF"
+                                    Style="{DynamicResource DescriptionTextStyle}"
                                     Text="" />
                             </StackPanel>
                         </StackPanel>
@@ -151,54 +103,27 @@
 
                     <!--  Description label  -->
                     <TextBlock
-                        Margin="0,0,0,12"
-                        HorizontalAlignment="Center"
-                        FontFamily="{DynamicResource AdwaitaSans}"
-                        FontSize="14"
-                        FontWeight="Normal"
-                        Foreground="#B0FFFFFF"
+                        Margin="0,0,0,10"
+                        Style="{DynamicResource DescriptionTextStyle}"
                         Text="Расскажите немного о себе для других пользователей" />
 
-                    <!--  About TextBox with Windows 11 styling  -->
-                    <Border
-                        Width="480"
-                        Height="130"
-                        CornerRadius="8">
-                        <Border.Background>
-                            <SolidColorBrush Color="#0AFFFFFF" />
-                        </Border.Background>
-                        <Border.BorderBrush>
-                            <SolidColorBrush Color="#20FFFFFF" />
-                        </Border.BorderBrush>
-                        <Border.BorderThickness>1</Border.BorderThickness>
-                        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                            <ui:TextBox
-                                x:Name="AboutTextBox"
-                                Padding="16,14"
-                                AcceptsReturn="True"
-                                Background="Transparent"
-                                BorderThickness="0"
-                                CaretBrush="White"
-                                FontFamily="{DynamicResource AdwaitaSans}"
-                                FontSize="14"
-                                FontWeight="Normal"
-                                Foreground="White"
-                                PlaceholderText="О себе, работе, хобби... или оставьте пустым"
-                                Text=""
-                                TextWrapping="Wrap"
-                                VerticalScrollBarVisibility="Disabled" />
-                        </ScrollViewer>
-                    </Border>
+                    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                        <ui:TextBox
+                            x:Name="AboutTextBox"
+                            AcceptsReturn="True"
+                            PlaceholderText="О себе, работе, хобби... или оставьте пустым"
+                            Style="{DynamicResource InputTextBoxStyle}"
+                            Text=""
+                            TextWrapping="Wrap"
+                            VerticalScrollBarVisibility="Disabled" />
+                    </ScrollViewer>
 
                     <!--  Error message  -->
                     <TextBlock
                         x:Name="ErrorTextBlockMessage"
                         Margin="0,12,0,0"
-                        HorizontalAlignment="Center"
-                        FontFamily="{DynamicResource AdwaitaSans}"
-                        FontSize="14"
-                        FontWeight="Normal"
                         Foreground="#FFEF4444"
+                        Style="{DynamicResource DescriptionTextStyle}"
                         Text=""
                         Visibility="Collapsed" />
 
@@ -207,11 +132,11 @@
                         x:Name="SaveButton"
                         Margin="0,8,0,10"
                         Click="SaveButton_Click"
-                        Style="{StaticResource MainButton}">
+                        Style="{StaticResource RequiredButton}">
                         <ui:Button.Content>
                             <StackPanel Orientation="Horizontal">
-                                <ui:TextBlock Style="{StaticResource MainButtonTextLeft}" Text="Сохранить" />
-                                <ui:SymbolIcon Style="{StaticResource ButtonSymbolRight}" Symbol="Checkmark24" />
+                                <ui:TextBlock Style="{StaticResource RequiredButtonTextStyle}" Text="Сохранить" />
+                                <ui:SymbolIcon Style="{StaticResource RequiredButtonIconStyle}" Symbol="Checkmark24" />
                             </StackPanel>
                         </ui:Button.Content>
                     </ui:Button>
@@ -220,22 +145,17 @@
                 <!--  Footer hint text  -->
                 <StackPanel
                     Grid.Row="1"
-                    Margin="0,0,0,0"
+                    Margin="10,0,10,10"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Bottom"
                     Orientation="Vertical">
                     <TextBlock
                         MaxWidth="420"
-                        HorizontalAlignment="Center"
-                        FontFamily="{DynamicResource AdwaitaSans}"
-                        FontSize="13"
-                        FontWeight="Light"
-                        Foreground="#60FFFFFF"
+                        Style="{DynamicResource DescriptionTextStyle}"
                         Text="Информация о себе будет видна другим пользователям. Вы можете изменить её в любое время в настройках."
-                        TextAlignment="Center"
                         TextWrapping="WrapWithOverflow" />
                 </StackPanel>
-            </Grid>
+            </StackPanel>
         </Border>
     </Grid>
 </UserControl>

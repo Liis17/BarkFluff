@@ -10,19 +10,13 @@
     d:DesignWidth="1280"
     mc:Ignorable="d">
     <UserControl.Resources>
-        <!-- Windows 11 style colors -->
-        <SolidColorBrush x:Key="AccentColor" Color="#df5000" />
-        <SolidColorBrush x:Key="AccentColorLight" Color="#FF6B2D" />
-        <SolidColorBrush x:Key="SuccessColor" Color="#28a745" />
-        <SolidColorBrush x:Key="CardBackground" Color="#2D2D2D" />
-        <SolidColorBrush x:Key="CardBorder" Color="#3D3D3D" />
-        
-        <!-- Fade-in and slide-up animation for the content -->
+        <!--  Fade-in and slide-up animation for the content  -->
         <Storyboard x:Key="FadeInSlideUp">
             <DoubleAnimation
                 Storyboard.TargetName="ContentPanel"
                 Storyboard.TargetProperty="Opacity"
-                From="0" To="1"
+                From="0"
+                To="1"
                 Duration="0:0:0.6">
                 <DoubleAnimation.EasingFunction>
                     <CubicEase EasingMode="EaseOut" />
@@ -31,85 +25,93 @@
             <DoubleAnimation
                 Storyboard.TargetName="ContentTransform"
                 Storyboard.TargetProperty="Y"
-                From="30" To="0"
+                From="30"
+                To="0"
                 Duration="0:0:0.6">
                 <DoubleAnimation.EasingFunction>
                     <CubicEase EasingMode="EaseOut" />
                 </DoubleAnimation.EasingFunction>
             </DoubleAnimation>
         </Storyboard>
-        
-        <!-- Success icon pulse animation -->
+
+        <!--  Success icon pulse animation  -->
         <Storyboard x:Key="IconPulse" RepeatBehavior="Forever">
             <DoubleAnimation
+                AutoReverse="True"
                 Storyboard.TargetName="SuccessIconScale"
                 Storyboard.TargetProperty="ScaleX"
-                From="1" To="1.08" AutoReverse="True"
+                From="1"
+                To="1.08"
                 Duration="0:0:1.2">
                 <DoubleAnimation.EasingFunction>
                     <SineEase EasingMode="EaseInOut" />
                 </DoubleAnimation.EasingFunction>
             </DoubleAnimation>
             <DoubleAnimation
+                AutoReverse="True"
                 Storyboard.TargetName="SuccessIconScale"
                 Storyboard.TargetProperty="ScaleY"
-                From="1" To="1.08" AutoReverse="True"
+                From="1"
+                To="1.08"
                 Duration="0:0:1.2">
                 <DoubleAnimation.EasingFunction>
                     <SineEase EasingMode="EaseInOut" />
                 </DoubleAnimation.EasingFunction>
             </DoubleAnimation>
         </Storyboard>
-        
-        <!-- Success icon initial animation -->
+
+        <!--  Success icon initial animation  -->
         <Storyboard x:Key="IconAppear">
             <DoubleAnimation
+                BeginTime="0:0:0.2"
                 Storyboard.TargetName="SuccessIconScale"
                 Storyboard.TargetProperty="ScaleX"
-                From="0" To="1"
-                Duration="0:0:0.5"
-                BeginTime="0:0:0.2">
+                From="0"
+                To="1"
+                Duration="0:0:0.5">
                 <DoubleAnimation.EasingFunction>
-                    <BackEase EasingMode="EaseOut" Amplitude="0.5" />
+                    <BackEase Amplitude="0.5" EasingMode="EaseOut" />
                 </DoubleAnimation.EasingFunction>
             </DoubleAnimation>
             <DoubleAnimation
+                BeginTime="0:0:0.2"
                 Storyboard.TargetName="SuccessIconScale"
                 Storyboard.TargetProperty="ScaleY"
-                From="0" To="1"
-                Duration="0:0:0.5"
-                BeginTime="0:0:0.2">
+                From="0"
+                To="1"
+                Duration="0:0:0.5">
                 <DoubleAnimation.EasingFunction>
-                    <BackEase EasingMode="EaseOut" Amplitude="0.5" />
+                    <BackEase Amplitude="0.5" EasingMode="EaseOut" />
                 </DoubleAnimation.EasingFunction>
             </DoubleAnimation>
             <DoubleAnimation
+                BeginTime="0:0:0.2"
                 Storyboard.TargetName="SuccessIconBorder"
                 Storyboard.TargetProperty="Opacity"
-                From="0" To="1"
-                Duration="0:0:0.4"
-                BeginTime="0:0:0.2">
+                From="0"
+                To="1"
+                Duration="0:0:0.4">
                 <DoubleAnimation.EasingFunction>
                     <CubicEase EasingMode="EaseOut" />
                 </DoubleAnimation.EasingFunction>
             </DoubleAnimation>
         </Storyboard>
     </UserControl.Resources>
-    
+
     <Grid>
-        <!-- Main content panel with animations -->
-        <StackPanel 
+        <!--  Main content panel with animations  -->
+        <StackPanel
             x:Name="ContentPanel"
+            MaxWidth="500"
+            Margin="40"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
-            Opacity="0"
-            MaxWidth="500"
-            Margin="40">
+            Opacity="1">
             <StackPanel.RenderTransform>
                 <TranslateTransform x:Name="ContentTransform" Y="30" />
             </StackPanel.RenderTransform>
-            
-            <!-- Success Icon with gradient background -->
+
+            <!--  Success Icon with gradient background  -->
             <Border
                 x:Name="SuccessIconBorder"
                 Width="100"
@@ -123,96 +125,64 @@
                 </Border.RenderTransform>
                 <Border.Background>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#df5000" Offset="0" />
-                        <GradientStop Color="#FF6B2D" Offset="1" />
+                        <GradientStop Offset="0" Color="#df5000" />
+                        <GradientStop Offset="1" Color="#FF6B2D" />
                     </LinearGradientBrush>
                 </Border.Background>
                 <Border.Effect>
                     <DropShadowEffect
-                        Color="#df5000"
                         BlurRadius="30"
+                        Opacity="0.4"
                         ShadowDepth="0"
-                        Opacity="0.4" />
+                        Color="#df5000" />
                 </Border.Effect>
                 <ui:SymbolIcon
-                    Symbol="Checkmark24"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
                     FontSize="48"
                     Foreground="White"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center" />
+                    Symbol="Checkmark24" />
             </Border>
-            
-            <!-- Title -->
+
+            <!--  Title  -->
             <TextBlock
                 Margin="0,0,0,12"
-                HorizontalAlignment="Center"
-                FontFamily="Segoe UI Variable Display, Segoe UI, {DynamicResource AdwaitaSans}"
-                FontSize="32"
-                FontWeight="SemiBold"
-                Foreground="White"
+                Style="{DynamicResource BigTitleTextStyle}"
                 Text="Добро пожаловать!" />
-            
-            <!-- Subtitle -->
+
+            <!--  Subtitle  -->
             <TextBlock
                 Margin="0,0,0,8"
-                HorizontalAlignment="Center"
-                FontFamily="Segoe UI Variable Display, Segoe UI, {DynamicResource AdwaitaSans}"
-                FontSize="16"
-                FontWeight="Normal"
-                Foreground="#B0B0B0"
-                Text="Регистрация успешно завершена"
-                TextAlignment="Center" />
-            
-            <!-- Description in card style -->
-            <Border
-                Margin="0,24,0,32"
-                Padding="24,20"
-                Background="{StaticResource CardBackground}"
-                BorderBrush="{StaticResource CardBorder}"
-                BorderThickness="1"
-                CornerRadius="12">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                Style="{DynamicResource DescriptionTextStyle}"
+                Text="Регистрация успешно завершена" />
+
+            <!--  Description in card style  -->
+            <Border Margin="0,24,0,32" Style="{DynamicResource MainStyleBorder}">
+                <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
                     <ui:SymbolIcon
-                        Symbol="Settings24"
-                        FontSize="20"
-                        Foreground="#B0B0B0"
+                        Margin="0,0,12,0"
                         VerticalAlignment="Center"
-                        Margin="0,0,12,0" />
-                    <TextBlock
-                        FontFamily="Segoe UI Variable Display, Segoe UI, {DynamicResource AdwaitaSans}"
-                        FontSize="14"
-                        FontWeight="Normal"
-                        Foreground="#E0E0E0"
-                        Text="Настраиваем ваш аккаунт..."
-                        VerticalAlignment="Center" />
+                        FontSize="20"
+                        Foreground="{DynamicResource DescriptionText}"
+                        Symbol="Settings24" />
+                    <TextBlock Style="{DynamicResource DescriptionTextStyle}" Text="Настраиваем ваш аккаунт..." />
                 </StackPanel>
             </Border>
-            
-            <!-- Progress indicator -->
+
+            <!--  Progress indicator  -->
             <ui:ProgressRing
                 x:Name="LoadingRing"
                 Width="40"
                 Height="40"
                 HorizontalAlignment="Center"
-                IsIndeterminate="True">
-                <ui:ProgressRing.Foreground>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#df5000" Offset="0" />
-                        <GradientStop Color="#FF6B2D" Offset="1" />
-                    </LinearGradientBrush>
-                </ui:ProgressRing.Foreground>
-            </ui:ProgressRing>
-            
-            <!-- Additional info text -->
+                Foreground="{DynamicResource ProgressRingColor}"
+                IsIndeterminate="True" />
+
+            <!--  Additional info text  -->
             <TextBlock
                 Margin="0,16,0,0"
-                HorizontalAlignment="Center"
-                FontFamily="Segoe UI Variable Display, Segoe UI, {DynamicResource AdwaitaSans}"
-                FontSize="13"
-                FontWeight="Normal"
-                Foreground="#808080"
-                Text="Это займёт всего несколько секунд"
-                TextAlignment="Center" />
+                Style="{DynamicResource DescriptionTextStyle}"
+                Text="Это займёт всего несколько секунд" />
         </StackPanel>
     </Grid>
 </UserControl>
