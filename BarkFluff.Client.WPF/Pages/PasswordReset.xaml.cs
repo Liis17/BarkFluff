@@ -1,4 +1,5 @@
 using BarkFluff.Client.WPF.Validators;
+
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
@@ -59,7 +60,6 @@ namespace BarkFluff.Client.WPF.Pages
         {
             Step1Panel.Visibility = Visibility.Collapsed;
             Step2Panel.Visibility = Visibility.Visible;
-            StepLine1.Fill = new SolidColorBrush(Color.FromRgb(109, 144, 243));
             Step2Indicator.Style = (Style)FindResource("ActiveStepIndicator");
             ClearVerificationCodeBoxes();
             VerifyBox0.Focus();
@@ -69,7 +69,6 @@ namespace BarkFluff.Client.WPF.Pages
         {
             Step2Panel.Visibility = Visibility.Collapsed;
             Step3Panel.Visibility = Visibility.Visible;
-            StepLine2.Fill = new SolidColorBrush(Color.FromRgb(109, 144, 243));
             Step3Indicator.Style = (Style)FindResource("ActiveStepIndicator");
             PasswordEnter.Focus();
         }
@@ -79,7 +78,6 @@ namespace BarkFluff.Client.WPF.Pages
             Step3Panel.Visibility = Visibility.Collapsed;
             SuccessPanel.Visibility = Visibility.Visible;
             Step4Indicator.Style = (Style)FindResource("ActiveStepIndicator");
-            StepLine3.Fill = new SolidColorBrush(Color.FromRgb(109, 144, 243));
             BackToLoginTextBlock.Visibility = Visibility.Collapsed;
         }
 
@@ -292,20 +290,20 @@ namespace BarkFluff.Client.WPF.Pages
                             if (digitsBuilder.Length >= _codeBoxes.Length) break;
                         }
                     }
-                    
+
                     if (digitsBuilder.Length > 0)
                     {
                         // Cancel the default paste operation
                         e.CancelCommand();
-                        
+
                         var digits = digitsBuilder.ToString();
-                        
+
                         // Fill the code boxes with digits
                         for (int i = 0; i < digits.Length; i++)
                         {
                             _codeBoxes[i].Text = digits[i].ToString();
                         }
-                        
+
                         // Focus the appropriate box based on how many digits were pasted
                         if (digits.Length >= _codeBoxes.Length)
                         {
