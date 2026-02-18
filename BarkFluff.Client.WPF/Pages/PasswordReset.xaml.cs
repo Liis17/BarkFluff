@@ -60,7 +60,11 @@ namespace BarkFluff.Client.WPF.Pages
         {
             Step1Panel.Visibility = Visibility.Collapsed;
             Step2Panel.Visibility = Visibility.Visible;
-            Step2Indicator.Style = (Style)FindResource("ActiveStepIndicator");
+
+            Step1Indicator.Style = (Style)FindResource("StepCircleSucces");
+            Step1IndicatorText.Foreground = (Brush)FindResource("StepCircleSuccesForeground");
+            Step2Indicator.Style = (Style)FindResource("StepCircle");
+            Step2IndicatorText.Foreground = (Brush)FindResource("StepCircleForeground");
             ClearVerificationCodeBoxes();
             VerifyBox0.Focus();
         }
@@ -69,7 +73,11 @@ namespace BarkFluff.Client.WPF.Pages
         {
             Step2Panel.Visibility = Visibility.Collapsed;
             Step3Panel.Visibility = Visibility.Visible;
-            Step3Indicator.Style = (Style)FindResource("ActiveStepIndicator");
+
+            Step2Indicator.Style = (Style)FindResource("StepCircleSucces");
+            Step2IndicatorText.Foreground = (Brush)FindResource("StepCircleSuccesForeground");
+            Step3Indicator.Style = (Style)FindResource("StepCircle");
+            Step3IndicatorText.Foreground = (Brush)FindResource("StepCircleForeground");
             PasswordEnter.Focus();
         }
 
@@ -77,7 +85,11 @@ namespace BarkFluff.Client.WPF.Pages
         {
             Step3Panel.Visibility = Visibility.Collapsed;
             SuccessPanel.Visibility = Visibility.Visible;
-            Step4Indicator.Style = (Style)FindResource("ActiveStepIndicator");
+
+            Step3Indicator.Style = (Style)FindResource("StepCircleSucces");
+            Step3IndicatorText.Foreground = (Brush)FindResource("StepCircleSuccesForeground");
+            Step4Indicator.Style = (Style)FindResource("StepCircle");
+            Step4IndicatorText.Foreground = (Brush)FindResource("StepCircleForeground");
             BackToLoginTextBlock.Visibility = Visibility.Collapsed;
         }
 

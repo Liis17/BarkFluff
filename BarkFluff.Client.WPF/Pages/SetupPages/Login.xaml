@@ -10,17 +10,6 @@
     d:DesignWidth="1280"
     mc:Ignorable="d">
 
-    <UserControl.Resources>
-        <Style
-            x:Key="VerificationTextBoxError"
-            BasedOn="{StaticResource VerificationTextBox}"
-            TargetType="TextBox">
-            <Setter Property="BorderBrush" Value="#E74856" />
-        </Style>
-
-
-    </UserControl.Resources>
-
     <Grid Background="{DynamicResource BackgroundWindow}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />

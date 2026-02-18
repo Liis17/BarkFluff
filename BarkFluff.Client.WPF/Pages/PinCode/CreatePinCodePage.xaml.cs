@@ -252,23 +252,26 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
             if (isSecondStepActive)
             {
                 // Активируем шаг 2
-                Step2Circle.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#C87E5B"));
-                Step2CircleText.Foreground = Brushes.White;
+                Step2Circle.Background = (Brush)FindResource("StepCircleBackground");
+                Step2CircleText.Foreground = (Brush)FindResource("StepCircleForeground");
 
                 // Делаем шаг 1 завершенным
                 if (isFirstStepComplete)
                 {
-                    Step1Circle.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#5DBE6A"));
+                    Step1Circle.Background = (Brush)FindResource("StepCircleSuccesBackground");
+                    Step1CircleText.Foreground = (Brush)FindResource("StepCircleSuccesForeground");
                 }
             }
             else
             {
                 // Активен шаг 1
-                Step1Circle.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#C87E5B"));
+                Step1Circle.Background = (Brush)FindResource("StepCircleBackground");
+                Step1CircleText.Foreground = (Brush)FindResource("StepCircleForeground");
+
 
                 // Шаг 2 неактивен
-                Step2Circle.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#404040"));
-                Step2CircleText.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#808080"));
+                Step2Circle.Background = (Brush)FindResource("StepCircleDisableBackground");
+                Step2CircleText.Foreground = (Brush)FindResource("StepCircleDisableForeground");
             }
         }
     }

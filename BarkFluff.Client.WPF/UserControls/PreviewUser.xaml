@@ -9,18 +9,6 @@
     d:DesignHeight="720"
     d:DesignWidth="1280"
     mc:Ignorable="d">
-    <UserControl.Resources>
-        <!--  Windows 11 style section header  -->
-        <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
-            <Setter Property="FontSize" Value="28" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="White" />
-            <Setter Property="HorizontalAlignment" Value="Center" />
-            <Setter Property="Margin" Value="0,0,0,24" />
-        </Style>
-
-    </UserControl.Resources>
 
     <!--  Main background with subtle gradient  -->
     <Grid>
@@ -110,6 +98,7 @@
                     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                         <ui:TextBox
                             x:Name="AboutTextBox"
+                            MinWidth="400"
                             AcceptsReturn="True"
                             PlaceholderText="О себе, работе, хобби... или оставьте пустым"
                             Style="{DynamicResource InputTextBoxStyle}"

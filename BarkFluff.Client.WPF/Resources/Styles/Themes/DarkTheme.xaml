@@ -1,27 +1,17 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!--  ГЛАВНОЕ  -->
-
     <!--  Фон окна  -->
     <SolidColorBrush x:Key="BackgroundWindow" Color="Transparent" />
 
-    <!--  Подзаголовок  -->
+    <!--  Заголовоки  -->
     <SolidColorBrush x:Key="SubtitleText" Color="#FFF39E6D" />
-
-    <!--  Заголовок  -->
     <SolidColorBrush x:Key="TitleText" Color="#f1f1f1" />
-
-    <!--  Описание  -->
     <SolidColorBrush x:Key="DescriptionText" Color="#B0B0B0" />
-
-    <!--  Фон бордер блока  -->
-    <SolidColorBrush x:Key="BorderBlock" Color="#242424" />
-
-    <!--  Обводка бордер блока  -->
-    <SolidColorBrush x:Key="BorderBlockBrush" Color="#333333" />
-
-    <!--  Подсказки  -->
     <SolidColorBrush x:Key="TipsColor" Color="#666666" />
+
+    <!--  Цвета бордера  -->
+    <SolidColorBrush x:Key="BorderBlock" Color="#242424" />
+    <SolidColorBrush x:Key="BorderBlockBrush" Color="#333333" />
 
     <!--  КНОПКИ  -->
     <SolidColorBrush x:Key="ButtonText" Color="#f1f1f1" />
@@ -63,6 +53,11 @@
 
     <!--  Круг для отображения статуса действия  -->
     <SolidColorBrush x:Key="StepCircleBackground" Color="#df5000" />
+    <SolidColorBrush x:Key="StepCircleForeground" Color="#ffffff" />
+    <SolidColorBrush x:Key="StepCircleSuccesForeground" Color="#ffffff" />
+    <SolidColorBrush x:Key="StepCircleDisableForeground" Color="#777777" />
+    <SolidColorBrush x:Key="StepCircleDisableBackground" Color="#404040" />
+    <SolidColorBrush x:Key="StepCircleSuccesBackground" Color="#51ab29" />
 
     <!--  Индикатор попыток пароля  -->
     <SolidColorBrush x:Key="PasswordAttemptIndicator" Color="#2D4A20" />
