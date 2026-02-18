@@ -449,32 +449,6 @@
         </Style.Triggers>
     </Style>
 
-    <Style x:Key="StepIndicator" TargetType="Border">
-        <Setter Property="Width" Value="30" />
-        <Setter Property="Height" Value="30" />
-        <Setter Property="CornerRadius" Value="15" />
-        <Setter Property="Background" Value="#404040" />
-        <Setter Property="BorderBrush" Value="#404040" />
-        <Setter Property="BorderThickness" Value="2" />
-    </Style>
-
-    <Style
-        x:Key="ActiveStepIndicator"
-        BasedOn="{StaticResource StepIndicator}"
-        TargetType="Border">
-        <Setter Property="Background" Value="#6D90F3" />
-        <Setter Property="BorderBrush" Value="#6D90F3" />
-    </Style>
-
-    <Style
-        x:Key="CompletedStepIndicator"
-        BasedOn="{StaticResource StepIndicator}"
-        TargetType="Border">
-        <Setter Property="Background" Value="#28a745" />
-        <Setter Property="BorderBrush" Value="#28a745" />
-    </Style>
-
-
     <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="AdwaitaSans" />
         <Setter Property="FontSize" Value="24" />
@@ -795,15 +769,39 @@
 
     <!--  новые стили  -->
 
-    <!--  Адаптивный цвет кнопки под цвет приложения  -->
-    <Style x:Key="AdaptiveButton" TargetType="{x:Type ui:Button}">
+    <Style x:Key="ButtonStyle" TargetType="{x:Type ui:Button}">
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="MinWidth" Value="160" />
         <Setter Property="Height" Value="48" />
         <Setter Property="Padding" Value="24,0" />
         <Setter Property="HorizontalAlignment" Value="Center" />
-        <Setter Property="Background" Value="{DynamicResource ButtonBackground}" />
         <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="UseLayoutRounding" Value="True" />
+    </Style>
+    <Style x:Key="ButtonTextStyle" TargetType="TextBlock">
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="Margin" Value="5,0,5,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="FontSize" Value="16" />
+    </Style>
+    <Style x:Key="ButtonIconStyle" TargetType="{x:Type ui:SymbolIcon}">
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="Margin" Value="5,0,5,0" />
+        <Setter Property="Filled" Value="True" />
+    </Style>
+
+    <!--  Адаптивный цвет кнопки под цвет приложения  -->
+    <Style
+        x:Key="AdaptiveButton"
+        BasedOn="{StaticResource ButtonStyle}"
+        TargetType="{x:Type ui:Button}">
+        <Setter Property="Background" Value="{DynamicResource ButtonBackground}" />
         <Setter Property="MouseOverBackground" Value="{DynamicResource ButtonMouseOverBackground}" />
         <Setter Property="PressedBackground" Value="{DynamicResource ButtonPressedBackground}" />
         <Setter Property="Effect">
@@ -838,39 +836,26 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
-        <Setter Property="UseLayoutRounding" Value="True" />
     </Style>
-    <Style x:Key="AdaptiveButtonTextStyle" TargetType="TextBlock">
+    <Style
+        x:Key="AdaptiveButtonTextStyle"
+        BasedOn="{StaticResource ButtonTextStyle}"
+        TargetType="TextBlock">
         <Setter Property="Foreground" Value="{DynamicResource ButtonText}" />
         <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
-        <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="FontSize" Value="16" />
-        <Setter Property="Margin" Value="5,0,5,0" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="HorizontalAlignment" Value="Center" />
-        <Setter Property="FontSize" Value="16" />
+
     </Style>
-    <Style x:Key="AdaptiveButtonIconStyle" TargetType="{x:Type ui:SymbolIcon}">
+    <Style x:Key="AdaptiveButtonIconStyle" BasedOn="{StaticResource ButtonIconStyle}" TargetType="{x:Type ui:SymbolIcon}">
         <Setter Property="Foreground" Value="{DynamicResource ButtonText}" />
         <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
-        <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="FontSize" Value="16" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="HorizontalAlignment" Value="Center" />
-        <Setter Property="FontSize" Value="16" />
-        <Setter Property="Margin" Value="5,0,5,0" />
-        <Setter Property="Filled" Value="True" />
     </Style>
 
     <!--  Цвет кнопки для обязательного действия  -->
-    <Style x:Key="RequiredButton" TargetType="{x:Type ui:Button}">
-        <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="MinWidth" Value="160" />
-        <Setter Property="Height" Value="48" />
-        <Setter Property="Padding" Value="24,0,24,0" />
-        <Setter Property="HorizontalAlignment" Value="Center" />
+    <Style
+        x:Key="RequiredButton"
+        BasedOn="{StaticResource ButtonStyle}"
+        TargetType="{x:Type ui:Button}">
         <Setter Property="Background" Value="{DynamicResource RequiredButtonBackground}" />
-        <Setter Property="CornerRadius" Value="8" />
         <Setter Property="MouseOverBackground" Value="{DynamicResource RequiredButtonMouseOverBackground}" />
         <Setter Property="PressedBackground" Value="{DynamicResource RequiredButtonPressedBackground}" />
         <Setter Property="Effect">
@@ -905,28 +890,18 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
-        <Setter Property="UseLayoutRounding" Value="True" />
+
     </Style>
-    <Style x:Key="RequiredButtonTextStyle" TargetType="TextBlock">
+    <Style
+        x:Key="RequiredButtonTextStyle"
+        BasedOn="{StaticResource ButtonTextStyle}"
+        TargetType="TextBlock">
         <Setter Property="Foreground" Value="{DynamicResource RequiredButtonText}" />
         <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
-        <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="FontSize" Value="16" />
-        <Setter Property="Margin" Value="5,0,5,0" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="HorizontalAlignment" Value="Center" />
-        <Setter Property="FontSize" Value="16" />
     </Style>
-    <Style x:Key="RequiredButtonIconStyle" TargetType="{x:Type ui:SymbolIcon}">
+    <Style x:Key="RequiredButtonIconStyle" BasedOn="{StaticResource ButtonIconStyle}" TargetType="{x:Type ui:SymbolIcon}">
         <Setter Property="Foreground" Value="{DynamicResource RequiredButtonText}" />
         <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
-        <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="FontSize" Value="16" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="HorizontalAlignment" Value="Center" />
-        <Setter Property="FontSize" Value="16" />
-        <Setter Property="Margin" Value="5,0,5,0" />
-        <Setter Property="Filled" Value="True" />
     </Style>
 
     <!--  Стиль текста описания  -->
@@ -1205,6 +1180,36 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <Style x:Key="StepCircle" TargetType="Border">
+        <Setter Property="Width" Value="32" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="CornerRadius" Value="16" />
+        <Setter Property="Background" Value="{DynamicResource StepCircleBackground}" />
+    </Style>
+
+    <Style x:Key="StepIndicator" TargetType="Border">
+        <Setter Property="Width" Value="30" />
+        <Setter Property="Height" Value="30" />
+        <Setter Property="CornerRadius" Value="15" />
+        <Setter Property="Background" Value="#404040" />
+        <Setter Property="BorderBrush" Value="#404040" />
+        <Setter Property="BorderThickness" Value="2" />
+    </Style>
+    <Style
+    x:Key="ActiveStepIndicator"
+    BasedOn="{StaticResource StepIndicator}"
+    TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource StepCircleBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource StepCircleBackground}" />
+    </Style>
+    <Style
+    x:Key="CompletedStepIndicator"
+    BasedOn="{StaticResource StepIndicator}"
+    TargetType="Border">
+        <Setter Property="Background" Value="#28a745" />
+        <Setter Property="BorderBrush" Value="#28a745" />
     </Style>
 
 </ResourceDictionary>
