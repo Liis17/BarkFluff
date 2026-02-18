@@ -121,8 +121,8 @@ class SelectServerActivity : AppCompatActivity() {
                         serverAdapter.submitList(testServers)
                     } else {
                         serverAdapter.submitList(servers)
+                        Log.d(TAG, "Загружено ${servers.size} серверов")
                     }
-                    Log.d(TAG, "Загружено ${servers.size} серверов")
                 } else {
                     showError(result.exceptionOrNull()?.message ?: "Не удалось загрузить список серверов")
                     Log.e(TAG, "Ошибка загрузки списка серверов", result.exceptionOrNull())
