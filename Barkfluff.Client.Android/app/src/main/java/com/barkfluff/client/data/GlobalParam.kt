@@ -141,6 +141,18 @@ class GlobalParam(private val context: Context) {
         get() = sharedPreferences.getString(KEY_EMAIL, "") ?: ""
         set(value) = sharedPreferences.edit().putString(KEY_EMAIL, value).apply()
 
+    var pictureId: String
+        get() = sharedPreferences.getString(KEY_PICTURE_ID, "") ?: ""
+        set(value) = sharedPreferences.edit().putString(KEY_PICTURE_ID, value).apply()
+
+    var pictureUrl: String
+        get() = sharedPreferences.getString(KEY_PICTURE_URL, "") ?: ""
+        set(value) = sharedPreferences.edit().putString(KEY_PICTURE_URL, value).apply()
+
+    var registrationDate: Long
+        get() = sharedPreferences.getLong(KEY_REGISTRATION_DATE, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_REGISTRATION_DATE, value).apply()
+
     companion object {
         private const val KEY_SOCKET_BEACON = "socket_beacon"
         private const val KEY_SOCKET_USERS = "socket_users"
@@ -168,6 +180,9 @@ class GlobalParam(private val context: Context) {
         private const val KEY_LAST_NAME = "last_name"
         private const val KEY_DESCRIPTION = "description"
         private const val KEY_EMAIL = "email"
+        private const val KEY_PICTURE_ID = "picture_id"
+        private const val KEY_PICTURE_URL = "picture_url"
+        private const val KEY_REGISTRATION_DATE = "registration_date"
 
         /**
          * Генерирует уникальный ID устройства
