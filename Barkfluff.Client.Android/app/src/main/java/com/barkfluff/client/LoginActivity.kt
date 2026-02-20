@@ -10,6 +10,7 @@ import android.view.View
 import android.widget.EditText
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.barkfluff.client.data.ClientColors
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityLoginBinding
 import com.barkfluff.client.grpc.GrpcManager
@@ -58,6 +59,11 @@ class LoginActivity : AppCompatActivity() {
             binding.otpBox1, binding.otpBox2, binding.otpBox3,
             binding.otpBox4, binding.otpBox5, binding.otpBox6
         )
+
+        // Загружаем внешний IP-адрес асинхронно
+        lifecycleScope.launch {
+            GlobalParam.loadIpAddress(globalParam.sharedPreferences)
+        }
 
         initIdentityClient()
         setupClickListeners()
