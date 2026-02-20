@@ -50,6 +50,11 @@ class SelectServerActivity : AppCompatActivity() {
         globalParam = GlobalParam(this)
         grpcManager = GrpcManager()
 
+        // Загружаем внешний IP-адрес асинхронно
+        lifecycleScope.launch {
+            GlobalParam.loadIpAddress(globalParam.sharedPreferences)
+        }
+
         setupRecyclerView()
         setupClickListeners()
         loadServerList()

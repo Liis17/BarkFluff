@@ -170,7 +170,7 @@ class GrpcManager {
                             headers.put(key("x-os-name"), toBase64(GlobalParam.getOsVersion()))
                             headers.put(key("x-app-name"), toBase64(GlobalParam.getAppName()))
                             headers.put(key("x-app-version"), toBase64(GlobalParam.getAppVersion(context)))
-                            headers.put(key("x-ip-address"), toBase64(globalParam.ipAddress.ifBlank { "0.0.0.0" }))
+                            headers.put(key("x-ip-address"), toBase64(globalParam.ipAddress))
                             super.start(responseListener, headers)
                         }
                     }
