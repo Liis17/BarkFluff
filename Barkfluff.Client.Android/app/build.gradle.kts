@@ -90,6 +90,9 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
+    // Encrypted storage for tokens
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
     // Required for gRPC Kotlin stub
     compileOnly("org.apache.tomcat:annotations-api:6.0.53")
 }
