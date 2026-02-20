@@ -176,7 +176,7 @@ class SelectServerActivity : AppCompatActivity() {
                 if (infoResult.isSuccess) {
                     val serverInfo = infoResult.getOrNull()
                     if (serverInfo != null) {
-                        // Сохраняем информацию о сервере
+                        // Сохраняем информацию о сервере в GlobalParam
                         globalParam.apply {
                             serverName = serverInfo.name
                             serverDescription = serverInfo.description
@@ -190,6 +190,12 @@ class SelectServerActivity : AppCompatActivity() {
                         }
 
                         Log.d(TAG, "Успешное подключение к серверу: ${serverInfo.name}")
+
+                        // Создаем Identity клиент для проверки доступности (без interceptor, так как токена еще нет)
+                        val identityResult = grpcManager.createIdentityClient(globalParam.socketIdentity)
+                        if (identityResult.isFailure) {
+                            Log.e(TAG, "Не удалось создать Identity клиент")
+                        }
 
                         // Переход на главный экран
                         openMainActivity()
