@@ -6,11 +6,24 @@
     android:background="?android:attr/colorBackground">
 
     <TextView
+        android:id="@+id/titleText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Главный экран"
+        android:layout_marginTop="32dp"
+        android:layout_marginStart="24dp"
+        android:text="Чаты"
         android:textColor="?attr/colorOnSurface"
-        android:textSize="24sp"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Список чатов скоро появится"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="16sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"

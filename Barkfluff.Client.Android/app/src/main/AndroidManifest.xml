@@ -52,7 +52,17 @@
             android:theme="@style/Theme.BarkfluffClientAndroid" />
 
         <activity
-            android:name=".MainActivity"
+            android:name=".LoginActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid" />
+
+        <activity
+            android:name=".RegisterActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid" />
+
+        <activity
+            android:name=".ChatsActivity"
             android:exported="false"
             android:theme="@style/Theme.BarkfluffClientAndroid" />
 

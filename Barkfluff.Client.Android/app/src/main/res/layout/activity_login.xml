@@ -1,0 +1,342 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?android:attr/colorBackground">
+
+    <ScrollView
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        app:layout_constraintBottom_toTopOf="@id/footerText"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:padding="24dp">
+
+            <!-- Logo -->
+            <ImageView
+                android:id="@+id/logoImage"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:layout_marginTop="32dp"
+                android:layout_marginBottom="16dp"
+                android:contentDescription="@string/app_name"
+                android:src="@drawable/ic_launcher_foreground" />
+
+            <!-- App name -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="24dp"
+                android:text="@string/app_name"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+
+            <!-- Title -->
+            <TextView
+                android:id="@+id/titleText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Добро пожаловать"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+
+            <!-- Subtitle -->
+            <TextView
+                android:id="@+id/subtitleText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="24dp"
+                android:text="Войдите в свой аккаунт"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="16sp" />
+
+            <!-- Login card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/loginCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardBackgroundColor="?attr/colorSurfaceContainer"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeColor="?attr/colorOutline"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <!-- Login fields group -->
+                    <LinearLayout
+                        android:id="@+id/loginFieldsGroup"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <!-- Username/Email -->
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/usernameInputLayout"
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="4dp"
+                            android:hint="Имя пользователя или email"
+                            app:errorEnabled="true">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/usernameEditText"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="textEmailAddress"
+                                android:maxLength="50"
+                                android:maxLines="1" />
+
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <!-- Password -->
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/passwordInputLayout"
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="4dp"
+                            android:hint="Пароль"
+                            app:endIconMode="password_toggle"
+                            app:errorEnabled="true">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/passwordEditText"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="textPassword"
+                                android:maxLines="1" />
+
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <!-- Forgot password -->
+                        <TextView
+                            android:id="@+id/forgotPasswordLink"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="end"
+                            android:layout_marginBottom="8dp"
+                            android:padding="4dp"
+                            android:text="Забыли пароль?"
+                            android:textColor="?attr/colorPrimary"
+                            android:textSize="14sp" />
+
+                    </LinearLayout>
+
+                    <!-- OTP group (initially hidden) -->
+                    <LinearLayout
+                        android:id="@+id/otpGroup"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="8dp"
+                            android:text="Введите код двухфакторной аутентификации"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="16dp"
+                            android:text="Код из приложения-аутентификатора или email"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:textSize="14sp" />
+
+                        <!-- 6 OTP digit boxes -->
+                        <LinearLayout
+                            android:id="@+id/otpBoxesLayout"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="16dp"
+                            android:gravity="center"
+                            android:orientation="horizontal">
+
+                            <EditText
+                                android:id="@+id/otpBox1"
+                                android:layout_width="48dp"
+                                android:layout_height="56dp"
+                                android:layout_marginHorizontal="4dp"
+                                android:background="@drawable/otp_box_background"
+                                android:gravity="center"
+                                android:inputType="number"
+                                android:maxLength="1"
+                                android:textColor="?attr/colorOnSurface"
+                                android:textSize="24sp"
+                                android:textStyle="bold" />
+
+                            <EditText
+                                android:id="@+id/otpBox2"
+                                android:layout_width="48dp"
+                                android:layout_height="56dp"
+                                android:layout_marginHorizontal="4dp"
+                                android:background="@drawable/otp_box_background"
+                                android:gravity="center"
+                                android:inputType="number"
+                                android:maxLength="1"
+                                android:textColor="?attr/colorOnSurface"
+                                android:textSize="24sp"
+                                android:textStyle="bold" />
+
+                            <EditText
+                                android:id="@+id/otpBox3"
+                                android:layout_width="48dp"
+                                android:layout_height="56dp"
+                                android:layout_marginHorizontal="4dp"
+                                android:background="@drawable/otp_box_background"
+                                android:gravity="center"
+                                android:inputType="number"
+                                android:maxLength="1"
+                                android:textColor="?attr/colorOnSurface"
+                                android:textSize="24sp"
+                                android:textStyle="bold" />
+
+                            <EditText
+                                android:id="@+id/otpBox4"
+                                android:layout_width="48dp"
+                                android:layout_height="56dp"
+                                android:layout_marginHorizontal="4dp"
+                                android:background="@drawable/otp_box_background"
+                                android:gravity="center"
+                                android:inputType="number"
+                                android:maxLength="1"
+                                android:textColor="?attr/colorOnSurface"
+                                android:textSize="24sp"
+                                android:textStyle="bold" />
+
+                            <EditText
+                                android:id="@+id/otpBox5"
+                                android:layout_width="48dp"
+                                android:layout_height="56dp"
+                                android:layout_marginHorizontal="4dp"
+                                android:background="@drawable/otp_box_background"
+                                android:gravity="center"
+                                android:inputType="number"
+                                android:maxLength="1"
+                                android:textColor="?attr/colorOnSurface"
+                                android:textSize="24sp"
+                                android:textStyle="bold" />
+
+                            <EditText
+                                android:id="@+id/otpBox6"
+                                android:layout_width="48dp"
+                                android:layout_height="56dp"
+                                android:layout_marginHorizontal="4dp"
+                                android:background="@drawable/otp_box_background"
+                                android:gravity="center"
+                                android:inputType="number"
+                                android:maxLength="1"
+                                android:textColor="?attr/colorOnSurface"
+                                android:textSize="24sp"
+                                android:textStyle="bold" />
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                    <!-- Error text -->
+                    <TextView
+                        android:id="@+id/errorText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:textColor="?attr/colorError"
+                        android:textSize="14sp"
+                        android:visibility="gone" />
+
+                    <!-- Login button with loading overlay -->
+                    <FrameLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/loginButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Войти"
+                            android:textAllCaps="false"
+                            android:textSize="16sp" />
+
+                        <ProgressBar
+                            android:id="@+id/loginProgressBar"
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:layout_gravity="center"
+                            android:indeterminateTint="?attr/colorOnPrimary"
+                            android:visibility="gone" />
+
+                    </FrameLayout>
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Change server link -->
+            <TextView
+                android:id="@+id/changeServerLink"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:padding="8dp"
+                android:text="Изменить подключение к серверу"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="14sp" />
+
+            <!-- Separator -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginVertical="16dp"
+                android:background="?attr/colorOutline" />
+
+            <!-- Register button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/registerButton"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Создать новый аккаунт"
+                android:textAllCaps="false"
+                android:textSize="16sp" />
+
+        </LinearLayout>
+
+    </ScrollView>
+
+    <!-- Footer -->
+    <TextView
+        android:id="@+id/footerText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:padding="12dp"
+        android:text="2025 BarkFluff. Никакие права не защищены."
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="12sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
