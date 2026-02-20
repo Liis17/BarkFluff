@@ -9,10 +9,13 @@ import barkfluff.identity.IdentityApiGrpcKt
 import barkfluff.identity.IdentityApiOuterClass
 import barkfluff.navigator.NavigatorApiGrpcKt
 import barkfluff.navigator.NavigatorApiOuterClass
+import barkfluff.users.UsersApiGrpcKt
+import barkfluff.users.UsersApiOuterClass
 import com.barkfluff.client.data.ClientColors
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.ServerDataElement
 import io.grpc.*
+import io.grpc.ManagedChannel
 import io.grpc.okhttp.OkHttpChannelBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -41,11 +44,13 @@ class GrpcManager {
     }
 
     // gRPC каналы
-    var navigatorChannel: ManagedChannel? = null
+    var navigatorChannel: Channel? = null
         private set
-    var beaconChannel: ManagedChannel? = null
+    var beaconChannel: Channel? = null
         private set
-    var identityChannel: ManagedChannel? = null
+    var identityChannel: Channel? = null
+        private set
+    var usersChannel: Channel? = null
         private set
 
     // gRPC клиенты
@@ -54,6 +59,8 @@ class GrpcManager {
     var beaconClient: BeaconApiGrpcKt.BeaconApiCoroutineStub? = null
         private set
     var identityClient: IdentityApiGrpcKt.IdentityApiCoroutineStub? = null
+        private set
+    var usersClient: UsersApiGrpcKt.UsersApiCoroutineStub? = null
         private set
 
     /**
@@ -67,8 +74,9 @@ class GrpcManager {
 
         return try {
             val address = ensureHttpPrefix(beaconAddress)
-            beaconChannel = createChannel(address)
-            beaconClient = BeaconApiGrpcKt.BeaconApiCoroutineStub(beaconChannel!!)
+            val channel = createChannel(address)
+            beaconChannel = channel
+            beaconClient = BeaconApiGrpcKt.BeaconApiCoroutineStub(channel)
             Log.d(TAG, "Beacon клиент создан: $address")
             Result.success(Unit)
         } catch (e: Exception) {
@@ -88,8 +96,9 @@ class GrpcManager {
 
         return try {
             val address = ensureHttpPrefix(navigatorUrl)
-            navigatorChannel = createChannel(address)
-            navigatorClient = NavigatorApiGrpcKt.NavigatorApiCoroutineStub(navigatorChannel!!)
+            val channel = createChannel(address)
+            navigatorChannel = channel
+            navigatorClient = NavigatorApiGrpcKt.NavigatorApiCoroutineStub(channel)
             Log.d(TAG, "Navigator клиент создан: $address")
             Result.success(Unit)
         } catch (e: Exception) {
@@ -101,20 +110,58 @@ class GrpcManager {
     /**
      * Создает Identity клиент для авторизации
      */
-    fun createIdentityClient(identityAddress: String): Result<Unit> {
+    fun createIdentityClient(identityAddress: String, context: Context? = null): Result<Unit> {
         if (identityAddress.isBlank()) {
             return Result.failure(IllegalArgumentException("Адрес Identity сервера не указан"))
         }
 
         return try {
             val address = ensureHttpPrefix(identityAddress)
-            identityChannel = createChannel(address)
-            identityClient = IdentityApiGrpcKt.IdentityApiCoroutineStub(identityChannel!!)
+            val channel = createChannel(address)
+            
+            // Добавляем auth interceptor если передан контекст
+            val interceptedChannel = if (context != null) {
+                ClientInterceptors.intercept(channel, AuthInterceptor(context, this))
+            } else {
+                channel
+            }
+            
+            identityChannel = interceptedChannel
+            identityClient = IdentityApiGrpcKt.IdentityApiCoroutineStub(interceptedChannel)
             Log.d(TAG, "Identity клиент создан: $address")
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка создания Identity клиента", e)
             Result.failure(Exception("Ошибка подключения к серверу авторизации: ${e.message}"))
+        }
+    }
+
+    /**
+     * Создает Users клиент для работы с пользователями
+     */
+    fun createUsersClient(usersAddress: String, context: Context? = null): Result<Unit> {
+        if (usersAddress.isBlank()) {
+            return Result.failure(IllegalArgumentException("Адрес Users сервера не указан"))
+        }
+
+        return try {
+            val address = ensureHttpPrefix(usersAddress)
+            val channel = createChannel(address)
+            
+            // Добавляем auth interceptor если передан контекст
+            val interceptedChannel = if (context != null) {
+                ClientInterceptors.intercept(channel, AuthInterceptor(context, this))
+            } else {
+                channel
+            }
+            
+            usersChannel = interceptedChannel
+            usersClient = UsersApiGrpcKt.UsersApiCoroutineStub(interceptedChannel)
+            Log.d(TAG, "Users клиент создан: $address")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка создания Users клиента", e)
+            Result.failure(Exception("Ошибка подключения к серверу пользователей: ${e.message}"))
         }
     }
 
@@ -218,6 +265,72 @@ class GrpcManager {
             ERROR_NOT_VALID_OTP_CODE -> AuthResult.Error("Неверный код 2FA")
             ERROR_INVALID_LOGIN_OR_PASSWORD -> AuthResult.Error("Неверный логин или пароль")
             else -> AuthResult.Error(e.status.description ?: "Ошибка авторизации")
+        }
+    }
+
+    /**
+     * Обновляет access токен используя refresh токен
+     * Аналог TokenUpdate в WebApiTokenManager
+     */
+    suspend fun refreshAccessToken(refreshToken: String, currentRefreshTokenExpiration: Long = 0L): Result<RefreshTokenResult> = withContext(Dispatchers.IO) {
+        try {
+            if (identityClient == null) {
+                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
+            }
+
+            val request = IdentityApiOuterClass.CreateTokenRequest.newBuilder()
+                .setRefreshToken(refreshToken)
+                .build()
+
+            val response = identityClient!!.createToken(request)
+
+            // CreateTokenResponse возвращает только accessToken, refresh token не обновляется
+            Result.success(
+                RefreshTokenResult(
+                    accessToken = response.accessToken.value,
+                    accessTokenExpiration = response.accessToken.expirationDate.seconds * 1000,
+                    refreshToken = refreshToken, // Используем тот же refresh token
+                    refreshTokenExpiration = currentRefreshTokenExpiration // Используем существующее время истечения
+                )
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка обновления токена", e)
+            Result.failure(Exception("Ошибка обновления токена: ${e.message}"))
+        }
+    }
+
+    /**
+     * Получает данные текущего пользователя
+     * Аналог GetUserData в WebApiUserManager
+     */
+    suspend fun getCurrentUserData(): Result<UserData> = withContext(Dispatchers.IO) {
+        try {
+            if (usersClient == null) {
+                return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            }
+
+            val request = UsersApiOuterClass.GetUserRequest.newBuilder()
+                .setUserId(0) // 0 означает текущего пользователя
+                .build()
+
+            val response = usersClient!!.getUser(request)
+            val user = response.user
+
+            Result.success(
+                UserData(
+                    userId = user.id,
+                    username = user.username,
+                    firstName = user.firstName,
+                    lastName = user.lastName,
+                    bio = user.bio,
+                    profilePictureUrl = user.profilePicture,
+                    profilePicturePreviewUrl = user.profilePicturePreview,
+                    registrationDate = user.registrationDate.seconds * 1000
+                )
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка получения данных пользователя", e)
+            Result.failure(Exception("Ошибка получения данных пользователя: ${e.message}"))
         }
     }
 
@@ -344,10 +457,45 @@ class GrpcManager {
      * Аналог Dispose в WPF
      */
     fun shutdown() {
-        navigatorChannel?.shutdown()
-        beaconChannel?.shutdown()
-        identityChannel?.shutdown()
+        navigatorChannel?.let {
+            if (it is ManagedChannel) {
+                it.shutdown()
+            }
+        }
+        beaconChannel?.let {
+            if (it is ManagedChannel) {
+                it.shutdown()
+            }
+        }
+        identityChannel?.let {
+            if (it is ManagedChannel) {
+                it.shutdown()
+            }
+        }
+        usersChannel?.let {
+            if (it is ManagedChannel) {
+                it.shutdown()
+            }
+        }
     }
+
+    data class RefreshTokenResult(
+        val accessToken: String,
+        val accessTokenExpiration: Long,
+        val refreshToken: String,
+        val refreshTokenExpiration: Long
+    )
+
+    data class UserData(
+        val userId: Long,
+        val username: String,
+        val firstName: String,
+        val lastName: String,
+        val bio: String,
+        val profilePictureUrl: String,
+        val profilePicturePreviewUrl: String,
+        val registrationDate: Long
+    )
 
     data class ServerInfo(
         val name: String,

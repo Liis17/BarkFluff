@@ -77,6 +77,7 @@ class LoginActivity : AppCompatActivity() {
             return
         }
 
+        // Для авторизации не используем interceptor, так как токена еще нет
         val result = grpcManager.createIdentityClient(identityAddress)
         if (result.isFailure) {
             showError("Не удалось подключиться к серверу авторизации")
@@ -210,12 +211,39 @@ class LoginActivity : AppCompatActivity() {
 
         when (result) {
             is GrpcManager.AuthResult.Success -> {
-                globalParam.accessToken = result.accessToken
-                globalParam.refreshToken = result.refreshToken
-                globalParam.accessTokenExpiration = result.accessTokenExpiration
-                globalParam.refreshTokenExpiration = result.refreshTokenExpiration
+                lifecycleScope.launch {
+                    // Сохраняем токены
+                    globalParam.accessToken = result.accessToken
+                    globalParam.refreshToken = result.refreshToken
+                    globalParam.accessTokenExpiration = result.accessTokenExpiration
+                    globalParam.refreshTokenExpiration = result.refreshTokenExpiration
 
-                navigateToChats()
+                    // Создаем Users клиент для загрузки данных пользователя
+                    val usersAddress = globalParam.socketUsers
+                    if (usersAddress.isNotBlank()) {
+                        val usersResult = grpcManager.createUsersClient(usersAddress, this@LoginActivity)
+                        if (usersResult.isSuccess) {
+                            // Загружаем данные пользователя
+                            val userDataResult = grpcManager.getCurrentUserData()
+                            if (userDataResult.isSuccess) {
+                                val userData = userDataResult.getOrNull()
+                                if (userData != null) {
+                                    globalParam.userId = userData.userId
+                                    globalParam.userName = userData.username
+                                    globalParam.firstName = userData.firstName
+                                    globalParam.lastName = userData.lastName
+                                    globalParam.description = userData.bio
+                                    globalParam.pictureUrl = userData.profilePictureUrl
+                                    globalParam.pictureId = userData.profilePictureUrl
+                                    globalParam.registrationDate = userData.registrationDate
+                                }
+                            }
+                        }
+                    }
+
+                    // Переходим в чаты
+                    navigateToChats()
+                }
             }
             is GrpcManager.AuthResult.OtpRequired -> {
                 showOtpMode()
