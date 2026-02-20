@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
+import com.barkfluff.client.utils.NetworkUtils
 import java.security.SecureRandom
 import java.util.UUID
 
@@ -13,7 +14,7 @@ import java.util.UUID
  */
 class GlobalParam(private val context: Context) {
 
-    private val sharedPreferences: SharedPreferences by lazy {
+    val sharedPreferences: SharedPreferences by lazy {
         context.getSharedPreferences("barkfluff_prefs", Context.MODE_PRIVATE)
     }
 
@@ -209,6 +210,22 @@ class GlobalParam(private val context: Context) {
             } catch (e: Exception) {
                 "1.0.0"
             }
+        }
+
+        /**
+         * Загружает внешний IP-адрес и сохраняет в хранилище
+         * Вызывается при старте приложения для обновления IP
+         */
+        suspend fun loadIpAddress(sharedPreferences: SharedPreferences) {
+            val currentIp = sharedPreferences.getString(KEY_IP_ADDRESS, "") ?: ""
+            if (currentIp.isBlank()) {
+                // Если IP еще не сохранен, загружаем его
+                val externalIp = NetworkUtils.getExternalIp()
+                if (externalIp.isNotBlank()) {
+                    sharedPreferences.edit().putString(KEY_IP_ADDRESS, externalIp).apply()
+                }
+            }
+            // Если IP уже сохранен, используем его (не обновляем лишний раз)
         }
     }
 }
