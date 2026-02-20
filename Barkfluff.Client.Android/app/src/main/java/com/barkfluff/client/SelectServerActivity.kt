@@ -13,6 +13,7 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.ServerDataElement
 import com.barkfluff.client.databinding.ActivitySelectServerBinding
 import com.barkfluff.client.grpc.GrpcManager
+import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
 import java.util.regex.Pattern
@@ -39,6 +40,7 @@ class SelectServerActivity : AppCompatActivity() {
     private var isConnecting = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        DynamicColors.applyToActivityIfAvailable(this)
         super.onCreate(savedInstanceState)
 
         binding = ActivitySelectServerBinding.inflate(layoutInflater)
