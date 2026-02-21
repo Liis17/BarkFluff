@@ -221,9 +221,11 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
         private void RemoveSettings(object sender, RoutedEventArgs e)
         {
             string filePath = Path.Combine(Path.GetDirectoryName(AppContext.BaseDirectory), "datas", "GlobalParam.json");
+            string dir = Path.Combine(Path.GetDirectoryName(AppContext.BaseDirectory), "datas");
             if (File.Exists(filePath))
             {
-                File.Delete("GlobalParam.json");
+                File.Delete(filePath);
+                Directory.Delete(dir, true);
                 Application.Current.Shutdown();
             }
         }
