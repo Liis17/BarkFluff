@@ -364,3 +364,4 @@ FodyWeavers.xsd
 
 # не игнорировать дебажные контролы
 !/BarkFluff.Client.WPF/UserControls/Debug/
+/nul
