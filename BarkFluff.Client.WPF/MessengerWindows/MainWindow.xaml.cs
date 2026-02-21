@@ -7,9 +7,7 @@ using BarkFluff.WebApi.Core.MessengerData;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Media;
 
-using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
 
 using Erida = BarkFluff.Client.WPF.Services.Erida.MessageType;
@@ -41,8 +39,8 @@ namespace BarkFluff.Client.WPF
         {
             App.WindowStateService.IsApplicationActive.PropertyChanged += OnApplicationActiveChanged;
 #if DEBUG
-            var themeDebug = new ThemeDebugWindow();
-            themeDebug.Show();
+            //var themeDebug = new ThemeDebugWindow();
+            //themeDebug.Show();
 #endif
         }
 
@@ -58,17 +56,8 @@ namespace BarkFluff.Client.WPF
 #if DEBUG
             DebugBootstap();
 #endif
+        }
 
-            ThemeLoader();
-        }
-        private void ThemeLoader()
-        {
-            var systemTheme = ApplicationThemeManager.GetSystemTheme();
-            var appTheme = systemTheme == SystemTheme.Dark
-                ? ApplicationTheme.Dark
-                : ApplicationTheme.Light;
-            App.ApplyTheme(appTheme);
-        }
 
 #if DEBUG
         private void DebugBootstap()
