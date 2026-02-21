@@ -356,4 +356,34 @@ public class UsersStorage
 
         return await query.OrderBy(b => b.Name).ToListAsync();
     }
+
+    public async Task<Badge?> UpdateBadgeAsync(int id, string name, string description, string imageUrl, bool isActive)
+    {
+        var badge = await _usersContext.Badges.FindAsync(id);
+
+        if (badge is null)
+            return null;
+
+        badge.Name = name;
+        badge.Description = description;
+        badge.ImageUrl = imageUrl;
+        badge.IsActive = isActive;
+
+        await _usersContext.SaveChangesAsync();
+
+        return badge;
+    }
+
+    public async Task<bool> DeleteBadgeAsync(int id)
+    {
+        var badge = await _usersContext.Badges.FindAsync(id);
+
+        if (badge is null)
+            return false;
+
+        _usersContext.Badges.Remove(badge);
+        await _usersContext.SaveChangesAsync();
+
+        return true;
+    }
 }

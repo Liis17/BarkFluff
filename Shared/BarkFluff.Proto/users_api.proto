@@ -91,6 +91,12 @@ service UsersServerApi {
   // Получить все баджи
   rpc GetAllBadges(GetAllBadgesRequest) returns(GetAllBadgesResponse);
 
+  // Обновить бадж
+  rpc UpdateBadge(UpdateBadgeRequest) returns(UpdateBadgeResponse);
+
+  // Удалить бадж
+  rpc DeleteBadge(DeleteBadgeRequest) returns(DeleteBadgeResponse);
+
   // Экспорт всех данных пользователя (для GDPR и других целей)
   rpc ExportData(ExportDataRequest) returns(ExportDataResponse);
 
@@ -330,6 +336,30 @@ message GetAllBadgesRequest {
 
 message GetAllBadgesResponse {
   repeated Badge badges = 1; // список всех баджей
+}
+
+// Запросы и ответы для обновления баджа
+
+message UpdateBadgeRequest {
+  int32 id = 1; // идентификатор баджа
+  string name = 2; // новое название баджа
+  string description = 3; // новое описание баджа
+  string image_url = 4; // новая ссылка на изображение баджа
+  bool is_active = 5; // активен ли бадж
+}
+
+message UpdateBadgeResponse {
+  Badge badge = 1; // обновлённый бадж
+}
+
+// Запросы и ответы для удаления баджа
+
+message DeleteBadgeRequest {
+  int32 id = 1; // идентификатор баджа
+}
+
+message DeleteBadgeResponse {
+  bool success = 1; // результат удаления
 }
 
 // Экспорт данных пользователя

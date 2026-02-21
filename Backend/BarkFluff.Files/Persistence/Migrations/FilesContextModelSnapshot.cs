@@ -18,10 +18,37 @@ namespace BarkFluff.Files.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.4")
+                .HasAnnotation("ProductVersion", "9.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("BarkFluff.Files.Domain.BadgeImage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Etag")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Filename")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<long>("Size")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("UploadedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("BadgeImages");
+                });
 
             modelBuilder.Entity("BarkFluff.Files.Domain.FileHash", b =>
                 {
@@ -87,7 +114,7 @@ namespace BarkFluff.Files.Persistence.Migrations
                     b.Property<DateTime?>("UploadedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<List<long>>("Uploaders")
+                    b.PrimitiveCollection<List<long>>("Uploaders")
                         .IsRequired()
                         .HasColumnType("bigint[]");
 

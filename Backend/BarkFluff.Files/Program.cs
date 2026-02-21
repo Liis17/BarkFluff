@@ -47,6 +47,7 @@ public class Program
         builder.Services.AddScoped<UploadedFilesStorage>();
         builder.Services.AddScoped<TempFilesStorage>();
         builder.Services.AddScoped<FileHashesStorage>();
+        builder.Services.AddScoped<BadgeImagesStorage>();
         builder.Services.AddScoped<ImageCompressor>();
 
         builder.Services.AddMinioS3(builder.Configuration);
