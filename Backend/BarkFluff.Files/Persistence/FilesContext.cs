@@ -9,10 +9,12 @@ public class FilesContext : DbContext
     public FilesContext(DbContextOptions<FilesContext> options) : base(options) { }
     
     public DbSet<UploadFile> UploadedFiles { get; set; }
-    
+
     public DbSet<TempFile> TempFiles { get; set; }
-    
+
     public DbSet<FileHash> FileHashes { get; set; }
+
+    public DbSet<BadgeImage> BadgeImages { get; set; }
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

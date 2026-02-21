@@ -4,8 +4,6 @@ using BarkFluff.Files.Extensions;
 using BarkFluff.Files.Infrastructure;
 using BarkFluff.Files.Persistence;
 using MediatR;
-using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Files.Features.DownloadFile;
 
@@ -15,16 +13,19 @@ public class DownloadFileCommandHandler : IRequestHandler<DownloadFileCommand, D
     private readonly S3Uploader _s3Uploader;
     private readonly S3BucketRegistry _bucketRegistry;
     private readonly TempFilesStorage _tempFilesStorage;
+    private readonly BadgeImagesStorage _badgeImagesStorage;
     private readonly ILogger<DownloadFileCommandHandler> _logger;
 
     public DownloadFileCommandHandler(UploadedFilesStorage filesStorage, S3Uploader s3Uploader,
         S3BucketRegistry bucketRegistry, TempFilesStorage tempFilesStorage,
+        BadgeImagesStorage badgeImagesStorage,
         ILogger<DownloadFileCommandHandler> logger)
     {
         _filesStorage = filesStorage;
         _s3Uploader = s3Uploader;
         _bucketRegistry = bucketRegistry;
         _tempFilesStorage = tempFilesStorage;
+        _badgeImagesStorage = badgeImagesStorage;
         _logger = logger;
     }
 
@@ -59,6 +60,38 @@ public class DownloadFileCommandHandler : IRequestHandler<DownloadFileCommand, D
                     tempFile.OriginalFileId
                 );
                 file = await _filesStorage.GetFile(tempFile.OriginalFileId);
+            }
+        }
+
+        // Картинка бейджа (постоянная ссылка из отдельной таблицы)
+        if (file is null)
+        {
+            _logger.LogDebug("Поиск картинки бейджа для {FileId}", request.FileId);
+            var badgeImage = await _badgeImagesStorage.GetByIdAsync(request.FileId);
+
+            if (badgeImage != null)
+            {
+                if (string.IsNullOrEmpty(badgeImage.Etag))
+                {
+                    _logger.LogWarning("Картинка бейджа {FileId} ещё не была загружена", request.FileId);
+                    throw new FileNotUploadedException("Файл ещё не был загружен");
+                }
+
+                var badgeBucketName = _bucketRegistry.GetBadgeImageBucketName();
+                var badgeExtension = Path.GetExtension(badgeImage.Filename).ToLowerInvariant();
+
+                _logger.LogDebug("Скачивание картинки бейджа {FileId} из бакета {BucketName}", request.FileId, badgeBucketName);
+
+                var badgeStream = await _s3Uploader.DownloadAsync(badgeBucketName, $"{badgeImage.Id}");
+
+                _logger.LogInformation("Картинка бейджа {FileId} ({FileName}) успешно скачана", badgeImage.Id, badgeImage.Filename);
+
+                return new DownloadFileResult
+                {
+                    FileStream = badgeStream,
+                    FileName = $"{badgeImage.Id}{badgeExtension}",
+                    ContentType = "image/png"
+                };
             }
         }
 

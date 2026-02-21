@@ -4,8 +4,10 @@ using BarkFluff.Shared.Identity;
 using BarkFluff.Users.Features.AddDraftUser;
 using BarkFluff.Users.Features.Badges.AssignUserBadge;
 using BarkFluff.Users.Features.Badges.Commands;
+using BarkFluff.Users.Features.Badges.DeleteBadge;
 using BarkFluff.Users.Features.Badges.Queries;
 using BarkFluff.Users.Features.Badges.RemoveUserBadge;
+using BarkFluff.Users.Features.Badges.UpdateBadge;
 using BarkFluff.Users.Features.Badges.UpdateUserBadgesPriority;
 using BarkFluff.Users.Features.CheckExistEmail;
 using BarkFluff.Users.Features.CheckExistUsername;
@@ -181,6 +183,30 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
         };
 
         return _mediator.Send(query);
+    }
+
+    public override Task<UpdateBadgeResponse> UpdateBadge(UpdateBadgeRequest request, ServerCallContext context)
+    {
+        var command = new UpdateBadgeCommand
+        {
+            Id = request.Id,
+            Name = request.Name,
+            Description = request.Description,
+            ImageUrl = request.ImageUrl,
+            IsActive = request.IsActive
+        };
+
+        return _mediator.Send(command);
+    }
+
+    public override Task<DeleteBadgeResponse> DeleteBadge(DeleteBadgeRequest request, ServerCallContext context)
+    {
+        var command = new DeleteBadgeCommand
+        {
+            Id = request.Id
+        };
+
+        return _mediator.Send(command);
     }
 
     public override Task<ExportDataResponse> ExportData(ExportDataRequest request, ServerCallContext context)
