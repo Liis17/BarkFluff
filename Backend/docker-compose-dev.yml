@@ -137,6 +137,7 @@ services:
       Seq__ServerUrl: "http://seq:80"
       Seq__ApiKey: "${SEQ_API_KEY:-}"
     volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
       - admin_panel_data:/app/db
     networks:
       - barkfluff-network
