@@ -11,6 +11,8 @@ import barkfluff.navigator.NavigatorApiGrpcKt
 import barkfluff.navigator.NavigatorApiOuterClass
 import barkfluff.users.UsersApiGrpcKt
 import barkfluff.users.UsersApiOuterClass
+import barkfluff.files.FilesApiGrpcKt
+import barkfluff.files.FilesApiOuterClass
 import com.barkfluff.client.data.ClientColors
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.ServerDataElement
@@ -52,6 +54,8 @@ class GrpcManager {
         private set
     var usersChannel: Channel? = null
         private set
+    var filesChannel: Channel? = null
+        private set
 
     // gRPC клиенты
     var navigatorClient: NavigatorApiGrpcKt.NavigatorApiCoroutineStub? = null
@@ -61,6 +65,8 @@ class GrpcManager {
     var identityClient: IdentityApiGrpcKt.IdentityApiCoroutineStub? = null
         private set
     var usersClient: UsersApiGrpcKt.UsersApiCoroutineStub? = null
+        private set
+    var filesClient: FilesApiGrpcKt.FilesApiCoroutineStub? = null
         private set
 
     /**
@@ -477,6 +483,280 @@ class GrpcManager {
                 it.shutdown()
             }
         }
+        filesChannel?.let {
+            if (it is ManagedChannel) {
+                it.shutdown()
+            }
+        }
+    }
+
+    /**
+     * Создает Files клиент для работы с файлами
+     */
+    fun createFilesClient(filesAddress: String, context: Context? = null): Result<Unit> {
+        if (filesAddress.isBlank()) {
+            return Result.failure(IllegalArgumentException("Адрес Files сервера не указан"))
+        }
+
+        return try {
+            val address = ensureHttpPrefix(filesAddress)
+            val channel = createChannel(address)
+            
+            val interceptedChannel = if (context != null) {
+                ClientInterceptors.intercept(channel, AuthInterceptor(context, this))
+            } else {
+                channel
+            }
+            
+            filesChannel = interceptedChannel
+            filesClient = FilesApiGrpcKt.FilesApiCoroutineStub(interceptedChannel)
+            Log.d(TAG, "Files клиент создан: $address")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка создания Files клиента", e)
+            Result.failure(Exception("Ошибка подключения к серверу файлов: ${e.message}"))
+        }
+    }
+
+    /**
+     * Проверяет существует ли email
+     * Аналог CheckEmail в WebApiUserManager
+     */
+    suspend fun checkEmail(email: String): Result<Boolean> = withContext(Dispatchers.IO) {
+        try {
+            if (usersClient == null) {
+                return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            }
+
+            val request = UsersApiOuterClass.CheckExistEmailRequest.newBuilder()
+                .setEmail(email.lowercase())
+                .build()
+
+            val response = usersClient!!.checkExistEmail(request)
+            Result.success(response.exist)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка проверки email", e)
+            Result.failure(Exception("Ошибка проверки email: ${e.message}"))
+        }
+    }
+
+    /**
+     * Проверяет существует ли username
+     * Аналог CheckUsername в WebApiUserManager
+     */
+    suspend fun checkUsername(username: String): Result<Boolean> = withContext(Dispatchers.IO) {
+        try {
+            if (usersClient == null) {
+                return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            }
+
+            val request = UsersApiOuterClass.CheckExistUsernameRequest.newBuilder()
+                .setUsername(username.lowercase())
+                .build()
+
+            val response = usersClient!!.checkExistUsername(request)
+            Result.success(response.exist)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка проверки username", e)
+            Result.failure(Exception("Ошибка проверки username: ${e.message}"))
+        }
+    }
+
+    /**
+     * Создает аккаунт (первый этап регистрации)
+     * Аналог CreateAccount в WebApiRegistrationManager
+     */
+    suspend fun createAccount(firstName: String, lastName: String, email: String, login: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            if (identityClient == null) {
+                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
+            }
+
+            val request = IdentityApiOuterClass.CreateAccountRequest.newBuilder()
+                .setFirstName(firstName)
+                .setLastName(lastName)
+                .setUsername(login.lowercase())
+                .setEmail(email.lowercase())
+                .build()
+
+            val response = identityClient!!.createAccount(request)
+            Result.success(response.codeId)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка создания аккаунта", e)
+            Result.failure(Exception("Ошибка создания аккаунта: ${e.message}"))
+        }
+    }
+
+    /**
+     * Подтверждает аккаунт кодом с почты
+     * Аналог ConfirmAccount в WebApiRegistrationManager
+     */
+    suspend fun confirmAccount(codeId: String, verificationCode: String): Result<ConfirmAccountResult> = withContext(Dispatchers.IO) {
+        try {
+            if (identityClient == null) {
+                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
+            }
+
+            val request = IdentityApiOuterClass.ConfirmAccountRequest.newBuilder()
+                .setCodeId(codeId)
+                .setCodeValue(verificationCode)
+                .build()
+
+            val response = identityClient!!.confirmAccount(request)
+            
+            Result.success(
+                ConfirmAccountResult(
+                    refreshToken = response.refreshToken.value,
+                    refreshTokenExpiration = response.refreshToken.expirationDate.seconds * 1000
+                )
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка подтверждения аккаунта", e)
+            Result.failure(Exception("Ошибка подтверждения аккаунта: ${e.message}"))
+        }
+    }
+
+    /**
+     * Устанавливает аватар пользователя из file_id
+     * Аналог SetProfilePicture в WebApiUserManager
+     */
+    suspend fun setProfilePicture(fileId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (usersClient == null) {
+                return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            }
+
+            val request = UsersApiOuterClass.SetProfilePictureRequest.newBuilder()
+                .setFileId(fileId)
+                .build()
+
+            usersClient!!.setProfilePicture(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка установки аватара", e)
+            Result.failure(Exception("Ошибка установки аватара: ${e.message}"))
+        }
+    }
+
+    /**
+     * Получает URL для загрузки файла
+     */
+    suspend fun getUploadUrl(fileType: FilesApiOuterClass.UploadFileType): Result<UploadUrlResult> = withContext(Dispatchers.IO) {
+        try {
+            if (filesClient == null) {
+                return@withContext Result.failure(IllegalStateException("Files клиент не создан"))
+            }
+
+            val request = FilesApiOuterClass.GetUploadUrlRequest.newBuilder()
+                .setFileType(fileType)
+                .build()
+
+            val response = filesClient!!.getUploadUrl(request)
+            
+            Result.success(
+                UploadUrlResult(
+                    url = response.url,
+                    fileId = response.fileId
+                )
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка получения URL загрузки", e)
+            Result.failure(Exception("Ошибка получения URL загрузки: ${e.message}"))
+        }
+    }
+
+    /**
+     * Устанавливает пароль для пользователя
+     * Аналог SetPassword в WebApiPasswordManager
+     */
+    suspend fun setPassword(password: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (identityClient == null) {
+                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
+            }
+
+            val request = IdentityApiOuterClass.SetPasswordRequest.newBuilder()
+                .setPassword(password)
+                .build()
+
+            identityClient!!.setPassword(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка установки пароля", e)
+            Result.failure(Exception("Ошибка установки пароля: ${e.message}"))
+        }
+    }
+
+    /**
+     * Запрашивает QR-код для настройки 2FA
+     * Аналог OtpReceipt в WebApiAuthManager
+     */
+    suspend fun getOtpSetup(): Result<OtpSetupResult> = withContext(Dispatchers.IO) {
+        try {
+            if (identityClient == null) {
+                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
+            }
+
+            val request = IdentityApiOuterClass.EnableOtpVerificationRequest.newBuilder()
+                .setOtpType(IdentityApiOuterClass.OtpTypeId.Authenticator)
+                .build()
+
+            val response = identityClient!!.enableOtpVerification(request)
+            
+            Result.success(
+                OtpSetupResult(
+                    qrBase64 = response.otpQr,
+                    justCode = response.otpCode
+                )
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка получения 2FA setup", e)
+            Result.failure(Exception("Ошибка получения 2FA setup: ${e.message}"))
+        }
+    }
+
+    /**
+     * Подтверждает настройку 2FA
+     * Аналог OtpAccept в WebApiAuthManager
+     */
+    suspend fun confirmOtpSetup(code: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (identityClient == null) {
+                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
+            }
+
+            val request = IdentityApiOuterClass.ConfirmOtpVerificationRequest.newBuilder()
+                .setOtpCode(code)
+                .build()
+
+            identityClient!!.confirmOtpVerification(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка подтверждения 2FA", e)
+            Result.failure(Exception("Ошибка подтверждения 2FA: ${e.message}"))
+        }
+    }
+
+    /**
+     * Изменяет био пользователя
+     * Аналог ChangeBio в WebApiUserManager
+     */
+    suspend fun changeBio(bio: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (usersClient == null) {
+                return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            }
+
+            val request = UsersApiOuterClass.ChangeBioRequest.newBuilder()
+                .setBio(bio)
+                .build()
+
+            usersClient!!.changeBio(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка изменения био", e)
+            Result.failure(Exception("Ошибка изменения био: ${e.message}"))
+        }
     }
 
     data class RefreshTokenResult(
@@ -484,6 +764,21 @@ class GrpcManager {
         val accessTokenExpiration: Long,
         val refreshToken: String,
         val refreshTokenExpiration: Long
+    )
+
+    data class ConfirmAccountResult(
+        val refreshToken: String,
+        val refreshTokenExpiration: Long
+    )
+
+    data class UploadUrlResult(
+        val url: String,
+        val fileId: String
+    )
+
+    data class OtpSetupResult(
+        val qrBase64: String,
+        val justCode: String
     )
 
     data class UserData(
