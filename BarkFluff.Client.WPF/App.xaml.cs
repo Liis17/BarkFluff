@@ -11,7 +11,6 @@ using BarkFluff.WebApi.Core.MessengerData;
 
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -208,7 +207,33 @@ namespace BarkFluff.Client.WPF
             {
                 MessengerWindow.OpenPinCodeSecurePage();
             }
+
+            ThemeLoader();
         }
+        private void ThemeLoader()
+        {
+            ApplicationTheme appTheme;
+
+            switch (App.GParam?.AppTheme?.ToLower())
+            {
+                case "light":
+                    appTheme = ApplicationTheme.Light;
+                    break;
+                case "dark":
+                    appTheme = ApplicationTheme.Dark;
+                    break;
+                case "system":
+                default:
+                    var systemTheme = ApplicationThemeManager.GetSystemTheme();
+                    appTheme = systemTheme == SystemTheme.Flow
+                        ? ApplicationTheme.Dark
+                        : ApplicationTheme.Light;
+                    break;
+            }
+
+            App.ApplyTheme(appTheme);
+        }
+
         public static void CreateEridaMessage(StackPanel stack)
         {
             ErideMessage = new DropMessage(stack);
