@@ -37,6 +37,21 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        @keyframes slide-in {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .animate-slide-in {
+            animation: slide-in 0.3s ease-out;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-slate-800 font-sans antialiased">
@@ -68,6 +83,10 @@
                 <a href="/logs" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
                     <i data-lucide="terminal-square" class="w-5 h-5"></i>
                     Логи
+                </a>
+                <a href="/badges" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
+                    <i data-lucide="award" class="w-5 h-5"></i>
+                    Бейджи
                 </a>
             </nav>
 
@@ -121,11 +140,12 @@
                                     <th class="py-3 font-semibold uppercase">Последний лог</th>
                                     <th class="py-3 font-semibold uppercase">Ошибки</th>
                                     <th class="py-3 font-semibold uppercase">Событий</th>
+                                    <th class="py-3 font-semibold uppercase text-center">Действия</th>
                                 </tr>
                             </thead>
                             <tbody id="servicesTableBody" class="text-sm">
                                 <tr>
-                                    <td colspan="5" class="py-8 text-center text-slate-400">
+                                    <td colspan="6" class="py-8 text-center text-slate-400">
                                         <div class="flex flex-col items-center gap-2">
                                             <i data-lucide="loader" class="w-6 h-6 animate-spin"></i>
                                             Загрузка сервисов...
@@ -256,6 +276,15 @@
 
                 const eventCount = svc.eventCount || 0;
 
+                // Определяем иконку и статус для кнопки старт/стоп
+                const isRunning = svc.isActive;
+                const startStopIcon = isRunning ? 'square' : 'play';
+                const startStopTitle = isRunning ? 'Остановить' : 'Запустить';
+                const startStopClass = isRunning ? 'text-amber-600 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50';
+
+                // Получаем имя контейнера из имени сервиса
+                const containerName = getContainerNameFromServiceName(svc.name);
+
                 return `
                     <tr class="border-b border-slate-50 hover:bg-slate-50 transition">
                         <td class="py-4 font-medium text-slate-700">
@@ -272,6 +301,25 @@
                         <td class="py-4">
                             <span class="px-2 py-1 bg-blue-50 text-blue-600 text-xs rounded-md font-medium">${eventCount}</span>
                         </td>
+                        <td class="py-4">
+                            <div class="flex items-center justify-center gap-1">
+                                <button class="p-2 rounded-lg transition-colors ${startStopClass}" 
+                                        title="${startStopTitle}"
+                                        onclick="handleContainerAction(event, '${containerName}', '${isRunning ? 'stop' : 'start'}')">
+                                    <i data-lucide="${startStopIcon}" class="w-4 h-4"></i>
+                                </button>
+                                <button class="p-2 rounded-lg transition-colors text-blue-600 hover:bg-blue-50" 
+                                        title="Перезапустить"
+                                        onclick="handleContainerAction(event, '${containerName}', 'restart')">
+                                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                                </button>
+                                <button class="p-2 rounded-lg transition-colors text-purple-600 hover:bg-purple-50" 
+                                        title="Обновить образ и пересоздать"
+                                        onclick="handleContainerAction(event, '${containerName}', 'pull')">
+                                    <i data-lucide="download-cloud" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </td>
                     </tr>
                 `;
             }).join('');
@@ -285,6 +333,124 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        // Получение имени контейнера из имени сервиса
+        function getContainerNameFromServiceName(serviceName) {
+            // Маппинг имен сервисов на имена контейнеров
+            const serviceToContainerMap = {
+                'BarkFluff.Beacon': 'beacon',
+                'BarkFluff.Configuration': 'configuration',
+                'BarkFluff.Files': 'files',
+                'BarkFluff.Identity': 'identity',
+                'BarkFluff.Messages': 'messages',
+                'BarkFluff.Notification': 'notification',
+                'BarkFluff.Users': 'users',
+                'BarkFluff.FastAuth': 'fast-auth',
+                'BarkFluff.Updates': 'updates',
+                'BarkFluff.Onliner': 'onliner',
+                'Seq': 'seq',
+                'Minio': 'minio',
+                'RabbitMQ': 'rabbitmq',
+                'Redis': 'redis',
+                'PostgreSQL': 'postgres_barkfluff'
+            };
+
+            // Ищем точное совпадение
+            if (serviceToContainerMap[serviceName]) {
+                return serviceToContainerMap[serviceName];
+            }
+
+            // Ищем частичное совпадение
+            for (const [service, container] of Object.entries(serviceToContainerMap)) {
+                if (serviceName.includes(service) || serviceName.includes(container)) {
+                    return container;
+                }
+            }
+
+            // Если не нашли, возвращаем имя сервиса в нижнем регистре
+            return serviceName.toLowerCase().replace('barkfluff.', '');
+        }
+
+        // Обработка действий с контейнером
+        async function handleContainerAction(event, containerName, action) {
+            event.stopPropagation();
+
+            const actionNames = {
+                'start': 'запуска',
+                'stop': 'остановки',
+                'restart': 'перезапуска',
+                'pull': 'обновления образа и пересоздания'
+            };
+
+            if (!confirm(`Вы уверены, что хотите выполнить действие "${actionNames[action]}" для контейнера "${containerName}"?`)) {
+                return;
+            }
+
+            // Блокируем кнопку на время выполнения
+            const button = event.currentTarget;
+            const originalContent = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i>';
+            lucide.createIcons();
+
+            try {
+                const response = await fetch(`/api/docker/containers/${containerName}/${action}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Показываем уведомление об успехе
+                    showNotification('success', result.message);
+                    // Обновляем список сервисов через 2 секунды (чтобы контейнер успел изменить статус)
+                    setTimeout(() => loadServices(), 2000);
+                } else {
+                    showNotification('error', result.message || 'Ошибка выполнения действия');
+                }
+            } catch (error) {
+                console.error('Action error:', error);
+                showNotification('error', 'Ошибка выполнения действия: ' + error.message);
+            } finally {
+                // Возвращаем кнопку в исходное состояние
+                button.disabled = false;
+                button.innerHTML = originalContent;
+                lucide.createIcons();
+            }
+        }
+
+        // Показ уведомления
+        function showNotification(type, message) {
+            const colors = {
+                'success': 'bg-green-100 text-green-800 border-green-300',
+                'error': 'bg-red-100 text-red-800 border-red-300'
+            };
+
+            const icons = {
+                'success': 'check-circle',
+                'error': 'alert-circle'
+            };
+
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 px-4 py-3 rounded-lg border shadow-lg z-50 ${colors[type]} flex items-center gap-2 animate-slide-in`;
+            notification.innerHTML = `
+                <i data-lucide="${icons[type]}" class="w-5 h-5"></i>
+                <span>${escapeHtml(message)}</span>
+            `;
+
+            document.body.appendChild(notification);
+            lucide.createIcons();
+
+            // Удаляем уведомление через 5 секунд
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 5000);
         }
 
         // Выход из системы

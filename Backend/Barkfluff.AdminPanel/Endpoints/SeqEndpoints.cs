@@ -9,6 +9,7 @@ public static class SeqEndpoints
 {
     private static readonly string[] KnownServices =
     [
+        // Микросервисы BarkFluff
         "BarkFluff.Identity",
         "BarkFluff.Users",
         "BarkFluff.Messages",
@@ -18,7 +19,13 @@ public static class SeqEndpoints
         "BarkFluff.Beacon",
         "BarkFluff.FastAuth",
         "BarkFluff.Onliner",
-        "BarkFluff.Configuration"
+        "BarkFluff.Configuration",
+        // Инфраструктурные сервисы
+        "Seq",
+        "Minio",
+        "RabbitMQ",
+        "Redis",
+        "PostgreSQL"
     ];
 
     public static void MapSeqEndpoints(this WebApplication app)

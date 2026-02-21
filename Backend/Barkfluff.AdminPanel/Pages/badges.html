@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BarkFluff Admin Panel | Бейджи</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        #loadingOverlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .spinner {
+            width: 40px; height: 40px;
+            border: 3px solid #dfe6e9;
+            border-top-color: #6c5ce7;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .badge-card { aspect-ratio: 3 / 4; }
+
+        .dropdown-menu { display: none; }
+        .dropdown-menu.open { display: block; }
+    </style>
+</head>
+<body class="bg-gray-50 text-slate-800 font-sans antialiased">
+
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+    </div>
+
+    <div class="flex h-screen overflow-hidden">
+
+        <!-- SIDEBAR -->
+        <aside class="w-64 bg-slate-900 text-white flex flex-col shadow-xl flex-shrink-0">
+            <div class="h-16 flex items-center justify-center border-b border-slate-700">
+                <h1 class="text-xl font-bold tracking-wider flex items-center gap-2">
+                    <i data-lucide="message-circle" class="text-blue-400"></i>
+                    BF::ADMIN
+                </h1>
+            </div>
+
+            <nav class="flex-1 px-3 py-6 space-y-2 overflow-y-auto">
+                <a href="/" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                    Дашборд
+                </a>
+                <a href="/services" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
+                    <i data-lucide="server" class="w-5 h-5"></i>
+                    Сервисы
+                </a>
+                <a href="/logs" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
+                    <i data-lucide="terminal-square" class="w-5 h-5"></i>
+                    Логи
+                </a>
+                <a href="/badges" class="flex items-center gap-3 px-4 py-3 bg-blue-600 rounded-lg text-white transition-colors">
+                    <i data-lucide="award" class="w-5 h-5"></i>
+                    Бейджи
+                </a>
+            </nav>
+
+            <div class="p-4 border-t border-slate-700">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center font-bold">A</div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium truncate" id="tokenName">Loading...</p>
+                        <p class="text-xs text-slate-400" id="tokenInfo">...</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="flex-1 flex flex-col overflow-hidden min-w-0">
+
+            <!-- HEADER -->
+            <header class="h-16 bg-white shadow-sm flex items-center justify-between px-8 z-10">
+                <h2 class="text-xl font-semibold text-slate-700">Бейджи</h2>
+                <div class="flex items-center gap-4">
+                    <button onclick="openCreateModal()"
+                        class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        Добавить бейдж
+                    </button>
+                    <button onclick="handleLogout()"
+                        class="flex items-center gap-2 text-slate-500 hover:text-red-600 transition-colors text-sm">
+                        <i data-lucide="log-out" class="w-4 h-4"></i>
+                        Выйти
+                    </button>
+                </div>
+            </header>
+
+            <!-- BADGES GRID -->
+            <div class="flex-1 overflow-y-auto p-8">
+                <div id="badgesGrid" class="grid grid-cols-3 gap-5">
+                    <!-- Карточки бейджей вставляются JS -->
+                </div>
+                <div id="emptyState" class="hidden flex-col items-center justify-center py-24 text-slate-400">
+                    <i data-lucide="award" class="w-16 h-16 mb-4 opacity-30"></i>
+                    <p class="text-lg">Бейджей пока нет</p>
+                    <p class="text-sm mt-1">Нажмите «Добавить бейдж», чтобы создать первый</p>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- MODAL: Создание / редактирование бейджа -->
+    <div id="badgeModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="text-lg font-semibold text-slate-800" id="modalTitle">Добавить бейдж</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="badgeForm" onsubmit="saveBadge(event)">
+                <!-- Картинка -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Картинка (PNG)</label>
+                    <div class="flex items-center gap-4">
+                        <div class="w-20 h-20 rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden bg-slate-50" id="imagePreviewWrapper">
+                            <img id="imagePreview" src="" alt="" class="hidden w-full h-full object-contain" />
+                            <i data-lucide="image" class="w-8 h-8 text-slate-300" id="imageIcon"></i>
+                        </div>
+                        <div class="flex-1">
+                            <input type="file" id="imageInput" name="image" accept=".png,image/png"
+                                class="block w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+                                onchange="previewImage(this)" />
+                            <p class="text-xs text-slate-400 mt-1">Только PNG (поддержка альфа-канала)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Название -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Название <span class="text-red-500">*</span></label>
+                    <input type="text" id="badgeName" name="name" required maxlength="100"
+                        placeholder="Например: «Ранний пользователь»"
+                        class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+
+                <!-- Описание -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Описание</label>
+                    <textarea id="badgeDescription" name="description" rows="3" maxlength="500"
+                        placeholder="Краткое описание бейджа"
+                        class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+                </div>
+
+                <!-- Активность -->
+                <div class="mb-5 flex items-center gap-3">
+                    <input type="checkbox" id="badgeIsActive" name="isActive" checked
+                        class="w-4 h-4 rounded accent-blue-600" />
+                    <label for="badgeIsActive" class="text-sm font-medium text-slate-700">Активен (отображается пользователям)</label>
+                </div>
+
+                <!-- Скрытые поля для редактирования -->
+                <input type="hidden" id="editBadgeId" value="" />
+                <input type="hidden" id="editImageUrl" value="" />
+
+                <!-- Кнопки -->
+                <div class="flex gap-3 justify-end">
+                    <button type="button" onclick="closeModal()"
+                        class="px-4 py-2 text-sm text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">
+                        Отмена
+                    </button>
+                    <button type="submit" id="saveBtn"
+                        class="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium">
+                        Сохранить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let badges = [];
+
+        // ─── AUTH ─────────────────────────────────────────────────────────────────
+
+        async function checkAuth() {
+            try {
+                const res = await fetch('/api/auth/me');
+                if (!res.ok) { window.location.href = '/'; return; }
+                const data = await res.json();
+                document.getElementById('tokenName').textContent = data.name || 'Admin';
+                document.getElementById('tokenInfo').textContent = new Date(data.createdAt).toLocaleDateString('ru-RU');
+            } catch {
+                window.location.href = '/';
+            }
+        }
+
+        async function handleLogout() {
+            if (!confirm('Выйти из панели?')) return;
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/';
+        }
+
+        // ─── BADGES ───────────────────────────────────────────────────────────────
+
+        async function loadBadges() {
+            try {
+                const res = await fetch('/api/badges');
+                if (!res.ok) throw new Error('Failed to load badges');
+                badges = await res.json();
+                renderBadges();
+            } catch (e) {
+                console.error('Ошибка загрузки бейджей:', e);
+            }
+        }
+
+        function renderBadges() {
+            const grid = document.getElementById('badgesGrid');
+            const empty = document.getElementById('emptyState');
+
+            if (badges.length === 0) {
+                grid.innerHTML = '';
+                empty.classList.remove('hidden');
+                empty.classList.add('flex');
+                return;
+            }
+
+            empty.classList.add('hidden');
+            empty.classList.remove('flex');
+
+            grid.innerHTML = badges.map(badge => `
+                <div class="badge-card bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden relative group">
+                    <!-- Три точки меню -->
+                    <div class="absolute top-2 right-2 z-10">
+                        <button onclick="toggleDropdown(${badge.id})"
+                            class="w-8 h-8 rounded-full bg-white/80 backdrop-blur flex items-center justify-center text-slate-500 hover:bg-white hover:text-slate-800 shadow transition-all opacity-0 group-hover:opacity-100">
+                            <i data-lucide="more-vertical" class="w-4 h-4"></i>
+                        </button>
+                        <div id="dropdown-${badge.id}" class="dropdown-menu absolute right-0 mt-1 w-36 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-20">
+                            <button onclick="openEditModal(${badge.id})"
+                                class="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors">
+                                <i data-lucide="pencil" class="w-4 h-4"></i>
+                                Редактировать
+                            </button>
+                            <button onclick="deleteBadge(${badge.id})"
+                                class="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                Удалить
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Картинка -->
+                    <div class="flex-1 flex items-center justify-center bg-slate-50 p-6">
+                        ${badge.imageUrl
+                            ? `<img src="${badge.imageUrl}" alt="${badge.name}" class="max-w-full max-h-full object-contain" style="max-height: 140px;" />`
+                            : `<div class="w-20 h-20 rounded-full bg-slate-200 flex items-center justify-center"><i data-lucide="award" class="w-10 h-10 text-slate-400"></i></div>`
+                        }
+                    </div>
+
+                    <!-- Информация -->
+                    <div class="p-4 border-t border-slate-100">
+                        <div class="flex items-start justify-between gap-2">
+                            <h3 class="font-semibold text-slate-800 text-sm leading-tight line-clamp-2">${escapeHtml(badge.name)}</h3>
+                            <span class="flex-shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${badge.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}">
+                                ${badge.isActive ? 'Активен' : 'Неактивен'}
+                            </span>
+                        </div>
+                        ${badge.description ? `<p class="text-xs text-slate-500 mt-1 line-clamp-2">${escapeHtml(badge.description)}</p>` : ''}
+                        <p class="text-xs text-slate-400 mt-2">${badge.createdDate ? new Date(badge.createdDate).toLocaleDateString('ru-RU') : ''}</p>
+                    </div>
+                </div>
+            `).join('');
+
+            lucide.createIcons();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function toggleDropdown(id) {
+            // Закрыть все открытые дропдауны
+            document.querySelectorAll('.dropdown-menu.open').forEach(el => {
+                if (el.id !== `dropdown-${id}`) el.classList.remove('open');
+            });
+            document.getElementById(`dropdown-${id}`).classList.toggle('open');
+        }
+
+        // Закрыть дропдаун при клике вне него
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('[id^="dropdown-"]') && !e.target.closest('button[onclick^="toggleDropdown"]')) {
+                document.querySelectorAll('.dropdown-menu.open').forEach(el => el.classList.remove('open'));
+            }
+        });
+
+        // ─── MODAL ────────────────────────────────────────────────────────────────
+
+        function openCreateModal() {
+            document.getElementById('modalTitle').textContent = 'Добавить бейдж';
+            document.getElementById('badgeForm').reset();
+            document.getElementById('editBadgeId').value = '';
+            document.getElementById('editImageUrl').value = '';
+            resetImagePreview();
+            showModal();
+        }
+
+        function openEditModal(id) {
+            const badge = badges.find(b => b.id === id);
+            if (!badge) return;
+
+            document.getElementById('modalTitle').textContent = 'Редактировать бейдж';
+            document.getElementById('editBadgeId').value = badge.id;
+            document.getElementById('editImageUrl').value = badge.imageUrl || '';
+            document.getElementById('badgeName').value = badge.name;
+            document.getElementById('badgeDescription').value = badge.description || '';
+            document.getElementById('badgeIsActive').checked = badge.isActive;
+
+            // Показать текущую картинку
+            if (badge.imageUrl) {
+                document.getElementById('imagePreview').src = badge.imageUrl;
+                document.getElementById('imagePreview').classList.remove('hidden');
+                document.getElementById('imageIcon').classList.add('hidden');
+            } else {
+                resetImagePreview();
+            }
+
+            showModal();
+        }
+
+        function closeModal() {
+            document.getElementById('badgeModal').classList.add('hidden');
+            document.getElementById('badgeModal').classList.remove('flex');
+        }
+
+        function showModal() {
+            document.getElementById('badgeModal').classList.remove('hidden');
+            document.getElementById('badgeModal').classList.add('flex');
+            // Закрыть все дропдауны
+            document.querySelectorAll('.dropdown-menu.open').forEach(el => el.classList.remove('open'));
+        }
+
+        function previewImage(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('imagePreview').src = e.target.result;
+                document.getElementById('imagePreview').classList.remove('hidden');
+                document.getElementById('imageIcon').classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function resetImagePreview() {
+            document.getElementById('imagePreview').src = '';
+            document.getElementById('imagePreview').classList.add('hidden');
+            document.getElementById('imageIcon').classList.remove('hidden');
+        }
+
+        // ─── SAVE ─────────────────────────────────────────────────────────────────
+
+        async function saveBadge(event) {
+            event.preventDefault();
+
+            const editId = document.getElementById('editBadgeId').value;
+            const isEdit = !!editId;
+
+            const saveBtn = document.getElementById('saveBtn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Сохранение...';
+
+            try {
+                const formData = new FormData();
+                formData.append('name', document.getElementById('badgeName').value);
+                formData.append('description', document.getElementById('badgeDescription').value);
+                formData.append('isActive', document.getElementById('badgeIsActive').checked.toString());
+
+                const imageFile = document.getElementById('imageInput').files[0];
+                if (imageFile) {
+                    formData.append('image', imageFile);
+                } else if (isEdit) {
+                    formData.append('imageUrl', document.getElementById('editImageUrl').value);
+                }
+
+                let res;
+                if (isEdit) {
+                    res = await fetch(`/api/badges/${editId}`, { method: 'PUT', body: formData });
+                } else {
+                    if (!imageFile) {
+                        alert('Выберите PNG-картинку для нового бейджа');
+                        return;
+                    }
+                    res = await fetch('/api/badges', { method: 'POST', body: formData });
+                }
+
+                if (!res.ok) {
+                    const err = await res.text();
+                    alert(`Ошибка: ${err}`);
+                    return;
+                }
+
+                closeModal();
+                await loadBadges();
+            } catch (e) {
+                alert(`Ошибка: ${e.message}`);
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Сохранить';
+            }
+        }
+
+        // ─── DELETE ───────────────────────────────────────────────────────────────
+
+        async function deleteBadge(id) {
+            const badge = badges.find(b => b.id === id);
+            if (!badge) return;
+
+            if (!confirm(`Удалить бейдж «${badge.name}»?\n\nЭто действие нельзя отменить.`)) return;
+
+            try {
+                const res = await fetch(`/api/badges/${id}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error(await res.text());
+                await loadBadges();
+            } catch (e) {
+                alert(`Ошибка при удалении: ${e.message}`);
+            }
+        }
+
+        // ─── INIT ─────────────────────────────────────────────────────────────────
+
+        async function init() {
+            await checkAuth();
+            await loadBadges();
+            document.getElementById('loadingOverlay').style.display = 'none';
+            lucide.createIcons();
+        }
+
+        init();
+    </script>
+</body>
+</html>

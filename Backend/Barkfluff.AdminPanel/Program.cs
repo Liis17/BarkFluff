@@ -1,3 +1,6 @@
+using BarkFluff.Proto.Files;
+using BarkFluff.Proto.Users;
+using BarkFluff.Shared.Auth;
 using Barkfluff.AdminPanel.Data;
 using Barkfluff.AdminPanel.Endpoints;
 using Barkfluff.AdminPanel.Middleware;
@@ -36,6 +39,9 @@ public class Program
         // Register HttpClient for SeqService
         builder.Services.AddHttpClient<SeqService>();
 
+        // Register DockerService as Singleton
+        builder.Services.AddSingleton<DockerService>();
+
         // Register MetricsCollectorService as background service
         builder.Services.AddHostedService<MetricsCollectorService>();
 
@@ -44,6 +50,17 @@ public class Program
 
         // Also register it as Hosted Service
         builder.Services.AddHostedService(provider => provider.GetRequiredService<TelegramBotService>());
+
+        // Register gRPC clients for Users and Files services
+        builder.Services.AddGrpcClient<UsersServerApi.UsersServerApiClient>(o =>
+        {
+            o.Address = new Uri(builder.Configuration["UsersService:Host"] ?? "http://users:7001");
+        }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["UsersService:Token"] ?? string.Empty));
+
+        builder.Services.AddGrpcClient<FilesServerApi.FilesServerApiClient>(o =>
+        {
+            o.Address = new Uri(builder.Configuration["FilesService:Host"] ?? "http://files:7005");
+        }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["FilesService:Token"] ?? string.Empty));
 
         // Configure and validate TelegramSettings
         builder.Services.AddOptions<TelegramSettings>()
@@ -101,6 +118,12 @@ public class Program
         // Map Seq Endpoints
         app.MapSeqEndpoints();
 
+        // Map Docker Endpoints
+        app.MapDockerEndpoints();
+
+        // Map Badges Endpoints
+        app.MapBadgesEndpoints();
+
         // Static files for Pages directory
         app.UseStaticFiles(new StaticFileOptions
         {
@@ -126,6 +149,7 @@ public class Program
         // Page routes
         app.MapGet("/services", async context => await ServeHtmlFile(context, "services.html"));
         app.MapGet("/logs", async context => await ServeHtmlFile(context, "logs.html"));
+        app.MapGet("/badges", async context => await ServeHtmlFile(context, "badges.html"));
 
         app.Run();
     }
