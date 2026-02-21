@@ -13,6 +13,11 @@ namespace BarkFluff.Files.Infrastructure;
 public class S3BucketRegistry : IDisposable
 {
     /// <summary>
+    /// Идентификатор бакета для картинок бейджей
+    /// </summary>
+    public const string BadgeImagesBucketId = "badge-images";
+
+    /// <summary>
     /// Соответствие типов файлов идентификаторам бакетов (логическое имя бакета в конфигурации)
     /// </summary>
     private static readonly Dictionary<UploadFileType, string> BucketIdMap = new()
@@ -85,6 +90,16 @@ public class S3BucketRegistry : IDisposable
         }
 
         _uniqueClients = clientCache.Values.ToList();
+    }
+
+    /// <summary>
+    /// Получает имя бакета для картинок бейджей
+    /// </summary>
+    public string GetBadgeImageBucketName()
+    {
+        return _bucketConfigs.TryGetValue(BadgeImagesBucketId, out var config)
+            ? config.BucketName
+            : BadgeImagesBucketId;
     }
 
     /// <summary>

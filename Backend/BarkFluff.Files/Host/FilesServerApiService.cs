@@ -1,5 +1,6 @@
 using BarkFluff.Files.Features.GetFileData;
 using BarkFluff.Files.Features.GetFilesData;
+using BarkFluff.Files.Features.UploadBadgeImage;
 using BarkFluff.Proto.Files;
 using BarkFluff.Shared.Identity;
 using Grpc.Core;
@@ -34,7 +35,18 @@ public class FilesServerApiService : FilesServerApi.FilesServerApiBase
         {
             FileIds = request.FileIds.Select(Guid.Parse).ToList()
         };
-        
+
+        return _mediator.Send(command);
+    }
+
+    public override Task<UploadBadgeImageResponse> UploadBadgeImage(UploadBadgeImageRequest request, ServerCallContext context)
+    {
+        var command = new UploadBadgeImageCommand
+        {
+            ImageData = request.ImageData.ToByteArray(),
+            Filename = request.Filename
+        };
+
         return _mediator.Send(command);
     }
 }
