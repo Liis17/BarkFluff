@@ -12,7 +12,6 @@ public static class DockerEndpoints
     public static void MapDockerEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/docker")
-            .WithName("Docker")
             .WithTags("Docker");
 
         // Получить список всех контейнеров

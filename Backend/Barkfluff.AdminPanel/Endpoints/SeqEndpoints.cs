@@ -31,7 +31,6 @@ public static class SeqEndpoints
     public static void MapSeqEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/seq")
-            .WithName("Seq")
             .WithTags("Seq");
 
         group.MapGet("/events", async (

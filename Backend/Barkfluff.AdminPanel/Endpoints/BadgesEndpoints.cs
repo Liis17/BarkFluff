@@ -10,7 +10,6 @@ public static class BadgesEndpoints
     public static void MapBadgesEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/badges")
-            .WithName("Badges")
             .WithTags("Badges");
 
         // GET /api/badges — все бейджи (включая неактивные)
@@ -37,7 +36,8 @@ public static class BadgesEndpoints
             });
 
             return Results.Ok(badges);
-        });
+        })
+        .WithName("GetAllBadges");
 
         // POST /api/badges — создать новый бейдж (multipart: name, description, isActive, image)
         group.MapPost("/", async (
@@ -106,7 +106,8 @@ public static class BadgesEndpoints
                 isActive = createResponse.Badge.IsActive,
                 createdDate = createResponse.Badge.CreatedDate?.ToDateTime()
             });
-        });
+        })
+        .WithName("CreateBadge");
 
         // PUT /api/badges/{id} — обновить бейдж
         group.MapPut("/{id:int}", async (
@@ -178,7 +179,8 @@ public static class BadgesEndpoints
                 isActive = response.Badge.IsActive,
                 createdDate = response.Badge.CreatedDate?.ToDateTime()
             });
-        });
+        })
+        .WithName("UpdateBadge");
 
         // DELETE /api/badges/{id} — удалить бейдж
         group.MapDelete("/{id:int}", async (
@@ -195,7 +197,8 @@ public static class BadgesEndpoints
             });
 
             return Results.Ok(new { success = response.Success });
-        });
+        })
+        .WithName("DeleteBadge");
     }
 
     private sealed record UpdateBadgeBody(string? Name, string? Description, string? ImageUrl, bool IsActive);
