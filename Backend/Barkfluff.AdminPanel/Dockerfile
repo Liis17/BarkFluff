@@ -13,8 +13,9 @@ RUN apt-get update && apt-get install -y \
     && apt-get install -y docker-ce-cli docker-compose-plugin \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user and add to docker group
-RUN usermod -aG docker app
+# Create docker group and add app user to it
+RUN getent group docker || groupadd -g 999 docker \
+    && usermod -aG docker app
 
 USER $APP_UID
 WORKDIR /app
@@ -23,6 +24,8 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["Backend/Barkfluff.AdminPanel/Barkfluff.AdminPanel.csproj", "Backend/Barkfluff.AdminPanel/"]
+COPY ["Shared/BarkFluff.Shared.Auth/BarkFluff.Shared.Auth.csproj", "Shared/BarkFluff.Shared.Auth/"]
+COPY ["Shared/BarkFluff.Proto/BarkFluff.Proto.csproj", "Shared/BarkFluff.Proto/"]
 RUN dotnet restore "Backend/Barkfluff.AdminPanel/Barkfluff.AdminPanel.csproj"
 COPY . .
 WORKDIR "/src/Backend/Barkfluff.AdminPanel"
@@ -43,8 +46,9 @@ RUN apt-get update && apt-get install -y \
     && apt-get install -y docker-ce-cli docker-compose-plugin \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user and add to docker group
-RUN usermod -aG docker app
+# Create docker group and add app user to it
+RUN getent group docker || groupadd -g 999 docker \
+    && usermod -aG docker app
 
 COPY --from=build /app/publish .
 RUN mkdir -p /app/db && chown app:app /app/db
