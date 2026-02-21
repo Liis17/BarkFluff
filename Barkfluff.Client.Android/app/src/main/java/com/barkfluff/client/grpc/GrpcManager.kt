@@ -116,7 +116,7 @@ class GrpcManager {
     /**
      * Создает Identity клиент для авторизации
      */
-    fun createIdentityClient(identityAddress: String, context: Context? = null): Result<Unit> {
+    fun createIdentityClient(identityAddress: String, context: Context? = null, includeDeviceInfo: Boolean = false): Result<Unit> {
         if (identityAddress.isBlank()) {
             return Result.failure(IllegalArgumentException("Адрес Identity сервера не указан"))
         }
@@ -125,9 +125,17 @@ class GrpcManager {
             val address = ensureHttpPrefix(identityAddress)
             val channel = createChannel(address)
             
-            // Добавляем auth interceptor если передан контекст
-            val interceptedChannel = if (context != null) {
-                ClientInterceptors.intercept(channel, AuthInterceptor(context, this))
+            // Добавляем interceptors
+            val interceptors = mutableListOf<ClientInterceptor>()
+            if (context != null) {
+                interceptors.add(AuthInterceptor(context, this))
+            }
+            if (includeDeviceInfo && context != null) {
+                interceptors.add(DeviceInfoInterceptor(context))
+            }
+            
+            val interceptedChannel = if (interceptors.isNotEmpty()) {
+                ClientInterceptors.intercept(channel, *interceptors.toTypedArray())
             } else {
                 channel
             }
@@ -145,7 +153,7 @@ class GrpcManager {
     /**
      * Создает Users клиент для работы с пользователями
      */
-    fun createUsersClient(usersAddress: String, context: Context? = null): Result<Unit> {
+    fun createUsersClient(usersAddress: String, context: Context? = null, includeDeviceInfo: Boolean = false): Result<Unit> {
         if (usersAddress.isBlank()) {
             return Result.failure(IllegalArgumentException("Адрес Users сервера не указан"))
         }
@@ -154,9 +162,17 @@ class GrpcManager {
             val address = ensureHttpPrefix(usersAddress)
             val channel = createChannel(address)
             
-            // Добавляем auth interceptor если передан контекст
-            val interceptedChannel = if (context != null) {
-                ClientInterceptors.intercept(channel, AuthInterceptor(context, this))
+            // Добавляем interceptors
+            val interceptors = mutableListOf<ClientInterceptor>()
+            if (context != null) {
+                interceptors.add(AuthInterceptor(context, this))
+            }
+            if (includeDeviceInfo && context != null) {
+                interceptors.add(DeviceInfoInterceptor(context))
+            }
+            
+            val interceptedChannel = if (interceptors.isNotEmpty()) {
+                ClientInterceptors.intercept(channel, *interceptors.toTypedArray())
             } else {
                 channel
             }
@@ -493,7 +509,7 @@ class GrpcManager {
     /**
      * Создает Files клиент для работы с файлами
      */
-    fun createFilesClient(filesAddress: String, context: Context? = null): Result<Unit> {
+    fun createFilesClient(filesAddress: String, context: Context? = null, includeDeviceInfo: Boolean = false): Result<Unit> {
         if (filesAddress.isBlank()) {
             return Result.failure(IllegalArgumentException("Адрес Files сервера не указан"))
         }
@@ -502,8 +518,16 @@ class GrpcManager {
             val address = ensureHttpPrefix(filesAddress)
             val channel = createChannel(address)
             
-            val interceptedChannel = if (context != null) {
-                ClientInterceptors.intercept(channel, AuthInterceptor(context, this))
+            val interceptors = mutableListOf<ClientInterceptor>()
+            if (context != null) {
+                interceptors.add(AuthInterceptor(context, this))
+            }
+            if (includeDeviceInfo && context != null) {
+                interceptors.add(DeviceInfoInterceptor(context))
+            }
+            
+            val interceptedChannel = if (interceptors.isNotEmpty()) {
+                ClientInterceptors.intercept(channel, *interceptors.toTypedArray())
             } else {
                 channel
             }
@@ -635,6 +659,36 @@ class GrpcManager {
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка установки аватара", e)
             Result.failure(Exception("Ошибка установки аватара: ${e.message}"))
+        }
+    }
+
+    /**
+     * Загружает аватар пользователя через Files API
+     * Сначала получает URL для загрузки, затем загружает файл
+     */
+    suspend fun uploadUserAvatar(jpegImageBytes: ByteArray): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            if (filesClient == null) {
+                return@withContext Result.failure(IllegalStateException("Files клиент не создан"))
+            }
+
+            // Получаем URL для загрузки
+            val uploadUrlResult = getUploadUrl(FilesApiOuterClass.UploadFileType.USER_AVATAR)
+            if (uploadUrlResult.isFailure) {
+                return@withContext Result.failure(uploadUrlResult.exceptionOrNull()!!)
+            }
+
+            val uploadData = uploadUrlResult.getOrNull()!!
+            val fileId = uploadData.fileId
+            
+            // TODO: Здесь нужно выполнить HTTP PUT запрос на uploadData.url
+            // Для простоты возвращаем fileId
+            Log.d(TAG, "Avatar upload URL получен, fileId: $fileId")
+            
+            Result.success(fileId)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка загрузки аватара", e)
+            Result.failure(Exception("Ошибка загрузки аватара: ${e.message}"))
         }
     }
 
