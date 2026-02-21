@@ -95,4 +95,7 @@ dependencies {
 
     // Required for gRPC Kotlin stub
     compileOnly("org.apache.tomcat:annotations-api:6.0.53")
+    
+    // Image cropping for avatar
+    implementation("com.github.yalantis:ucrop:2.2.8")
 }
