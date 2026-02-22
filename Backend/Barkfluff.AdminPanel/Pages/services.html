@@ -260,14 +260,20 @@
             }
 
             const rows = servicesData.map(svc => {
-                const statusBadge = svc.isActive
-                    ? `<span class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-md font-medium inline-flex items-center gap-1">
-                           <span class="w-2 h-2 bg-green-500 rounded-full"></span>
-                           Активен
-                       </span>`
-                    : `<span class="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-md font-medium inline-flex items-center gap-1">
-                           <span class="w-2 h-2 bg-red-500 rounded-full"></span>
-                           Неактивен
+                const dockerStateMap = {
+                    'running':    { cls: 'bg-green-100 text-green-700',  dot: 'bg-green-500',  label: 'Запущен' },
+                    'restarting': { cls: 'bg-blue-100 text-blue-700',    dot: 'bg-blue-500',   label: 'Перезапуск' },
+                    'paused':     { cls: 'bg-yellow-100 text-yellow-700',dot: 'bg-yellow-500', label: 'Приостановлен' },
+                    'exited':     { cls: 'bg-red-100 text-red-700',      dot: 'bg-red-500',    label: 'Остановлен' },
+                    'dead':       { cls: 'bg-red-100 text-red-700',      dot: 'bg-red-500',    label: 'Остановлен' },
+                };
+                const stateInfo = svc.dockerState
+                    ? (dockerStateMap[svc.dockerState] || { cls: 'bg-slate-100 text-slate-600', dot: 'bg-slate-400', label: svc.dockerState })
+                    : { cls: 'bg-slate-100 text-slate-500', dot: 'bg-slate-300', label: 'Нет данных' };
+
+                const statusBadge = `<span class="px-2 py-1 ${stateInfo.cls} text-xs rounded-md font-medium inline-flex items-center gap-1">
+                           <span class="w-2 h-2 ${stateInfo.dot} rounded-full"></span>
+                           ${stateInfo.label}
                        </span>`;
 
                 const errorBadge = (svc.errorCount || 0) > 0
@@ -276,8 +282,8 @@
 
                 const eventCount = svc.eventCount || 0;
 
-                // Определяем иконку и статус для кнопки старт/стоп
-                const isRunning = svc.isActive;
+                // Определяем иконку и статус для кнопки старт/стоп по реальному состоянию Docker
+                const isRunning = svc.dockerState === 'running';
                 const startStopIcon = isRunning ? 'square' : 'play';
                 const startStopTitle = isRunning ? 'Остановить' : 'Запустить';
                 const startStopClass = isRunning ? 'text-amber-600 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50';
