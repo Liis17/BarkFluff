@@ -13,6 +13,9 @@ import barkfluff.users.UsersApiGrpcKt
 import barkfluff.users.UsersApiOuterClass
 import barkfluff.files.FilesApiGrpcKt
 import barkfluff.files.FilesApiOuterClass
+import barkfluff.messages.MessagesApiGrpcKt
+import barkfluff.messages.MessagesApiOuterClass
+import barkfluff.shared.Shared
 import com.barkfluff.client.data.ClientColors
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.ServerDataElement
@@ -56,6 +59,8 @@ class GrpcManager {
         private set
     var filesChannel: Channel? = null
         private set
+    var messagesChannel: Channel? = null
+        private set
 
     // gRPC клиенты
     var navigatorClient: NavigatorApiGrpcKt.NavigatorApiCoroutineStub? = null
@@ -67,6 +72,8 @@ class GrpcManager {
     var usersClient: UsersApiGrpcKt.UsersApiCoroutineStub? = null
         private set
     var filesClient: FilesApiGrpcKt.FilesApiCoroutineStub? = null
+        private set
+    var messagesClient: MessagesApiGrpcKt.MessagesApiCoroutineStub? = null
         private set
 
     /**
@@ -504,6 +511,11 @@ class GrpcManager {
                 it.shutdown()
             }
         }
+        messagesChannel?.let {
+            if (it is ManagedChannel) {
+                it.shutdown()
+            }
+        }
     }
 
     /**
@@ -539,6 +551,155 @@ class GrpcManager {
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка создания Files клиента", e)
             Result.failure(Exception("Ошибка подключения к серверу файлов: ${e.message}"))
+        }
+    }
+
+    /**
+     * Создает Messages клиент для работы с чатами и сообщениями
+     */
+    fun createMessagesClient(messagesAddress: String, context: Context? = null, includeDeviceInfo: Boolean = false): Result<Unit> {
+        if (messagesAddress.isBlank()) {
+            return Result.failure(IllegalArgumentException("Адрес Messages сервера не указан"))
+        }
+
+        return try {
+            val address = ensureHttpPrefix(messagesAddress)
+            val channel = createChannel(address)
+
+            val interceptors = mutableListOf<ClientInterceptor>()
+            if (context != null) {
+                interceptors.add(AuthInterceptor(context, this))
+            }
+            if (includeDeviceInfo && context != null) {
+                interceptors.add(DeviceInfoInterceptor(context))
+            }
+
+            val interceptedChannel = if (interceptors.isNotEmpty()) {
+                ClientInterceptors.intercept(channel, *interceptors.toTypedArray())
+            } else {
+                channel
+            }
+
+            messagesChannel = interceptedChannel
+            messagesClient = MessagesApiGrpcKt.MessagesApiCoroutineStub(interceptedChannel)
+            Log.d(TAG, "Messages клиент создан: $address")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка создания Messages клиента", e)
+            Result.failure(Exception("Ошибка подключения к серверу сообщений: ${e.message}"))
+        }
+    }
+
+    /**
+     * Получает список чатов
+     * Аналог GetChats в WebApiMessageManager
+     */
+    suspend fun getChats(offset: Int = 0, size: Int = 50): Result<List<ChatData>> = withContext(Dispatchers.IO) {
+        try {
+            if (messagesClient == null) {
+                return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
+            }
+
+            val pagination = Shared.PageRequest.newBuilder()
+                .setOffset(offset)
+                .setSize(size)
+                .build()
+
+            val request = MessagesApiOuterClass.ListChatsRequest.newBuilder()
+                .setPagination(pagination)
+                .build()
+
+            val response = messagesClient!!.listChats(request)
+
+            val chats = response.chatsList.map { chat ->
+                val lastMsg = if (chat.hasLastMessage()) {
+                    val msg = chat.lastMessage
+                    LastMessageData(
+                        id = msg.id,
+                        senderId = msg.senderId,
+                        text = msg.content?.text ?: "",
+                        sentAt = msg.sentAt.seconds * 1000,
+                        readBy = msg.readByList
+                    )
+                } else null
+
+                val memberIds = chat.membersList.map { it.userId }
+
+                ChatData(
+                    id = chat.id,
+                    title = chat.title,
+                    picture = chat.picture,
+                    isGroupChat = chat.isGroupChat,
+                    lastMessage = lastMsg,
+                    memberIds = memberIds,
+                    countUnread = chat.countUnread,
+                    firstUnreadMessageId = chat.firstUnreadMessageId
+                )
+            }
+
+            Log.d(TAG, "Получено ${chats.size} чатов")
+            Result.success(chats)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка получения чатов", e)
+            Result.failure(Exception("Ошибка получения чатов: ${e.message}"))
+        }
+    }
+
+    /**
+     * Получает данные пользователя по ID
+     */
+    suspend fun getUserData(userId: Long): Result<UserData> = withContext(Dispatchers.IO) {
+        try {
+            if (usersClient == null) {
+                return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            }
+
+            val request = UsersApiOuterClass.GetUserRequest.newBuilder()
+                .setUserId(userId)
+                .build()
+
+            val response = usersClient!!.getUser(request)
+            val user = response.user
+
+            Result.success(
+                UserData(
+                    userId = user.id,
+                    username = user.username,
+                    firstName = user.firstName,
+                    lastName = user.lastName,
+                    bio = user.bio,
+                    profilePictureUrl = user.profilePicture,
+                    profilePicturePreviewUrl = user.profilePicturePreview,
+                    registrationDate = user.registrationDate.seconds * 1000
+                )
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка получения данных пользователя $userId", e)
+            Result.failure(Exception("Ошибка получения данных пользователя: ${e.message}"))
+        }
+    }
+
+    /**
+     * Получает временные URL для скачивания файлов
+     * Аналог GetFile/GetFiles в WebApiFileManager
+     */
+    suspend fun getFileDownloadUrls(fileIds: List<String>): Result<Map<String, String>> = withContext(Dispatchers.IO) {
+        try {
+            if (filesClient == null) {
+                return@withContext Result.failure(IllegalStateException("Files клиент не создан"))
+            }
+
+            val request = FilesApiOuterClass.GetTempDownloadUrlRequest.newBuilder()
+                .addAllFileIds(fileIds)
+                .build()
+
+            val response = filesClient!!.getTempDownloadUrl(request)
+            val urlMap = response.fileUrlsList.associate { it.fileId to it.url }
+
+            Result.success(urlMap)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка получения URL файлов", e)
+            Result.failure(Exception("Ошибка получения URL файлов: ${e.message}"))
         }
     }
 
@@ -856,6 +1017,25 @@ class GrpcManager {
         val messagesEndpoint: String,
         val updatesEndpoint: String,
         val onlinerEndpoint: String
+    )
+
+    data class ChatData(
+        val id: String,
+        val title: String,
+        val picture: String,
+        val isGroupChat: Boolean,
+        val lastMessage: LastMessageData?,
+        val memberIds: List<Long>,
+        val countUnread: Long,
+        val firstUnreadMessageId: Long
+    )
+
+    data class LastMessageData(
+        val id: Long,
+        val senderId: Long,
+        val text: String,
+        val sentAt: Long,
+        val readBy: List<Long>
     )
 
     sealed class AuthResult {

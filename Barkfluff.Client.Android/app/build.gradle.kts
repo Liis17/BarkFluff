@@ -98,4 +98,7 @@ dependencies {
     
     // Image cropping for avatar
     implementation("com.github.yalantis:ucrop:2.2.8")
+
+    // Image loading and caching
+    implementation("io.coil-kt:coil:2.7.0")
 }
