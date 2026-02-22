@@ -444,8 +444,8 @@ public class DockerService
 
     /// <summary>
     /// Обновить образ и пересоздать админ-панель через detached helper-контейнер.
-    /// Монтирует docker.sock, docker-compose.yml и .env по реальным host-путям (через docker inspect),
-    /// чтобы не создавать зависимость --volumes-from (которая блокирует пересоздание admin-panel).
+    /// Файлы монтируются по их реальным хостовым путям, чтобы docker compose
+    /// корректно разрешал относительные пути (./.env) внутри compose-файла.
     /// </summary>
     public async Task<ContainerActionResponseDto> UpdateAdminPanelAsync()
     {
@@ -461,16 +461,18 @@ public class DockerService
             // Удаляем старый хелпер если он ещё существует
             await TryRemoveHelperContainerAsync("admin-panel-updater");
 
+            // Монтируем compose и env по их РЕАЛЬНЫМ хостовым путям,
+            // чтобы относительные пути в compose-файле (./.env) разрешались корректно на хосте
             await RunDockerCommandAsync(
                 "run", "-d", "--rm",
                 "--name", "admin-panel-updater",
                 "--user", "root",
                 "-v", $"{dockerSock}:/var/run/docker.sock",
-                "-v", $"{composeFile}:/docker-compose.yml:ro",
-                "-v", $"{envFile}:/.env:ro",
+                "-v", $"{composeFile}:{composeFile}:ro",
+                "-v", $"{envFile}:{envFile}:ro",
                 "--entrypoint", "sh",
                 helperImage,
-                "-c", "sleep 2 && docker compose --project-name barkfluff --env-file /.env -f /docker-compose.yml pull admin-panel && docker compose --project-name barkfluff --env-file /.env -f /docker-compose.yml up --force-recreate -d admin-panel && docker image prune -f"
+                "-c", $"sleep 2 && docker compose --project-name barkfluff --env-file {envFile} -f {composeFile} pull admin-panel && docker compose --project-name barkfluff --env-file {envFile} -f {composeFile} up --force-recreate -d admin-panel && docker image prune -f"
             );
 
             _logger.LogInformation("Helper-контейнер для обновления запущен");
