@@ -28,6 +28,26 @@ public static class SeqEndpoints
         "PostgreSQL"
     ];
 
+    private static readonly Dictionary<string, string> ServiceToContainerMap =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            { "BarkFluff.Beacon",        "beacon" },
+            { "BarkFluff.Configuration", "configuration" },
+            { "BarkFluff.Files",         "files" },
+            { "BarkFluff.Identity",      "identity" },
+            { "BarkFluff.Messages",      "messages" },
+            { "BarkFluff.Notification",  "notification" },
+            { "BarkFluff.Users",         "users" },
+            { "BarkFluff.FastAuth",      "fast-auth" },
+            { "BarkFluff.Updates",       "updates" },
+            { "BarkFluff.Onliner",       "onliner" },
+            { "Seq",                     "seq" },
+            { "Minio",                   "minio" },
+            { "RabbitMQ",                "rabbitmq" },
+            { "Redis",                   "redis" },
+            { "PostgreSQL",              "postgres_barkfluff" },
+        };
+
     public static void MapSeqEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/seq")
@@ -477,6 +497,7 @@ public static class SeqEndpoints
 
         group.MapGet("/services/status", async (
             SeqService seqService,
+            DockerService dockerService,
             HttpContext context,
             int hours = 24) =>
         {
@@ -489,7 +510,7 @@ public static class SeqEndpoints
             if (events == null)
                 return Results.StatusCode(502);
 
-            // Aggregate per-service stats
+            // Aggregate per-service stats from Seq
             var serviceData = new Dictionary<string, (long eventCount, long errorCount, DateTime? lastSeen)>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var evt in events)
@@ -511,15 +532,42 @@ public static class SeqEndpoints
                 serviceData[app] = data;
             }
 
+            // Получаем статусы контейнеров Docker
+            Dictionary<string, string>? containerStates = null;
+            try
+            {
+                var containers = await dockerService.GetContainersAsync();
+                containerStates = containers
+                    .Where(c => !string.IsNullOrEmpty(c.Name) && !string.IsNullOrEmpty(c.State))
+                    .ToDictionary(
+                        c => c.Name.TrimStart('/'),
+                        c => c.State!,
+                        StringComparer.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                // Если Docker недоступен — fallback на Seq-логику
+            }
+
             var now = DateTime.UtcNow;
             var result = KnownServices.Concat(serviceData.Keys).Distinct()
                 .Select(name =>
                 {
                     serviceData.TryGetValue(name, out var data);
+
+                    string? dockerState = null;
+                    if (containerStates != null && ServiceToContainerMap.TryGetValue(name, out var containerName))
+                        containerStates.TryGetValue(containerName, out dockerState);
+
+                    bool isActive = dockerState != null
+                        ? dockerState == "running"
+                        : data.lastSeen.HasValue && (now - data.lastSeen.Value).TotalMinutes < 5;
+
                     return new
                     {
                         name,
-                        isActive = data.lastSeen.HasValue && (now - data.lastSeen.Value).TotalMinutes < 5,
+                        isActive,
+                        dockerState,
                         lastSeen = data.lastSeen?.ToString("o"),
                         errorCount = data.errorCount,
                         eventCount = data.eventCount
