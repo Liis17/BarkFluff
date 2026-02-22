@@ -125,6 +125,48 @@ services:
     depends_on:
       - configuration
 
+  # Панель администрирования
+  admin-panel:
+    image: docker.barkfluff.com:5000/barkfluff-admin-panel:latest
+    container_name: admin-panel
+    restart: always
+    user: root
+    environment:
+      <<: *common-variables
+      ConfigurationServiceAddr: "${CONFIGURATION_SERVICE_URL}"
+      Telegram__BotToken: "${TELEGRAM_BOT_TOKEN}"
+      Telegram__Admins: "${TELEGRAM_ADMINS}"
+      Seq__ServerUrl: "http://seq:80"
+      Seq__ApiKey: "${SEQ_API_KEY:-}"
+      UsersService__Host: "http://users:7001"
+      FilesService__Host: "http://files:7005"
+      UsersService__Token: "${USERS_SERVICE_TOKEN}"
+      FilesService__Token: "${FILES_SERVICE_TOKEN}"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - admin_panel_data:/app/db
+      - ./docker-compose.yml:/app/config/docker-compose.yml:ro
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
+      - seq
+
+  # Seq логирование
+  seq:
+    image: datalust/seq:latest
+    container_name: seq
+    restart: always
+    ports:
+      - "${SEQ_WEBPORT}:80"
+    environment:
+      ACCEPT_EULA: "Y"
+      SEQ_FIRSTRUN_ADMINPASSWORD: "${SEQ_ADMIN_PASSWORD}"
+    volumes:
+      - seq_data:/data
+    networks:
+      - barkfluff-network
+
   # Дополнительные
   minio:
     image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z-cpuv1
@@ -193,3 +235,5 @@ volumes:
   redis_data:
   minio_data:
   backup_volume:
+  admin_panel_data:
+  seq_data:
