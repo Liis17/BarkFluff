@@ -145,6 +145,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - admin_panel_data:/app/db
+      - ./docker-compose-dev.yml:/app/config/docker-compose.yml:ro
     networks:
       - barkfluff-network
     depends_on:
