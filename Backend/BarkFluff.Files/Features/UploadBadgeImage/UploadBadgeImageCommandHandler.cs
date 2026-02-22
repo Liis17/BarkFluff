@@ -1,4 +1,5 @@
 using BarkFluff.Files.Domain;
+using BarkFluff.Files.Extensions;
 using BarkFluff.Files.Helpers;
 using BarkFluff.Files.Infrastructure;
 using BarkFluff.Files.Persistence;
@@ -48,12 +49,13 @@ public class UploadBadgeImageCommandHandler : IRequestHandler<UploadBadgeImageCo
         var bucketName = _bucketRegistry.GetBadgeImageBucketName();
 
         using var stream = new MemoryStream(request.ImageData);
+        var contentType = request.Filename.GetContentType();
 
         var etag = await _s3Uploader.UploadAsync(
             bucketName,
             $"{badgeImage.Id}",
             stream,
-            "image/png"
+            contentType
         );
 
         badgeImage.Etag = etag;
