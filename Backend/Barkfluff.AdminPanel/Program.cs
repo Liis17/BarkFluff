@@ -14,6 +14,8 @@ namespace Barkfluff.AdminPanel;
 
 public class Program
 {
+    public static readonly DateTime StartedAtUtc = DateTime.UtcNow;
+
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
@@ -177,6 +179,7 @@ public class Program
 
         context.Response.ContentType = "text/html; charset=utf-8";
         var content = await File.ReadAllTextAsync(filePath);
+        content = content.Replace("{{SERVER_STARTED_AT_UTC}}", StartedAtUtc.ToString("o"));
         await context.Response.WriteAsync(content);
     }
 }
