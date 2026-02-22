@@ -1,6 +1,8 @@
+using BarkFluff.GrpcServer;
 using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Auth;
+using BarkFluff.Shared.Identity;
 using Barkfluff.AdminPanel.Data;
 using Barkfluff.AdminPanel.Endpoints;
 using Barkfluff.AdminPanel.Middleware;
@@ -17,6 +19,9 @@ public class Program
         var builder = WebApplication.CreateBuilder(args);
 
         builder.WebHost.UseUrls("http://0.0.0.0:51888");
+
+        // Загружаем конфигурацию из сервиса конфигурации
+        builder.LoadConfiguration(ServiceId.Unknown);
 
         // Configure Settings
         builder.Services.Configure<TelegramSettings>(builder.Configuration.GetSection("Telegram"));
