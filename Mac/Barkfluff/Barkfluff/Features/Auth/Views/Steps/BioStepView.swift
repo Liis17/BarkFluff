@@ -25,44 +25,51 @@ struct BioStepView: View {
                 .font(.system(size: 60))
                 .foregroundStyle(Color.accentColor)
 
-            // Текстовое поле
-            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                TextEditor(text: $data.bio)
-                    .frame(width: 300, height: 150)
-                    .padding(4)
-                    .background(Color(.textBackgroundColor))
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.md))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: Theme.Radius.md)
-                            .strokeBorder(Color.gray.opacity(0.3), lineWidth: 1)
-                    )
+            // Контент в glass-контейнере
+            VStack(spacing: Theme.Spacing.md) {
+                // Текстовое поле
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                    TextEditor(text: $data.bio)
+                        .frame(height: 120)
+                        .padding(4)
+                        .background(Color(.textBackgroundColor))
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.md))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Theme.Radius.md)
+                                .strokeBorder(Color.gray.opacity(0.3), lineWidth: 1)
+                        )
 
-                HStack {
-                    Text("Расскажите о себе")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    HStack {
+                        Text("Расскажите о себе")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
 
-                    Spacer()
+                        Spacer()
 
-                    Text("\(data.bio.count)/\(maxBioLength)")
-                        .font(.caption)
-                        .foregroundStyle(data.bio.count > maxBioLength ? .red : .secondary)
+                        Text("\(data.bio.count)/\(maxBioLength)")
+                            .font(.caption)
+                            .foregroundStyle(data.bio.count > maxBioLength ? .red : .secondary)
+                    }
                 }
-            }
 
-            // Ошибка
-            if let error = saveError {
-                Text(error)
+                // Ошибка
+                if let error = saveError {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+
+                // Подсказка
+                Text("Не обязательно — вы можете заполнить это позже в настройках профиля")
                     .font(.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
             }
-
-            // Подсказка
-            Text("Не обязательно — вы можете заполнить это позже в настройках профиля")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+            .frame(maxWidth: 300)
         }
+        .padding(Theme.Spacing.xl)
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: Theme.Radius.xl))
+        .padding(Theme.Spacing.md) // Отступ для тени glass
         .onChange(of: data.bio) { _, newValue in
             if newValue.count > maxBioLength {
                 data.bio = String(newValue.prefix(maxBioLength))
