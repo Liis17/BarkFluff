@@ -51,8 +51,15 @@ class ChatsActivity : AppCompatActivity() {
         setupToolbar()
         setupChatList()
         setupDrawer()
+        setupFab()
 
         checkTokenAndLoadChats()
+    }
+
+    private fun setupFab() {
+        binding.newChatFab.setOnClickListener {
+            Snackbar.make(binding.root, "Новый чат - скоро", Snackbar.LENGTH_SHORT).show()
+        }
     }
 
     private fun setupToolbar() {

@@ -13,37 +13,42 @@
         android:layout_height="match_parent"
         android:background="?android:attr/colorBackground">
 
-        <!-- Тулбар + поиск -->
+        <!-- AppBar с Material 3 дизайном -->
         <com.google.android.material.appbar.AppBarLayout
+            android:id="@+id/appBarLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="?attr/colorSurface"
-            app:liftOnScroll="true">
+            app:liftOnScroll="true"
+            app:liftOnScrollTargetViewId="@id/chatRecyclerView">
 
+            <!-- Toolbar с увеличенными радиусами -->
             <com.google.android.material.appbar.MaterialToolbar
                 android:id="@+id/toolbar"
                 android:layout_width="match_parent"
                 android:layout_height="?attr/actionBarSize"
                 app:navigationIcon="@drawable/ic_menu_hamburger"
+                app:navigationIconTint="?attr/colorOnSurface"
                 app:title="BarkFluff"
-                app:titleTextAppearance="?attr/textAppearanceTitleLarge"
+                app:titleTextAppearance="?attr/textAppearanceHeadlineSmall"
                 app:titleTextColor="?attr/colorOnSurface" />
 
-            <!-- Поле поиска -->
+            <!-- Поле поиска с увеличенными радиусами -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/searchInputLayout"
-                style="@style/Widget.Material3.TextInputLayout.FilledBox.Dense"
+                style="@style/Widget.Material3.TextInputLayout.FilledBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="16dp"
-                android:layout_marginBottom="8dp"
+                android:layout_marginBottom="12dp"
                 app:boxBackgroundMode="filled"
-                app:boxCornerRadiusBottomEnd="28dp"
-                app:boxCornerRadiusBottomStart="28dp"
-                app:boxCornerRadiusTopEnd="28dp"
-                app:boxCornerRadiusTopStart="28dp"
+                app:boxCornerRadiusBottomEnd="24dp"
+                app:boxCornerRadiusBottomStart="24dp"
+                app:boxCornerRadiusTopEnd="24dp"
+                app:boxCornerRadiusTopStart="24dp"
                 app:hintEnabled="false"
-                app:startIconDrawable="@drawable/ic_search">
+                app:startIconDrawable="@drawable/ic_search"
+                app:startIconTint="?attr/colorOnSurfaceVariant">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/searchEditText"
@@ -51,7 +56,8 @@
                     android:layout_height="wrap_content"
                     android:hint="Поиск чатов"
                     android:inputType="text"
-                    android:maxLines="1" />
+                    android:maxLines="1"
+                    android:textAppearance="?attr/textAppearanceBodyLarge" />
 
             </com.google.android.material.textfield.TextInputLayout>
 
@@ -64,7 +70,7 @@
             android:layout_height="match_parent"
             android:clipToPadding="false"
             android:paddingTop="8dp"
-            android:paddingBottom="16dp"
+            android:paddingBottom="80dp"
             app:layout_behavior="@string/appbar_scrolling_view_behavior"
             tools:listitem="@layout/item_chat" />
 
@@ -79,12 +85,24 @@
             android:visibility="gone"
             app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
-            <ImageView
-                android:layout_width="96dp"
-                android:layout_height="96dp"
+            <!-- Иконка с контейнером -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="120dp"
+                android:layout_height="120dp"
                 android:layout_marginBottom="24dp"
-                android:importantForAccessibility="no"
-                android:src="@drawable/ic_chat_bubble" />
+                app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+                app:cardCornerRadius="30dp"
+                app:cardElevation="0dp">
+
+                <ImageView
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:layout_gravity="center"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_chat_bubble"
+                    app:tint="?attr/colorOnSurfaceVariant" />
+
+            </com.google.android.material.card.MaterialCardView>
 
             <TextView
                 android:layout_width="wrap_content"
@@ -102,6 +120,7 @@
                 android:textAppearance="?attr/textAppearanceBodyMedium"
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:alpha="0.7" />
+
         </LinearLayout>
 
         <!-- Индикатор загрузки -->
@@ -111,7 +130,20 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:indeterminate="true"
-            android:visibility="visible" />
+            android:visibility="visible"
+            app:indicatorColor="?attr/colorPrimary" />
+
+        <!-- FAB для нового чата -->
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/newChatFab"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="20dp"
+            android:contentDescription="Новый чат"
+            android:src="@drawable/ic_grid"
+            app:fabSize="normal"
+            app:tint="?attr/colorOnPrimary" />
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
@@ -119,7 +151,7 @@
     <include
         android:id="@+id/drawerContent"
         layout="@layout/layout_drawer"
-        android:layout_width="300dp"
+        android:layout_width="320dp"
         android:layout_height="match_parent"
         android:layout_gravity="start" />
 
