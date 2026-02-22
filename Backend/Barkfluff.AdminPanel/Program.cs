@@ -25,6 +25,9 @@ public class Program
         // Загружаем конфигурацию из сервиса конфигурации
         builder.LoadConfiguration(ServiceId.Unknown);
 
+        // Env-переменные контейнера должны иметь приоритет над Configuration service
+        builder.Configuration.AddEnvironmentVariables();
+
         // Configure Settings
         builder.Services.Configure<TelegramSettings>(builder.Configuration.GetSection("Telegram"));
         builder.Services.Configure<AuthSettings>(builder.Configuration.GetSection("Auth"));
