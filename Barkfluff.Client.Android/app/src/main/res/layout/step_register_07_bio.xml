@@ -58,14 +58,15 @@
                     app:strokeColor="?attr/colorOutline"
                     app:strokeWidth="1dp">
 
-                    <ImageView
+                    <com.google.android.material.imageview.ShapeableImageView
                         android:id="@+id/previewAvatar"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
                         android:contentDescription="Avatar preview"
-                        android:padding="18dp"
+                        android:padding="0dp"
                         android:scaleType="centerCrop"
-                        android:src="@drawable/ic_launcher_foreground" />
+                        android:src="@drawable/ic_launcher_foreground"
+                        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
 
                 </com.google.android.material.card.MaterialCardView>
 

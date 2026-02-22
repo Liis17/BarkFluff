@@ -133,7 +133,19 @@
                 android:textAllCaps="false"
                 android:textAppearance="?attr/textAppearanceTitleMedium"
                 app:cornerRadius="32dp"
-                app:icon="@android:drawable/ic_menu_add" />
+                app:icon="@drawable/ic_grid" />
+
+            <!-- Skip button (перемещён выше) -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/skip2faButton"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="8dp"
+                android:text="Пропустить этот шаг"
+                android:textAllCaps="false" />
 
             <!-- OTP input -->
             <com.google.android.material.textfield.TextInputLayout
@@ -141,7 +153,7 @@
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
+                android:layout_marginTop="8dp"
                 android:hint="Введите код из приложения (6 цифр)"
                 app:boxCornerRadiusBottomEnd="16dp"
                 app:boxCornerRadiusBottomStart="16dp"
@@ -166,27 +178,16 @@
                 android:textAppearance="?attr/textAppearanceLabelSmall"
                 android:visibility="gone" />
 
-            <!-- Verify button -->
+            <!-- Verify/Next button -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/verifyOtpButton"
                 android:layout_width="match_parent"
                 android:layout_height="64dp"
                 android:layout_marginTop="16dp"
-                android:text="Подтвердить и продолжить"
+                android:text="Далее"
                 android:textAllCaps="false"
                 android:textAppearance="?attr/textAppearanceTitleMedium"
                 app:cornerRadius="32dp" />
-
-            <!-- Skip button -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/skip2faButton"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginTop="8dp"
-                android:text="Пропустить"
-                android:textAllCaps="false" />
 
             </LinearLayout>
 
