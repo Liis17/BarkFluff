@@ -100,8 +100,8 @@ final class UserProfilePanelViewModel {
     private(set) var documentItems: [SharedMediaItem] = []
     private(set) var isLoadingMedia = false
     private(set) var hasMoreMedia = true
-    private var lastMediaMessageID: Int64?
-    private var lastDocumentMessageID: Int64?
+    private var mediaOffset: Int32 = 0
+    private var documentOffset: Int32 = 0
 
     // MARK: - Init
 
@@ -196,30 +196,30 @@ final class UserProfilePanelViewModel {
         switch selectedMediaFilter {
         case .media:
             mediaItems = []
-            lastMediaMessageID = nil
+            mediaOffset = 0
         case .documents:
             documentItems = []
-            lastDocumentMessageID = nil
+            documentOffset = 0
         }
         hasMoreMedia = true
 
         do {
-            let items = try await sharedMediaService.loadSharedMedia(
+            let result = try await sharedMediaService.loadSharedMedia(
                 chatID: chat.id,
-                beforeMessageID: nil,
+                offset: 0,
                 filter: selectedMediaFilter
             )
 
             switch selectedMediaFilter {
             case .media:
-                mediaItems = items
-                lastMediaMessageID = items.last?.messageID
+                mediaItems = result.items
+                mediaOffset = Int32(result.items.count)
             case .documents:
-                documentItems = items
-                lastDocumentMessageID = items.last?.messageID
+                documentItems = result.items
+                documentOffset = Int32(result.items.count)
             }
 
-            hasMoreMedia = !items.isEmpty
+            hasMoreMedia = result.hasMore
         } catch {
             // Ошибка — оставить пустой список
         }
@@ -231,34 +231,29 @@ final class UserProfilePanelViewModel {
         guard !isLoadingMedia, hasMoreMedia else { return }
         isLoadingMedia = true
 
-        let beforeID: Int64?
+        let currentOffset: Int32
         switch selectedMediaFilter {
-        case .media: beforeID = lastMediaMessageID
-        case .documents: beforeID = lastDocumentMessageID
-        }
-
-        guard let beforeID else {
-            isLoadingMedia = false
-            return
+        case .media: currentOffset = mediaOffset
+        case .documents: currentOffset = documentOffset
         }
 
         do {
-            let newItems = try await sharedMediaService.loadSharedMedia(
+            let result = try await sharedMediaService.loadSharedMedia(
                 chatID: chat.id,
-                beforeMessageID: beforeID,
+                offset: currentOffset,
                 filter: selectedMediaFilter
             )
 
             switch selectedMediaFilter {
             case .media:
-                mediaItems.append(contentsOf: newItems)
-                lastMediaMessageID = newItems.last?.messageID
+                mediaItems.append(contentsOf: result.items)
+                mediaOffset += Int32(result.items.count)
             case .documents:
-                documentItems.append(contentsOf: newItems)
-                lastDocumentMessageID = newItems.last?.messageID
+                documentItems.append(contentsOf: result.items)
+                documentOffset += Int32(result.items.count)
             }
 
-            hasMoreMedia = !newItems.isEmpty
+            hasMoreMedia = result.hasMore
         } catch {
             hasMoreMedia = false
         }
