@@ -354,8 +354,8 @@ class GrpcManager {
                     bio = user.bio,
                     profilePictureUrl = user.profilePicture,
                     profilePicturePreviewUrl = user.profilePicturePreview,
-                    profilePictureFileId = user.profilePicture,
-                    profilePicturePreviewFileId = user.profilePicturePreview,
+                    profilePictureFileId = extractGuidFromUrl(user.profilePicture),
+                    profilePicturePreviewFileId = extractGuidFromUrl(user.profilePicturePreview),
                     registrationDate = user.registrationDate.seconds * 1000
                 )
             )
@@ -679,8 +679,8 @@ class GrpcManager {
                     bio = user.bio,
                     profilePictureUrl = user.profilePicture,
                     profilePicturePreviewUrl = user.profilePicturePreview,
-                    profilePictureFileId = user.profilePicture,
-                    profilePicturePreviewFileId = user.profilePicturePreview,
+                    profilePictureFileId = extractGuidFromUrl(user.profilePicture),
+                    profilePicturePreviewFileId = extractGuidFromUrl(user.profilePicturePreview),
                     registrationDate = user.registrationDate.seconds * 1000
                 )
             )
@@ -1079,6 +1079,28 @@ class GrpcManager {
         val sentAt: Long,
         val readBy: List<Long>
     )
+
+    /**
+     * Извлекает GUID (fileId) из URL файла.
+     * Сервер файлов возвращает URL вида: https://files.barkfluff.com/web/download/{fileId}
+     */
+    private fun extractGuidFromUrl(urlOrGuid: String): String {
+        if (urlOrGuid.isBlank()) return urlOrGuid
+
+        // Если это URL (начинается с http), извлекаем GUID из конца
+        if (urlOrGuid.startsWith("http://") || urlOrGuid.startsWith("https://")) {
+            val lastSegment = urlOrGuid.substringAfterLast("/")
+            // Проверяем что это GUID (36 символов с дефисами)
+            if (lastSegment.matches(Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", RegexOption.IGNORE_CASE))) {
+                return lastSegment
+            }
+            // Если не GUID, возвращаем URL как есть
+            return urlOrGuid
+        }
+
+        // Это уже GUID
+        return urlOrGuid
+    }
 
     sealed class AuthResult {
         data class Success(
