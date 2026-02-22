@@ -24,7 +24,7 @@ public class DockerService
     {
         try
         {
-            var json = await RunDockerCommandAsync("ps", "--all --format '{{json .}}'");
+            var json = await RunDockerCommandAsync("ps", "--all", "--format", "{{json .}}");
             var containers = ParseDockerPsOutput(json);
             return containers;
         }
@@ -43,8 +43,8 @@ public class DockerService
         try
         {
             var containers = await GetContainersAsync();
-            return containers.FirstOrDefault(c => 
-                c.Name == containerName || 
+            return containers.FirstOrDefault(c =>
+                c.Name == containerName ||
                 c.Name == $"/{containerName}" ||
                 c.Id.StartsWith(containerName, StringComparison.OrdinalIgnoreCase)
             );
@@ -63,8 +63,8 @@ public class DockerService
     {
         try
         {
-            var result = await RunDockerCommandAsync("start", containerName);
-            
+            await RunDockerCommandAsync("start", containerName);
+
             _logger.LogInformation("Контейнер {ContainerName} запущен", containerName);
 
             return new ContainerActionResponseDto
@@ -92,8 +92,8 @@ public class DockerService
     {
         try
         {
-            var result = await RunDockerCommandAsync("stop", $"-t 30 {containerName}");
-            
+            await RunDockerCommandAsync("stop", "-t", "30", containerName);
+
             _logger.LogInformation("Контейнер {ContainerName} остановлен", containerName);
 
             return new ContainerActionResponseDto
@@ -121,8 +121,8 @@ public class DockerService
     {
         try
         {
-            var result = await RunDockerCommandAsync("restart", $"-t 30 {containerName}");
-            
+            await RunDockerCommandAsync("restart", "-t", "30", containerName);
+
             _logger.LogInformation("Контейнер {ContainerName} перезапущен", containerName);
 
             return new ContainerActionResponseDto
@@ -154,7 +154,7 @@ public class DockerService
             var inspectJson = await RunDockerCommandAsync("inspect", containerName);
             var inspectData = JsonDocument.Parse(inspectJson);
             var image = inspectData.RootElement[0].GetProperty("Config").GetProperty("Image").GetString();
-            
+
             if (string.IsNullOrEmpty(image))
             {
                 return new ContainerActionResponseDto
@@ -171,17 +171,16 @@ public class DockerService
             _logger.LogInformation("Образ {ImageName} успешно обновлен", image);
 
             // 3. Остановить контейнер
-            await RunDockerCommandAsync("stop", $"-t 30 {containerName}");
+            await RunDockerCommandAsync("stop", "-t", "30", containerName);
 
             // 4. Удалить старый контейнер
             await RunDockerCommandAsync("rm", containerName);
             _logger.LogInformation("Старый контейнер {ContainerName} удален", containerName);
 
             // 5. Создать и запустить новый контейнер через docker compose
-            // Для этого используем docker compose up -d --force-recreate для конкретного сервиса
             var serviceName = ConvertContainerNameToServiceName(containerName);
-            var composeResult = await RunDockerComposeCommandAsync($"up -d --force-recreate {serviceName}");
-            
+            await RunDockerComposeCommandAsync("up", "-d", "--force-recreate", serviceName);
+
             _logger.LogInformation("Контейнер {ContainerName} успешно пересоздан и запущен", containerName);
 
             return new ContainerActionResponseDto
@@ -231,14 +230,14 @@ public class DockerService
     }
 
     /// <summary>
-    /// Выполнить Docker команду и вернуть результат
+    /// Выполнить Docker команду и вернуть результат.
+    /// Использует ArgumentList чтобы каждый аргумент передавался OS буквально, без shell-интерпретации.
     /// </summary>
-    private async Task<string> RunDockerCommandAsync(string command, string args = "")
+    private async Task<string> RunDockerCommandAsync(params string[] args)
     {
         var startInfo = new ProcessStartInfo
         {
             FileName = "docker",
-            Arguments = $"{command} {args}",
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -246,6 +245,9 @@ public class DockerService
             StandardOutputEncoding = Encoding.UTF8,
             StandardErrorEncoding = Encoding.UTF8
         };
+
+        foreach (var arg in args)
+            startInfo.ArgumentList.Add(arg);
 
         using var process = new Process { StartInfo = startInfo };
         var outputBuilder = new StringBuilder();
@@ -271,21 +273,21 @@ public class DockerService
 
         if (process.ExitCode != 0)
         {
-            throw new Exception($"Docker command failed: {errorBuilder.ToString()}");
+            throw new Exception($"Docker command failed: {errorBuilder}");
         }
 
         return outputBuilder.ToString().Trim();
     }
 
     /// <summary>
-    /// Выполнить Docker Compose команду
+    /// Выполнить Docker Compose команду.
+    /// Использует ArgumentList — каждый аргумент передаётся буквально.
     /// </summary>
-    private async Task<string> RunDockerComposeCommandAsync(string args)
+    private async Task<string> RunDockerComposeCommandAsync(params string[] args)
     {
         var startInfo = new ProcessStartInfo
         {
             FileName = "docker",
-            Arguments = $"compose {args}",
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -295,6 +297,10 @@ public class DockerService
             WorkingDirectory = "/app" // Путь к docker-compose.yml внутри контейнера
         };
 
+        startInfo.ArgumentList.Add("compose");
+        foreach (var arg in args)
+            startInfo.ArgumentList.Add(arg);
+
         using var process = new Process { StartInfo = startInfo };
         var outputBuilder = new StringBuilder();
         var errorBuilder = new StringBuilder();
@@ -319,7 +325,7 @@ public class DockerService
 
         if (process.ExitCode != 0)
         {
-            throw new Exception($"Docker compose command failed: {errorBuilder.ToString()}");
+            throw new Exception($"Docker compose command failed: {errorBuilder}");
         }
 
         return outputBuilder.ToString().Trim();
