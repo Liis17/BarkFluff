@@ -8,9 +8,8 @@ namespace Barkfluff.AdminPanel.Services;
 /// <summary>
 /// Сервис для управления Docker контейнерами и образами через Docker CLI
 /// </summary>
-public class DockerService : IHostedService
+public class DockerService
 {
-    private const string HelperImage = "docker:cli";
     private readonly ILogger<DockerService> _logger;
 
     public DockerService(ILogger<DockerService> logger)
@@ -18,29 +17,13 @@ public class DockerService : IHostedService
         _logger = logger;
     }
 
-    public async Task StartAsync(CancellationToken cancellationToken)
-    {
-        await EnsureHelperImageAsync();
-    }
-
-    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-
     /// <summary>
-    /// Проверить наличие образа docker:cli и pull'нуть при необходимости
+    /// Получить имя образа контейнера admin-panel (для использования как helper)
     /// </summary>
-    private async Task EnsureHelperImageAsync()
+    private async Task<string> GetAdminPanelImageAsync()
     {
-        try
-        {
-            var result = await RunDockerCommandAsync("image", "inspect", HelperImage);
-            _logger.LogInformation("Образ {Image} уже присутствует", HelperImage);
-        }
-        catch
-        {
-            _logger.LogInformation("Образ {Image} не найден, загружаем...", HelperImage);
-            await RunDockerCommandAsync("pull", HelperImage);
-            _logger.LogInformation("Образ {Image} успешно загружен", HelperImage);
-        }
+        var image = await RunDockerCommandAsync("inspect", "--format", "{{.Config.Image}}", "admin-panel");
+        return image.Trim();
     }
 
     /// <summary>
@@ -411,16 +394,19 @@ public class DockerService : IHostedService
         {
             _logger.LogInformation("Запуск перезапуска админ-панели через helper-контейнер...");
 
+            var helperImage = await GetAdminPanelImageAsync();
+
             // Удаляем старый хелпер если он ещё существует
             await TryRemoveHelperContainerAsync("admin-panel-restarter");
 
-            // Запускаем detached контейнер который перезапустит admin-panel
+            // Запускаем detached контейнер с docker.sock из admin-panel
             await RunDockerCommandAsync(
                 "run", "-d", "--rm",
                 "--name", "admin-panel-restarter",
-                "-v", "/var/run/docker.sock:/var/run/docker.sock",
-                HelperImage,
-                "sh", "-c", "sleep 2 && docker restart admin-panel"
+                "--volumes-from", "admin-panel",
+                "--entrypoint", "sh",
+                helperImage,
+                "-c", "sleep 2 && docker restart admin-panel"
             );
 
             _logger.LogInformation("Helper-контейнер для перезапуска запущен");
@@ -444,7 +430,9 @@ public class DockerService : IHostedService
     }
 
     /// <summary>
-    /// Обновить образ и пересоздать админ-панель через detached helper-контейнер
+    /// Обновить образ и пересоздать админ-панель через detached helper-контейнер.
+    /// Helper наследует все volumes от admin-panel (docker.sock, docker-compose.yml, .env)
+    /// и использует тот же образ (в нём есть docker-ce-cli + docker-compose-plugin).
     /// </summary>
     public async Task<ContainerActionResponseDto> UpdateAdminPanelAsync()
     {
@@ -452,19 +440,20 @@ public class DockerService : IHostedService
         {
             _logger.LogInformation("Запуск обновления админ-панели через helper-контейнер...");
 
+            var helperImage = await GetAdminPanelImageAsync();
+
             // Удаляем старый хелпер если он ещё существует
             await TryRemoveHelperContainerAsync("admin-panel-updater");
 
             // Запускаем detached контейнер который pull'нет новый образ и пересоздаст admin-panel
+            // --volumes-from наследует docker.sock, /docker-compose.yml, /.env из admin-panel
             await RunDockerCommandAsync(
                 "run", "-d", "--rm",
                 "--name", "admin-panel-updater",
-                "-v", "/var/run/docker.sock:/var/run/docker.sock",
-                "-v", "/docker-compose.yml:/docker-compose.yml:ro",
-                "-v", "/.env:/.env:ro",
-                HelperImage,
-                "sh", "-c",
-                "sleep 2 && docker compose --project-name barkfluff --env-file /.env -f /docker-compose.yml pull admin-panel && docker compose --project-name barkfluff --env-file /.env -f /docker-compose.yml up --force-recreate -d admin-panel && docker image prune -f"
+                "--volumes-from", "admin-panel",
+                "--entrypoint", "sh",
+                helperImage,
+                "-c", "sleep 2 && docker compose --project-name barkfluff --env-file /.env -f /docker-compose.yml pull admin-panel && docker compose --project-name barkfluff --env-file /.env -f /docker-compose.yml up --force-recreate -d admin-panel && docker image prune -f"
             );
 
             _logger.LogInformation("Helper-контейнер для обновления запущен");

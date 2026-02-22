@@ -46,9 +46,8 @@ public class Program
         // Register HttpClient for SeqService
         builder.Services.AddHttpClient<SeqService>();
 
-        // Register DockerService as Singleton + IHostedService (pulls helper image on startup)
+        // Register DockerService as Singleton
         builder.Services.AddSingleton<DockerService>();
-        builder.Services.AddHostedService(sp => sp.GetRequiredService<DockerService>());
 
         // Register MetricsCollectorService as background service
         builder.Services.AddHostedService<MetricsCollectorService>();
