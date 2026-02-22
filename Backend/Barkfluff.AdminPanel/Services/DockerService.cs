@@ -370,13 +370,21 @@ public class DockerService
         {
             _logger.LogInformation("Запуск перезапуска админ-панели...");
 
-            // Запускаем перезапуск в фоне, чтобы успеть отправить ответ
-            _ = Task.Run(async () =>
+            // Запускаем перезапуск в фоне через shell script чтобы процесс успел завершиться
+            var startInfo = new ProcessStartInfo
             {
-                await Task.Delay(500); // Небольшая задержка чтобы ответ успел уйти
-                await RunDockerCommandAsync("restart", "-t", "30", "admin-panel");
-                _logger.LogInformation("Админ-панель перезапущена");
-            });
+                FileName = "sh",
+                Arguments = "-c \"sleep 2 && docker restart admin-panel\"",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            
+            var process = new Process { StartInfo = startInfo };
+            process.Start();
+            
+            _logger.LogInformation("Команда перезапуска отправлена");
 
             return new ContainerActionResponseDto
             {
@@ -405,20 +413,22 @@ public class DockerService
         {
             _logger.LogInformation("Запуск обновления админ-панели...");
 
-            // Запускаем обновление в фоне, чтобы успеть отправить ответ
-            _ = Task.Run(async () =>
+            // Запускаем обновление в фоне через shell script
+            // Используем --remove-orphans чтобы удалить старый контейнер
+            var startInfo = new ProcessStartInfo
             {
-                await Task.Delay(500); // Небольшая задержка чтобы ответ успел уйти
-                var result = await PullImageAndRecreateContainerAsync("admin-panel");
-                if (result.Success)
-                {
-                    _logger.LogInformation("Админ-панель обновлена");
-                }
-                else
-                {
-                    _logger.LogError("Ошибка обновления админ-панели: {Error}", result.ErrorDetails);
-                }
-            });
+                FileName = "sh",
+                Arguments = "-c \"sleep 2 && docker compose --project-name barkfluff --env-file /.env -f /docker-compose.yml pull admin-panel && docker compose --project-name barkfluff --env-file /.env -f /docker-compose.yml up --force-recreate --build -d --remove-orphans admin-panel && docker image prune -f\"",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            
+            var process = new Process { StartInfo = startInfo };
+            process.Start();
+            
+            _logger.LogInformation("Команда обновления отправлена");
 
             return new ContainerActionResponseDto
             {
