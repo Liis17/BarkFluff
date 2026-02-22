@@ -51,6 +51,7 @@ RUN getent group docker || groupadd -g 999 docker \
     && usermod -aG docker app
 
 COPY --from=build /app/publish .
-RUN mkdir -p /app/db && chown app:app /app/db
+RUN mkdir -p /app/db && chown app:app /app/db \
+    && mkdir -p /app/config && chown app:app /app/config
 USER $APP_UID
 ENTRYPOINT ["dotnet", "Barkfluff.AdminPanel.dll"]

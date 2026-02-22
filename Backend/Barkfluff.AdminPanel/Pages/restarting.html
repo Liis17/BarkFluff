@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Перезапуск админ-панели</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid #e2e8f0;
+            border-top-color: #6c5ce7;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .pulse-text {
+            animation: pulse 2s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-slate-800 font-sans antialiased">
+    <div class="min-h-screen flex items-center justify-center">
+        <div class="text-center">
+            <div class="spinner mx-auto mb-8"></div>
+            <h1 class="text-3xl font-bold text-slate-700 mb-4 pulse-text">Админ-панель перезапускается</h1>
+            <p class="text-lg text-slate-500 mb-2">Пожалуйста, подождите...</p>
+            <p class="text-sm text-slate-400">
+                <i data-lucide="refresh-cw" class="w-4 h-4 inline mr-1"></i>
+                Проверка доступности каждые 5 секунд
+            </p>
+            <div class="mt-8 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg inline-flex items-center gap-2">
+                <i data-lucide="clock" class="w-4 h-4"></i>
+                <span id="timer">0</span> сек
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        let seconds = 0;
+        const timerEl = document.getElementById('timer');
+        
+        // Обновляем таймер
+        setInterval(() => {
+            seconds += 5;
+            timerEl.textContent = seconds;
+        }, 5000);
+
+        // Функция проверки доступности сервера
+        async function checkServer() {
+            try {
+                const response = await fetch('/api/auth/me', { 
+                    method: 'HEAD',
+                    cache: 'no-cache'
+                });
+                
+                // Если получили 200 OK - сервер доступен
+                if (response.ok) {
+                    // Небольшая задержка чтобы сервер точно успел полностью запуститься
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    window.location.href = '/services';
+                }
+            } catch (error) {
+                // Сервер ещё недоступен, продолжаем ждать
+                console.log('Сервер ещё недоступен, ждём...');
+            }
+        }
+
+        // Проверяем каждые 5 секунд
+        setInterval(checkServer, 5000);
+
+        // Первая проверка через 5 секунд
+        setTimeout(checkServer, 5000);
+    </script>
+</body>
+</html>
