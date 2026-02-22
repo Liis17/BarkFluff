@@ -135,12 +135,12 @@ class ChatsActivity : AppCompatActivity() {
         versionText.text = "BarkFluff v${GlobalParam.getAppVersion(this)}"
 
         // Обработчики меню
-        drawerView.findViewById<LinearLayout>(R.id.menuFavorites)?.setOnClickListener {
+        drawerView.findViewById<com.google.android.material.button.MaterialButton>(R.id.menuFavorites)?.setOnClickListener {
             Snackbar.make(binding.root, "Избранное - скоро", Snackbar.LENGTH_SHORT).show()
             binding.drawerLayout.closeDrawer(GravityCompat.START)
         }
 
-        drawerView.findViewById<LinearLayout>(R.id.menuSettings)?.setOnClickListener {
+        drawerView.findViewById<com.google.android.material.button.MaterialButton>(R.id.menuSettings)?.setOnClickListener {
             Snackbar.make(binding.root, "Настройки - скоро", Snackbar.LENGTH_SHORT).show()
             binding.drawerLayout.closeDrawer(GravityCompat.START)
         }

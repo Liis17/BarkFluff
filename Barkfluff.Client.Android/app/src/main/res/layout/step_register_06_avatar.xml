@@ -86,7 +86,7 @@
 
                 <!-- Кнопки -->
                 <LinearLayout
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="32dp"
                     android:orientation="vertical">
@@ -96,7 +96,7 @@
                         android:id="@+id/uploadAvatarButton"
                         android:layout_width="match_parent"
                         android:layout_height="64dp"
-                        android:text="Выбрать фото"
+                        android:text="Выбрать фото из галереи"
                         android:textAllCaps="false"
                         android:textAppearance="?attr/textAppearanceTitleMedium"
                         app:cornerRadius="32dp"
@@ -106,12 +106,12 @@
                     <!-- Skip button -->
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/skipAvatarButton"
-                        style="@style/Widget.Material3.Button.TextButton"
+                        style="@style/Widget.Material3.Button.TonalButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_horizontal"
                         android:layout_marginTop="8dp"
-                        android:text="Пропустить"
+                        android:text="Пропустить этот шаг"
                         android:textAllCaps="false" />
 
                 </LinearLayout>
