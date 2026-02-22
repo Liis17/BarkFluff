@@ -18,6 +18,7 @@ final class RegistrationData {
 
     // Шаг 2: Username
     var username: String = ""
+    var isUsernameAvailable: Bool? = nil // nil = не проверено, true = доступно, false = занято
 
     // Шаг 3: Email
     var email: String = ""
@@ -50,6 +51,7 @@ final class RegistrationData {
         firstName = ""
         lastName = ""
         username = ""
+        isUsernameAvailable = nil
         email = ""
         confirmationCode = ""
         codeID = nil
@@ -75,7 +77,7 @@ extension RegistrationData {
             return firstName.count >= 3 && lastName.count >= 3
 
         case .username:
-            return username.count >= 3 && username.count <= 30
+            return username.count >= 3 && username.count <= 30 && isUsernameAvailable == true
 
         case .email:
             return isValidEmail(email)
