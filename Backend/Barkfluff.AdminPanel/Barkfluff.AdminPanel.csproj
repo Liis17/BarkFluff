@@ -11,7 +11,9 @@
     <None Remove="Pages\dashboard.html" />
     <None Remove="Pages\Login.html" />
     <None Remove="Pages\logs.html" />
+    <None Remove="Pages\restarting.html" />
     <None Remove="Pages\services.html" />
+    <None Remove="Pages\updating.html" />
   </ItemGroup>
 
   <ItemGroup>
@@ -27,7 +29,13 @@
     <Content Include="Pages\logs.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Include="Pages\restarting.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="Pages\services.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\updating.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
