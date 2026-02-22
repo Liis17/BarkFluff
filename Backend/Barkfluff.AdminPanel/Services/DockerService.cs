@@ -27,6 +27,18 @@ public class DockerService
     }
 
     /// <summary>
+    /// Получить host-путь bind mount'а по destination-пути внутри контейнера.
+    /// Использует docker inspect для извлечения реальных путей на хосте.
+    /// </summary>
+    private async Task<string> GetMountSourceAsync(string containerName, string destination)
+    {
+        // Go template: ищем Mount с нужным Destination и возвращаем Source
+        var template = "{{range .Mounts}}{{if eq .Destination \"" + destination + "\"}}{{.Source}}{{end}}{{end}}";
+        var source = await RunDockerCommandAsync("inspect", "--format", template, containerName);
+        return source.Trim();
+    }
+
+    /// <summary>
     /// Получить список всех контейнеров и их статусы
     /// </summary>
     public async Task<List<ContainerStatusDto>> GetContainersAsync()
@@ -395,15 +407,16 @@ public class DockerService
             _logger.LogInformation("Запуск перезапуска админ-панели через helper-контейнер...");
 
             var helperImage = await GetAdminPanelImageAsync();
+            var dockerSock = await GetMountSourceAsync("admin-panel", "/var/run/docker.sock");
 
             // Удаляем старый хелпер если он ещё существует
             await TryRemoveHelperContainerAsync("admin-panel-restarter");
 
-            // Запускаем detached контейнер с docker.sock из admin-panel
             await RunDockerCommandAsync(
                 "run", "-d", "--rm",
                 "--name", "admin-panel-restarter",
-                "--volumes-from", "admin-panel",
+                "--user", "root",
+                "-v", $"{dockerSock}:/var/run/docker.sock",
                 "--entrypoint", "sh",
                 helperImage,
                 "-c", "sleep 2 && docker restart admin-panel"
@@ -431,8 +444,8 @@ public class DockerService
 
     /// <summary>
     /// Обновить образ и пересоздать админ-панель через detached helper-контейнер.
-    /// Helper наследует все volumes от admin-panel (docker.sock, docker-compose.yml, .env)
-    /// и использует тот же образ (в нём есть docker-ce-cli + docker-compose-plugin).
+    /// Монтирует docker.sock, docker-compose.yml и .env по реальным host-путям (через docker inspect),
+    /// чтобы не создавать зависимость --volumes-from (которая блокирует пересоздание admin-panel).
     /// </summary>
     public async Task<ContainerActionResponseDto> UpdateAdminPanelAsync()
     {
@@ -441,16 +454,20 @@ public class DockerService
             _logger.LogInformation("Запуск обновления админ-панели через helper-контейнер...");
 
             var helperImage = await GetAdminPanelImageAsync();
+            var dockerSock = await GetMountSourceAsync("admin-panel", "/var/run/docker.sock");
+            var composeFile = await GetMountSourceAsync("admin-panel", "/docker-compose.yml");
+            var envFile = await GetMountSourceAsync("admin-panel", "/.env");
 
             // Удаляем старый хелпер если он ещё существует
             await TryRemoveHelperContainerAsync("admin-panel-updater");
 
-            // Запускаем detached контейнер который pull'нет новый образ и пересоздаст admin-panel
-            // --volumes-from наследует docker.sock, /docker-compose.yml, /.env из admin-panel
             await RunDockerCommandAsync(
                 "run", "-d", "--rm",
                 "--name", "admin-panel-updater",
-                "--volumes-from", "admin-panel",
+                "--user", "root",
+                "-v", $"{dockerSock}:/var/run/docker.sock",
+                "-v", $"{composeFile}:/docker-compose.yml:ro",
+                "-v", $"{envFile}:/.env:ro",
                 "--entrypoint", "sh",
                 helperImage,
                 "-c", "sleep 2 && docker compose --project-name barkfluff --env-file /.env -f /docker-compose.yml pull admin-panel && docker compose --project-name barkfluff --env-file /.env -f /docker-compose.yml up --force-recreate -d admin-panel && docker image prune -f"
