@@ -4,13 +4,15 @@
     android:id="@+id/serverCard"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginVertical="6dp"
+    android:layout_marginVertical="8dp"
     android:clickable="true"
     android:focusable="true"
     android:foreground="?attr/selectableItemBackground"
-    app:cardBackgroundColor="?attr/colorSurfaceContainer"
-    app:cardCornerRadius="12dp"
-    app:cardElevation="2dp">
+    app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
+    app:cardCornerRadius="20dp"
+    app:cardElevation="0dp"
+    app:strokeColor="?attr/colorOutline"
+    app:strokeWidth="1dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -18,14 +20,22 @@
         android:orientation="horizontal"
         android:padding="16dp">
 
-        <!-- Цветовой индикатор сервера -->
-        <View
-            android:id="@+id/serverColorIndicator"
-            android:layout_width="4dp"
+        <!-- Цветовой индикатор сервера с увеличенным радиусом -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="6dp"
             android:layout_height="match_parent"
-            android:layout_marginEnd="12dp"
-            android:background="@drawable/background_color_indicator"
-            android:backgroundTint="#FF6B35" />
+            android:layout_marginEnd="16dp"
+            app:cardBackgroundColor="#FF6B35"
+            app:cardCornerRadius="3dp"
+            app:cardElevation="0dp">
+
+            <View
+                android:id="@+id/serverColorIndicator"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="#FF6B35" />
+
+        </com.google.android.material.card.MaterialCardView>
 
         <!-- Информация о сервере -->
         <LinearLayout
@@ -34,7 +44,7 @@
             android:layout_weight="1"
             android:orientation="vertical">
 
-            <!-- Название сервера -->
+            <!-- Название сервера с Emphasized типографикой -->
             <TextView
                 android:id="@+id/serverTitle"
                 android:layout_width="wrap_content"
@@ -42,9 +52,8 @@
                 android:ellipsize="end"
                 android:maxLines="1"
                 android:text="Название сервера"
-                android:textColor="?attr/colorOnSurface"
-                android:textSize="16sp"
-                android:textStyle="bold" />
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="?attr/colorOnSurface" />
 
             <!-- Описание -->
             <TextView
@@ -55,31 +64,57 @@
                 android:ellipsize="end"
                 android:maxLines="2"
                 android:text="Описание сервера"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:textSize="14sp" />
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="?attr/colorOnSurfaceVariant" />
 
-            <!-- Локация и публичное имя -->
-            <TextView
-                android:id="@+id/serverLocationAndPublicName"
+            <!-- Локация и публичное имя с иконками -->
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:text="Локация • @publicname"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:textSize="12sp" />
+                android:layout_marginTop="8dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:src="@drawable/ic_location"
+                    app:tint="?attr/colorOnSurfaceVariant" />
+
+                <TextView
+                    android:id="@+id/serverLocationAndPublicName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="Локация • @publicname"
+                    android:textAppearance="?attr/textAppearanceLabelSmall"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+
+            </LinearLayout>
 
         </LinearLayout>
 
-        <!-- Стрелка вправо -->
-        <ImageView
-            android:layout_width="24dp"
-            android:layout_height="24dp"
+        <!-- Стрелка вправо с контейнером -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:layout_gravity="center_vertical"
             android:layout_marginStart="12dp"
-            android:src="@android:drawable/ic_media_play"
-            app:tint="?attr/colorOnSurfaceVariant" />
+            app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="0dp">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:rotation="180"
+                android:src="@android:drawable/ic_media_play"
+                app:tint="?attr/colorOnSurfaceVariant" />
+
+        </com.google.android.material.card.MaterialCardView>
 
     </LinearLayout>
 

@@ -9,11 +9,14 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
-import android.view.animation.AccelerateDecelerateInterpolator
+import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityWelcomeBinding
 import com.google.android.material.color.DynamicColors
 
@@ -54,79 +57,23 @@ class WelcomeActivity : AppCompatActivity() {
         binding = ActivityWelcomeBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        setupAnimations()
+        // Enable edge-to-edge
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content)) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(v.paddingLeft, systemBars.top, v.paddingRight, v.paddingBottom)
+            insets
+        }
+
         setupClickListeners()
-    }
-
-    private fun setupAnimations() {
-        val duration = 600L
-        val interpolator = AccelerateDecelerateInterpolator()
-
-        // Content card animation
-        binding.contentCard.animate()
-            .alpha(1f)
-            .translationY(0f)
-            .setDuration(duration)
-            .setInterpolator(interpolator)
-            .start()
-
-        // Logo animation with delay
-        binding.logoImage.animate()
-            .alpha(1f)
-            .translationY(0f)
-            .setDuration(duration)
-            .setStartDelay(100)
-            .setInterpolator(interpolator)
-            .start()
-
-        // Title animation
-        binding.titleText.animate()
-            .alpha(1f)
-            .translationY(0f)
-            .setDuration(duration)
-            .setStartDelay(200)
-            .setInterpolator(interpolator)
-            .start()
-
-        // Subtitle animation
-        binding.subtitleText.animate()
-            .alpha(1f)
-            .translationY(0f)
-            .setDuration(duration)
-            .setStartDelay(300)
-            .setInterpolator(interpolator)
-            .start()
-
-        // Description animation
-        binding.descriptionText.animate()
-            .alpha(1f)
-            .translationY(0f)
-            .setDuration(duration)
-            .setStartDelay(400)
-            .setInterpolator(interpolator)
-            .start()
-
-        // Button animation
-        binding.startButton.animate()
-            .alpha(1f)
-            .translationY(0f)
-            .setDuration(duration)
-            .setStartDelay(500)
-            .setInterpolator(interpolator)
-            .start()
-
-        // Footer animation
-        binding.footerPanel.animate()
-            .alpha(1f)
-            .setDuration(duration)
-            .setStartDelay(600)
-            .setInterpolator(interpolator)
-            .start()
     }
 
     private fun setupClickListeners() {
         binding.startButton.setOnClickListener {
             navigateToSelectServer()
+        }
+
+        binding.learnMoreButton.setOnClickListener {
+            showLearnMore()
         }
 
         binding.aboutLink.setOnClickListener {
@@ -140,6 +87,10 @@ class WelcomeActivity : AppCompatActivity() {
         binding.helpLink.setOnClickListener {
             showHelp()
         }
+    }
+
+    private fun showLearnMore() {
+        Toast.makeText(this, "Узнать больше - скоро", Toast.LENGTH_SHORT).show()
     }
 
     private fun navigateToSelectServer() {

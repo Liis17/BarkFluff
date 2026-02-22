@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:background="?android:attr/colorBackground">
 
-    <ScrollView
+    <androidx.core.widget.NestedScrollView
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:fillViewport="true"
@@ -21,54 +21,56 @@
             android:orientation="vertical"
             android:padding="24dp">
 
-            <!-- Logo -->
-            <ImageView
-                android:id="@+id/logoImage"
-                android:layout_width="80dp"
-                android:layout_height="80dp"
-                android:layout_marginTop="32dp"
-                android:layout_marginBottom="16dp"
-                android:contentDescription="@string/app_name"
-                android:src="@drawable/ic_launcher_foreground" />
-
-            <!-- App name -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+            <!-- Logo с крупной формой -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/logoCard"
+                android:layout_width="100dp"
+                android:layout_height="100dp"
+                android:layout_marginTop="24dp"
                 android:layout_marginBottom="24dp"
-                android:text="@string/app_name"
-                android:textColor="?attr/colorOnSurface"
-                android:textSize="24sp"
-                android:textStyle="bold" />
+                app:cardBackgroundColor="?attr/colorPrimaryContainer"
+                app:cardCornerRadius="25dp"
+                app:cardElevation="0dp"
+                app:strokeColor="?attr/colorOutline"
+                app:strokeWidth="1dp">
 
-            <!-- Title -->
+                <ImageView
+                    android:id="@+id/logoImage"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:contentDescription="@string/app_name"
+                    android:padding="20dp"
+                    android:src="@drawable/ic_launcher_foreground" />
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Заголовок с Emphasized типографикой -->
             <TextView
                 android:id="@+id/titleText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp"
                 android:text="Добро пожаловать"
-                android:textColor="?attr/colorOnSurface"
-                android:textSize="22sp"
-                android:textStyle="bold" />
+                android:textAppearance="?attr/textAppearanceHeadlineMedium"
+                android:textColor="?attr/colorOnSurface" />
 
-            <!-- Subtitle -->
+            <!-- Подзаголовок -->
             <TextView
                 android:id="@+id/subtitleText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:layout_marginBottom="24dp"
+                android:layout_marginBottom="32dp"
                 android:text="Войдите в свой аккаунт"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:textSize="16sp" />
+                android:textAppearance="?attr/textAppearanceBodyLarge"
+                android:textColor="?attr/colorOnSurfaceVariant" />
 
-            <!-- Login card -->
+            <!-- Карточка входа с увеличенными радиусами -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/loginCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardBackgroundColor="?attr/colorSurfaceContainer"
-                app:cardCornerRadius="16dp"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
+                app:cardCornerRadius="24dp"
                 app:cardElevation="0dp"
                 app:strokeColor="?attr/colorOutline"
                 app:strokeWidth="1dp">
@@ -77,7 +79,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="20dp">
+                    android:padding="24dp">
 
                     <!-- Login fields group -->
                     <LinearLayout
@@ -86,15 +88,20 @@
                         android:layout_height="wrap_content"
                         android:orientation="vertical">
 
-                        <!-- Username/Email -->
+                        <!-- Username/Email с плавающим лейблом -->
                         <com.google.android.material.textfield.TextInputLayout
                             android:id="@+id/usernameInputLayout"
                             style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginBottom="4dp"
+                            android:layout_marginBottom="8dp"
                             android:hint="Имя пользователя или email"
-                            app:errorEnabled="true">
+                            app:boxCornerRadiusBottomEnd="16dp"
+                            app:boxCornerRadiusBottomStart="16dp"
+                            app:boxCornerRadiusTopEnd="16dp"
+                            app:boxCornerRadiusTopStart="16dp"
+                            app:errorEnabled="true"
+                            app:startIconDrawable="@drawable/ic_person">
 
                             <com.google.android.material.textfield.TextInputEditText
                                 android:id="@+id/usernameEditText"
@@ -106,16 +113,21 @@
 
                         </com.google.android.material.textfield.TextInputLayout>
 
-                        <!-- Password -->
+                        <!-- Password с плавающим лейблом -->
                         <com.google.android.material.textfield.TextInputLayout
                             android:id="@+id/passwordInputLayout"
                             style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginBottom="4dp"
+                            android:layout_marginBottom="8dp"
                             android:hint="Пароль"
+                            app:boxCornerRadiusBottomEnd="16dp"
+                            app:boxCornerRadiusBottomStart="16dp"
+                            app:boxCornerRadiusTopEnd="16dp"
+                            app:boxCornerRadiusTopStart="16dp"
                             app:endIconMode="password_toggle"
-                            app:errorEnabled="true">
+                            app:errorEnabled="true"
+                            app:startIconDrawable="@android:drawable/ic_lock_lock">
 
                             <com.google.android.material.textfield.TextInputEditText
                                 android:id="@+id/passwordEditText"
@@ -127,16 +139,15 @@
                         </com.google.android.material.textfield.TextInputLayout>
 
                         <!-- Forgot password -->
-                        <TextView
+                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/forgotPasswordLink"
+                            style="@style/Widget.Material3.Button.TextButton"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_gravity="end"
                             android:layout_marginBottom="8dp"
-                            android:padding="4dp"
                             android:text="Забыли пароль?"
-                            android:textColor="?attr/colorPrimary"
-                            android:textSize="14sp" />
+                            android:textAllCaps="false" />
 
                     </LinearLayout>
 
@@ -152,121 +163,161 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginBottom="8dp"
-                            android:text="Введите код двухфакторной аутентификации"
-                            android:textColor="?attr/colorOnSurface"
-                            android:textSize="16sp"
-                            android:textStyle="bold" />
+                            android:text="Двухфакторная аутентификация"
+                            android:textAppearance="?attr/textAppearanceTitleMedium"
+                            android:textColor="?attr/colorOnSurface" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginBottom="16dp"
-                            android:text="Код из приложения-аутентификатора или email"
-                            android:textColor="?attr/colorOnSurfaceVariant"
-                            android:textSize="14sp" />
+                            android:layout_marginBottom="24dp"
+                            android:text="Введите код из приложения-аутентификатора"
+                            android:textAppearance="?attr/textAppearanceBodyMedium"
+                            android:textColor="?attr/colorOnSurfaceVariant" />
 
-                        <!-- 6 OTP digit boxes -->
+                        <!-- 6 OTP digit boxes с увеличенными радиусами -->
                         <LinearLayout
                             android:id="@+id/otpBoxesLayout"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginBottom="16dp"
+                            android:layout_marginBottom="24dp"
                             android:gravity="center"
                             android:orientation="horizontal">
 
-                            <EditText
-                                android:id="@+id/otpBox1"
-                                android:layout_width="48dp"
-                                android:layout_height="56dp"
-                                android:layout_marginHorizontal="4dp"
-                                android:background="@drawable/otp_box_background"
-                                android:gravity="center"
-                                android:inputType="number"
-                                android:maxLength="1"
-                                android:textColor="?attr/colorOnSurface"
-                                android:textSize="24sp"
-                                android:textStyle="bold" />
+                            <com.google.android.material.textfield.TextInputLayout
+                                android:id="@+id/otpBox1Layout"
+                                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                                android:layout_width="52dp"
+                                android:layout_height="64dp"
+                                android:layout_marginHorizontal="4dp">
 
-                            <EditText
-                                android:id="@+id/otpBox2"
-                                android:layout_width="48dp"
-                                android:layout_height="56dp"
-                                android:layout_marginHorizontal="4dp"
-                                android:background="@drawable/otp_box_background"
-                                android:gravity="center"
-                                android:inputType="number"
-                                android:maxLength="1"
-                                android:textColor="?attr/colorOnSurface"
-                                android:textSize="24sp"
-                                android:textStyle="bold" />
+                                <com.google.android.material.textfield.TextInputEditText
+                                    android:id="@+id/otpBox1"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:gravity="center"
+                                    android:inputType="number"
+                                    android:maxLength="1"
+                                    android:textAppearance="?attr/textAppearanceHeadlineMedium" />
 
-                            <EditText
-                                android:id="@+id/otpBox3"
-                                android:layout_width="48dp"
-                                android:layout_height="56dp"
-                                android:layout_marginHorizontal="4dp"
-                                android:background="@drawable/otp_box_background"
-                                android:gravity="center"
-                                android:inputType="number"
-                                android:maxLength="1"
-                                android:textColor="?attr/colorOnSurface"
-                                android:textSize="24sp"
-                                android:textStyle="bold" />
+                            </com.google.android.material.textfield.TextInputLayout>
 
-                            <EditText
-                                android:id="@+id/otpBox4"
-                                android:layout_width="48dp"
-                                android:layout_height="56dp"
-                                android:layout_marginHorizontal="4dp"
-                                android:background="@drawable/otp_box_background"
-                                android:gravity="center"
-                                android:inputType="number"
-                                android:maxLength="1"
-                                android:textColor="?attr/colorOnSurface"
-                                android:textSize="24sp"
-                                android:textStyle="bold" />
+                            <com.google.android.material.textfield.TextInputLayout
+                                android:id="@+id/otpBox2Layout"
+                                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                                android:layout_width="52dp"
+                                android:layout_height="64dp"
+                                android:layout_marginHorizontal="4dp">
 
-                            <EditText
-                                android:id="@+id/otpBox5"
-                                android:layout_width="48dp"
-                                android:layout_height="56dp"
-                                android:layout_marginHorizontal="4dp"
-                                android:background="@drawable/otp_box_background"
-                                android:gravity="center"
-                                android:inputType="number"
-                                android:maxLength="1"
-                                android:textColor="?attr/colorOnSurface"
-                                android:textSize="24sp"
-                                android:textStyle="bold" />
+                                <com.google.android.material.textfield.TextInputEditText
+                                    android:id="@+id/otpBox2"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:gravity="center"
+                                    android:inputType="number"
+                                    android:maxLength="1"
+                                    android:textAppearance="?attr/textAppearanceHeadlineMedium" />
 
-                            <EditText
-                                android:id="@+id/otpBox6"
-                                android:layout_width="48dp"
-                                android:layout_height="56dp"
-                                android:layout_marginHorizontal="4dp"
-                                android:background="@drawable/otp_box_background"
-                                android:gravity="center"
-                                android:inputType="number"
-                                android:maxLength="1"
-                                android:textColor="?attr/colorOnSurface"
-                                android:textSize="24sp"
-                                android:textStyle="bold" />
+                            </com.google.android.material.textfield.TextInputLayout>
+
+                            <com.google.android.material.textfield.TextInputLayout
+                                android:id="@+id/otpBox3Layout"
+                                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                                android:layout_width="52dp"
+                                android:layout_height="64dp"
+                                android:layout_marginHorizontal="4dp">
+
+                                <com.google.android.material.textfield.TextInputEditText
+                                    android:id="@+id/otpBox3"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:gravity="center"
+                                    android:inputType="number"
+                                    android:maxLength="1"
+                                    android:textAppearance="?attr/textAppearanceHeadlineMedium" />
+
+                            </com.google.android.material.textfield.TextInputLayout>
+
+                            <com.google.android.material.textfield.TextInputLayout
+                                android:id="@+id/otpBox4Layout"
+                                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                                android:layout_width="52dp"
+                                android:layout_height="64dp"
+                                android:layout_marginHorizontal="4dp">
+
+                                <com.google.android.material.textfield.TextInputEditText
+                                    android:id="@+id/otpBox4"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:gravity="center"
+                                    android:inputType="number"
+                                    android:maxLength="1"
+                                    android:textAppearance="?attr/textAppearanceHeadlineMedium" />
+
+                            </com.google.android.material.textfield.TextInputLayout>
+
+                            <com.google.android.material.textfield.TextInputLayout
+                                android:id="@+id/otpBox5Layout"
+                                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                                android:layout_width="52dp"
+                                android:layout_height="64dp"
+                                android:layout_marginHorizontal="4dp">
+
+                                <com.google.android.material.textfield.TextInputEditText
+                                    android:id="@+id/otpBox5"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:gravity="center"
+                                    android:inputType="number"
+                                    android:maxLength="1"
+                                    android:textAppearance="?attr/textAppearanceHeadlineMedium" />
+
+                            </com.google.android.material.textfield.TextInputLayout>
+
+                            <com.google.android.material.textfield.TextInputLayout
+                                android:id="@+id/otpBox6Layout"
+                                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                                android:layout_width="52dp"
+                                android:layout_height="64dp"
+                                android:layout_marginHorizontal="4dp">
+
+                                <com.google.android.material.textfield.TextInputEditText
+                                    android:id="@+id/otpBox6"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:gravity="center"
+                                    android:inputType="number"
+                                    android:maxLength="1"
+                                    android:textAppearance="?attr/textAppearanceHeadlineMedium" />
+
+                            </com.google.android.material.textfield.TextInputLayout>
 
                         </LinearLayout>
 
                     </LinearLayout>
 
                     <!-- Error text -->
-                    <TextView
-                        android:id="@+id/errorText"
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/errorCard"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="8dp"
-                        android:textColor="?attr/colorError"
-                        android:textSize="14sp"
-                        android:visibility="gone" />
+                        android:layout_marginBottom="16dp"
+                        android:visibility="gone"
+                        app:cardBackgroundColor="?attr/colorErrorContainer"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="0dp">
 
-                    <!-- Login button with loading overlay -->
+                        <TextView
+                            android:id="@+id/errorText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:padding="12dp"
+                            android:textColor="?attr/colorOnErrorContainer"
+                            android:textSize="14sp" />
+
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <!-- Login button с морфингом -->
                     <FrameLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content">
@@ -274,15 +325,16 @@
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/loginButton"
                             android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
+                            android:layout_height="64dp"
                             android:text="Войти"
                             android:textAllCaps="false"
-                            android:textSize="16sp" />
+                            android:textAppearance="?attr/textAppearanceTitleMedium"
+                            app:cornerRadius="32dp" />
 
                         <ProgressBar
                             android:id="@+id/loginProgressBar"
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
                             android:layout_gravity="center"
                             android:indeterminateTint="?attr/colorOnPrimary"
                             android:visibility="gone" />
@@ -294,36 +346,37 @@
             </com.google.android.material.card.MaterialCardView>
 
             <!-- Change server link -->
-            <TextView
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/changeServerLink"
+                style="@style/Widget.Material3.Button.TextButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:padding="8dp"
+                android:layout_marginTop="16dp"
                 android:text="Изменить подключение к серверу"
-                android:textColor="?attr/colorPrimary"
-                android:textSize="14sp" />
+                android:textAllCaps="false" />
 
-            <!-- Separator -->
-            <View
+            <!-- Разделитель -->
+            <com.google.android.material.divider.MaterialDivider
                 android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginVertical="16dp"
-                android:background="?attr/colorOutline" />
+                android:layout_height="wrap_content"
+                android:layout_marginVertical="24dp" />
 
             <!-- Register button -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/registerButton"
-                style="@style/Widget.Material3.Button.OutlinedButton"
+                style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="64dp"
                 android:text="Создать новый аккаунт"
                 android:textAllCaps="false"
-                android:textSize="16sp" />
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                app:cornerRadius="32dp"
+                app:icon="@drawable/ic_grid"
+                app:iconGravity="textStart" />
 
         </LinearLayout>
 
-    </ScrollView>
+    </androidx.core.widget.NestedScrollView>
 
     <!-- Footer -->
     <TextView
@@ -331,10 +384,10 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
-        android:padding="12dp"
+        android:padding="16dp"
         android:text="2025 BarkFluff. Никакие права не защищены."
+        android:textAppearance="?attr/textAppearanceLabelSmall"
         android:textColor="?attr/colorOnSurfaceVariant"
-        android:textSize="12sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />

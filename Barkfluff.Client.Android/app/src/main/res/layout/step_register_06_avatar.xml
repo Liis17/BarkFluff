@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -10,85 +10,126 @@
         android:layout_height="wrap_content"
         android:gravity="center"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:padding="20dp">
 
+        <!-- Заголовок -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="10dp"
+            android:layout_marginBottom="8dp"
             android:text="Фото профиля"
-            android:textColor="?attr/colorOnSurface"
-            android:textSize="24sp"
-            android:textStyle="bold" />
+            android:textAppearance="?attr/textAppearanceHeadlineMedium"
+            android:textColor="?attr/colorOnSurface" />
 
+        <!-- Подзаголовок -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="32dp"
+            android:text="Добавьте фото или пропустите этот шаг"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="?attr/colorOnSurfaceVariant" />
+
+        <!-- Карточка с аватаром -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="4dp">
+            app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
+            app:cardCornerRadius="24dp"
+            app:cardElevation="0dp"
+            app:strokeColor="?attr/colorOutline"
+            app:strokeWidth="1dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:gravity="center_horizontal"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="24dp">
 
-                <!-- Avatar preview / cropper container -->
-                <FrameLayout
-                    android:layout_width="300dp"
-                    android:layout_height="300dp"
-                    android:layout_gravity="center_horizontal">
+                <!-- Avatar preview / cropper container с увеличенным радиусом -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="200dp"
+                    android:layout_height="200dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+                    app:cardCornerRadius="100dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="?attr/colorOutline"
+                    app:strokeWidth="2dp">
 
-                    <!-- Default avatar placeholder -->
-                    <ImageView
-                        android:id="@+id/avatarPlaceholder"
+                    <FrameLayout
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:background="@drawable/ic_launcher_foreground"
-                        android:contentDescription="Avatar placeholder"
-                        android:scaleType="centerCrop" />
+                        android:layout_height="match_parent">
 
-                    <!-- Cropped image preview (hidden initially) -->
-                    <ImageView
-                        android:id="@+id/croppedImageView"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:contentDescription="Cropped avatar"
-                        android:scaleType="centerCrop"
-                        android:visibility="gone" />
-                </FrameLayout>
+                        <!-- Default avatar placeholder -->
+                        <ImageView
+                            android:id="@+id/avatarPlaceholder"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:contentDescription="Avatar placeholder"
+                            android:padding="50dp"
+                            android:scaleType="centerCrop"
+                            android:src="@drawable/ic_launcher_foreground" />
 
-                <!-- Upload button -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/uploadAvatarButton"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
+                        <!-- Cropped image preview (hidden initially) -->
+                        <ImageView
+                            android:id="@+id/croppedImageView"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:contentDescription="Cropped avatar"
+                            android:scaleType="centerCrop"
+                            android:visibility="gone" />
+
+                    </FrameLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Кнопки -->
+                <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center_horizontal"
-                    android:layout_marginTop="16dp"
-                    android:text="Выбрать фото"
-                    app:icon="@android:drawable/ic_menu_gallery" />
+                    android:layout_marginTop="32dp"
+                    android:orientation="vertical">
 
+                    <!-- Upload button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/uploadAvatarButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="64dp"
+                        android:text="Выбрать фото"
+                        android:textAllCaps="false"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        app:cornerRadius="32dp"
+                        app:icon="@drawable/ic_download"
+                        app:iconGravity="textStart" />
+
+                    <!-- Skip button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/skipAvatarButton"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_horizontal"
+                        android:layout_marginTop="8dp"
+                        android:text="Пропустить"
+                        android:textAllCaps="false" />
+
+                </LinearLayout>
+
+                <!-- Подсказка -->
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center_horizontal"
-                    android:layout_marginTop="15dp"
+                    android:layout_marginTop="16dp"
                     android:gravity="center"
-                    android:text="Загрузите фото профиля"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:textSize="14sp" />
+                    android:text="Фото будет видно другим пользователям"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
 
-                <!-- Skip button -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/skipAvatarButton"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center_horizontal"
-                    android:layout_marginTop="8dp"
-                    android:text="Пропустить" />
             </LinearLayout>
+
         </com.google.android.material.card.MaterialCardView>
+
     </LinearLayout>
-</ScrollView>
+
+</androidx.core.widget.NestedScrollView>

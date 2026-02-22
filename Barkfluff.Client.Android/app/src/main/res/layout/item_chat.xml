@@ -10,40 +10,40 @@
     android:paddingHorizontal="16dp"
     android:paddingVertical="12dp">
 
-    <!-- Аватар: FrameLayout для наложения ImageView и плейсхолдера -->
+    <!-- Аватар: FrameLayout для наложения ImageView и плейсхолдера с увеличенным радиусом -->
     <FrameLayout
-        android:layout_width="56dp"
-        android:layout_height="56dp"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
         android:layout_marginEnd="16dp">
 
         <!-- Аватар картинка -->
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/chatAvatar"
-            android:layout_width="56dp"
-            android:layout_height="56dp"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
             android:scaleType="centerCrop"
             android:visibility="gone"
             app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
             tools:visibility="visible" />
 
-        <!-- Плейсхолдер с инициалами -->
+        <!-- Плейсхолдер с инициалами и цветом -->
         <TextView
             android:id="@+id/chatAvatarPlaceholder"
-            android:layout_width="56dp"
-            android:layout_height="56dp"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
             android:gravity="center"
             android:textColor="@android:color/white"
-            android:textSize="20sp"
+            android:textSize="22sp"
             android:textStyle="bold"
             android:visibility="visible"
             tools:background="@color/primary"
             tools:text="AB" />
 
-        <!-- Индикатор онлайн -->
+        <!-- Индикатор онлайн с увеличенным размером -->
         <View
             android:id="@+id/onlineIndicator"
-            android:layout_width="14dp"
-            android:layout_height="14dp"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
             android:layout_gravity="bottom|end"
             android:background="@drawable/online_indicator"
             android:visibility="gone" />
@@ -106,21 +106,31 @@
                 android:textColor="?attr/colorOnSurfaceVariant"
                 tools:text="Привет! Как дела?" />
 
-            <!-- Бейдж непрочитанных -->
-            <TextView
-                android:id="@+id/unreadBadge"
+            <!-- Бейдж непрочитанных с увеличенным радиусом -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/unreadBadgeCard"
                 android:layout_width="wrap_content"
-                android:layout_height="22dp"
-                android:background="@drawable/unread_badge_background"
-                android:gravity="center"
-                android:minWidth="22dp"
-                android:paddingHorizontal="6dp"
-                android:textColor="@color/white"
-                android:textSize="11sp"
-                android:textStyle="bold"
+                android:layout_height="24dp"
+                android:minWidth="24dp"
                 android:visibility="gone"
-                tools:text="3"
-                tools:visibility="visible" />
+                app:cardBackgroundColor="?attr/colorPrimary"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp">
+
+                <TextView
+                    android:id="@+id/unreadBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:minWidth="24dp"
+                    android:paddingHorizontal="8dp"
+                    android:textColor="?attr/colorOnPrimary"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    tools:text="3"
+                    tools:visibility="visible" />
+
+            </com.google.android.material.card.MaterialCardView>
 
         </LinearLayout>
 

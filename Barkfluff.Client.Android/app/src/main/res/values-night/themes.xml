@@ -1,9 +1,21 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Dark theme with Material You dynamic colors support (Android 12+) -->
+    <!-- Dark theme with Material 3 Expressive (Android 12+) -->
     <style name="Base.Theme.BarkfluffClientAndroid" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Status bar -->
-        <item name="android:statusBarColor">?attr/colorSurface</item>
+        <!-- Enable edge-to-edge -->
+        <item name="android:windowLayoutInDisplayCutoutMode" tools:targetApi="p">shortEdges</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowBackground">?android:attr/colorBackground</item>
+        
+        <!-- Material 3 Expressive: Enforced shapes -->
+        <item name="shapeAppearanceSmallComponent">@style/ShapeAppearance.Material3.SmallComponent</item>
+        <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.Material3.MediumComponent</item>
+        <item name="shapeAppearanceLargeComponent">@style/ShapeAppearance.Material3.LargeComponent</item>
+        
+        <!-- Material 3 Expressive: Emphasized typography -->
+        <item name="textAppearanceDisplayLarge">@style/TextAppearance.Material3.DisplayLarge</item>
+        <item name="textAppearanceHeadlineLarge">@style/TextAppearance.Material3.HeadlineLarge</item>
+        <item name="textAppearanceTitleLarge">@style/TextAppearance.Material3.TitleLarge</item>
     </style>
 
     <style name="Theme.BarkfluffClientAndroid" parent="Base.Theme.BarkfluffClientAndroid" />

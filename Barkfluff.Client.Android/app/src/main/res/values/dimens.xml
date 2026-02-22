@@ -1,12 +1,91 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Avatar corner radius -->
+    <!-- Material 3 Expressive Shape Radii -->
+    <!-- Extra Extra Large: 48dp для hero элементов -->
+    <dimen name="shape_corner_extra_extra_large">48dp</dimen>
+    
+    <!-- Extra Large: 32dp для крупных карточек -->
+    <dimen name="shape_corner_extra_large">32dp</dimen>
+    
+    <!-- Large: 20dp для карточек и FAB -->
+    <dimen name="shape_corner_large">20dp</dimen>
+    
+    <!-- Medium: 16dp для полей ввода и кнопок -->
+    <dimen name="shape_corner_medium">16dp</dimen>
+    
+    <!-- Small: 12dp для маленьких элементов -->
+    <dimen name="shape_corner_small">12dp</dimen>
+    
+    <!-- Full: 50% для круглых элементов -->
+    <dimen name="shape_corner_full">999dp</dimen>
+
+    <!-- Avatar sizes -->
+    <dimen name="avatar_size_small">48dp</dimen>
+    <dimen name="avatar_size_default">56dp</dimen>
+    <dimen name="avatar_size_medium">60dp</dimen>
+    <dimen name="avatar_size_large">72dp</dimen>
+    <dimen name="avatar_size_extra_large">100dp</dimen>
+    <dimen name="avatar_size_hero">140dp</dimen>
     <dimen name="avatar_corner_radius">28dp</dimen>
-    
-    <!-- Chat list item -->
-    <dimen name="chat_avatar_size">56dp</dimen>
+
+    <!-- Chat list item dimensions -->
+    <dimen name="chat_avatar_size">60dp</dimen>
     <dimen name="chat_avatar_margin_end">16dp</dimen>
-    
-    <!-- Drawer avatar -->
+    <dimen name="chat_item_padding_horizontal">16dp</dimen>
+    <dimen name="chat_item_padding_vertical">12dp</dimen>
+
+    <!-- Drawer dimensions -->
     <dimen name="drawer_avatar_size">72dp</dimen>
+    <dimen name="drawer_width">320dp</dimen>
+    <dimen name="drawer_header_height">200dp</dimen>
+    <dimen name="drawer_menu_item_height">56dp</dimen>
+    <dimen name="drawer_menu_icon_padding">12dp</dimen>
+
+    <!-- Button sizes -->
+    <dimen name="button_height_default">56dp</dimen>
+    <dimen name="button_height_large">64dp</dimen>
+    <dimen name="button_corner_radius">32dp</dimen>
+
+    <!-- Card elevations -->
+    <dimen name="card_elevation_low">0dp</dimen>
+    <dimen name="card_elevation_medium">2dp</dimen>
+    <dimen name="card_elevation_high">4dp</dimen>
+
+    <!-- Spacing tokens -->
+    <dimen name="spacing_extra_small">4dp</dimen>
+    <dimen name="spacing_small">8dp</dimen>
+    <dimen name="spacing_medium">12dp</dimen>
+    <dimen name="spacing_default">16dp</dimen>
+    <dimen name="spacing_large">24dp</dimen>
+    <dimen name="spacing_extra_large">32dp</dimen>
+    <dimen name="spacing_hero">48dp</dimen>
+
+    <!-- Online indicator -->
+    <dimen name="online_indicator_size">16dp</dimen>
+    <dimen name="online_indicator_margin">4dp</dimen>
+
+    <!-- Unread badge -->
+    <dimen name="unread_badge_height">24dp</dimen>
+    <dimen name="unread_badge_min_width">24dp</dimen>
+    <dimen name="unread_badge_corner_radius">12dp</dimen>
+
+    <!-- OTP boxes -->
+    <dimen name="otp_box_size">64dp</dimen>
+    <dimen name="otp_box_margin">4dp</dimen>
+
+    <!-- Server card -->
+    <dimen name="server_card_color_indicator_width">6dp</dimen>
+    <dimen name="server_card_color_indicator_radius">3dp</dimen>
+
+    <!-- Search field -->
+    <dimen name="search_field_height">56dp</dimen>
+    <dimen name="search_field_corner_radius">24dp</dimen>
+
+    <!-- FAB -->
+    <dimen name="fab_size">56dp</dimen>
+    <dimen name="fab_margin">20dp</dimen>
+
+    <!-- AppBar -->
+    <dimen name="appbar_elevation">0dp</dimen>
+    <dimen name="toolbar_height">64dp</dimen>
 </resources>

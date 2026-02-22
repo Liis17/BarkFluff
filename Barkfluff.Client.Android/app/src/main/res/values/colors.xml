@@ -4,37 +4,81 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 
-    <!-- Barkfluff Brand Colors (seed for Material You) -->
+    <!-- Material 3 Expressive Color Scheme (Light Theme) -->
+    <!-- Seed color: #FF6B35 (BarkFluff Orange) -->
+    
+    <!-- Primary - основной бренд цвет -->
     <color name="primary">#FF6B35</color>
-    <color name="primary_container">#FFDAD0</color>
     <color name="on_primary">#FFFFFF</color>
+    <color name="primary_container">#FFDAD0</color>
     <color name="on_primary_container">#4A2000</color>
 
+    <!-- Secondary - дополнительный акцент -->
     <color name="secondary">#2196F3</color>
-    <color name="secondary_container">#D0E4FF</color>
     <color name="on_secondary">#FFFFFF</color>
+    <color name="secondary_container">#D0E4FF</color>
     <color name="on_secondary_container">#001F3A</color>
 
+    <!-- Tertiary - третий акцент для выразительности -->
     <color name="tertiary">#03DAC6</color>
-    <color name="tertiary_container">#00E5D2</color>
     <color name="on_tertiary">#000000</color>
+    <color name="tertiary_container">#00E5D2</color>
     <color name="on_tertiary_container">#00202A</color>
 
-    <!-- Surface colors (light theme) -->
+    <!-- Error - семантический цвет ошибок -->
+    <color name="error">#BA1A1A</color>
+    <color name="on_error">#FFFFFF</color>
+    <color name="error_container">#FFDAD6</color>
+    <color name="on_error_container">#410002</color>
+
+    <!-- Surface - основные цвета поверхности -->
     <color name="surface">#FEF8F6</color>
+    <color name="on_surface">#1C1B1A</color>
+    
+    <!-- Surface variants для глубины и иерархии -->
+    <color name="surface_container_lowest">#FFFFFF</color>
+    <color name="surface_container_low">#FEF8F6</color>
     <color name="surface_container">#F0F0F0</color>
     <color name="surface_container_high">#E8E8E8</color>
-    <color name="on_surface">#1C1B1A</color>
+    <color name="surface_container_highest">#E2E2E2</color>
+    
     <color name="on_surface_variant">#494544</color>
+    
+    <!-- Outline и границы -->
+    <color name="outline">#7C7775</color>
+    <color name="outline_variant">#CDC6C4</color>
 
-    <!-- Background colors (light theme) -->
+    <!-- Background -->
     <color name="background">#FEF8F6</color>
     <color name="on_background">#1C1B1A</color>
 
-    <!-- Status bar color (light theme) -->
+    <!-- Inverse цвета для состояний -->
+    <color name="inverse_surface">#31302E</color>
+    <color name="inverse_on_surface">#F5F0EE</color>
+    <color name="inverse_primary">#FFB5A0</color>
+
+    <!-- Shadow для elevation -->
+    <color name="shadow">#000000</color>
+
+    <!-- Surface Tint для динамических цветов -->
+    <color name="surface_tint">#FF6B35</color>
+
+    <!-- Status bar (light theme) -->
     <color name="status_bar">#F5F0EE</color>
 
-    <!-- Additional colors -->
+    <!-- Additional semantic colors -->
     <color name="text_accent">#FF6B35</color>
     <color name="text_link">#2196F3</color>
+    
+    <!-- Success цвет -->
+    <color name="success">#2E7D32</color>
+    <color name="on_success">#FFFFFF</color>
+    <color name="success_container">#C8E6C9</color>
+    <color name="on_success_container">#1B5E20</color>
+    
+    <!-- Warning цвет -->
+    <color name="warning">#F57C00</color>
+    <color name="on_warning">#FFFFFF</color>
+    <color name="warning_container">#FFE0B2</color>
+    <color name="on_warning_container">#E65100</color>
 </resources>
