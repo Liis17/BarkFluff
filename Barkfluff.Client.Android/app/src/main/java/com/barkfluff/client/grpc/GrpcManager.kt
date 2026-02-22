@@ -354,6 +354,8 @@ class GrpcManager {
                     bio = user.bio,
                     profilePictureUrl = user.profilePicture,
                     profilePicturePreviewUrl = user.profilePicturePreview,
+                    profilePictureFileId = user.profilePicture,
+                    profilePicturePreviewFileId = user.profilePicturePreview,
                     registrationDate = user.registrationDate.seconds * 1000
                 )
             )
@@ -629,6 +631,8 @@ class GrpcManager {
                     id = chat.id,
                     title = chat.title,
                     picture = chat.picture,
+                    pictureFileId = chat.picture,
+                    picturePreviewFileId = chat.picture, // TODO: Добавить picturePreview в proto Chat
                     isGroupChat = chat.isGroupChat,
                     lastMessage = lastMsg,
                     memberIds = memberIds,
@@ -637,8 +641,13 @@ class GrpcManager {
                 )
             }
 
-            Log.d(TAG, "Получено ${chats.size} чатов")
-            Result.success(chats)
+            // Сортировка чатов по дате последнего сообщения (новые сверху)
+            val sortedChats = chats.sortedByDescending { chat ->
+                chat.lastMessage?.sentAt ?: 0L
+            }
+
+            Log.d(TAG, "Получено ${sortedChats.size} чатов, отсортировано по дате последнего сообщения")
+            Result.success(sortedChats)
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка получения чатов", e)
             Result.failure(Exception("Ошибка получения чатов: ${e.message}"))
@@ -670,6 +679,8 @@ class GrpcManager {
                     bio = user.bio,
                     profilePictureUrl = user.profilePicture,
                     profilePicturePreviewUrl = user.profilePicturePreview,
+                    profilePictureFileId = user.profilePicture,
+                    profilePicturePreviewFileId = user.profilePicturePreview,
                     registrationDate = user.registrationDate.seconds * 1000
                 )
             )
@@ -700,6 +711,33 @@ class GrpcManager {
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка получения URL файлов", e)
             Result.failure(Exception("Ошибка получения URL файлов: ${e.message}"))
+        }
+    }
+
+    /**
+     * Получает временный URL для скачивания файла по fileId.
+     * Аналог GetFile в WebApiFileManager.
+     */
+    suspend fun getFileDownloadUrl(fileId: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            if (filesClient == null) {
+                return@withContext Result.failure(IllegalStateException("Files клиент не создан"))
+            }
+
+            val request = FilesApiOuterClass.GetTempDownloadUrlRequest.newBuilder()
+                .addFileIds(fileId)
+                .build()
+
+            val response = filesClient!!.getTempDownloadUrl(request)
+            val fileUrl = response.fileUrlsList.firstOrNull()
+            val url = fileUrl?.url
+                ?: return@withContext Result.failure(Exception("URL не получен"))
+
+            Log.d(TAG, "getFileDownloadUrl: fileId=$fileId, url=$url, fileUrl.fileId=${fileUrl.fileId}")
+            Result.success(url)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка получения URL файла", e)
+            Result.failure(Exception("Ошибка получения URL файла: ${e.message}"))
         }
     }
 
@@ -1004,6 +1042,8 @@ class GrpcManager {
         val bio: String,
         val profilePictureUrl: String,
         val profilePicturePreviewUrl: String,
+        val profilePictureFileId: String = "",
+        val profilePicturePreviewFileId: String = "",
         val registrationDate: Long
     )
 
@@ -1023,6 +1063,8 @@ class GrpcManager {
         val id: String,
         val title: String,
         val picture: String,
+        val pictureFileId: String = "",
+        val picturePreviewFileId: String = "",
         val isGroupChat: Boolean,
         val lastMessage: LastMessageData?,
         val memberIds: List<Long>,
