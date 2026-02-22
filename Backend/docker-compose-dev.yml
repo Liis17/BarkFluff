@@ -133,16 +133,22 @@ services:
     user: root
     environment:
       <<: *common-variables
+      ConfigurationServiceAddr: "${CONFIGURATION_SERVICE_URL}"
       Telegram__BotToken: "${TELEGRAM_BOT_TOKEN}"
       Telegram__Admins: "${TELEGRAM_ADMINS}"
       Seq__ServerUrl: "http://seq:80"
       Seq__ApiKey: "${SEQ_API_KEY:-}"
+      UsersService__Host: "http://users:7001"
+      FilesService__Host: "http://files:7005"
+      UsersService__Token: "${USERS_SERVICE_TOKEN}"
+      FilesService__Token: "${FILES_SERVICE_TOKEN}"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - admin_panel_data:/app/db
     networks:
       - barkfluff-network
     depends_on:
+      - configuration
       - seq
 
   # === Инфраструктурные сервисы ===
