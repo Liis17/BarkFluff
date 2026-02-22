@@ -8,13 +8,39 @@ namespace Barkfluff.AdminPanel.Services;
 /// <summary>
 /// Сервис для управления Docker контейнерами и образами через Docker CLI
 /// </summary>
-public class DockerService
+public class DockerService : IHostedService
 {
+    private const string HelperImage = "docker:cli";
     private readonly ILogger<DockerService> _logger;
 
     public DockerService(ILogger<DockerService> logger)
     {
         _logger = logger;
+    }
+
+    public async Task StartAsync(CancellationToken cancellationToken)
+    {
+        await EnsureHelperImageAsync();
+    }
+
+    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    /// <summary>
+    /// Проверить наличие образа docker:cli и pull'нуть при необходимости
+    /// </summary>
+    private async Task EnsureHelperImageAsync()
+    {
+        try
+        {
+            var result = await RunDockerCommandAsync("image", "inspect", HelperImage);
+            _logger.LogInformation("Образ {Image} уже присутствует", HelperImage);
+        }
+        catch
+        {
+            _logger.LogInformation("Образ {Image} не найден, загружаем...", HelperImage);
+            await RunDockerCommandAsync("pull", HelperImage);
+            _logger.LogInformation("Образ {Image} успешно загружен", HelperImage);
+        }
     }
 
     /// <summary>
@@ -317,6 +343,21 @@ public class DockerService
     }
 
     /// <summary>
+    /// Удалить helper-контейнер если он ещё существует (игнорировать ошибку если нет)
+    /// </summary>
+    private async Task TryRemoveHelperContainerAsync(string containerName)
+    {
+        try
+        {
+            await RunDockerCommandAsync("rm", "-f", containerName);
+        }
+        catch
+        {
+            // Контейнер не существует — это нормально
+        }
+    }
+
+    /// <summary>
     /// Распарсить вывод docker ps --format json
     /// </summary>
     private List<ContainerStatusDto> ParseDockerPsOutput(string output)
@@ -362,29 +403,27 @@ public class DockerService
     }
 
     /// <summary>
-    /// Перезапустить саму админ-панель (асинхронно, чтобы успеть отправить ответ)
+    /// Перезапустить саму админ-панель через detached helper-контейнер
     /// </summary>
     public async Task<ContainerActionResponseDto> RestartAdminPanelAsync()
     {
         try
         {
-            _logger.LogInformation("Запуск перезапуска админ-панели...");
+            _logger.LogInformation("Запуск перезапуска админ-панели через helper-контейнер...");
 
-            // Запускаем перезапуск в фоне через shell script чтобы процесс успел завершиться
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = "sh",
-                Arguments = "-c \"sleep 1 && docker restart admin-panel\"",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-            
-            var process = new Process { StartInfo = startInfo };
-            process.Start();
-            
-            _logger.LogInformation("Команда перезапуска отправлена");
+            // Удаляем старый хелпер если он ещё существует
+            await TryRemoveHelperContainerAsync("admin-panel-restarter");
+
+            // Запускаем detached контейнер который перезапустит admin-panel
+            await RunDockerCommandAsync(
+                "run", "-d", "--rm",
+                "--name", "admin-panel-restarter",
+                "-v", "/var/run/docker.sock:/var/run/docker.sock",
+                HelperImage,
+                "sh", "-c", "sleep 2 && docker restart admin-panel"
+            );
+
+            _logger.LogInformation("Helper-контейнер для перезапуска запущен");
 
             return new ContainerActionResponseDto
             {
@@ -405,31 +444,30 @@ public class DockerService
     }
 
     /// <summary>
-    /// Обновить образ и пересоздать админ-панель (асинхронно, чтобы успеть отправить ответ)
+    /// Обновить образ и пересоздать админ-панель через detached helper-контейнер
     /// </summary>
     public async Task<ContainerActionResponseDto> UpdateAdminPanelAsync()
     {
         try
         {
-            _logger.LogInformation("Запуск обновления админ-панели...");
+            _logger.LogInformation("Запуск обновления админ-панели через helper-контейнер...");
 
-            // Запускаем обновление в фоне через shell script
-            // 1. Pull нового образа
-            // 2. Force recreate контейнера через docker compose up --force-recreate -d
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = "sh",
-                Arguments = "-c \"sleep 1 && docker compose --project-name barkfluff --env-file /.env -f /docker-compose.yml pull admin-panel && docker compose --project-name barkfluff --env-file /.env -f /docker-compose.yml up --force-recreate -d admin-panel && docker image prune -f\"",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-            
-            var process = new Process { StartInfo = startInfo };
-            process.Start();
-            
-            _logger.LogInformation("Команда обновления отправлена");
+            // Удаляем старый хелпер если он ещё существует
+            await TryRemoveHelperContainerAsync("admin-panel-updater");
+
+            // Запускаем detached контейнер который pull'нет новый образ и пересоздаст admin-panel
+            await RunDockerCommandAsync(
+                "run", "-d", "--rm",
+                "--name", "admin-panel-updater",
+                "-v", "/var/run/docker.sock:/var/run/docker.sock",
+                "-v", "/docker-compose.yml:/docker-compose.yml:ro",
+                "-v", "/.env:/.env:ro",
+                HelperImage,
+                "sh", "-c",
+                "sleep 2 && docker compose --project-name barkfluff --env-file /.env -f /docker-compose.yml pull admin-panel && docker compose --project-name barkfluff --env-file /.env -f /docker-compose.yml up --force-recreate -d admin-panel && docker image prune -f"
+            );
+
+            _logger.LogInformation("Helper-контейнер для обновления запущен");
 
             return new ContainerActionResponseDto
             {
