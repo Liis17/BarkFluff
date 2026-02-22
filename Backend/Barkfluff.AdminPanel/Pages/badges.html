@@ -33,7 +33,16 @@
 
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        .badge-card { aspect-ratio: 3 / 4; }
+        .badge-card {
+            width: 138px;
+            height: 180px;
+        }
+
+        .badge-image {
+            width: 128px;
+            height: 128px;
+            margin: 5px;
+        }
 
         .dropdown-menu { display: none; }
         .dropdown-menu.open { display: block; }
@@ -264,9 +273,9 @@
                     </div>
 
                     <!-- Картинка -->
-                    <div class="flex-1 flex items-center justify-center bg-slate-50 p-6">
+                    <div class="flex items-center justify-center bg-slate-50">
                         ${badge.imageUrl
-                            ? `<img src="${badge.imageUrl}" alt="${badge.name}" class="max-w-full max-h-full object-contain" style="max-height: 140px;" />`
+                            ? `<img src="${badge.imageUrl}" alt="${badge.name}" class="badge-image object-contain" />`
                             : `<div class="w-20 h-20 rounded-full bg-slate-200 flex items-center justify-center"><i data-lucide="award" class="w-10 h-10 text-slate-400"></i></div>`
                         }
                     </div>
