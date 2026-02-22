@@ -32,6 +32,20 @@ public class S3BucketRegistry : IDisposable
     };
 
     /// <summary>
+    /// Список всех идентификаторов бакетов (включая специальные бакеты, не связанные с UploadFileType)
+    /// </summary>
+    private static readonly HashSet<string> AllBucketIds = new()
+    {
+        "barkfluff-uploads",
+        "profile-pictures",
+        "message-documents",
+        "message-videos",
+        "message-images",
+        "chat-pictures",
+        BadgeImagesBucketId
+    };
+
+    /// <summary>
     /// Конфигурация бакетов по идентификатору бакета
     /// </summary>
     private readonly Dictionary<string, BucketS3Options> _bucketConfigs;
@@ -130,15 +144,17 @@ public class S3BucketRegistry : IDisposable
     /// </summary>
     public IEnumerable<(string BucketName, IAmazonS3 Client)> GetAllBuckets()
     {
-        return _bucketConfigs.Select(x => (x.Value.BucketName, _clientsByBucketName[x.Value.BucketName]));
+        return AllBucketIds
+            .Where(_bucketConfigs.ContainsKey)
+            .Select(bucketId => (_bucketConfigs[bucketId].BucketName, _clientsByBucketName[_bucketConfigs[bucketId].BucketName]));
     }
 
     /// <summary>
-    /// Получает все уникальные идентификаторы бакетов из маппинга типов файлов
+    /// Получает все уникальные идентификаторы бакетов
     /// </summary>
     public static IEnumerable<string> GetAllBucketIds()
     {
-        return BucketIdMap.Values.Distinct();
+        return AllBucketIds;
     }
 
     private static string GetBucketId(UploadFileType fileType)
