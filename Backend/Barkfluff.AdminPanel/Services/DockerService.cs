@@ -155,11 +155,12 @@ public class DockerService
             _logger.LogInformation("Обновление контейнера {ContainerName} (сервис: {ServiceName})", containerName, serviceName);
 
             // 1. Pull нового образа через docker compose pull <service>
-            await RunDockerComposeCommandAsync("--env-file", "/.env", "-f", "/docker-compose.yml", "pull", serviceName);
+            // Используем --project-name=barkfluff чтобы указать имя проекта
+            await RunDockerComposeCommandAsync("--project-name", "barkfluff", "--env-file", "/.env", "-f", "/docker-compose.yml", "pull", serviceName);
             _logger.LogInformation("Образ для сервиса {ServiceName} успешно обновлен", serviceName);
 
             // 2. Пересоздать контейнер через docker compose up --force-recreate --build -d <service>
-            await RunDockerComposeCommandAsync("--env-file", "/.env", "-f", "/docker-compose.yml", "up", "--force-recreate", "--build", "-d", serviceName);
+            await RunDockerComposeCommandAsync("--project-name", "barkfluff", "--env-file", "/.env", "-f", "/docker-compose.yml", "up", "--force-recreate", "--build", "-d", serviceName);
             _logger.LogInformation("Контейнер {ContainerName} успешно пересоздан", containerName);
 
             // 3. Очистить неиспользуемые образы через docker image prune -f
