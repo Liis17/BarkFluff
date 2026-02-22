@@ -28,27 +28,12 @@ struct PasswordStrengthView: View {
                     .foregroundStyle(colorForStrength(strength))
             }
 
-            // Индикатор-бар
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    // Фон
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(Color.gray.opacity(0.2))
-                        .frame(height: 6)
-
-                    // Прогресс
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(colorForStrength(strength))
-                        .frame(width: geometry.size.width * CGFloat(score) / 100, height: 6)
-                }
-            }
-            .frame(height: 6)
-
-            // Сегменты (опционально)
+            // Сегменты индикатора (без GeometryReader)
             HStack(spacing: 4) {
                 ForEach(1...5, id: \.self) { segment in
                     RoundedRectangle(cornerRadius: 2)
                         .fill(segment <= strength.rawValue ? colorForStrength(strength) : Color.gray.opacity(0.2))
+                        .frame(maxWidth: .infinity)
                         .frame(height: 4)
                 }
             }

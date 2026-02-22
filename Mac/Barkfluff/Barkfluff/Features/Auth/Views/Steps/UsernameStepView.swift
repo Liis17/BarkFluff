@@ -17,6 +17,7 @@ struct UsernameStepView: View {
     @State private var isChecking = false
     @State private var isAvailable: Bool?
     @State private var debounceTask: Task<Void, Never>?
+    @FocusState private var isFieldFocused: Bool
 
     var isValid: Bool {
         validationError == nil && isAvailable == true && !data.username.isEmpty
@@ -29,28 +30,32 @@ struct UsernameStepView: View {
                 .font(.system(size: 60))
                 .foregroundStyle(Color.accentColor)
 
-            // Поле ввода
+            // Поле ввода в glass-контейнере
             VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                HStack {
+                HStack(spacing: Theme.Spacing.sm) {
                     TextField("Имя пользователя", text: $data.username)
                         .textFieldStyle(.roundedBorder)
-                        .frame(width: 300)
                         .autocorrectionDisabled()
+                        .focused($isFieldFocused)
                         .onChange(of: data.username) { _, newValue in
                             handleUsernameChange(newValue)
                         }
 
-                    // Индикатор статуса
-                    if isChecking {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                    } else if let available = isAvailable {
-                        Image(systemName: available ? "checkmark.circle.fill" : "xmark.circle.fill")
-                            .foregroundStyle(available ? .green : .red)
+                    // Индикатор статуса с фиксированной шириной (без layout shift)
+                    ZStack {
+                        if isChecking {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        } else if let available = isAvailable {
+                            Image(systemName: available ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                .foregroundStyle(available ? .green : .red)
+                        }
                     }
+                    .frame(width: 28)
                 }
+                .frame(maxWidth: 320)
 
-                // Ошибка валидации
+                // Ошибка валидации или сообщение о доступности
                 if let error = validationError {
                     Text(error)
                         .font(.caption)
@@ -67,10 +72,16 @@ struct UsernameStepView: View {
                     .foregroundStyle(.secondary)
             }
         }
+        .padding(Theme.Spacing.xl)
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: Theme.Radius.xl))
+        .padding(Theme.Spacing.md) // Отступ для тени glass
         .onAppear {
             if !data.username.isEmpty {
                 Task { await checkUsername(data.username) }
             }
+        }
+        .onDisappear {
+            isFieldFocused = false
         }
     }
 
@@ -80,6 +91,7 @@ struct UsernameStepView: View {
 
         // Сбрасываем статус
         isAvailable = nil
+        data.isUsernameAvailable = nil
 
         // Валидируем формат
         let result = UsernameValidator.validate(newValue)
@@ -102,13 +114,16 @@ struct UsernameStepView: View {
         do {
             let exists = try await userService.checkUsernameExists(username: username)
             isAvailable = !exists
+            data.isUsernameAvailable = !exists
             if exists {
                 validationError = "Это имя уже занято"
             }
         } catch {
             // Если сервер недоступен, разрешаем продолжить
             // (проверка будет на сервере при регистрации)
-            isAvailable = nil
+            print("⚠️ Username check failed: \(error.localizedDescription)")
+            isAvailable = true // Разрешаем продолжить при ошибке сети
+            data.isUsernameAvailable = true
         }
     }
 }

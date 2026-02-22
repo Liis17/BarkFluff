@@ -102,6 +102,7 @@ struct RegisterView: View {
                     )
                     .onAppear { viewModel.isCurrentStepValid = viewModel.data.isValid(for: .username) }
                     .onChange(of: viewModel.data.username) { _, _ in viewModel.isCurrentStepValid = viewModel.data.isValid(for: .username) }
+                    .onChange(of: viewModel.data.isUsernameAvailable) { _, _ in viewModel.isCurrentStepValid = viewModel.data.isValid(for: .username) }
 
                 case .email:
                     EmailStepView(
@@ -154,7 +155,9 @@ struct RegisterView: View {
                     )
                 }
             }
+            .frame(maxWidth: 450) // Ограничение ширины контента
             .frame(minHeight: 350)
+            .padding(.horizontal, Theme.Spacing.xl) // Дополнительный отступ для теней
         }
         .frame(maxHeight: 450)
     }
@@ -186,14 +189,16 @@ struct RegisterView: View {
             // Кнопка "Далее" или "Завершить"
             if viewModel.currentStep != .completion {
                 Button(action: { viewModel.goToNextStep() }) {
-                    HStack {
+                    HStack(spacing: Theme.Spacing.xs) {
                         if viewModel.isLoading {
                             ProgressView()
                                 .controlSize(.small)
                                 .tint(.white)
+                        } else {
+                            Text(nextButtonTitle(for: viewModel.currentStep))
                         }
 
-                        Text(nextButtonTitle(for: viewModel.currentStep))
+                        Image(systemName: "chevron.right")
                     }
                 }
                 .buttonStyle(.borderedProminent)

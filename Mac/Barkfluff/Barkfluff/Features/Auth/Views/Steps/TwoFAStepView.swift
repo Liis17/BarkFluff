@@ -44,6 +44,9 @@ struct TwoFAStepView: View {
                     .foregroundStyle(.red)
             }
         }
+        .padding(Theme.Spacing.xl)
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: Theme.Radius.xl))
+        .padding(Theme.Spacing.md)
     }
 
     // MARK: - Subviews
