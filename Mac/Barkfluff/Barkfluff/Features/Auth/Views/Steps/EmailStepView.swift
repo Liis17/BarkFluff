@@ -17,6 +17,7 @@ struct EmailStepView: View {
     @State private var isChecking = false
     @State private var isAvailable: Bool?
     @State private var debounceTask: Task<Void, Never>?
+    @FocusState private var isFieldFocused: Bool
 
     var isValid: Bool {
         validationError == nil && isAvailable == true && !data.email.isEmpty
@@ -29,26 +30,30 @@ struct EmailStepView: View {
                 .font(.system(size: 60))
                 .foregroundStyle(Color.accentColor)
 
-            // Поле ввода
+            // Поле ввода в glass-контейнере
             VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                HStack {
+                HStack(spacing: Theme.Spacing.sm) {
                     TextField("Email", text: $data.email)
                         .textFieldStyle(.roundedBorder)
-                        .frame(width: 300)
                         .autocorrectionDisabled()
+                        .focused($isFieldFocused)
                         .onChange(of: data.email) { _, newValue in
                             handleEmailChange(newValue)
                         }
 
-                    // Индикатор статуса
-                    if isChecking {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                    } else if let available = isAvailable {
-                        Image(systemName: available ? "checkmark.circle.fill" : "xmark.circle.fill")
-                            .foregroundStyle(available ? .green : .red)
+                    // Индикатор статуса с фиксированной шириной (без layout shift)
+                    ZStack {
+                        if isChecking {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        } else if let available = isAvailable {
+                            Image(systemName: available ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                .foregroundStyle(available ? .green : .red)
+                        }
                     }
+                    .frame(width: 28)
                 }
+                .frame(maxWidth: 320)
 
                 // Ошибка валидации
                 if let error = validationError {
@@ -62,10 +67,16 @@ struct EmailStepView: View {
                 }
             }
         }
+        .padding(Theme.Spacing.xl)
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: Theme.Radius.xl))
+        .padding(Theme.Spacing.md)
         .onAppear {
             if !data.email.isEmpty {
                 Task { await checkEmail(data.email) }
             }
+        }
+        .onDisappear {
+            isFieldFocused = false
         }
     }
 

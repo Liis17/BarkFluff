@@ -20,12 +20,20 @@ message ListServersResponse {
   repeated ServerInfo servers = 1; // Сервера
 }
 
+message ServerColor {
+  string lite_hex = 1; // Светлый цвет сервера
+  string main_hex = 2; // Основной цвет сервера
+  string hard_hex = 3; // Темный цвет сервера
+}
+
 message ServerInfo {
   string name = 1; // Имя сервера
   string description = 2; // Описание
   int64 accounts_count = 3; // Количество пользователей
   ServiceEndpoint beacon_uri = 4; // Адрес маяка
   string server_public_name = 5; // Публичное имя сервера
+  string location = 6; // Локация сервера
+  ServerColor color = 7; // Цвета сервера
 }
 
 message ServiceEndpoint {

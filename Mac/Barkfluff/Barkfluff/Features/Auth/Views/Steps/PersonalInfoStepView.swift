@@ -26,13 +26,12 @@ struct PersonalInfoStepView: View {
                 .font(.system(size: 60))
                 .foregroundStyle(Color.accentColor)
 
-            // Поля ввода
+            // Поля ввода в glass-контейнере
             VStack(spacing: Theme.Spacing.md) {
                 // Имя
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                     TextField("Имя", text: $data.firstName)
                         .textFieldStyle(.roundedBorder)
-                        .frame(width: 300)
                         .onChange(of: data.firstName) { _, newValue in
                             validateFirstName(newValue)
                         }
@@ -48,7 +47,6 @@ struct PersonalInfoStepView: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                     TextField("Фамилия", text: $data.lastName)
                         .textFieldStyle(.roundedBorder)
-                        .frame(width: 300)
                         .onChange(of: data.lastName) { _, newValue in
                             validateLastName(newValue)
                         }
@@ -60,7 +58,11 @@ struct PersonalInfoStepView: View {
                     }
                 }
             }
+            .frame(maxWidth: 300)
         }
+        .padding(Theme.Spacing.xl)
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: Theme.Radius.xl))
+        .padding(Theme.Spacing.md) // Отступ для тени glass
         .onAppear {
             validateFirstName(data.firstName)
             validateLastName(data.lastName)

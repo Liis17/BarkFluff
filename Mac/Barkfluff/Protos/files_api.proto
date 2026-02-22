@@ -18,8 +18,10 @@ service FilesApi {
 
 service FilesServerApi {
   rpc GetFileData(GetFileDataRequest) returns(GetFileDataResponse); // Получить информацию о загруженном файле
-  
+
   rpc GetFilesData(GetFilesDataRequest) returns(GetFilesDataResponse); // Получить информацию о загруженных файлах
+
+  rpc UploadBadgeImage(UploadBadgeImageRequest) returns(UploadBadgeImageResponse); // Загрузить PNG-картинку для бейджа (постоянная ссылка, без сжатия)
 }
 
 message GetTempDownloadUrlRequest {
@@ -91,6 +93,16 @@ enum UploadFileType {
   MESSAGE_ATTACHMENT_DOCUMENT = 5; // Вложение сообщения - документ
   
   CHAT_PICTURE = 6; // Обложка группового чата
+}
+
+message UploadBadgeImageRequest {
+  bytes image_data = 1; // содержимое PNG-файла
+  string filename = 2;  // имя файла (например "badge.png")
+}
+
+message UploadBadgeImageResponse {
+  string badge_image_id = 1; // идентификатор изображения бейджа
+  string permanent_url = 2;  // постоянная ссылка на скачивание
 }
 
 message CheckFileHashRequest {

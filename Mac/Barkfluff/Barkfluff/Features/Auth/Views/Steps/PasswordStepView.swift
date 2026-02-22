@@ -16,6 +16,7 @@ struct PasswordStepView: View {
     @State private var showPassword = false
     @State private var validationError: String?
     @State private var isSaving = false
+    @FocusState private var isFieldFocused: Bool
 
     var passwordResult: PasswordValidationResult {
         PasswordValidator.validate(data.password)
@@ -36,7 +37,7 @@ struct PasswordStepView: View {
                 .font(.system(size: 60))
                 .foregroundStyle(Color.accentColor)
 
-            // Поля ввода
+            // Поля ввода в glass-контейнере
             VStack(alignment: .leading, spacing: Theme.Spacing.md) {
                 // Пароль
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
@@ -49,7 +50,7 @@ struct PasswordStepView: View {
                             }
                         }
                         .textFieldStyle(.roundedBorder)
-                        .frame(width: 300)
+                        .focused($isFieldFocused)
 
                         Button(action: { showPassword.toggle() }) {
                             Image(systemName: showPassword ? "eye.slash" : "eye")
@@ -71,7 +72,7 @@ struct PasswordStepView: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                     SecureField("Подтвердите пароль", text: $data.confirmPassword)
                         .textFieldStyle(.roundedBorder)
-                        .frame(width: 300)
+                        .focused($isFieldFocused)
 
                     if !data.confirmPassword.isEmpty {
                         HStack(spacing: Theme.Spacing.xs) {
@@ -93,9 +94,15 @@ struct PasswordStepView: View {
                 // Ошибка
                 if let error = validationError {
                     ErrorBannerView(message: error)
-                        .frame(width: 300)
                 }
             }
+            .frame(maxWidth: 300)
+        }
+        .padding(Theme.Spacing.xl)
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: Theme.Radius.xl))
+        .padding(Theme.Spacing.md) // Отступ для тени glass
+        .onDisappear {
+            isFieldFocused = false
         }
     }
 

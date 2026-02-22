@@ -19,11 +19,16 @@ struct OTPInputView: View {
     @FocusState private var isFocused: Bool
 
     var body: some View {
-        // Скрытое текстовое поле для ввода
-        ZStack(alignment: .center) {
-            // Скрытое поле для ввода
+        // Контейнер с фиксированным размером
+        HStack(spacing: Theme.Spacing.sm) {
+            ForEach(0..<codeLength, id: \.self) { index in
+                digitCell(at: index)
+            }
+        }
+        .background(
+            // Скрытое поле для ввода (без визуальной обводки)
             TextField("", text: $code)
-                .font(.system(size: 1))
+                .textFieldStyle(.plain) // Убираем стандартную обводку
                 .opacity(0.01)
                 .focused($isFocused)
                 .disabled(isDisabled)
@@ -37,23 +42,21 @@ struct OTPInputView: View {
                         onComplete?(code)
                     }
                 }
-
-            // Отображение ячеек
-            HStack(spacing: Theme.Spacing.sm) {
-                ForEach(0..<codeLength, id: \.self) { index in
-                    digitCell(at: index)
-                        .onTapGesture {
-                            isFocused = true
-                        }
-                }
-            }
-            .allowsHitTesting(!isDisabled)
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            isFocused = true
         }
         .onAppear {
-            // Автофокус при появлении
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            // Сначала сбрасываем фокус, потом захватываем
+            isFocused = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 isFocused = true
             }
+        }
+        .onDisappear {
+            // Сбрасываем фокус при уходе
+            isFocused = false
         }
     }
 

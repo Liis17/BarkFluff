@@ -43,21 +43,32 @@ struct ConfirmEmailStepView: View {
                 OTPInputView(
                     code: $code,
                     isError: validationError != nil,
+                    isDisabled: isVerifying || isVerified,
                     onComplete: { code in
                         Task { await verifyCode(code) }
                     }
                 )
 
-                if let error = validationError {
+                // Анимация загрузки при проверке
+                if isVerifying {
+                    HStack(spacing: Theme.Spacing.sm) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Проверка кода...")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .transition(.opacity.combined(with: .scale))
+                } else if let error = validationError {
                     Text(error)
                         .font(.caption)
                         .foregroundStyle(.red)
-                }
-
-                if isVerified {
+                        .transition(.opacity)
+                } else if isVerified {
                     Label("Email подтверждён", systemImage: "checkmark.circle.fill")
                         .font(.subheadline)
                         .foregroundStyle(.green)
+                        .transition(.scale.combined(with: .opacity))
                 }
             }
 
@@ -74,6 +85,12 @@ struct ConfirmEmailStepView: View {
                     .foregroundStyle(.secondary)
             }
         }
+        .padding(Theme.Spacing.xl)
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: Theme.Radius.xl))
+        .padding(Theme.Spacing.md) // Отступ для тени glass
+        .animation(.smooth, value: isVerifying)
+        .animation(.smooth, value: isVerified)
+        .animation(.smooth, value: validationError)
         .onAppear {
             startResendTimer()
         }
@@ -99,6 +116,8 @@ struct ConfirmEmailStepView: View {
             return
         }
 
+        // Сбрасываем предыдущее состояние
+        validationError = nil
         isVerifying = true
         defer { isVerifying = false }
 
@@ -109,6 +128,7 @@ struct ConfirmEmailStepView: View {
             onVerified?()
         } catch {
             validationError = "Неверный код. Попробуйте снова."
+            isVerified = false
         }
     }
 
