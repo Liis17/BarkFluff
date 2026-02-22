@@ -36,8 +36,8 @@ class FullScreenMediaWindowManager: ObservableObject {
 
         // Создаем окно
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 800, height: 600),
-            styleMask: [.titled, .closable, .fullSizeContentView, .resizable],
+            contentRect: NSScreen.main?.frame ?? NSRect(x: 0, y: 0, width: 800, height: 600),
+            styleMask: [.borderless, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -46,21 +46,19 @@ class FullScreenMediaWindowManager: ObservableObject {
         window.contentView = NSHostingView(rootView: contentView)
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
-        window.backgroundColor = .windowBackgroundColor
+        window.backgroundColor = .black
         window.isOpaque = true
         window.level = .normal
-        window.collectionBehavior = [.fullScreenPrimary]
+        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         window.hidesOnDeactivate = false
         window.ignoresMouseEvents = false
         window.acceptsMouseMovedEvents = true
+        
+        // Устанавливаем окно на весь экран без перехода в отдельное пространство
+        window.setFrame(NSScreen.main?.frame ?? window.frame, display: true)
 
         // Показываем окно
         window.makeKeyAndOrderFront(nil)
-
-        // Входим в fullscreen
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            window.toggleFullScreen(nil)
-        }
 
         self.window = window
     }
@@ -68,16 +66,16 @@ class FullScreenMediaWindowManager: ObservableObject {
     /// Закрыть окно
     func closeWindow() {
         guard let window = window else { return }
-        self.window = nil
-
-        // Выходим из fullscreen перед закрытием
-        if window.styleMask.contains(.fullScreen) {
-            window.toggleFullScreen(nil)
-        }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+        
+        // Анимация исчезновения
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.2
+            window.animator().alphaValue = 0
+        }, completionHandler: {
             window.close()
-        }
+        })
+        
+        self.window = nil
     }
 }
 
@@ -112,7 +110,11 @@ struct FullScreenMediaViewerView: View {
                         .tag(index)
                 }
             }
-            .padding(.top, 40) // Отступ от верха для кнопок
+            #if os(iOS)
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            #else
+            .tabViewStyle(.automatic)
+            #endif
 
             // Кнопка закрытия (всегда видна)
             closeButton

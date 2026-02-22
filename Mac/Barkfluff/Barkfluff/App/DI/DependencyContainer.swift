@@ -56,6 +56,7 @@ final class DependencyContainer {
     let updatesService: UpdatesService
     let fastAuthService: FastAuthService
     let serverDiscoveryService: ServerDiscoveryService
+    let sharedMediaService: SharedMediaService
 
     // MARK: - Streaming
 
@@ -115,7 +116,10 @@ final class DependencyContainer {
         self.filesRepository = FilesRepository(connectionManager: connectionManager)
         self.updatesRepository = UpdatesRepository(connectionManager: connectionManager)
         self.fastAuthRepository = FastAuthRepository(connectionManager: connectionManager)
-        self.navigatorRepository = NavigatorRepository(connectionManager: connectionManager)
+        self.navigatorRepository = NavigatorRepository(
+            host: "navigator.barkfluff.com",
+            port: 64646
+        )
 
         // Token Refresh Coordinator
         self.tokenRefreshCoordinator = TokenRefreshCoordinator(
@@ -174,6 +178,11 @@ final class DependencyContainer {
             navigatorRepository: navigatorRepository,
             connectionManager: connectionManager,
             tokenProvider: tokenProvider
+        )
+
+        self.sharedMediaService = SharedMediaService(
+            messagesRepository: messagesRepository,
+            fileService: fileService
         )
 
         // Устанавливаем интерсепторы после создания всех зависимостей
