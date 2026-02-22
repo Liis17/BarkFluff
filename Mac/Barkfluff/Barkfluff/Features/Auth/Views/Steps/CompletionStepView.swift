@@ -20,10 +20,10 @@ struct CompletionStepView: View {
             ZStack {
                 Circle()
                     .fill(Color.green.opacity(0.1))
-                    .frame(width: 120, height: 120)
+                    .frame(width: 100, height: 100)
 
                 Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 80))
+                    .font(.system(size: 60))
                     .foregroundStyle(.green)
                     .symbolEffect(.bounce, options: .repeating, value: showConfetti)
             }
@@ -31,15 +31,15 @@ struct CompletionStepView: View {
             // Текст
             VStack(spacing: Theme.Spacing.sm) {
                 Text("Добро пожаловать!")
-                    .font(.largeTitle)
+                    .font(.title)
                     .fontWeight(.bold)
 
                 Text("Аккаунт успешно создан")
-                    .font(.title3)
+                    .font(.body)
                     .foregroundStyle(.secondary)
             }
 
-            // Краткая информация о созданном аккаунте
+            // Краткая информация о созданном аккаунте в glass-контейнере
             VStack(spacing: Theme.Spacing.md) {
                 infoRow(icon: "person.fill", label: "Имя", value: "\(data.firstName) \(data.lastName)")
                 infoRow(icon: "at", label: "Username", value: data.username)
@@ -49,9 +49,10 @@ struct CompletionStepView: View {
                     infoRow(icon: "shield.checkered", label: "2FA", value: "Включена")
                 }
             }
-            .padding(Theme.Spacing.md)
-            .background(Color(.windowBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.md))
+            .padding(Theme.Spacing.lg)
+            .frame(maxWidth: 280)
+            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: Theme.Radius.xl))
+            .padding(Theme.Spacing.md) // Отступ для тени glass
 
             // Кнопка продолжения
             Button(action: onComplete) {
@@ -60,9 +61,10 @@ struct CompletionStepView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
-            .frame(width: 250)
-            .padding(.top, Theme.Spacing.lg)
+            .frame(width: 220)
+            .padding(.top, Theme.Spacing.md)
         }
+        .frame(maxWidth: 400)
         .onAppear {
             showConfetti = true
         }
