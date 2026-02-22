@@ -144,44 +144,27 @@ public class DockerService
     }
 
     /// <summary>
-    /// Обновить образ и пересоздать контейнер
+    /// Обновить образ и пересоздать контейнер через docker compose
     /// </summary>
     public async Task<ContainerActionResponseDto> PullImageAndRecreateContainerAsync(string containerName)
     {
         try
         {
-            // 1. Получить имя образа контейнера
-            var inspectJson = await RunDockerCommandAsync("inspect", containerName);
-            var inspectData = JsonDocument.Parse(inspectJson);
-            var image = inspectData.RootElement[0].GetProperty("Config").GetProperty("Image").GetString();
-
-            if (string.IsNullOrEmpty(image))
-            {
-                return new ContainerActionResponseDto
-                {
-                    Success = false,
-                    Message = $"Не удалось получить имя образа для контейнера {containerName}"
-                };
-            }
-
-            _logger.LogInformation("Обновление образа {ImageName} для контейнера {ContainerName}", image, containerName);
-
-            // 2. Pull нового образа
-            await RunDockerCommandAsync("pull", image);
-            _logger.LogInformation("Образ {ImageName} успешно обновлен", image);
-
-            // 3. Остановить контейнер
-            await RunDockerCommandAsync("stop", "-t", "30", containerName);
-
-            // 4. Удалить старый контейнер
-            await RunDockerCommandAsync("rm", containerName);
-            _logger.LogInformation("Старый контейнер {ContainerName} удален", containerName);
-
-            // 5. Создать и запустить новый контейнер через docker compose
             var serviceName = ConvertContainerNameToServiceName(containerName);
-            await RunDockerComposeCommandAsync("up", "-d", "--force-recreate", serviceName);
+            
+            _logger.LogInformation("Обновление контейнера {ContainerName} (сервис: {ServiceName})", containerName, serviceName);
 
-            _logger.LogInformation("Контейнер {ContainerName} успешно пересоздан и запущен", containerName);
+            // 1. Pull нового образа через docker compose pull <service>
+            await RunDockerComposeCommandAsync("-f", "/app/config/docker-compose.yml", "pull", serviceName);
+            _logger.LogInformation("Образ для сервиса {ServiceName} успешно обновлен", serviceName);
+
+            // 2. Пересоздать контейнер через docker compose up --force-recreate --build -d <service>
+            await RunDockerComposeCommandAsync("-f", "/app/config/docker-compose.yml", "up", "--force-recreate", "--build", "-d", serviceName);
+            _logger.LogInformation("Контейнер {ContainerName} успешно пересоздан", containerName);
+
+            // 3. Очистить неиспользуемые образы через docker image prune -f
+            await RunDockerCommandAsync("image", "prune", "-f");
+            _logger.LogInformation("Неиспользуемые образы очищены");
 
             return new ContainerActionResponseDto
             {
@@ -223,7 +206,8 @@ public class DockerService
             { "minio", "minio" },
             { "rabbitmq", "rabbitmq" },
             { "redis", "redis" },
-            { "postgres_barkfluff", "postgres" }
+            { "postgres_barkfluff", "postgres" },
+            { "admin-panel", "admin-panel" }
         };
 
         return containerToServiceMap.GetValueOrDefault(containerName, containerName);
@@ -294,7 +278,7 @@ public class DockerService
             CreateNoWindow = true,
             StandardOutputEncoding = Encoding.UTF8,
             StandardErrorEncoding = Encoding.UTF8,
-            WorkingDirectory = "/app" // Путь к docker-compose.yml внутри контейнера
+            WorkingDirectory = "/app/config" // Путь к docker-compose.yml внутри контейнера
         };
 
         startInfo.ArgumentList.Add("compose");
@@ -337,12 +321,12 @@ public class DockerService
     private List<ContainerStatusDto> ParseDockerPsOutput(string output)
     {
         var containers = new List<ContainerStatusDto>();
-        
+
         if (string.IsNullOrEmpty(output))
             return containers;
 
         var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        
+
         foreach (var line in lines)
         {
             try
@@ -374,5 +358,82 @@ public class DockerService
         }
 
         return containers;
+    }
+
+    /// <summary>
+    /// Перезапустить саму админ-панель (асинхронно, чтобы успеть отправить ответ)
+    /// </summary>
+    public async Task<ContainerActionResponseDto> RestartAdminPanelAsync()
+    {
+        try
+        {
+            _logger.LogInformation("Запуск перезапуска админ-панели...");
+
+            // Запускаем перезапуск в фоне, чтобы успеть отправить ответ
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(500); // Небольшая задержка чтобы ответ успел уйти
+                await RunDockerCommandAsync("restart", "-t", "30", "admin-panel");
+                _logger.LogInformation("Админ-панель перезапущена");
+            });
+
+            return new ContainerActionResponseDto
+            {
+                Success = true,
+                Message = "Админ-панель будет перезапущена"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка перезапуска админ-панели");
+            return new ContainerActionResponseDto
+            {
+                Success = false,
+                Message = "Ошибка перезапуска админ-панели",
+                ErrorDetails = ex.Message
+            };
+        }
+    }
+
+    /// <summary>
+    /// Обновить образ и пересоздать админ-панель (асинхронно, чтобы успеть отправить ответ)
+    /// </summary>
+    public async Task<ContainerActionResponseDto> UpdateAdminPanelAsync()
+    {
+        try
+        {
+            _logger.LogInformation("Запуск обновления админ-панели...");
+
+            // Запускаем обновление в фоне, чтобы успеть отправить ответ
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(500); // Небольшая задержка чтобы ответ успел уйти
+                var result = await PullImageAndRecreateContainerAsync("admin-panel");
+                if (result.Success)
+                {
+                    _logger.LogInformation("Админ-панель обновлена");
+                }
+                else
+                {
+                    _logger.LogError("Ошибка обновления админ-панели: {Error}", result.ErrorDetails);
+                }
+            });
+
+            return new ContainerActionResponseDto
+            {
+                Success = true,
+                Message = "Обновление админ-панели запущено"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка обновления админ-панели");
+            return new ContainerActionResponseDto
+            {
+                Success = false,
+                Message = "Ошибка обновления админ-панели",
+                ErrorDetails = ex.Message
+            };
+        }
     }
 }

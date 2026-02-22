@@ -155,6 +155,8 @@ public class Program
         app.MapGet("/services", async context => await ServeHtmlFile(context, "services.html"));
         app.MapGet("/logs", async context => await ServeHtmlFile(context, "logs.html"));
         app.MapGet("/badges", async context => await ServeHtmlFile(context, "badges.html"));
+        app.MapGet("/restarting", async context => await ServeHtmlFile(context, "restarting.html"));
+        app.MapGet("/updating", async context => await ServeHtmlFile(context, "updating.html"));
 
         app.Run();
     }
