@@ -5,35 +5,45 @@
     android:layout_height="match_parent"
     android:gravity="center"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="24dp">
 
-    <!-- Success icon -->
-    <ImageView
-        android:layout_width="120dp"
-        android:layout_height="120dp"
-        android:layout_marginBottom="24dp"
-        android:src="@android:drawable/ic_menu_save"
-        android:contentDescription="Success" />
+    <!-- Success icon с контейнером -->
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="140dp"
+        android:layout_height="140dp"
+        android:layout_marginBottom="32dp"
+        app:cardBackgroundColor="?attr/colorPrimaryContainer"
+        app:cardCornerRadius="35dp"
+        app:cardElevation="0dp">
 
-    <!-- Title -->
+        <ImageView
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:layout_gravity="center"
+            android:contentDescription="Success"
+            android:src="@drawable/ic_favorite"
+            app:tint="?attr/colorOnPrimaryContainer" />
+
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- Title с Emphasized типографикой -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
         android:text="Аккаунт создан!"
-        android:textColor="?attr/colorPrimary"
-        android:textSize="28sp"
-        android:textStyle="bold" />
+        android:textAppearance="?attr/textAppearanceHeadlineLarge"
+        android:textColor="?attr/colorPrimary" />
 
     <!-- Message -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="32dp"
+        android:layout_marginBottom="40dp"
         android:gravity="center"
         android:text="Ваш аккаунт успешно создан.\nТеперь вы можете войти в систему."
-        android:textColor="?attr/colorOnSurfaceVariant"
-        android:textSize="16sp" />
+        android:textAppearance="?attr/textAppearanceBodyLarge"
+        android:textColor="?attr/colorOnSurfaceVariant" />
 
     <!-- Loading indicator (shown during final setup) -->
     <com.google.android.material.progressindicator.CircularProgressIndicator
@@ -48,7 +58,13 @@
     <!-- Go to login button -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/goToLoginButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Войти в аккаунт" />
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:text="Войти в аккаунт"
+        android:textAllCaps="false"
+        android:textAppearance="?attr/textAppearanceTitleMedium"
+        app:cornerRadius="32dp"
+        app:icon="@drawable/ic_login"
+        app:iconGravity="textStart" />
+
 </LinearLayout>
