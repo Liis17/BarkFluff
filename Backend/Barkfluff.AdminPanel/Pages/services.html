@@ -107,7 +107,17 @@
             <!-- HEADER -->
             <header class="h-16 bg-white shadow-sm flex items-center justify-between px-8 z-10">
                 <h2 class="text-xl font-semibold text-slate-700">Сервисы</h2>
-                <div class="flex items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <button onclick="restartAdminPanel()" 
+                        class="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                        <i data-lucide="rotate-cw" class="w-4 h-4"></i>
+                        Перезапустить
+                    </button>
+                    <button onclick="updateAdminPanel()" 
+                        class="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                        <i data-lucide="download-cloud" class="w-4 h-4"></i>
+                        Обновить
+                    </button>
                     <span id="autoRefreshBadge" class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium flex items-center gap-1">
                         <i data-lucide="refresh-cw" class="w-3 h-3"></i>
                         Авто-обновление: 30с
@@ -457,6 +467,62 @@
                 notification.style.transition = 'opacity 0.3s ease';
                 setTimeout(() => notification.remove(), 300);
             }, 5000);
+        }
+
+        // Перезапуск админ-панели
+        async function restartAdminPanel() {
+            if (!confirm('Вы уверены, что хотите перезапустить админ-панель?\n\nВы будете перенаправлены на страницу ожидания, пока панель перезапускается.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/docker/containers/admin-panel/restart-own', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Открываем страницу-заглушку в том же окне
+                    window.location.href = '/restarting';
+                } else {
+                    showNotification('error', result.message || 'Ошибка перезапуска админ-панели');
+                }
+            } catch (error) {
+                console.error('Restart error:', error);
+                showNotification('error', 'Ошибка перезапуска: ' + error.message);
+            }
+        }
+
+        // Обновление админ-панели
+        async function updateAdminPanel() {
+            if (!confirm('Вы уверены, что хотите обновить админ-панель?\n\nБудет загружен новый образ и контейнер пересоздан.\n\nВы будете перенаправлены на страницу ожидания.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/docker/containers/admin-panel/update-own', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Открываем страницу-заглушку в том же окне
+                    window.location.href = '/updating';
+                } else {
+                    showNotification('error', result.message || 'Ошибка обновления админ-панели');
+                }
+            } catch (error) {
+                console.error('Update error:', error);
+                showNotification('error', 'Ошибка обновления: ' + error.message);
+            }
         }
 
         // Выход из системы

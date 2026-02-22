@@ -102,5 +102,33 @@ public static class DockerEndpoints
         })
         .WithName("PullImageAndRecreateContainer")
         .WithOpenApi();
+
+        // Перезапустить админ-панель
+        group.MapPost("/containers/admin-panel/restart-own", async (
+            DockerService dockerService,
+            HttpContext context) =>
+        {
+            if (context.Items["AuthToken"] is not AuthToken)
+                return Results.Unauthorized();
+
+            var result = await dockerService.RestartAdminPanelAsync();
+            return result.Success ? Results.Ok(result) : Results.BadRequest(result);
+        })
+        .WithName("RestartAdminPanel")
+        .WithOpenApi();
+
+        // Обновить админ-панель
+        group.MapPost("/containers/admin-panel/update-own", async (
+            DockerService dockerService,
+            HttpContext context) =>
+        {
+            if (context.Items["AuthToken"] is not AuthToken)
+                return Results.Unauthorized();
+
+            var result = await dockerService.UpdateAdminPanelAsync();
+            return result.Success ? Results.Ok(result) : Results.BadRequest(result);
+        })
+        .WithName("UpdateAdminPanel")
+        .WithOpenApi();
     }
 }
