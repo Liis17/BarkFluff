@@ -130,6 +130,7 @@ services:
     image: docker.barkfluff.com:5000/barkfluff-admin-panel-dev:latest
     container_name: admin-panel
     restart: always
+    user: root
     environment:
       <<: *common-variables
       Telegram__BotToken: "${TELEGRAM_BOT_TOKEN}"
