@@ -88,6 +88,10 @@ public static class WebApplicationBuilderExtensions
 
         builder.Configuration.AddInMemoryCollection(configurationDictionary);
 
+        // Переменные окружения должны иметь высший приоритет —
+        // добавляем их последними, чтобы они перезаписывали значения из Configuration service
+        builder.Configuration.AddEnvironmentVariables();
+
         return builder;
     }
 }
