@@ -374,7 +374,7 @@ public class DockerService
             var startInfo = new ProcessStartInfo
             {
                 FileName = "sh",
-                Arguments = "-c \"sleep 2 && docker restart admin-panel\"",
+                Arguments = "-c \"sleep 1 && docker restart admin-panel\"",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
@@ -414,11 +414,12 @@ public class DockerService
             _logger.LogInformation("Запуск обновления админ-панели...");
 
             // Запускаем обновление в фоне через shell script
-            // Используем --remove-orphans чтобы удалить старый контейнер
+            // 1. Pull нового образа
+            // 2. Force recreate контейнера через docker compose up --force-recreate -d
             var startInfo = new ProcessStartInfo
             {
                 FileName = "sh",
-                Arguments = "-c \"sleep 2 && docker compose --project-name barkfluff --env-file /.env -f /docker-compose.yml pull admin-panel && docker compose --project-name barkfluff --env-file /.env -f /docker-compose.yml up --force-recreate --build -d --remove-orphans admin-panel && docker image prune -f\"",
+                Arguments = "-c \"sleep 1 && docker compose --project-name barkfluff --env-file /.env -f /docker-compose.yml pull admin-panel && docker compose --project-name barkfluff --env-file /.env -f /docker-compose.yml up --force-recreate -d admin-panel && docker image prune -f\"",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
