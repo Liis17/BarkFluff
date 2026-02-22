@@ -34,14 +34,21 @@
         @keyframes spin { to { transform: rotate(360deg); } }
 
         .badge-card {
-            width: 138px;
-            height: 180px;
+            width: 180px;
+            height: 240px;
         }
 
         .badge-image {
             width: 128px;
             height: 128px;
             margin: 5px;
+        }
+
+        .badge-name {
+            max-width: 140px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .dropdown-menu { display: none; }
@@ -281,15 +288,15 @@
                     </div>
 
                     <!-- Информация -->
-                    <div class="p-4 border-t border-slate-100">
+                    <div class="p-3 border-t border-slate-100">
                         <div class="flex items-start justify-between gap-2">
-                            <h3 class="font-semibold text-slate-800 text-sm leading-tight line-clamp-2">${escapeHtml(badge.name)}</h3>
+                            <h3 class="badge-name font-semibold text-slate-800 text-sm leading-tight" title="${escapeHtml(badge.name)}">${escapeHtml(badge.name)}</h3>
                             <span class="flex-shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${badge.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}">
                                 ${badge.isActive ? 'Активен' : 'Неактивен'}
                             </span>
                         </div>
-                        ${badge.description ? `<p class="text-xs text-slate-500 mt-1 line-clamp-2">${escapeHtml(badge.description)}</p>` : ''}
-                        <p class="text-xs text-slate-400 mt-2">${badge.createdDate ? new Date(badge.createdDate).toLocaleDateString('ru-RU') : ''}</p>
+                        ${badge.description ? `<p class="text-xs text-slate-400 mt-1.5 line-clamp-2">${escapeHtml(badge.description)}</p>` : ''}
+                        <p class="text-xs text-slate-300 mt-2">${badge.createdDate ? new Date(badge.createdDate).toLocaleDateString('ru-RU') : ''}</p>
                     </div>
                 </div>
             `).join('');
