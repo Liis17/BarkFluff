@@ -20,6 +20,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.imageview.ShapeableImageView
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 /**
  * Экран чатов с боковой панелью
@@ -66,8 +67,22 @@ class ChatsActivity : AppCompatActivity() {
     }
 
     private fun setupChatList() {
-        chatAdapter = ChatAdapter { chat ->
+        chatAdapter = ChatAdapter({ chat ->
             onChatClicked(chat)
+        }) { fileId ->
+            // Callback для получения URL по fileId
+            Log.d(TAG, "setupChatList: Requesting URL for fileId=$fileId")
+            runBlocking {
+                val result = grpcManager.getFileDownloadUrl(fileId)
+                if (result.isSuccess) {
+                    val url = result.getOrNull()
+                    Log.d(TAG, "setupChatList: Got URL for fileId=$fileId, url=$url")
+                    url
+                } else {
+                    Log.e(TAG, "setupChatList: Failed to get URL for fileId=$fileId, error=${result.exceptionOrNull()?.message}")
+                    null
+                }
+            }
         }
 
         binding.chatRecyclerView.apply {
@@ -91,15 +106,24 @@ class ChatsActivity : AppCompatActivity() {
         fullNameText.text = fullName.ifBlank { "Пользователь" }
         usernameText.text = if (globalParam.userName.isNotBlank()) "@${globalParam.userName}" else ""
 
-        // Загрузка аватара
-        val avatarUrl = globalParam.pictureUrl
-        AvatarLoader.load(
+        // Загрузка аватара через fileId
+        val avatarFileId = globalParam.pictureFileId
+        AvatarLoader.loadByFileId(
             imageView = avatarImage,
             placeholderView = avatarPlaceholder,
-            avatarUrl = avatarUrl.ifBlank { null },
+            fileId = avatarFileId.ifBlank { null },
             displayName = fullName.ifBlank { globalParam.userName },
             userId = globalParam.userId
-        )
+        ) {
+            // Callback для получения URL по fileId
+            if (avatarFileId.isNotBlank()) {
+                runBlocking {
+                    grpcManager.getFileDownloadUrl(avatarFileId).getOrNull()
+                }
+            } else {
+                null
+            }
+        }
 
         versionText.text = "BarkFluff v${GlobalParam.getAppVersion(this)}"
 
@@ -141,6 +165,7 @@ class ChatsActivity : AppCompatActivity() {
     }
 
     private fun initGrpcClients() {
+        Log.d(TAG, "initGrpcClients: identity=${globalParam.socketIdentity}, users=${globalParam.socketUsers}, messages=${globalParam.socketMessages}, files=${globalParam.socketFiles}")
         if (globalParam.socketIdentity.isNotBlank()) {
             grpcManager.createIdentityClient(globalParam.socketIdentity, this, includeDeviceInfo = true)
         }
@@ -153,6 +178,7 @@ class ChatsActivity : AppCompatActivity() {
         if (globalParam.socketFiles.isNotBlank()) {
             grpcManager.createFilesClient(globalParam.socketFiles, this, includeDeviceInfo = true)
         }
+        Log.d(TAG, "initGrpcClients: Clients initialized, filesClient is null: ${grpcManager.filesClient == null}")
     }
 
     private fun loadChats() {
@@ -187,6 +213,8 @@ class ChatsActivity : AppCompatActivity() {
     /**
      * Определяет отображаемое имя и аватар чата.
      * Для ЛС подтягивает данные собеседника через UsersApi.
+     * Использует preview fileId для аватаров.
+     * Если сервер вернул URL вместо fileId, извлекаем GUID или используем URL напрямую.
      */
     private suspend fun resolveDisplayItem(chat: GrpcManager.ChatData): ChatAdapter.ChatDisplayItem {
         if (!chat.isGroupChat && chat.title.isBlank()) {
@@ -196,23 +224,56 @@ class ChatsActivity : AppCompatActivity() {
                 if (userResult.isSuccess) {
                     val user = userResult.getOrNull()!!
                     val name = "${user.firstName} ${user.lastName}".trim().ifBlank { user.username }
+                    // Используем preview fileId если есть, иначе original
+                    var avatarFileId = user.profilePicturePreviewFileId.ifBlank {
+                        user.profilePictureFileId
+                    }
+                    // Если сервер вернул URL вместо fileId, извлекаем GUID
+                    avatarFileId = extractGuidOrUseUrl(avatarFileId)
+                    Log.d(TAG, "resolveDisplayItem: ЛС userId=$otherUserId, name=$name, avatarFileId=$avatarFileId")
                     return ChatAdapter.ChatDisplayItem(
                         chatData = chat,
                         displayTitle = name,
-                        displayAvatarUrl = user.profilePicturePreviewUrl.ifBlank {
-                            user.profilePictureUrl.ifBlank { null }
-                        },
+                        displayAvatarFileId = avatarFileId.ifBlank { null },
                         otherUserId = otherUserId
                     )
                 }
             }
         }
 
+        // Для групповых чатов используем picture fileId чата
+        var avatarFileId = chat.picturePreviewFileId.ifBlank { chat.pictureFileId }
+        // Если сервер вернул URL вместо fileId, извлекаем GUID
+        avatarFileId = extractGuidOrUseUrl(avatarFileId)
+        Log.d(TAG, "resolveDisplayItem: Групповой чат chatId=${chat.id}, title=${chat.title}, avatarFileId=$avatarFileId")
         return ChatAdapter.ChatDisplayItem(
             chatData = chat,
             displayTitle = chat.title.ifBlank { "Чат" },
-            displayAvatarUrl = chat.picture.ifBlank { null }
+            displayAvatarFileId = avatarFileId.ifBlank { null }
         )
+    }
+
+    /**
+     * Извлекает GUID из URL или возвращает URL если это не URL.
+     * Сервер может возвращать как fileId (GUID), так и полный URL.
+     */
+    private fun extractGuidOrUseUrl(urlOrGuid: String): String {
+        if (urlOrGuid.isBlank()) return urlOrGuid
+        
+        // Если это URL (начинается с http), извлекаем GUID из конца
+        if (urlOrGuid.startsWith("http://") || urlOrGuid.startsWith("https://")) {
+            // URL формата: https://files.barkfluff.com/web/download/019c70b8-5dd2-71bc-a310-5db99a6fe5e3
+            val lastSegment = urlOrGuid.substringAfterLast("/")
+            // Проверяем что это GUID (36 символов с дефисами)
+            if (lastSegment.matches(Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", RegexOption.IGNORE_CASE))) {
+                return lastSegment
+            }
+            // Если не GUID, возвращаем URL как есть (для прямого использования)
+            return urlOrGuid
+        }
+        
+        // Это уже GUID или что-то другое
+        return urlOrGuid
     }
 
     private fun onChatClicked(chat: GrpcManager.ChatData) {

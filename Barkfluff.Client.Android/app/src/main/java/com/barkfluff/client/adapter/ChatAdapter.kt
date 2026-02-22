@@ -15,13 +15,14 @@ import java.util.Date
 import java.util.Locale
 
 class ChatAdapter(
-    private val onChatClick: (GrpcManager.ChatData) -> Unit
+    private val onChatClick: (GrpcManager.ChatData) -> Unit,
+    private val getFileUrl: suspend (String) -> String?
 ) : ListAdapter<ChatAdapter.ChatDisplayItem, ChatAdapter.ChatViewHolder>(ChatDiffCallback()) {
 
     data class ChatDisplayItem(
         val chatData: GrpcManager.ChatData,
         val displayTitle: String,
-        val displayAvatarUrl: String?,
+        val displayAvatarFileId: String?,
         val otherUserId: Long = 0
     )
 
@@ -44,15 +45,18 @@ class ChatAdapter(
             // Название чата
             binding.chatTitle.text = item.displayTitle
 
-            // Аватар через AvatarLoader
-            AvatarLoader.load(
+            // Аватар через AvatarLoader с fileId
+            AvatarLoader.loadByFileId(
                 imageView = binding.chatAvatar,
                 placeholderView = binding.chatAvatarPlaceholder,
-                avatarUrl = item.displayAvatarUrl,
+                fileId = item.displayAvatarFileId,
                 displayName = item.displayTitle,
                 userId = item.otherUserId.takeIf { it != 0L }
                     ?: chat.id.hashCode().toLong()
-            )
+            ) {
+                // Callback для получения URL по fileId
+                getFileUrl(item.displayAvatarFileId ?: "")
+            }
 
             // Последнее сообщение
             if (chat.lastMessage != null) {

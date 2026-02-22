@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Avatar corner radius -->
+    <dimen name="avatar_corner_radius">28dp</dimen>
+    
+    <!-- Chat list item -->
+    <dimen name="chat_avatar_size">56dp</dimen>
+    <dimen name="chat_avatar_margin_end">16dp</dimen>
+    
+    <!-- Drawer avatar -->
+    <dimen name="drawer_avatar_size">72dp</dimen>
+</resources>
