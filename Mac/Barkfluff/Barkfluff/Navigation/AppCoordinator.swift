@@ -50,7 +50,21 @@ final class AppCoordinator {
     var authScreen: AuthScreen = .login
 
     /// Выбранный чат для отображения в detail
-    var selectedChat: Chat?
+    var selectedChat: Chat? {
+        didSet {
+            if oldValue?.id != selectedChat?.id {
+                showProfilePanel = false
+            }
+        }
+    }
+
+    // MARK: - Profile Panel
+
+    /// Показывать панель профиля
+    var showProfilePanel: Bool = false
+
+    /// Чат для отображения в панели профиля
+    var profilePanelChat: Chat?
 
     /// Тип модального окна
     enum SheetType: Identifiable {
@@ -106,6 +120,26 @@ final class AppCoordinator {
     /// Остановить прослушивание обновлений
     func stopUpdates(updatesService: UpdatesServiceProtocol) async {
         await updatesService.stop()
+    }
+
+    // MARK: - Profile Panel
+
+    /// Открыть/закрыть панель профиля для чата
+    func toggleProfilePanel(for chat: Chat) {
+        if profilePanelChat?.id == chat.id && showProfilePanel {
+            // Закрыть панель если тот же чат
+            closeProfilePanel()
+        } else {
+            // Открыть для нового чата
+            profilePanelChat = chat
+            showProfilePanel = true
+        }
+    }
+
+    /// Закрыть панель профиля
+    func closeProfilePanel() {
+        showProfilePanel = false
+        profilePanelChat = nil
     }
 
     /// Выход из аккаунта

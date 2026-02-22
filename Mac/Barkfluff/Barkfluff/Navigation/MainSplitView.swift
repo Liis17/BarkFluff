@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import BFCore
 
 struct MainSplitView: View {
     @Environment(AppCoordinator.self) private var coordinator
@@ -64,6 +65,28 @@ struct MainSplitView: View {
             }
         }
         .navigationSplitViewStyle(.balanced)
+        // Inspector для панели профиля
+        .inspector(isPresented: Binding(
+            get: { coordinator.showProfilePanel },
+            set: { isPresented in
+                if !isPresented {
+                    coordinator.closeProfilePanel()
+                }
+            }
+        )) {
+            if let chat = coordinator.profilePanelChat {
+                UserProfilePanelView(chat: chat)
+                    .inspectorColumnWidth(min: 280, ideal: 320, max: 400)
+            }
+        }
+        // Скрыть sidebar когда открыта панель профиля
+        .onChange(of: coordinator.showProfilePanel) { _, isPresented in
+            if isPresented {
+                columnVisibility = .detailOnly
+            } else {
+                columnVisibility = .all
+            }
+        }
     }
 }
 

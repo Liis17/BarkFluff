@@ -13,18 +13,25 @@ import BFCore
 struct ConversationHeaderView: View {
     let chat: Chat
 
+    @Environment(AppCoordinator.self) private var coordinator
+
     var body: some View {
         VStack(spacing: Theme.Spacing.xxs) {
-            // Аватарка по центру
-            AvatarView(
-                imageURL: chat.pictureURL,
-                initials: chat.avatarInitials,
-                size: 52
-            )
+            // Аватарка по центру — тоже кликабельная
+            Button {
+                coordinator.toggleProfilePanel(for: chat)
+            } label: {
+                AvatarView(
+                    imageURL: chat.pictureURL,
+                    initials: chat.avatarInitials,
+                    size: 52
+                )
+            }
+            .buttonStyle(.plain)
 
             // Имя под аватаркой со стрелкой
             Button {
-                // TODO: Открыть профиль
+                coordinator.toggleProfilePanel(for: chat)
             } label: {
                 HStack(spacing: 4) {
                     Text(chat.title)
@@ -34,6 +41,8 @@ struct ConversationHeaderView: View {
                     Image(systemName: "chevron.right")
                         .font(.caption2)
                         .fontWeight(.semibold)
+                        .rotationEffect(coordinator.showProfilePanel ? .degrees(90) : .degrees(0))
+                        .animation(.easeInOut(duration: 0.2), value: coordinator.showProfilePanel)
                 }
                 .foregroundStyle(.primary)
             }
