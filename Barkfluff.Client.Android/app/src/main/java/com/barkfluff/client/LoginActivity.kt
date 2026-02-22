@@ -235,6 +235,7 @@ class LoginActivity : AppCompatActivity() {
                                     globalParam.description = userData.bio
                                     globalParam.pictureUrl = userData.profilePictureUrl
                                     globalParam.pictureId = userData.profilePictureUrl
+                                    globalParam.pictureFileId = userData.profilePictureFileId
                                     globalParam.registrationDate = userData.registrationDate
                                 }
                             }
