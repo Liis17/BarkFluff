@@ -57,6 +57,12 @@ struct LoginView: View {
                 }
                 .buttonStyle(.plain)
 
+                Button("Выбрать другой сервер") {
+                    coordinator.currentState = .serverSelection
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+
                 if viewModel.isLoading {
                     ProgressView()
                 }
