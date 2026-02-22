@@ -59,8 +59,7 @@
         // Функция проверки доступности сервера
         async function checkServer() {
             try {
-                const response = await fetch('/api/auth/me', { 
-                    method: 'HEAD',
+                const response = await fetch('/api/auth/me', {
                     cache: 'no-cache'
                 });
                 
