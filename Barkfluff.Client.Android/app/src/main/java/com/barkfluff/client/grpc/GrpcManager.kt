@@ -691,6 +691,72 @@ class GrpcManager {
     }
 
     /**
+     * Поиск пользователей по запросу
+     * Аналог SearchUser в WebApiSearchManager
+     */
+    suspend fun searchUsers(query: String, offset: Int = 0, size: Int = 50): Result<List<UserData>> = withContext(Dispatchers.IO) {
+        try {
+            if (usersClient == null) {
+                return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            }
+
+            val pagination = Shared.PageRequest.newBuilder()
+                .setOffset(offset)
+                .setSize(size)
+                .build()
+
+            val request = UsersApiOuterClass.SearchUsersRequest.newBuilder()
+                .setQuery(query)
+                .setPagination(pagination)
+                .build()
+
+            val response = usersClient!!.searchUsers(request)
+
+            val users = response.usersList.map { user ->
+                UserData(
+                    userId = user.id,
+                    username = user.username,
+                    firstName = user.firstName,
+                    lastName = user.lastName,
+                    bio = user.bio,
+                    profilePictureUrl = user.profilePicture,
+                    profilePicturePreviewUrl = user.profilePicturePreview,
+                    profilePictureFileId = extractGuidFromUrl(user.profilePicture),
+                    profilePicturePreviewFileId = extractGuidFromUrl(user.profilePicturePreview),
+                    registrationDate = user.registrationDate.seconds * 1000
+                )
+            }
+
+            Log.d(TAG, "Поиск '$query': найдено ${users.size} пользователей")
+            Result.success(users)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка поиска пользователей", e)
+            Result.failure(Exception("Ошибка поиска пользователей: ${e.message}"))
+        }
+    }
+
+    /**
+     * Получает ID личного чата с пользователем
+     */
+    suspend fun getPersonChatId(userId: Long): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            if (messagesClient == null) {
+                return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
+            }
+
+            val request = MessagesApiOuterClass.GetPersonChatIdRequest.newBuilder()
+                .setUserId(userId)
+                .build()
+
+            val response = messagesClient!!.getPersonChatId(request)
+            Result.success(response.chatId)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка получения ID чата с пользователем $userId", e)
+            Result.failure(Exception("Ошибка получения ID чата: ${e.message}"))
+        }
+    }
+
+    /**
      * Получает временные URL для скачивания файлов
      * Аналог GetFile/GetFiles в WebApiFileManager
      */

@@ -4,10 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.View
-import android.widget.LinearLayout
-import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.GravityCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.barkfluff.client.adapter.ChatAdapter
@@ -17,13 +14,12 @@ import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.utils.AvatarLoader
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.imageview.ShapeableImageView
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 /**
- * Экран чатов с боковой панелью
+ * Экран чатов с нижней навигацией
  * Загружает список чатов через MessagesApi.ListChats
  */
 class ChatsActivity : AppCompatActivity() {
@@ -50,26 +46,70 @@ class ChatsActivity : AppCompatActivity() {
 
         setupToolbar()
         setupChatList()
-        setupDrawer()
-        setupFab()
+        setupBottomNavigation()
+        setupSearchButton()
 
         checkTokenAndLoadChats()
     }
 
-    private fun setupFab() {
-        binding.newChatFab.setOnClickListener {
-            Snackbar.make(binding.root, "Новый чат - скоро", Snackbar.LENGTH_SHORT).show()
+    private fun setupSearchButton() {
+        binding.searchButton.setOnClickListener {
+            val intent = Intent(this, SearchActivity::class.java)
+            startActivity(intent)
         }
     }
 
     private fun setupToolbar() {
-        binding.toolbar.setNavigationOnClickListener {
-            binding.drawerLayout.openDrawer(GravityCompat.START)
-        }
-
         val serverName = globalParam.serverName
         if (serverName.isNotBlank()) {
             binding.toolbar.title = serverName
+        }
+
+        // Загрузка аватара пользователя
+        loadUserAvatar()
+    }
+
+    private fun loadUserAvatar() {
+        val fullName = "${globalParam.firstName} ${globalParam.lastName}".trim()
+        val avatarFileId = globalParam.pictureFileId
+
+        AvatarLoader.loadByFileId(
+            imageView = binding.userAvatar,
+            placeholderView = binding.userAvatarPlaceholder,
+            fileId = avatarFileId.ifBlank { null },
+            displayName = fullName.ifBlank { globalParam.userName },
+            userId = globalParam.userId
+        ) {
+            if (avatarFileId.isNotBlank()) {
+                runBlocking {
+                    grpcManager.getFileDownloadUrl(avatarFileId).getOrNull()
+                }
+            } else {
+                null
+            }
+        }
+    }
+
+    private fun setupBottomNavigation() {
+        binding.bottomNavigation.selectedItemId = R.id.navigation_chats
+        binding.bottomNavigation.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.navigation_contacts -> {
+                    val intent = Intent(this, ContactsActivity::class.java)
+                    startActivity(intent)
+                    true
+                }
+                R.id.navigation_chats -> {
+                    // Уже на экране чатов
+                    true
+                }
+                R.id.navigation_profile -> {
+                    val intent = Intent(this, ProfileActivity::class.java)
+                    startActivity(intent)
+                    true
+                }
+                else -> false
+            }
         }
     }
 
@@ -96,53 +136,6 @@ class ChatsActivity : AppCompatActivity() {
             layoutManager = LinearLayoutManager(this@ChatsActivity)
             adapter = chatAdapter
             setHasFixedSize(false)
-        }
-    }
-
-    private fun setupDrawer() {
-        val drawerView = binding.drawerContent.root
-
-        // Профиль
-        val fullNameText = drawerView.findViewById<TextView>(R.id.drawerFullName)
-        val usernameText = drawerView.findViewById<TextView>(R.id.drawerUsername)
-        val avatarImage = drawerView.findViewById<ShapeableImageView>(R.id.drawerAvatar)
-        val avatarPlaceholder = drawerView.findViewById<TextView>(R.id.drawerAvatarPlaceholder)
-        val versionText = drawerView.findViewById<TextView>(R.id.drawerAppVersion)
-
-        val fullName = "${globalParam.firstName} ${globalParam.lastName}".trim()
-        fullNameText.text = fullName.ifBlank { "Пользователь" }
-        usernameText.text = if (globalParam.userName.isNotBlank()) "@${globalParam.userName}" else ""
-
-        // Загрузка аватара через fileId
-        val avatarFileId = globalParam.pictureFileId
-        AvatarLoader.loadByFileId(
-            imageView = avatarImage,
-            placeholderView = avatarPlaceholder,
-            fileId = avatarFileId.ifBlank { null },
-            displayName = fullName.ifBlank { globalParam.userName },
-            userId = globalParam.userId
-        ) {
-            // Callback для получения URL по fileId
-            if (avatarFileId.isNotBlank()) {
-                runBlocking {
-                    grpcManager.getFileDownloadUrl(avatarFileId).getOrNull()
-                }
-            } else {
-                null
-            }
-        }
-
-        versionText.text = "BarkFluff v${GlobalParam.getAppVersion(this)}"
-
-        // Обработчики меню
-        drawerView.findViewById<com.google.android.material.button.MaterialButton>(R.id.menuFavorites)?.setOnClickListener {
-            Snackbar.make(binding.root, "Избранное - скоро", Snackbar.LENGTH_SHORT).show()
-            binding.drawerLayout.closeDrawer(GravityCompat.START)
-        }
-
-        drawerView.findViewById<com.google.android.material.button.MaterialButton>(R.id.menuSettings)?.setOnClickListener {
-            Snackbar.make(binding.root, "Настройки - скоро", Snackbar.LENGTH_SHORT).show()
-            binding.drawerLayout.closeDrawer(GravityCompat.START)
         }
     }
 
@@ -266,7 +259,7 @@ class ChatsActivity : AppCompatActivity() {
      */
     private fun extractGuidOrUseUrl(urlOrGuid: String): String {
         if (urlOrGuid.isBlank()) return urlOrGuid
-        
+
         // Если это URL (начинается с http), извлекаем GUID из конца
         if (urlOrGuid.startsWith("http://") || urlOrGuid.startsWith("https://")) {
             // URL формата: https://files.barkfluff.com/web/download/019c70b8-5dd2-71bc-a310-5db99a6fe5e3
@@ -278,7 +271,7 @@ class ChatsActivity : AppCompatActivity() {
             // Если не GUID, возвращаем URL как есть (для прямого использования)
             return urlOrGuid
         }
-        
+
         // Это уже GUID или что-то другое
         return urlOrGuid
     }
@@ -341,18 +334,14 @@ class ChatsActivity : AppCompatActivity() {
 
     @Suppress("DEPRECATION")
     override fun onBackPressed() {
-        if (binding.drawerLayout.isDrawerOpen(GravityCompat.START)) {
-            binding.drawerLayout.closeDrawer(GravityCompat.START)
-        } else {
-            MaterialAlertDialogBuilder(this)
-                .setTitle("Выход из приложения")
-                .setMessage("Вы действительно хотите выйти?")
-                .setPositiveButton("Выйти") { _, _ ->
-                    super.onBackPressed()
-                }
-                .setNegativeButton("Отмена", null)
-                .show()
-        }
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Выход из приложения")
+            .setMessage("Вы действительно хотите выйти?")
+            .setPositiveButton("Выйти") { _, _ ->
+                super.onBackPressed()
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
     }
 
     override fun onDestroy() {
