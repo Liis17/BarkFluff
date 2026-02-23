@@ -59,21 +59,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun switchTab(newTabIndex: Int) {
-        val enterAnim: Int
-        val exitAnim: Int
-
-        if (newTabIndex < currentTabIndex) {
-            // Переход влево (например Чаты → Контакты)
-            enterAnim = R.anim.slide_in_from_left
-            exitAnim = R.anim.slide_out_to_right
+        val enterAnim = if (newTabIndex < currentTabIndex) {
+            R.anim.slide_in_from_left
         } else {
-            // Переход вправо (например Чаты → Профиль)
-            enterAnim = R.anim.slide_in_from_right
-            exitAnim = R.anim.slide_out_to_left
+            R.anim.slide_in_from_right
         }
 
         val transaction = supportFragmentManager.beginTransaction()
-        transaction.setCustomAnimations(enterAnim, exitAnim)
+        transaction.setCustomAnimations(enterAnim, R.anim.fade_out)
 
         // Скрываем текущий фрагмент
         fragments[currentTabIndex]?.let { transaction.hide(it) }
@@ -86,6 +79,11 @@ class MainActivity : AppCompatActivity() {
             val newFragment = createFragment(newTabIndex)
             fragments[newTabIndex] = newFragment
             transaction.add(R.id.fragmentContainer, newFragment, "tab_$newTabIndex")
+        }
+
+        transaction.runOnCommit {
+            // Входящий фрагмент поверх уходящего
+            fragments[newTabIndex]?.view?.bringToFront()
         }
 
         transaction.commit()
