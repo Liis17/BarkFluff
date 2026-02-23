@@ -3,13 +3,14 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:extensions="clr-namespace:BarkFluff.Client.WPF.UserControls.Extensions"
     xmlns:local="clr-namespace:BarkFluff.Client.WPF.UserControls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     d:DesignHeight="800"
     d:DesignWidth="300"
     mc:Ignorable="d">
-    <Grid Background="#1e1e1e">
+    <Grid Background="{DynamicResource BorderBlock}">
         <Border Background="Transparent" CornerRadius="0 15 15 0" />
         <Ellipse
             Width="256"
@@ -46,371 +47,118 @@
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock
                             x:Name="FullNameText"
-                            FontSize="14"
-                            FontWeight="Bold"
-                            Foreground="White"
-                            Text="username" />
+                            HorizontalAlignment="Left"
+                            Style="{DynamicResource LittleTitleTextStyle}"
+                            Text="firs name last name" />
                         <TextBlock
                             x:Name="UsernameText"
-                            FontSize="12"
-                            Foreground="Gray"
-                            Text="email" />
+                            HorizontalAlignment="Left"
+                            Style="{DynamicResource DescriptionTextStyle}"
+                            Text="username" />
                     </StackPanel>
-                    <Border VerticalAlignment="Center" Grid.Column="2">
+                    <Border Grid.Column="2" VerticalAlignment="Center">
                         <ui:SymbolIcon
                             x:Name="UserStatusIcon"
                             Width="16"
-                            MouseLeftButtonUp="OpenQRModal"
                             Height="16"
+                            Margin="0,0,5,5"
                             HorizontalAlignment="Right"
                             VerticalAlignment="Bottom"
-                            Margin="0,0,5,5"
-                            Symbol="QrCode24"
-                            Foreground="White" />
+                            Foreground="{DynamicResource TitleText}"
+                            MouseLeftButtonUp="OpenQRModal"
+                            Symbol="QrCode24" />
                     </Border>
                 </Grid>
 
                 <!--  Меню  -->
                 <StackPanel Orientation="Vertical">
                     <Button
-                        Padding="15,8"
-                        HorizontalAlignment="Stretch"
-                        HorizontalContentAlignment="Left"
-                        Background="Transparent"
-                        BorderThickness="0"
+                        extensions:SidebarExtensions.IconSymbol="Archive20"
                         Click="SidebarButtonClick"
                         Content="Архив"
-                        Cursor="No"
-                        Foreground="White">
-                        <Button.ContentTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <ui:SymbolIcon
-                                        Margin="0,0,10,0"
-                                        FontSize="20"
-                                        Foreground="White"
-                                        Symbol="Archive20" />
-                                    <TextBlock Foreground="White" Text="{Binding}" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </Button.ContentTemplate>
-                    </Button>
+                        Style="{DynamicResource SidebarMenuButtonStyle}" />
                     <Button
-                        Padding="15,8"
-                        HorizontalAlignment="Stretch"
-                        HorizontalContentAlignment="Left"
-                        Background="Transparent"
-                        BorderThickness="0"
+                        extensions:SidebarExtensions.IconSymbol="Bookmark20"
                         Click="OpenFavorites"
                         Content="Избранное"
-                        Cursor="Hand"
-                        Foreground="White">
-                        <Button.ContentTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <ui:SymbolIcon
-                                        Margin="0,0,10,0"
-                                        FontSize="20"
-                                        Foreground="White"
-                                        Symbol="Bookmark20" />
-                                    <TextBlock Foreground="White" Text="{Binding}" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </Button.ContentTemplate>
-                    </Button>
+                        Style="{DynamicResource SidebarMenuButtonStyle}" />
                     <Button
-                        Padding="15,8"
-                        HorizontalAlignment="Stretch"
-                        HorizontalContentAlignment="Left"
-                        Background="Transparent"
-                        BorderThickness="0"
+                        extensions:SidebarExtensions.IconSymbol="PersonCircle20"
                         Click="SidebarButtonClick"
                         Content="Мой профиль"
-                        Cursor="No"
-                        Foreground="White">
-                        <Button.ContentTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <ui:SymbolIcon
-                                        Margin="0,0,10,0"
-                                        FontSize="20"
-                                        Foreground="White"
-                                        Symbol="PersonCircle20" />
-                                    <TextBlock Foreground="White" Text="{Binding}" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </Button.ContentTemplate>
-                    </Button>
+                        Style="{DynamicResource SidebarMenuButtonStyle}" />
                     <Button
-                        Padding="15,8"
-                        HorizontalAlignment="Stretch"
-                        HorizontalContentAlignment="Left"
-                        Background="Transparent"
-                        BorderThickness="0"
+                        extensions:SidebarExtensions.IconSymbol="Edit20"
                         Click="SidebarButtonClick"
                         Content="Статус"
-                        Cursor="No"
-                        Foreground="White">
-                        <Button.ContentTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <ui:SymbolIcon
-                                        Margin="0,0,10,0"
-                                        FontSize="20"
-                                        Foreground="White"
-                                        Symbol="Edit20" />
-                                    <TextBlock Foreground="White" Text="{Binding}" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </Button.ContentTemplate>
-                    </Button>
+                        Style="{DynamicResource SidebarMenuButtonStyle}" />
                     <Button
-                        Padding="15,8"
-                        HorizontalAlignment="Stretch"
-                        HorizontalContentAlignment="Left"
-                        Background="Transparent"
-                        BorderThickness="0"
+                        extensions:SidebarExtensions.IconSymbol="Badge20"
                         Click="SidebarButtonClick"
                         Content="Значки"
-                        Cursor="No"
-                        Foreground="White">
-                        <Button.ContentTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <ui:SymbolIcon
-                                        Margin="0,0,10,0"
-                                        FontSize="20"
-                                        Foreground="White"
-                                        Symbol="Badge20" />
-                                    <TextBlock Foreground="White" Text="{Binding}" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </Button.ContentTemplate>
-                    </Button>
+                        Style="{DynamicResource SidebarMenuButtonStyle}" />
                     <Border
                         Height="1"
                         Margin="5,1,15,1"
-                        Background="White"
+                        Background="{DynamicResource SeparatorBackground}"
                         Opacity="0.1" />
                     <Button
-                        Padding="15,8"
-                        HorizontalAlignment="Stretch"
-                        HorizontalContentAlignment="Left"
-                        Background="Transparent"
-                        BorderThickness="0"
+                        extensions:SidebarExtensions.IconSymbol="People20"
                         Click="SidebarButtonClick"
                         Content="Создать группу"
-                        Cursor="No"
-                        Foreground="White">
-                        <Button.ContentTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <ui:SymbolIcon
-                                        Margin="0,0,10,0"
-                                        FontSize="20"
-                                        Foreground="White"
-                                        Symbol="People20" />
-                                    <TextBlock Foreground="White" Text="{Binding}" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </Button.ContentTemplate>
-                    </Button>
+                        Style="{DynamicResource SidebarMenuButtonStyle}" />
                     <Button
-                        Padding="15,8"
-                        HorizontalAlignment="Stretch"
-                        HorizontalContentAlignment="Left"
-                        Background="Transparent"
-                        BorderThickness="0"
+                        extensions:SidebarExtensions.IconSymbol="Megaphone20"
                         Click="SidebarButtonClick"
                         Content="Создать канал"
-                        Cursor="No"
-                        Foreground="White">
-                        <Button.ContentTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <ui:SymbolIcon
-                                        Margin="0,0,10,0"
-                                        FontSize="20"
-                                        Foreground="White"
-                                        Symbol="Megaphone20" />
-                                    <TextBlock Foreground="White" Text="{Binding}" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </Button.ContentTemplate>
-                    </Button>
+                        Style="{DynamicResource SidebarMenuButtonStyle}" />
                     <Button
-                        Padding="15,8"
-                        HorizontalAlignment="Stretch"
-                        HorizontalContentAlignment="Left"
-                        Background="Transparent"
-                        BorderThickness="0"
+                        extensions:SidebarExtensions.IconSymbol="ChatMultiple20"
                         Click="SidebarButtonClick"
                         Content="Чаты"
-                        Cursor="No"
-                        Foreground="White">
-                        <Button.ContentTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <ui:SymbolIcon
-                                        Margin="0,0,10,0"
-                                        FontSize="20"
-                                        Foreground="White"
-                                        Symbol="ChatMultiple20" />
-                                    <TextBlock Foreground="White" Text="{Binding}" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </Button.ContentTemplate>
-                    </Button>
+                        Style="{DynamicResource SidebarMenuButtonStyle}" />
                     <Button
-                        Padding="15,8"
-                        HorizontalAlignment="Stretch"
-                        HorizontalContentAlignment="Left"
-                        Background="Transparent"
-                        BorderThickness="0"
+                        extensions:SidebarExtensions.IconSymbol="Person20"
                         Click="SidebarButtonClick"
                         Content="Контакты"
-                        Cursor="No"
-                        Foreground="White">
-                        <Button.ContentTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <ui:SymbolIcon
-                                        Margin="0,0,10,0"
-                                        FontSize="20"
-                                        Foreground="White"
-                                        Symbol="Person20" />
-                                    <TextBlock Foreground="White" Text="{Binding}" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </Button.ContentTemplate>
-                    </Button>
+                        Style="{DynamicResource SidebarMenuButtonStyle}" />
                     <Button
-                        Padding="15,8"
-                        HorizontalAlignment="Stretch"
-                        HorizontalContentAlignment="Left"
-                        Background="Transparent"
-                        BorderThickness="0"
+                        extensions:SidebarExtensions.IconSymbol="Call20"
                         Click="SidebarButtonClick"
                         Content="Звонки"
-                        Cursor="No"
-                        Foreground="White">
-                        <Button.ContentTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <ui:SymbolIcon
-                                        Margin="0,0,10,0"
-                                        FontSize="20"
-                                        Foreground="White"
-                                        Symbol="Call20" />
-                                    <TextBlock Foreground="White" Text="{Binding}" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </Button.ContentTemplate>
-                    </Button>
+                        Style="{DynamicResource SidebarMenuButtonStyle}" />
                     <Border
                         Height="1"
                         Margin="5,1,15,1"
-                        Background="White"
+                        Background="{DynamicResource SeparatorBackground}"
                         Opacity="0.1" />
                     <Button
                         x:Name="DebugMenuButton"
-                        Padding="15,8"
-                        HorizontalAlignment="Stretch"
-                        HorizontalContentAlignment="Left"
-                        Background="Transparent"
-                        BorderThickness="0"
+                        extensions:SidebarExtensions.IconSymbol="Bug20"
                         Click="OpenDebugMenuButtonClick"
                         Content="Отладка"
-                        Cursor="Hand"
-                        Foreground="White">
-                        <Button.ContentTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <ui:SymbolIcon
-                                        Margin="0,0,10,0"
-                                        FontSize="20"
-                                        Foreground="White"
-                                        Symbol="Bug20" />
-                                    <TextBlock Foreground="White" Text="{Binding}" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </Button.ContentTemplate>
-                    </Button>
+                        Style="{DynamicResource SidebarMenuButtonStyle}" />
                     <Border
                         x:Name="DebugBorder"
                         Height="1"
                         Margin="5,1,15,1"
-                        Background="White"
+                        Background="{DynamicResource SeparatorBackground}"
                         Opacity="0.1" />
                     <Button
-                        Padding="15,8"
-                        HorizontalAlignment="Stretch"
-                        HorizontalContentAlignment="Left"
-                        Background="Transparent"
-                        BorderThickness="0"
+                        extensions:SidebarExtensions.IconSymbol="Settings20"
                         Click="OpenSettingsButtonClick"
                         Content="Настройки"
-                        Cursor="Hand"
-                        Foreground="White">
-                        <Button.ContentTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <ui:SymbolIcon
-                                        Margin="0,0,10,0"
-                                        FontSize="20"
-                                        Foreground="White"
-                                        Symbol="Settings20" />
-                                    <TextBlock Foreground="White" Text="{Binding}" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </Button.ContentTemplate>
-                    </Button>
+                        Style="{DynamicResource SidebarMenuButtonStyle}" />
                     <Button
-                        Padding="15,8"
-                        HorizontalAlignment="Stretch"
-                        HorizontalContentAlignment="Left"
-                        Background="Transparent"
-                        BorderThickness="0"
+                        extensions:SidebarExtensions.IconSymbol="Star16"
                         Click="SidebarButtonClick"
                         Content="Возможности Barkfluff"
-                        Cursor="No"
-                        Foreground="White">
-                        <Button.ContentTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <ui:SymbolIcon
-                                        Margin="0,0,10,0"
-                                        FontSize="20"
-                                        Foreground="White"
-                                        Symbol="Star16" />
-                                    <TextBlock Foreground="White" Text="{Binding}" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </Button.ContentTemplate>
-                    </Button>
+                        Style="{DynamicResource SidebarMenuButtonStyle}" />
                     <Button
-                        Padding="15,8"
-                        HorizontalAlignment="Stretch"
-                        HorizontalContentAlignment="Left"
-                        Background="Transparent"
-                        BorderThickness="0"
+                        extensions:SidebarExtensions.IconSymbol="QuestionCircle28"
                         Click="SidebarButtonClick"
                         Content="Помощь"
-                        Cursor="No"
-                        Foreground="White">
-                        <Button.ContentTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <ui:SymbolIcon
-                                        Margin="0,0,10,0"
-                                        FontSize="20"
-                                        Foreground="White"
-                                        Symbol="QuestionCircle28" />
-                                    <TextBlock Foreground="White" Text="{Binding}" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </Button.ContentTemplate>
-                    </Button>
+                        Style="{DynamicResource SidebarMenuButtonStyle}" />
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>
