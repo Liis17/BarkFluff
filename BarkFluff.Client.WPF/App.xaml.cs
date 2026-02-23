@@ -43,6 +43,7 @@ namespace BarkFluff.Client.WPF
         public static WindowStateService WindowStateService { get; set; } = null!;
         public static NotificationManager NotificationManager => NotificationManager.Instance;
         public static OnlineStatusService OnlineStatusService => OnlineStatusService.Instance;
+        public static bool DeadTokenMode { get; set; } = false; // Режим, при котором приложение находится после получения недействительного токена, до повторной авторизации
 
         private static UpdateService updateService { get; set; } = null!;
         public App() { }
@@ -177,6 +178,7 @@ namespace BarkFluff.Client.WPF
             catch { }
             AppIdHelper.SetCurrentProcessExplicitAppUserModelID(AppUserModelId);
             ServerCommunication = new WebApi.Core.WebApi();
+            ServerCommunication.TokenInvalidated += OnTokenInvalidated;
             ColorAnalyzer = new ImageColorAnalyzer();
             Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(targetPath) ?? string.Empty, "datas"));
             string filePath = Path.Combine(Path.GetDirectoryName(targetPath), "datas", "GlobalParam.json");
@@ -209,6 +211,72 @@ namespace BarkFluff.Client.WPF
             }
 
             ThemeLoader();
+        }
+
+        /// <summary>
+        /// Обработчик события о недействительном refresh-токене.
+        /// Вызывается когда токен был отозван, заблокирован через админ-панель или истёк срок его действия.
+        /// </summary>
+        private void OnTokenInvalidated(object? sender, EventArgs e)
+        {
+            // Вызываем DeadToken в UI потоке
+            Dispatcher.Invoke(() => DeadToken());
+        }
+
+        /// <summary>
+        /// Статический обработчик для переподписки в UpdateApiClient.
+        /// </summary>
+        private static void OnServerCommunicationTokenInvalidated(object? sender, EventArgs e)
+        {
+            // Вызываем DeadToken в UI потоке
+            App.Current.Dispatcher.Invoke(() => DeadToken());
+        }
+
+        public static void DeadToken()
+        {
+            DeadTokenMode = true;
+
+            var ip = GParam.IpAddress;
+            var appPath = GParam.AppPath;
+            var theme = GParam.AppTheme;
+            var machineName = GParam.MachineName;
+
+            var servername = App.GParam.ServerName;
+            var description = App.GParam.ServerDescription;
+            var idebtity = App.GParam.SocketIdentity;
+            var users = App.GParam.SocketUsers;
+            var files = App.GParam.SocketFiles;
+            var message = App.GParam.SocketMessages;
+            var updates = App.GParam.SocketUpdates;
+            var onliner = App.GParam.SocketOnliner;
+            var beacon = App.GParam.SocketBeacon;
+            var appPass = App.GParam.AppPass;
+
+            var colors = App.GParam.Colors;
+
+            GParam = new BarkFluff.WebApi.Core.MessengerData.GlobalParam();
+
+            GParam.IpAddress = ip;
+            GParam.AppPath = appPath;
+            GParam.AppTheme = theme;
+            GParam.MachineName = machineName;
+
+            App.GParam.ServerName = servername;
+            App.GParam.ServerDescription = description;
+            App.GParam.SocketIdentity = idebtity;
+            App.GParam.SocketUsers = users;
+            App.GParam.SocketFiles = files;
+            App.GParam.SocketMessages = message;
+            App.GParam.SocketUpdates = updates;
+            App.GParam.SocketOnliner = onliner;
+            App.GParam.SocketBeacon = beacon;
+            App.GParam.AppPass = appPass;
+
+            App.GParam.Colors = colors;
+
+            GParam.DeviceId = Guid.NewGuid().ToString();
+
+            MessengerWindow.CloseApp();
         }
         private void ThemeLoader()
         {
@@ -271,6 +339,10 @@ namespace BarkFluff.Client.WPF
         protected override void OnExit(ExitEventArgs e)
         {
             cts.Cancel();
+            if (ServerCommunication != null)
+            {
+                ServerCommunication.TokenInvalidated -= OnServerCommunicationTokenInvalidated;
+            }
             OnlineStatusService?.Stop();
             OnlineStatusService?.Dispose();
             NotificationManager?.Dispose();
@@ -334,8 +406,13 @@ namespace BarkFluff.Client.WPF
         /// </summary>
         public static async void UpdateApiClient()
         {
+            if (ServerCommunication != null)
+            {
+                ServerCommunication.TokenInvalidated -= OnServerCommunicationTokenInvalidated;
+            }
             ServerCommunication = null!;
             ServerCommunication = new WebApi.Core.WebApi();
+            ServerCommunication.TokenInvalidated += OnServerCommunicationTokenInvalidated;
             var response = ServerCommunication.CreateAC(GParam, GParam.MachineName, SystemInfo.GetFriendlyWindowsVersion(), AppVersion.AppName, AppVersion.Version, GParam.IpAddress);
             if (!response.IsSuccess)
             {

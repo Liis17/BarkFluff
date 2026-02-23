@@ -11,6 +11,16 @@ namespace BarkFluff.WebApi.Core
     {
         private bool _disposed = false;
 
+        /// <summary>
+        /// Событие вызывается когда refresh-токен стал недействителен (отозван, заблокирован через админ-панель, истёк срок действия).
+        /// Приложение должно перенаправить пользователя на страницу выбора сервера для повторной авторизации.
+        /// </summary>
+        public event EventHandler? TokenInvalidated
+        {
+            add => TokenManager.TokenInvalidated += value;
+            remove => TokenManager.TokenInvalidated -= value;
+        }
+
         #region ApiClients (internal для доступа менеджеров)
         internal BarkFluff.Proto.Users.UsersApi.UsersApiClient? UsersAC;
         internal BarkFluff.Proto.Beacon.BeaconApi.BeaconApiClient? BeaconAC;

@@ -197,18 +197,18 @@ namespace BarkFluff.Client.WPF.Services.App
                     // If no users to track, wait and retry
                     if (userIds.Count == 0)
                     {
-                        WPF.App.ErideMessage.AddMessage("No users to track, waiting...", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
+                        WPF.App.ErideMessage.AddMessage("Нет пользователей для отслеживания, ожидание...", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
                         await Task.Delay(5000, cancellationToken);
                         continue;
                     }
 
-                    WPF.App.ErideMessage.AddMessage($"Connecting to online status stream for {userIds.Count} users...", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
+                    WPF.App.ErideMessage.AddMessage($"Подключение к потоку онлайн-статуса для {userIds.Count} пользователей...", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
 
                     var (error, stream) = await WPF.App.ServerCommunication.SubscribeToOnlineStatus(userIds, globalParam);
 
                     if (!error.IsSuccess || stream == null)
                     {
-                        WPF.App.ErideMessage.AddMessage($"Failed to connect to online status stream: {error.ErrorMessage}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Error });
+                        WPF.App.ErideMessage.AddMessage($"Не удалось подключиться к потоку онлайн-статуса: {error.ErrorMessage}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Error });
                         await HandleReconnectionAsync(cancellationToken);
                         continue;
                     }
@@ -216,7 +216,7 @@ namespace BarkFluff.Client.WPF.Services.App
                     _isConnected = true;
                     _reconnectAttempts = 0;
                     ConnectionStatusChanged?.Invoke(true);
-                    WPF.App.ErideMessage.AddMessage("Connected to online status stream", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
+                    WPF.App.ErideMessage.AddMessage("Подключено к потоку онлайн-статуса", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Debug });
 
                     await foreach (var statusUpdate in stream.WithCancellation(cancellationToken))
                     {
@@ -224,7 +224,7 @@ namespace BarkFluff.Client.WPF.Services.App
                     }
 
                     // Stream ended normally - attempt to reconnect
-                    WPF.App.ErideMessage.AddMessage("Online status stream ended, reconnecting...", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Warning });
+                    WPF.App.ErideMessage.AddMessage("Поток онлайн-статуса завершен, переподключение...", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Warning });
                     _isConnected = false;
                     ConnectionStatusChanged?.Invoke(false);
                 }
@@ -235,7 +235,7 @@ namespace BarkFluff.Client.WPF.Services.App
                 }
                 catch (Exception ex)
                 {
-                    WPF.App.ErideMessage.AddMessage($"Error in online status stream: {ex.Message}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Error });
+                    WPF.App.ErideMessage.AddMessage($"Ошибка в потоке онлайн-статуса: {ex.Message}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Error });
                     _isConnected = false;
                     ConnectionStatusChanged?.Invoke(false);
 
@@ -438,7 +438,7 @@ namespace BarkFluff.Client.WPF.Services.App
 
             _pingCts = new CancellationTokenSource();
             var cancellationToken = _pingCts.Token; // Capture token locally to avoid race condition
-            
+
             _pingTask = Task.Run(async () =>
             {
                 while (!cancellationToken.IsCancellationRequested)
@@ -471,7 +471,7 @@ namespace BarkFluff.Client.WPF.Services.App
             if (_pingCts != null)
             {
                 _pingCts.Cancel();
-                
+
                 // Wait for ping task to complete
                 try
                 {
@@ -481,11 +481,11 @@ namespace BarkFluff.Client.WPF.Services.App
                 {
                     // Ignore exceptions during shutdown
                 }
-                
+
                 _pingCts.Dispose();
                 _pingCts = null;
             }
-            
+
             _pingTask = null;
         }
 
