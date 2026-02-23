@@ -1,6 +1,7 @@
 using BarkFluff.Users.Mapping;
 using BarkFluff.Users.Persistence.Services;
 using BarkFluff.Proto.Users;
+using Google.Protobuf.WellKnownTypes;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -25,40 +26,64 @@ public class SearchUsersServerQueryHandler : IRequestHandler<SearchUsersServerQu
         if (request.Size > 50)
             request.Size = 50;
 
-        // Пустой запрос — все юзеры
+        List<Domain.User> users;
+        int totalCount;
+
         if (string.IsNullOrWhiteSpace(request.Query))
         {
             var allResult = await _usersStorage.GetAllUsersDescending(request.Offset, request.Size);
-
-            return new SearchUsersServerResponse
-            {
-                Users = { allResult.Users.Select(x => x.ToGrpc()) },
-                TotalCount = allResult.TotalCount
-            };
+            users = allResult.Users;
+            totalCount = allResult.TotalCount;
         }
-
-        // Числовой запрос — поиск по user_id
-        if (long.TryParse(request.Query.Trim(), out var userId))
+        else if (long.TryParse(request.Query.Trim(), out var userId))
         {
             var user = await _usersStorage.GetById(userId);
 
             if (user is null || user.IsDraft)
                 return new SearchUsersServerResponse { TotalCount = 0 };
 
-            return new SearchUsersServerResponse
-            {
-                Users = { user.ToGrpc() },
-                TotalCount = 1
-            };
+            users = new List<Domain.User> { user };
+            totalCount = 1;
+        }
+        else
+        {
+            var usersResult = await _usersStorage.SearchUsersByTrigram(request.Query, request.Offset, request.Size);
+            users = usersResult.Users;
+            totalCount = Math.Max(usersResult.TotalCount, 0);
         }
 
-        // Иначе — поиск по триграммам
-        var usersResult = await _usersStorage.SearchUsersByTrigram(request.Query, request.Offset, request.Size);
+        // Конвертируем и загружаем бейджи для каждого пользователя
+        var protoUsers = new List<User>();
+        foreach (var user in users)
+        {
+            var protoUser = user.ToGrpc();
+
+            var badges = await _usersStorage.GetUserBadgesAsync(user.Id);
+            foreach (var ub in badges)
+            {
+                protoUser.Badges.Add(new UserBadge
+                {
+                    Badge = new Badge
+                    {
+                        Id = ub.Badge.Id,
+                        Name = ub.Badge.Name,
+                        Description = ub.Badge.Description ?? string.Empty,
+                        ImageUrl = ub.Badge.ImageUrl ?? string.Empty,
+                        IsActive = ub.Badge.IsActive,
+                        CreatedDate = Timestamp.FromDateTime(DateTime.SpecifyKind(ub.Badge.CreatedDate, DateTimeKind.Utc))
+                    },
+                    Priority = ub.Priority,
+                    AssignedDate = Timestamp.FromDateTime(DateTime.SpecifyKind(ub.AssignedDate, DateTimeKind.Utc))
+                });
+            }
+
+            protoUsers.Add(protoUser);
+        }
 
         return new SearchUsersServerResponse
         {
-            Users = { usersResult.Users.Select(x => x.ToGrpc()) },
-            TotalCount = Math.Max(usersResult.TotalCount, 0)
+            Users = { protoUsers },
+            TotalCount = totalCount
         };
     }
 }

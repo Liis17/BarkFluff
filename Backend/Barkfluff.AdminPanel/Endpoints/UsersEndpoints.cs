@@ -69,40 +69,46 @@ public static class UsersEndpoints
             if (context.Items["AuthToken"] is not AuthToken)
                 return Results.Unauthorized();
 
-            // Параллельные вызовы
-            var userTask = SafeCall(() => usersClient.GetByIdAsync(new GetByIdRequest { UserId = id }));
+            // Параллельные вызовы (SearchUsersServer вместо GetById — включает бейджи)
+            var userSearchTask = SafeCall(() => usersClient.SearchUsersServerAsync(new SearchUsersServerRequest
+            {
+                Query = id.ToString(),
+                Offset = 0,
+                Size = 1
+            }));
             var contactsTask = SafeCall(() => usersClient.GetUserContactsAsync(new GetUserContactsRequest { UserId = id }));
             var devicesTask = SafeCall(() => usersClient.GetUserDevicesAsync(new GetUserDevicesRequest { UserId = id }));
             var storageTask = SafeCall(() => filesClient.GetUserStorageInfoServerAsync(new GetUserStorageInfoServerRequest { UserId = id }));
             var otpTask = SafeCall(() => identityClient.ListOtpVerificationServerAsync(new ListOtpVerificationServerRequest { UserId = id }));
             var sessionsTask = SafeCall(() => identityClient.GetActiveSessionsServerAsync(new GetActiveSessionsServerRequest { UserId = id }));
 
-            await Task.WhenAll(userTask, contactsTask, devicesTask, storageTask, otpTask, sessionsTask);
+            await Task.WhenAll(userSearchTask, contactsTask, devicesTask, storageTask, otpTask, sessionsTask);
 
-            var user = userTask.Result;
+            var userSearch = userSearchTask.Result;
             var contacts = contactsTask.Result;
             var devices = devicesTask.Result;
             var storage = storageTask.Result;
             var otp = otpTask.Result;
             var sessions = sessionsTask.Result;
 
-            if (user is null)
+            var userProto = userSearch?.Users.FirstOrDefault();
+            if (userProto is null)
                 return Results.NotFound();
 
             return Results.Ok(new
             {
                 profile = new
                 {
-                    id = user.User.Id,
-                    firstName = user.User.FirstName,
-                    lastName = user.User.LastName,
-                    username = user.User.Username,
-                    profilePicture = user.User.ProfilePicture,
-                    profilePicturePreview = user.User.ProfilePicturePreview,
-                    bio = user.User.Bio,
-                    registrationDate = user.User.RegistrationDate?.ToDateTime(),
-                    storageLimitGb = user.User.StorageLimitGb,
-                    badges = user.User.Badges.Select(b => new
+                    id = userProto.Id,
+                    firstName = userProto.FirstName,
+                    lastName = userProto.LastName,
+                    username = userProto.Username,
+                    profilePicture = userProto.ProfilePicture,
+                    profilePicturePreview = userProto.ProfilePicturePreview,
+                    bio = userProto.Bio,
+                    registrationDate = userProto.RegistrationDate?.ToDateTime(),
+                    storageLimitGb = userProto.StorageLimitGb,
+                    badges = userProto.Badges.Select(b => new
                     {
                         badge = new
                         {
