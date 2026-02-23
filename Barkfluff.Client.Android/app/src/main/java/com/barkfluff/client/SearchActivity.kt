@@ -54,6 +54,19 @@ class SearchActivity : AppCompatActivity() {
         setupToolbar()
         setupSearchField()
         setupResultsList()
+
+        initGrpcClients()
+    }
+
+    private fun initGrpcClients() {
+        Log.d(TAG, "initGrpcClients: users=${globalParam.socketUsers}, files=${globalParam.socketFiles}")
+        if (globalParam.socketUsers.isNotBlank()) {
+            grpcManager.createUsersClient(globalParam.socketUsers, this, includeDeviceInfo = true)
+        }
+        if (globalParam.socketFiles.isNotBlank()) {
+            grpcManager.createFilesClient(globalParam.socketFiles, this, includeDeviceInfo = true)
+        }
+        Log.d(TAG, "initGrpcClients: Clients initialized, usersClient is null: ${grpcManager.usersClient == null}")
     }
 
     private fun setupToolbar() {

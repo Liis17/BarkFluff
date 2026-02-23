@@ -228,6 +228,8 @@ class LoginActivity : AppCompatActivity() {
                             if (userDataResult.isSuccess) {
                                 val userData = userDataResult.getOrNull()
                                 if (userData != null) {
+                                    Log.d(TAG, "Login: userData.userId=${userData.userId}, profilePictureUrl='${userData.profilePictureUrl}', profilePicturePreviewUrl='${userData.profilePicturePreviewUrl}', profilePictureFileId='${userData.profilePictureFileId}', profilePicturePreviewFileId='${userData.profilePicturePreviewFileId}'")
+
                                     globalParam.userId = userData.userId
                                     globalParam.userName = userData.username
                                     globalParam.firstName = userData.firstName
@@ -236,7 +238,10 @@ class LoginActivity : AppCompatActivity() {
                                     globalParam.pictureUrl = userData.profilePictureUrl
                                     globalParam.pictureId = userData.profilePictureUrl
                                     globalParam.pictureFileId = userData.profilePictureFileId
+                                    globalParam.picturePreviewFileId = userData.profilePicturePreviewFileId
                                     globalParam.registrationDate = userData.registrationDate
+
+                                    Log.d(TAG, "Login: Saved to GlobalParam - pictureFileId='${globalParam.pictureFileId}', picturePreviewFileId='${globalParam.picturePreviewFileId}'")
                                 }
                             }
                         }

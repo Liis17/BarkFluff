@@ -345,6 +345,8 @@ class GrpcManager {
             val response = usersClient!!.getUser(request)
             val user = response.user
 
+            Log.d(TAG, "getCurrentUserData: userId=${user.id}, username=${user.username}, profilePicture='$user.profilePicture', profilePicturePreview='$user.profilePicturePreview'")
+
             Result.success(
                 UserData(
                     userId = user.id,

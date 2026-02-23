@@ -149,6 +149,10 @@ class GlobalParam(private val context: Context) {
         get() = sharedPreferences.getString(KEY_PICTURE_FILE_ID, "") ?: ""
         set(value) = sharedPreferences.edit().putString(KEY_PICTURE_FILE_ID, value).apply()
 
+    var picturePreviewFileId: String
+        get() = sharedPreferences.getString(KEY_PICTURE_PREVIEW_FILE_ID, "") ?: ""
+        set(value) = sharedPreferences.edit().putString(KEY_PICTURE_PREVIEW_FILE_ID, value).apply()
+
     var pictureUrl: String
         get() = sharedPreferences.getString(KEY_PICTURE_URL, "") ?: ""
         set(value) = sharedPreferences.edit().putString(KEY_PICTURE_URL, value).apply()
@@ -186,6 +190,7 @@ class GlobalParam(private val context: Context) {
         private const val KEY_EMAIL = "email"
         private const val KEY_PICTURE_ID = "picture_id"
         private const val KEY_PICTURE_FILE_ID = "picture_file_id"
+        private const val KEY_PICTURE_PREVIEW_FILE_ID = "picture_preview_file_id"
         private const val KEY_PICTURE_URL = "picture_url"
         private const val KEY_REGISTRATION_DATE = "registration_date"
 

@@ -67,7 +67,7 @@ object AvatarLoader {
 
     // ImageLoader с кастомным OkHttpClient (ленивая инициализация)
     private var imageLoaderInstance: ImageLoader? = null
-    
+
     private fun getImageLoader(context: android.content.Context): ImageLoader {
         if (imageLoaderInstance == null) {
             synchronized(this) {
@@ -95,12 +95,6 @@ object AvatarLoader {
     /**
      * Загружает аватар в ImageView из URL.
      * При отсутствии URL показывает плейсхолдер с инициалами.
-     *
-     * @param imageView ImageView для аватара
-     * @param placeholderView TextView для инициалов (скрывается если есть аватар)
-     * @param avatarUrl URL аватара (null = показать плейсхолдер)
-     * @param displayName Имя для генерации инициалов
-     * @param userId ID для стабильного выбора цвета плейсхолдера
      */
     fun load(
         imageView: ImageView,
@@ -110,7 +104,6 @@ object AvatarLoader {
         userId: Long = 0
     ) {
         if (!avatarUrl.isNullOrBlank()) {
-            // Есть URL - загружаем через Coil с кастомным OkHttpClient
             imageView.visibility = View.VISIBLE
             placeholderView.visibility = View.GONE
 
@@ -121,9 +114,8 @@ object AvatarLoader {
                 .listener(
                     onError = { request, result ->
                         android.util.Log.e("AvatarLoader", "load: onError url=$avatarUrl, error=${result.throwable}")
-                        // Ошибка загрузки — показываем плейсхолдер
                         imageView.visibility = View.GONE
-                        showPlaceholder(placeholderView, displayName, userId)
+                        showPlaceholderInternal(placeholderView, displayName, userId)
                     },
                     onSuccess = { request, result ->
                         android.util.Log.d("AvatarLoader", "load: onSuccess url=$avatarUrl")
@@ -133,9 +125,8 @@ object AvatarLoader {
 
             getImageLoader(imageView.context).enqueue(request)
         } else {
-            // Нет URL — показываем плейсхолдер с инициалами
             imageView.visibility = View.GONE
-            showPlaceholder(placeholderView, displayName, userId)
+            showPlaceholderInternal(placeholderView, displayName, userId)
         }
     }
 
@@ -163,14 +154,6 @@ object AvatarLoader {
 
     /**
      * Загружает аватар по fileId с использованием кэша.
-     * Получает URL через callback и использует fileId как ключ кэша.
-     * Если fileId начинается с http/https, загружает напрямую по URL.
-     * @param imageView ImageView для аватара
-     * @param placeholderView TextView для инициалов
-     * @param fileId Идентификатор файла аватара (или URL)
-     * @param displayName Имя для генерации инициалов
-     * @param userId ID для стабильного выбора цвета плейсхолдера
-     * @param getUrlCallback Callback для получения URL по fileId (возвращает URL или null при ошибке)
      */
     fun loadByFileId(
         imageView: ImageView,
@@ -180,9 +163,37 @@ object AvatarLoader {
         userId: Long = 0,
         getUrlCallback: suspend () -> String?
     ) {
+        loadByFileIdInternal(imageView, placeholderView, fileId, displayName, userId, 0, getUrlCallback)
+    }
+
+    /**
+     * Загружает аватар по fileId с использованием кэша и масштабированием.
+     * @param size Размер изображения (0 = без ограничения, >0 = фиксированный размер)
+     */
+    fun loadByFileId(
+        imageView: ImageView,
+        placeholderView: TextView,
+        fileId: String?,
+        displayName: String,
+        userId: Long = 0,
+        size: Int = 0,
+        getUrlCallback: suspend () -> String?
+    ) {
+        loadByFileIdInternal(imageView, placeholderView, fileId, displayName, userId, size, getUrlCallback)
+    }
+
+    private fun loadByFileIdInternal(
+        imageView: ImageView,
+        placeholderView: TextView,
+        fileId: String?,
+        displayName: String,
+        userId: Long,
+        size: Int,
+        getUrlCallback: suspend () -> String?
+    ) {
         if (fileId.isNullOrBlank()) {
             imageView.visibility = View.GONE
-            showPlaceholder(placeholderView, displayName, userId)
+            showPlaceholderInternal(placeholderView, displayName, userId)
             return
         }
 
@@ -191,22 +202,28 @@ object AvatarLoader {
             android.util.Log.d("AvatarLoader", "loadByFileId: Loading directly from URL=$fileId")
             MainScope().launch {
                 withContext(Dispatchers.Main) {
-                    showPlaceholder(placeholderView, displayName, userId)
+                    showPlaceholderInternal(placeholderView, displayName, userId)
                     imageView.visibility = View.GONE
                 }
 
                 withContext(Dispatchers.Main) {
-                    val request = ImageRequest.Builder(imageView.context)
+                    val requestBuilder = ImageRequest.Builder(imageView.context)
                         .data(fileId)
                         .memoryCacheKey(fileId)
                         .diskCacheKey(fileId)
                         .crossfade(200)
                         .transformations(CircleCropTransformation())
+
+                    if (size > 0) {
+                        requestBuilder.size(size)
+                    }
+
+                    val request = requestBuilder
                         .listener(
                             onError = { request, result ->
                                 android.util.Log.e("AvatarLoader", "loadByFileId: onError for URL=$fileId, error=${result.throwable}")
                                 imageView.visibility = View.GONE
-                                placeholderView.visibility = View.VISIBLE
+                                showPlaceholderInternal(placeholderView, displayName, userId)
                             },
                             onSuccess = { request, result ->
                                 android.util.Log.d("AvatarLoader", "loadByFileId: onSuccess for URL=$fileId")
@@ -225,7 +242,7 @@ object AvatarLoader {
         MainScope().launch {
             // Показываем плейсхолдер пока загружаем
             withContext(Dispatchers.Main) {
-                showPlaceholder(placeholderView, displayName, userId)
+                showPlaceholderInternal(placeholderView, displayName, userId)
                 imageView.visibility = View.GONE
             }
 
@@ -233,11 +250,10 @@ object AvatarLoader {
             android.util.Log.d("AvatarLoader", "loadByFileId: fileId=$fileId, url=$url")
 
             if (url.isNullOrBlank()) {
-                // Ошибка получения URL - показываем плейсхолдер
                 android.util.Log.e("AvatarLoader", "loadByFileId: Failed to get URL for fileId=$fileId")
                 withContext(Dispatchers.Main) {
                     imageView.visibility = View.GONE
-                    placeholderView.visibility = View.VISIBLE
+                    showPlaceholderInternal(placeholderView, displayName, userId)
                 }
                 return@launch
             }
@@ -245,44 +261,56 @@ object AvatarLoader {
             // Загружаем через Coil с fileId как ключом кэша
             withContext(Dispatchers.Main) {
                 android.util.Log.d("AvatarLoader", "loadByFileId: Loading image from URL=$url")
-                
+
                 val imageLoader = getImageLoader(imageView.context)
-                
-                val request = ImageRequest.Builder(imageView.context)
+
+                val requestBuilder = ImageRequest.Builder(imageView.context)
                     .data(url)
-                    .memoryCacheKey(fileId) // Ключ для memory cache
-                    .diskCacheKey(fileId)   // Ключ для disk cache
+                    .memoryCacheKey(fileId)
+                    .diskCacheKey(fileId)
                     .crossfade(200)
-                    .transformations(CircleCropTransformation()) // Возвращаем круглые аватарки
+                    .transformations(CircleCropTransformation())
+
+                if (size > 0) {
+                    requestBuilder.size(size)
+                }
+
+                val request = requestBuilder
                     .listener(
                         onError = { request, result ->
                             android.util.Log.e("AvatarLoader", "loadByFileId: onError for fileId=$fileId, url=$url, error=${result.throwable}")
                             imageView.visibility = View.GONE
-                            placeholderView.visibility = View.VISIBLE
+                            showPlaceholderInternal(placeholderView, displayName, userId)
                         },
                         onSuccess = { request, result ->
                             val drawable = result.drawable
                             android.util.Log.d("AvatarLoader", "loadByFileId: onSuccess for fileId=$fileId, hasDrawable=${drawable != null}, intrinsicWidth=${drawable?.intrinsicWidth}, intrinsicHeight=${drawable?.intrinsicHeight}")
-                            
+
                             if (drawable != null) {
                                 imageView.setImageDrawable(drawable)
                                 imageView.visibility = View.VISIBLE
                                 placeholderView.visibility = View.GONE
-                                android.util.Log.d("AvatarLoader", "loadByFileId: Set drawable, imageView.visibility=${imageView.visibility}")
                             } else {
                                 imageView.visibility = View.GONE
-                                placeholderView.visibility = View.VISIBLE
+                                showPlaceholderInternal(placeholderView, displayName, userId)
                             }
                         }
                     )
                     .build()
-                
+
                 imageLoader.enqueue(request)
             }
         }
     }
 
-    private fun showPlaceholder(placeholderView: TextView, displayName: String, userId: Long) {
+    /**
+     * Показывает плейсхолдер с инициалами
+     */
+    fun showPlaceholder(placeholderView: TextView, displayName: String, userId: Long) {
+        showPlaceholderInternal(placeholderView, displayName, userId)
+    }
+
+    private fun showPlaceholderInternal(placeholderView: TextView, displayName: String, userId: Long) {
         placeholderView.visibility = View.VISIBLE
         placeholderView.text = getInitials(displayName)
         placeholderView.setTextColor(Color.WHITE)
@@ -293,7 +321,7 @@ object AvatarLoader {
             setColor(color)
         }
         placeholderView.background = bg
-        
+
         android.util.Log.d("AvatarLoader", "showPlaceholder: displayName=$displayName, userId=$userId, color=$color, text=${getInitials(displayName)}")
     }
 
