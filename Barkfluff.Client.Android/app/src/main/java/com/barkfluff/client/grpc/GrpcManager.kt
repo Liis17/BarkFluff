@@ -490,34 +490,44 @@ class GrpcManager {
      * Аналог Dispose в WPF
      */
     fun shutdown() {
-        navigatorChannel?.let {
-            if (it is ManagedChannel) {
-                it.shutdown()
-            }
-        }
-        beaconChannel?.let {
-            if (it is ManagedChannel) {
-                it.shutdown()
-            }
-        }
-        identityChannel?.let {
-            if (it is ManagedChannel) {
-                it.shutdown()
-            }
-        }
-        usersChannel?.let {
-            if (it is ManagedChannel) {
-                it.shutdown()
-            }
-        }
-        filesChannel?.let {
-            if (it is ManagedChannel) {
-                it.shutdown()
-            }
-        }
-        messagesChannel?.let {
-            if (it is ManagedChannel) {
-                it.shutdown()
+        shutdownChannel(navigatorChannel)
+        shutdownChannel(beaconChannel)
+        shutdownChannel(identityChannel)
+        shutdownChannel(usersChannel)
+        shutdownChannel(filesChannel)
+        shutdownChannel(messagesChannel)
+        
+        navigatorChannel = null
+        beaconChannel = null
+        identityChannel = null
+        usersChannel = null
+        filesChannel = null
+        messagesChannel = null
+        
+        navigatorClient = null
+        beaconClient = null
+        identityClient = null
+        usersClient = null
+        filesClient = null
+        messagesClient = null
+    }
+    
+    /**
+     * Корректно закрывает gRPC канал
+     */
+    private fun shutdownChannel(channel: Channel?) {
+        if (channel is ManagedChannel) {
+            channel.shutdown()
+            try {
+                // Ждем завершения не более 3 секунд
+                if (!channel.awaitTermination(3, java.util.concurrent.TimeUnit.SECONDS)) {
+                    Log.w(TAG, "Канал не был закрыт в течение 3 секунд, вызываем shutdownNow()")
+                    channel.shutdownNow()
+                }
+            } catch (e: InterruptedException) {
+                Log.w(TAG, "Прерывание при ожидании закрытия канала", e)
+                channel.shutdownNow()
+                Thread.currentThread().interrupt()
             }
         }
     }
@@ -789,6 +799,7 @@ class GrpcManager {
     suspend fun getFileDownloadUrl(fileId: String): Result<String> = withContext(Dispatchers.IO) {
         try {
             if (filesClient == null) {
+                Log.e(TAG, "getFileDownloadUrl: Files клиент не создан")
                 return@withContext Result.failure(IllegalStateException("Files клиент не создан"))
             }
 
@@ -796,12 +807,24 @@ class GrpcManager {
                 .addFileIds(fileId)
                 .build()
 
+            Log.d(TAG, "getFileDownloadUrl: Запрос URL для fileId=$fileId")
             val response = filesClient!!.getTempDownloadUrl(request)
+            Log.d(TAG, "getFileDownloadUrl: Получен ответ, fileUrlsList.size=${response.fileUrlsList.size}")
+            
             val fileUrl = response.fileUrlsList.firstOrNull()
-            val url = fileUrl?.url
-                ?: return@withContext Result.failure(Exception("URL не получен"))
+            if (fileUrl == null) {
+                Log.e(TAG, "getFileDownloadUrl: Пустой список fileUrlsList для fileId=$fileId")
+                return@withContext Result.failure(Exception("URL не получен: пустой ответ"))
+            }
+            
+            val url = fileUrl.url
+            Log.d(TAG, "getFileDownloadUrl: fileId=$fileId, url='$url', fileUrl.fileId=${fileUrl.fileId}")
+            
+            if (url.isNullOrBlank()) {
+                Log.e(TAG, "getFileDownloadUrl: Пустой URL для fileId=$fileId")
+                return@withContext Result.failure(Exception("URL не получен"))
+            }
 
-            Log.d(TAG, "getFileDownloadUrl: fileId=$fileId, url=$url, fileUrl.fileId=${fileUrl.fileId}")
             Result.success(url)
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка получения URL файла", e)

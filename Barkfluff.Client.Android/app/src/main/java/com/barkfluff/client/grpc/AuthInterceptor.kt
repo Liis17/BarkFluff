@@ -2,6 +2,7 @@ package com.barkfluff.client.grpc
 
 import android.content.Context
 import android.util.Base64
+import android.util.Log
 import com.barkfluff.client.data.GlobalParam
 import io.grpc.*
 
@@ -16,6 +17,7 @@ class AuthInterceptor(
     companion object {
         private val AUTHORIZATION_KEY: Metadata.Key<String> =
             Metadata.Key.of("authorization", Metadata.ASCII_STRING_MARSHALLER)
+        private const val TAG = "AuthInterceptor"
     }
 
     private val globalParam = GlobalParam(context)
@@ -31,8 +33,14 @@ class AuthInterceptor(
             override fun start(responseListener: Listener<RespT>, headers: Metadata) {
                 // Добавляем access токен к запросу
                 val accessToken = globalParam.accessToken
+                val serviceName = method.serviceName
+                val methodName = method.bareMethodName
+                
                 if (!accessToken.isNullOrBlank()) {
                     headers.put(AUTHORIZATION_KEY, "Bearer $accessToken")
+                    Log.d(TAG, "interceptCall: Добавлен токен для $serviceName/$methodName")
+                } else {
+                    Log.w(TAG, "interceptCall: НЕТ токена для $serviceName/$methodName")
                 }
 
                 super.start(responseListener, headers)

@@ -235,43 +235,27 @@ class ChatsFragment : Fragment() {
                 if (userResult.isSuccess) {
                     val user = userResult.getOrNull()!!
                     val name = "${user.firstName} ${user.lastName}".trim().ifBlank { user.username }
-                    var avatarFileId = user.profilePicturePreviewFileId.ifBlank {
-                        user.profilePictureFileId
-                    }
-                    avatarFileId = extractGuidOrUseUrl(avatarFileId)
-                    Log.d(TAG, "resolveDisplayItem: ЛС userId=$otherUserId, name=$name, avatarFileId=$avatarFileId")
+                    // Используем URL напрямую (profilePicturePreviewUrl/profilePictureUrl — это ссылки)
+                    val avatarUrl = user.profilePicturePreviewUrl.ifBlank { user.profilePictureUrl }
+                    Log.d(TAG, "resolveDisplayItem: ЛС userId=$otherUserId, name=$name, avatarUrl=$avatarUrl")
                     return ChatAdapter.ChatDisplayItem(
                         chatData = chat,
                         displayTitle = name,
-                        displayAvatarFileId = avatarFileId.ifBlank { null },
+                        displayAvatarFileId = avatarUrl.ifBlank { null },
                         otherUserId = otherUserId
                     )
                 }
             }
         }
 
-        var avatarFileId = chat.picturePreviewFileId.ifBlank { chat.pictureFileId }
-        avatarFileId = extractGuidOrUseUrl(avatarFileId)
-        Log.d(TAG, "resolveDisplayItem: Групповой чат chatId=${chat.id}, title=${chat.title}, avatarFileId=$avatarFileId")
+        // Используем URL напрямую для аватара группового чата
+        val chatAvatarUrl = chat.picture
+        Log.d(TAG, "resolveDisplayItem: Групповой чат chatId=${chat.id}, title=${chat.title}, avatarUrl=$chatAvatarUrl")
         return ChatAdapter.ChatDisplayItem(
             chatData = chat,
             displayTitle = chat.title.ifBlank { "Чат" },
-            displayAvatarFileId = avatarFileId.ifBlank { null }
+            displayAvatarFileId = chatAvatarUrl.ifBlank { null }
         )
-    }
-
-    private fun extractGuidOrUseUrl(urlOrGuid: String): String {
-        if (urlOrGuid.isBlank()) return urlOrGuid
-
-        if (urlOrGuid.startsWith("http://") || urlOrGuid.startsWith("https://")) {
-            val lastSegment = urlOrGuid.substringAfterLast("/")
-            if (lastSegment.matches(Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", RegexOption.IGNORE_CASE))) {
-                return lastSegment
-            }
-            return urlOrGuid
-        }
-
-        return urlOrGuid
     }
 
     private fun onChatClicked(chat: GrpcManager.ChatData) {

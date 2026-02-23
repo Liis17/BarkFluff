@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
  * Проверяет сохраненные данные и решает, какую страницу показывать:
  * - Если нет настроек сервера -> WelcomeActivity -> SelectServerActivity
  * - Если есть сервер, но нет токенов -> LoginActivity
- * - Если есть сервер и refresh токен -> ChatsActivity (с проверкой/обновлением токена)
+ * - Если есть сервер и refresh токен -> MainActivity (с проверкой/обновлением токена)
  */
 class SplashActivity : AppCompatActivity() {
 

@@ -8,6 +8,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.barkfluff.client.databinding.ItemUserBinding
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.utils.AvatarLoader
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -46,7 +47,8 @@ class UserAdapter(
             ) {
                 val fileId = item.displayAvatarFileId
                 if (fileId != null) {
-                    runBlocking {
+                    // Вызываем callback в IO контексте для сетевого запроса
+                    runBlocking(Dispatchers.IO) {
                         getFileUrlCallback(fileId)
                     }
                 } else {
