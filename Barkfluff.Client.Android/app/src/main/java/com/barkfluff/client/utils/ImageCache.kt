@@ -35,7 +35,7 @@ class ImageCache private constructor(context: Context) {
         }
 
         // Инициализация disk cache
-        diskCacheDir = File(context.cacheDir, "image_cache").apply {
+        diskCacheDir = File(context.cacheDir, "bitmap_cache").apply {
             if (!exists()) {
                 mkdirs()
             }

@@ -9,7 +9,6 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
 import com.barkfluff.client.utils.AvatarLoader
-import com.barkfluff.client.utils.ImageCache
 import com.google.android.material.imageview.ShapeableImageView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,7 +33,6 @@ class AvatarView @JvmOverloads constructor(
     private val imageView: ShapeableImageView
     private val placeholderView: TextView
 
-    private val imageCache: ImageCache = ImageCache.getInstance(context)
     private val avatarLoader: AvatarLoader = AvatarLoader
 
     private var currentLoadJob: Job? = null
