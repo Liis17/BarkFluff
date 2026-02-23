@@ -79,7 +79,7 @@
             android:screenOrientation="portrait" />
 
         <activity
-            android:name=".ChatsActivity"
+            android:name=".MainActivity"
             android:exported="false"
             android:theme="@style/Theme.BarkfluffClientAndroid"
             android:screenOrientation="portrait"
@@ -91,20 +91,6 @@
             android:theme="@style/Theme.BarkfluffClientAndroid"
             android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustResize"
-            android:launchMode="singleTop" />
-
-        <activity
-            android:name=".ContactsActivity"
-            android:exported="false"
-            android:theme="@style/Theme.BarkfluffClientAndroid"
-            android:screenOrientation="portrait"
-            android:launchMode="singleTop" />
-
-        <activity
-            android:name=".ProfileActivity"
-            android:exported="false"
-            android:theme="@style/Theme.BarkfluffClientAndroid"
-            android:screenOrientation="portrait"
             android:launchMode="singleTop" />
 
     </application>

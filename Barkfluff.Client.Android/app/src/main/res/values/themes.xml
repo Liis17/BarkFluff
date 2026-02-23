@@ -6,12 +6,12 @@
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowBackground">?android:attr/colorBackground</item>
-        
+
         <!-- Material 3 Expressive: Enforced shapes -->
         <item name="shapeAppearanceSmallComponent">@style/ShapeAppearance.Material3.SmallComponent</item>
         <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.Material3.MediumComponent</item>
         <item name="shapeAppearanceLargeComponent">@style/ShapeAppearance.Material3.LargeComponent</item>
-        
+
         <!-- Material 3 Expressive: Emphasized typography -->
         <item name="textAppearanceDisplayLarge">@style/TextAppearance.Material3.DisplayLarge</item>
         <item name="textAppearanceHeadlineLarge">@style/TextAppearance.Material3.HeadlineLarge</item>
@@ -19,4 +19,16 @@
     </style>
 
     <style name="Theme.BarkfluffClientAndroid" parent="Base.Theme.BarkfluffClientAndroid" />
+
+    <!-- Стиль для активного элемента нижней навигации (на всю высоту бара) -->
+    <style name="BottomNav.ActiveIndicator" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
+        <item name="android:color">?attr/colorPrimaryContainer</item>
+        <item name="android:height">72dp</item>
+        <item name="android:width">120dp</item>
+        <item name="shapeAppearance">@style/BottomNav.ActiveIndicator.Shape</item>
+    </style>
+
+    <style name="BottomNav.ActiveIndicator.Shape" parent="ShapeAppearance.Material3.Corner.Full">
+        <item name="cornerSize">28dp</item>
+    </style>
 </resources>
