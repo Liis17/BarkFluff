@@ -24,8 +24,32 @@
             android:layout_height="?attr/actionBarSize"
             app:title="BarkFluff"
             app:titleTextAppearance="?attr/textAppearanceTitleLarge"
-            app:titleTextColor="?attr/colorOnSurface"
-            app:titleCentered="true">
+            app:titleTextColor="?attr/colorOnSurface">
+
+            <!-- Аватар пользователя -->
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/userAvatar"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_gravity="center_vertical|end"
+                android:layout_marginEnd="12dp"
+                android:scaleType="centerCrop"
+                android:visibility="gone"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
+
+            <!-- Плейсхолдер аватара с инициалами -->
+            <TextView
+                android:id="@+id/userAvatarPlaceholder"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_gravity="center_vertical|end"
+                android:layout_marginEnd="8dp"
+                android:gravity="center"
+                android:textColor="?attr/colorOnPrimary"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:visibility="visible"
+                android:background="@drawable/background_color_indicator" />
 
             <!-- Кнопка поиска -->
             <ImageButton
@@ -39,33 +63,6 @@
                 android:padding="12dp"
                 android:src="@drawable/ic_search"
                 app:tint="?attr/colorOnSurface" />
-
-            <!-- Аватар пользователя -->
-            <com.google.android.material.imageview.ShapeableImageView
-                android:id="@+id/userAvatar"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:layout_gravity="center_vertical|end"
-                android:layout_marginEnd="12dp"
-                android:scaleType="centerCrop"
-                android:visibility="gone"
-                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
-                app:strokeColor="?attr/colorPrimary"
-                app:strokeWidth="2dp" />
-
-            <!-- Плейсхолдер аватара с инициалами -->
-            <TextView
-                android:id="@+id/userAvatarPlaceholder"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:layout_gravity="center_vertical|end"
-                android:layout_marginEnd="12dp"
-                android:gravity="center"
-                android:textColor="?attr/colorOnPrimary"
-                android:textSize="14sp"
-                android:textStyle="bold"
-                android:visibility="visible"
-                android:background="@drawable/background_color_indicator" />
 
         </com.google.android.material.appbar.MaterialToolbar>
 

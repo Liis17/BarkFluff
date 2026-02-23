@@ -1,5 +1,6 @@
 package com.barkfluff.client
 
+import android.app.ActivityOptions
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -15,8 +16,10 @@ import com.barkfluff.client.utils.AvatarLoader
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 
 /**
  * Экран чатов с нижней навигацией
@@ -52,6 +55,11 @@ class ChatsActivity : AppCompatActivity() {
         checkTokenAndLoadChats()
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        binding.bottomNavigation.selectedItemId = R.id.navigation_chats
+    }
+
     private fun setupSearchButton() {
         binding.searchButton.setOnClickListener {
             val intent = Intent(this, SearchActivity::class.java)
@@ -65,27 +73,58 @@ class ChatsActivity : AppCompatActivity() {
             binding.toolbar.title = serverName
         }
 
-        // Загрузка аватара пользователя
-        loadUserAvatar()
+        // Аватар загружается после загрузки данных пользователя в checkTokenAndLoadChats()
     }
 
     private fun loadUserAvatar() {
         val fullName = "${globalParam.firstName} ${globalParam.lastName}".trim()
         val avatarFileId = globalParam.pictureFileId
+        val avatarPreviewFileId = globalParam.picturePreviewFileId
 
-        AvatarLoader.loadByFileId(
-            imageView = binding.userAvatar,
-            placeholderView = binding.userAvatarPlaceholder,
-            fileId = avatarFileId.ifBlank { null },
-            displayName = fullName.ifBlank { globalParam.userName },
-            userId = globalParam.userId
-        ) {
-            if (avatarFileId.isNotBlank()) {
-                runBlocking {
-                    grpcManager.getFileDownloadUrl(avatarFileId).getOrNull()
+        Log.d(TAG, "loadUserAvatar: fullName='$fullName', avatarFileId='$avatarFileId', avatarPreviewFileId='$avatarPreviewFileId', userId=${globalParam.userId}")
+
+        // Используем preview fileId если есть, иначе original
+        val useFileId = avatarPreviewFileId.ifBlank { avatarFileId }
+
+        if (useFileId.isBlank()) {
+            Log.d(TAG, "loadUserAvatar: No fileId, showing placeholder")
+            AvatarLoader.showPlaceholder(binding.userAvatarPlaceholder, fullName.ifBlank { globalParam.userName }, globalParam.userId)
+            binding.userAvatar.visibility = View.GONE
+            return
+        }
+
+        // Показываем плейсхолдер сразу
+        AvatarLoader.showPlaceholder(binding.userAvatarPlaceholder, fullName.ifBlank { globalParam.userName }, globalParam.userId)
+        binding.userAvatar.visibility = View.GONE
+
+        // Загружаем URL и аватар в фоне
+        lifecycleScope.launch {
+            try {
+                val urlResult = grpcManager.getFileDownloadUrl(useFileId)
+                if (urlResult.isSuccess) {
+                    val url = urlResult.getOrNull()
+                    Log.d(TAG, "loadUserAvatar: Got URL for fileId=$useFileId, url=$url")
+
+                    if (url != null) {
+                        withContext(Dispatchers.Main) {
+                            // Загружаем аватар с правильным масштабированием (size=64 для аватара в шапке)
+                            AvatarLoader.loadByFileId(
+                                imageView = binding.userAvatar,
+                                placeholderView = binding.userAvatarPlaceholder,
+                                fileId = useFileId,
+                                displayName = fullName.ifBlank { globalParam.userName },
+                                userId = globalParam.userId,
+                                size = 64
+                            ) {
+                                url
+                            }
+                        }
+                    }
+                } else {
+                    Log.e(TAG, "loadUserAvatar: Failed to get URL - ${urlResult.exceptionOrNull()?.message}")
                 }
-            } else {
-                null
+            } catch (e: Exception) {
+                Log.e(TAG, "loadUserAvatar: Exception - ${e.message}")
             }
         }
     }
@@ -93,19 +132,27 @@ class ChatsActivity : AppCompatActivity() {
     private fun setupBottomNavigation() {
         binding.bottomNavigation.selectedItemId = R.id.navigation_chats
         binding.bottomNavigation.setOnItemSelectedListener { item ->
+            if (item.itemId == binding.bottomNavigation.selectedItemId) {
+                // Уже выбрано - ничего не делаем
+                return@setOnItemSelectedListener true
+            }
+
             when (item.itemId) {
                 R.id.navigation_contacts -> {
                     val intent = Intent(this, ContactsActivity::class.java)
-                    startActivity(intent)
+                    intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+                    val options = ActivityOptions.makeCustomAnimation(this, R.anim.slide_in_from_left, R.anim.slide_out_to_right)
+                    startActivity(intent, options.toBundle())
                     true
                 }
                 R.id.navigation_chats -> {
-                    // Уже на экране чатов
                     true
                 }
                 R.id.navigation_profile -> {
                     val intent = Intent(this, ProfileActivity::class.java)
-                    startActivity(intent)
+                    intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+                    val options = ActivityOptions.makeCustomAnimation(this, R.anim.slide_in_from_right, R.anim.slide_out_to_left)
+                    startActivity(intent, options.toBundle())
                     true
                 }
                 else -> false
@@ -160,6 +207,24 @@ class ChatsActivity : AppCompatActivity() {
             }
 
             initGrpcClients()
+
+            // Если аватар не загружен, загружаем данные пользователя
+            if (globalParam.pictureFileId.isBlank() && globalParam.picturePreviewFileId.isBlank()) {
+                Log.d(TAG, "checkTokenAndLoadChats: Аватар не загружен, загружаем данные пользователя")
+                val userDataResult = grpcManager.getCurrentUserData()
+                if (userDataResult.isSuccess) {
+                    val userData = userDataResult.getOrNull()
+                    if (userData != null) {
+                        globalParam.pictureFileId = userData.profilePictureFileId
+                        globalParam.picturePreviewFileId = userData.profilePicturePreviewFileId
+                        Log.d(TAG, "checkTokenAndLoadChats: Загружены pictureFileId='${globalParam.pictureFileId}', picturePreviewFileId='${globalParam.picturePreviewFileId}'")
+                    }
+                }
+            }
+
+            // Загружаем аватар пользователя
+            loadUserAvatar()
+
             loadChats()
         }
     }
@@ -338,7 +403,7 @@ class ChatsActivity : AppCompatActivity() {
             .setTitle("Выход из приложения")
             .setMessage("Вы действительно хотите выйти?")
             .setPositiveButton("Выйти") { _, _ ->
-                super.onBackPressed()
+                finishAffinity()
             }
             .setNegativeButton("Отмена", null)
             .show()
