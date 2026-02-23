@@ -22,6 +22,8 @@ service FilesServerApi {
   rpc GetFilesData(GetFilesDataRequest) returns(GetFilesDataResponse); // Получить информацию о загруженных файлах
 
   rpc UploadBadgeImage(UploadBadgeImageRequest) returns(UploadBadgeImageResponse); // Загрузить PNG-картинку для бейджа (постоянная ссылка, без сжатия)
+
+  rpc GetUserStorageInfoServer(GetUserStorageInfoServerRequest) returns(GetUserStorageInfoResponse); // Получить информацию о хранилище пользователя (для админ-панели)
 }
 
 message GetTempDownloadUrlRequest {
@@ -103,6 +105,10 @@ message UploadBadgeImageRequest {
 message UploadBadgeImageResponse {
   string badge_image_id = 1; // идентификатор изображения бейджа
   string permanent_url = 2;  // постоянная ссылка на скачивание
+}
+
+message GetUserStorageInfoServerRequest {
+  int64 user_id = 1;
 }
 
 message CheckFileHashRequest {

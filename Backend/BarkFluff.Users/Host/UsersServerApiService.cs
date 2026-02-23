@@ -21,6 +21,8 @@ using BarkFluff.Users.Features.Devices.DeleteUserDevice;
 using BarkFluff.Users.Features.Devices.GetUserDevices;
 using BarkFluff.Users.Features.Devices.RegisterDevice;
 using BarkFluff.Users.Features.OverrideDraftUser;
+using BarkFluff.Users.Features.SearchUsersServer;
+using BarkFluff.Users.Features.UpdateStorageLimit;
 using BarkFluff.Users.Persistence.Services;
 
 using Grpc.Core;
@@ -279,5 +281,30 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
             Bio = user.Bio ?? string.Empty,
             ProfilePicture = user.ProfilePicture ?? string.Empty,
         };
+    }
+
+    // Поиск пользователей (для админ-панели)
+
+    public override Task<SearchUsersServerResponse> SearchUsersServer(SearchUsersServerRequest request, ServerCallContext context)
+    {
+        var query = new SearchUsersServerQuery
+        {
+            Query = request.Query,
+            Offset = request.Offset,
+            Size = request.Size
+        };
+
+        return _mediator.Send(query);
+    }
+
+    public override Task<UpdateStorageLimitResponse> UpdateStorageLimit(UpdateStorageLimitRequest request, ServerCallContext context)
+    {
+        var command = new UpdateStorageLimitCommand
+        {
+            UserId = request.UserId,
+            StorageLimitGb = request.StorageLimitGb
+        };
+
+        return _mediator.Send(command);
     }
 }

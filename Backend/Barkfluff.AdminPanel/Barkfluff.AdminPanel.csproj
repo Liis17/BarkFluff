@@ -14,6 +14,7 @@
     <None Remove="Pages\restarting.html" />
     <None Remove="Pages\services.html" />
     <None Remove="Pages\updating.html" />
+    <None Remove="Pages\users.html" />
   </ItemGroup>
 
   <ItemGroup>
@@ -41,6 +42,9 @@
     <Content Include="Pages\updating.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Include="Pages\users.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>
@@ -60,6 +64,7 @@
     <Protobuf Include="..\..\Shared\BarkFluff.Proto\shared.proto" GrpcServices="None" />
     <Protobuf Include="..\..\Shared\BarkFluff.Proto\users_api.proto" GrpcServices="Client" />
     <Protobuf Include="..\..\Shared\BarkFluff.Proto\files_api.proto" GrpcServices="Client" />
+    <Protobuf Include="..\..\Shared\BarkFluff.Proto\identity_api.proto" GrpcServices="Client" />
   </ItemGroup>
 
   <ItemGroup>
