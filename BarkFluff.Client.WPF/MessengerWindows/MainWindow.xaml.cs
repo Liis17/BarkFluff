@@ -285,5 +285,14 @@ namespace BarkFluff.Client.WPF
         {
             App.CreateEridaMessage(ContentPanel);
         }
+
+        public void CloseApp()
+        {
+            var a = App.GParam;
+            SaveSettings();
+            this.Close();
+            Application.Current.Shutdown(0);
+            System.Diagnostics.Process.GetCurrentProcess().Kill();
+        }
     }
 }

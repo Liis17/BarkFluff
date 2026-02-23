@@ -11,6 +11,12 @@ namespace BarkFluff.WebApi.Core.Managers
     {
         private readonly WebApi _webApi;
 
+        /// <summary>
+        /// Событие вызывается когда refresh-токен стал недействителен (отозван, заблокирован через админ-панель, истёк срок действия).
+        /// Приложение должно перенаправить пользователя на страницу выбора сервера для повторной авторизации.
+        /// </summary>
+        public event EventHandler? TokenInvalidated;
+
         public WebApiTokenManager(WebApi webApi) : base(webApi)
         {
             _webApi = webApi;
@@ -56,7 +62,18 @@ namespace BarkFluff.WebApi.Core.Managers
 
                 try
                 {
-                    await TokenUpdate(globalParam);
+                    var (tokenUpdateResult, _) = await TokenUpdate(globalParam);
+
+                    // Если обновление токена не удалось — refresh-токен мёртв
+                    if (!tokenUpdateResult.IsSuccess)
+                    {
+                        // Уведомляем приложение о том, что токен недействителен
+                        TokenInvalidated?.Invoke(this, EventArgs.Empty);
+                        
+                        // Возвращаем значение по умолчанию для типа T
+                        // Приложение уже получило уведомление и должно перенаправить пользователя на страницу авторизации
+                        return default(T)!;
+                    }
 
                     // Переинициализируем клиентов с новым токеном
                     var initParams = _webApi.ClientManager._initParams.Value;
@@ -66,7 +83,7 @@ namespace BarkFluff.WebApi.Core.Managers
                     // Повторяем операцию (только один раз, чтобы избежать бесконечной рекурсии)
                     return await ExecuteWithTokenRefresh(globalParam, operation, allowRetry: false);
                 }
-                catch (Exception refreshEx)
+                catch (Exception refreshEx) when (refreshEx is not InvalidOperationException)
                 {
                     throw new InvalidOperationException("Failed to refresh token and retry operation", refreshEx);
                 }
