@@ -83,6 +83,7 @@ public class Program
         app.UseXAuth();
 
         app.MapGrpcService<IdentityApiService>();
+        app.MapGrpcService<IdentityServerApiService>();
 
         app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
         app.Run();

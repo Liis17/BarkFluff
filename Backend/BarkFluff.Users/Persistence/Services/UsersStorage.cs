@@ -386,4 +386,29 @@ public class UsersStorage
 
         return true;
     }
+
+    public async Task<(List<User> Users, int TotalCount)> GetAllUsersDescending(int offset, int size)
+    {
+        var query = _usersContext.Users
+            .Include(u => u.Contact)
+            .Where(u => !u.IsDraft)
+            .OrderByDescending(u => u.Id);
+
+        var totalCount = await query.CountAsync();
+        var users = await query.Skip(offset).Take(size).ToListAsync();
+
+        return (users, totalCount);
+    }
+
+    public async Task UpdateStorageLimitGb(long userId, int limitGb)
+    {
+        var user = await _usersContext.Users.FirstOrDefaultAsync(x => x.Id == userId);
+
+        if (user is null)
+            throw new UserNotFoundException();
+
+        user.StorageLimitGb = limitGb;
+
+        await _usersContext.SaveChangesAsync();
+    }
 }

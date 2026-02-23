@@ -1,5 +1,6 @@
 using BarkFluff.Files.Features.GetFileData;
 using BarkFluff.Files.Features.GetFilesData;
+using BarkFluff.Files.Features.GetUserStorageInfoServer;
 using BarkFluff.Files.Features.UploadBadgeImage;
 using BarkFluff.Proto.Files;
 using BarkFluff.Shared.Identity;
@@ -45,6 +46,16 @@ public class FilesServerApiService : FilesServerApi.FilesServerApiBase
         {
             ImageData = request.ImageData.ToByteArray(),
             Filename = request.Filename
+        };
+
+        return _mediator.Send(command);
+    }
+
+    public override Task<GetUserStorageInfoResponse> GetUserStorageInfoServer(GetUserStorageInfoServerRequest request, ServerCallContext context)
+    {
+        var command = new GetUserStorageInfoServerCommand
+        {
+            UserId = request.UserId
         };
 
         return _mediator.Send(command);
