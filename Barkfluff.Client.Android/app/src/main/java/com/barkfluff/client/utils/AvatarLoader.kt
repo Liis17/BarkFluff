@@ -7,6 +7,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import coil.ImageLoader
 import coil.load
+import coil.memory.MemoryCache
 import coil.request.ImageRequest
 import coil.transform.CircleCropTransformation
 import com.barkfluff.client.R
@@ -15,6 +16,7 @@ import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
+import java.util.concurrent.ConcurrentHashMap
 import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
@@ -65,6 +67,9 @@ object AvatarLoader {
             .build()
     }
 
+    // Кэш URL-ов: fileId -> download URL (чтобы не делать gRPC запрос каждый раз)
+    private val urlCache = ConcurrentHashMap<String, String>()
+
     // ImageLoader с кастомным OkHttpClient (ленивая инициализация)
     private var imageLoaderInstance: ImageLoader? = null
 
@@ -82,7 +87,7 @@ object AvatarLoader {
                         .diskCache {
                             coil.disk.DiskCache.Builder()
                                 .directory(context.cacheDir.resolve("image_cache"))
-                                .maxSizePercent(0.02)
+                                .maxSizePercent(0.05)
                                 .build()
                         }
                         .build()
@@ -197,110 +202,138 @@ object AvatarLoader {
             return
         }
 
-        // Если fileId это URL (начинается с http/https), загружаем напрямую
+        // Если fileId это URL (начинается с http/https), загружаем напрямую через Coil
         if (fileId.startsWith("http://") || fileId.startsWith("https://")) {
             android.util.Log.d("AvatarLoader", "loadByFileId: Loading directly from URL=$fileId")
-            MainScope().launch {
-                withContext(Dispatchers.Main) {
-                    showPlaceholderInternal(placeholderView, displayName, userId)
-                    imageView.visibility = View.GONE
-                }
-
-                withContext(Dispatchers.Main) {
-                    val requestBuilder = ImageRequest.Builder(imageView.context)
-                        .data(fileId)
-                        .memoryCacheKey(fileId)
-                        .diskCacheKey(fileId)
-                        .crossfade(200)
-                        .transformations(CircleCropTransformation())
-
-                    if (size > 0) {
-                        requestBuilder.size(size)
-                    }
-
-                    val request = requestBuilder
-                        .listener(
-                            onError = { request, result ->
-                                android.util.Log.e("AvatarLoader", "loadByFileId: onError for URL=$fileId, error=${result.throwable}")
-                                imageView.visibility = View.GONE
-                                showPlaceholderInternal(placeholderView, displayName, userId)
-                            },
-                            onSuccess = { request, result ->
-                                android.util.Log.d("AvatarLoader", "loadByFileId: onSuccess for URL=$fileId")
-                                imageView.visibility = View.VISIBLE
-                                placeholderView.visibility = View.GONE
-                            }
-                        )
-                        .build()
-                    getImageLoader(imageView.context).enqueue(request)
-                }
-            }
+            showPlaceholderInternal(placeholderView, displayName, userId)
+            imageView.visibility = View.GONE
+            loadImageWithCoil(imageView, placeholderView, fileId, fileId, displayName, userId, size)
             return
         }
 
-        // Запускаем загрузку в фоне для fileId
-        MainScope().launch {
-            // Показываем плейсхолдер пока загружаем
-            withContext(Dispatchers.Main) {
-                showPlaceholderInternal(placeholderView, displayName, userId)
-                imageView.visibility = View.GONE
+        val imageLoader = getImageLoader(imageView.context)
+
+        // 1. Проверяем Coil memory cache по fileId
+        val cached = imageLoader.memoryCache?.get(MemoryCache.Key(fileId))
+        if (cached != null) {
+            android.util.Log.d("AvatarLoader", "loadByFileId: Memory cache hit for fileId=$fileId")
+            imageView.setImageBitmap(cached.bitmap)
+            imageView.visibility = View.VISIBLE
+            placeholderView.visibility = View.GONE
+            return
+        }
+
+        // 2. Проверяем Coil disk cache по fileId
+        val diskSnapshot = imageLoader.diskCache?.openSnapshot(fileId)
+        if (diskSnapshot != null) {
+            android.util.Log.d("AvatarLoader", "loadByFileId: Disk cache hit for fileId=$fileId")
+            val diskFile = diskSnapshot.data.toFile()
+            diskSnapshot.close()
+
+            showPlaceholderInternal(placeholderView, displayName, userId)
+            imageView.visibility = View.GONE
+
+            val requestBuilder = ImageRequest.Builder(imageView.context)
+                .data(diskFile)
+                .target(imageView)
+                .memoryCacheKey(fileId)
+                .crossfade(200)
+                .transformations(CircleCropTransformation())
+
+            if (size > 0) {
+                requestBuilder.size(size)
             }
 
-            val url = getUrlCallback()
+            val request = requestBuilder
+                .listener(
+                    onSuccess = { _, _ ->
+                        imageView.visibility = View.VISIBLE
+                        placeholderView.visibility = View.GONE
+                    }
+                )
+                .build()
+            imageLoader.enqueue(request)
+            return
+        }
+
+        // 3. Проверяем URL кэш — если уже получали URL для этого fileId, загружаем по нему
+        val cachedUrl = urlCache[fileId]
+        if (cachedUrl != null) {
+            android.util.Log.d("AvatarLoader", "loadByFileId: URL cache hit for fileId=$fileId, url=$cachedUrl")
+            showPlaceholderInternal(placeholderView, displayName, userId)
+            imageView.visibility = View.GONE
+            loadImageWithCoil(imageView, placeholderView, cachedUrl, fileId, displayName, userId, size)
+            return
+        }
+
+        // 4. Cache miss — показываем плейсхолдер и запрашиваем URL через gRPC
+        android.util.Log.d("AvatarLoader", "loadByFileId: Cache miss for fileId=$fileId, fetching URL...")
+        showPlaceholderInternal(placeholderView, displayName, userId)
+        imageView.visibility = View.GONE
+
+        MainScope().launch {
+            val url = withContext(Dispatchers.IO) {
+                getUrlCallback()
+            }
             android.util.Log.d("AvatarLoader", "loadByFileId: fileId=$fileId, url=$url")
 
             if (url.isNullOrBlank()) {
                 android.util.Log.e("AvatarLoader", "loadByFileId: Failed to get URL for fileId=$fileId")
-                withContext(Dispatchers.Main) {
-                    imageView.visibility = View.GONE
-                    showPlaceholderInternal(placeholderView, displayName, userId)
-                }
                 return@launch
             }
 
-            // Загружаем через Coil с fileId как ключом кэша
+            // Сохраняем URL в кэш
+            urlCache[fileId] = url
+
             withContext(Dispatchers.Main) {
-                android.util.Log.d("AvatarLoader", "loadByFileId: Loading image from URL=$url")
-
-                val imageLoader = getImageLoader(imageView.context)
-
-                val requestBuilder = ImageRequest.Builder(imageView.context)
-                    .data(url)
-                    .memoryCacheKey(fileId)
-                    .diskCacheKey(fileId)
-                    .crossfade(200)
-                    .transformations(CircleCropTransformation())
-
-                if (size > 0) {
-                    requestBuilder.size(size)
-                }
-
-                val request = requestBuilder
-                    .listener(
-                        onError = { request, result ->
-                            android.util.Log.e("AvatarLoader", "loadByFileId: onError for fileId=$fileId, url=$url, error=${result.throwable}")
-                            imageView.visibility = View.GONE
-                            showPlaceholderInternal(placeholderView, displayName, userId)
-                        },
-                        onSuccess = { request, result ->
-                            val drawable = result.drawable
-                            android.util.Log.d("AvatarLoader", "loadByFileId: onSuccess for fileId=$fileId, hasDrawable=${drawable != null}, intrinsicWidth=${drawable?.intrinsicWidth}, intrinsicHeight=${drawable?.intrinsicHeight}")
-
-                            if (drawable != null) {
-                                imageView.setImageDrawable(drawable)
-                                imageView.visibility = View.VISIBLE
-                                placeholderView.visibility = View.GONE
-                            } else {
-                                imageView.visibility = View.GONE
-                                showPlaceholderInternal(placeholderView, displayName, userId)
-                            }
-                        }
-                    )
-                    .build()
-
-                imageLoader.enqueue(request)
+                loadImageWithCoil(imageView, placeholderView, url, fileId, displayName, userId, size)
             }
         }
+    }
+
+    /**
+     * Загружает изображение через Coil с указанным URL и fileId как ключом кэша.
+     */
+    private fun loadImageWithCoil(
+        imageView: ImageView,
+        placeholderView: TextView,
+        url: String,
+        cacheKey: String,
+        displayName: String,
+        userId: Long,
+        size: Int
+    ) {
+        android.util.Log.d("AvatarLoader", "loadImageWithCoil: Loading url=$url, cacheKey=$cacheKey")
+        val imageLoader = getImageLoader(imageView.context)
+
+        val requestBuilder = ImageRequest.Builder(imageView.context)
+            .data(url)
+            .target(imageView)
+            .memoryCacheKey(cacheKey)
+            .diskCacheKey(cacheKey)
+            .crossfade(200)
+            .transformations(CircleCropTransformation())
+
+        if (size > 0) {
+            requestBuilder.size(size)
+        }
+
+        val request = requestBuilder
+            .listener(
+                onError = { _, result ->
+                    android.util.Log.e("AvatarLoader", "loadImageWithCoil: onError cacheKey=$cacheKey, url=$url, error=${result.throwable}")
+                    imageView.visibility = View.GONE
+                    showPlaceholderInternal(placeholderView, displayName, userId)
+                },
+                onSuccess = { _, _ ->
+                    android.util.Log.d("AvatarLoader", "loadImageWithCoil: onSuccess cacheKey=$cacheKey")
+                    imageView.visibility = View.VISIBLE
+                    placeholderView.visibility = View.GONE
+                }
+            )
+            .build()
+
+        imageLoader.enqueue(request)
     }
 
     /**
