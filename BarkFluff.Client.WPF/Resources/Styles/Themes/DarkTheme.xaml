@@ -15,7 +15,6 @@
 
     <!--  Цвета бордера  -->
     <SolidColorBrush x:Key="BorderBlock" Color="#242424" />
-    <SolidColorBrush x:Key="BorderBlockBrush" Color="#333333" />
 
     <!--  КНОПКИ  -->
     <SolidColorBrush x:Key="ButtonText" Color="#f1f1f1" />
