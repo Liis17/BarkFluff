@@ -1,4 +1,3 @@
-using BarkFluff.Files.Domain;
 using BarkFluff.Files.Extensions;
 using BarkFluff.Files.Helpers;
 using BarkFluff.Files.Infrastructure;
@@ -7,6 +6,9 @@ using BarkFluff.Files.Services;
 using BarkFluff.GrpcServer.Settings;
 using BarkFluff.Proto.Files;
 using MediatR;
+
+using DomainUploadFile = BarkFluff.Files.Domain.UploadFile;
+using UploadFileType = BarkFluff.Files.Domain.UploadFileType;
 
 namespace BarkFluff.Files.Features.UploadAvatarServer;
 
@@ -63,7 +65,7 @@ public class UploadAvatarServerCommandHandler : IRequestHandler<UploadAvatarServ
         var previewEtag = await _s3Uploader.UploadAsync(bucketName, $"{previewFileId}", previewStream, "image/jpeg");
 
         // Сохраняем превью в БД
-        var previewFile = new UploadFile
+        var previewFile = new DomainUploadFile
         {
             Id = previewFileId,
             Uploaders = new List<long> { request.UserId },
@@ -77,7 +79,7 @@ public class UploadAvatarServerCommandHandler : IRequestHandler<UploadAvatarServ
         await _uploadedFilesStorage.AddToStorage(previewFile);
 
         // Сохраняем основной файл в БД
-        var mainFile = new UploadFile
+        var mainFile = new DomainUploadFile
         {
             Id = mainFileId,
             Uploaders = new List<long> { request.UserId },
