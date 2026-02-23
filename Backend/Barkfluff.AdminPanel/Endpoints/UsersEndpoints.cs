@@ -2,6 +2,7 @@ using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Proto.Users;
 using Barkfluff.AdminPanel.Models;
+using Google.Protobuf;
 
 namespace Barkfluff.AdminPanel.Endpoints;
 
@@ -274,6 +275,54 @@ public static class UsersEndpoints
             return Results.Ok(new { success = true });
         })
         .WithName("DisableUserOtp");
+
+        // POST /api/users/{id}/avatar
+        group.MapPost("/{id:long}/avatar", async (
+            long id,
+            HttpRequest request,
+            FilesServerApi.FilesServerApiClient filesClient,
+            UsersServerApi.UsersServerApiClient usersClient,
+            HttpContext context) =>
+        {
+            if (context.Items["AuthToken"] is not AuthToken)
+                return Results.Unauthorized();
+
+            if (!request.HasFormContentType)
+                return Results.BadRequest("Expected multipart/form-data");
+
+            var form = await request.ReadFormAsync();
+            var file = form.Files.GetFile("avatar");
+            if (file is null || file.Length == 0)
+                return Results.BadRequest("No avatar file provided");
+
+            using var ms = new MemoryStream();
+            await file.CopyToAsync(ms);
+
+            // Загружаем в Files сервис
+            var uploadResponse = await filesClient.UploadAvatarServerAsync(new UploadAvatarServerRequest
+            {
+                ImageData = ByteString.CopyFrom(ms.ToArray()),
+                Filename = file.FileName,
+                UserId = id
+            });
+
+            // Обновляем аватарку пользователя в Users сервисе
+            await usersClient.SetProfilePictureServerAsync(new SetProfilePictureServerRequest
+            {
+                UserId = id,
+                ProfilePictureUrl = uploadResponse.FileUrl,
+                ProfilePicturePreviewUrl = uploadResponse.PreviewUrl
+            });
+
+            return Results.Ok(new
+            {
+                fileUrl = uploadResponse.FileUrl,
+                previewUrl = uploadResponse.PreviewUrl,
+                fileId = uploadResponse.FileId
+            });
+        })
+        .DisableAntiforgery()
+        .WithName("UploadUserAvatar");
 
         // DELETE /api/users/{id}/sessions/{deviceId}
         group.MapDelete("/{id:long}/sessions/{deviceId}", async (

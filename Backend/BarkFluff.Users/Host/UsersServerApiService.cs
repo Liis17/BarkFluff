@@ -22,6 +22,7 @@ using BarkFluff.Users.Features.Devices.GetUserDevices;
 using BarkFluff.Users.Features.Devices.RegisterDevice;
 using BarkFluff.Users.Features.OverrideDraftUser;
 using BarkFluff.Users.Features.SearchUsersServer;
+using BarkFluff.Users.Features.SetProfilePictureServer;
 using BarkFluff.Users.Features.UpdateStorageLimit;
 using BarkFluff.Users.Persistence.Services;
 
@@ -303,6 +304,18 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
         {
             UserId = request.UserId,
             StorageLimitGb = request.StorageLimitGb
+        };
+
+        return _mediator.Send(command);
+    }
+
+    public override Task<SetProfilePictureServerResponse> SetProfilePictureServer(SetProfilePictureServerRequest request, ServerCallContext context)
+    {
+        var command = new SetProfilePictureServerCommand
+        {
+            UserId = request.UserId,
+            ProfilePictureUrl = request.ProfilePictureUrl,
+            ProfilePicturePreviewUrl = request.ProfilePicturePreviewUrl
         };
 
         return _mediator.Send(command);
