@@ -111,6 +111,34 @@ service UsersServerApi {
 
   // Получить публичную информацию пользователя по юзернейму (для веб-сервера)
   rpc GetUserByUsername(GetUserByUsernameRequest) returns(GetUserByUsernameResponse);
+
+  // Поиск пользователей (для админ-панели)
+  rpc SearchUsersServer(SearchUsersServerRequest) returns(SearchUsersServerResponse);
+
+  // Обновить лимит хранилища пользователя
+  rpc UpdateStorageLimit(UpdateStorageLimitRequest) returns(UpdateStorageLimitResponse);
+}
+
+// Поиск пользователей (серверный)
+message SearchUsersServerRequest {
+  string query = 1;   // Поиск по username или user_id (пустой = все)
+  int32 offset = 2;
+  int32 size = 3;     // макс 50
+}
+
+message SearchUsersServerResponse {
+  repeated User users = 1;
+  int32 total_count = 2;
+}
+
+// Обновление лимита хранилища
+message UpdateStorageLimitRequest {
+  int64 user_id = 1;
+  int32 storage_limit_gb = 2; // 1-250
+}
+
+message UpdateStorageLimitResponse {
+  User user = 1;
 }
 
 message SearchUsersRequest {

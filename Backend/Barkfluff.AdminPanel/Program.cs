@@ -1,5 +1,6 @@
 using BarkFluff.GrpcServer;
 using BarkFluff.Proto.Files;
+using BarkFluff.Proto.Identity;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Auth;
 using BarkFluff.Shared.Identity;
@@ -71,6 +72,11 @@ public class Program
         {
             o.Address = new Uri(builder.Configuration["FilesService:Host"] ?? "http://files:7005");
         }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["FilesService:Token"] ?? string.Empty));
+
+        builder.Services.AddGrpcClient<IdentityServerApi.IdentityServerApiClient>(o =>
+        {
+            o.Address = new Uri(builder.Configuration["IdentityService:Host"] ?? "http://identity:7000");
+        }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["IdentityService:Token"] ?? string.Empty));
 
         // Configure and validate TelegramSettings
         builder.Services.AddOptions<TelegramSettings>()
@@ -149,6 +155,9 @@ public class Program
         // Map Badges Endpoints
         app.MapBadgesEndpoints();
 
+        // Map Users Endpoints
+        app.MapUsersEndpoints();
+
         // Static files for Pages directory
         app.UseStaticFiles(new StaticFileOptions
         {
@@ -175,6 +184,7 @@ public class Program
         app.MapGet("/services", async context => await ServeHtmlFile(context, "services.html"));
         app.MapGet("/logs", async context => await ServeHtmlFile(context, "logs.html"));
         app.MapGet("/badges", async context => await ServeHtmlFile(context, "badges.html"));
+        app.MapGet("/users", async context => await ServeHtmlFile(context, "users.html"));
         app.MapGet("/restarting", async context => await ServeHtmlFile(context, "restarting.html"));
         app.MapGet("/updating", async context => await ServeHtmlFile(context, "updating.html"));
 
