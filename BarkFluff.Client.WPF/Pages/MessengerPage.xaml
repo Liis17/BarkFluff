@@ -212,7 +212,7 @@
                         </Button.Template>
                         <ui:SymbolIcon
                             FontSize="20"
-                            Foreground="White"
+                            Foreground="{DynamicResource TitleText}"
                             Symbol="Navigation20" />
                     </Button>
 
@@ -388,30 +388,6 @@
 
                     </Grid>
                 </Border>
-                <Border
-                    x:Name="EmptyChatListBlock"
-                    Margin="32"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    Background="Transparent">
-
-                    <StackPanel
-                        MaxWidth="280"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center">
-                        <!--  Заголовок  -->
-                        <TextBlock
-                            Margin="0,0,0,180"
-                            HorizontalAlignment="Center"
-                            FontFamily="{DynamicResource AdwaitaSans}"
-                            FontSize="16"
-                            FontWeight="Normal"
-                            Foreground="White"
-                            Opacity="0.4"
-                            Text="Пока что здесь пусто"
-                            TextAlignment="Center" />
-                    </StackPanel>
-                </Border>
                 <Grid
                     x:Name="SearchResultList"
                     Height="0"
@@ -477,9 +453,7 @@
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
                             Background="{DynamicResource OpenChatBackgroundColor}"
-                            CornerRadius="15 0 0 15">
-
-                        </Border>
+                            CornerRadius="15 0 0 15" />
                         <Grid
                             x:Name="OpenedChat"
                             HorizontalAlignment="Stretch"
@@ -779,24 +753,20 @@
                             x:Name="NoDialogMessage"
                             Width="400"
                             Height="200"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            Background="#1e1e1e"
-                            BorderBrush="#272727"
-                            BorderThickness="2"
-                            CornerRadius="15">
+                            Style="{DynamicResource MainStyleBorder}">
                             <StackPanel
                                 HorizontalAlignment="Stretch"
                                 VerticalAlignment="Stretch"
                                 Orientation="Vertical">
                                 <ui:SymbolIcon
-                                    Margin="30,20,30,10"
+                                    Margin="30,0,30,10"
                                     Filled="True"
                                     FontSize="85"
+                                    Foreground="{DynamicResource DescriptionText}"
                                     Symbol="ChatMultiple32" />
                                 <ui:TextBlock
                                     Margin="30,0,30,0"
-                                    Style="{DynamicResource HeaderSettings}"
+                                    Style="{DynamicResource DescriptionTextStyle}"
                                     Text="Чтобы начать диалог выберите чат из списка слева"
                                     TextAlignment="Center"
                                     TextWrapping="Wrap" />

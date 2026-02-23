@@ -776,7 +776,6 @@ namespace BarkFluff.Client.WPF.Pages
                 App.ErideMessage.AddMessage("API клиент успешно обновлён", new Erida { Type = MType.Debug });
             }
 
-
             UserInfoUpdate();
             ChatUpdate();
             await Task.Run(() => ProcessMessages(App.GParam));
@@ -1253,6 +1252,12 @@ namespace BarkFluff.Client.WPF.Pages
         {
             var response = await App.ServerCommunication.GetChats(App.GParam);
             ChatList.Children.Clear(); // Очищаем список перед добавлением
+            if (response.error == null) { return; }
+            if (!response.error.IsSuccess)
+            {
+                App.ErideMessage.AddMessage($"{response.error.ErrorMessage}", new Erida { Type = MType.Warning });
+                return;
+            }
 
             // Очищаем буфер последних сообщений чатов
             lock (_chatBufferLock)
@@ -1262,11 +1267,9 @@ namespace BarkFluff.Client.WPF.Pages
 
             if (response.chats.Count == 0)
             {
-                EmptyChatListBlock.Visibility = Visibility.Visible;
                 return;
             }
 
-            EmptyChatListBlock.Visibility = Visibility.Collapsed;
 
             // Сортировка чатов по времени последнего сообщения (новые выше)
             var sortedChats = response.chats
@@ -1375,6 +1378,12 @@ namespace BarkFluff.Client.WPF.Pages
         public async void UserInfoUpdate()
         {
             var response = await App.ServerCommunication.GetUserData(App.GParam);
+            if (response.Error == null) { return; }
+            if (!response.Error.IsSuccess)
+            {
+                App.ErideMessage.AddMessage($"{response.Error.ErrorMessage}", new Erida { Type = MType.Warning });
+                return;
+            }
 
             App.GParam.UserId = response.Data.Id;
             App.GParam.UserName = response.Data.Username;
@@ -1953,12 +1962,6 @@ namespace BarkFluff.Client.WPF.Pages
 
                         // Вставляем в начало списка (самые свежие сверху)
                         ChatList.Children.Insert(0, messageItem);
-
-                        // Показываем список чатов, если он был пуст
-                        if (EmptyChatListBlock.Visibility == Visibility.Visible)
-                        {
-                            EmptyChatListBlock.Visibility = Visibility.Collapsed;
-                        }
                     }
                 }
             }
