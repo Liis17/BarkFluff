@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Удаление аккаунта - BarkFluff</title>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --text-main: #ffffff;
+            --text-sub: #94a3b8;
+            --primary: #3b82f6;
+            --card-bg: rgba(30, 41, 59, 0.6);
+            --card-border: rgba(255, 255, 255, 0.1);
+            --code-bg: rgba(15, 23, 42, 0.6);
+            --heading-color: #e2e8f0;
+            --link-color: #60a5fa;
+            --table-border: rgba(255, 255, 255, 0.1);
+            --table-bg: rgba(30, 41, 59, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            min-height: 100vh;
+            overflow-x: hidden;
+            color: var(--text-main);
+            position: relative;
+            padding: 40px 20px;
+            line-height: 1.7;
+        }
+
+        .blobs {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(90px);
+            opacity: 0.5;
+            animation: float 20s infinite alternate;
+        }
+
+        .b1 {
+            top: -10%;
+            left: -10%;
+            width: 50vw;
+            height: 50vw;
+            background: #4f46e5;
+            animation-duration: 25s;
+        }
+
+        .b2 {
+            bottom: -10%;
+            right: -10%;
+            width: 40vw;
+            height: 40vw;
+            background: #0ea5e9;
+            animation-duration: 30s;
+            animation-delay: -5s;
+        }
+
+        @keyframes float {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(40px, -40px); }
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--card-border);
+            padding: 40px;
+            border-radius: 32px;
+            box-shadow: 0 30px 60px -15px rgba(0,0,0,0.6);
+            animation: fadeIn 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .header h1 {
+            font-size: 32px;
+            font-weight: 800;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -1px;
+        }
+
+        .header .meta {
+            color: var(--text-sub);
+            font-size: 13px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .header .meta span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-links {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .nav-links a {
+            color: var(--text-sub);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 8px 14px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--card-border);
+            transition: all 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-main);
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(255,255,255,0.2);
+        }
+
+        .nav-links a.active {
+            color: var(--text-main);
+            background: rgba(59, 130, 246, 0.2);
+            border-color: var(--primary);
+        }
+
+        .content {
+            color: var(--text-main);
+        }
+
+        .content h2 {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--heading-color);
+            margin: 32px 0 16px 0;
+            letter-spacing: -0.5px;
+        }
+
+        .content h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--heading-color);
+            margin: 24px 0 12px 0;
+        }
+
+        .content h4 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-main);
+            margin: 20px 0 10px 0;
+        }
+
+        .content p {
+            margin: 12px 0;
+            color: var(--text-sub);
+        }
+
+        .content ul, .content ol {
+            margin: 12px 0;
+            padding-left: 24px;
+            color: var(--text-sub);
+        }
+
+        .content li {
+            margin: 8px 0;
+        }
+
+        .content a {
+            color: var(--link-color);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .content a:hover {
+            color: var(--primary);
+            text-decoration: underline;
+        }
+
+        .content strong {
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        .content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: var(--table-bg);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--table-border);
+        }
+
+        .content th, .content td {
+            padding: 14px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--table-border);
+        }
+
+        .content th {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--text-main);
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .content td {
+            color: var(--text-sub);
+            font-size: 14px;
+        }
+
+        .content tr:last-child td {
+            border-bottom: none;
+        }
+
+        .content tr:hover td {
+            background: rgba(255,255,255,0.03);
+        }
+
+        .content code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            background: var(--code-bg);
+            padding: 2px 8px;
+            border-radius: 6px;
+            color: #a5b4fc;
+            border: 1px solid var(--card-border);
+        }
+
+        .content pre {
+            background: var(--code-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 16px;
+            overflow-x: auto;
+            margin: 16px 0;
+        }
+
+        .content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: var(--text-sub);
+        }
+
+        .content blockquote {
+            border-left: 3px solid var(--primary);
+            padding-left: 16px;
+            margin: 16px 0;
+            color: var(--text-sub);
+            font-style: italic;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-sub);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 8px 14px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--card-border);
+            transition: all 0.2s;
+            margin-bottom: 20px;
+        }
+
+        .back-link:hover {
+            color: var(--text-main);
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(255,255,255,0.2);
+        }
+
+        .back-link svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid var(--card-border);
+            color: var(--text-sub);
+            font-size: 13px;
+        }
+
+        .footer a {
+            color: var(--link-color);
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            color: var(--primary);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 24px 20px;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .content h2 {
+                font-size: 18px;
+            }
+
+            .nav-links {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="blobs">
+        <div class="blob b1"></div>
+        <div class="blob b2"></div>
+    </div>
+
+    <div class="container">
+        <a href="/" class="back-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            На главную
+        </a>
+
+        <div class="nav-links">
+            <a href="/legal/privacy-policy">Политика конфиденциальности</a>
+            <a href="/legal/terms-of-service">Условия использования</a>
+            <a href="/legal/account-deletion" class="active">Удаление аккаунта</a>
+            <a href="/legal/encryption">Шифрование</a>
+        </div>
+
+        <div class="header">
+            <h1>Политика удаления аккаунта</h1>
+            <div class="meta">
+                <span>📅 Дата вступления в силу: 24 января 2026 г.</span>
+                <span>🔄 Последнее обновление: 24 января 2026 г.</span>
+            </div>
+        </div>
+
+        <div class="content">
+            <h2>1. Введение</h2>
+            <p>В BarkFluff мы уважаем ваше право на контроль над вашими персональными данными. В соответствии с требованиями <strong>GDPR (General Data Protection Regulation)</strong> и другими законами о защите данных, вы имеете право в любое время удалить свой аккаунт и связанные с ним данные.</p>
+            <p>Настоящий документ подробно описывает:</p>
+            <ul>
+                <li>✅ Как удалить свой аккаунт</li>
+                <li>✅ Какие данные удаляются</li>
+                <li>✅ Какие данные сохраняются (и почему)</li>
+                <li>✅ Возможность восстановления аккаунта</li>
+                <li>✅ Опции полного удаления всех данных</li>
+            </ul>
+
+            <h2>2. Как удалить аккаунт</h2>
+            
+            <h3>2.1 Через клиентское приложение</h3>
+            <p><strong>Desktop-клиент (WPF):</strong></p>
+            <ol>
+                <li>Откройте <strong>Настройки</strong> (Settings)</li>
+                <li>Перейдите в раздел <strong>Аккаунт</strong> (Account)</li>
+                <li>Прокрутите вниз до секции <strong>Удаление аккаунта</strong> (Delete Account)</li>
+                <li>Нажмите кнопку <strong>"Удалить мой аккаунт"</strong> (Delete My Account)</li>
+                <li>Подтвердите действие, введя свой <strong>пароль</strong></li>
+                <li>Прочитайте предупреждение о последствиях удаления</li>
+                <li>Нажмите <strong>"Да, удалить навсегда"</strong> (Yes, Delete Forever)</li>
+            </ol>
+
+            <h3>2.2 Через API (для разработчиков)</h3>
+            <p><strong>gRPC метод:</strong></p>
+            <pre><code>service UsersApi {
+  rpc DeleteAccount(DeleteAccountRequest) returns (DeleteAccountResponse);
+}
+
+message DeleteAccountRequest {
+  string password = 1; // Подтверждение пароля
+  string reason = 2;   // Опциональная причина удаления
+}</code></pre>
+
+            <h3>2.3 Через службу поддержки</h3>
+            <p>Если у вас нет доступа к аккаунту (забыт пароль, утерян доступ к email):</p>
+            <ol>
+                <li>Отправьте запрос на <strong>privacy@barkfluff.com</strong></li>
+                <li>Укажите:
+                    <ul>
+                        <li>Имя пользователя (Username)</li>
+                        <li>Email, использованный при регистрации</li>
+                        <li>Причину, по которой вы не можете войти</li>
+                        <li>Доказательства владения аккаунтом (опционально: скриншоты, информация о последних сообщениях)</li>
+                    </ul>
+                </li>
+                <li>Мы проверим запрос и удалим аккаунт в течение <strong>7 рабочих дней</strong></li>
+            </ol>
+
+            <h2>3. Двухэтапный процесс удаления</h2>
+            <p>BarkFluff использует <strong>двухэтапную систему удаления</strong> для защиты от случайного удаления и обеспечения возможности восстановления.</p>
+
+            <h3>Этап 1: Мягкое удаление (Soft Delete) — 30 дней</h3>
+            <p><strong>Что происходит:</strong></p>
+            <ul>
+                <li>✅ Аккаунт помечается флагом <code>IsDeleted = true</code> в базе данных</li>
+                <li>✅ Вход в систему <strong>заблокирован</strong> (вы не можете войти в приложение)</li>
+                <li>✅ Ваш профиль <strong>скрыт</strong> от других пользователей</li>
+                <li>✅ Вы <strong>не отображаетесь</strong> в поиске пользователей</li>
+                <li>✅ Онлайн-статус <strong>не обновляется</strong></li>
+                <li>✅ Уведомления о новых сообщениях <strong>не отправляются</strong></li>
+            </ul>
+
+            <p><strong>Что НЕ происходит:</strong></p>
+            <ul>
+                <li>❌ Данные <strong>НЕ удаляются</strong> физически (остаются в базе данных)</li>
+                <li>❌ Сообщения <strong>НЕ удаляются</strong> (другие участники чатов все еще видят их)</li>
+                <li>❌ Файлы <strong>НЕ удаляются</strong> из хранилища</li>
+            </ul>
+
+            <p><strong>Период восстановления:</strong> 30 дней с момента удаления.</p>
+
+            <p><strong>Как восстановить аккаунт:</strong></p>
+            <ol>
+                <li>Отправьте запрос на <strong>support@barkfluff.com</strong></li>
+                <li>Укажите: Username, Email, Причину восстановления (опционально)</li>
+                <li>Мы проверим запрос и <strong>восстановим аккаунт в течение 48 часов</strong></li>
+            </ol>
+
+            <h3>Этап 2: Жесткое удаление (Hard Delete) — после 30 дней</h3>
+            <p>По истечении 30-дневного периода начинается <strong>автоматическое необратимое удаление данных</strong>.</p>
+
+            <p><strong>Что удаляется полностью:</strong></p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Данные</th>
+                        <th>Статус</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Запись в таблице Identity.Users</strong></td>
+                        <td>✅ Удалена (Email, Username, Password Hash)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Профиль пользователя (Users.UserProfiles)</strong></td>
+                        <td>✅ Удален (FirstName, LastName, Bio)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Аватар</strong></td>
+                        <td>✅ Удален из S3 и метаданные из PostgreSQL</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Все активные сессии (Identity.Sessions)</strong></td>
+                        <td>✅ Удалены (Refresh Tokens, Device IDs)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Личные файлы</strong></td>
+                        <td>✅ Удалены (файлы, загруженные только вами и не прикрепленные к сообщениям)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Настройки конфиденциальности</strong></td>
+                        <td>✅ Удалены</td>
+                    </tr>
+                    <tr>
+                        <td><strong>История входов (старше 90 дней)</strong></td>
+                        <td>✅ Удалена</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p><strong>Что сохраняется:</strong></p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Данные</th>
+                        <th>Причина сохранения</th>
+                        <th>Что изменяется</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Сообщения в групповых чатах</strong></td>
+                        <td>Сохранение целостности истории чатов для других участников</td>
+                        <td><code>SenderId</code> заменяется на <code>NULL</code> или отображается как <strong>[Удаленный пользователь]</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Сообщения в приватных чатах</strong></td>
+                        <td>Обеспечение доступа к истории для второго участника</td>
+                        <td><code>SenderId</code> заменяется на <code>NULL</code>, отображается как <strong>[Удаленный пользователь]</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Вложения в сообщениях</strong></td>
+                        <td>Сохранение целостности сообщений</td>
+                        <td>Остаются доступными для других участников чатов</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Журналы безопасности (последние 180 дней)</strong></td>
+                        <td>Требования законодательства, расследование инцидентов безопасности</td>
+                        <td>Ничего не требуется</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p><strong>Почему сообщения сохраняются?</strong></p>
+            <ul>
+                <li><strong>Технические причины:</strong> Удаление всех ваших сообщений нарушит <strong>целостность истории чатов</strong> для других участников</li>
+                <li><strong>Юридические причины:</strong> Некоторые юрисдикции требуют <strong>хранения коммуникаций</strong> в течение определенного периода</li>
+            </ul>
+
+            <h2>4. Экспорт данных перед удалением</h2>
+            <p>Перед удалением аккаунта мы <strong>настоятельно рекомендуем</strong> экспортировать свои данные.</p>
+
+            <h3>4.1 Как экспортировать данные</h3>
+            <p><strong>Через клиентское приложение:</strong></p>
+            <ol>
+                <li>Откройте <strong>Настройки → Аккаунт → Конфиденциальность</strong></li>
+                <li>Нажмите <strong>"Экспортировать мои данные"</strong> (Export My Data)</li>
+                <li>Дождитесь подготовки архива (может занять несколько минут)</li>
+                <li>Скачайте ZIP-файл</li>
+            </ol>
+
+            <h3>4.2 Что входит в экспорт</h3>
+            <p><strong>Формат:</strong> JSON + вложенные файлы (ZIP-архив)</p>
+            <p><strong>Содержимое:</strong></p>
+            <ul>
+                <li>Данные профиля (userId, username, email, firstName, lastName, bio)</li>
+                <li>Все ваши сообщения с текстом и вложениями</li>
+                <li>Список чатов с участниками</li>
+                <li>Загруженные файлы с ссылками для скачивания</li>
+                <li>История сессий (устройства, IP-адреса)</li>
+            </ul>
+
+            <h2>5. Последствия удаления аккаунта</h2>
+            
+            <h3>5.1 Что происходит с вашими данными</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Элемент</th>
+                        <th>Последствие</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Вход в систему</strong></td>
+                        <td>Невозможен (username и email освобождаются и могут быть зарегистрированы снова)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Профиль</strong></td>
+                        <td>Удален, недоступен для поиска</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Аватар</strong></td>
+                        <td>Удален</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Приватные сообщения</strong></td>
+                        <td>Отображаются у других пользователей как <code>[Удаленный пользователь]</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Групповые сообщения</strong></td>
+                        <td>Отображаются как <code>[Удаленный пользователь]</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Файлы в чатах</strong></td>
+                        <td>Остаются доступными (опция полного удаления — по запросу)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Активные сессии</strong></td>
+                        <td>Все устройства разлогинены</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>5.2 Что происходит с чатами</h3>
+            <ul>
+                <li><strong>Приватные чаты:</strong> Остаются в списке чатов у второго участника, но ваш профиль отображается как <code>[Удаленный пользователь]</code></li>
+                <li><strong>Групповые чаты:</strong> Вы автоматически <strong>покидаете</strong> все групповые чаты, но сообщения остаются</li>
+            </ul>
+
+            <h3>5.3 Повторная регистрация</h3>
+            <p>После удаления аккаунта:</p>
+            <ul>
+                <li>✅ Вы <strong>можете зарегистрироваться снова</strong> с тем же email или username (после завершения жесткого удаления)</li>
+                <li>❌ Вы <strong>НЕ восстановите</strong> старые данные (сообщения, чаты, файлы)</li>
+                <li>❌ Вы <strong>НЕ сможете связать</strong> новый аккаунт со старым</li>
+            </ul>
+            <p><strong>Это будет полностью новый аккаунт без связи с предыдущим.</strong></p>
+
+            <h2>6. Частичное удаление данных</h2>
+            <p>Если вы не хотите удалять аккаунт полностью, но хотите удалить определенные данные:</p>
+
+            <h3>6.1 Удаление отдельных сообщений</h3>
+            <p><strong>Как удалить:</strong></p>
+            <ol>
+                <li>Откройте чат</li>
+                <li>Нажмите и удерживайте сообщение</li>
+                <li>Выберите <strong>"Удалить"</strong> (Delete)</li>
+                <li>Выберите опцию:
+                    <ul>
+                        <li><strong>"Удалить для себя"</strong> — сообщение удаляется только у вас</li>
+                        <li><strong>"Удалить для всех"</strong> — сообщение удаляется у всех участников (доступно в течение 48 часов после отправки)</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <h3>6.2 Удаление файлов</h3>
+            <p><strong>Личные файлы:</strong></p>
+            <ol>
+                <li>Откройте <strong>Настройки → Файлы и медиа</strong></li>
+                <li>Выберите файлы для удаления</li>
+                <li>Нажмите <strong>"Удалить"</strong></li>
+            </ol>
+
+            <h2>7. Ответы на частые вопросы (FAQ)</h2>
+            
+            <p><strong>Q1: Могу ли я восстановить аккаунт после жесткого удаления?</strong><br>
+            <strong>A:</strong> Нет, после жесткого удаления (через 30 дней) восстановление невозможно.</p>
+
+            <p><strong>Q2: Смогут ли другие пользователи видеть мои сообщения после удаления аккаунта?</strong><br>
+            <strong>A:</strong> Да, но ваше имя будет отображаться как <code>[Удаленный пользователь]</code>.</p>
+
+            <p><strong>Q3: Что происходит с групповыми чатами, которые я создал?</strong><br>
+            <strong>A:</strong> Администраторские права автоматически передаются следующему участнику.</p>
+
+            <p><strong>Q4: Удаляются ли мои данные из резервных копий?</strong><br>
+            <strong>A:</strong> Резервные копии удаляются в соответствии с нашей политикой хранения (обычно в течение 90 дней).</p>
+
+            <p><strong>Q5: Могу ли я удалить аккаунт, если забыл пароль?</strong><br>
+            <strong>A:</strong> Да, обратитесь в службу поддержки: privacy@barkfluff.com</p>
+
+            <p><strong>Q6: Сколько времени занимает полное удаление?</strong><br>
+            <strong>A:</strong> Мягкое удаление — мгновенно. Жесткое удаление — автоматически через 30 дней.</p>
+
+            <h2>8. Юридическая информация</h2>
+            
+            <h3>8.1 Соответствие GDPR</h3>
+            <p>Настоящая Политика удаления разработана в соответствии с:</p>
+            <ul>
+                <li><strong>GDPR Article 17</strong> — Right to Erasure ("Right to be Forgotten")</li>
+                <li><strong>GDPR Article 20</strong> — Right to Data Portability</li>
+                <li><strong>CCPA</strong> — California Consumer Privacy Act</li>
+                <li><strong>ФЗ-152 "О персональных данных"</strong> (Российская Федерация)</li>
+            </ul>
+
+            <h2>9. Контактная информация</h2>
+            <p><strong>По вопросам удаления аккаунта:</strong></p>
+            <ul>
+                <li>Email: privacy@barkfluff.com</li>
+            </ul>
+            <p><strong>Техническая поддержка:</strong></p>
+            <ul>
+                <li>Email: support@barkfluff.com</li>
+            </ul>
+            <p><strong>Время ответа:</strong> До 7 рабочих дней.</p>
+
+            <blockquote>
+                <p><strong>Спасибо за использование BarkFluff!</strong></p>
+                <p>Мы уважаем ваше решение и сожалеем, что вы покидаете BarkFluff.</p>
+            </blockquote>
+            <p><em>Документ действителен с 24 января 2026 г.</em></p>
+        </div>
+
+        <div class="footer">
+            <p>© 2026 BarkFluff. Все права защищены.</p>
+            <p style="margin-top: 8px;">
+                <a href="/">Главная</a> • 
+                <a href="/legal/privacy-policy">Конфиденциальность</a> • 
+                <a href="/legal/terms-of-service">Условия</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

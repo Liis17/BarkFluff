@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>%%title%% - BarkFluff</title>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --text-main: #ffffff;
+            --text-sub: #94a3b8;
+            --primary: #3b82f6;
+            --card-bg: rgba(30, 41, 59, 0.6);
+            --card-border: rgba(255, 255, 255, 0.1);
+            --code-bg: rgba(15, 23, 42, 0.6);
+            --heading-color: #e2e8f0;
+            --link-color: #60a5fa;
+            --table-border: rgba(255, 255, 255, 0.1);
+            --table-bg: rgba(30, 41, 59, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            min-height: 100vh;
+            overflow-x: hidden;
+            color: var(--text-main);
+            position: relative;
+            padding: 40px 20px;
+            line-height: 1.7;
+        }
+
+        .blobs {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(90px);
+            opacity: 0.5;
+            animation: float 20s infinite alternate;
+        }
+
+        .b1 {
+            top: -10%;
+            left: -10%;
+            width: 50vw;
+            height: 50vw;
+            background: #4f46e5;
+            animation-duration: 25s;
+        }
+
+        .b2 {
+            bottom: -10%;
+            right: -10%;
+            width: 40vw;
+            height: 40vw;
+            background: #0ea5e9;
+            animation-duration: 30s;
+            animation-delay: -5s;
+        }
+
+        @keyframes float {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(40px, -40px); }
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--card-border);
+            padding: 40px;
+            border-radius: 32px;
+            box-shadow: 0 30px 60px -15px rgba(0,0,0,0.6);
+            animation: fadeIn 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .header h1 {
+            font-size: 32px;
+            font-weight: 800;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -1px;
+        }
+
+        .header .meta {
+            color: var(--text-sub);
+            font-size: 13px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .header .meta span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-links {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .nav-links a {
+            color: var(--text-sub);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 8px 14px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--card-border);
+            transition: all 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-main);
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(255,255,255,0.2);
+        }
+
+        .nav-links a.active {
+            color: var(--text-main);
+            background: rgba(59, 130, 246, 0.2);
+            border-color: var(--primary);
+        }
+
+        .content {
+            color: var(--text-main);
+        }
+
+        .content h2 {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--heading-color);
+            margin: 32px 0 16px 0;
+            letter-spacing: -0.5px;
+        }
+
+        .content h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--heading-color);
+            margin: 24px 0 12px 0;
+        }
+
+        .content h4 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-main);
+            margin: 20px 0 10px 0;
+        }
+
+        .content p {
+            margin: 12px 0;
+            color: var(--text-sub);
+        }
+
+        .content ul, .content ol {
+            margin: 12px 0;
+            padding-left: 24px;
+            color: var(--text-sub);
+        }
+
+        .content li {
+            margin: 8px 0;
+        }
+
+        .content a {
+            color: var(--link-color);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .content a:hover {
+            color: var(--primary);
+            text-decoration: underline;
+        }
+
+        .content strong {
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        .content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: var(--table-bg);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--table-border);
+        }
+
+        .content th, .content td {
+            padding: 14px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--table-border);
+        }
+
+        .content th {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--text-main);
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .content td {
+            color: var(--text-sub);
+            font-size: 14px;
+        }
+
+        .content tr:last-child td {
+            border-bottom: none;
+        }
+
+        .content tr:hover td {
+            background: rgba(255,255,255,0.03);
+        }
+
+        .content code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            background: var(--code-bg);
+            padding: 2px 8px;
+            border-radius: 6px;
+            color: #a5b4fc;
+            border: 1px solid var(--card-border);
+        }
+
+        .content pre {
+            background: var(--code-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 16px;
+            overflow-x: auto;
+            margin: 16px 0;
+        }
+
+        .content pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            color: var(--text-sub);
+        }
+
+        .content blockquote {
+            border-left: 3px solid var(--primary);
+            padding-left: 16px;
+            margin: 16px 0;
+            color: var(--text-sub);
+            font-style: italic;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-sub);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 8px 14px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--card-border);
+            transition: all 0.2s;
+            margin-bottom: 20px;
+        }
+
+        .back-link:hover {
+            color: var(--text-main);
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(255,255,255,0.2);
+        }
+
+        .back-link svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid var(--card-border);
+            color: var(--text-sub);
+            font-size: 13px;
+        }
+
+        .footer a {
+            color: var(--link-color);
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            color: var(--primary);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 24px 20px;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .content h2 {
+                font-size: 18px;
+            }
+
+            .nav-links {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="blobs">
+        <div class="blob b1"></div>
+        <div class="blob b2"></div>
+    </div>
+
+    <div class="container">
+        <a href="/" class="back-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            На главную
+        </a>
+
+        <div class="nav-links">
+            <a href="/legal/privacy-policy" class="%%nav-privacy%%">Политика конфиденциальности</a>
+            <a href="/legal/terms-of-service" class="%%nav-terms%%">Условия использования</a>
+            <a href="/legal/account-deletion" class="%%nav-deletion%%">Удаление аккаунта</a>
+            <a href="/legal/encryption" class="%%nav-encryption%%">Шифрование</a>
+        </div>
+
+        <div class="header">
+            <h1>%%title%%</h1>
+            <div class="meta">
+                %%meta%%
+            </div>
+        </div>
+
+        <div class="content">
+            %%content%%
+        </div>
+
+        <div class="footer">
+            <p>© 2026 BarkFluff. Все права защищены.</p>
+            <p style="margin-top: 8px;">
+                <a href="/">Главная</a> • 
+                <a href="/legal/privacy-policy">Конфиденциальность</a> • 
+                <a href="/legal/terms-of-service">Условия</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
