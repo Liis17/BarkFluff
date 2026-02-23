@@ -117,7 +117,19 @@ service UsersServerApi {
 
   // Обновить лимит хранилища пользователя
   rpc UpdateStorageLimit(UpdateStorageLimitRequest) returns(UpdateStorageLimitResponse);
+
+  // Установить аватарку пользователю (для админ-панели)
+  rpc SetProfilePictureServer(SetProfilePictureServerRequest) returns(SetProfilePictureServerResponse);
 }
+
+// Установить аватарку (серверный)
+message SetProfilePictureServerRequest {
+  int64 user_id = 1;
+  string profile_picture_url = 2;         // ссылка на полное изображение
+  string profile_picture_preview_url = 3; // ссылка на превью
+}
+
+message SetProfilePictureServerResponse { }
 
 // Поиск пользователей (серверный)
 message SearchUsersServerRequest {
