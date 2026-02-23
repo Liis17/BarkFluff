@@ -119,6 +119,21 @@ public class Program
         // Configure the pipeline
         app.UseHttpsRedirection();
 
+        // Serve favicon.ico before auth middleware (always accessible)
+        app.MapGet("/favicon.ico", async context =>
+        {
+            var filePath = Path.Combine(AppContext.BaseDirectory, "Pages", "favicon.ico");
+            if (File.Exists(filePath))
+            {
+                context.Response.ContentType = "image/x-icon";
+                await context.Response.SendFileAsync(filePath);
+            }
+            else
+            {
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+            }
+        });
+
         // Add Token Authentication Middleware
         app.UseTokenAuth();
 
