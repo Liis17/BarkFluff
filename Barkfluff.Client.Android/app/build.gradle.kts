@@ -78,7 +78,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
-    implementation(libs.androidx.constraintlayout)
+    implementation("androidx.constraintlayout:constraintlayout:2.2.1")
     implementation("androidx.cardview:cardview:1.0.0")
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.fragment)
@@ -120,4 +120,8 @@ dependencies {
     implementation("io.coil-kt:coil:2.7.0")
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // Image viewer: pinch-to-zoom + swipe between images
+    implementation("com.github.chrisbanes:PhotoView:2.3.0")
+    implementation("androidx.viewpager2:viewpager2:1.1.0")
 }

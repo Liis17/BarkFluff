@@ -3,46 +3,54 @@ package com.barkfluff.client.adapter
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import coil.size.Size
+import com.barkfluff.client.ImageViewerActivity
 import com.barkfluff.client.R
 import com.barkfluff.client.databinding.ItemAttachmentBinding
+import com.barkfluff.client.databinding.ItemMessageDateSeparatorBinding
 import com.barkfluff.client.databinding.ItemMessageReceivedBinding
 import com.barkfluff.client.databinding.ItemMessageSentBinding
+import com.barkfluff.client.utils.ImageLoadHelper
 import barkfluff.shared.Shared
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
 /**
- * Адаптер для отображения сообщений в чате.
- * Поддерживает два типа view: отправленные сообщения и полученные.
+ * Адаптер для отображения сообщений в чате с разделителями дат.
+ * Поддерживает три типа view: отправленные сообщения, полученные сообщения и разделители дат.
  */
 class MessageAdapter(
     private val currentUserId: Long,
     private val isGroupChat: Boolean,
-    private val getFileUrl: (String) -> String? = { null },
+    private val getFileUrl: suspend (String) -> String? = { null },
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main)
 ) : ListAdapter<MessageItem, RecyclerView.ViewHolder>(MessageDiffCallback()) {
 
     companion object {
         private const val VIEW_TYPE_SENT = 1
         private const val VIEW_TYPE_RECEIVED = 2
+        private const val VIEW_TYPE_DATE_SEPARATOR = 3
+        private const val VIEW_TYPE_UNREAD_SEPARATOR = 4
     }
 
     override fun getItemViewType(position: Int): Int {
         val item = getItem(position)
-        return if (item.senderId == currentUserId) {
-            VIEW_TYPE_SENT
-        } else {
-            VIEW_TYPE_RECEIVED
+        return when (item.type) {
+            MessageType.DATE_SEPARATOR -> VIEW_TYPE_DATE_SEPARATOR
+            MessageType.UNREAD_SEPARATOR -> VIEW_TYPE_UNREAD_SEPARATOR
+            MessageType.MESSAGE -> if (item.senderId == currentUserId) VIEW_TYPE_SENT else VIEW_TYPE_RECEIVED
         }
     }
 
@@ -54,11 +62,23 @@ class MessageAdapter(
                 )
                 SentMessageViewHolder(binding)
             }
-            else -> {
+            VIEW_TYPE_RECEIVED -> {
                 val binding = ItemMessageReceivedBinding.inflate(
                     LayoutInflater.from(parent.context), parent, false
                 )
                 ReceivedMessageViewHolder(binding)
+            }
+            VIEW_TYPE_UNREAD_SEPARATOR -> {
+                val binding = ItemMessageDateSeparatorBinding.inflate(
+                    LayoutInflater.from(parent.context), parent, false
+                )
+                UnreadSeparatorViewHolder(binding)
+            }
+            else -> {
+                val binding = ItemMessageDateSeparatorBinding.inflate(
+                    LayoutInflater.from(parent.context), parent, false
+                )
+                DateSeparatorViewHolder(binding)
             }
         }
     }
@@ -68,6 +88,8 @@ class MessageAdapter(
         when (holder) {
             is SentMessageViewHolder -> holder.bind(item)
             is ReceivedMessageViewHolder -> holder.bind(item)
+            is DateSeparatorViewHolder -> holder.bind(item)
+            is UnreadSeparatorViewHolder -> holder.bind(item)
         }
     }
 
@@ -126,12 +148,16 @@ class MessageAdapter(
                 if (!item.senderAvatarFileId.isNullOrBlank()) {
                     binding.senderAvatarPlaceholder.visibility = View.GONE
                     binding.senderAvatarImageView.visibility = View.VISIBLE
-                    val url = getFileUrl(item.senderAvatarFileId)
-                    if (url != null) {
-                        binding.senderAvatarImageView.load(url) {
-                            size(Size(48, 48))
-                            crossfade(true)
-                            error(R.drawable.ic_person)
+                    scope.launch {
+                        val url = getFileUrl(item.senderAvatarFileId)
+                        if (url != null) {
+                            withContext(Dispatchers.Main) {
+                                binding.senderAvatarImageView.load(url) {
+                                    size(Size(48, 48))
+                                    crossfade(true)
+                                    error(R.drawable.ic_person)
+                                }
+                            }
                         }
                     }
                 } else {
@@ -200,6 +226,24 @@ class MessageAdapter(
         }
     }
 
+    inner class DateSeparatorViewHolder(
+        private val binding: ItemMessageDateSeparatorBinding
+    ) : RecyclerView.ViewHolder(binding.root) {
+
+        fun bind(item: MessageItem) {
+            binding.dateTextView.text = item.dateText
+        }
+    }
+
+    inner class UnreadSeparatorViewHolder(
+        private val binding: ItemMessageDateSeparatorBinding
+    ) : RecyclerView.ViewHolder(binding.root) {
+
+        fun bind(item: MessageItem) {
+            binding.dateTextView.text = item.dateText
+        }
+    }
+
     private fun setupAttachmentsRecyclerView(
         recyclerView: androidx.recyclerview.widget.RecyclerView,
         attachments: List<Shared.MessageAttachment>
@@ -207,9 +251,9 @@ class MessageAdapter(
         val context = recyclerView.context
         val adapter = (recyclerView.adapter as? AttachmentAdapter) ?: AttachmentAdapter(getFileUrl, scope).also {
             recyclerView.adapter = it
-            recyclerView.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(
+            recyclerView.layoutManager = LinearLayoutManager(
                 context,
-                androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL,
+                LinearLayoutManager.HORIZONTAL,
                 false
             )
         }
@@ -224,6 +268,8 @@ class MessageAdapter(
 
     class MessageDiffCallback : DiffUtil.ItemCallback<MessageItem>() {
         override fun areItemsTheSame(oldItem: MessageItem, newItem: MessageItem): Boolean {
+            if (oldItem.type != newItem.type) return false
+            if (oldItem.type == MessageType.UNREAD_SEPARATOR) return true
             return oldItem.messageId == newItem.messageId
         }
 
@@ -231,6 +277,15 @@ class MessageAdapter(
             return oldItem == newItem
         }
     }
+}
+
+/**
+ * Тип элемента списка.
+ */
+enum class MessageType {
+    MESSAGE,
+    DATE_SEPARATOR,
+    UNREAD_SEPARATOR
 }
 
 /**
@@ -244,8 +299,42 @@ data class MessageItem(
     val text: String,
     val timestamp: Long,
     val attachments: List<Shared.MessageAttachment>,
-    val readStatus: ReadStatus = ReadStatus.NONE
-)
+    val readStatus: ReadStatus = ReadStatus.NONE,
+    val type: MessageType = MessageType.MESSAGE,
+    val dateText: String = ""
+) {
+    companion object {
+        /**
+         * Создает элемент-разделитель даты.
+         */
+        fun createDateSeparator(dateText: String): MessageItem {
+            return MessageItem(
+                messageId = 0,
+                senderId = 0,
+                text = "",
+                timestamp = 0,
+                attachments = emptyList(),
+                type = MessageType.DATE_SEPARATOR,
+                dateText = dateText
+            )
+        }
+
+        /**
+         * Создает разделитель непрочитанных сообщений.
+         */
+        fun createUnreadSeparator(): MessageItem {
+            return MessageItem(
+                messageId = -2,
+                senderId = 0,
+                text = "",
+                timestamp = 0,
+                attachments = emptyList(),
+                type = MessageType.UNREAD_SEPARATOR,
+                dateText = "Непрочитанные сообщения"
+            )
+        }
+    }
+}
 
 /**
  * Статус прочтения сообщения.
@@ -260,7 +349,7 @@ enum class ReadStatus {
  * Адаптер для вложений (изображений) в сообщении.
  */
 class AttachmentAdapter(
-    private val getFileUrl: (String) -> String?,
+    private val getFileUrl: suspend (String) -> String?,
     private val scope: CoroutineScope
 ) : ListAdapter<Shared.MessageAttachment, AttachmentAdapter.AttachmentViewHolder>(AttachmentDiffCallback()) {
 
@@ -272,47 +361,52 @@ class AttachmentAdapter(
     }
 
     override fun onBindViewHolder(holder: AttachmentViewHolder, position: Int) {
-        holder.bind(getItem(position))
+        holder.bind(getItem(position), position)
     }
 
     inner class AttachmentViewHolder(
         private val binding: ItemAttachmentBinding
     ) : RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(attachment: Shared.MessageAttachment) {
+        fun bind(attachment: Shared.MessageAttachment, position: Int) {
             binding.loadingProgress.visibility = View.VISIBLE
-            binding.attachmentImageView.visibility = View.GONE
+            binding.attachmentImageView.setImageDrawable(null)
+            binding.attachmentImageView.visibility = View.INVISIBLE
 
-            val fileId = attachment.previewFileId.ifBlank { attachment.fileId }
+            val previewFileId = attachment.previewFileId.ifBlank { attachment.fileId }
+            val previewUrl = attachment.previewUrl
 
-            // Загружаем превью асинхронно
-            scope.launch {
-                val url = getFileUrl(fileId)
-                if (url != null) {
-                    withContext(Dispatchers.Main) {
-                        binding.attachmentImageView.load(url) {
-                            crossfade(true)
-                            error(R.drawable.ic_image_placeholder)
-                            listener(
-                                onSuccess = { _, _ ->
-                                    binding.loadingProgress.visibility = View.GONE
-                                    binding.attachmentImageView.visibility = View.VISIBLE
-                                },
-                                onError = { _, _ ->
-                                    binding.loadingProgress.visibility = View.GONE
-                                    binding.attachmentImageView.visibility = View.VISIBLE
-                                    binding.attachmentImageView.setImageResource(R.drawable.ic_image_placeholder)
-                                }
-                            )
-                        }
-                    }
-                } else {
-                    withContext(Dispatchers.Main) {
-                        binding.loadingProgress.visibility = View.GONE
-                        binding.attachmentImageView.visibility = View.VISIBLE
-                        binding.attachmentImageView.setImageResource(R.drawable.ic_image_placeholder)
-                    }
+            // Use preview_url directly if available (like WPF client),
+            // fall back to GetTempDownloadUrl via getFileUrl
+            val getUrl: suspend () -> String? = if (previewUrl.isNotBlank()) {
+                { previewUrl }
+            } else {
+                { getFileUrl(previewFileId) }
+            }
+
+            ImageLoadHelper.loadByFileId(
+                imageView = binding.attachmentImageView,
+                fileId = previewFileId,
+                getUrlCallback = getUrl,
+                onSuccess = {
+                    binding.loadingProgress.visibility = View.GONE
+                    binding.attachmentImageView.visibility = View.VISIBLE
+                },
+                onError = {
+                    binding.loadingProgress.visibility = View.GONE
+                    binding.attachmentImageView.visibility = View.VISIBLE
+                    binding.attachmentImageView.setImageResource(R.drawable.ic_image_placeholder)
                 }
+            )
+
+            // Клик — открываем полноэкранный просмотр
+            binding.root.setOnClickListener {
+                val context = binding.root.context
+                // Собираем все fileId и previewUrl из текущего списка
+                val allFileIds = (0 until itemCount).map { getItem(it).fileId }
+                val allPreviewUrls = (0 until itemCount).map { getItem(it).previewUrl }
+                val intent = ImageViewerActivity.createIntent(context, allFileIds, allPreviewUrls, position)
+                context.startActivity(intent)
             }
         }
     }

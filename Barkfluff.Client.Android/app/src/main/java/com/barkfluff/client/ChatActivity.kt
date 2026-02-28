@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.barkfluff.client.adapter.MessageAdapter
 import com.barkfluff.client.adapter.MessageItem
+import com.barkfluff.client.adapter.MessageType
 import com.barkfluff.client.adapter.ReadStatus
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.OpenChatManager
@@ -30,6 +31,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 /**
  * Activity для отображения чата и переписки.
@@ -62,6 +67,9 @@ class ChatActivity : AppCompatActivity() {
     private var firstVisibleMessageId: Long = 0L
     private var lastVisibleMessageId: Long = 0L
     private var loadMessagesJob: Job? = null
+
+    // Непрочитанные сообщения
+    private var firstUnreadMessageId: Long = 0L
 
     // Выбор изображений
     private val imagePickerLauncher = registerForActivityResult(
@@ -105,22 +113,40 @@ class ChatActivity : AppCompatActivity() {
 
         Log.d(TAG, "ChatActivity created: chatId=$chatId, title=$chatTitle, isGroupChat=$isGroupChat, otherUserId=$otherUserId")
 
+        // Инициализируем onliner клиент для получения статуса онлайна
+        val onlinerAddress = globalParam.socketOnliner
+        if (onlinerAddress.isNotBlank()) {
+            grpcManager.createOnlinerClient(onlinerAddress, this, includeDeviceInfo = true)
+        }
+
         setupToolbar()
         setupMessagesRecyclerView()
         setupMessageInput()
-        loadChatInfo()
-        loadMessages()
+        loadChatInfoAndMessages()
 
         // Устанавливаем этот чат как открытый
         OpenChatManager.setOpenChat(chatId)
 
         // Подписываемся на обновления в реальном времени
         subscribeToRealtimeEvents()
+
+        // Обновляем подписку на онлайн-статус собеседника и сразу запрашиваем текущий статус
+        if (!isGroupChat && otherUserId > 0) {
+            realtimeService.changeOnlineSubscription(listOf(otherUserId))
+            loadOnlineStatus(otherUserId)
+        }
     }
 
     private fun setupToolbar() {
         binding.chatNameTextView.text = chatTitle.ifBlank { "Чат" }
-        binding.onlineStatusTextView.text = "загрузка..."
+        
+        // Показываем статус онлайна только для личных чатов
+        if (!isGroupChat && otherUserId > 0) {
+            binding.onlineStatusTextView.text = "загрузка..."
+            // Загрузка статуса онлайна будет в loadChatInfo()
+        } else {
+            binding.onlineStatusTextView.visibility = View.GONE
+        }
 
         // Загрузка аватара чата
         loadChatAvatar()
@@ -130,8 +156,8 @@ class ChatActivity : AppCompatActivity() {
             finish()
         }
 
-        // Кнопка информации о чате
-        binding.chatInfoButton.setOnClickListener {
+        // Клик на контейнер с информацией о чате (аватар + имя) — открывает профиль
+        binding.chatInfoContainer.setOnClickListener {
             showChatProfile()
         }
     }
@@ -146,8 +172,7 @@ class ChatActivity : AppCompatActivity() {
                 displayName = chatTitle,
                 userId = chatId.hashCode().toLong()
             ) {
-                val result = grpcManager.getFileDownloadUrl(fileId)
-                result.getOrNull()
+                chatRepository.getFileDownloadUrl(fileId).getOrNull()
             }
         } else {
             binding.chatAvatar.visibility = View.GONE
@@ -157,7 +182,7 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun getInitials(name: String): String {
-        val parts = name.trim().split("\\s+".toRegex())
+        val parts = name.trim().split("\\s+".toRegex()).filter { it.isNotEmpty() }
         return when {
             parts.size >= 2 -> "${parts[0].first()}${parts[1].first()}".uppercase()
             parts.size == 1 -> parts[0].first().uppercase()
@@ -170,7 +195,9 @@ class ChatActivity : AppCompatActivity() {
         messageAdapter = MessageAdapter(
             currentUserId = currentUserId,
             isGroupChat = isGroupChat,
-            getFileUrl = { null },
+            getFileUrl = { fileId ->
+                chatRepository.getFileDownloadUrl(fileId).getOrNull()
+            },
             scope = scope
         )
 
@@ -280,10 +307,6 @@ class ChatActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                // Блокируем поле ввода на время отправки
-                binding.messageEditText.isEnabled = false
-                binding.sendButton.isEnabled = false
-
                 val result = chatRepository.sendMessage(
                     chatId = chatId,
                     text = messageText,
@@ -292,7 +315,7 @@ class ChatActivity : AppCompatActivity() {
 
                 if (result.isSuccess) {
                     binding.messageEditText.text?.clear()
-                    // Сообщение появится через realtime event
+                    // Не закрываем клавиатуру и не забираем фокус — пользователь может продолжать печатать
                 } else {
                     Toast.makeText(
                         this@ChatActivity,
@@ -300,60 +323,130 @@ class ChatActivity : AppCompatActivity() {
                         Toast.LENGTH_SHORT
                     ).show()
                 }
-            } finally {
-                binding.messageEditText.isEnabled = true
-                binding.sendButton.isEnabled = true
-                binding.messageEditText.requestFocus()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error sending message", e)
+                Toast.makeText(
+                    this@ChatActivity,
+                    "Ошибка отправки: ${e.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
 
-    private fun loadChatInfo() {
+    private fun loadChatInfoAndMessages() {
+        isLoadingMessages = true
+        binding.loadingProgress.visibility = View.VISIBLE
+
         lifecycleScope.launch {
             try {
+                // Сначала получаем информацию о чате (включая firstUnreadMessageId)
                 val chatInfoResult = chatRepository.getChatInfo(chatId)
                 if (chatInfoResult.isSuccess) {
                     val chatInfo = chatInfoResult.getOrNull()!!
                     if (chatInfo.title.isNotBlank()) {
+                        chatTitle = chatInfo.title
                         binding.chatNameTextView.text = chatInfo.title
                     }
+                    if (chatInfo.pictureFileId.isNotBlank()) {
+                        chatAvatarFileId = chatInfo.pictureFileId
+                    }
+                    isGroupChat = chatInfo.isGroupChat
+                    firstUnreadMessageId = chatInfo.firstUnreadMessageId
+
+                    // Определяем otherUserId из участников чата (если не был передан через intent)
+                    if (!isGroupChat && otherUserId == 0L && chatInfo.memberIds.isNotEmpty()) {
+                        otherUserId = chatInfo.memberIds.firstOrNull { it != currentUserId } ?: 0L
+                        if (otherUserId > 0) {
+                            realtimeService.changeOnlineSubscription(listOf(otherUserId))
+                            loadOnlineStatus(otherUserId)
+                        }
+                    }
+                    loadChatAvatar()
                     if (!isGroupChat && otherUserId > 0) {
-                        loadOnlineStatus(otherUserId)
+                        binding.onlineStatusTextView.visibility = View.VISIBLE
                     }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading chat info", e)
             }
+
+            // Загружаем сообщения (вокруг первого непрочитанного, если есть)
+            loadMessages()
         }
     }
 
+    private var onlineStatusJob: Job? = null
+    private var onlineStatusSubscription: Job? = null
+
     private fun loadOnlineStatus(userId: Long) {
-        lifecycleScope.launch {
+        // Отменяем предыдущий job если есть
+        onlineStatusJob?.cancel()
+        
+        onlineStatusJob = lifecycleScope.launch {
             try {
-                val onlinerClient = grpcManager.onlinerClient
-                if (onlinerClient != null) {
-                    val request = barkfluff.onliner.OnlinerApiOuterClass.GetOnlineStatusRequest.newBuilder()
-                        .addUserIds(userId)
-                        .build()
-                    val response = onlinerClient.getOnlineStatus(request)
-                    val userStatus = response.usersStatusesList.firstOrNull()
-                    withContext(Dispatchers.Main) {
-                        if (userStatus != null) {
-                            val isOnline = userStatus.status.getNumber() == barkfluff.onliner.OnlinerApiOuterClass.StatusTypeId.STATUS_ONLINE.getNumber()
-                            if (isOnline) {
-                                binding.onlineStatusTextView.text = "в сети"
-                                binding.onlineIndicator.visibility = View.VISIBLE
-                            } else {
-                                val lastSeen = formatLastSeen(userStatus.lastSeen.seconds * 1000)
-                                binding.onlineStatusTextView.text = lastSeen
-                                binding.onlineIndicator.visibility = View.GONE
-                            }
-                        }
-                    }
+                // Первоначальная загрузка
+                fetchAndDisplayOnlineStatus(userId)
+                
+                // Периодическое обновление каждые 30 секунд
+                while (true) {
+                    delay(30_000)
+                    fetchAndDisplayOnlineStatus(userId)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading online status", e)
             }
+        }
+
+        // Подписка на streaming обновления онлайн-статуса через RealtimeService
+        onlineStatusSubscription?.cancel()
+        onlineStatusSubscription = lifecycleScope.launch {
+            realtimeService.onlineStatuses.collect { status ->
+                if (status.userId == userId) {
+                    withContext(Dispatchers.Main) {
+                        val isOnline = status.status.number == barkfluff.onliner.OnlinerApiOuterClass.StatusTypeId.STATUS_ONLINE.number
+                        if (isOnline) {
+                            binding.onlineStatusTextView.text = "в сети"
+                            binding.onlineIndicator.visibility = View.VISIBLE
+                        } else {
+                            val lastSeen = formatLastSeen(status.lastSeen.seconds * 1000)
+                            binding.onlineStatusTextView.text = lastSeen
+                            binding.onlineIndicator.visibility = View.GONE
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private suspend fun fetchAndDisplayOnlineStatus(userId: Long) {
+        try {
+            val onlinerClient = grpcManager.onlinerClient
+            if (onlinerClient != null) {
+                val request = barkfluff.onliner.OnlinerApiOuterClass.GetOnlineStatusRequest.newBuilder()
+                    .addUserIds(userId)
+                    .build()
+                val response = onlinerClient.getOnlineStatus(request)
+                val userStatus = response.usersStatusesList.firstOrNull()
+                withContext(Dispatchers.Main) {
+                    if (userStatus != null) {
+                        val isOnline = userStatus.status.getNumber() == barkfluff.onliner.OnlinerApiOuterClass.StatusTypeId.STATUS_ONLINE.getNumber()
+                        if (isOnline) {
+                            binding.onlineStatusTextView.text = "в сети"
+                            binding.onlineIndicator.visibility = View.VISIBLE
+                        } else {
+                            val lastSeen = formatLastSeen(userStatus.lastSeen.seconds * 1000)
+                            binding.onlineStatusTextView.text = lastSeen
+                            binding.onlineIndicator.visibility = View.GONE
+                        }
+                    } else {
+                        binding.onlineStatusTextView.text = "был(а) недавно"
+                        binding.onlineIndicator.visibility = View.GONE
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching online status", e)
         }
     }
 
@@ -372,32 +465,42 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun loadMessages() {
-        isLoadingMessages = true
-        binding.loadingProgress.visibility = View.VISIBLE
-
         loadMessagesJob = lifecycleScope.launch {
-            delay(LOAD_MESSAGES_DELAY_MS)
-
             try {
-                val result = chatRepository.loadMessages(
-                    chatId = chatId,
-                    fromMessageId = 0L,
-                    offsetBefore = 0,
-                    offsetAfter = 0,
-                    count = 30
-                )
+                val result = if (firstUnreadMessageId > 0) {
+                    // Загружаем сообщения вокруг первого непрочитанного
+                    chatRepository.loadMessages(
+                        chatId = chatId,
+                        fromMessageId = firstUnreadMessageId,
+                        offsetBefore = 15,
+                        offsetAfter = 30
+                    )
+                } else {
+                    // Нет непрочитанных — загружаем последние сообщения
+                    chatRepository.loadMessages(
+                        chatId = chatId,
+                        fromMessageId = 0L,
+                        offsetBefore = 0,
+                        offsetAfter = 0,
+                        count = 30
+                    )
+                }
 
                 if (result.isSuccess) {
                     val messages = result.getOrNull()!!
                     displayMessages(messages)
 
                     if (messages.isNotEmpty()) {
-                        firstVisibleMessageId = messages.first().id
-                        lastVisibleMessageId = messages.last().id
+                        val sortedMessages = messages.sortedBy { it.sentAt.seconds }
+                        firstVisibleMessageId = sortedMessages.first().id
+                        lastVisibleMessageId = sortedMessages.last().id
                     }
 
                     hasMoreMessagesUp = messages.size >= 30
-                    hasMoreMessagesDown = false // Пока не загружали новые
+                    hasMoreMessagesDown = firstUnreadMessageId > 0 // Могут быть новые сообщения ниже
+
+                    // Отмечаем сообщения как прочитанные
+                    markVisibleMessagesAsRead(messages)
                 } else {
                     Toast.makeText(
                         this@ChatActivity,
@@ -410,6 +513,26 @@ class ChatActivity : AppCompatActivity() {
             } finally {
                 isLoadingMessages = false
                 binding.loadingProgress.visibility = View.GONE
+            }
+        }
+    }
+
+    /**
+     * Отмечает непрочитанные сообщения от других пользователей как прочитанные.
+     */
+    private fun markVisibleMessagesAsRead(messages: List<barkfluff.shared.Shared.Message>) {
+        val unreadMessageIds = messages
+            .filter { it.senderId != currentUserId && !it.readByList.contains(currentUserId) }
+            .map { it.id }
+
+        if (unreadMessageIds.isNotEmpty()) {
+            lifecycleScope.launch {
+                try {
+                    chatRepository.markAsRead(unreadMessageIds)
+                    Log.d(TAG, "Marked ${unreadMessageIds.size} messages as read")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error marking messages as read", e)
+                }
             }
         }
     }
@@ -433,7 +556,8 @@ class ChatActivity : AppCompatActivity() {
                     val messages = result.getOrNull()!!
                     if (messages.isNotEmpty()) {
                         prependMessages(messages)
-                        firstVisibleMessageId = messages.first().id
+                        val sortedMessages = messages.sortedBy { it.sentAt.seconds }
+                        firstVisibleMessageId = sortedMessages.first().id
                         hasMoreMessagesUp = messages.size >= 30
                     } else {
                         hasMoreMessagesUp = false
@@ -466,8 +590,10 @@ class ChatActivity : AppCompatActivity() {
                     val messages = result.getOrNull()!!
                     if (messages.isNotEmpty()) {
                         appendMessages(messages)
-                        lastVisibleMessageId = messages.last().id
+                        val sortedMessages = messages.sortedBy { it.sentAt.seconds }
+                        lastVisibleMessageId = sortedMessages.last().id
                         hasMoreMessagesDown = messages.size >= 30
+                        markVisibleMessagesAsRead(messages)
                     } else {
                         hasMoreMessagesDown = false
                     }
@@ -481,59 +607,115 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun displayMessages(messages: List<barkfluff.shared.Shared.Message>) {
-        val messageItems = messages.map { msg ->
-            MessageItem(
-                messageId = msg.id,
-                senderId = msg.senderId,
-                text = msg.content?.text ?: "",
-                timestamp = msg.sentAt.seconds * 1000,
-                attachments = msg.content?.attachmentsList ?: emptyList(),
-                readStatus = if (msg.senderId == currentUserId) {
-                    if (msg.readByList.any { it != currentUserId }) ReadStatus.READ else ReadStatus.SENT
-                } else {
-                    ReadStatus.NONE
-                }
+        val sortedMessages = messages.sortedBy { it.sentAt.seconds }
+        val messageItems = messagesWithDateSeparators(sortedMessages).toMutableList()
+
+        // Вставляем разделитель непрочитанных сообщений
+        var scrollToPosition = messageItems.size - 1
+        if (firstUnreadMessageId > 0) {
+            val unreadIndex = messageItems.indexOfFirst {
+                it.type == MessageType.MESSAGE && it.messageId == firstUnreadMessageId
+            }
+            if (unreadIndex >= 0) {
+                messageItems.add(unreadIndex, MessageItem.createUnreadSeparator())
+                scrollToPosition = unreadIndex // Скроллим к разделителю
+            }
+        }
+
+        messageAdapter.submitList(messageItems) {
+            if (scrollToPosition >= 0) {
+                binding.messagesRecyclerView.scrollToPosition(scrollToPosition)
+            }
+        }
+    }
+
+    /**
+     * Добавляет разделители дат между сообщениями.
+     */
+    private fun messagesWithDateSeparators(messages: List<barkfluff.shared.Shared.Message>): List<MessageItem> {
+        val result = mutableListOf<MessageItem>()
+        var lastDate: Long = -1
+
+        for (msg in messages) {
+            val msgDate = startOfDay(msg.sentAt.seconds * 1000)
+            
+            // Если дата изменилась — добавляем разделитель
+            if (msgDate != lastDate) {
+                result.add(MessageItem.createDateSeparator(formatDateSeparator(msgDate)))
+                lastDate = msgDate
+            }
+
+            result.add(
+                MessageItem(
+                    messageId = msg.id,
+                    senderId = msg.senderId,
+                    text = msg.content?.text ?: "",
+                    timestamp = msg.sentAt.seconds * 1000,
+                    attachments = msg.content?.attachmentsList ?: emptyList(),
+                    readStatus = if (msg.senderId == currentUserId) {
+                        if (msg.readByList.any { it != currentUserId }) ReadStatus.READ else ReadStatus.SENT
+                    } else {
+                        ReadStatus.NONE
+                    }
+                )
             )
         }
-        messageAdapter.submitList(messageItems)
+
+        return result
+    }
+
+    private fun startOfDay(timestampMillis: Long): Long {
+        val calendar = Calendar.getInstance().apply {
+            timeInMillis = timestampMillis
+        }
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        return calendar.timeInMillis
+    }
+
+    private fun formatDateSeparator(timestampMillis: Long): String {
+        val today = startOfDay(System.currentTimeMillis())
+        val yesterday = today - 24 * 60 * 60 * 1000
+        val messageDate = startOfDay(timestampMillis)
+
+        return when {
+            messageDate == today -> "Сегодня"
+            messageDate == yesterday -> "Вчера"
+            else -> SimpleDateFormat("dd MMMM yyyy", Locale("ru")).format(Date(timestampMillis))
+        }
     }
 
     private fun prependMessages(messages: List<barkfluff.shared.Shared.Message>) {
         val currentList = messageAdapter.currentList.toMutableList()
-        val newItems = messages.map { msg ->
-            MessageItem(
-                messageId = msg.id,
-                senderId = msg.senderId,
-                text = msg.content?.text ?: "",
-                timestamp = msg.sentAt.seconds * 1000,
-                attachments = msg.content?.attachmentsList ?: emptyList(),
-                readStatus = if (msg.senderId == currentUserId) {
-                    if (msg.readByList.any { it != currentUserId }) ReadStatus.READ else ReadStatus.SENT
-                } else {
-                    ReadStatus.NONE
-                }
-            )
+
+        // Удаляем первый разделитель если он есть (будет заменен)
+        if (currentList.isNotEmpty() && currentList.first().type == MessageType.DATE_SEPARATOR) {
+            currentList.removeAt(0)
         }
+
+        // Сортируем и добавляем новые сообщения с разделителями
+        val sortedMessages = messages.sortedBy { it.sentAt.seconds }
+        val newItems = messagesWithDateSeparators(sortedMessages)
+
+        // Вставляем новые элементы в начало
         currentList.addAll(0, newItems)
         messageAdapter.submitList(currentList)
     }
 
     private fun appendMessages(messages: List<barkfluff.shared.Shared.Message>) {
         val currentList = messageAdapter.currentList.toMutableList()
-        val newItems = messages.map { msg ->
-            MessageItem(
-                messageId = msg.id,
-                senderId = msg.senderId,
-                text = msg.content?.text ?: "",
-                timestamp = msg.sentAt.seconds * 1000,
-                attachments = msg.content?.attachmentsList ?: emptyList(),
-                readStatus = if (msg.senderId == currentUserId) {
-                    if (msg.readByList.any { it != currentUserId }) ReadStatus.READ else ReadStatus.SENT
-                } else {
-                    ReadStatus.NONE
-                }
-            )
+
+        // Удаляем последний разделитель если он есть (будет заменен)
+        if (currentList.isNotEmpty() && currentList.last().type == MessageType.DATE_SEPARATOR) {
+            currentList.removeAt(currentList.size - 1)
         }
+
+        // Сортируем и добавляем новые сообщения с разделителями
+        val sortedMessages = messages.sortedBy { it.sentAt.seconds }
+        val newItems = messagesWithDateSeparators(sortedMessages)
+
         currentList.addAll(newItems)
         messageAdapter.submitList(currentList)
     }
@@ -556,22 +738,7 @@ class ChatActivity : AppCompatActivity() {
             }
         }
 
-        lifecycleScope.launch {
-            realtimeService.onlineStatuses.collect { status ->
-                if (!isGroupChat && status.userId == otherUserId) {
-                    withContext(Dispatchers.Main) {
-                        val isOnline = status.status.getNumber() == barkfluff.onliner.OnlinerApiOuterClass.StatusTypeId.STATUS_ONLINE.getNumber()
-                        if (isOnline) {
-                            binding.onlineStatusTextView.text = "в сети"
-                            binding.onlineIndicator.visibility = View.VISIBLE
-                        } else {
-                            binding.onlineStatusTextView.text = "был(а) недавно"
-                            binding.onlineIndicator.visibility = View.GONE
-                        }
-                    }
-                }
-            }
-        }
+        // Подписка на онлайн-статусы обрабатывается в loadOnlineStatus()
     }
 
     private fun addNewMessage(msg: barkfluff.shared.Shared.Message) {
@@ -589,13 +756,42 @@ class ChatActivity : AppCompatActivity() {
         )
 
         val currentList = messageAdapter.currentList.toMutableList()
-        currentList.add(messageItem)
-        messageAdapter.submitList(currentList)
 
-        // Прокрутка к новому сообщению
-        binding.messagesRecyclerView.scrollToPosition(currentList.size - 1)
+        // Убираем разделитель непрочитанных если он ещё есть
+        currentList.removeAll { it.type == MessageType.UNREAD_SEPARATOR }
+
+        // Проверяем, нужно ли добавить разделитель даты
+        val msgDate = startOfDay(msg.sentAt.seconds * 1000)
+        val lastItem = currentList.lastOrNull()
+        if (lastItem != null && lastItem.type == MessageType.MESSAGE) {
+            val lastMsgDate = startOfDay(lastItem.timestamp)
+            if (msgDate != lastMsgDate) {
+                currentList.add(MessageItem.createDateSeparator(formatDateSeparator(msgDate)))
+            }
+        } else if (currentList.isEmpty()) {
+            currentList.add(MessageItem.createDateSeparator(formatDateSeparator(msgDate)))
+        }
+
+        currentList.add(messageItem)
+        messageAdapter.submitList(currentList) {
+            val position = currentList.size - 1
+            if (position >= 0) {
+                binding.messagesRecyclerView.scrollToPosition(position)
+            }
+        }
 
         lastVisibleMessageId = msg.id
+
+        // Если сообщение от другого пользователя — сразу отмечаем как прочитанное
+        if (msg.senderId != currentUserId) {
+            lifecycleScope.launch {
+                try {
+                    chatRepository.markAsRead(listOf(msg.id))
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error marking new message as read", e)
+                }
+            }
+        }
     }
 
     private fun updateMessageReadStatus(messageId: Long, newReadBy: List<Long>) {
@@ -636,5 +832,7 @@ class ChatActivity : AppCompatActivity() {
         chatRepository.close()
         grpcManager.shutdown()
         loadMessagesJob?.cancel()
+        onlineStatusJob?.cancel()
+        onlineStatusSubscription?.cancel()
     }
 }

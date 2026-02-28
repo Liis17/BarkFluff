@@ -68,12 +68,12 @@ object AvatarLoader {
     }
 
     // Кэш URL-ов: fileId -> download URL (чтобы не делать gRPC запрос каждый раз)
-    private val urlCache = ConcurrentHashMap<String, String>()
+    internal val urlCache = ConcurrentHashMap<String, String>()
 
     // ImageLoader с кастомным OkHttpClient (ленивая инициализация)
     private var imageLoaderInstance: ImageLoader? = null
 
-    private fun getImageLoader(context: android.content.Context): ImageLoader {
+    internal fun getImageLoader(context: android.content.Context): ImageLoader {
         if (imageLoaderInstance == null) {
             synchronized(this) {
                 if (imageLoaderInstance == null) {
