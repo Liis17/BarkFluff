@@ -11,6 +11,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.barkfluff.client.adapter.ChatAdapter
 import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.data.OpenChatManager
 import com.barkfluff.client.databinding.FragmentChatsBinding
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.grpc.RealtimeService
@@ -337,7 +338,21 @@ class ChatsFragment : Fragment() {
     }
 
     private fun onChatClicked(chat: GrpcManager.ChatData) {
-        Snackbar.make(binding.root, "Чат: ${chat.id}", Snackbar.LENGTH_SHORT).show()
+        // Находим display item для получения дополнительной информации
+        val displayItem = chatAdapter.currentList.find { it.chatData.id == chat.id }
+        
+        val intent = Intent(requireContext(), ChatActivity::class.java).apply {
+            putExtra("chat_id", chat.id)
+            putExtra("chat_title", displayItem?.displayTitle ?: chat.title.ifBlank { "Чат" })
+            putExtra("chat_avatar_file_id", displayItem?.displayAvatarFileId ?: chat.pictureFileId.ifBlank { null })
+            putExtra("is_group_chat", chat.isGroupChat)
+            putExtra("other_user_id", displayItem?.otherUserId ?: 0L)
+        }
+        
+        // Устанавливаем чат как открытый перед запуском Activity
+        OpenChatManager.setOpenChat(chat.id)
+        
+        startActivity(intent)
     }
 
     private fun showLoading(show: Boolean) {
