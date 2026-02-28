@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
 import android.util.Log
+import com.barkfluff.client.data.OpenChatManager
 import barkfluff.identity.IdentityApiGrpcKt
 import barkfluff.identity.IdentityApiOuterClass
 import barkfluff.onliner.OnlinerApiGrpcKt
@@ -247,6 +248,13 @@ class RealtimeService(private val context: Context) {
                     if (senderId == globalParam.userId) return@collect
 
                     val chatId = event.chatId
+                    
+                    // Проверяем, открыт ли этот чат сейчас — если да, не показываем уведомление
+                    if (OpenChatManager.isOpen(chatId)) {
+                        Log.d(TAG, "Chat $chatId is currently open, skipping notification")
+                        return@collect
+                    }
+
                     val messageId = msg.id
                     val messageText = msg.content?.text ?: ""
 

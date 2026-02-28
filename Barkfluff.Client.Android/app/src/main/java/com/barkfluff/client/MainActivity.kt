@@ -67,13 +67,15 @@ class MainActivity : AppCompatActivity() {
         val chatId = intent?.getStringExtra(NotificationHelper.EXTRA_CHAT_ID) ?: return
         Log.d("MainActivity", "Opening chat from notification: chatId=$chatId")
 
-        // Переключаемся на таб чатов
-        if (currentTabIndex != TAB_CHATS) {
-            switchTab(TAB_CHATS)
-            binding.bottomNavigation.selectedItemId = tabIndexToMenuId(TAB_CHATS)
+        // Устанавливаем чат как открытый
+        com.barkfluff.client.data.OpenChatManager.setOpenChat(chatId)
+        
+        // Открываем ChatActivity
+        val chatIntent = Intent(this, ChatActivity::class.java).apply {
+            putExtra("chat_id", chatId)
         }
-
-        // TODO: открыть конкретный чат по chatId когда будет ChatActivity
+        startActivity(chatIntent)
+        
         // Очищаем extra чтобы не обрабатывать повторно
         intent?.removeExtra(NotificationHelper.EXTRA_CHAT_ID)
     }
