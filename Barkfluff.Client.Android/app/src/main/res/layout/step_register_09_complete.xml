@@ -41,7 +41,7 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="40dp"
         android:gravity="center"
-        android:text="Ваш аккаунт успешно создан.\nТеперь вы можете войти в систему."
+        android:text="Ваш аккаунт успешно создан.\nДобро пожаловать!"
         android:textAppearance="?attr/textAppearanceBodyLarge"
         android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -60,11 +60,9 @@
         android:id="@+id/goToLoginButton"
         android:layout_width="match_parent"
         android:layout_height="64dp"
-        android:text="Войти в аккаунт"
+        android:text="Начать общение"
         android:textAllCaps="false"
         android:textAppearance="?attr/textAppearanceTitleMedium"
-        app:cornerRadius="32dp"
-        app:icon="@drawable/ic_login"
-        app:iconGravity="textStart" />
+        app:cornerRadius="32dp" />
 
 </LinearLayout>

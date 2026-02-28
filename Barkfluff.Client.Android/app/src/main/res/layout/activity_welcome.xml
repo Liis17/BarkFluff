@@ -5,17 +5,6 @@
     android:layout_height="match_parent"
     android:background="?android:attr/colorBackground">
 
-    <!-- Hero Section с градиентом -->
-    <View
-        android:id="@+id/heroGradient"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:background="@drawable/hero_gradient_background"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintHeight_percent="0.4" />
-
     <androidx.core.widget.NestedScrollView
         android:layout_width="0dp"
         android:layout_height="0dp"
