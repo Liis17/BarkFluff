@@ -1,12 +1,9 @@
-using System;
-using System.Threading.Tasks;
+using BarkFluff.Client.WPF.Services.App.Caching;
+
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
-
-using BarkFluff.Client.WPF.Services.App.Caching;
 
 namespace BarkFluff.Client.WPF.UserControls
 {
@@ -22,6 +19,22 @@ namespace BarkFluff.Client.WPF.UserControls
         private bool _isSubscribedToFileCached;
 
         #region Dependency Properties
+
+        /// <summary>
+        /// Тип аватара (изображение, избранный чат, пользователь без аватара)
+        /// </summary>
+        public static readonly DependencyProperty AvatarTypeProperty =
+            DependencyProperty.Register(
+                nameof(AvatarType),
+                typeof(UserControls.AvatarType),
+                typeof(CachedAvatar),
+                new PropertyMetadata(UserControls.AvatarType.Image, OnAvatarTypeChanged));
+
+        public UserControls.AvatarType AvatarType
+        {
+            get => (UserControls.AvatarType)GetValue(AvatarTypeProperty);
+            set => SetValue(AvatarTypeProperty, value);
+        }
 
         /// <summary>
         /// Идентификатор файла для загрузки
@@ -135,6 +148,27 @@ namespace BarkFluff.Client.WPF.UserControls
             set => SetValue(ShadowOpacityProperty, value);
         }
 
+        public static readonly DependencyProperty AvatarSizeProperty =
+            DependencyProperty.Register(
+                nameof(AvatarSize),
+                typeof(AvatarSize),
+                typeof(CachedAvatar),
+                new PropertyMetadata(AvatarSize.Normal, OnAvatarSizeChanged));
+
+        private static void OnAvatarSizeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is CachedAvatar cachedAvatar && cachedAvatar.IsLoaded)
+            {
+                cachedAvatar.LoadImage();
+            }
+        }
+
+        public UserControls.AvatarSize AvatarSize
+        {
+            get => (UserControls.AvatarSize)GetValue(AvatarSizeProperty);
+            set => SetValue(AvatarSizeProperty, value);
+        }
+
         /// <summary>
         /// ImageSource для доступа к текущему изображению
         /// </summary>
@@ -151,6 +185,7 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private void CachedAvatar_Loaded(object sender, RoutedEventArgs e)
         {
+            UpdateAvatarVisibility();
             LoadImage();
         }
 
@@ -184,11 +219,31 @@ namespace BarkFluff.Client.WPF.UserControls
             }
         }
 
+        private static void OnAvatarTypeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is CachedAvatar cachedAvatar && cachedAvatar.IsLoaded)
+            {
+                cachedAvatar.UpdateAvatarVisibility();
+                cachedAvatar.LoadImage();
+            }
+        }
+
         /// <summary>
         /// Загружает изображение из кеша или начинает загрузку
         /// </summary>
         private void LoadImage()
         {
+            // Обновляем видимость элементов в зависимости от типа аватара
+            UpdateAvatarVisibility();
+
+            // Для типов SavedChat и UserWithoutAvatar не загружаем изображение
+            if (AvatarType == UserControls.AvatarType.SavedChat ||
+                AvatarType == UserControls.AvatarType.UserWithoutAvatar)
+            {
+                UnsubscribeFromFileCached();
+                return;
+            }
+
             // Отписываемся от предыдущих событий
             UnsubscribeFromFileCached();
 
@@ -220,6 +275,44 @@ namespace BarkFluff.Client.WPF.UserControls
             if (FileCacheService.IsPlaceholder(imagePath))
             {
                 SubscribeToFileCached();
+            }
+        }
+
+        /// <summary>
+        /// Обновляет видимость элементов аватара в зависимости от типа
+        /// </summary>
+        private void UpdateAvatarVisibility()
+        {
+            bool showImage = AvatarType == UserControls.AvatarType.Image;
+            bool showSavedChat = AvatarType == UserControls.AvatarType.SavedChat;
+            bool showUserWithoutAvatar = AvatarType == UserControls.AvatarType.UserWithoutAvatar;
+
+            AvatarBorder.Visibility = showImage ? Visibility.Visible : Visibility.Collapsed;
+            SavedChatAvatar.Visibility = showSavedChat ? Visibility.Visible : Visibility.Collapsed;
+            UserWithoutAvatar.Visibility = showUserWithoutAvatar ? Visibility.Visible : Visibility.Collapsed;
+
+            switch (AvatarSize)
+            {
+                case AvatarSize.Normal:
+                    UserWithoutAvatar.Width = UserWithoutAvatar.Height = SavedChatAvatar.Width = SavedChatAvatar.Height = MainAvatar.Width = MainAvatar.Height = AvatarBorder.Width = AvatarBorder.Height = 50;
+                    UserWithoutAvatar.CornerRadius = SavedChatAvatar.CornerRadius = AvatarBorder.CornerRadius = new CornerRadius(25);
+                    SavedChatIcon.Width = SavedChatIcon.Height = UserIcon.FontSize = UserIcon.Width = UserIcon.Height = UserIcon.FontSize = 30;
+                    break;
+                case AvatarSize.Little:
+                    UserWithoutAvatar.Width = UserWithoutAvatar.Height = SavedChatAvatar.Width = SavedChatAvatar.Height = MainAvatar.Width = MainAvatar.Height = AvatarBorder.Width = AvatarBorder.Height = 35;
+                    UserWithoutAvatar.CornerRadius = SavedChatAvatar.CornerRadius = AvatarBorder.CornerRadius = new CornerRadius(17);
+                    SavedChatIcon.Width = SavedChatIcon.Height = UserIcon.FontSize = UserIcon.Width = UserIcon.Height = UserIcon.FontSize = 24;
+                    break;
+                case AvatarSize.VeryLittle:
+                    UserWithoutAvatar.Width = UserWithoutAvatar.Height = SavedChatAvatar.Width = SavedChatAvatar.Height = MainAvatar.Width = MainAvatar.Height = AvatarBorder.Width = AvatarBorder.Height = 23;
+                    UserWithoutAvatar.CornerRadius = SavedChatAvatar.CornerRadius = AvatarBorder.CornerRadius = new CornerRadius(11);
+                    SavedChatIcon.Width = SavedChatIcon.Height = UserIcon.FontSize = UserIcon.Width = UserIcon.Height = UserIcon.FontSize = 16;
+                    break;
+                case AvatarSize.Big:
+                    UserWithoutAvatar.Width = UserWithoutAvatar.Height = SavedChatAvatar.Width = SavedChatAvatar.Height = MainAvatar.Width = MainAvatar.Height = AvatarBorder.Width = AvatarBorder.Height = 110;
+                    UserWithoutAvatar.CornerRadius = SavedChatAvatar.CornerRadius = AvatarBorder.CornerRadius = new CornerRadius(55);
+                    SavedChatIcon.Width = SavedChatIcon.Height = UserIcon.FontSize = UserIcon.Width = UserIcon.Height = UserIcon.FontSize = 80;
+                    break;
             }
         }
 

@@ -120,29 +120,31 @@ namespace BarkFluff.Client.WPF.UserControls
 
             // Устанавливаем данные для CachedAvatar
 
-            if (imageUrl != "UserWithoutAvatar" && imageUrl != "SavedChat")
+            if (imageUrl != "UserWithoutAvatar" && imageUrl != "SavedChat" && !string.IsNullOrEmpty(imageUrl))
             {
+                //CachedAvatar cachedAvatar = new CachedAvatar();
                 AvatarControl.FileId = _avatarFileId;
                 AvatarControl.FileUrl = imageUrl;
-                AvatarControl.Visibility = Visibility.Visible;
-                SavedChatAvatar.Visibility = Visibility.Collapsed;
-                UserWithoutAvatar.Visibility = Visibility.Collapsed;
+                AvatarControl.AvatarType = AvatarType.Image;
             }
             else if (imageUrl == "SavedChat")
             {
                 AvatarControl.FileId = null;
                 AvatarControl.FileUrl = null;
-                AvatarControl.Visibility = Visibility.Collapsed;
-                SavedChatAvatar.Visibility = Visibility.Visible;
-                UserWithoutAvatar.Visibility = Visibility.Collapsed;
+                AvatarControl.AvatarType = AvatarType.SavedChat;
+
             }
             else if (imageUrl == "UserWithoutAvatar")
             {
                 AvatarControl.FileId = null;
                 AvatarControl.FileUrl = null;
-                AvatarControl.Visibility = Visibility.Collapsed;
-                SavedChatAvatar.Visibility = Visibility.Collapsed;
-                UserWithoutAvatar.Visibility = Visibility.Visible;
+                AvatarControl.AvatarType = AvatarType.UserWithoutAvatar;
+            }
+            else
+            {
+                AvatarControl.FileId = null;
+                AvatarControl.FileUrl = null;
+                AvatarControl.AvatarType = AvatarType.UserWithoutAvatar;
             }
 
 

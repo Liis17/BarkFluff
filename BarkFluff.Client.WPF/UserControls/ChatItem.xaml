@@ -100,47 +100,12 @@
                         Width="50"
                         Height="50"
                         Panel.ZIndex="1"
+                        AvatarSize="Normal"
+                        AvatarType="Image"
                         CornerRadius="23"
                         EnableDynamicShadow="False"
                         ShadowBlurRadius="12"
                         ShadowOpacity="0.9" />
-                    <Border
-                        x:Name="SavedChatAvatar"
-                        Width="50"
-                        Height="50"
-                        Panel.ZIndex="2"
-                        Background="#508fd6"
-                        CornerRadius="23"
-                        Visibility="Collapsed">
-                        <ui:SymbolIcon
-                            Width="34"
-                            Height="34"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            Filled="True"
-                            FontSize="30"
-                            Foreground="White"
-                            Symbol="Bookmark32" />
-                    </Border>
-                    <Border
-                        x:Name="UserWithoutAvatar"
-                        Width="50"
-                        Height="50"
-                        Panel.ZIndex="3"
-                        Background="#508fd6"
-                        CornerRadius="23"
-                        Visibility="Collapsed">
-                        <ui:SymbolIcon
-                            Width="34"
-                            Height="34"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            Filled="True"
-                            FontSize="30"
-                            Foreground="White"
-                            Symbol="Person32" />
-                    </Border>
-
                     <!--  Индикатор онлайна  -->
                     <Ellipse
                         x:Name="OnlineIndicator"
@@ -280,7 +245,7 @@
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Stretch"
                 Panel.ZIndex="10"
-                Visibility="Visible">
+                Visibility="Collapsed">
 
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
@@ -301,10 +266,13 @@
                         Width="50"
                         Height="50"
                         Panel.ZIndex="1"
+                        AvatarSize="Normal"
+                        AvatarType="Image"
                         CornerRadius="23"
                         EnableDynamicShadow="False"
                         ShadowBlurRadius="12"
                         ShadowOpacity="0.9" />
+
                     <Border
                         Width="50"
                         Height="50"
@@ -339,19 +307,6 @@
                             Foreground="White"
                             Symbol="Person32" />
                     </Border>
-
-                    <!--  Индикатор онлайна  -->
-                    <Ellipse
-                        Width="14"
-                        Height="14"
-                        Margin="0,0,-2,-2"
-                        HorizontalAlignment="Right"
-                        VerticalAlignment="Bottom"
-                        Panel.ZIndex="4"
-                        Fill="#44D62C"
-                        Stroke="#1E1E1E"
-                        StrokeThickness="2"
-                        Visibility="Visible" />
                 </Grid>
 
                 <!--  Контент сообщения  -->
