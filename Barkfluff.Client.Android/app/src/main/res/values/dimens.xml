@@ -88,4 +88,7 @@
     <!-- AppBar -->
     <dimen name="appbar_elevation">0dp</dimen>
     <dimen name="toolbar_height">64dp</dimen>
+    
+    <!-- Message input height for RecyclerView padding -->
+    <dimen name="message_input_height">80dp</dimen>
 </resources>

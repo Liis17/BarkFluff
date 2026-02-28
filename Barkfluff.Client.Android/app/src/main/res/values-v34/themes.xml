@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Theme for Android 14+ (API 34+) with Material You dynamic colors -->
+    <style name="Theme.BarkfluffClientAndroid" parent="Base.Theme.BarkfluffClientAndroid">
+        <!-- Android 14 specific edge-to-edge enforcement -->
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">false</item>
+    </style>
+</resources>
