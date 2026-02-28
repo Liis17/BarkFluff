@@ -121,6 +121,56 @@ class ChatAdapter(
         }
     }
 
+    /**
+     * Обновляет чат при получении нового сообщения: перемещает наверх, обновляет lastMessage, увеличивает счётчик непрочитанных.
+     */
+    fun updateChatWithNewMessage(chatId: String, senderId: Long, messageId: Long, text: String, sentAt: Long, currentUserId: Long) {
+        val list = currentList.toMutableList()
+        val index = list.indexOfFirst { it.chatData.id == chatId }
+        if (index < 0) return
+
+        val item = list[index]
+        val newLastMessage = GrpcManager.LastMessageData(
+            id = messageId,
+            senderId = senderId,
+            text = text,
+            sentAt = sentAt,
+            readBy = listOf(senderId)
+        )
+        val newUnread = if (senderId != currentUserId) item.chatData.countUnread + 1 else item.chatData.countUnread
+        val updatedChat = item.chatData.copy(lastMessage = newLastMessage, countUnread = newUnread)
+        val updatedItem = item.copy(chatData = updatedChat)
+
+        list.removeAt(index)
+        list.add(0, updatedItem)
+        submitList(list)
+    }
+
+    /**
+     * Обновляет статус прочтения сообщения в чате.
+     */
+    fun updateReadStatus(chatId: String, messageId: Long, newReadBy: List<Long>, currentUserId: Long) {
+        val list = currentList.toMutableList()
+        val index = list.indexOfFirst { it.chatData.id == chatId }
+        if (index < 0) return
+
+        val item = list[index]
+        val lastMsg = item.chatData.lastMessage ?: return
+
+        // Если текущий пользователь прочитал — обнуляем счётчик непрочитанных
+        val newUnread = if (newReadBy.contains(currentUserId)) 0L else item.chatData.countUnread
+        val updatedLastMessage = if (lastMsg.id == messageId) {
+            lastMsg.copy(readBy = newReadBy)
+        } else {
+            lastMsg
+        }
+        val updatedChat = item.chatData.copy(lastMessage = updatedLastMessage, countUnread = newUnread)
+        val updatedItem = item.copy(chatData = updatedChat)
+
+        list[index] = updatedItem
+        submitList(list)
+    }
+
     class ChatDiffCallback : DiffUtil.ItemCallback<ChatDisplayItem>() {
         override fun areItemsTheSame(oldItem: ChatDisplayItem, newItem: ChatDisplayItem): Boolean {
             return oldItem.chatData.id == newItem.chatData.id
