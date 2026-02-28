@@ -1,15 +1,27 @@
 package com.barkfluff.client
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.util.Log
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.barkfluff.client.databinding.ActivityMainBinding
+import com.barkfluff.client.notifications.NotificationHelper
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* granted or denied — no special handling needed */ }
 
     // Порядок табов: Контакты (0) | Чаты (1) | Профиль (2)
     private val fragments = mutableMapOf<Int, Fragment>()
@@ -29,6 +41,8 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        requestNotificationPermission()
+
         if (savedInstanceState != null) {
             currentTabIndex = savedInstanceState.getInt(KEY_CURRENT_TAB, TAB_CHATS)
             // Восстанавливаем ссылки на существующие фрагменты
@@ -41,6 +55,27 @@ class MainActivity : AppCompatActivity() {
         }
 
         setupBottomNavigation()
+        handleChatIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleChatIntent(intent)
+    }
+
+    private fun handleChatIntent(intent: Intent?) {
+        val chatId = intent?.getStringExtra(NotificationHelper.EXTRA_CHAT_ID) ?: return
+        Log.d("MainActivity", "Opening chat from notification: chatId=$chatId")
+
+        // Переключаемся на таб чатов
+        if (currentTabIndex != TAB_CHATS) {
+            switchTab(TAB_CHATS)
+            binding.bottomNavigation.selectedItemId = tabIndexToMenuId(TAB_CHATS)
+        }
+
+        // TODO: открыть конкретный чат по chatId когда будет ChatActivity
+        // Очищаем extra чтобы не обрабатывать повторно
+        intent?.removeExtra(NotificationHelper.EXTRA_CHAT_ID)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -126,6 +161,16 @@ class MainActivity : AppCompatActivity() {
             R.id.navigation_chats -> TAB_CHATS
             R.id.navigation_profile -> TAB_PROFILE
             else -> TAB_CHATS
+        }
+    }
+
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
         }
     }
 

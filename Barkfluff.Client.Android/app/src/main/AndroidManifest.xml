@@ -94,6 +94,10 @@
             android:windowSoftInputMode="adjustResize"
             android:launchMode="singleTop" />
 
+        <receiver
+            android:name=".notifications.MarkAsReadReceiver"
+            android:exported="false" />
+
     </application>
 
 </manifest>
