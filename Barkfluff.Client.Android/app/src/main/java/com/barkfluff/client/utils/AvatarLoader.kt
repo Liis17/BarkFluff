@@ -7,8 +7,8 @@ import android.widget.ImageView
 import android.widget.TextView
 import coil.ImageLoader
 import coil.load
-import coil.memory.MemoryCache
 import coil.request.ImageRequest
+import coil.size.Size
 import coil.transform.CircleCropTransformation
 import com.barkfluff.client.R
 import kotlinx.coroutines.Dispatchers
@@ -196,6 +196,9 @@ object AvatarLoader {
         size: Int,
         getUrlCallback: suspend () -> String?
     ) {
+        // Привязываем fileId к ImageView для защиты от race condition при recycling
+        imageView.tag = fileId
+
         if (fileId.isNullOrBlank()) {
             imageView.visibility = View.GONE
             showPlaceholderInternal(placeholderView, displayName, userId)
@@ -211,62 +214,18 @@ object AvatarLoader {
             return
         }
 
-        val imageLoader = getImageLoader(imageView.context)
-
-        // 1. Проверяем Coil memory cache по fileId
-        val cached = imageLoader.memoryCache?.get(MemoryCache.Key(fileId))
-        if (cached != null) {
-            android.util.Log.d("AvatarLoader", "loadByFileId: Memory cache hit for fileId=$fileId")
-            imageView.setImageBitmap(cached.bitmap)
-            imageView.visibility = View.VISIBLE
-            placeholderView.visibility = View.GONE
-            return
-        }
-
-        // 2. Проверяем Coil disk cache по fileId
-        val diskSnapshot = imageLoader.diskCache?.openSnapshot(fileId)
-        if (diskSnapshot != null) {
-            android.util.Log.d("AvatarLoader", "loadByFileId: Disk cache hit for fileId=$fileId")
-            val diskFile = diskSnapshot.data.toFile()
-            diskSnapshot.close()
-
-            showPlaceholderInternal(placeholderView, displayName, userId)
-            imageView.visibility = View.GONE
-
-            val requestBuilder = ImageRequest.Builder(imageView.context)
-                .data(diskFile)
-                .target(imageView)
-                .memoryCacheKey(fileId)
-                .crossfade(200)
-                .transformations(CircleCropTransformation())
-
-            if (size > 0) {
-                requestBuilder.size(size)
-            }
-
-            val request = requestBuilder
-                .listener(
-                    onSuccess = { _, _ ->
-                        imageView.visibility = View.VISIBLE
-                        placeholderView.visibility = View.GONE
-                    }
-                )
-                .build()
-            imageLoader.enqueue(request)
-            return
-        }
-
-        // 3. Проверяем URL кэш — если уже получали URL для этого fileId, загружаем по нему
+        // 1. Проверяем URL кэш — если уже получали URL для этого fileId, загружаем через Coil
+        // (Coil сам проверит свой memory/disk cache по memoryCacheKey/diskCacheKey)
         val cachedUrl = urlCache[fileId]
         if (cachedUrl != null) {
-            android.util.Log.d("AvatarLoader", "loadByFileId: URL cache hit for fileId=$fileId, url=$cachedUrl")
+            android.util.Log.d("AvatarLoader", "loadByFileId: URL cache hit for fileId=$fileId")
             showPlaceholderInternal(placeholderView, displayName, userId)
             imageView.visibility = View.GONE
             loadImageWithCoil(imageView, placeholderView, cachedUrl, fileId, displayName, userId, size)
             return
         }
 
-        // 4. Cache miss — показываем плейсхолдер и запрашиваем URL через gRPC
+        // 2. Cache miss — показываем плейсхолдер и запрашиваем URL через gRPC
         android.util.Log.d("AvatarLoader", "loadByFileId: Cache miss for fileId=$fileId, fetching URL...")
         showPlaceholderInternal(placeholderView, displayName, userId)
         imageView.visibility = View.GONE
@@ -286,6 +245,7 @@ object AvatarLoader {
             urlCache[fileId] = url
 
             withContext(Dispatchers.Main) {
+                if (imageView.tag != fileId) return@withContext // View recycled
                 loadImageWithCoil(imageView, placeholderView, url, fileId, displayName, userId, size)
             }
         }
@@ -308,32 +268,34 @@ object AvatarLoader {
 
         val requestBuilder = ImageRequest.Builder(imageView.context)
             .data(url)
-            .target(imageView)
             .memoryCacheKey(cacheKey)
             .diskCacheKey(cacheKey)
+            .size(Size.ORIGINAL)
             .crossfade(200)
             .transformations(CircleCropTransformation())
+            .target(
+                onSuccess = { drawable ->
+                    if (imageView.tag == cacheKey) {
+                        android.util.Log.d("AvatarLoader", "loadImageWithCoil: onSuccess cacheKey=$cacheKey")
+                        imageView.setImageDrawable(drawable)
+                        imageView.visibility = View.VISIBLE
+                        placeholderView.visibility = View.GONE
+                    }
+                },
+                onError = { _ ->
+                    if (imageView.tag == cacheKey) {
+                        android.util.Log.e("AvatarLoader", "loadImageWithCoil: onError cacheKey=$cacheKey, url=$url")
+                        imageView.visibility = View.GONE
+                        showPlaceholderInternal(placeholderView, displayName, userId)
+                    }
+                }
+            )
 
         if (size > 0) {
             requestBuilder.size(size)
         }
 
-        val request = requestBuilder
-            .listener(
-                onError = { _, result ->
-                    android.util.Log.e("AvatarLoader", "loadImageWithCoil: onError cacheKey=$cacheKey, url=$url, error=${result.throwable}")
-                    imageView.visibility = View.GONE
-                    showPlaceholderInternal(placeholderView, displayName, userId)
-                },
-                onSuccess = { _, _ ->
-                    android.util.Log.d("AvatarLoader", "loadImageWithCoil: onSuccess cacheKey=$cacheKey")
-                    imageView.visibility = View.VISIBLE
-                    placeholderView.visibility = View.GONE
-                }
-            )
-            .build()
-
-        imageLoader.enqueue(request)
+        imageLoader.enqueue(requestBuilder.build())
     }
 
     /**

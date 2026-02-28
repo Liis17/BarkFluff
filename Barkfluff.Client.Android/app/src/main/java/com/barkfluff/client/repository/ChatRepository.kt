@@ -155,6 +155,7 @@ class ChatRepository(private val context: Context) {
      * Отмечает сообщения как прочитанные.
      */
     suspend fun markAsRead(messageIds: List<Long>): Result<Unit> {
+        ensureInitialized()
         return grpcManager?.markAsRead(messageIds) ?: Result.failure(IllegalStateException("GrpcManager not initialized"))
     }
 
@@ -205,6 +206,7 @@ class ChatRepository(private val context: Context) {
      * Получает URL для скачивания файла.
      */
     suspend fun getFileDownloadUrl(fileId: String): Result<String> {
+        ensureInitialized()
         return grpcManager?.getFileDownloadUrl(fileId) ?: Result.failure(IllegalStateException("GrpcManager not initialized"))
     }
 
