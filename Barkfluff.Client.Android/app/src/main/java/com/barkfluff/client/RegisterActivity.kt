@@ -202,31 +202,19 @@ class RegisterActivity : AppCompatActivity() {
                 2 -> checkUsernameOnServerAndProceed()
                 3 -> checkEmailOnServerAndProceed()
                 4 -> confirmAccountAndProceed()
-                6 -> {
-                    // Переход на шаг 7 (био)
-                    saveCurrentStepData()
-                    currentStep++
-                    loadStep(currentStep)
-                }
+                5 -> setPasswordOnServerAndProceed()
+                6 -> uploadAvatarAndProceed()
+                7 -> saveBioOnServerAndProceed()
+                8 -> verify2faAndProceed()
                 else -> {
                     if (validateCurrentStep()) {
                         if (currentStep < TOTAL_STEPS) {
                             saveCurrentStepData()
                             currentStep++
                             loadStep(currentStep)
-                        } else {
-                            completeRegistration()
                         }
                     }
                 }
-            }
-        }
-
-        binding.backButton.setOnClickListener {
-            if (currentStep > 1) {
-                saveCurrentStepData()
-                currentStep--
-                loadStep(currentStep)
             }
         }
     }
@@ -275,13 +263,29 @@ class RegisterActivity : AppCompatActivity() {
         binding.stepIndicatorText.text = "Шаг $step из $TOTAL_STEPS"
         binding.stepProgressBar.setProgressCompat((step - 1) * 100 / TOTAL_STEPS, true)
 
-        // Показываем/скрываем кнопки
-        // На шаге 4 (подтверждение кода) скрываем кнопку "Назад"
-        binding.backButton.visibility = if (step > 1 && step != 4) View.VISIBLE else View.GONE
-        binding.nextButton.text = when {
-            step == 6 -> "Пропустить"
-            step == TOTAL_STEPS -> "Готово"
-            else -> "Далее"
+        // Настраиваем кнопки
+        if (step == TOTAL_STEPS) {
+            // На финальном шаге скрываем весь нижний бар — у шага 9 своя кнопка
+            binding.headerPanel.visibility = View.GONE
+            binding.buttonPanel.visibility = View.GONE
+        } else {
+            binding.headerPanel.visibility = View.VISIBLE
+            binding.buttonPanel.visibility = View.VISIBLE
+        }
+
+        binding.nextButton.isEnabled = true
+        binding.nextButton.text = "Далее"
+
+        // Специфичные настройки кнопки для шагов
+        when (step) {
+            6 -> {
+                // Далее доступен только если аватар выбран
+                binding.nextButton.isEnabled = avatarBytes != null
+            }
+            8 -> {
+                // Далее доступен только после ввода 6-значного кода
+                binding.nextButton.isEnabled = false
+            }
         }
 
         val inflater = LayoutInflater.from(this)
@@ -792,6 +796,9 @@ class RegisterActivity : AppCompatActivity() {
             step6Binding?.croppedImageView?.visibility = View.VISIBLE
             step6Binding?.avatarPlaceholder?.visibility = View.GONE
 
+            // Включаем кнопку "Далее" теперь, когда аватар выбран
+            binding.nextButton.isEnabled = true
+
             Toast.makeText(this, "Фото выбрано", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             Log.e(TAG, "Load cropped image error: ${e.message}", e)
@@ -844,11 +851,9 @@ class RegisterActivity : AppCompatActivity() {
             openGoogleAuthenticator()
         }
 
-        b.verifyOtpButton.setOnClickListener {
-            val code = b.otpCodeEditText.text.toString()
-            if (code.length == 6) {
-                verify2faCode(code)
-            }
+        // Включаем кнопку "Далее" только после ввода 6-значного кода
+        b.otpCodeEditText.doAfterTextChanged {
+            binding.nextButton.isEnabled = (it?.length == 6)
         }
     }
 
@@ -872,7 +877,100 @@ class RegisterActivity : AppCompatActivity() {
         }
     }
 
-    private fun verify2faCode(code: String) {
+    private fun setPasswordOnServerAndProceed() {
+        if (!validateCurrentStep()) return
+
+        binding.nextButton.isEnabled = false
+
+        lifecycleScope.launch {
+            try {
+                val result = grpcManager.setPassword(password)
+                if (result.isSuccess) {
+                    Log.d(TAG, "Пароль установлен")
+                    saveCurrentStepData()
+                    currentStep++
+                    loadStep(currentStep)
+                } else {
+                    Log.e(TAG, "Set password failed: ${result.exceptionOrNull()?.message}")
+                    Toast.makeText(this@RegisterActivity, "Ошибка: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                    binding.nextButton.isEnabled = true
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Set password error: ${e.message}", e)
+                Toast.makeText(this@RegisterActivity, "Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
+                binding.nextButton.isEnabled = true
+            }
+        }
+    }
+
+    private fun uploadAvatarAndProceed() {
+        val bytes = avatarBytes ?: return
+
+        binding.nextButton.isEnabled = false
+
+        lifecycleScope.launch {
+            try {
+                val uploadResult = grpcManager.uploadUserAvatar(bytes)
+                if (uploadResult.isSuccess) {
+                    val fileId = uploadResult.getOrNull()!!
+                    Log.d(TAG, "Аватар загружен, fileId: $fileId")
+
+                    val setResult = grpcManager.setProfilePicture(fileId)
+                    if (setResult.isFailure) {
+                        Log.e(TAG, "Set profile picture failed: ${setResult.exceptionOrNull()?.message}")
+                    }
+
+                    saveCurrentStepData()
+                    currentStep++
+                    loadStep(currentStep)
+                } else {
+                    Log.e(TAG, "Upload avatar failed: ${uploadResult.exceptionOrNull()?.message}")
+                    Toast.makeText(this@RegisterActivity, "Ошибка загрузки: ${uploadResult.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                    binding.nextButton.isEnabled = true
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Upload avatar error: ${e.message}", e)
+                Toast.makeText(this@RegisterActivity, "Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
+                binding.nextButton.isEnabled = true
+            }
+        }
+    }
+
+    private fun saveBioOnServerAndProceed() {
+        saveCurrentStepData()
+
+        if (bio.isEmpty()) {
+            currentStep++
+            loadStep(currentStep)
+            return
+        }
+
+        binding.nextButton.isEnabled = false
+
+        lifecycleScope.launch {
+            try {
+                val result = grpcManager.changeBio(bio)
+                if (result.isSuccess) {
+                    Log.d(TAG, "Био установлено")
+                } else {
+                    Log.e(TAG, "Change bio failed: ${result.exceptionOrNull()?.message}")
+                }
+                currentStep++
+                loadStep(currentStep)
+            } catch (e: Exception) {
+                Log.e(TAG, "Change bio error: ${e.message}", e)
+                currentStep++
+                loadStep(currentStep)
+            }
+        }
+    }
+
+    private fun verify2faAndProceed() {
+        val code = step8Binding?.otpCodeEditText?.text?.toString() ?: return
+        if (code.length != 6) return
+
+        binding.nextButton.isEnabled = false
+
         lifecycleScope.launch {
             try {
                 val result = grpcManager.confirmOtpSetup(code)
@@ -885,11 +983,13 @@ class RegisterActivity : AppCompatActivity() {
                 } else {
                     step8Binding?.otpErrorText?.text = "Неверный код"
                     step8Binding?.otpErrorText?.visibility = View.VISIBLE
+                    binding.nextButton.isEnabled = true
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Verify 2FA error: ${e.message}", e)
                 step8Binding?.otpErrorText?.text = "Ошибка: ${e.message}"
                 step8Binding?.otpErrorText?.visibility = View.VISIBLE
+                binding.nextButton.isEnabled = true
             }
         }
     }
@@ -920,6 +1020,37 @@ class RegisterActivity : AppCompatActivity() {
         val b = step9Binding ?: return
 
         b.goToLoginButton.setOnClickListener {
+            navigateToMainActivity()
+        }
+    }
+
+    private fun navigateToMainActivity() {
+        val b = step9Binding ?: return
+        b.finalLoadingIndicator.visibility = View.VISIBLE
+        b.goToLoginButton.isEnabled = false
+
+        lifecycleScope.launch {
+            try {
+                // Загружаем данные пользователя и сохраняем в globalParam
+                val userResult = grpcManager.getCurrentUserData()
+                if (userResult.isSuccess) {
+                    val userData = userResult.getOrNull()!!
+                    globalParam.userId = userData.userId
+                    globalParam.userName = userData.username
+                    globalParam.firstName = userData.firstName
+                    globalParam.lastName = userData.lastName
+                    globalParam.description = userData.bio
+                    globalParam.pictureUrl = userData.profilePictureUrl
+                    globalParam.pictureFileId = userData.profilePictureFileId
+                    globalParam.picturePreviewFileId = userData.profilePicturePreviewFileId
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to load user data: ${e.message}", e)
+            }
+
+            val intent = Intent(this@RegisterActivity, MainActivity::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(intent)
             finish()
         }
     }
@@ -966,42 +1097,11 @@ class RegisterActivity : AppCompatActivity() {
         }
     }
 
-    private fun completeRegistration() {
-        val b = step9Binding ?: return
-
-        b.finalLoadingIndicator.visibility = View.VISIBLE
-        b.goToLoginButton.isEnabled = false
-
-        lifecycleScope.launch {
-            try {
-                // Загружаем аватар если есть
-                if (avatarBytes != null) {
-                    try {
-                        grpcManager.uploadUserAvatar(avatarBytes!!)
-                        Log.d(TAG, "Аватар загружен")
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to upload avatar: ${e.message}", e)
-                    }
-                }
-
-                // Устанавливаем био
-                if (bio.isNotEmpty()) {
-                    try {
-                        grpcManager.changeBio(bio)
-                        Log.d(TAG, "Био установлено")
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to set bio: ${e.message}", e)
-                    }
-                }
-
-                b.finalLoadingIndicator.visibility = View.GONE
-                Toast.makeText(this@RegisterActivity, "Аккаунт успешно создан!", Toast.LENGTH_LONG).show()
-            } catch (e: Exception) {
-                Log.e(TAG, "Complete registration error: ${e.message}", e)
-                b.finalLoadingIndicator.visibility = View.GONE
-                Toast.makeText(this@RegisterActivity, "Ошибка: ${e.message}", Toast.LENGTH_LONG).show()
-            }
-        }
+    @Deprecated("Deprecated in Java")
+    @Suppress("DEPRECATION")
+    override fun onBackPressed() {
+        // Не позволяем возвращаться назад по шагам — только закрыть активити
+        super.onBackPressed()
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -1012,15 +1112,6 @@ class RegisterActivity : AppCompatActivity() {
             } else {
                 Toast.makeText(this, "Разрешение на доступ к фото не предоставлено", Toast.LENGTH_SHORT).show()
             }
-        }
-    }
-
-    override fun onBackPressed() {
-        if (currentStep > 1) {
-            currentStep--
-            loadStep(currentStep)
-        } else {
-            super.onBackPressed()
         }
     }
 

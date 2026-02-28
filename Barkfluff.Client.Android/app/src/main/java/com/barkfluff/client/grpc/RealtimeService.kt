@@ -1,14 +1,21 @@
 package com.barkfluff.client.grpc
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.drawable.BitmapDrawable
 import android.util.Log
 import barkfluff.identity.IdentityApiGrpcKt
 import barkfluff.identity.IdentityApiOuterClass
 import barkfluff.onliner.OnlinerApiGrpcKt
 import barkfluff.onliner.OnlinerApiOuterClass
+import barkfluff.shared.Shared
 import barkfluff.updates.UpdatesApiGrpcKt
 import barkfluff.updates.UpdatesApiOuterClass
+import coil.ImageLoader
+import coil.request.ImageRequest
+import coil.request.SuccessResult
 import com.barkfluff.client.data.GlobalParam
+import com.barkfluff.client.notifications.NotificationHelper
 import io.grpc.ClientInterceptors
 import io.grpc.ManagedChannel
 import io.grpc.okhttp.OkHttpChannelBuilder
@@ -20,7 +27,9 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import okhttp3.OkHttpClient
 import java.security.cert.X509Certificate
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
@@ -59,11 +68,38 @@ class RealtimeService(private val context: Context) {
     private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
     val connectionState: StateFlow<ConnectionState> = _connectionState
 
+    private data class CachedUserInfo(val displayName: String, val avatarFileId: String)
+
     // Internal state
     private val globalParam = GlobalParam(context)
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val tokenRefreshMutex = Mutex()
     private val seenMessageIds = LinkedHashSet<Long>()
+    private val userInfoCache = ConcurrentHashMap<Long, CachedUserInfo>()
+
+    // gRPC manager for notification lookups (users + files)
+    private var notificationGrpcManager: GrpcManager? = null
+
+    // Coil ImageLoader for headless avatar loading
+    private val notificationImageLoader by lazy {
+        val trustManager = object : X509TrustManager {
+            override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
+            override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
+            override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
+        }
+        val sslContext = SSLContext.getInstance("TLS").apply {
+            init(null, arrayOf<TrustManager>(trustManager), null)
+        }
+        val okHttp = OkHttpClient.Builder()
+            .sslSocketFactory(sslContext.socketFactory, trustManager)
+            .hostnameVerifier { _, _ -> true }
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .build()
+        ImageLoader.Builder(context)
+            .okHttpClient(okHttp)
+            .build()
+    }
 
     // gRPC channels and stubs (managed independently)
     private var updatesChannel: ManagedChannel? = null
@@ -93,6 +129,7 @@ class RealtimeService(private val context: Context) {
         serviceScope.launch { streamWithReconnect("MessagesRead") { collectMessagesRead() } }
         serviceScope.launch { streamWithReconnect("OnlineStatus") { collectOnlineStatus() } }
         serviceScope.launch { onlinePingLoop() }
+        serviceScope.launch { notificationLoop() }
     }
 
     /**
@@ -103,6 +140,8 @@ class RealtimeService(private val context: Context) {
         started = false
         serviceScope.cancel()
         shutdownChannels()
+        notificationGrpcManager?.shutdown()
+        notificationGrpcManager = null
     }
 
     /**
@@ -120,6 +159,21 @@ class RealtimeService(private val context: Context) {
                 Log.d(TAG, "Online subscription updated: ${userIds.size} users")
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to change online subscription", e)
+            }
+        }
+    }
+
+    /**
+     * Отмечает сообщение как прочитанное (вызывается из BroadcastReceiver).
+     */
+    fun markAsRead(messageId: Long) {
+        serviceScope.launch {
+            try {
+                val mgr = notificationGrpcManager ?: return@launch
+                mgr.markAsRead(listOf(messageId))
+                Log.d(TAG, "Marked message $messageId as read")
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to mark message as read: ${e.message}")
             }
         }
     }
@@ -181,6 +235,103 @@ class RealtimeService(private val context: Context) {
                 Log.w(TAG, "Online ping failed: ${e.message}")
             }
             delay(ONLINE_PING_INTERVAL_MS)
+        }
+    }
+
+    private suspend fun notificationLoop() {
+        try {
+            _newMessages.collect { event ->
+                try {
+                    val msg = event.message ?: return@collect
+                    val senderId = msg.senderId
+                    if (senderId == globalParam.userId) return@collect
+
+                    val chatId = event.chatId
+                    val messageId = msg.id
+                    val messageText = msg.content?.text ?: ""
+
+                    // Resolve sender info (cache first)
+                    val userInfo = userInfoCache[senderId] ?: run {
+                        val mgr = notificationGrpcManager ?: return@collect
+                        val result = mgr.getUserData(senderId)
+                        if (result.isFailure) {
+                            Log.w(TAG, "Failed to get user data for notification: senderId=$senderId")
+                            return@collect
+                        }
+                        val user = result.getOrNull()!!
+                        val displayName = "${user.firstName} ${user.lastName}".trim().ifEmpty { user.username }
+                        val info = CachedUserInfo(displayName, user.profilePicturePreviewFileId)
+                        userInfoCache[senderId] = info
+                        info
+                    }
+
+                    // Load avatar bitmap (headless, no View needed)
+                    var avatarBitmap: Bitmap? = null
+                    if (userInfo.avatarFileId.isNotBlank()) {
+                        avatarBitmap = loadBitmapByFileId(userInfo.avatarFileId)
+                        Log.d(TAG, "Avatar loaded for senderId=$senderId: bitmap=${avatarBitmap != null}, " +
+                                "size=${avatarBitmap?.let { "${it.width}x${it.height}" } ?: "null"}, " +
+                                "config=${avatarBitmap?.config}")
+                    } else {
+                        Log.d(TAG, "No avatar fileId for senderId=$senderId")
+                    }
+
+                    // Load image attachment if present
+                    var imageBitmap: Bitmap? = null
+                    try {
+                        val attachments = msg.content?.attachmentsList
+                        val imageAttachment = attachments?.firstOrNull {
+                            it.type == Shared.MessageAttachmentType.IMAGE
+                        }
+                        if (imageAttachment != null) {
+                            val previewFileId = imageAttachment.previewFileId.ifBlank { imageAttachment.fileId }
+                            if (previewFileId.isNotBlank()) {
+                                imageBitmap = loadBitmapByFileId(previewFileId)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to load image attachment for notification", e)
+                    }
+
+                    NotificationHelper.showMessageNotification(
+                        context,
+                        userInfo.displayName,
+                        messageText,
+                        avatarBitmap,
+                        chatId,
+                        messageId,
+                        imageBitmap
+                    )
+                    Log.d(TAG, "Notification dispatched: chatId=${event.chatId}, msgId=$messageId")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Notification dispatch error", e)
+                }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e(TAG, "Notification loop failed", e)
+        }
+    }
+
+    private suspend fun loadBitmapByFileId(fileId: String): Bitmap? {
+        return try {
+            val mgr = notificationGrpcManager ?: return null
+            val urlResult = mgr.getFileDownloadUrl(fileId)
+            val url = urlResult.getOrNull()
+            if (url.isNullOrBlank()) return null
+
+            val request = ImageRequest.Builder(context)
+                .data(url)
+                .allowHardware(false)
+                .build()
+            val imageResult = notificationImageLoader.execute(request)
+            if (imageResult is SuccessResult) {
+                (imageResult.drawable as? BitmapDrawable)?.bitmap
+            } else null
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to load bitmap for fileId=$fileId", e)
+            null
         }
     }
 
@@ -288,6 +439,27 @@ class RealtimeService(private val context: Context) {
     private fun createChannels() {
         val updatesAddress = globalParam.socketUpdates
         val onlinerAddress = globalParam.socketOnliner
+        val usersAddress = globalParam.socketUsers
+        val filesAddress = globalParam.socketFiles
+
+        // Create notification gRPC manager for user info / avatar lookups
+        notificationGrpcManager?.shutdown()
+        val mgr = GrpcManager()
+        val identityAddress = globalParam.socketIdentity
+        if (identityAddress.isNotBlank()) {
+            mgr.createIdentityClient(identityAddress, context, includeDeviceInfo = true)
+        }
+        if (usersAddress.isNotBlank()) {
+            mgr.createUsersClient(usersAddress, context, includeDeviceInfo = true)
+        }
+        if (filesAddress.isNotBlank()) {
+            mgr.createFilesClient(filesAddress, context, includeDeviceInfo = true)
+        }
+        val messagesAddress = globalParam.socketMessages
+        if (messagesAddress.isNotBlank()) {
+            mgr.createMessagesClient(messagesAddress, context, includeDeviceInfo = true)
+        }
+        notificationGrpcManager = mgr
 
         if (updatesAddress.isNotBlank()) {
             updatesChannel = createManagedChannel(updatesAddress)

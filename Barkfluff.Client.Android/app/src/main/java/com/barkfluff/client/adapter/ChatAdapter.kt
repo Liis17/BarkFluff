@@ -6,6 +6,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.barkfluff.client.R
 import com.barkfluff.client.databinding.ItemChatBinding
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.utils.AvatarLoader
@@ -18,6 +19,8 @@ class ChatAdapter(
     private val onChatClick: (GrpcManager.ChatData) -> Unit,
     private val getFileUrl: suspend (String) -> String?
 ) : ListAdapter<ChatAdapter.ChatDisplayItem, ChatAdapter.ChatViewHolder>(ChatDiffCallback()) {
+
+    var currentUserId: Long = 0
 
     data class ChatDisplayItem(
         val chatData: GrpcManager.ChatData,
@@ -76,13 +79,27 @@ class ChatAdapter(
 
             // Непрочитанные
             if (chat.countUnread > 0) {
-                binding.unreadBadge.visibility = View.VISIBLE
+                binding.unreadBadgeCard.visibility = View.VISIBLE
                 binding.unreadBadge.text = when {
                     chat.countUnread > 99 -> "99+"
                     else -> chat.countUnread.toString()
                 }
             } else {
-                binding.unreadBadge.visibility = View.GONE
+                binding.unreadBadgeCard.visibility = View.GONE
+            }
+
+            // Статус прочтения (галочки)
+            val lastMsg = chat.lastMessage
+            if (lastMsg != null && lastMsg.senderId == currentUserId) {
+                val readByOthers = lastMsg.readBy.any { it != currentUserId }
+                if (readByOthers) {
+                    binding.readStatus.setImageResource(R.drawable.ic_double_check)
+                } else {
+                    binding.readStatus.setImageResource(R.drawable.ic_check)
+                }
+                binding.readStatus.visibility = View.VISIBLE
+            } else {
+                binding.readStatus.visibility = View.GONE
             }
 
             binding.root.setOnClickListener {
@@ -124,10 +141,10 @@ class ChatAdapter(
     /**
      * Обновляет чат при получении нового сообщения: перемещает наверх, обновляет lastMessage, увеличивает счётчик непрочитанных.
      */
-    fun updateChatWithNewMessage(chatId: String, senderId: Long, messageId: Long, text: String, sentAt: Long, currentUserId: Long) {
+    fun updateChatWithNewMessage(chatId: String, senderId: Long, messageId: Long, text: String, sentAt: Long, currentUserId: Long): Boolean {
         val list = currentList.toMutableList()
         val index = list.indexOfFirst { it.chatData.id == chatId }
-        if (index < 0) return
+        if (index < 0) return false
 
         val item = list[index]
         val newLastMessage = GrpcManager.LastMessageData(
@@ -143,6 +160,16 @@ class ChatAdapter(
 
         list.removeAt(index)
         list.add(0, updatedItem)
+        submitList(list)
+        return true
+    }
+
+    /**
+     * Добавляет новый чат в начало списка.
+     */
+    fun addNewChat(item: ChatDisplayItem) {
+        val list = currentList.toMutableList()
+        list.add(0, item)
         submitList(list)
     }
 

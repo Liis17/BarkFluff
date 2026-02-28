@@ -26,7 +26,10 @@ import io.grpc.ManagedChannel
 import io.grpc.okhttp.OkHttpChannelBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.net.HttpURLConnection
+import java.net.URL
 import java.security.cert.X509Certificate
+import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
@@ -1059,10 +1062,53 @@ class GrpcManager {
             val uploadData = uploadUrlResult.getOrNull()!!
             val fileId = uploadData.fileId
             
-            // TODO: Здесь нужно выполнить HTTP PUT запрос на uploadData.url
-            // Для простоты возвращаем fileId
-            Log.d(TAG, "Avatar upload URL получен, fileId: $fileId")
-            
+            // Выполняем HTTP POST multipart/form-data для загрузки файла
+            Log.d(TAG, "Avatar upload URL получен, fileId: $fileId, url: ${uploadData.url}")
+
+            val boundary = "----BarkFluff${System.currentTimeMillis()}"
+            val url = URL(uploadData.url)
+            val connection = url.openConnection() as HttpURLConnection
+
+            // Если HTTPS — применяем trust-all для самоподписанного сертификата
+            if (connection is HttpsURLConnection) {
+                val trustManager = object : X509TrustManager {
+                    override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
+                    override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
+                    override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
+                }
+                val sslContext = SSLContext.getInstance("TLS")
+                sslContext.init(null, arrayOf<TrustManager>(trustManager), null)
+                connection.sslSocketFactory = sslContext.socketFactory
+                connection.hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true }
+            }
+
+            connection.requestMethod = "POST"
+            connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+            connection.doOutput = true
+
+            connection.outputStream.use { out ->
+                val writer = out.bufferedWriter()
+                // Часть с файлом
+                writer.write("--$boundary\r\n")
+                writer.write("Content-Disposition: form-data; name=\"file\"; filename=\"avatar.jpg\"\r\n")
+                writer.write("Content-Type: image/jpeg\r\n")
+                writer.write("\r\n")
+                writer.flush()
+                out.write(jpegImageBytes)
+                out.flush()
+                writer.write("\r\n")
+                writer.write("--$boundary--\r\n")
+                writer.flush()
+            }
+
+            val responseCode = connection.responseCode
+            connection.disconnect()
+
+            if (responseCode !in 200..299) {
+                return@withContext Result.failure(Exception("Upload failed: HTTP $responseCode"))
+            }
+
+            Log.d(TAG, "Avatar uploaded successfully, fileId: $fileId")
             Result.success(fileId)
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка загрузки аватара", e)
@@ -1188,6 +1234,27 @@ class GrpcManager {
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка изменения био", e)
             Result.failure(Exception("Ошибка изменения био: ${e.message}"))
+        }
+    }
+
+    /**
+     * Отмечает сообщения как прочитанные
+     */
+    suspend fun markAsRead(messageIds: List<Long>): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (messagesClient == null) {
+                return@withContext Result.failure(IllegalStateException("Messages клиент не создан"))
+            }
+
+            val request = MessagesApiOuterClass.MarkAsReadRequest.newBuilder()
+                .addAllMessageIds(messageIds)
+                .build()
+
+            messagesClient!!.markAsRead(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка отметки сообщений как прочитанных", e)
+            Result.failure(Exception("Ошибка отметки как прочитано: ${e.message}"))
         }
     }
 

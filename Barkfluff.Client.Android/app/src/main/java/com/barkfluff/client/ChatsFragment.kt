@@ -133,6 +133,8 @@ class ChatsFragment : Fragment() {
             }
         }
 
+        chatAdapter.currentUserId = globalParam.userId
+
         binding.chatRecyclerView.apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = chatAdapter
@@ -250,7 +252,7 @@ class ChatsFragment : Fragment() {
 
     private fun handleNewMessage(event: barkfluff.updates.UpdatesApiOuterClass.NewMessageEvent) {
         val msg = event.message
-        chatAdapter.updateChatWithNewMessage(
+        val found = chatAdapter.updateChatWithNewMessage(
             chatId = event.chatId,
             senderId = msg.senderId,
             messageId = msg.id,
@@ -258,6 +260,37 @@ class ChatsFragment : Fragment() {
             sentAt = msg.sentAt.seconds * 1000,
             currentUserId = globalParam.userId
         )
+
+        if (!found) {
+            // Новый чат — резолвим информацию об отправителе и добавляем
+            viewLifecycleOwner.lifecycleScope.launch {
+                try {
+                    val senderId = msg.senderId
+                    val lastMessage = GrpcManager.LastMessageData(
+                        id = msg.id,
+                        senderId = senderId,
+                        text = msg.content?.text ?: "",
+                        sentAt = msg.sentAt.seconds * 1000,
+                        readBy = listOf(senderId)
+                    )
+                    val chatData = GrpcManager.ChatData(
+                        id = event.chatId,
+                        title = "",
+                        picture = "",
+                        isGroupChat = false,
+                        lastMessage = lastMessage,
+                        memberIds = listOf(globalParam.userId, senderId),
+                        countUnread = if (senderId != globalParam.userId) 1 else 0,
+                        firstUnreadMessageId = msg.id
+                    )
+                    val displayItem = resolveDisplayItem(chatData)
+                    chatAdapter.addNewChat(displayItem)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to add new chat for chatId=${event.chatId}", e)
+                }
+            }
+        }
+
         showEmptyState(false)
     }
 
