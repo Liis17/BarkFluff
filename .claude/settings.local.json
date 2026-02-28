@@ -19,7 +19,8 @@
       "Bash(find:*)",
       "Bash(tree:*)",
       "Bash(grep:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(./gradlew assembleDebug:*)"
     ],
     "deny": [],
     "ask": []
