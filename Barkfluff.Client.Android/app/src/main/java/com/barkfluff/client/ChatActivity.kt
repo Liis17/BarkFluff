@@ -496,8 +496,8 @@ class ChatActivity : AppCompatActivity() {
                         lastVisibleMessageId = sortedMessages.last().id
                     }
 
-                    hasMoreMessagesUp = messages.size >= 30
-                    hasMoreMessagesDown = firstUnreadMessageId > 0 // Могут быть новые сообщения ниже
+                    hasMoreMessagesUp = messages.size >= 15
+                    hasMoreMessagesDown = true // Попробуем подгрузить, остановимся если нет новых
 
                     // Отмечаем сообщения как прочитанные
                     markVisibleMessagesAsRead(messages)
@@ -690,13 +690,24 @@ class ChatActivity : AppCompatActivity() {
     private fun prependMessages(messages: List<barkfluff.shared.Shared.Message>) {
         val currentList = messageAdapter.currentList.toMutableList()
 
+        // Фильтруем дубликаты
+        val existingIds = currentList
+            .filter { it.type == MessageType.MESSAGE }
+            .map { it.messageId }
+            .toSet()
+        val sortedMessages = messages.sortedBy { it.sentAt.seconds }
+            .filter { it.id !in existingIds }
+
+        if (sortedMessages.isEmpty()) {
+            hasMoreMessagesUp = false
+            return
+        }
+
         // Удаляем первый разделитель если он есть (будет заменен)
         if (currentList.isNotEmpty() && currentList.first().type == MessageType.DATE_SEPARATOR) {
             currentList.removeAt(0)
         }
 
-        // Сортируем и добавляем новые сообщения с разделителями
-        val sortedMessages = messages.sortedBy { it.sentAt.seconds }
         val newItems = messagesWithDateSeparators(sortedMessages)
 
         // Вставляем новые элементы в начало
@@ -707,16 +718,45 @@ class ChatActivity : AppCompatActivity() {
     private fun appendMessages(messages: List<barkfluff.shared.Shared.Message>) {
         val currentList = messageAdapter.currentList.toMutableList()
 
-        // Удаляем последний разделитель если он есть (будет заменен)
-        if (currentList.isNotEmpty() && currentList.last().type == MessageType.DATE_SEPARATOR) {
-            currentList.removeAt(currentList.size - 1)
+        // Фильтруем дубликаты
+        val existingIds = currentList
+            .filter { it.type == MessageType.MESSAGE }
+            .map { it.messageId }
+            .toSet()
+        val sortedMessages = messages.sortedBy { it.sentAt.seconds }
+            .filter { it.id !in existingIds }
+
+        if (sortedMessages.isEmpty()) {
+            hasMoreMessagesDown = false
+            return
         }
 
-        // Сортируем и добавляем новые сообщения с разделителями
-        val sortedMessages = messages.sortedBy { it.sentAt.seconds }
-        val newItems = messagesWithDateSeparators(sortedMessages)
+        // Определяем дату последнего сообщения в текущем списке
+        val lastMsgItem = currentList.lastOrNull { it.type == MessageType.MESSAGE }
+        var lastDate = if (lastMsgItem != null) startOfDay(lastMsgItem.timestamp) else -1L
 
-        currentList.addAll(newItems)
+        for (msg in sortedMessages) {
+            val msgDate = startOfDay(msg.sentAt.seconds * 1000)
+            if (msgDate != lastDate) {
+                currentList.add(MessageItem.createDateSeparator(formatDateSeparator(msgDate)))
+                lastDate = msgDate
+            }
+            currentList.add(
+                MessageItem(
+                    messageId = msg.id,
+                    senderId = msg.senderId,
+                    text = msg.content?.text ?: "",
+                    timestamp = msg.sentAt.seconds * 1000,
+                    attachments = msg.content?.attachmentsList ?: emptyList(),
+                    readStatus = if (msg.senderId == currentUserId) {
+                        if (msg.readByList.any { it != currentUserId }) ReadStatus.READ else ReadStatus.SENT
+                    } else {
+                        ReadStatus.NONE
+                    }
+                )
+            )
+        }
+
         messageAdapter.submitList(currentList)
     }
 
@@ -742,6 +782,13 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun addNewMessage(msg: barkfluff.shared.Shared.Message) {
+        val currentList = messageAdapter.currentList.toMutableList()
+
+        // Проверка дубликата
+        if (currentList.any { it.type == MessageType.MESSAGE && it.messageId == msg.id }) {
+            return
+        }
+
         val messageItem = MessageItem(
             messageId = msg.id,
             senderId = msg.senderId,
@@ -754,8 +801,6 @@ class ChatActivity : AppCompatActivity() {
                 ReadStatus.NONE
             }
         )
-
-        val currentList = messageAdapter.currentList.toMutableList()
 
         // Убираем разделитель непрочитанных если он ещё есть
         currentList.removeAll { it.type == MessageType.UNREAD_SEPARATOR }

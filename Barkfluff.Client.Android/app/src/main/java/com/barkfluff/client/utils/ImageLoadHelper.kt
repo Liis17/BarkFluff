@@ -1,8 +1,8 @@
 package com.barkfluff.client.utils
 
 import android.widget.ImageView
-import coil.memory.MemoryCache
 import coil.request.ImageRequest
+import coil.size.Size
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
@@ -16,8 +16,9 @@ object ImageLoadHelper {
 
     /**
      * Загружает изображение по fileId в ImageView.
-     * Использует многоуровневый кэш: memory -> disk -> URL cache -> gRPC.
+     * Использует URL-кэш и Coil (memory/disk cache внутри Coil).
      * Без CircleCropTransformation (для превью вложений и полноэкранного просмотра).
+     * Использует lambda target вместо target(imageView) для защиты от race condition при recycling.
      */
     fun loadByFileId(
         imageView: ImageView,
@@ -26,52 +27,26 @@ object ImageLoadHelper {
         onSuccess: (() -> Unit)? = null,
         onError: (() -> Unit)? = null
     ) {
-        val context = imageView.context
-        val imageLoader = AvatarLoader.getImageLoader(context)
+        // Привязываем fileId к ImageView для защиты от race condition при recycling
+        imageView.tag = fileId
 
-        // 1. Memory cache
-        val cached = imageLoader.memoryCache?.get(MemoryCache.Key(fileId))
-        if (cached != null) {
-            imageView.setImageBitmap(cached.bitmap)
-            onSuccess?.invoke()
-            return
-        }
-
-        // 2. Disk cache
-        val diskSnapshot = imageLoader.diskCache?.openSnapshot(fileId)
-        if (diskSnapshot != null) {
-            val diskFile = diskSnapshot.data.toFile()
-            diskSnapshot.close()
-            val request = ImageRequest.Builder(context)
-                .data(diskFile)
-                .target(imageView)
-                .memoryCacheKey(fileId)
-                .crossfade(200)
-                .listener(
-                    onSuccess = { _, _ -> onSuccess?.invoke() },
-                    onError = { _, _ -> onError?.invoke() }
-                )
-                .build()
-            imageLoader.enqueue(request)
-            return
-        }
-
-        // 3. URL cache
+        // 1. URL cache — Coil сам проверит свой memory/disk cache по memoryCacheKey
         val cachedUrl = AvatarLoader.urlCache[fileId]
         if (cachedUrl != null) {
             loadFromUrl(imageView, cachedUrl, fileId, onSuccess, onError)
             return
         }
 
-        // 4. Fetch URL via gRPC
+        // 2. Fetch URL via callback (gRPC или preview_url)
         MainScope().launch {
             val url = withContext(Dispatchers.IO) { getUrlCallback() }
             if (url.isNullOrBlank()) {
-                withContext(Dispatchers.Main) { onError?.invoke() }
+                withContext(Dispatchers.Main) { if (imageView.tag == fileId) onError?.invoke() }
                 return@launch
             }
             AvatarLoader.urlCache[fileId] = url
             withContext(Dispatchers.Main) {
+                if (imageView.tag != fileId) return@withContext // View recycled
                 loadFromUrl(imageView, url, fileId, onSuccess, onError)
             }
         }
@@ -87,13 +62,22 @@ object ImageLoadHelper {
         val imageLoader = AvatarLoader.getImageLoader(imageView.context)
         val request = ImageRequest.Builder(imageView.context)
             .data(url)
-            .target(imageView)
             .memoryCacheKey(cacheKey)
             .diskCacheKey(cacheKey)
+            .size(Size.ORIGINAL)
             .crossfade(200)
-            .listener(
-                onSuccess = { _, _ -> onSuccess?.invoke() },
-                onError = { _, _ -> onError?.invoke() }
+            .target(
+                onSuccess = { drawable ->
+                    if (imageView.tag == cacheKey) {
+                        imageView.setImageDrawable(drawable)
+                        onSuccess?.invoke()
+                    }
+                },
+                onError = { _ ->
+                    if (imageView.tag == cacheKey) {
+                        onError?.invoke()
+                    }
+                }
             )
             .build()
         imageLoader.enqueue(request)
