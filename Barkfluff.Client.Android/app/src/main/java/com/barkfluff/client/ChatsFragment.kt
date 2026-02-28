@@ -13,6 +13,7 @@ import com.barkfluff.client.adapter.ChatAdapter
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.FragmentChatsBinding
 import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.utils.AvatarLoader
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Dispatchers
@@ -27,6 +28,7 @@ class ChatsFragment : Fragment() {
     private lateinit var globalParam: GlobalParam
     private lateinit var grpcManager: GrpcManager
     private lateinit var chatAdapter: ChatAdapter
+    private lateinit var realtimeService: RealtimeService
 
     companion object {
         private const val TAG = "ChatsFragment"
@@ -43,6 +45,7 @@ class ChatsFragment : Fragment() {
 
         globalParam = GlobalParam(requireContext())
         grpcManager = GrpcManager()
+        realtimeService = (requireActivity().application as BarkFluffApplication).realtimeService
 
         setupToolbar()
         setupChatList()
@@ -210,6 +213,14 @@ class ChatsFragment : Fragment() {
 
                 chatAdapter.submitList(displayItems)
                 showEmptyState(displayItems.isEmpty())
+
+                // Подписываемся на онлайн-статусы всех участников чатов
+                val allMemberIds = chats.flatMap { it.memberIds }.distinct()
+                realtimeService.changeOnlineSubscription(allMemberIds)
+
+                // Запускаем стримы и подписываемся на обновления
+                realtimeService.start()
+                subscribeToRealtimeEvents()
             } else {
                 Log.e(TAG, "Ошибка загрузки чатов", result.exceptionOrNull())
                 Snackbar.make(
@@ -222,6 +233,41 @@ class ChatsFragment : Fragment() {
 
             showLoading(false)
         }
+    }
+
+    private fun subscribeToRealtimeEvents() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            realtimeService.newMessages.collect { event ->
+                handleNewMessage(event)
+            }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            realtimeService.messagesRead.collect { event ->
+                handleMessageRead(event)
+            }
+        }
+    }
+
+    private fun handleNewMessage(event: barkfluff.updates.UpdatesApiOuterClass.NewMessageEvent) {
+        val msg = event.message
+        chatAdapter.updateChatWithNewMessage(
+            chatId = event.chatId,
+            senderId = msg.senderId,
+            messageId = msg.id,
+            text = msg.content?.text ?: "",
+            sentAt = msg.sentAt.seconds * 1000,
+            currentUserId = globalParam.userId
+        )
+        showEmptyState(false)
+    }
+
+    private fun handleMessageRead(event: barkfluff.updates.UpdatesApiOuterClass.MessageReadEvent) {
+        chatAdapter.updateReadStatus(
+            chatId = event.chatId,
+            messageId = event.messageId,
+            newReadBy = event.newReadByList,
+            currentUserId = globalParam.userId
+        )
     }
 
     private suspend fun resolveDisplayItem(chat: GrpcManager.ChatData): ChatAdapter.ChatDisplayItem {
