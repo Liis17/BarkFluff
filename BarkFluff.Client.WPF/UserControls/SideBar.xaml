@@ -162,5 +162,16 @@
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>
+        <TextBlock
+            x:Name="VersionTextBlock"
+            Margin="2"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Bottom"
+            FontFamily="{DynamicResource AdwaitaSans}"
+            FontSize="10"
+            FontWeight="Bold"
+            Foreground="#FF737373"
+            Loaded="Loaded_VersionText"
+            Text="version" />
     </Grid>
 </UserControl>

@@ -163,10 +163,11 @@
                     <TextBlock
                         x:Name="Title"
                         Margin="0,0,0,4"
+                        Opacity="0.9"
+                        HorizontalAlignment="Left"
                         FontFamily="{DynamicResource AdwaitaSans}"
-                        FontSize="14"
-                        FontWeight="SemiBold"
-                        Foreground="White"
+                        FontWeight="Bold"
+                        Style="{DynamicResource LittleTitleTextStyle}"
                         Text="#publicusername" />
 
                     <!--  Последнее сообщение  -->
@@ -175,12 +176,7 @@
                         MaxWidth="280"
                         HorizontalAlignment="Left"
                         FontFamily="{DynamicResource Neucha}"
-                        FontSize="12"
-                        FontStretch="Medium"
-                        FontStyle="Normal"
-                        FontWeight="Normal"
-                        Foreground="#9e9e9e"
-                        Opacity="0.7"
+                        Style="{DynamicResource DescriptionTextStyle}"
                         Text="#sample message"
                         TextWrapping="Wrap" />
 
@@ -229,7 +225,7 @@
                             x:Name="ReadStatusPanel"
                             Margin="0,0,4,0"
                             HorizontalAlignment="Right"
-                            Visibility="Collapsed">
+                            Visibility="Visible">
                             <ui:SymbolIcon
                                 x:Name="FirstCheckmark"
                                 Width="20"
@@ -269,10 +265,7 @@
                             Margin="0,0,0,0"
                             HorizontalAlignment="Right"
                             VerticalAlignment="Center"
-                            FontFamily="{DynamicResource AdwaitaSans}"
-                            FontSize="11"
-                            FontWeight="Medium"
-                            Foreground="#FF808080"
+                            Style="{DynamicResource DescriptionTextStyle}"
                             Text="14:30" />
                     </StackPanel>
                 </StackPanel>

@@ -41,17 +41,6 @@
             Panel.ZIndex="999" />
         <Grid x:Name="MainFrame" />
         <TextBlock
-            x:Name="VersionTextBlock"
-            Margin="2"
-            HorizontalAlignment="Left"
-            VerticalAlignment="Bottom"
-            FontFamily="{DynamicResource AdwaitaSans}"
-            FontSize="10"
-            FontWeight="Bold"
-            Foreground="#FF737373"
-            Loaded="Loaded_VersionText"
-            Text="version" />
-        <TextBlock
             x:Name="ResolutionTextBlock"
             Margin="0,10,130,0"
             HorizontalAlignment="Right"

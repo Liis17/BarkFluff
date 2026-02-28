@@ -316,7 +316,15 @@
 
                 <!--  Панель списка чатов  -->
 
-                <Border Grid.Column="0" BorderThickness="0,0,1,0">
+                <Border
+                    Grid.Column="0"
+                    Padding="0"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch"
+                    BorderThickness="0,0,1,0"
+                    Background="{DynamicResource ChatListBackgroundColor}"
+                    CornerRadius="0 15 0 0"
+                    Style="{DynamicResource MainStyleBorder}">
                     <Grid Margin="0,0,0,0">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -449,11 +457,7 @@
                 <Border Grid.Column="2" Background="Transparent">
 
                     <Grid>
-                        <Border
-                            HorizontalAlignment="Stretch"
-                            VerticalAlignment="Stretch"
-                            Background="{DynamicResource OpenChatBackgroundColor}"
-                            CornerRadius="15 0 0 15" />
+
                         <Grid
                             x:Name="OpenedChat"
                             HorizontalAlignment="Stretch"

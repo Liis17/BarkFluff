@@ -105,10 +105,6 @@ namespace BarkFluff.Client.WPF
 
         }
 
-        private void Loaded_VersionText(object sender, RoutedEventArgs e)
-        {
-            VersionTextBlock.Text = AppVersion.VersionName + " " + AppVersion.Version;
-        }
         #endregion
 
         #region Window Events
