@@ -15,6 +15,8 @@ import barkfluff.files.FilesApiGrpcKt
 import barkfluff.files.FilesApiOuterClass
 import barkfluff.messages.MessagesApiGrpcKt
 import barkfluff.messages.MessagesApiOuterClass
+import barkfluff.updates.UpdatesApiGrpcKt
+import barkfluff.onliner.OnlinerApiGrpcKt
 import barkfluff.shared.Shared
 import com.barkfluff.client.data.ClientColors
 import com.barkfluff.client.data.GlobalParam
@@ -61,6 +63,10 @@ class GrpcManager {
         private set
     var messagesChannel: Channel? = null
         private set
+    var updatesChannel: Channel? = null
+        private set
+    var onlinerChannel: Channel? = null
+        private set
 
     // gRPC клиенты
     var navigatorClient: NavigatorApiGrpcKt.NavigatorApiCoroutineStub? = null
@@ -74,6 +80,10 @@ class GrpcManager {
     var filesClient: FilesApiGrpcKt.FilesApiCoroutineStub? = null
         private set
     var messagesClient: MessagesApiGrpcKt.MessagesApiCoroutineStub? = null
+        private set
+    var updatesClient: UpdatesApiGrpcKt.UpdatesApiCoroutineStub? = null
+        private set
+    var onlinerClient: OnlinerApiGrpcKt.OnlinerApiCoroutineStub? = null
         private set
 
     /**
@@ -496,20 +506,26 @@ class GrpcManager {
         shutdownChannel(usersChannel)
         shutdownChannel(filesChannel)
         shutdownChannel(messagesChannel)
-        
+        shutdownChannel(updatesChannel)
+        shutdownChannel(onlinerChannel)
+
         navigatorChannel = null
         beaconChannel = null
         identityChannel = null
         usersChannel = null
         filesChannel = null
         messagesChannel = null
-        
+        updatesChannel = null
+        onlinerChannel = null
+
         navigatorClient = null
         beaconClient = null
         identityClient = null
         usersClient = null
         filesClient = null
         messagesClient = null
+        updatesClient = null
+        onlinerClient = null
     }
     
     /**
@@ -601,6 +617,78 @@ class GrpcManager {
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка создания Messages клиента", e)
             Result.failure(Exception("Ошибка подключения к серверу сообщений: ${e.message}"))
+        }
+    }
+
+    /**
+     * Создает Updates клиент для подписки на обновления сообщений
+     */
+    fun createUpdatesClient(updatesAddress: String, context: Context? = null, includeDeviceInfo: Boolean = false): Result<Unit> {
+        if (updatesAddress.isBlank()) {
+            return Result.failure(IllegalArgumentException("Адрес Updates сервера не указан"))
+        }
+
+        return try {
+            val address = ensureHttpPrefix(updatesAddress)
+            val channel = createChannel(address)
+
+            val interceptors = mutableListOf<ClientInterceptor>()
+            if (context != null) {
+                interceptors.add(AuthInterceptor(context, this))
+            }
+            if (includeDeviceInfo && context != null) {
+                interceptors.add(DeviceInfoInterceptor(context))
+            }
+
+            val interceptedChannel = if (interceptors.isNotEmpty()) {
+                ClientInterceptors.intercept(channel, *interceptors.toTypedArray())
+            } else {
+                channel
+            }
+
+            updatesChannel = interceptedChannel
+            updatesClient = UpdatesApiGrpcKt.UpdatesApiCoroutineStub(interceptedChannel)
+            Log.d(TAG, "Updates клиент создан: $address")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка создания Updates клиента", e)
+            Result.failure(Exception("Ошибка подключения к серверу обновлений: ${e.message}"))
+        }
+    }
+
+    /**
+     * Создает Onliner клиент для отслеживания онлайн-статусов
+     */
+    fun createOnlinerClient(onlinerAddress: String, context: Context? = null, includeDeviceInfo: Boolean = false): Result<Unit> {
+        if (onlinerAddress.isBlank()) {
+            return Result.failure(IllegalArgumentException("Адрес Onliner сервера не указан"))
+        }
+
+        return try {
+            val address = ensureHttpPrefix(onlinerAddress)
+            val channel = createChannel(address)
+
+            val interceptors = mutableListOf<ClientInterceptor>()
+            if (context != null) {
+                interceptors.add(AuthInterceptor(context, this))
+            }
+            if (includeDeviceInfo && context != null) {
+                interceptors.add(DeviceInfoInterceptor(context))
+            }
+
+            val interceptedChannel = if (interceptors.isNotEmpty()) {
+                ClientInterceptors.intercept(channel, *interceptors.toTypedArray())
+            } else {
+                channel
+            }
+
+            onlinerChannel = interceptedChannel
+            onlinerClient = OnlinerApiGrpcKt.OnlinerApiCoroutineStub(interceptedChannel)
+            Log.d(TAG, "Onliner клиент создан: $address")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка создания Onliner клиента", e)
+            Result.failure(Exception("Ошибка подключения к серверу онлайн-статусов: ${e.message}"))
         }
     }
 

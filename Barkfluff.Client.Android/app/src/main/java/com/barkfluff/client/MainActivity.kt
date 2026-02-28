@@ -129,6 +129,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        (application as BarkFluffApplication).realtimeService.start()
+    }
+
     @Suppress("DEPRECATION")
     override fun onBackPressed() {
         MaterialAlertDialogBuilder(this)
