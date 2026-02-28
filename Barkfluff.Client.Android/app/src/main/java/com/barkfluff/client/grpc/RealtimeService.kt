@@ -324,16 +324,26 @@ class RealtimeService(private val context: Context) {
 
     private suspend fun loadBitmapByFileId(fileId: String): Bitmap? {
         return try {
-            val mgr = notificationGrpcManager ?: return null
-            val urlResult = mgr.getFileDownloadUrl(fileId)
-            val url = urlResult.getOrNull()
-            if (url.isNullOrBlank()) return null
+            // Сначала проверяем URL кэш (заполняется AvatarLoader при загрузке списка чатов)
+            var url = com.barkfluff.client.utils.AvatarLoader.urlCache[fileId]
 
+            if (url == null) {
+                val mgr = notificationGrpcManager ?: return null
+                val urlResult = mgr.getFileDownloadUrl(fileId)
+                url = urlResult.getOrNull()
+                if (url.isNullOrBlank()) return null
+                com.barkfluff.client.utils.AvatarLoader.urlCache[fileId] = url
+            }
+
+            // Используем общий ImageLoader с disk/memory cache
+            val imageLoader = com.barkfluff.client.utils.AvatarLoader.getImageLoader(context)
             val request = ImageRequest.Builder(context)
                 .data(url)
+                .memoryCacheKey(fileId)
+                .diskCacheKey(fileId)
                 .allowHardware(false)
                 .build()
-            val imageResult = notificationImageLoader.execute(request)
+            val imageResult = imageLoader.execute(request)
             if (imageResult is SuccessResult) {
                 (imageResult.drawable as? BitmapDrawable)?.bitmap
             } else null
