@@ -89,12 +89,14 @@ class ChatRepository(private val context: Context) {
                 requestBuilder.fromMessageId = fromMessageId
             }
 
-            // Используем offset_before для подгрузки истории (вверх)
-            // и offset_after для подгрузки новых сообщений (вниз)
-            if (offsetBefore > 0) {
-                requestBuilder.offsetBefore = offsetBefore.coerceIn(0, 50)
-            } else if (offsetAfter > 0) {
-                requestBuilder.offsetAfter = offsetAfter.coerceIn(0, 50)
+            if (offsetBefore > 0 || offsetAfter > 0) {
+                // Загрузка относительно fromMessageId
+                if (offsetBefore > 0) {
+                    requestBuilder.offsetBefore = offsetBefore.coerceIn(0, 50)
+                }
+                if (offsetAfter > 0) {
+                    requestBuilder.offsetAfter = offsetAfter.coerceIn(0, 50)
+                }
             } else {
                 // Если оба 0, используем count для обратной совместимости
                 requestBuilder.count = count.coerceIn(1, 50)

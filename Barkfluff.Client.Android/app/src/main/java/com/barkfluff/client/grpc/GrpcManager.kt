@@ -898,9 +898,9 @@ class GrpcManager {
                 .addFileIds(fileId)
                 .build()
 
-            Log.d(TAG, "getFileDownloadUrl: Запрос URL для fileId=$fileId")
+            Log.w(TAG, "getFileDownloadUrl: REQUEST fileId='$fileId', fileIdsCount=${request.fileIdsCount}, fileIdsList=${request.fileIdsList}, requestSerializedSize=${request.serializedSize}")
             val response = filesClient!!.getTempDownloadUrl(request)
-            Log.d(TAG, "getFileDownloadUrl: Получен ответ, fileUrlsList.size=${response.fileUrlsList.size}")
+            Log.w(TAG, "getFileDownloadUrl: RESPONSE fileUrlsList.size=${response.fileUrlsList.size}, serializedSize=${response.serializedSize}")
             
             val fileUrl = response.fileUrlsList.firstOrNull()
             if (fileUrl == null) {
