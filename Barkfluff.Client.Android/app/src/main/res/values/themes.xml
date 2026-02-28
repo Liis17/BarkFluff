@@ -28,7 +28,19 @@
         <item name="shapeAppearance">@style/BottomNav.ActiveIndicator.Shape</item>
     </style>
 
+    <!-- Компактный стиль для плавающей навигации -->
+    <style name="BottomNav.ActiveIndicator.Compact" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
+        <item name="android:color">?attr/colorPrimaryContainer</item>
+        <item name="android:height">48dp</item>
+        <item name="android:width">64dp</item>
+        <item name="shapeAppearance">@style/BottomNav.ActiveIndicator.Shape.Compact</item>
+    </style>
+
     <style name="BottomNav.ActiveIndicator.Shape" parent="ShapeAppearance.Material3.Corner.Full">
         <item name="cornerSize">28dp</item>
+    </style>
+
+    <style name="BottomNav.ActiveIndicator.Shape.Compact" parent="ShapeAppearance.Material3.Corner.Full">
+        <item name="cornerSize">12dp</item>
     </style>
 </resources>
