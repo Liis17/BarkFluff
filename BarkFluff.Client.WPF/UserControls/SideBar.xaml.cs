@@ -108,5 +108,10 @@ namespace BarkFluff.Client.WPF.UserControls
             App.Messenger.ClosePanel();
             App.Messenger.OpenQRModal();
         }
+
+        private void Loaded_VersionText(object sender, RoutedEventArgs e)
+        {
+            VersionTextBlock.Text = AppVersion.VersionName + " " + AppVersion.Version;
+        }
     }
 }
