@@ -7,7 +7,7 @@ on:
       - master
     paths:
       - 'BarkFluff.Client.WPF/**'
-      - '.github/workflows/wpf-build.yml'
+      - '.github/workflows/client-build.yml'
       - 'BarkFluff.Shared.Exceptions/**'
       - 'Shared/BarkFluff.Shared.Auth/**'
       - 'Shared/BarkFluff.Shared.SecurityUtilities/**'
