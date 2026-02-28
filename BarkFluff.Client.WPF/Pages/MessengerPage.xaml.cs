@@ -13,7 +13,6 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
-using System.Windows.Media.Imaging;
 
 using Erida = BarkFluff.Client.WPF.Services.Erida.MessageType;
 using MessageAttachmentType = BarkFluff.Proto.Shared.MessageAttachmentType;
@@ -269,32 +268,19 @@ namespace BarkFluff.Client.WPF.Pages
             {
                 if (fileId == _currentChatAvatarFileId)
                 {
-                    SetChatAvatarImage(filePath);
+                    ChatAvatarButton.FileId = null;
+                    ChatAvatarButton.FileUrl = null;
+                    ChatAvatarButton.AvatarType = AvatarType.Image;
                 }
                 if (fileId == _currentUserAvatarFileId)
                 {
-                    SetTitleWindowAvatarImage(filePath);
+                    AvatarTitleWindowButton.FileId = null;
+                    AvatarTitleWindowButton.FileUrl = null;
+                    AvatarTitleWindowButton.AvatarType = AvatarType.Image;
                 }
             });
         }
 
-        private void SetChatAvatarImage(string imagePath)
-        {
-            try
-            {
-                ChatAvatar.ImageSource = new BitmapImage(new Uri(imagePath, UriKind.RelativeOrAbsolute));
-            }
-            catch { }
-        }
-
-        private void SetTitleWindowAvatarImage(string imagePath)
-        {
-            try
-            {
-                AvatarTitleWindow.ImageSource = new BitmapImage(new Uri(imagePath, UriKind.RelativeOrAbsolute));
-            }
-            catch { }
-        }
 
         #region Обработка онлайн статусов
 
@@ -733,8 +719,12 @@ namespace BarkFluff.Client.WPF.Pages
             App.MainPageLoaded();
 
             // Устанавливаем placeholder для аватарок
-            ChatAvatar.ImageSource = null;
-            AvatarTitleWindow.ImageSource = null;
+            ChatAvatarButton.FileId = null;
+            ChatAvatarButton.FileUrl = null;
+            ChatAvatarButton.AvatarType = AvatarType.UserWithoutAvatar;
+            AvatarTitleWindowButton.FileId = null;
+            AvatarTitleWindowButton.FileUrl = null;
+            AvatarTitleWindowButton.AvatarType = AvatarType.UserWithoutAvatar;
 
             OpenedChat.Visibility = Visibility.Collapsed;
             App.ServerCommunication.CreateOnlyBeaconAC(App.GParam);
@@ -1371,8 +1361,9 @@ namespace BarkFluff.Client.WPF.Pages
             if (!string.IsNullOrEmpty(App.GParam.PictureUrl))
             {
                 _currentUserAvatarFileId = FileCacheService.ExtractFileIdFromUrl(App.GParam.PictureUrl);
-                var imagePath = App.FileCacheService.GetCachedFilePath(_currentUserAvatarFileId ?? string.Empty, FileType.Avatar, App.GParam.PictureUrl);
-                SetTitleWindowAvatarImage(imagePath);
+                AvatarTitleWindowButton.FileId = _currentUserAvatarFileId;
+                AvatarTitleWindowButton.FileUrl = null;
+                AvatarTitleWindowButton.AvatarType = AvatarType.Image;
             }
         }
         public async void UserInfoUpdate()
@@ -1425,17 +1416,23 @@ namespace BarkFluff.Client.WPF.Pages
             {
 
                 ChatTitleUsername.Text = "Избранное";
-                avatar = "pack://application:,,,/BarkFluff;component/Resources/Placeholders/savedplaceholder.png";
-                // Для избранного используем placeholder напрямую
-                ChatAvatar.ImageSource = new BitmapImage(new Uri(avatar, UriKind.RelativeOrAbsolute));
+                ChatAvatarButton.FileId = null;
+                ChatAvatarButton.FileUrl = null;
+                ChatAvatarButton.AvatarType = AvatarType.SavedChat;
             }
             else
             {
                 ChatTitleUsername.Text = $"{response.Data.FirstName} {response.Data.LastName}";
                 // Загружаем аватар через кеш-сервис
                 _currentChatAvatarFileId = FileCacheService.ExtractFileIdFromUrl(avatar);
-                var imagePath = App.FileCacheService.GetCachedFilePath(_currentChatAvatarFileId ?? string.Empty, FileType.Avatar, avatar);
-                SetChatAvatarImage(imagePath);
+                if (string.IsNullOrEmpty(_currentChatAvatarFileId))
+                {
+                    ChatAvatarButton.AvatarType = AvatarType.UserWithoutAvatar;
+                    return;
+                }
+                ChatAvatarButton.FileId = _currentChatAvatarFileId;
+                ChatAvatarButton.FileUrl = null;
+                ChatAvatarButton.AvatarType = AvatarType.Image;
             }
 
         }
