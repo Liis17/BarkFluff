@@ -643,8 +643,8 @@ class GrpcManager {
                     id = chat.id,
                     title = chat.title,
                     picture = chat.picture,
-                    pictureFileId = chat.picture,
-                    picturePreviewFileId = chat.picture, // TODO: Добавить picturePreview в proto Chat
+                    pictureFileId = extractGuidFromUrl(chat.picture),
+                    picturePreviewFileId = extractGuidFromUrl(chat.picture), // TODO: Добавить picturePreview в proto Chat
                     isGroupChat = chat.isGroupChat,
                     lastMessage = lastMsg,
                     memberIds = memberIds,

@@ -17,7 +17,6 @@ import com.barkfluff.client.utils.AvatarLoader
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 
 class ChatsFragment : Fragment() {
@@ -120,16 +119,14 @@ class ChatsFragment : Fragment() {
             onChatClicked(chat)
         }) { fileId ->
             Log.d(TAG, "setupChatList: Requesting URL for fileId=$fileId")
-            runBlocking {
-                val result = grpcManager.getFileDownloadUrl(fileId)
-                if (result.isSuccess) {
-                    val url = result.getOrNull()
-                    Log.d(TAG, "setupChatList: Got URL for fileId=$fileId, url=$url")
-                    url
-                } else {
-                    Log.e(TAG, "setupChatList: Failed to get URL for fileId=$fileId, error=${result.exceptionOrNull()?.message}")
-                    null
-                }
+            val result = grpcManager.getFileDownloadUrl(fileId)
+            if (result.isSuccess) {
+                val url = result.getOrNull()
+                Log.d(TAG, "setupChatList: Got URL for fileId=$fileId, url=$url")
+                url
+            } else {
+                Log.e(TAG, "setupChatList: Failed to get URL for fileId=$fileId, error=${result.exceptionOrNull()?.message}")
+                null
             }
         }
 
@@ -235,26 +232,28 @@ class ChatsFragment : Fragment() {
                 if (userResult.isSuccess) {
                     val user = userResult.getOrNull()!!
                     val name = "${user.firstName} ${user.lastName}".trim().ifBlank { user.username }
-                    // Используем URL напрямую (profilePicturePreviewUrl/profilePictureUrl — это ссылки)
-                    val avatarUrl = user.profilePicturePreviewUrl.ifBlank { user.profilePictureUrl }
-                    Log.d(TAG, "resolveDisplayItem: ЛС userId=$otherUserId, name=$name, avatarUrl=$avatarUrl")
+                    // Используем извлечённый fileId (GUID), а не сырой URL Minio,
+                    // т.к. URL Minio — внутренний и недоступен с клиента напрямую.
+                    // AvatarLoader по fileId получит temp download URL через gRPC.
+                    val avatarFileId = user.profilePicturePreviewFileId.ifBlank { user.profilePictureFileId }
+                    Log.d(TAG, "resolveDisplayItem: ЛС userId=$otherUserId, name=$name, avatarFileId=$avatarFileId")
                     return ChatAdapter.ChatDisplayItem(
                         chatData = chat,
                         displayTitle = name,
-                        displayAvatarFileId = avatarUrl.ifBlank { null },
+                        displayAvatarFileId = avatarFileId.ifBlank { null },
                         otherUserId = otherUserId
                     )
                 }
             }
         }
 
-        // Используем URL напрямую для аватара группового чата
-        val chatAvatarUrl = chat.picture
-        Log.d(TAG, "resolveDisplayItem: Групповой чат chatId=${chat.id}, title=${chat.title}, avatarUrl=$chatAvatarUrl")
+        // Для группового чата также извлекаем fileId из URL картинки
+        val chatPictureFileId = chat.pictureFileId
+        Log.d(TAG, "resolveDisplayItem: Групповой чат chatId=${chat.id}, title=${chat.title}, pictureFileId=$chatPictureFileId")
         return ChatAdapter.ChatDisplayItem(
             chatData = chat,
             displayTitle = chat.title.ifBlank { "Чат" },
-            displayAvatarFileId = chatAvatarUrl.ifBlank { null }
+            displayAvatarFileId = chatPictureFileId.ifBlank { null }
         )
     }
 
