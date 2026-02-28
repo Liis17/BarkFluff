@@ -93,6 +93,10 @@ namespace BarkFluff.Client.WPF.UserControls
         public ChatItem(string imageUrl, string chatName, string lastMessageText, string time, ReadingStatus reading, List<long> readBy, long unReaded, string chatId, long lastMessageId, long firstUnreadId, bool isGroupChat, long userId)
         {
             InitializeComponent();
+
+            DragDropVisualOverlay.Visibility = Visibility.Collapsed; // Скрываем overlay по умолчанию
+            BaseChatGrid.Visibility = Visibility.Visible;
+
             ChatId = chatId;
             _lastMessageId = lastMessageId;
             _isGroupChat = isGroupChat;
@@ -665,11 +669,6 @@ namespace BarkFluff.Client.WPF.UserControls
                 {
                     DragDropAvatar.FileId = _avatarFileId;
                     DragDropAvatar.FileUrl = _url;
-                }
-
-                if (DragDropTitle != null)
-                {
-                    DragDropTitle.Text = _title;
                 }
 
                 // Отменяем любые текущие анимации
