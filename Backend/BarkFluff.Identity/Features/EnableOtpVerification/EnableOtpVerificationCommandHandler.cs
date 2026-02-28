@@ -90,42 +90,6 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
             await _authPropertiesStorage.AddUserOtpSecretKey(_userContext.UserId, base32Secret);
             await _authPropertiesStorage.UpdateOptType(Domain.OtpType.Authenticator, userInfo.User.Id);
 
-            // Отправка уведомления об изменении метода 2FA
-            var userContactInfo = await _usersClient.GetUserContactsAsync(new GetUserContactsRequest { UserId = _userContext.UserId });
-
-            string locationInfo = "-";
-            if (!string.IsNullOrEmpty(_requestContext.IpAddress))
-            {
-                var ipLocation = await _locationClient.GetLocation(_requestContext.IpAddress);
-                if (ipLocation != null)
-                {
-                    locationInfo = $"{ipLocation.Country}, {ipLocation.RegionName}, {ipLocation.City}";
-                }
-            }
-
-            var twoFactorChangedNotification = new EmailNotification
-            {
-                OwnerId = userInfo.User.Id,
-                Address = userContactInfo.Contact.Email,
-                CreatedAt = DateTime.UtcNow,
-                Payload = new Dictionary<string, string>
-                {
-                    {"username", userInfo.User.Username},
-                    {"old_method", oldMethod},
-                    {"new_method", "Authenticator приложение"},
-                    {"ip", _requestContext.IpAddress ?? string.Empty},
-                    {"devicename", _requestContext.DeviceName},
-                    {"os", _requestContext.OperationSystem},
-                    {"location", locationInfo},
-                    {"datetime", DateTime.UtcNow.ToString("G", CultureInfo.GetCultureInfo("ru-RU"))}
-                },
-                ServiceId = ServiceId.Identity,
-                Title = "Изменен метод двухфакторной аутентификации",
-                Type = NotificationType.TwoFactorMethodChanged
-            };
-
-            await _notificationQueueSender.SendNotification(twoFactorChangedNotification);
-
             var qrGenerator = new QRCodeGenerator();
             var qrCodeData = qrGenerator.CreateQrCode(uri, QRCodeGenerator.ECCLevel.Q);
 
@@ -206,30 +170,6 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
             );
 
             await _notificationQueueSender.SendNotification(emailNotification);
-
-            // Отправка уведомления об изменении метода 2FA
-            var twoFactorChangedNotification = new EmailNotification
-            {
-                OwnerId = userInfo.User.Id,
-                Address = userContactInfo.Contact.Email,
-                CreatedAt = DateTime.UtcNow,
-                Payload = new Dictionary<string, string>
-                {
-                    {"username", userInfo.User.Username},
-                    {"old_method", oldMethod},
-                    {"new_method", "Email"},
-                    {"ip", _requestContext.IpAddress ?? string.Empty},
-                    {"devicename", _requestContext.DeviceName},
-                    {"os", _requestContext.OperationSystem},
-                    {"location", locationInfo},
-                    {"datetime", DateTime.UtcNow.ToString("G", CultureInfo.GetCultureInfo("ru-RU"))}
-                },
-                ServiceId = ServiceId.Identity,
-                Title = "Изменен метод двухфакторной аутентификации",
-                Type = NotificationType.TwoFactorMethodChanged
-            };
-
-            await _notificationQueueSender.SendNotification(twoFactorChangedNotification);
 
             _logger.LogInformation(
                 "Email 2FA успешно настроен для пользователя {UserId}. Старый метод: {OldMethod}",
