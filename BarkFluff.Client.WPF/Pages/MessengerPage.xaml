@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="clr-namespace:BarkFluff.Client.WPF.Pages"
+    xmlns:localcontrols="clr-namespace:BarkFluff.Client.WPF.UserControls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:uc="clr-namespace:BarkFluff.Client.WPF.UserControls"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
@@ -239,26 +240,27 @@
 
                     <StackPanel Margin="30,0,0,0" Orientation="Horizontal">
                         <!--  Аватар пользователя  -->
-                        <Border
+
+
+                        <localcontrols:CachedAvatar
                             x:Name="AvatarTitleWindowButton"
-                            Grid.Column="0"
                             Width="23"
                             Height="23"
-                            Margin="2,0"
+                            AvatarSize="VeryLittle"
                             HorizontalAlignment="Left"
                             VerticalAlignment="Center"
-                            CornerRadius="15"
+                            Panel.ZIndex="1"
+                            AvatarType="Image"
+                            CornerRadius="23"
                             Cursor="Hand"
+                            EnableDynamicShadow="False"
+                            Focusable="False"
                             MouseLeftButtonUp="OpenCenterBlock"
+                            ShadowBlurRadius="12"
+                            ShadowOpacity="0.9"
                             Tag="UserProfile"
-                            ToolTip="Открыть мой профиль">
-                            <Border.Background>
-                                <ImageBrush
-                                    x:Name="AvatarTitleWindow"
-                                    ImageSource="pack://application:,,,/BarkFluff;component/Resources/Placeholders/userplaceholder.png"
-                                    Stretch="UniformToFill" />
-                            </Border.Background>
-                        </Border>
+                            ToolTip="Открыть мой профиль" />
+
                         <!--  Иконка обновления  -->
                         <Border
                             x:Name="UpdateIconBorder"
@@ -321,8 +323,8 @@
                     Padding="0"
                     HorizontalAlignment="Stretch"
                     VerticalAlignment="Stretch"
-                    BorderThickness="0,0,1,0"
                     Background="{DynamicResource ChatListBackgroundColor}"
+                    BorderThickness="0,0,1,0"
                     CornerRadius="0 15 0 0"
                     Style="{DynamicResource MainStyleBorder}">
                     <Grid Margin="0,0,0,0">
@@ -513,24 +515,24 @@
                                                 Foreground="Wheat"
                                                 Symbol="ChevronLeft12" />
                                         </ui:Button>
-                                        <Border
+
+                                        <localcontrols:CachedAvatar
                                             x:Name="ChatAvatarButton"
                                             Width="35"
                                             Height="35"
-                                            BorderBrush="Transparent"
-                                            CornerRadius="30"
+                                            Panel.ZIndex="1"
+                                            AvatarSize="Little"
+                                            AvatarType="Image"
+                                            CornerRadius="23"
                                             Cursor="Hand"
+                                            EnableDynamicShadow="False"
                                             Focusable="False"
                                             MouseLeftButtonUp="OpenCenterBlock"
+                                            ShadowBlurRadius="12"
+                                            ShadowOpacity="0.9"
                                             Tag="UserProfile"
-                                            ToolTip="Открыть профиль">
-                                            <Border.Background>
-                                                <ImageBrush
-                                                    x:Name="ChatAvatar"
-                                                    ImageSource="pack://application:,,,/BarkFluff;component/Resources/Placeholders/userplaceholder.png"
-                                                    Stretch="UniformToFill" />
-                                            </Border.Background>
-                                        </Border>
+                                            ToolTip="Открыть профиль" />
+
                                         <StackPanel Orientation="Vertical">
                                             <TextBlock
                                                 x:Name="ChatTitleUsername"
