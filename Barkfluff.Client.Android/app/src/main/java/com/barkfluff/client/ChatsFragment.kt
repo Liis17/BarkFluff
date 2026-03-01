@@ -44,9 +44,10 @@ class ChatsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        val app = requireActivity().application as BarkFluffApplication
         globalParam = GlobalParam(requireContext())
-        grpcManager = GrpcManager()
-        realtimeService = (requireActivity().application as BarkFluffApplication).realtimeService
+        grpcManager = app.grpcManager
+        realtimeService = app.realtimeService
 
         setupToolbar()
         setupChatList()
@@ -186,18 +187,7 @@ class ChatsFragment : Fragment() {
     private fun initGrpcClients() {
         val ctx = requireContext()
         Log.d(TAG, "initGrpcClients: identity=${globalParam.socketIdentity}, users=${globalParam.socketUsers}, messages=${globalParam.socketMessages}, files=${globalParam.socketFiles}")
-        if (globalParam.socketIdentity.isNotBlank()) {
-            grpcManager.createIdentityClient(globalParam.socketIdentity, ctx, includeDeviceInfo = true)
-        }
-        if (globalParam.socketUsers.isNotBlank()) {
-            grpcManager.createUsersClient(globalParam.socketUsers, ctx, includeDeviceInfo = true)
-        }
-        if (globalParam.socketMessages.isNotBlank()) {
-            grpcManager.createMessagesClient(globalParam.socketMessages, ctx, includeDeviceInfo = true)
-        }
-        if (globalParam.socketFiles.isNotBlank()) {
-            grpcManager.createFilesClient(globalParam.socketFiles, ctx, includeDeviceInfo = true)
-        }
+        grpcManager.initAllClients(ctx, globalParam)
         Log.d(TAG, "initGrpcClients: Clients initialized, filesClient is null: ${grpcManager.filesClient == null}")
     }
 
@@ -221,8 +211,7 @@ class ChatsFragment : Fragment() {
                 val allMemberIds = chats.flatMap { it.memberIds }.distinct()
                 realtimeService.changeOnlineSubscription(allMemberIds)
 
-                // Запускаем стримы и подписываемся на обновления
-                realtimeService.start()
+                // Подписываемся на обновления
                 subscribeToRealtimeEvents()
             } else {
                 Log.e(TAG, "Ошибка загрузки чатов", result.exceptionOrNull())
@@ -312,9 +301,6 @@ class ChatsFragment : Fragment() {
                 if (userResult.isSuccess) {
                     val user = userResult.getOrNull()!!
                     val name = "${user.firstName} ${user.lastName}".trim().ifBlank { user.username }
-                    // Используем извлечённый fileId (GUID), а не сырой URL Minio,
-                    // т.к. URL Minio — внутренний и недоступен с клиента напрямую.
-                    // AvatarLoader по fileId получит temp download URL через gRPC.
                     val avatarFileId = user.profilePicturePreviewFileId.ifBlank { user.profilePictureFileId }
                     Log.d(TAG, "resolveDisplayItem: ЛС userId=$otherUserId, name=$name, avatarFileId=$avatarFileId")
                     return ChatAdapter.ChatDisplayItem(
@@ -340,7 +326,7 @@ class ChatsFragment : Fragment() {
     private fun onChatClicked(chat: GrpcManager.ChatData) {
         // Находим display item для получения дополнительной информации
         val displayItem = chatAdapter.currentList.find { it.chatData.id == chat.id }
-        
+
         val intent = Intent(requireContext(), ChatActivity::class.java).apply {
             putExtra("chat_id", chat.id)
             putExtra("chat_title", displayItem?.displayTitle ?: chat.title.ifBlank { "Чат" })
@@ -348,10 +334,10 @@ class ChatsFragment : Fragment() {
             putExtra("is_group_chat", chat.isGroupChat)
             putExtra("other_user_id", displayItem?.otherUserId ?: 0L)
         }
-        
+
         // Устанавливаем чат как открытый перед запуском Activity
         OpenChatManager.setOpenChat(chat.id)
-        
+
         startActivity(intent)
     }
 
@@ -408,7 +394,6 @@ class ChatsFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        grpcManager.shutdown()
         _binding = null
     }
 }
