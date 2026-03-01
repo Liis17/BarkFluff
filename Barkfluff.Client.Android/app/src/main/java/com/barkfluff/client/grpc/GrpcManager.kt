@@ -53,6 +53,16 @@ class GrpcManager {
             Metadata.Key.of("x-error-code", Metadata.ASCII_STRING_MARSHALLER)
     }
 
+    // Адреса, использованные при создании каналов (для идемпотентности)
+    private var navigatorAddress: String? = null
+    private var beaconAddress: String? = null
+    private var identityAddress: String? = null
+    private var usersAddress: String? = null
+    private var filesAddress: String? = null
+    private var messagesAddress: String? = null
+    private var updatesAddress: String? = null
+    private var onlinerAddress: String? = null
+
     // gRPC каналы
     var navigatorChannel: Channel? = null
         private set
@@ -90,6 +100,33 @@ class GrpcManager {
         private set
 
     /**
+     * Проверяет, инициализированы ли основные клиенты (identity, users, files, messages).
+     */
+    fun isInitialized(): Boolean {
+        return identityClient != null && usersClient != null && filesClient != null && messagesClient != null
+    }
+
+    /**
+     * Инициализирует все клиенты по адресам из GlobalParam.
+     * Идемпотентно — если клиент уже создан с тем же адресом, пропускает пересоздание.
+     */
+    fun initAllClients(context: Context, globalParam: GlobalParam) {
+        val identity = globalParam.socketIdentity
+        val users = globalParam.socketUsers
+        val files = globalParam.socketFiles
+        val messages = globalParam.socketMessages
+        val onliner = globalParam.socketOnliner
+        val updates = globalParam.socketUpdates
+
+        if (identity.isNotBlank()) createIdentityClient(identity, context, includeDeviceInfo = true)
+        if (users.isNotBlank()) createUsersClient(users, context, includeDeviceInfo = true)
+        if (files.isNotBlank()) createFilesClient(files, context, includeDeviceInfo = true)
+        if (messages.isNotBlank()) createMessagesClient(messages, context, includeDeviceInfo = true)
+        if (onliner.isNotBlank()) createOnlinerClient(onliner, context, includeDeviceInfo = true)
+        if (updates.isNotBlank()) createUpdatesClient(updates, context, includeDeviceInfo = true)
+    }
+
+    /**
      * Создает только Beacon клиент для работы с Beacon API на сервере
      * Аналог CreateOnlyBeaconAC в WPF
      */
@@ -98,12 +135,15 @@ class GrpcManager {
             return Result.failure(IllegalArgumentException("Адрес Beacon сервера не указан"))
         }
 
+        val normalized = ensureHttpPrefix(beaconAddress)
+        if (this.beaconAddress == normalized && beaconClient != null) return Result.success(Unit)
+
         return try {
-            val address = ensureHttpPrefix(beaconAddress)
-            val channel = createChannel(address)
-            beaconChannel = channel
-            beaconClient = BeaconApiGrpcKt.BeaconApiCoroutineStub(channel)
-            Log.d(TAG, "Beacon клиент создан: $address")
+            val channel = createChannel(normalized)
+            this.beaconChannel = channel
+            this.beaconClient = BeaconApiGrpcKt.BeaconApiCoroutineStub(channel)
+            this.beaconAddress = normalized
+            Log.d(TAG, "Beacon клиент создан: $normalized")
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка создания Beacon клиента", e)
@@ -120,12 +160,15 @@ class GrpcManager {
             return Result.failure(IllegalArgumentException("URL навигатора не может быть пустым"))
         }
 
+        val normalized = ensureHttpPrefix(navigatorUrl)
+        if (this.navigatorAddress == normalized && navigatorClient != null) return Result.success(Unit)
+
         return try {
-            val address = ensureHttpPrefix(navigatorUrl)
-            val channel = createChannel(address)
+            val channel = createChannel(normalized)
             navigatorChannel = channel
             navigatorClient = NavigatorApiGrpcKt.NavigatorApiCoroutineStub(channel)
-            Log.d(TAG, "Navigator клиент создан: $address")
+            this.navigatorAddress = normalized
+            Log.d(TAG, "Navigator клиент создан: $normalized")
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка создания Navigator клиента", e)
@@ -141,28 +184,31 @@ class GrpcManager {
             return Result.failure(IllegalArgumentException("Адрес Identity сервера не указан"))
         }
 
+        val normalized = ensureHttpPrefix(identityAddress)
+        if (this.identityAddress == normalized && identityClient != null) return Result.success(Unit)
+
         return try {
-            val address = ensureHttpPrefix(identityAddress)
-            val channel = createChannel(address)
-            
+            val channel = createChannel(normalized)
+
             // Добавляем interceptors
             val interceptors = mutableListOf<ClientInterceptor>()
             if (context != null) {
-                interceptors.add(AuthInterceptor(context, this))
+                interceptors.add(AuthInterceptor(context))
             }
             if (includeDeviceInfo && context != null) {
                 interceptors.add(DeviceInfoInterceptor(context))
             }
-            
+
             val interceptedChannel = if (interceptors.isNotEmpty()) {
                 ClientInterceptors.intercept(channel, *interceptors.toTypedArray())
             } else {
                 channel
             }
-            
+
             identityChannel = interceptedChannel
             identityClient = IdentityApiGrpcKt.IdentityApiCoroutineStub(interceptedChannel)
-            Log.d(TAG, "Identity клиент создан: $address")
+            this.identityAddress = normalized
+            Log.d(TAG, "Identity клиент создан: $normalized")
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка создания Identity клиента", e)
@@ -178,28 +224,31 @@ class GrpcManager {
             return Result.failure(IllegalArgumentException("Адрес Users сервера не указан"))
         }
 
+        val normalized = ensureHttpPrefix(usersAddress)
+        if (this.usersAddress == normalized && usersClient != null) return Result.success(Unit)
+
         return try {
-            val address = ensureHttpPrefix(usersAddress)
-            val channel = createChannel(address)
-            
+            val channel = createChannel(normalized)
+
             // Добавляем interceptors
             val interceptors = mutableListOf<ClientInterceptor>()
             if (context != null) {
-                interceptors.add(AuthInterceptor(context, this))
+                interceptors.add(AuthInterceptor(context))
             }
             if (includeDeviceInfo && context != null) {
                 interceptors.add(DeviceInfoInterceptor(context))
             }
-            
+
             val interceptedChannel = if (interceptors.isNotEmpty()) {
                 ClientInterceptors.intercept(channel, *interceptors.toTypedArray())
             } else {
                 channel
             }
-            
-            usersChannel = interceptedChannel
+
+            this.usersChannel = interceptedChannel
             usersClient = UsersApiGrpcKt.UsersApiCoroutineStub(interceptedChannel)
-            Log.d(TAG, "Users клиент создан: $address")
+            this.usersAddress = normalized
+            Log.d(TAG, "Users клиент создан: $normalized")
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка создания Users клиента", e)
@@ -463,8 +512,6 @@ class GrpcManager {
         val host = parts[0]
         val port = parts[1].toInt()
 
-        Log.d(TAG, "Создание gRPC канала: host=$host, port=$port, tls=$useTls")
-
         val builder = OkHttpChannelBuilder.forAddress(host, port)
         if (useTls) {
             // Доверяем всем сертификатам (сервер использует самоподписанный сертификат)
@@ -499,6 +546,16 @@ class GrpcManager {
     }
 
     /**
+     * Пересоздаёт все каналы принудительно.
+     * Вызывается при возврате из фона, когда старые каналы могли сломаться (DNS resolution failure).
+     */
+    fun recreateAllClients(context: Context, globalParam: GlobalParam) {
+        Log.d(TAG, "Force-recreating all gRPC channels")
+        shutdown()
+        initAllClients(context, globalParam)
+    }
+
+    /**
      * Закрывает все gRPC каналы
      * Аналог Dispose в WPF
      */
@@ -529,8 +586,17 @@ class GrpcManager {
         messagesClient = null
         updatesClient = null
         onlinerClient = null
+
+        navigatorAddress = null
+        beaconAddress = null
+        identityAddress = null
+        usersAddress = null
+        filesAddress = null
+        messagesAddress = null
+        updatesAddress = null
+        onlinerAddress = null
     }
-    
+
     /**
      * Корректно закрывает gRPC канал
      */
@@ -559,27 +625,30 @@ class GrpcManager {
             return Result.failure(IllegalArgumentException("Адрес Files сервера не указан"))
         }
 
+        val normalized = ensureHttpPrefix(filesAddress)
+        if (this.filesAddress == normalized && filesClient != null) return Result.success(Unit)
+
         return try {
-            val address = ensureHttpPrefix(filesAddress)
-            val channel = createChannel(address)
-            
+            val channel = createChannel(normalized)
+
             val interceptors = mutableListOf<ClientInterceptor>()
             if (context != null) {
-                interceptors.add(AuthInterceptor(context, this))
+                interceptors.add(AuthInterceptor(context))
             }
             if (includeDeviceInfo && context != null) {
                 interceptors.add(DeviceInfoInterceptor(context))
             }
-            
+
             val interceptedChannel = if (interceptors.isNotEmpty()) {
                 ClientInterceptors.intercept(channel, *interceptors.toTypedArray())
             } else {
                 channel
             }
-            
-            filesChannel = interceptedChannel
+
+            this.filesChannel = interceptedChannel
             filesClient = FilesApiGrpcKt.FilesApiCoroutineStub(interceptedChannel)
-            Log.d(TAG, "Files клиент создан: $address")
+            this.filesAddress = normalized
+            Log.d(TAG, "Files клиент создан: $normalized")
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка создания Files клиента", e)
@@ -595,13 +664,15 @@ class GrpcManager {
             return Result.failure(IllegalArgumentException("Адрес Messages сервера не указан"))
         }
 
+        val normalized = ensureHttpPrefix(messagesAddress)
+        if (this.messagesAddress == normalized && messagesClient != null) return Result.success(Unit)
+
         return try {
-            val address = ensureHttpPrefix(messagesAddress)
-            val channel = createChannel(address)
+            val channel = createChannel(normalized)
 
             val interceptors = mutableListOf<ClientInterceptor>()
             if (context != null) {
-                interceptors.add(AuthInterceptor(context, this))
+                interceptors.add(AuthInterceptor(context))
             }
             if (includeDeviceInfo && context != null) {
                 interceptors.add(DeviceInfoInterceptor(context))
@@ -613,9 +684,10 @@ class GrpcManager {
                 channel
             }
 
-            messagesChannel = interceptedChannel
+            this.messagesChannel = interceptedChannel
             messagesClient = MessagesApiGrpcKt.MessagesApiCoroutineStub(interceptedChannel)
-            Log.d(TAG, "Messages клиент создан: $address")
+            this.messagesAddress = normalized
+            Log.d(TAG, "Messages клиент создан: $normalized")
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка создания Messages клиента", e)
@@ -631,13 +703,15 @@ class GrpcManager {
             return Result.failure(IllegalArgumentException("Адрес Updates сервера не указан"))
         }
 
+        val normalized = ensureHttpPrefix(updatesAddress)
+        if (this.updatesAddress == normalized && updatesClient != null) return Result.success(Unit)
+
         return try {
-            val address = ensureHttpPrefix(updatesAddress)
-            val channel = createChannel(address)
+            val channel = createChannel(normalized)
 
             val interceptors = mutableListOf<ClientInterceptor>()
             if (context != null) {
-                interceptors.add(AuthInterceptor(context, this))
+                interceptors.add(AuthInterceptor(context))
             }
             if (includeDeviceInfo && context != null) {
                 interceptors.add(DeviceInfoInterceptor(context))
@@ -649,9 +723,10 @@ class GrpcManager {
                 channel
             }
 
-            updatesChannel = interceptedChannel
+            this.updatesChannel = interceptedChannel
             updatesClient = UpdatesApiGrpcKt.UpdatesApiCoroutineStub(interceptedChannel)
-            Log.d(TAG, "Updates клиент создан: $address")
+            this.updatesAddress = normalized
+            Log.d(TAG, "Updates клиент создан: $normalized")
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка создания Updates клиента", e)
@@ -667,13 +742,15 @@ class GrpcManager {
             return Result.failure(IllegalArgumentException("Адрес Onliner сервера не указан"))
         }
 
+        val normalized = ensureHttpPrefix(onlinerAddress)
+        if (this.onlinerAddress == normalized && onlinerClient != null) return Result.success(Unit)
+
         return try {
-            val address = ensureHttpPrefix(onlinerAddress)
-            val channel = createChannel(address)
+            val channel = createChannel(normalized)
 
             val interceptors = mutableListOf<ClientInterceptor>()
             if (context != null) {
-                interceptors.add(AuthInterceptor(context, this))
+                interceptors.add(AuthInterceptor(context))
             }
             if (includeDeviceInfo && context != null) {
                 interceptors.add(DeviceInfoInterceptor(context))
@@ -685,9 +762,10 @@ class GrpcManager {
                 channel
             }
 
-            onlinerChannel = interceptedChannel
+            this.onlinerChannel = interceptedChannel
             onlinerClient = OnlinerApiGrpcKt.OnlinerApiCoroutineStub(interceptedChannel)
-            Log.d(TAG, "Onliner клиент создан: $address")
+            this.onlinerAddress = normalized
+            Log.d(TAG, "Onliner клиент создан: $normalized")
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка создания Onliner клиента", e)
@@ -898,19 +976,16 @@ class GrpcManager {
                 .addFileIds(fileId)
                 .build()
 
-            Log.w(TAG, "getFileDownloadUrl: REQUEST fileId='$fileId', fileIdsCount=${request.fileIdsCount}, fileIdsList=${request.fileIdsList}, requestSerializedSize=${request.serializedSize}")
             val response = filesClient!!.getTempDownloadUrl(request)
-            Log.w(TAG, "getFileDownloadUrl: RESPONSE fileUrlsList.size=${response.fileUrlsList.size}, serializedSize=${response.serializedSize}")
-            
+
             val fileUrl = response.fileUrlsList.firstOrNull()
             if (fileUrl == null) {
                 Log.e(TAG, "getFileDownloadUrl: Пустой список fileUrlsList для fileId=$fileId")
                 return@withContext Result.failure(Exception("URL не получен: пустой ответ"))
             }
-            
+
             val url = fileUrl.url
-            Log.d(TAG, "getFileDownloadUrl: fileId=$fileId, url='$url', fileUrl.fileId=${fileUrl.fileId}")
-            
+
             if (url.isNullOrBlank()) {
                 Log.e(TAG, "getFileDownloadUrl: Пустой URL для fileId=$fileId")
                 return@withContext Result.failure(Exception("URL не получен"))
@@ -1008,7 +1083,7 @@ class GrpcManager {
                 .build()
 
             val response = identityClient!!.confirmAccount(request)
-            
+
             Result.success(
                 ConfirmAccountResult(
                     refreshToken = response.refreshToken.value,
@@ -1061,7 +1136,7 @@ class GrpcManager {
 
             val uploadData = uploadUrlResult.getOrNull()!!
             val fileId = uploadData.fileId
-            
+
             // Выполняем HTTP POST multipart/form-data для загрузки файла
             Log.d(TAG, "Avatar upload URL получен, fileId: $fileId, url: ${uploadData.url}")
 
@@ -1130,7 +1205,7 @@ class GrpcManager {
                 .build()
 
             val response = filesClient!!.getUploadUrl(request)
-            
+
             Result.success(
                 UploadUrlResult(
                     url = response.url,
@@ -1180,7 +1255,7 @@ class GrpcManager {
                 .build()
 
             val response = identityClient!!.enableOtpVerification(request)
-            
+
             Result.success(
                 OtpSetupResult(
                     qrBase64 = response.otpQr,

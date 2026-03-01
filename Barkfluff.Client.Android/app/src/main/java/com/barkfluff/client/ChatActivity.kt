@@ -29,8 +29,10 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -95,10 +97,11 @@ class ChatActivity : AppCompatActivity() {
         binding = ActivityChatBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        val app = application as BarkFluffApplication
         globalParam = GlobalParam(this)
-        grpcManager = GrpcManager()
-        realtimeService = (application as BarkFluffApplication).realtimeService
-        chatRepository = ChatRepository(this)
+        grpcManager = app.grpcManager
+        realtimeService = app.realtimeService
+        chatRepository = ChatRepository(this, grpcManager)
 
         // Получаем данные из intent
         chatId = intent.getStringExtra(EXTRA_CHAT_ID) ?: run {
@@ -112,12 +115,6 @@ class ChatActivity : AppCompatActivity() {
         currentUserId = globalParam.userId
 
         Log.d(TAG, "ChatActivity created: chatId=$chatId, title=$chatTitle, isGroupChat=$isGroupChat, otherUserId=$otherUserId")
-
-        // Инициализируем onliner клиент для получения статуса онлайна
-        val onlinerAddress = globalParam.socketOnliner
-        if (onlinerAddress.isNotBlank()) {
-            grpcManager.createOnlinerClient(onlinerAddress, this, includeDeviceInfo = true)
-        }
 
         setupToolbar()
         setupMessagesRecyclerView()
@@ -139,7 +136,7 @@ class ChatActivity : AppCompatActivity() {
 
     private fun setupToolbar() {
         binding.chatNameTextView.text = chatTitle.ifBlank { "Чат" }
-        
+
         // Показываем статус онлайна только для личных чатов
         if (!isGroupChat && otherUserId > 0) {
             binding.onlineStatusTextView.text = "загрузка..."
@@ -382,12 +379,12 @@ class ChatActivity : AppCompatActivity() {
     private fun loadOnlineStatus(userId: Long) {
         // Отменяем предыдущий job если есть
         onlineStatusJob?.cancel()
-        
+
         onlineStatusJob = lifecycleScope.launch {
             try {
                 // Первоначальная загрузка
                 fetchAndDisplayOnlineStatus(userId)
-                
+
                 // Периодическое обновление каждые 30 секунд
                 while (true) {
                     delay(30_000)
@@ -638,7 +635,7 @@ class ChatActivity : AppCompatActivity() {
 
         for (msg in messages) {
             val msgDate = startOfDay(msg.sentAt.seconds * 1000)
-            
+
             // Если дата изменилась — добавляем разделитель
             if (msgDate != lastDate) {
                 result.add(MessageItem.createDateSeparator(formatDateSeparator(msgDate)))
@@ -870,12 +867,41 @@ class ChatActivity : AppCompatActivity() {
         dialog.show()
     }
 
+    override fun onStart() {
+        super.onStart()
+        // При возврате из фона — подгружаем сообщения, пришедшие пока приложение было свёрнуто.
+        // Ждём пока RealtimeService переподключится (каналы пересоздаются в ProcessLifecycleOwner.onStart).
+        if (lastVisibleMessageId > 0L && !isLoadingMessages) {
+            lifecycleScope.launch {
+                waitForConnection()
+                if (lastVisibleMessageId > 0L && !isLoadingMessages) {
+                    Log.d(TAG, "onStart: loading missed messages from lastVisibleMessageId=$lastVisibleMessageId")
+                    hasMoreMessagesDown = true
+                    loadMessagesDown()
+                }
+            }
+        }
+    }
+
+    /**
+     * Ждёт пока RealtimeService переподключится (CONNECTED) или таймаут 5 секунд.
+     */
+    private suspend fun waitForConnection() {
+        if (realtimeService.connectionState.value == RealtimeService.ConnectionState.CONNECTED) return
+        try {
+            withTimeout(5000) {
+                realtimeService.connectionState.first { it == RealtimeService.ConnectionState.CONNECTED }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "waitForConnection timed out, proceeding anyway")
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         // Сбрасываем открытый чат
         OpenChatManager.closeChat()
         chatRepository.close()
-        grpcManager.shutdown()
         loadMessagesJob?.cancel()
         onlineStatusJob?.cancel()
         onlineStatusSubscription?.cancel()
