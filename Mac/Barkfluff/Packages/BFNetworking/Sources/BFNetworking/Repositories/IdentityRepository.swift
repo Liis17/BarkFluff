@@ -170,10 +170,54 @@ public actor IdentityRepository: IdentityRepositoryProtocol {
         }
     }
 
-    // MARK: - Stubs (не входят в скоуп регистрации)
+    // MARK: - Sessions (авторизованный)
 
-    public func getActiveSessions() async throws -> [SessionInfo] { return [] }
-    public func removeActiveSession(sessionID: String) async throws {}
+    public func getActiveSessions() async throws -> [SessionInfo] {
+        let request = Barkfluff_Identity_GetActiveSessionsRequest()
+
+        do {
+            return try await connectionManager.withAuthorizedClient(for: .identity) { client in
+                let identityClient = Barkfluff_Identity_IdentityApi.Client(wrapping: client)
+                let response = try await identityClient.getActiveSessions(request)
+                return response.sessions.map { session in
+                    let createdAt = Date(
+                        timeIntervalSince1970: TimeInterval(session.createdAt.seconds) + TimeInterval(session.createdAt.nanos) / 1_000_000_000
+                    )
+                    let expirationAt = Date(
+                        timeIntervalSince1970: TimeInterval(session.expirationAt.seconds) + TimeInterval(session.expirationAt.nanos) / 1_000_000_000
+                    )
+                    return SessionInfo(
+                        id: session.id,
+                        createdAt: createdAt,
+                        expirationAt: expirationAt,
+                        deviceId: session.deviceID,
+                        originalName: session.originalName,
+                        customName: session.customName,
+                        appName: session.appName,
+                        operationSystem: session.operationSystem,
+                        location: session.location
+                    )
+                }
+            }
+        } catch let error as RPCError {
+            throw GRPCErrorMapper.map(error)
+        }
+    }
+
+    public func removeActiveSession(deviceID: String) async throws {
+        var request = Barkfluff_Identity_RemoveActiveSessionRequest()
+        request.deviceID = deviceID
+        let req = request
+
+        do {
+            try await connectionManager.withAuthorizedClient(for: .identity) { client in
+                let identityClient = Barkfluff_Identity_IdentityApi.Client(wrapping: client)
+                _ = try await identityClient.removeActiveSession(req)
+            }
+        } catch let error as RPCError {
+            throw GRPCErrorMapper.map(error)
+        }
+    }
     public func disableOTP(code: String) async throws {}
     public func listOTP() async throws -> OTPStatus { throw BFNetworkingError.unknown("Not implemented") }
     public func resetPassword(email: String) async throws -> String { throw BFNetworkingError.unknown("Not implemented") }

@@ -16,9 +16,12 @@ struct MessagesListView: View {
     let isLoadingMore: Bool
     let headerHeight: CGFloat
     let inputHeight: CGFloat
+    let firstUnreadMessageID: Int64?
     let onLoadMore: () -> Void
     let onScrollToBottom: () -> Void
     let scrollPosition: ScrollPositionManager
+    var onRetry: ((String) -> Void)?
+    var onDeleteFailed: ((String) -> Void)?
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -45,15 +48,22 @@ struct MessagesListView: View {
                                 message: message,
                                 currentUserID: currentUserID,
                                 groupInfo: groupInfo,
-                                showSenderName: isGroupChat
+                                showSenderName: isGroupChat,
+                                onRetry: onRetry,
+                                onDeleteFailed: onDeleteFailed
                             )
-                            .id(message.id)
+                            .transition(.asymmetric(
+                                insertion: .move(edge: .bottom).combined(with: .opacity),
+                                removal: .opacity
+                            ))
                             .onAppear {
-                                // Пагинация при достижении первого сообщения
-                                if items.first(where: {
-                                    if case .message(let msg, _) = $0 { return msg.id == message.id }
+                                // Пагинация при достижении первого сообщения (не во время начальной загрузки)
+                                guard scrollPosition.isInitialLoadComplete else { return }
+                                if let firstMessage = items.first(where: {
+                                    if case .message = $0 { return true }
                                     return false
-                                }) != nil {
+                                }), case .message(let firstMsg, _) = firstMessage,
+                                   firstMsg.id == message.id {
                                     onLoadMore()
                                 }
                             }
@@ -83,9 +93,17 @@ struct MessagesListView: View {
                     scrollToBottom(proxy: proxy, animate: true)
                 }
             }
+            .defaultScrollAnchor(.bottom)
             .task {
-                // Начальный скролл вниз
-                scrollToBottom(proxy: proxy, animate: false)
+                // Скролл к первому непрочитанному или вниз
+                if let unreadID = firstUnreadMessageID {
+                    proxy.scrollTo("msg-\(unreadID)", anchor: .center)
+                } else {
+                    scrollToBottom(proxy: proxy, animate: false)
+                }
+                // Даем время ScrollView стабилизироваться перед включением пагинации
+                try? await Task.sleep(for: .milliseconds(300))
+                scrollPosition.isInitialLoadComplete = true
             }
         }
     }
@@ -107,8 +125,8 @@ struct ScrollOffsetReader: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NSView {
         let view = ScrollOffsetNSView()
-        view.onScroll = { [weak scrollPosition] newOffset in
-            scrollPosition?.scrollOffset = newOffset
+        view.onScroll = { [weak scrollPosition] newOffset, isAtBottom in
+            scrollPosition?.updateScrollOffset(newOffset, isAtBottom: isAtBottom)
         }
         return view
     }
@@ -118,7 +136,7 @@ struct ScrollOffsetReader: NSViewRepresentable {
 
 /// NSView для отслеживания скролла
 class ScrollOffsetNSView: NSView {
-    var onScroll: ((CGFloat) -> Void)?
+    var onScroll: ((CGFloat, Bool) -> Void)?
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
@@ -133,7 +151,11 @@ class ScrollOffsetNSView: NSView {
     @objc private func scrollDidChange(_ notification: Notification) {
         guard let clipView = notification.object as? NSClipView,
               clipView.isDescendant(of: self.enclosingScrollView ?? self) else { return }
-        onScroll?(clipView.bounds.origin.y)
+        let offset = clipView.bounds.origin.y
+        let contentHeight = clipView.documentRect.height
+        let visibleHeight = clipView.bounds.height
+        let isAtBottom = offset + visibleHeight >= contentHeight - 50
+        onScroll?(offset, isAtBottom)
     }
 
     deinit {
@@ -175,6 +197,7 @@ class ScrollOffsetNSView: NSView {
         isLoadingMore: false,
         headerHeight: 120,
         inputHeight: 60,
+        firstUnreadMessageID: nil,
         onLoadMore: {},
         onScrollToBottom: {},
         scrollPosition: ScrollPositionManager()

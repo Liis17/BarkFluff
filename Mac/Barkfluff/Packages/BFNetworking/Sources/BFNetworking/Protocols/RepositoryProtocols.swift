@@ -30,7 +30,7 @@ public protocol IdentityRepositoryProtocol: Sendable {
 
     // Методы, не входящие в скоуп авторизации (заглушки)
     func getActiveSessions() async throws -> [SessionInfo]
-    func removeActiveSession(sessionID: String) async throws
+    func removeActiveSession(deviceID: String) async throws
     func enableOTP() async throws -> OTPSetupInfo
     func confirmOTP(code: String) async throws
     func disableOTP(code: String) async throws
@@ -81,6 +81,9 @@ public protocol MessagesRepositoryProtocol: Sendable {
         filter: AttachmentType?,
         sortDescending: Bool
     ) async throws -> (attachments: [ChatAttachmentInfo], totalCount: Int32)
+
+    /// Получить ID личного чата с пользователем (nil если чат не существует)
+    func getPersonChatId(userID: Int64) async throws -> String?
 }
 
 // MARK: - Files
@@ -147,4 +150,40 @@ public protocol NavigatorRepositoryProtocol: Sendable {
         accountsCount: Int64,
         serverPublicName: String
     ) async throws
+}
+
+// MARK: - Onliner
+
+public protocol OnlinerRepositoryProtocol: Sendable {
+    /// Установить статус "В сети" (heartbeat)
+    func setOnlineStatus() async throws
+
+    /// Получить текущие статусы пользователей (batch)
+    func getOnlineStatus(userIDs: [Int64]) async throws -> [UserOnlineStatusInfo]
+
+    /// Подписаться на изменения статусов (server streaming)
+    func subscribeToOnlineStatus(userIDs: [Int64]) async throws -> AsyncThrowingStream<UserOnlineStatusInfo, Error>
+
+    /// Изменить список отслеживаемых пользователей в активной подписке
+    func changeUsersInSubscription(userIDs: [Int64]) async throws
+}
+
+/// Информация об онлайн-статусе пользователя (DTO из репозитория)
+public struct UserOnlineStatusInfo: Sendable, Hashable {
+    public let userID: Int64
+    public let status: UserOnlineStatusType
+    public let lastSeen: Date?
+
+    public init(userID: Int64, status: UserOnlineStatusType, lastSeen: Date?) {
+        self.userID = userID
+        self.status = status
+        self.lastSeen = lastSeen
+    }
+}
+
+/// Тип онлайн-статуса (DTO)
+public enum UserOnlineStatusType: Sendable, Hashable {
+    case online
+    case offline
+    case unknown
 }

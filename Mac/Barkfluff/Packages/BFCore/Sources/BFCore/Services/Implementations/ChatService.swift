@@ -76,6 +76,10 @@ public actor ChatService: ChatServiceProtocol {
         try await messagesRepository.kickUser(chatID: chatID, userID: userID)
     }
 
+    public func getPersonChatId(userID: Int64) async throws -> String? {
+        try await messagesRepository.getPersonChatId(userID: userID)
+    }
+
     // MARK: - Private helpers
 
     private func toDomainMessage(_ info: MessageInfo) -> Message {

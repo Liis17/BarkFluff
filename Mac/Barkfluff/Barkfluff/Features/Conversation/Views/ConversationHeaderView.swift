@@ -12,6 +12,7 @@ import BFCore
 /// Заголовок чата - центрированный, плавает над сообщениями с градиентным blur
 struct ConversationHeaderView: View {
     let chat: Chat
+    var onlineStatus: OnlineStatus = .unknown
 
     @Environment(AppCoordinator.self) private var coordinator
 
@@ -24,7 +25,9 @@ struct ConversationHeaderView: View {
                 AvatarView(
                     imageURL: chat.pictureURL,
                     initials: chat.avatarInitials,
-                    size: 52
+                    size: 52,
+                    isOnline: onlineStatus.isOnline,
+                    showOnlineIndicator: !chat.isGroupChat
                 )
             }
             .buttonStyle(.plain)
@@ -48,17 +51,25 @@ struct ConversationHeaderView: View {
             }
             .buttonStyle(.plain)
 
-            // Подзаголовок
+            // Подзаголовок: статус или информация о группе
             if chat.isGroupChat {
                 Text("\(chat.members.count) участников")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
-            } else if let member = chat.members.first {
-                Text("@\(member.username)")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+            } else {
+                // Для DM показываем статус вместо username
+                if case .unknown = onlineStatus {
+                    // Fallback: показываем username если статус неизвестен
+                    if let member = chat.members.first {
+                        Text("@\(member.username)")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                } else {
+                    OnlineStatusText(status: onlineStatus)
+                }
             }
         }
         .padding(.top, 8)
@@ -126,7 +137,8 @@ struct ConversationHeaderView: View {
                             role: .member
                         )
                     ]
-                )
+                ),
+                onlineStatus: .online
             )
             Spacer()
         }

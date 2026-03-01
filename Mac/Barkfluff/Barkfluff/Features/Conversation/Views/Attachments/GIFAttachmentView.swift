@@ -51,6 +51,19 @@ struct GIFAttachmentView: View {
         .frame(width: targetSize.width, height: targetSize.height)
         .contentShape(Rectangle())
         .onTapGesture(perform: onTap)
+        .contextMenu {
+            Button {
+                Task {
+                    try? await FileDownloadHelper.downloadToDownloads(
+                        fileID: attachment.fileID,
+                        fileName: attachment.fileName,
+                        fileService: container.fileService
+                    )
+                }
+            } label: {
+                Label("Скачать оригинал", systemImage: "arrow.down.circle")
+            }
+        }
     }
 
     // MARK: - Private Views
