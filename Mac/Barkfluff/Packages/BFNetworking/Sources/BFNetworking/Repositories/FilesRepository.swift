@@ -54,6 +54,9 @@ public actor FilesRepository: FilesRepositoryProtocol {
             resolvedFileType = UploadFileType.from(extension: ext)
         }
 
+        // DEBUG: Логируем тип файла
+        print("📁 [FilesRepository] Uploading: \(fileName), fileType: \(fileType ?? .unknown), resolved: \(resolvedFileType)")
+
         // 2. Проверяем лимит хранилища (soft check - не блокируем загрузку)
         do {
             let storageInfo = try await getUserStorageInfo()
@@ -98,9 +101,11 @@ public actor FilesRepository: FilesRepositoryProtocol {
         var body = Data()
 
         // Добавляем файл в multipart body
+        // Content-Type по расширению (сервер определяет тип по fileType в gRPC, не по MIME)
+        let contentType = Self.contentType(for: sanitizedFileName)
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(sanitizedFileName)\"\r\n".data(using: .utf8)!)
-        body.append("Content-Type: \(Self.contentType(for: sanitizedFileName))\r\n\r\n".data(using: .utf8)!)
+        body.append("Content-Type: \(contentType)\r\n\r\n".data(using: .utf8)!)
         body.append(data)
         body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
 

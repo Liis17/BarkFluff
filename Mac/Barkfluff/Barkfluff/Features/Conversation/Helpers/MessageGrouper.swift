@@ -20,6 +20,7 @@ enum MessageListItem: Identifiable, Hashable {
         case .dateSeparator(let date):
             return "date-\(date.timeIntervalSince1970)"
         case .message(let msg, _):
+            if let localID = msg.localID { return "local-\(localID)" }
             return "msg-\(msg.id)"
         }
     }

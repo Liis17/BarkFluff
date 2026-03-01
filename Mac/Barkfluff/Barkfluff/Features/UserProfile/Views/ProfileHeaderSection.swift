@@ -57,6 +57,11 @@ struct ProfileHeaderSection: View {
                     .foregroundStyle(.secondary)
             }
 
+            // Онлайн-статус (только для DM)
+            if !viewModel.isGroupChat {
+                OnlineStatusText(status: viewModel.onlineStatus)
+            }
+
             // Количество участников (для группы)
             if viewModel.isGroupChat {
                 Text("\(viewModel.memberCount) участников")
@@ -85,6 +90,7 @@ struct ProfileHeaderSection: View {
         FullScreenMediaWindowManager.shared.openMediaViewer(
             attachments: [attachment],
             initialIndex: 0,
+            messageText: nil,
             container: container
         )
     }
@@ -92,7 +98,9 @@ struct ProfileHeaderSection: View {
 
 #Preview {
     let container = DependencyContainer()
-    let chat = Chat(id: "1", title: "Тест", isGroupChat: true, members: [])
+    let chat = Chat(id: "1", title: "Тест", isGroupChat: false, members: [
+        ChatMember(userID: 2, username: "test", firstName: "Тест", lastName: "Тестов", role: .member)
+    ])
 
     ProfileHeaderSection(
         viewModel: UserProfilePanelViewModel(
@@ -100,7 +108,8 @@ struct ProfileHeaderSection: View {
             userService: container.userService,
             chatService: container.chatService,
             sharedMediaService: container.sharedMediaService,
-            fileService: container.fileService
+            fileService: container.fileService,
+            onlineStatusService: container.onlineStatusService
         )
     )
     .padding()

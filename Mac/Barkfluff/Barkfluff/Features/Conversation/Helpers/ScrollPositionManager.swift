@@ -11,8 +11,8 @@ import Foundation
 /// Менеджер позиции скролла для списка сообщений
 @Observable
 final class ScrollPositionManager {
-    /// ID сообщения для прокрутки
-    var scrollToID: Int64?
+    /// ID сообщения для прокрутки (формат: "msg-{id}")
+    var scrollToID: String?
 
     /// Показывать кнопку прокрутки вниз
     var showScrollToBottom: Bool = false
@@ -29,9 +29,12 @@ final class ScrollPositionManager {
     /// Флаг, что скролл в самом низу
     var isAtBottom: Bool = true
 
+    /// Флаг завершения начальной загрузки (скролл вниз выполнен)
+    var isInitialLoadComplete: Bool = false
+
     /// Прокрутить к сообщению
     func scrollTo(messageID: Int64) {
-        scrollToID = messageID
+        scrollToID = "msg-\(messageID)"
     }
 
     /// Прокрутить к последнему сообщению
@@ -55,5 +58,6 @@ final class ScrollPositionManager {
         firstVisibleMessageID = nil
         scrollOffset = 0
         isAtBottom = true
+        isInitialLoadComplete = false
     }
 }

@@ -244,6 +244,25 @@ public actor MessagesRepository: MessagesRepositoryProtocol {
         }
     }
 
+    public func getPersonChatId(userID: Int64) async throws -> String? {
+        var request = Barkfluff_Messages_GetPersonChatIdRequest()
+        request.userID = userID
+        let req = request
+
+        do {
+            return try await connectionManager.withAuthorizedClient(for: .messages) { client in
+                let messagesClient = Barkfluff_Messages_MessagesApi.Client(wrapping: client)
+                let response = try await messagesClient.getPersonChatId(req)
+                return response.chatID.isEmpty ? nil : response.chatID
+            }
+        } catch let error as RPCError {
+            if error.code == .notFound {
+                return nil
+            }
+            throw GRPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Private Attachment Type Mapping
 
     private nonisolated func mapAttachmentTypeToProto(_ type: AttachmentType?) -> Barkfluff_Shared_MessageAttachmentType {

@@ -20,12 +20,18 @@ final class UserProfilePanelViewModel {
     private let userService: UserServiceProtocol
     private let chatService: ChatServiceProtocol
     private let sharedMediaService: SharedMediaServiceProtocol
+    private let onlineStatusService: OnlineStatusServiceProtocol
 
     // MARK: - Profile State
 
     private(set) var user: User?
     private(set) var isLoadingProfile = false
     private(set) var profileError: String?
+
+    // MARK: - Online Status
+
+    var onlineStatus: OnlineStatus = .unknown
+    private var onlineStatusTask: Task<Void, Never>?
 
     // MARK: - Computed Profile Properties
 
@@ -110,13 +116,15 @@ final class UserProfilePanelViewModel {
         userService: UserServiceProtocol,
         chatService: ChatServiceProtocol,
         sharedMediaService: SharedMediaServiceProtocol,
-        fileService: FileServiceProtocol
+        fileService: FileServiceProtocol,
+        onlineStatusService: OnlineStatusServiceProtocol
     ) {
         self.chat = chat
         self.userService = userService
         self.chatService = chatService
         self.sharedMediaService = sharedMediaService
         self.fileService = fileService
+        self.onlineStatusService = onlineStatusService
 
         // Для групп — начальное кол-во участников из chat.members
         if chat.isGroupChat {
@@ -158,12 +166,40 @@ final class UserProfilePanelViewModel {
                 var updatedUser = fetchedUser
                 updatedUser.badges = allBadges
                 user = updatedUser
+
+                // Подписаться на онлайн-статус
+                await startListeningForOnlineStatus(userID: otherMember.userID)
             }
         } catch {
             profileError = error.localizedDescription
         }
 
         isLoadingProfile = false
+    }
+
+    // MARK: - Online Status
+
+    private func startListeningForOnlineStatus(userID: Int64) async {
+        // Получить текущий статус
+        let status = await onlineStatusService.getStatus(for: userID)
+        self.onlineStatus = status
+
+        // Подписаться на обновления
+        let stream = await onlineStatusService.getStatusEventsStream()
+        onlineStatusTask = Task { [weak self] in
+            for await event in stream {
+                if event.userID == userID {
+                    await MainActor.run {
+                        self?.onlineStatus = event.status
+                    }
+                }
+            }
+        }
+    }
+
+    func stopListeningForOnlineStatus() {
+        onlineStatusTask?.cancel()
+        onlineStatusTask = nil
     }
 
     // MARK: - Load All Members (Group, pagination)

@@ -13,34 +13,53 @@ struct AvatarView: View {
     let imageURL: String?
     let initials: String
     let size: CGFloat
+    var isOnline: Bool = false
+    var showOnlineIndicator: Bool = false
 
-    init(imageURL: String? = nil, initials: String, size: CGFloat = 40) {
+    init(imageURL: String? = nil, initials: String, size: CGFloat = 40, isOnline: Bool = false, showOnlineIndicator: Bool = false) {
         self.imageURL = imageURL
         self.initials = initials
         self.size = size
+        self.isOnline = isOnline
+        self.showOnlineIndicator = showOnlineIndicator
     }
 
     var body: some View {
-        Group {
-            if let urlString = imageURL, let url = URL(string: urlString) {
-                LazyImage(url: url) { state in
-                    if let image = state.image {
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } else if state.isLoading {
-                        placeholderView
-                    } else {
-                        placeholderView
+        ZStack(alignment: .bottomTrailing) {
+            Group {
+                if let urlString = imageURL, let url = URL(string: urlString) {
+                    LazyImage(url: url) { state in
+                        if let image = state.image {
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                        } else if state.isLoading {
+                            placeholderView
+                        } else {
+                            placeholderView
+                        }
                     }
+                    .processors([.resize(size: CGSize(width: size * 2, height: size * 2))])
+                } else {
+                    placeholderView
                 }
-                .processors([.resize(size: CGSize(width: size * 2, height: size * 2))])
-            } else {
-                placeholderView
+            }
+            .frame(width: size, height: size)
+            .clipShape(Circle())
+
+            // Онлайн-индикатор
+            if showOnlineIndicator, isOnline {
+                Circle()
+                    .fill(.green)
+                    .frame(width: indicatorSize, height: indicatorSize)
+                    .overlay(
+                        Circle()
+                            .strokeBorder(Color(nsColor: .windowBackgroundColor), lineWidth: indicatorBorderWidth)
+                    )
+                    .offset(x: 1, y: 1)
+                    .animation(.easeInOut(duration: 0.2), value: isOnline)
             }
         }
-        .frame(width: size, height: size)
-        .clipShape(Circle())
     }
 
     private var placeholderView: some View {
@@ -60,13 +79,23 @@ struct AvatarView: View {
         let hash = initials.unicodeScalars.reduce(0) { $0 + Int($1.value) }
         return colors[abs(hash) % colors.count]
     }
+
+    /// Размер индикатора пропорционален размеру аватарки
+    private var indicatorSize: CGFloat {
+        max(8, size * 0.25)
+    }
+
+    /// Толщина обводки индикатора
+    private var indicatorBorderWidth: CGFloat {
+        size > 40 ? 2.5 : 2
+    }
 }
 
 #Preview {
     HStack(spacing: 16) {
         AvatarView(initials: "ИИ", size: 40)
-        AvatarView(initials: "АБ", size: 60)
-        AvatarView(initials: "ВГ", size: 80)
+        AvatarView(initials: "АБ", size: 60, isOnline: true, showOnlineIndicator: true)
+        AvatarView(initials: "ВГ", size: 80, isOnline: true, showOnlineIndicator: true)
     }
     .padding()
 }

@@ -11,11 +11,13 @@ import BFNetworking
 
 @Observable
 final class SettingsViewModel {
-    var sessions: [Session] = []
+    var sessions: [SessionInfo] = []
+    var currentDeviceId: String = ""
     var storageInfo: StorageInfo?
     var serverInfo: ServerInfo?
     var twoFactorEnabled = false
     var isLoading = false
+    var isSessionsLoading = false
     var errorMessage: String?
 
     // MARK: - Token Storage
@@ -28,32 +30,11 @@ final class SettingsViewModel {
     // Зависимости (инжектятся извне)
     weak var dependencyContainer: DependencyContainer?
 
-    // TODO: Inject services
-    // private let identityService: IdentityServiceProtocol
-    // private let fileService: FileServiceProtocol
-
     init() {
         // Загружаем настройки хранилища
         let settings = TokenStorageSettings()
         self.selectedStorageType = settings.storageType
 
-        // Placeholder data
-        self.sessions = [
-            Session(
-                id: "1",
-                deviceName: "MacBook Pro",
-                deviceType: .mac,
-                lastActive: Date(),
-                isCurrent: true
-            ),
-            Session(
-                id: "2",
-                deviceName: "iPhone 15",
-                deviceType: .iphone,
-                lastActive: Date().addingTimeInterval(-3600),
-                isCurrent: false
-            )
-        ]
         self.storageInfo = StorageInfo(usedGB: 2.5, limitGB: 10)
         self.serverInfo = ServerInfo(
             name: "BarkFluff Server",
@@ -64,18 +45,52 @@ final class SettingsViewModel {
 
     func loadSettings() async {
         isLoading = true
-
-        // TODO: Load from services
-        // sessions = try await identityService.getActiveSessions()
-        // storageInfo = try await fileService.getUserStorageInfo()
-
-        try? await Task.sleep(for: .seconds(0.3))
+        await loadSessions()
         isLoading = false
     }
 
-    func terminateSession(_ sessionID: String) async {
-        // TODO: Implement via IdentityService
-        sessions.removeAll { $0.id == sessionID }
+    // MARK: - Sessions
+
+    func loadSessions() async {
+        guard let dc = dependencyContainer else { return }
+
+        isSessionsLoading = true
+        errorMessage = nil
+
+        do {
+            currentDeviceId = await dc.tokenProvider.deviceID
+            sessions = try await dc.identityRepository.getActiveSessions()
+        } catch {
+            errorMessage = "Не удалось загрузить сессии"
+        }
+
+        isSessionsLoading = false
+    }
+
+    func terminateSession(deviceID: String) async {
+        guard let dc = dependencyContainer else { return }
+
+        do {
+            try await dc.identityRepository.removeActiveSession(deviceID: deviceID)
+            sessions.removeAll { $0.deviceId == deviceID }
+        } catch {
+            errorMessage = "Не удалось завершить сессию"
+        }
+    }
+
+    func terminateAllOtherSessions() async {
+        guard let dc = dependencyContainer else { return }
+
+        let otherSessions = sessions.filter { $0.deviceId != currentDeviceId }
+        for session in otherSessions {
+            do {
+                try await dc.identityRepository.removeActiveSession(deviceID: session.deviceId)
+                sessions.removeAll { $0.deviceId == session.deviceId }
+            } catch {
+                errorMessage = "Не удалось завершить сессию"
+                break
+            }
+        }
     }
 
     func enable2FA() async {

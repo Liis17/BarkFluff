@@ -35,6 +35,19 @@ struct VideoAttachmentView: View {
         .clipShape(RoundedRectangle(cornerRadius: MessageBubbleView.bubbleCornerRadius, style: .continuous))
         .contentShape(Rectangle())
         .onTapGesture(perform: onTap)
+        .contextMenu {
+            Button {
+                Task {
+                    try? await FileDownloadHelper.downloadToDownloads(
+                        fileID: attachment.fileID,
+                        fileName: attachment.fileName,
+                        fileService: container.fileService
+                    )
+                }
+            } label: {
+                Label("Скачать оригинал", systemImage: "arrow.down.circle")
+            }
+        }
     }
 
     // MARK: - Private Views

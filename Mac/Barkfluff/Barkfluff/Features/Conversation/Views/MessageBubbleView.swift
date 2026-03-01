@@ -15,6 +15,11 @@ struct MessageBubbleView: View {
     let groupInfo: MessageGroupInfo
     let showSenderName: Bool
 
+    /// Callback для повтора отправки (localID)
+    var onRetry: ((String) -> Void)?
+    /// Callback для удаления неотправленного (localID)
+    var onDeleteFailed: ((String) -> Void)?
+
     /// Радиус скругления углов (как у облачка)
     static let bubbleCornerRadius: CGFloat = 18
 
@@ -25,6 +30,18 @@ struct MessageBubbleView: View {
 
     /// Максимальная ширина пузырька (70% от контейнера)
     private let maxBubbleWidth: CGFloat = 400
+
+    /// Сообщение в процессе отправки
+    private var isSending: Bool {
+        if case .sending = message.sendingState { return true }
+        return false
+    }
+
+    /// Сообщение не удалось отправить
+    private var isFailed: Bool {
+        if case .failed = message.sendingState { return true }
+        return false
+    }
 
     /// Только медиа вложения без текста
     private var isMediaOnly: Bool {
@@ -54,6 +71,27 @@ struct MessageBubbleView: View {
                 // Контент сообщения
                 bubbleContent
                     .frame(maxWidth: maxBubbleWidth, alignment: isOwn ? .trailing : .leading)
+                    .opacity(isSending && !message.content.hasAttachments ? 0.7 : 1.0)
+                    .animation(.easeInOut(duration: 0.2), value: message.sendingState)
+
+                // Ошибка отправки
+                if isFailed {
+                    HStack(spacing: 4) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.red)
+                        Text("Ошибка отправки")
+                            .font(.caption2)
+                            .foregroundStyle(.red)
+                    }
+                    .padding(.horizontal, Theme.Spacing.sm)
+                    .contextMenu {
+                        if let localID = message.localID {
+                            Button("Повторить") { onRetry?(localID) }
+                            Button("Удалить", role: .destructive) { onDeleteFailed?(localID) }
+                        }
+                    }
+                }
 
                 // Время и статус
                 if groupInfo.showTime || groupInfo.isLastInGroup {
@@ -71,6 +109,12 @@ struct MessageBubbleView: View {
             }
         }
         .padding(.vertical, 1)
+        .contextMenu {
+            if isFailed, let localID = message.localID {
+                Button("Повторить отправку") { onRetry?(localID) }
+                Button("Удалить сообщение", role: .destructive) { onDeleteFailed?(localID) }
+            }
+        }
     }
 
     @ViewBuilder
@@ -110,8 +154,7 @@ struct MessageBubbleView: View {
                     .fill(Color(red: 0, green: 122/255, blue: 1))
             )
             .clipShape(MessageBubbleShape(tailSide: .right, showTail: showTail))
-            .padding(.trailing, showTail ? 8 : 0)
-            .padding(.bottom, showTail ? 4 : 0)
+            .padding(.trailing, showTail ? 6 : 0)
         } else {
             // Входящее сообщение — серый пузырь
             let showTail = groupInfo.isLastInGroup
@@ -138,8 +181,7 @@ struct MessageBubbleView: View {
                     .fill(Color(nsColor: .secondarySystemFill))
             )
             .clipShape(MessageBubbleShape(tailSide: .left, showTail: showTail))
-            .padding(.leading, showTail ? 8 : 0)
-            .padding(.bottom, showTail ? 4 : 0)
+            .padding(.leading, showTail ? 6 : 0)
         }
     }
 
@@ -159,14 +201,29 @@ struct MessageBubbleView: View {
                 attachments: mediaAttachments,
                 isOwn: isOwn,
                 onTap: { attachment in
-                    // Обработка tap будет в ConversationView через callback
+                    // Не открываем превью для pending-вложений
+                    guard attachment.id > 0 else { return }
+                    var userInfo: [String: Any] = [
+                        "attachment": attachment,
+                        "allAttachments": mediaAttachments
+                    ]
+                    if message.content.hasText {
+                        userInfo["messageText"] = message.content.text
+                    }
                     NotificationCenter.default.post(
                         name: .attachmentTapped,
                         object: nil,
-                        userInfo: ["attachment": attachment, "allAttachments": mediaAttachments]
+                        userInfo: userInfo
                     )
                 }
             )
+            .overlay {
+                // Круговой прогресс поверх медиа (Telegram-стиль)
+                if let progress = message.uploadProgress, progress < 1.0 {
+                    MediaUploadProgressView(progress: progress)
+                        .clipShape(RoundedRectangle(cornerRadius: MessageBubbleView.bubbleCornerRadius, style: .continuous))
+                }
+            }
         }
 
         // Документы списком
@@ -176,22 +233,24 @@ struct MessageBubbleView: View {
                     attachment: attachment,
                     onTap: {
                         NotificationCenter.default.post(
-                            name: .attachmentTapped,
+                            name: .documentDownloadRequested,
                             object: nil,
-                            userInfo: ["attachment": attachment, "allAttachments": documentAttachments]
+                            userInfo: ["attachment": attachment]
                         )
-                    }
+                    },
+                    uploadProgress: message.uploadProgress
                 )
             } else if attachment.type == .audio {
                 AudioAttachmentView(
                     attachment: attachment,
                     onTap: {
                         NotificationCenter.default.post(
-                            name: .attachmentTapped,
+                            name: .documentDownloadRequested,
                             object: nil,
-                            userInfo: ["attachment": attachment, "allAttachments": documentAttachments]
+                            userInfo: ["attachment": attachment]
                         )
-                    }
+                    },
+                    uploadProgress: message.uploadProgress
                 )
             }
         }
