@@ -77,20 +77,26 @@ struct UserProfilePanelView: View {
                 userService: container.userService,
                 chatService: container.chatService,
                 sharedMediaService: container.sharedMediaService,
-                fileService: container.fileService
+                fileService: container.fileService,
+                onlineStatusService: container.onlineStatusService
             )
             viewModel = vm
             await vm.loadProfile()
             await vm.loadSharedMedia()
         }
+        .onDisappear {
+            viewModel?.stopListeningForOnlineStatus()
+        }
         .onChange(of: chat.id) {
+            viewModel?.stopListeningForOnlineStatus()
             Task {
                 let vm = UserProfilePanelViewModel(
                     chat: chat,
                     userService: container.userService,
                     chatService: container.chatService,
                     sharedMediaService: container.sharedMediaService,
-                    fileService: container.fileService
+                    fileService: container.fileService,
+                    onlineStatusService: container.onlineStatusService
                 )
                 viewModel = vm
                 await vm.loadProfile()

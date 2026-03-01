@@ -44,8 +44,11 @@ public struct AuthInterceptor: ClientInterceptor {
         let expiringSoon = await isTokenExpiringSoon()
         if accessToken == nil || expiringSoon {
             do {
+                print("🔄 [AuthInterceptor] Token expiring soon or missing, refreshing...")
                 accessToken = try await refreshCoordinator.refreshAccessToken()
+                print("✅ [AuthInterceptor] Token refreshed proactively")
             } catch {
+                print("⚠️ [AuthInterceptor] Proactive token refresh failed: \(error.localizedDescription)")
                 // Если обновление не удалось — пробуем с текущим (или без)
             }
         }
@@ -54,6 +57,8 @@ public struct AuthInterceptor: ClientInterceptor {
         var metadata = request.metadata
         if let token = accessToken {
             metadata.addString(token, forKey: "x-auth-token")
+        } else {
+            print("⚠️ [AuthInterceptor] No access token available for request")
         }
 
         let modifiedRequest = StreamingClientRequest<Input>(

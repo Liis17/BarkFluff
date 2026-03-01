@@ -9,6 +9,9 @@ import Foundation
 
 /// Чат (диалог или группа)
 public struct Chat: Identifiable, Hashable, Sendable {
+    /// Префикс для placeholder-чатов новых диалогов
+    public static let newChatPrefix = "new::"
+
     public let id: String
     public var title: String
     public var pictureURL: String?
@@ -65,6 +68,45 @@ public struct Chat: Identifiable, Hashable, Sendable {
     /// Есть ли непрочитанные сообщения
     public var hasUnread: Bool {
         unreadCount > 0
+    }
+
+    /// Получить ID собеседника в DM чате (исключая текущего пользователя)
+    /// - Parameter currentUserID: ID текущего пользователя
+    /// - Returns: ID собеседника или nil если это групповой чат
+    public func otherUserID(excluding currentUserID: Int64) -> Int64? {
+        guard !isGroupChat else { return nil }
+        return members.first(where: { $0.userID != currentUserID })?.userID
+    }
+
+    /// Является ли чат placeholder-ом для нового диалога (ещё не создан на сервере)
+    public var isNewConversation: Bool {
+        id.hasPrefix(Chat.newChatPrefix)
+    }
+
+    /// Извлечь userID из sentinel ID нового диалога
+    public var newConversationUserID: Int64? {
+        guard isNewConversation else { return nil }
+        return Int64(id.dropFirst(Chat.newChatPrefix.count))
+    }
+
+    /// Создать placeholder-чат для нового диалога с пользователем
+    public static func newConversationPlaceholder(with user: User) -> Chat {
+        Chat(
+            id: "\(newChatPrefix)\(user.id)",
+            title: user.displayName,
+            pictureURL: user.profilePicturePreviewURL,
+            isGroupChat: false,
+            members: [
+                ChatMember(
+                    userID: user.id,
+                    username: user.username,
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                    profilePictureURL: user.profilePicturePreviewURL,
+                    role: .member
+                )
+            ]
+        )
     }
 }
 

@@ -21,27 +21,49 @@ struct MessageTimeView: View {
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
 
-            // Статус прочтения для своих сообщений
+            // Статус отправки / прочтения для своих сообщений
             if isOwn {
-                readStatusIcon
+                sendingStatusIcon
             }
         }
     }
 
     @ViewBuilder
+    private var sendingStatusIcon: some View {
+        switch message.sendingState {
+        case .sending:
+            ProgressView()
+                .controlSize(.mini)
+                .scaleEffect(0.5)
+                .frame(width: 10, height: 10)
+        case .failed:
+            Image(systemName: "exclamationmark.circle.fill")
+                .font(.caption2)
+                .foregroundStyle(.red)
+        case .sent:
+            readStatusIcon
+        }
+    }
+
+    @ViewBuilder
     private var readStatusIcon: some View {
-        // Проверяем, прочитано ли сообщение всеми участниками чата
-        // (исключая отправителя из списка прочитавших)
         let otherReadBy = message.readBy.filter { $0 != message.senderID }
         let isRead = !otherReadBy.isEmpty
 
         if isRead {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.caption2)
-                .foregroundStyle(.green)
+            // Две галочки — прочитано
+            HStack(spacing: -4) {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 9, weight: .semibold))
+                Image(systemName: "checkmark")
+                    .font(.system(size: 9, weight: .semibold))
+            }
+            .foregroundStyle(.blue)
+            .frame(width: 14, height: 10)
         } else {
+            // Одна галочка — отправлено
             Image(systemName: "checkmark")
-                .font(.caption2)
+                .font(.system(size: 9, weight: .semibold))
                 .foregroundStyle(.tertiary)
         }
     }

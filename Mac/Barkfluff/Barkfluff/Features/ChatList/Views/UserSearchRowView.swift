@@ -29,6 +29,12 @@ struct UserSearchRowView: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
         }
         .padding(.vertical, 2)
     }

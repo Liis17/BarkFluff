@@ -28,6 +28,10 @@ public actor UpdatesRepository: UpdatesRepositoryProtocol {
                             for try await event in response.messages {
                                 let chatID = event.chatID
                                 let msg = event.message
+
+                                // Логируем что приходит с бэкенда
+                                print("📡 [UpdatesRepository] Received event - chatID: \(chatID), msgID: \(msg.id), text: \(msg.content.text.prefix(30)), attachments: \(msg.content.attachments.count)")
+
                                 let sentAt: Date
                                 if msg.hasSentAt {
                                     sentAt = Date(timeIntervalSince1970: TimeInterval(msg.sentAt.seconds) + TimeInterval(msg.sentAt.nanos) / 1_000_000_000)
@@ -117,6 +121,7 @@ public actor UpdatesStreamManager {
     }
 
     private let updatesRepository: UpdatesRepositoryProtocol
+    private let tokenRefreshCoordinator: TokenRefreshCoordinator?
 
     private var newMessagesTask: Task<Void, Never>?
     private var messagesReadTask: Task<Void, Never>?
@@ -132,8 +137,9 @@ public actor UpdatesStreamManager {
     private var isRunning = false
     private static let maxBackoff: TimeInterval = 30
 
-    public init(updatesRepository: UpdatesRepositoryProtocol) {
+    public init(updatesRepository: UpdatesRepositoryProtocol, tokenRefreshCoordinator: TokenRefreshCoordinator? = nil) {
         self.updatesRepository = updatesRepository
+        self.tokenRefreshCoordinator = tokenRefreshCoordinator
 
         var newMsgCont: AsyncStream<NewMessageEvent>.Continuation!
         self.newMessages = AsyncStream { continuation in
@@ -157,17 +163,24 @@ public actor UpdatesStreamManager {
     public func start() async {
         guard !isRunning else { return }
         isRunning = true
+        print("🔄 [UpdatesStreamManager] Starting streams...")
 
         newMessagesTask = Task { [weak self] in
             guard let self else { return }
             var backoff: TimeInterval = 1
             var hasConnectedBefore = false
+            var consecutiveErrors = 0
+
             while !Task.isCancelled {
                 do {
+                    print("📡 [UpdatesStreamManager] Connecting to newMessages stream (attempt \(consecutiveErrors + 1))...")
                     let stream = try await self.updatesRepository.subscribeNewMessages()
                     backoff = 1
+                    consecutiveErrors = 0
+                    print("✅ [UpdatesStreamManager] newMessages stream connected")
                     if hasConnectedBefore {
                         await self.emitConnectionEvent(.reconnected)
+                        print("🔄 [UpdatesStreamManager] Reconnected event sent")
                     }
                     hasConnectedBefore = true
                     for try await event in stream {
@@ -176,10 +189,32 @@ public actor UpdatesStreamManager {
                     }
                     // Stream ended normally — treat as connection lost
                     if !Task.isCancelled, hasConnectedBefore {
+                        print("⚠️ [UpdatesStreamManager] newMessages stream ended normally, treating as connection lost")
                         await self.emitConnectionEvent(.connectionLost)
                     }
                 } catch {
                     if Task.isCancelled { break }
+                    consecutiveErrors += 1
+
+                    let isAuthError = self.isAuthenticationError(error)
+                    print("❌ [UpdatesStreamManager] newMessages stream error (#\(consecutiveErrors)): \(error.localizedDescription)")
+                    print("   isAuthError: \(isAuthError), backoff: \(backoff)s")
+
+                    // Если ошибка авторизации — пробуем обновить токен
+                    if isAuthError {
+                        print("🔐 [UpdatesStreamManager] Attempting token refresh due to auth error...")
+                        if let coordinator = await self.tokenRefreshCoordinator {
+                            do {
+                                _ = try await coordinator.refreshAccessToken()
+                                print("✅ [UpdatesStreamManager] Token refreshed successfully")
+                            } catch {
+                                print("❌ [UpdatesStreamManager] Token refresh failed: \(error.localizedDescription)")
+                            }
+                        } else {
+                            print("⚠️ [UpdatesStreamManager] No tokenRefreshCoordinator available")
+                        }
+                    }
+
                     if hasConnectedBefore {
                         await self.emitConnectionEvent(.connectionLost)
                     }
@@ -188,29 +223,68 @@ public actor UpdatesStreamManager {
                     backoff = min(backoff * 2, UpdatesStreamManager.maxBackoff)
                 }
             }
+            print("🛑 [UpdatesStreamManager] newMessages task cancelled")
         }
 
         messagesReadTask = Task { [weak self] in
             guard let self else { return }
             var backoff: TimeInterval = 1
+            var consecutiveErrors = 0
+
             while !Task.isCancelled {
                 do {
+                    print("📡 [UpdatesStreamManager] Connecting to messagesRead stream (attempt \(consecutiveErrors + 1))...")
                     let stream = try await self.updatesRepository.subscribeMessagesRead()
                     backoff = 1
+                    consecutiveErrors = 0
+                    print("✅ [UpdatesStreamManager] messagesRead stream connected")
                     for try await event in stream {
                         let cont = await self.messagesReadContinuation
                         cont?.yield(event)
                     }
+                    print("⚠️ [UpdatesStreamManager] messagesRead stream ended normally")
                 } catch {
                     if Task.isCancelled { break }
+                    consecutiveErrors += 1
+
+                    let isAuthError = self.isAuthenticationError(error)
+                    print("❌ [UpdatesStreamManager] messagesRead stream error (#\(consecutiveErrors)): \(error.localizedDescription)")
+                    print("   isAuthError: \(isAuthError), backoff: \(backoff)s")
+
+                    // Если ошибка авторизации — пробуем обновить токен
+                    if isAuthError {
+                        print("🔐 [UpdatesStreamManager] Attempting token refresh due to auth error...")
+                        if let coordinator = await self.tokenRefreshCoordinator {
+                            do {
+                                _ = try await coordinator.refreshAccessToken()
+                                print("✅ [UpdatesStreamManager] Token refreshed successfully")
+                            } catch {
+                                print("❌ [UpdatesStreamManager] Token refresh failed: \(error.localizedDescription)")
+                            }
+                        }
+                    }
+
                     try? await Task.sleep(for: .seconds(backoff))
                     backoff = min(backoff * 2, UpdatesStreamManager.maxBackoff)
                 }
             }
+            print("🛑 [UpdatesStreamManager] messagesRead task cancelled")
         }
     }
 
+    // MARK: - Error Detection
+
+    private nonisolated func isAuthenticationError(_ error: Error) -> Bool {
+        let errorString = String(describing: error).lowercased()
+        return errorString.contains("unauthenticated") ||
+               errorString.contains("unauthorized") ||
+               errorString.contains("401") ||
+               errorString.contains("token") && errorString.contains("invalid") ||
+               errorString.contains("token") && errorString.contains("expired")
+    }
+
     public func stop() {
+        print("🛑 [UpdatesStreamManager] Stopping streams...")
         isRunning = false
         newMessagesTask?.cancel()
         messagesReadTask?.cancel()
@@ -219,6 +293,7 @@ public actor UpdatesStreamManager {
         newMessagesContinuation?.finish()
         messagesReadContinuation?.finish()
         connectionContinuation?.finish()
+        print("✅ [UpdatesStreamManager] Streams stopped")
     }
 
     // MARK: - Private
