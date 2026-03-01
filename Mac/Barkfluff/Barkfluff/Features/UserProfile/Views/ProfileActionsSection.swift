@@ -85,7 +85,8 @@ struct ProfileActionButton: View {
             userService: container.userService,
             chatService: container.chatService,
             sharedMediaService: container.sharedMediaService,
-            fileService: container.fileService
+            fileService: container.fileService,
+            onlineStatusService: container.onlineStatusService
         )
     )
     .padding()

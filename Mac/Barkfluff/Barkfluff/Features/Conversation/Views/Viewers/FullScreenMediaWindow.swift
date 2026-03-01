@@ -9,73 +9,142 @@ import SwiftUI
 import BFCore
 import Combine
 import AVKit
+import Nuke
+import NukeUI
+
+// MARK: - Borderless Key Window
+
+/// Borderless окно, которое принимает key events (ESC, стрелки)
+/// Стандартный NSWindow с borderless стилем НЕ может стать key window,
+/// поэтому необходим подкласс
+private class MediaViewerWindow: NSWindow {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { true }
+
+    /// Обработка ESC на уровне окна — надёжнее чем SwiftUI .onKeyPress
+    override func keyDown(with event: NSEvent) {
+        if event.keyCode == 53 { // ESC
+            FullScreenMediaWindowManager.shared.closeWindow()
+        } else {
+            super.keyDown(with: event)
+        }
+    }
+}
+
+// MARK: - Window Manager
 
 /// Менеджер полноэкранного окна медиа
 @MainActor
-class FullScreenMediaWindowManager: ObservableObject {
+class FullScreenMediaWindowManager: NSObject, ObservableObject {
     static let shared = FullScreenMediaWindowManager()
 
-    private var window: NSWindow?
+    private(set) var currentWindow: NSWindow?
+    private var isClosing = false
 
-    private init() {}
+    private var window: NSWindow? {
+        get { currentWindow }
+        set { currentWindow = newValue }
+    }
+
+    private override init() {
+        super.init()
+    }
 
     /// Открыть полноэкранное окно с медиа
-    func openMediaViewer(attachments: [MessageAttachment], initialIndex: Int, container: DependencyContainer) {
+    func openMediaViewer(
+        attachments: [MessageAttachment],
+        initialIndex: Int,
+        messageText: String?,
+        container: DependencyContainer
+    ) {
         // Закрываем предыдущее окно если есть
-        closeWindow()
+        if window != nil {
+            forceCloseWindow()
+        }
 
-        // Создаем WindowController с контентом
+        isClosing = false
+
+        // Фильтруем только медиа-вложения
+        let mediaAttachments = attachments.filter {
+            $0.type == .image || $0.type == .video || $0.type == .gif
+        }
+        guard !mediaAttachments.isEmpty else { return }
+
+        // Корректируем индекс
+        let adjustedIndex = min(initialIndex, mediaAttachments.count - 1)
+
         let contentView = FullScreenMediaViewerView(
-            attachments: attachments,
-            initialIndex: initialIndex,
-            onClose: { [weak self] in
-                self?.closeWindow()
+            attachments: mediaAttachments,
+            initialIndex: adjustedIndex,
+            messageText: messageText,
+            onClose: {
+                FullScreenMediaWindowManager.shared.closeWindow()
             }
         )
         .environment(container)
 
-        // Создаем окно
-        let window = NSWindow(
+        // Создаем кастомное окно
+        let window = MediaViewerWindow(
             contentRect: NSScreen.main?.frame ?? NSRect(x: 0, y: 0, width: 800, height: 600),
             styleMask: [.borderless, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
 
-        window.center()
         window.contentView = NSHostingView(rootView: contentView)
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
-        window.backgroundColor = .black
-        window.isOpaque = true
-        window.level = .normal
+        // Прозрачное окно — фон рисует SwiftUI
+        window.backgroundColor = .clear
+        window.isOpaque = false
+        // Окно поверх дока и меню-бара
+        window.level = NSWindow.Level(rawValue: Int(CGShieldingWindowLevel()))
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         window.hidesOnDeactivate = false
         window.ignoresMouseEvents = false
         window.acceptsMouseMovedEvents = true
-        
-        // Устанавливаем окно на весь экран без перехода в отдельное пространство
-        window.setFrame(NSScreen.main?.frame ?? window.frame, display: true)
+        window.isMovable = false
+        window.hasShadow = false
 
-        // Показываем окно
+        // На весь экран
+        window.setFrame(NSScreen.main?.frame ?? window.frame, display: true)
+        window.alphaValue = 0
+
+        // Показываем окно и делаем key (key = принимает клавиатурные события)
         window.makeKeyAndOrderFront(nil)
+
+        // Анимация появления
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.2
+            window.animator().alphaValue = 1
+        }
 
         self.window = window
     }
 
-    /// Закрыть окно
+    /// Закрыть окно — безопасно для вызова из SwiftUI и из keyDown
     func closeWindow() {
+        guard let window = window, !isClosing else { return }
+        isClosing = true
+
+        // 1. Моментально прячем окно с экрана (не уничтожает content)
+        window.orderOut(nil)
+
+        // 2. На следующем run loop чистим — SwiftUI уже точно не на стеке
+        DispatchQueue.main.async { [weak self] in
+            window.contentView = nil
+            self?.window = nil
+            self?.isClosing = false
+        }
+    }
+
+    /// Немедленное закрытие (для повторного открытия)
+    private func forceCloseWindow() {
         guard let window = window else { return }
-        
-        // Анимация исчезновения
-        NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.2
-            window.animator().alphaValue = 0
-        }, completionHandler: {
-            window.close()
-        })
-        
+        window.orderOut(nil)
+        window.contentView = nil
         self.window = nil
+        isClosing = false
     }
 }
 
@@ -84,23 +153,38 @@ class FullScreenMediaWindowManager: ObservableObject {
 struct FullScreenMediaViewerView: View {
     let attachments: [MessageAttachment]
     let initialIndex: Int
+    let messageText: String?
     let onClose: () -> Void
+
+    @Environment(DependencyContainer.self) private var container
 
     @State private var currentIndex: Int
     @State private var showControls = true
     @State private var controlsTimer: Timer?
+    @State private var isDownloading = false
+    @State private var shareFileURL: URL?
 
-    init(attachments: [MessageAttachment], initialIndex: Int = 0, onClose: @escaping () -> Void) {
+    init(
+        attachments: [MessageAttachment],
+        initialIndex: Int = 0,
+        messageText: String? = nil,
+        onClose: @escaping () -> Void
+    ) {
         self.attachments = attachments
         self.initialIndex = initialIndex
+        self.messageText = messageText
         self.onClose = onClose
         self._currentIndex = State(initialValue: initialIndex)
     }
 
+    private var currentAttachment: MessageAttachment? {
+        attachments[safe: currentIndex]
+    }
+
     var body: some View {
         ZStack {
-            // Полупрозрачный фон
-            Color.black.opacity(0.9)
+            // Полупрозрачный чёрный фон
+            Color.black.opacity(0.85)
                 .ignoresSafeArea()
 
             // Основной контент
@@ -116,12 +200,16 @@ struct FullScreenMediaViewerView: View {
             .tabViewStyle(.automatic)
             #endif
 
-            // Кнопка закрытия (всегда видна)
-            closeButton
+            // Верхний тулбар
+            VStack {
+                topToolbar
+                Spacer()
+            }
 
-            // Оверлей с контролами
-            if showControls {
-                controlsOverlay
+            // Нижняя область: текст + миниатюры + стрелки
+            VStack {
+                Spacer()
+                bottomArea
             }
         }
         .onAppear {
@@ -130,67 +218,167 @@ struct FullScreenMediaViewerView: View {
         .onMoveCommand { direction in
             handleArrowKey(direction)
         }
-        .onExitCommand {
-            onClose()
-        }
-        .onKeyPress(.escape) {
-            onClose()
-            return .handled
-        }
-        .keyboardShortcut(.escape, modifiers: [])
     }
 
-    // MARK: - Close Button
+    // MARK: - Top Toolbar
 
-    private var closeButton: some View {
-        VStack {
-            HStack {
-                Button {
-                    onClose()
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "xmark")
-                            .font(.body)
-                        Text("Закрыть")
-                            .font(.subheadline)
-                    }
-                    .foregroundStyle(.primary)
+    private var topToolbar: some View {
+        HStack(spacing: 12) {
+            // Кнопка "Закрыть"
+            Button {
+                onClose()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "xmark")
+                        .font(.body)
+                    Text("Закрыть")
+                        .font(.subheadline)
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .glassEffect(.regular, in: .capsule)
+
+            Spacer()
+
+            // Счётчик
+            if attachments.count > 1 {
+                Text("\(currentIndex + 1) из \(attachments.count)")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
+                    .glassEffect(.regular, in: .capsule)
+            }
+
+            Spacer()
+
+            // Кнопки действий
+            HStack(spacing: 8) {
+                // Скачать оригинал
+                Button {
+                    downloadOriginal()
+                } label: {
+                    Group {
+                        if isDownloading {
+                            ProgressView()
+                                .controlSize(.small)
+                                .tint(.white)
+                        } else {
+                            Image(systemName: "arrow.down.circle")
+                                .font(.body)
+                        }
+                    }
+                    .foregroundStyle(.white)
+                    .frame(width: 32, height: 32)
+                    .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
-                .glassEffect(.regular, in: .capsule)
+                .glassEffect(.regular, in: .circle)
+                .disabled(isDownloading)
 
-                Spacer()
-
-                // Счётчик
-                if attachments.count > 1 {
-                    Text("\(currentIndex + 1) из \(attachments.count)")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundStyle(.primary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .glassEffect(.regular, in: .capsule)
+                // Поделиться
+                Button {
+                    shareFile()
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.body)
+                        .foregroundStyle(.white)
+                        .frame(width: 32, height: 32)
+                        .contentShape(Circle())
                 }
+                .buttonStyle(.plain)
+                .glassEffect(.regular, in: .circle)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 16)
+    }
 
-                Spacer()
+    // MARK: - Bottom Area
 
-                // Кнопка "Поделиться"
-                if let attachment = attachments[safe: currentIndex] {
-                    ShareLink(item: attachment.fileID) {
-                        Image(systemName: "square.and.arrow.up")
-                            .font(.body)
-                            .foregroundStyle(.primary)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
+    private var bottomArea: some View {
+        VStack(spacing: 12) {
+            // Текст сообщения
+            if let text = messageText, !text.isEmpty {
+                Text(text)
+                    .font(.body)
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(3)
+                    .padding(.horizontal, 60)
+            }
+
+            // Миниатюры + стрелки навигации
+            if attachments.count > 1 {
+                HStack(spacing: 16) {
+                    // Стрелка назад
+                    Button {
+                        if currentIndex > 0 {
+                            withAnimation(.easeInOut(duration: 0.2)) { currentIndex -= 1 }
+                        }
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.title2)
+                            .foregroundStyle(currentIndex > 0 ? .white : .white.opacity(0.3))
+                            .frame(width: 36, height: 36)
                     }
                     .buttonStyle(.plain)
-                    .glassEffect(.regular, in: .capsule)
+                    .glassEffect(.clear, in: .circle)
+                    .disabled(currentIndex == 0)
+
+                    // Полоска миниатюр
+                    thumbnailStrip
+
+                    // Стрелка вперёд
+                    Button {
+                        if currentIndex < attachments.count - 1 {
+                            withAnimation(.easeInOut(duration: 0.2)) { currentIndex += 1 }
+                        }
+                    } label: {
+                        Image(systemName: "chevron.right")
+                            .font(.title2)
+                            .foregroundStyle(currentIndex < attachments.count - 1 ? .white : .white.opacity(0.3))
+                            .frame(width: 36, height: 36)
+                    }
+                    .buttonStyle(.plain)
+                    .glassEffect(.clear, in: .circle)
+                    .disabled(currentIndex >= attachments.count - 1)
+                }
+                .padding(.horizontal, 20)
+            }
+        }
+        .padding(.bottom, 24)
+    }
+
+    // MARK: - Thumbnail Strip
+
+    private var thumbnailStrip: some View {
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(Array(attachments.enumerated()), id: \.element.id) { index, attachment in
+                        ThumbnailView(attachment: attachment, isSelected: index == currentIndex)
+                            .id(index)
+                            .onTapGesture {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    currentIndex = index
+                                }
+                            }
+                    }
+                }
+                .padding(.horizontal, 4)
+            }
+            .frame(maxWidth: CGFloat(min(attachments.count, 8)) * 58)
+            .onChange(of: currentIndex) { _, newIndex in
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    proxy.scrollTo(newIndex, anchor: .center)
                 }
             }
-            .padding()
-            Spacer()
         }
     }
 
@@ -200,72 +388,75 @@ struct FullScreenMediaViewerView: View {
     private func viewerContent(for attachment: MessageAttachment) -> some View {
         switch attachment.type {
         case .image, .gif:
-            FullScreenImageView(attachment: attachment)
-
+            FullScreenImageView(attachment: attachment, onClose: onClose)
         case .video:
             FullScreenVideoPlayerView(attachment: attachment, onClose: onClose)
-
         case .document, .audio:
-            FullScreenDocumentPlaceholder(attachment: attachment)
+            EmptyView()
         }
     }
 
-    // MARK: - Controls Overlay
+    // MARK: - Actions
 
-    private var controlsOverlay: some View {
-        VStack {
-            Spacer()
+    private func downloadOriginal() {
+        guard let attachment = currentAttachment else { return }
+        isDownloading = true
 
-            // Нижний тулбар с навигацией
-            if attachments.count > 1 {
-                bottomToolbar
+        Task {
+            defer { isDownloading = false }
+            do {
+                try await FileDownloadHelper.downloadToDownloads(
+                    fileID: attachment.fileID,
+                    fileName: attachment.fileName,
+                    fileService: container.fileService
+                )
+            } catch {
+                // Ошибка скачивания — можно добавить алерт
             }
         }
-        .transition(.opacity)
     }
 
-    private var bottomToolbar: some View {
-        HStack(spacing: 60) {
-            // Кнопка "Назад"
-            Button {
-                if currentIndex > 0 {
-                    withAnimation { currentIndex -= 1 }
-                }
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.title2)
-                    .foregroundStyle(currentIndex > 0 ? .white : .white.opacity(0.3))
-                    .frame(width: 44, height: 44)
-            }
-            .buttonStyle(.plain)
-            .glassEffect(.clear, in: .circle)
-            .disabled(currentIndex == 0)
+    private func shareFile() {
+        guard let attachment = currentAttachment else { return }
 
-            Spacer()
+        Task {
+            do {
+                let fileURL = try await FileDownloadHelper.downloadToTemp(
+                    fileID: attachment.fileID,
+                    fileName: attachment.fileName,
+                    fileService: container.fileService
+                )
 
-            // Кнопка "Вперёд"
-            Button {
-                if currentIndex < attachments.count - 1 {
-                    withAnimation { currentIndex += 1 }
+                guard let window = FullScreenMediaWindowManager.shared.currentWindow,
+                      let contentView = window.contentView else { return }
+
+                // Временно понижаем level окна, иначе picker откроется под ним
+                let savedLevel = window.level
+                window.level = .floating
+
+                let picker = NSSharingServicePicker(items: [fileURL])
+                let rect = NSRect(
+                    x: contentView.bounds.maxX - 80,
+                    y: contentView.bounds.maxY - 50,
+                    width: 1,
+                    height: 1
+                )
+                picker.show(relativeTo: rect, of: contentView, preferredEdge: .minY)
+
+                // Вернём level после небольшой задержки (picker уже показан)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    window.level = savedLevel
                 }
-            } label: {
-                Image(systemName: "chevron.right")
-                    .font(.title2)
-                    .foregroundStyle(currentIndex < attachments.count - 1 ? .white : .white.opacity(0.3))
-                    .frame(width: 44, height: 44)
+            } catch {
+                // Ошибка
             }
-            .buttonStyle(.plain)
-            .glassEffect(.clear, in: .circle)
-            .disabled(currentIndex >= attachments.count - 1)
         }
-        .padding(.horizontal, 60)
-        .padding(.bottom, 50)
     }
 
     // MARK: - Keyboard Navigation
 
     private func handleArrowKey(_ direction: MoveCommandDirection) {
-        withAnimation {
+        withAnimation(.easeInOut(duration: 0.2)) {
             switch direction {
             case .left:
                 if currentIndex > 0 { currentIndex -= 1 }
@@ -295,10 +486,87 @@ struct FullScreenMediaViewerView: View {
     }
 }
 
+// MARK: - Thumbnail View
+
+struct ThumbnailView: View {
+    let attachment: MessageAttachment
+    let isSelected: Bool
+
+    @Environment(DependencyContainer.self) private var container
+    @State private var thumbnailURL: URL?
+
+    private let thumbnailSize: CGFloat = 52
+
+    var body: some View {
+        ZStack {
+            if let url = thumbnailURL {
+                LazyImage(url: url) { state in
+                    if let image = state.image {
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    } else {
+                        placeholderView
+                    }
+                }
+                .processors([.resize(size: CGSize(width: thumbnailSize * 2, height: thumbnailSize * 2))])
+            } else {
+                placeholderView
+            }
+
+            // Бейдж для видео
+            if attachment.type == .video {
+                Image(systemName: "play.fill")
+                    .font(.caption2)
+                    .foregroundStyle(.white)
+            }
+        }
+        .frame(width: thumbnailSize, height: thumbnailSize)
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(isSelected ? .white : .clear, lineWidth: 2)
+        )
+        .opacity(isSelected ? 1 : 0.6)
+        .task {
+            await loadThumbnail()
+        }
+    }
+
+    private var placeholderView: some View {
+        Rectangle()
+            .fill(.white.opacity(0.15))
+            .overlay {
+                Image(systemName: attachment.type == .video ? "video.fill" : "photo")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.5))
+            }
+    }
+
+    private func loadThumbnail() async {
+        do {
+            let fileID: String
+            if let previewFileID = attachment.previewFileID, !previewFileID.isEmpty {
+                fileID = previewFileID
+            } else {
+                fileID = attachment.fileID
+            }
+
+            if let previewURL = attachment.previewURL, !previewURL.isEmpty {
+                thumbnailURL = URL(string: previewURL)
+            } else {
+                let urlString = try await container.fileService.getDownloadURL(fileID: fileID)
+                thumbnailURL = URL(string: urlString)
+            }
+        } catch {}
+    }
+}
+
 // MARK: - Full Screen Image View
 
 struct FullScreenImageView: View {
     let attachment: MessageAttachment
+    let onClose: () -> Void
 
     @Environment(DependencyContainer.self) private var container
 
@@ -312,6 +580,13 @@ struct FullScreenImageView: View {
     var body: some View {
         GeometryReader { geo in
             ZStack {
+                // Фоновая область — клик по ней закрывает viewer
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        onClose()
+                    }
+
                 if let url = imageURL {
                     AsyncImage(url: url) { phase in
                         switch phase {
@@ -345,6 +620,8 @@ struct FullScreenImageView: View {
                                             .onEnded { _ in lastOffset = offset }
                                     )
                                 )
+                                // Одиночный тап на изображение — не закрывать
+                                .onTapGesture { }
                                 .onTapGesture(count: 2) {
                                     withAnimation(.spring) {
                                         if scale > 1 {
@@ -414,28 +691,6 @@ struct FullScreenVideoPlayerView: View {
 
     var body: some View {
         FullScreenVideoPlayer(attachment: attachment, onClose: onClose)
-    }
-}
-
-// MARK: - Document Placeholder
-
-struct FullScreenDocumentPlaceholder: View {
-    let attachment: MessageAttachment
-
-    var body: some View {
-        VStack(spacing: 24) {
-            FileIconView(fileName: attachment.fileName, size: 80)
-
-            VStack(spacing: 8) {
-                Text(attachment.fileName)
-                    .font(.headline)
-                    .foregroundStyle(.white)
-
-                Text(attachment.formattedSize)
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.7))
-            }
-        }
     }
 }
 

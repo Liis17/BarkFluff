@@ -10,13 +10,16 @@ import BFCore
 
 struct ChatRowView: View {
     let chat: Chat
+    var onlineStatus: OnlineStatus = .unknown
 
     var body: some View {
         HStack(spacing: Theme.Spacing.md) {
             AvatarView(
                 imageURL: chat.pictureURL,
                 initials: chat.avatarInitials,
-                size: 44
+                size: 44,
+                isOnline: onlineStatus.isOnline,
+                showOnlineIndicator: !chat.isGroupChat
             )
 
             VStack(alignment: .leading, spacing: 2) {

@@ -13,13 +13,12 @@ public actor UpdatesService: UpdatesServiceProtocol {
 
     private let streamManager: UpdatesStreamManager
 
-    private var newMessagesContinuation: AsyncStream<NewMessageEvent>.Continuation?
-    private var readEventsContinuation: AsyncStream<MessageReadEvent>.Continuation?
-    private var connectionContinuation: AsyncStream<UpdatesConnectionEvent>.Continuation?
-
-    private var newMessagesStream: AsyncStream<NewMessageEvent>?
-    private var readEventsStream: AsyncStream<MessageReadEvent>?
-    private var connectionEventsStream: AsyncStream<UpdatesConnectionEvent>?
+    /// Подписчики на новые сообщения (ключ — UUID подписки)
+    private var newMessagesSubscribers: [UUID: AsyncStream<NewMessageEvent>.Continuation] = [:]
+    /// Подписчики на события прочтения
+    private var readEventsSubscribers: [UUID: AsyncStream<MessageReadEvent>.Continuation] = [:]
+    /// Подписчики на события подключения
+    private var connectionSubscribers: [UUID: AsyncStream<UpdatesConnectionEvent>.Continuation] = [:]
 
     private var forwardNewMessagesTask: Task<Void, Never>?
     private var forwardReadEventsTask: Task<Void, Never>?
@@ -34,38 +33,35 @@ public actor UpdatesService: UpdatesServiceProtocol {
     // MARK: - UpdatesServiceProtocol
 
     public func getNewMessagesStream() async -> AsyncStream<NewMessageEvent> {
-        if let existing = newMessagesStream {
-            return existing
-        }
-
+        let id = UUID()
         let stream = AsyncStream<NewMessageEvent> { continuation in
-            self.newMessagesContinuation = continuation
+            self.newMessagesSubscribers[id] = continuation
+            continuation.onTermination = { @Sendable _ in
+                Task { await self.removeNewMessagesSubscriber(id) }
+            }
         }
-        newMessagesStream = stream
         return stream
     }
 
     public func getReadEventsStream() async -> AsyncStream<MessageReadEvent> {
-        if let existing = readEventsStream {
-            return existing
-        }
-
+        let id = UUID()
         let stream = AsyncStream<MessageReadEvent> { continuation in
-            self.readEventsContinuation = continuation
+            self.readEventsSubscribers[id] = continuation
+            continuation.onTermination = { @Sendable _ in
+                Task { await self.removeReadEventsSubscriber(id) }
+            }
         }
-        readEventsStream = stream
         return stream
     }
 
     public func getConnectionEventsStream() async -> AsyncStream<UpdatesConnectionEvent> {
-        if let existing = connectionEventsStream {
-            return existing
-        }
-
+        let id = UUID()
         let stream = AsyncStream<UpdatesConnectionEvent> { continuation in
-            self.connectionContinuation = continuation
+            self.connectionSubscribers[id] = continuation
+            continuation.onTermination = { @Sendable _ in
+                Task { await self.removeConnectionSubscriber(id) }
+            }
         }
-        connectionEventsStream = stream
         return stream
     }
 
@@ -85,8 +81,12 @@ public actor UpdatesService: UpdatesServiceProtocol {
         forwardNewMessagesTask = Task { [weak self] in
             for await event in managerNewMessages {
                 guard let self else { return }
+                print("🔄 [UpdatesService] Forwarding event msgID=\(event.message.id), attachments=\(event.message.attachments.count)")
                 let domainEvent = await self.toDomainNewMessageEvent(event)
-                await self.newMessagesContinuation?.yield(domainEvent)
+                let subscriberCount = await self.newMessagesSubscribers.count
+                print("🔄 [UpdatesService] Broadcasting to \(subscriberCount) subscribers...")
+                await self.broadcastNewMessage(domainEvent)
+                print("✅ [UpdatesService] Broadcasted event msgID=\(event.message.id)")
             }
         }
 
@@ -99,7 +99,7 @@ public actor UpdatesService: UpdatesServiceProtocol {
                     messageID: event.messageID,
                     readBy: event.readBy
                 )
-                await self.readEventsContinuation?.yield(domainEvent)
+                await self.broadcastReadEvent(domainEvent)
             }
         }
 
@@ -112,7 +112,7 @@ public actor UpdatesService: UpdatesServiceProtocol {
                 case .connectionLost: domainEvent = .connectionLost
                 case .reconnected: domainEvent = .reconnected
                 }
-                await self.connectionContinuation?.yield(domainEvent)
+                await self.broadcastConnectionEvent(domainEvent)
             }
         }
     }
@@ -126,9 +126,49 @@ public actor UpdatesService: UpdatesServiceProtocol {
         forwardReadEventsTask = nil
         forwardConnectionTask = nil
         await streamManager.stop()
-        newMessagesContinuation?.finish()
-        readEventsContinuation?.finish()
-        connectionContinuation?.finish()
+
+        for (_, continuation) in newMessagesSubscribers { continuation.finish() }
+        newMessagesSubscribers.removeAll()
+
+        for (_, continuation) in readEventsSubscribers { continuation.finish() }
+        readEventsSubscribers.removeAll()
+
+        for (_, continuation) in connectionSubscribers { continuation.finish() }
+        connectionSubscribers.removeAll()
+    }
+
+    // MARK: - Broadcast
+
+    private func broadcastNewMessage(_ event: NewMessageEvent) {
+        for (_, continuation) in newMessagesSubscribers {
+            continuation.yield(event)
+        }
+    }
+
+    private func broadcastReadEvent(_ event: MessageReadEvent) {
+        for (_, continuation) in readEventsSubscribers {
+            continuation.yield(event)
+        }
+    }
+
+    private func broadcastConnectionEvent(_ event: UpdatesConnectionEvent) {
+        for (_, continuation) in connectionSubscribers {
+            continuation.yield(event)
+        }
+    }
+
+    // MARK: - Subscriber Cleanup
+
+    private func removeNewMessagesSubscriber(_ id: UUID) {
+        newMessagesSubscribers.removeValue(forKey: id)
+    }
+
+    private func removeReadEventsSubscriber(_ id: UUID) {
+        readEventsSubscribers.removeValue(forKey: id)
+    }
+
+    private func removeConnectionSubscriber(_ id: UUID) {
+        connectionSubscribers.removeValue(forKey: id)
     }
 
     // MARK: - Private

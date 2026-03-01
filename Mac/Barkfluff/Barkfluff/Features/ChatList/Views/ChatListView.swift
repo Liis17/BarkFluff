@@ -28,9 +28,16 @@ struct ChatListView: View {
                     chatService: container.chatService,
                     userService: container.userService,
                     updatesService: container.updatesService,
+                    onlineStatusService: container.onlineStatusService,
                     currentUserID: container.currentUserID
                 )
+                // Устанавливаем замыкание для проверки активного чата
+                vm.isActiveChatChecker = { [weak coordinator] chatID in
+                    coordinator?.selectedChat?.id == chatID
+                }
                 viewModel = vm
+                // Устанавливаем ссылку в координатор для уведомлений о прочтении
+                coordinator.chatListViewModel = vm
                 await container.loadCurrentUser()
                 await vm.loadChats()
                 await vm.startListeningForUpdates()
@@ -57,7 +64,17 @@ struct ChatListView: View {
             if !viewModel.searchResults.isEmpty {
                 Section("Пользователи") {
                     ForEach(viewModel.searchResults) { user in
-                        UserSearchRowView(user: user)
+                        Button {
+                            Task {
+                                await viewModel.openConversation(
+                                    with: user,
+                                    coordinator: coordinator
+                                )
+                            }
+                        } label: {
+                            UserSearchRowView(user: user)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -82,13 +99,16 @@ struct ChatListView: View {
                     }
                 } else {
                     ForEach(viewModel.chats) { chat in
-                        ChatRowView(chat: chat)
-                            .tag(chat.id)
-                            .onAppear {
-                                if chat.id == viewModel.chats.last?.id {
-                                    Task { await viewModel.loadMoreChats() }
-                                }
+                        ChatRowView(
+                            chat: chat,
+                            onlineStatus: viewModel.onlineStatus(for: chat)
+                        )
+                        .tag(chat.id)
+                        .onAppear {
+                            if chat.id == viewModel.chats.last?.id {
+                                Task { await viewModel.loadMoreChats() }
                             }
+                        }
                     }
                 }
             }

@@ -26,103 +26,116 @@ struct MessageBubbleShape: Shape {
     }
 
     func path(in rect: CGRect) -> Path {
+        let w = rect.width
+        let h = rect.height
+
         if !showTail {
             return RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                 .path(in: rect)
         }
 
-        var path = Path()
         let r = cornerRadius
-        let tailWidth: CGFloat = 8
-        let tailHeight: CGFloat = 6
+        var path = Path()
 
         switch tailSide {
         case .right:
-            // Исходящее сообщение — хвостик справа снизу
-            let smallR: CGFloat = 4
-
-            // Верхний левый угол
-            path.move(to: CGPoint(x: rect.minX + r, y: rect.minY))
-            // Верхняя линия
-            path.addLine(to: CGPoint(x: rect.maxX - r, y: rect.minY))
-            // Верхний правый угол
-            path.addArc(
-                tangent1End: CGPoint(x: rect.maxX, y: rect.minY),
-                tangent2End: CGPoint(x: rect.maxX, y: rect.minY + r),
-                radius: r
-            )
-            // Правая линия до начала хвостика
-            path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - smallR))
-            // S-образный хвостик справа: два кубических безье
-            path.addCurve(
-                to: CGPoint(x: rect.maxX + tailWidth, y: rect.maxY + tailHeight),
-                control1: CGPoint(x: rect.maxX, y: rect.maxY + 2),
-                control2: CGPoint(x: rect.maxX + tailWidth * 0.5, y: rect.maxY + tailHeight)
-            )
-            path.addCurve(
-                to: CGPoint(x: rect.maxX - smallR, y: rect.maxY),
-                control1: CGPoint(x: rect.maxX + tailWidth * 0.3, y: rect.maxY + tailHeight),
-                control2: CGPoint(x: rect.maxX, y: rect.maxY)
-            )
-            // Нижняя линия
-            path.addLine(to: CGPoint(x: rect.minX + r, y: rect.maxY))
+            // Исходящее — тело на полную ширину, хвостик выходит за rect вправо
+            path.move(to: CGPoint(x: w - 15, y: h))
+            // Нижняя линия влево
+            path.addLine(to: CGPoint(x: r, y: h))
             // Левый нижний угол
             path.addArc(
-                tangent1End: CGPoint(x: rect.minX, y: rect.maxY),
-                tangent2End: CGPoint(x: rect.minX, y: rect.maxY - r),
+                tangent1End: CGPoint(x: 0, y: h),
+                tangent2End: CGPoint(x: 0, y: h - r),
                 radius: r
             )
-            // Левая линия
-            path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + r))
+            // Левая линия вверх
+            path.addLine(to: CGPoint(x: 0, y: r))
             // Верхний левый угол
             path.addArc(
-                tangent1End: CGPoint(x: rect.minX, y: rect.minY),
-                tangent2End: CGPoint(x: rect.minX + r, y: rect.minY),
+                tangent1End: CGPoint(x: 0, y: 0),
+                tangent2End: CGPoint(x: r, y: 0),
                 radius: r
+            )
+            // Верхняя линия вправо
+            path.addLine(to: CGPoint(x: w - r, y: 0))
+            // Верхний правый угол (симметричный, на полную ширину)
+            path.addArc(
+                tangent1End: CGPoint(x: w, y: 0),
+                tangent2End: CGPoint(x: w, y: r),
+                radius: r
+            )
+            // Правый край вниз до начала хвостика
+            path.addLine(to: CGPoint(x: w, y: h - 12))
+            // Хвостик: плавная кривая к кончику (выходит за rect)
+            path.addCurve(
+                to: CGPoint(x: w + 5, y: h),
+                control1: CGPoint(x: w, y: h - 1),
+                control2: CGPoint(x: w + 5, y: h)
+            )
+            // Кончик хвостика
+            path.addLine(to: CGPoint(x: w + 6, y: h))
+            // Обратная S-кривая назад
+            path.addCurve(
+                to: CGPoint(x: w - 7, y: h - 4),
+                control1: CGPoint(x: w + 1, y: h + 1),
+                control2: CGPoint(x: w - 3, y: h - 1)
+            )
+            // Соединение с нижним краем
+            path.addCurve(
+                to: CGPoint(x: w - 15, y: h),
+                control1: CGPoint(x: w - 11, y: h),
+                control2: CGPoint(x: w - 15, y: h)
             )
 
         case .left:
-            // Входящее сообщение — хвостик слева снизу
-            let smallR: CGFloat = 4
-
-            // Верхний левый угол
-            path.move(to: CGPoint(x: rect.minX + r, y: rect.minY))
-            // Верхняя линия
-            path.addLine(to: CGPoint(x: rect.maxX - r, y: rect.minY))
-            // Верхний правый угол
-            path.addArc(
-                tangent1End: CGPoint(x: rect.maxX, y: rect.minY),
-                tangent2End: CGPoint(x: rect.maxX, y: rect.minY + r),
-                radius: r
-            )
-            // Правая линия
-            path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - r))
+            // Входящее — тело на полную ширину, хвостик выходит за rect влево
+            path.move(to: CGPoint(x: 15, y: h))
+            // Нижняя линия вправо
+            path.addLine(to: CGPoint(x: w - r, y: h))
             // Правый нижний угол
             path.addArc(
-                tangent1End: CGPoint(x: rect.maxX, y: rect.maxY),
-                tangent2End: CGPoint(x: rect.maxX - r, y: rect.maxY),
+                tangent1End: CGPoint(x: w, y: h),
+                tangent2End: CGPoint(x: w, y: h - r),
                 radius: r
             )
-            // Нижняя линия до начала хвостика
-            path.addLine(to: CGPoint(x: rect.minX + smallR, y: rect.maxY))
-            // S-образный хвостик слева: два кубических безье
-            path.addCurve(
-                to: CGPoint(x: rect.minX - tailWidth, y: rect.maxY + tailHeight),
-                control1: CGPoint(x: rect.minX, y: rect.maxY),
-                control2: CGPoint(x: rect.minX - tailWidth * 0.3, y: rect.maxY + tailHeight)
-            )
-            path.addCurve(
-                to: CGPoint(x: rect.minX, y: rect.maxY - smallR),
-                control1: CGPoint(x: rect.minX - tailWidth * 0.5, y: rect.maxY + tailHeight),
-                control2: CGPoint(x: rect.minX, y: rect.maxY + 2)
-            )
-            // Левая линия
-            path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + r))
-            // Верхний левый угол
+            // Правая линия вверх
+            path.addLine(to: CGPoint(x: w, y: r))
+            // Верхний правый угол
             path.addArc(
-                tangent1End: CGPoint(x: rect.minX, y: rect.minY),
-                tangent2End: CGPoint(x: rect.minX + r, y: rect.minY),
+                tangent1End: CGPoint(x: w, y: 0),
+                tangent2End: CGPoint(x: w - r, y: 0),
                 radius: r
+            )
+            // Верхняя линия влево
+            path.addLine(to: CGPoint(x: r, y: 0))
+            // Верхний левый угол (симметричный, на полную ширину)
+            path.addArc(
+                tangent1End: CGPoint(x: 0, y: 0),
+                tangent2End: CGPoint(x: 0, y: r),
+                radius: r
+            )
+            // Левый край вниз до начала хвостика
+            path.addLine(to: CGPoint(x: 0, y: h - 12))
+            // Хвостик: плавная кривая к кончику (выходит за rect)
+            path.addCurve(
+                to: CGPoint(x: -5, y: h),
+                control1: CGPoint(x: 0, y: h - 1),
+                control2: CGPoint(x: -5, y: h)
+            )
+            // Кончик хвостика
+            path.addLine(to: CGPoint(x: -6, y: h))
+            // Обратная S-кривая назад
+            path.addCurve(
+                to: CGPoint(x: 7, y: h - 4),
+                control1: CGPoint(x: -1, y: h + 1),
+                control2: CGPoint(x: 3, y: h - 1)
+            )
+            // Соединение с нижним краем
+            path.addCurve(
+                to: CGPoint(x: 15, y: h),
+                control1: CGPoint(x: 11, y: h),
+                control2: CGPoint(x: 15, y: h)
             )
         }
 
@@ -135,56 +148,52 @@ struct MessageBubbleShape: Shape {
     VStack(spacing: 24) {
         // Входящее сообщение с хвостиком (последнее в группе)
         HStack {
-            MessageBubbleShape(tailSide: .left, showTail: true, cornerRadius: 18)
-                .fill(Color(nsColor: .secondarySystemFill))
-                .frame(width: 200, height: 60)
-                .padding(.leading, 8)
-                .padding(.bottom, 6)
-                .overlay {
-                    Text("Привет! Как дела?")
-                        .padding()
-                }
+            Text("Привет! Как дела?")
+                .padding()
+                .background(
+                    MessageBubbleShape(tailSide: .left, showTail: true)
+                        .fill(Color(nsColor: .secondarySystemFill))
+                )
+                .clipShape(MessageBubbleShape(tailSide: .left, showTail: true))
             Spacer()
         }
 
         // Входящее сообщение без хвостика (не последнее в группе)
         HStack {
-            MessageBubbleShape(tailSide: .left, showTail: false, cornerRadius: 18)
-                .fill(Color(nsColor: .secondarySystemFill))
-                .frame(width: 200, height: 60)
-                .overlay {
-                    Text("Ещё одно!")
-                        .padding()
-                }
+            Text("Ещё одно!")
+                .padding()
+                .background(
+                    MessageBubbleShape(tailSide: .left, showTail: false)
+                        .fill(Color(nsColor: .secondarySystemFill))
+                )
+                .clipShape(MessageBubbleShape(tailSide: .left, showTail: false))
             Spacer()
         }
 
         // Исходящее сообщение с хвостиком (последнее в группе)
         HStack {
             Spacer()
-            MessageBubbleShape(tailSide: .right, showTail: true, cornerRadius: 18)
-                .fill(Color(red: 0, green: 122/255, blue: 1))
-                .frame(width: 200, height: 60)
-                .padding(.trailing, 8)
-                .padding(.bottom, 6)
-                .overlay {
-                    Text("Всё отлично!")
-                        .foregroundStyle(.white)
-                        .padding()
-                }
+            Text("Всё отлично!")
+                .foregroundStyle(.white)
+                .padding()
+                .background(
+                    MessageBubbleShape(tailSide: .right, showTail: true)
+                        .fill(Color(red: 0, green: 122/255, blue: 1))
+                )
+                .clipShape(MessageBubbleShape(tailSide: .right, showTail: true))
         }
 
         // Исходящее сообщение без хвостика
         HStack {
             Spacer()
-            MessageBubbleShape(tailSide: .right, showTail: false, cornerRadius: 18)
-                .fill(Color(red: 0, green: 122/255, blue: 1))
-                .frame(width: 200, height: 60)
-                .overlay {
-                    Text("Ещё одно!")
-                        .foregroundStyle(.white)
-                        .padding()
-                }
+            Text("Ещё одно!")
+                .foregroundStyle(.white)
+                .padding()
+                .background(
+                    MessageBubbleShape(tailSide: .right, showTail: false)
+                        .fill(Color(red: 0, green: 122/255, blue: 1))
+                )
+                .clipShape(MessageBubbleShape(tailSide: .right, showTail: false))
         }
     }
     .padding()
