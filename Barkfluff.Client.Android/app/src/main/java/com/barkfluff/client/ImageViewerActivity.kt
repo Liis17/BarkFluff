@@ -70,7 +70,7 @@ class ImageViewerActivity : AppCompatActivity() {
         controller.systemBarsBehavior =
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
-        chatRepository = ChatRepository(this)
+        chatRepository = ChatRepository(this, (application as BarkFluffApplication).grpcManager)
 
         fileIds = intent.getStringArrayListExtra(EXTRA_FILE_IDS) ?: emptyList()
         previewUrls = intent.getStringArrayListExtra(EXTRA_PREVIEW_URLS) ?: emptyList()

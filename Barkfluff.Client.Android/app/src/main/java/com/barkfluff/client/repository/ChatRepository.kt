@@ -9,8 +9,6 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.grpc.GrpcManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.net.HttpURLConnection
-import java.net.URL
 import java.security.cert.X509Certificate
 import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLContext
@@ -20,8 +18,9 @@ import javax.net.ssl.X509TrustManager
 /**
  * Репозиторий для работы с чатами и сообщениями.
  * Инкапсулирует логику взаимодействия с gRPC Messages API.
+ * Использует общий GrpcManager из Application.
  */
-class ChatRepository(private val context: Context) {
+class ChatRepository(private val context: Context, private val grpcManager: GrpcManager) {
 
     companion object {
         private const val TAG = "ChatRepository"
@@ -29,35 +28,6 @@ class ChatRepository(private val context: Context) {
     }
 
     private val globalParam = GlobalParam(context)
-    private var grpcManager: GrpcManager? = null
-
-    /**
-     * Инициализирует gRPC клиенты, если они еще не созданы.
-     */
-    fun ensureInitialized() {
-        if (grpcManager != null) return
-
-        grpcManager = GrpcManager().also { mgr ->
-            val identityAddress = globalParam.socketIdentity
-            val usersAddress = globalParam.socketUsers
-            val filesAddress = globalParam.socketFiles
-            val messagesAddress = globalParam.socketMessages
-
-            if (identityAddress.isNotBlank()) {
-                mgr.createIdentityClient(identityAddress, context, includeDeviceInfo = true)
-            }
-            if (usersAddress.isNotBlank()) {
-                mgr.createUsersClient(usersAddress, context, includeDeviceInfo = true)
-            }
-            if (filesAddress.isNotBlank()) {
-                mgr.createFilesClient(filesAddress, context, includeDeviceInfo = true)
-            }
-            if (messagesAddress.isNotBlank()) {
-                mgr.createMessagesClient(messagesAddress, context, includeDeviceInfo = true)
-            }
-        }
-        Log.d(TAG, "ChatRepository initialized with gRPC clients")
-    }
 
     /**
      * Загружает список сообщений чата с пагинацией.
@@ -75,10 +45,7 @@ class ChatRepository(private val context: Context) {
         count: Int = DEFAULT_PAGE_SIZE
     ): Result<List<Shared.Message>> = withContext(Dispatchers.IO) {
         try {
-            ensureInitialized()
-            val mgr = grpcManager ?: return@withContext Result.failure(IllegalStateException("GrpcManager not initialized"))
-
-            if (mgr.messagesClient == null) {
+            if (grpcManager.messagesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Messages client not created"))
             }
 
@@ -103,7 +70,7 @@ class ChatRepository(private val context: Context) {
             }
 
             val request = requestBuilder.build()
-            val response = mgr.messagesClient!!.listMessages(request)
+            val response = grpcManager.messagesClient!!.listMessages(request)
 
             Log.d(TAG, "Loaded ${response.messagesList.size} messages for chat $chatId")
             Result.success(response.messagesList)
@@ -125,10 +92,7 @@ class ChatRepository(private val context: Context) {
         fileIds: List<String> = emptyList()
     ): Result<Shared.Message> = withContext(Dispatchers.IO) {
         try {
-            ensureInitialized()
-            val mgr = grpcManager ?: return@withContext Result.failure(IllegalStateException("GrpcManager not initialized"))
-
-            if (mgr.messagesClient == null) {
+            if (grpcManager.messagesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Messages client not created"))
             }
 
@@ -142,7 +106,7 @@ class ChatRepository(private val context: Context) {
                 .setMessage(outgoingMessage)
                 .build()
 
-            val response = mgr.messagesClient!!.sendMessage(request)
+            val response = grpcManager.messagesClient!!.sendMessage(request)
             Log.d(TAG, "Message sent to chat $chatId, id=${response.message.id}")
             Result.success(response.message)
         } catch (e: Exception) {
@@ -155,8 +119,7 @@ class ChatRepository(private val context: Context) {
      * Отмечает сообщения как прочитанные.
      */
     suspend fun markAsRead(messageIds: List<Long>): Result<Unit> {
-        ensureInitialized()
-        return grpcManager?.markAsRead(messageIds) ?: Result.failure(IllegalStateException("GrpcManager not initialized"))
+        return grpcManager.markAsRead(messageIds)
     }
 
     /**
@@ -164,10 +127,7 @@ class ChatRepository(private val context: Context) {
      */
     suspend fun getChatInfo(chatId: String): Result<ChatInfo> = withContext(Dispatchers.IO) {
         try {
-            ensureInitialized()
-            val mgr = grpcManager ?: return@withContext Result.failure(IllegalStateException("GrpcManager not initialized"))
-
-            if (mgr.messagesClient == null) {
+            if (grpcManager.messagesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Messages client not created"))
             }
 
@@ -175,7 +135,7 @@ class ChatRepository(private val context: Context) {
                 .setChatId(chatId)
                 .build()
 
-            val response = mgr.messagesClient!!.getChatInfo(request)
+            val response = grpcManager.messagesClient!!.getChatInfo(request)
 
             Result.success(
                 ChatInfo(
@@ -199,15 +159,14 @@ class ChatRepository(private val context: Context) {
      * Получает данные пользователя по ID.
      */
     suspend fun getUserData(userId: Long): Result<GrpcManager.UserData> {
-        return grpcManager?.getUserData(userId) ?: Result.failure(IllegalStateException("GrpcManager not initialized"))
+        return grpcManager.getUserData(userId)
     }
 
     /**
      * Получает URL для скачивания файла.
      */
     suspend fun getFileDownloadUrl(fileId: String): Result<String> {
-        ensureInitialized()
-        return grpcManager?.getFileDownloadUrl(fileId) ?: Result.failure(IllegalStateException("GrpcManager not initialized"))
+        return grpcManager.getFileDownloadUrl(fileId)
     }
 
     /**
@@ -215,10 +174,7 @@ class ChatRepository(private val context: Context) {
      */
     suspend fun getUploadUrl(fileType: FilesApiOuterClass.UploadFileType): Result<UploadUrlResult> = withContext(Dispatchers.IO) {
         try {
-            ensureInitialized()
-            val mgr = grpcManager ?: return@withContext Result.failure(IllegalStateException("GrpcManager not initialized"))
-
-            if (mgr.filesClient == null) {
+            if (grpcManager.filesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Files client not created"))
             }
 
@@ -226,7 +182,7 @@ class ChatRepository(private val context: Context) {
                 .setFileType(fileType)
                 .build()
 
-            val response = mgr.filesClient!!.getUploadUrl(request)
+            val response = grpcManager.filesClient!!.getUploadUrl(request)
             Result.success(UploadUrlResult(response.url, response.fileId))
         } catch (e: Exception) {
             Log.e(TAG, "Error getting upload URL", e)
@@ -241,10 +197,7 @@ class ChatRepository(private val context: Context) {
      */
     suspend fun uploadFile(jpegImageBytes: ByteArray, fileType: barkfluff.files.FilesApiOuterClass.UploadFileType): Result<String> = withContext(Dispatchers.IO) {
         try {
-            ensureInitialized()
-            val mgr = grpcManager ?: return@withContext Result.failure(IllegalStateException("GrpcManager not initialized"))
-
-            if (mgr.filesClient == null) {
+            if (grpcManager.filesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Files client not created"))
             }
 
@@ -253,7 +206,7 @@ class ChatRepository(private val context: Context) {
                 .setFileType(fileType)
                 .build()
 
-            val uploadUrlResponse = mgr.filesClient!!.getUploadUrl(uploadUrlRequest)
+            val uploadUrlResponse = grpcManager.filesClient!!.getUploadUrl(uploadUrlRequest)
             val fileId = uploadUrlResponse.fileId
             val uploadUrl = uploadUrlResponse.url
 
@@ -313,12 +266,10 @@ class ChatRepository(private val context: Context) {
     }
 
     /**
-     * Освобождает ресурсы.
+     * No-op для совместимости. Каналы управляются GrpcManager.
      */
     fun close() {
-        grpcManager?.shutdown()
-        grpcManager = null
-        Log.d(TAG, "ChatRepository closed")
+        // Каналы управляются общим GrpcManager — не закрываем здесь
     }
 
     data class ChatInfo(

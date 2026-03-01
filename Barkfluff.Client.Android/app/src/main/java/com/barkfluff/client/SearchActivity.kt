@@ -47,25 +47,11 @@ class SearchActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         globalParam = GlobalParam(this)
-        grpcManager = GrpcManager()
+        grpcManager = (application as BarkFluffApplication).grpcManager
 
         setupToolbar()
         setupSearchField()
         setupResultsList()
-
-        initGrpcClients()
-    }
-
-    private fun initGrpcClients() {
-        Log.d(TAG, "initGrpcClients: users=${globalParam.socketUsers}, files=${globalParam.socketFiles}")
-        Log.d(TAG, "initGrpcClients: accessToken exists=${globalParam.accessToken != null}, refreshToken exists=${globalParam.refreshToken != null}")
-        if (globalParam.socketUsers.isNotBlank()) {
-            grpcManager.createUsersClient(globalParam.socketUsers, this, includeDeviceInfo = true)
-        }
-        if (globalParam.socketFiles.isNotBlank()) {
-            grpcManager.createFilesClient(globalParam.socketFiles, this, includeDeviceInfo = true)
-        }
-        Log.d(TAG, "initGrpcClients: Clients initialized, usersClient is null: ${grpcManager.usersClient == null}, filesClient is null: ${grpcManager.filesClient == null}")
     }
 
     private fun setupToolbar() {
@@ -109,10 +95,7 @@ class SearchActivity : AppCompatActivity() {
     private fun setupResultsList() {
         userAdapter = UserAdapter(
             onUserClick = { userData ->
-                onUserClicked(userData)
-            },
-            onActionClick = { userData ->
-                onActionClicked(userData)
+                openChatWithUser(userData)
             },
             getFileUrlCallback = { fileId ->
                 Log.d(TAG, "setupResultsList: Requesting URL for fileId=$fileId")
@@ -166,22 +149,41 @@ class SearchActivity : AppCompatActivity() {
         }
     }
 
-    private fun onUserClicked(userData: GrpcManager.UserData) {
-        // TODO: Открытие профиля пользователя или начало чата
-        Log.d(TAG, "onUserClicked: userId=${userData.userId}, username=${userData.username}")
-    }
+    private fun openChatWithUser(userData: GrpcManager.UserData) {
+        Log.d(TAG, "openChatWithUser: userId=${userData.userId}, username=${userData.username}")
 
-    private fun onActionClicked(userData: GrpcManager.UserData) {
-        // Кнопка "Написать" - создание или открытие чата с пользователем
         lifecycleScope.launch {
+            showLoading(true)
+
             val result = grpcManager.getPersonChatId(userData.userId)
             if (result.isSuccess) {
                 val chatId = result.getOrNull()
-                Log.d(TAG, "onActionClicked: ChatId=$chatId")
-                // TODO: Открытие чата
+                Log.d(TAG, "openChatWithUser: Got chatId=$chatId")
+
+                // Формируем отображаемое имя
+                val displayName = "${userData.firstName} ${userData.lastName}".trim().ifBlank { userData.username }
+                // Получаем fileId аватара
+                val avatarFileId = userData.profilePicturePreviewFileId.ifBlank { userData.profilePictureFileId }.ifBlank { null }
+
+                // Открываем ChatActivity
+                val intent = Intent(this@SearchActivity, ChatActivity::class.java).apply {
+                    putExtra("chat_id", chatId)
+                    putExtra("chat_title", displayName)
+                    putExtra("chat_avatar_file_id", avatarFileId)
+                    putExtra("is_group_chat", false)
+                    putExtra("other_user_id", userData.userId)
+                }
+                startActivity(intent)
             } else {
                 Log.e(TAG, "Ошибка получения chatId", result.exceptionOrNull())
+                android.widget.Toast.makeText(
+                    this@SearchActivity,
+                    "Не удалось открыть чат: ${result.exceptionOrNull()?.message}",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
             }
+
+            showLoading(false)
         }
     }
 
@@ -205,6 +207,5 @@ class SearchActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         searchJob?.cancel()
-        grpcManager.shutdown()
     }
 }

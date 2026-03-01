@@ -5,21 +5,12 @@ import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
 import android.util.Log
 import com.barkfluff.client.data.OpenChatManager
-import barkfluff.identity.IdentityApiGrpcKt
-import barkfluff.identity.IdentityApiOuterClass
-import barkfluff.onliner.OnlinerApiGrpcKt
 import barkfluff.onliner.OnlinerApiOuterClass
-import barkfluff.shared.Shared
-import barkfluff.updates.UpdatesApiGrpcKt
 import barkfluff.updates.UpdatesApiOuterClass
-import coil.ImageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.notifications.NotificationHelper
-import io.grpc.ClientInterceptors
-import io.grpc.ManagedChannel
-import io.grpc.okhttp.OkHttpChannelBuilder
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlin.coroutines.coroutineContext
@@ -28,21 +19,18 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import okhttp3.OkHttpClient
-import java.security.cert.X509Certificate
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.TimeUnit
-import javax.net.ssl.SSLContext
-import javax.net.ssl.TrustManager
-import javax.net.ssl.X509TrustManager
 import kotlin.math.min
 import kotlin.math.pow
 
 /**
  * Сервис реального времени — подписывается на обновления сообщений, прочтений и онлайн-статусов.
  * Аналог RealtimeUpdateService + OnlineStatusService из WPF клиента.
+ *
+ * Использует общий GrpcManager из Application для всех gRPC вызовов.
+ * Поддерживает resume/pause для корректной работы при сворачивании/разворачивании.
  */
-class RealtimeService(private val context: Context) {
+class RealtimeService(private val context: Context, private val grpcManager: GrpcManager) {
 
     companion object {
         private const val TAG = "RealtimeService"
@@ -69,80 +57,71 @@ class RealtimeService(private val context: Context) {
     private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
     val connectionState: StateFlow<ConnectionState> = _connectionState
 
-    private data class CachedUserInfo(val displayName: String, val avatarFileId: String)
+    private data class CachedUserInfo(
+        val displayName: String,
+        val avatarFileId: String,
+        val avatarFullFileId: String,
+        val avatarPreviewUrl: String,
+        val avatarFullUrl: String
+    )
 
     // Internal state
     private val globalParam = GlobalParam(context)
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var serviceScope: CoroutineScope? = null
     private val tokenRefreshMutex = Mutex()
     private val seenMessageIds = LinkedHashSet<Long>()
     private val userInfoCache = ConcurrentHashMap<Long, CachedUserInfo>()
-
-    // gRPC manager for notification lookups (users + files)
-    private var notificationGrpcManager: GrpcManager? = null
-
-    // Coil ImageLoader for headless avatar loading
-    private val notificationImageLoader by lazy {
-        val trustManager = object : X509TrustManager {
-            override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
-            override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
-            override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
-        }
-        val sslContext = SSLContext.getInstance("TLS").apply {
-            init(null, arrayOf<TrustManager>(trustManager), null)
-        }
-        val okHttp = OkHttpClient.Builder()
-            .sslSocketFactory(sslContext.socketFactory, trustManager)
-            .hostnameVerifier { _, _ -> true }
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(15, TimeUnit.SECONDS)
-            .build()
-        ImageLoader.Builder(context)
-            .okHttpClient(okHttp)
-            .build()
-    }
-
-    // gRPC channels and stubs (managed independently)
-    private var updatesChannel: ManagedChannel? = null
-    private var updatesClient: UpdatesApiGrpcKt.UpdatesApiCoroutineStub? = null
-    private var onlinerChannel: ManagedChannel? = null
-    private var onlinerClient: OnlinerApiGrpcKt.OnlinerApiCoroutineStub? = null
 
     // Online subscription state
     @Volatile
     private var subscribedUserIds: List<Long> = emptyList()
 
-    @Volatile
-    private var started = false
-
     /**
-     * Запускает все стримы реального времени.
-     * Безопасно вызывать повторно — при повторном вызове ничего не происходит.
+     * Возобновляет стримы реального времени.
+     * Безопасно вызывать повторно — пересоздаёт scope если предыдущий был отменён.
      */
-    fun start() {
-        if (started) return
-        started = true
-        Log.i(TAG, "Starting realtime streams")
+    fun resume() {
+        // Если scope ещё активен, ничего не делаем
+        val currentScope = serviceScope
+        if (currentScope != null && currentScope.isActive) {
+            Log.v(TAG, "resume: scope already active, skipping")
+            return
+        }
 
-        createChannels()
+        Log.i(TAG, "Resuming realtime streams")
 
-        serviceScope.launch { streamWithReconnect("NewMessages") { collectNewMessages() } }
-        serviceScope.launch { streamWithReconnect("MessagesRead") { collectMessagesRead() } }
-        serviceScope.launch { streamWithReconnect("OnlineStatus") { collectOnlineStatus() } }
-        serviceScope.launch { onlinePingLoop() }
-        serviceScope.launch { notificationLoop() }
+        // Пересоздаём каналы принудительно — старые могли сломаться (DNS failure после фона)
+        grpcManager.recreateAllClients(context, globalParam)
+
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        serviceScope = scope
+
+        scope.launch { streamWithReconnect("NewMessages") { collectNewMessages() } }
+        scope.launch { streamWithReconnect("MessagesRead") { collectMessagesRead() } }
+        scope.launch { streamWithReconnect("OnlineStatus") { collectOnlineStatus() } }
+        scope.launch { onlinePingLoop() }
+        scope.launch { notificationLoop() }
     }
 
     /**
-     * Останавливает все стримы и закрывает каналы.
+     * Приостанавливает все стримы (при сворачивании приложения).
+     * Каналы НЕ закрываются — они управляются GrpcManager.
+     */
+    fun pause() {
+        Log.i(TAG, "Pausing realtime streams")
+        _connectionState.value = ConnectionState.DISCONNECTED
+        serviceScope?.cancel()
+        serviceScope = null
+    }
+
+    /**
+     * Полностью останавливает сервис (при завершении приложения).
      */
     fun shutdown() {
         Log.i(TAG, "Shutting down realtime streams")
-        started = false
-        serviceScope.cancel()
-        shutdownChannels()
-        notificationGrpcManager?.shutdown()
-        notificationGrpcManager = null
+        _connectionState.value = ConnectionState.DISCONNECTED
+        serviceScope?.cancel()
+        serviceScope = null
     }
 
     /**
@@ -150,14 +129,15 @@ class RealtimeService(private val context: Context) {
      */
     fun changeOnlineSubscription(userIds: List<Long>) {
         subscribedUserIds = userIds
-        serviceScope.launch {
+        val scope = serviceScope ?: return
+        scope.launch {
             try {
-                val client = onlinerClient ?: return@launch
+                val client = grpcManager.onlinerClient ?: return@launch
                 val request = OnlinerApiOuterClass.ChangeUsersInSubscriptionRequest.newBuilder()
                     .addAllUserIds(userIds)
                     .build()
                 client.changeUsersInSubscription(request)
-                Log.d(TAG, "Online subscription updated: ${userIds.size} users")
+                Log.v(TAG, "Online subscription updated: ${userIds.size} users")
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to change online subscription", e)
             }
@@ -168,11 +148,11 @@ class RealtimeService(private val context: Context) {
      * Отмечает сообщение как прочитанное (вызывается из BroadcastReceiver).
      */
     fun markAsRead(messageId: Long) {
-        serviceScope.launch {
+        val scope = serviceScope ?: return
+        scope.launch {
             try {
-                val mgr = notificationGrpcManager ?: return@launch
-                mgr.markAsRead(listOf(messageId))
-                Log.d(TAG, "Marked message $messageId as read")
+                grpcManager.markAsRead(listOf(messageId))
+                Log.v(TAG, "Marked message $messageId as read")
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to mark message as read: ${e.message}")
             }
@@ -182,7 +162,7 @@ class RealtimeService(private val context: Context) {
     // --- Stream collectors ---
 
     private suspend fun collectNewMessages() {
-        val client = updatesClient ?: throw IllegalStateException("Updates client not created")
+        val client = grpcManager.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribeNewMessagesRequest.getDefaultInstance()
         _connectionState.value = ConnectionState.CONNECTED
         client.subscribeNewMessages(request).collect { event ->
@@ -190,7 +170,6 @@ class RealtimeService(private val context: Context) {
             // Dedup
             synchronized(seenMessageIds) {
                 if (!seenMessageIds.add(msgId)) {
-                    Log.d(TAG, "Duplicate message $msgId, skipping")
                     return@collect
                 }
                 if (seenMessageIds.size > DEDUP_MAX_SIZE) {
@@ -199,27 +178,27 @@ class RealtimeService(private val context: Context) {
                     iter.remove()
                 }
             }
-            Log.d(TAG, "New message: id=$msgId, chatId=${event.chatId}")
+            Log.v(TAG, "New message: id=$msgId, chatId=${event.chatId}")
             _newMessages.emit(event)
         }
     }
 
     private suspend fun collectMessagesRead() {
-        val client = updatesClient ?: throw IllegalStateException("Updates client not created")
+        val client = grpcManager.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribeMessagesReadRequest.getDefaultInstance()
         client.subscribeMessagesRead(request).collect { event ->
-            Log.d(TAG, "Message read: chatId=${event.chatId}, msgId=${event.messageId}")
+            Log.v(TAG, "Message read: chatId=${event.chatId}, msgId=${event.messageId}")
             _messagesRead.emit(event)
         }
     }
 
     private suspend fun collectOnlineStatus() {
-        val client = onlinerClient ?: throw IllegalStateException("Onliner client not created")
+        val client = grpcManager.onlinerClient ?: throw IllegalStateException("Onliner client not created")
         val request = OnlinerApiOuterClass.SubscribeToOnlineStatusRequest.newBuilder()
             .addAllUserIds(subscribedUserIds)
             .build()
         client.subscribeToOnlineStatus(request).collect { status ->
-            Log.d(TAG, "Online status: userId=${status.userId}, status=${status.status}")
+            Log.v(TAG, "Online status: userId=${status.userId}, status=${status.status}")
             _onlineStatuses.emit(status)
         }
     }
@@ -227,7 +206,7 @@ class RealtimeService(private val context: Context) {
     private suspend fun onlinePingLoop() {
         while (coroutineContext.isActive) {
             try {
-                val client = onlinerClient
+                val client = grpcManager.onlinerClient
                 if (client != null) {
                     val request = OnlinerApiOuterClass.SetOnlineStatusRequest.getDefaultInstance()
                     client.setOnlineStatus(request)
@@ -248,10 +227,9 @@ class RealtimeService(private val context: Context) {
                     if (senderId == globalParam.userId) return@collect
 
                     val chatId = event.chatId
-                    
+
                     // Проверяем, открыт ли этот чат сейчас — если да, не показываем уведомление
                     if (OpenChatManager.isOpen(chatId)) {
-                        Log.d(TAG, "Chat $chatId is currently open, skipping notification")
                         return@collect
                     }
 
@@ -260,28 +238,33 @@ class RealtimeService(private val context: Context) {
 
                     // Resolve sender info (cache first)
                     val userInfo = userInfoCache[senderId] ?: run {
-                        val mgr = notificationGrpcManager ?: return@collect
-                        val result = mgr.getUserData(senderId)
+                        val result = grpcManager.getUserData(senderId)
                         if (result.isFailure) {
                             Log.w(TAG, "Failed to get user data for notification: senderId=$senderId")
                             return@collect
                         }
                         val user = result.getOrNull()!!
                         val displayName = "${user.firstName} ${user.lastName}".trim().ifEmpty { user.username }
-                        val info = CachedUserInfo(displayName, user.profilePicturePreviewFileId)
+                        val previewId = user.profilePicturePreviewFileId
+                        val fullId = user.profilePictureFileId
+                        Log.d(TAG, "User $senderId avatar: previewFileId='$previewId', fullFileId='$fullId', previewUrl='${user.profilePicturePreviewUrl}', fullUrl='${user.profilePictureUrl}'")
+                        val info = CachedUserInfo(displayName, previewId, fullId, user.profilePicturePreviewUrl, user.profilePictureUrl)
                         userInfoCache[senderId] = info
                         info
                     }
 
                     // Load avatar bitmap (headless, no View needed)
                     var avatarBitmap: Bitmap? = null
-                    if (userInfo.avatarFileId.isNotBlank()) {
-                        avatarBitmap = loadBitmapByFileId(userInfo.avatarFileId)
-                        Log.d(TAG, "Avatar loaded for senderId=$senderId: bitmap=${avatarBitmap != null}, " +
-                                "size=${avatarBitmap?.let { "${it.width}x${it.height}" } ?: "null"}, " +
-                                "config=${avatarBitmap?.config}")
-                    } else {
-                        Log.d(TAG, "No avatar fileId for senderId=$senderId")
+                    val avatarFileId = userInfo.avatarFileId.ifBlank { userInfo.avatarFullFileId }
+                    if (avatarFileId.isNotBlank()) {
+                        avatarBitmap = loadBitmapByFileId(avatarFileId)
+                    }
+                    // Fallback: попробовать загрузить напрямую из URL (если fileId не сработал)
+                    if (avatarBitmap == null) {
+                        val directUrl = userInfo.avatarPreviewUrl.ifBlank { userInfo.avatarFullUrl }
+                        if (directUrl.isNotBlank()) {
+                            avatarBitmap = loadBitmapByUrl(directUrl)
+                        }
                     }
 
                     // Load image attachment if present
@@ -289,7 +272,7 @@ class RealtimeService(private val context: Context) {
                     try {
                         val attachments = msg.content?.attachmentsList
                         val imageAttachment = attachments?.firstOrNull {
-                            it.type == Shared.MessageAttachmentType.IMAGE
+                            it.type == barkfluff.shared.Shared.MessageAttachmentType.IMAGE
                         }
                         if (imageAttachment != null) {
                             val previewFileId = imageAttachment.previewFileId.ifBlank { imageAttachment.fileId }
@@ -310,7 +293,6 @@ class RealtimeService(private val context: Context) {
                         messageId,
                         imageBitmap
                     )
-                    Log.d(TAG, "Notification dispatched: chatId=${event.chatId}, msgId=$messageId")
                 } catch (e: Exception) {
                     Log.e(TAG, "Notification dispatch error", e)
                 }
@@ -328,10 +310,16 @@ class RealtimeService(private val context: Context) {
             var url = com.barkfluff.client.utils.AvatarLoader.urlCache[fileId]
 
             if (url == null) {
-                val mgr = notificationGrpcManager ?: return null
-                val urlResult = mgr.getFileDownloadUrl(fileId)
+                val urlResult = grpcManager.getFileDownloadUrl(fileId)
+                if (urlResult.isFailure) {
+                    Log.w(TAG, "Failed to get download URL for fileId=$fileId: ${urlResult.exceptionOrNull()?.message}")
+                    return null
+                }
                 url = urlResult.getOrNull()
-                if (url.isNullOrBlank()) return null
+                if (url.isNullOrBlank()) {
+                    Log.w(TAG, "Empty download URL for fileId=$fileId")
+                    return null
+                }
                 com.barkfluff.client.utils.AvatarLoader.urlCache[fileId] = url
             }
 
@@ -346,9 +334,32 @@ class RealtimeService(private val context: Context) {
             val imageResult = imageLoader.execute(request)
             if (imageResult is SuccessResult) {
                 (imageResult.drawable as? BitmapDrawable)?.bitmap
-            } else null
+            } else {
+                Log.w(TAG, "Coil failed to load bitmap for fileId=$fileId, result=${imageResult.javaClass.simpleName}")
+                null
+            }
         } catch (e: Exception) {
             Log.w(TAG, "Failed to load bitmap for fileId=$fileId", e)
+            null
+        }
+    }
+
+    private suspend fun loadBitmapByUrl(url: String): Bitmap? {
+        return try {
+            val imageLoader = com.barkfluff.client.utils.AvatarLoader.getImageLoader(context)
+            val request = ImageRequest.Builder(context)
+                .data(url)
+                .allowHardware(false)
+                .build()
+            val imageResult = imageLoader.execute(request)
+            if (imageResult is SuccessResult) {
+                (imageResult.drawable as? BitmapDrawable)?.bitmap
+            } else {
+                Log.w(TAG, "Coil failed to load bitmap from URL directly")
+                null
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to load bitmap from URL directly", e)
             null
         }
     }
@@ -361,11 +372,11 @@ class RealtimeService(private val context: Context) {
             try {
                 _connectionState.value = ConnectionState.CONNECTING
                 ensureTokenValid()
-                Log.d(TAG, "[$name] Connecting...")
+                Log.v(TAG, "[$name] Connecting...")
                 block()
                 // Stream ended normally (server closed) — reset and reconnect
                 attempts = 0
-                Log.d(TAG, "[$name] Stream ended normally, reconnecting")
+                Log.v(TAG, "[$name] Stream ended normally, reconnecting")
             } catch (e: CancellationException) {
                 throw e // shutdown requested
             } catch (e: Exception) {
@@ -383,10 +394,11 @@ class RealtimeService(private val context: Context) {
                 ).toLong()
 
                 _connectionState.value = ConnectionState.DISCONNECTED
-                Log.d(TAG, "[$name] Waiting ${backoff}ms before reconnect")
+                Log.v(TAG, "[$name] Waiting ${backoff}ms before reconnect")
                 delay(backoff)
 
-                recreateChannels()
+                // Переинициализируем клиенты (каналы могли сломаться)
+                grpcManager.recreateAllClients(context, globalParam)
             }
         }
     }
@@ -413,7 +425,6 @@ class RealtimeService(private val context: Context) {
             val now = System.currentTimeMillis()
             val bufferMs = TOKEN_BUFFER_MINUTES * 60 * 1000L
             if (expiration > 0 && now + bufferMs < expiration) {
-                Log.d(TAG, "Token already refreshed by another stream")
                 return
             }
 
@@ -430,11 +441,9 @@ class RealtimeService(private val context: Context) {
             }
 
             try {
-                // Create temporary GrpcManager for identity call
-                val tempManager = GrpcManager()
-                tempManager.createIdentityClient(identityAddress, context, includeDeviceInfo = true)
-                val result = tempManager.refreshAccessToken(refreshToken, globalParam.refreshTokenExpiration)
-                tempManager.shutdown()
+                // Убеждаемся что identity клиент инициализирован в общем GrpcManager
+                grpcManager.createIdentityClient(identityAddress, context, includeDeviceInfo = true)
+                val result = grpcManager.refreshAccessToken(refreshToken, globalParam.refreshTokenExpiration)
 
                 if (result.isSuccess) {
                     val tokenResult = result.getOrNull()!!
@@ -450,111 +459,5 @@ class RealtimeService(private val context: Context) {
                 Log.e(TAG, "Token refresh error", e)
             }
         }
-    }
-
-    // --- Channel management ---
-
-    private fun createChannels() {
-        val updatesAddress = globalParam.socketUpdates
-        val onlinerAddress = globalParam.socketOnliner
-        val usersAddress = globalParam.socketUsers
-        val filesAddress = globalParam.socketFiles
-
-        // Create notification gRPC manager for user info / avatar lookups
-        notificationGrpcManager?.shutdown()
-        val mgr = GrpcManager()
-        val identityAddress = globalParam.socketIdentity
-        if (identityAddress.isNotBlank()) {
-            mgr.createIdentityClient(identityAddress, context, includeDeviceInfo = true)
-        }
-        if (usersAddress.isNotBlank()) {
-            mgr.createUsersClient(usersAddress, context, includeDeviceInfo = true)
-        }
-        if (filesAddress.isNotBlank()) {
-            mgr.createFilesClient(filesAddress, context, includeDeviceInfo = true)
-        }
-        val messagesAddress = globalParam.socketMessages
-        if (messagesAddress.isNotBlank()) {
-            mgr.createMessagesClient(messagesAddress, context, includeDeviceInfo = true)
-        }
-        notificationGrpcManager = mgr
-
-        if (updatesAddress.isNotBlank()) {
-            updatesChannel = createManagedChannel(updatesAddress)
-            val intercepted = ClientInterceptors.intercept(
-                updatesChannel!!,
-                AuthInterceptor(context, GrpcManager()),
-                DeviceInfoInterceptor(context)
-            )
-            updatesClient = UpdatesApiGrpcKt.UpdatesApiCoroutineStub(intercepted)
-            Log.d(TAG, "Updates channel created: $updatesAddress")
-        }
-
-        if (onlinerAddress.isNotBlank()) {
-            onlinerChannel = createManagedChannel(onlinerAddress)
-            val intercepted = ClientInterceptors.intercept(
-                onlinerChannel!!,
-                AuthInterceptor(context, GrpcManager()),
-                DeviceInfoInterceptor(context)
-            )
-            onlinerClient = OnlinerApiGrpcKt.OnlinerApiCoroutineStub(intercepted)
-            Log.d(TAG, "Onliner channel created: $onlinerAddress")
-        }
-    }
-
-    private fun recreateChannels() {
-        Log.d(TAG, "Recreating gRPC channels")
-        shutdownChannels()
-        createChannels()
-    }
-
-    private fun shutdownChannels() {
-        shutdownChannel(updatesChannel)
-        shutdownChannel(onlinerChannel)
-        updatesChannel = null
-        onlinerChannel = null
-        updatesClient = null
-        onlinerClient = null
-    }
-
-    private fun shutdownChannel(channel: ManagedChannel?) {
-        channel ?: return
-        try {
-            channel.shutdown()
-            if (!channel.awaitTermination(3, TimeUnit.SECONDS)) {
-                channel.shutdownNow()
-            }
-        } catch (e: InterruptedException) {
-            channel.shutdownNow()
-            Thread.currentThread().interrupt()
-        }
-    }
-
-    private fun createManagedChannel(address: String): ManagedChannel {
-        val url = if (!address.startsWith("http://") && !address.startsWith("https://")) {
-            "http://$address"
-        } else {
-            address
-        }
-        val useTls = url.startsWith("https://")
-        val hostPort = url.removePrefix("http://").removePrefix("https://")
-        val parts = hostPort.split(":")
-        val host = parts[0]
-        val port = parts[1].toInt()
-
-        val builder = OkHttpChannelBuilder.forAddress(host, port)
-        if (useTls) {
-            val trustManager = object : X509TrustManager {
-                override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
-                override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
-                override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
-            }
-            val sslContext = SSLContext.getInstance("TLS")
-            sslContext.init(null, arrayOf<TrustManager>(trustManager), null)
-            builder.sslSocketFactory(sslContext.socketFactory)
-        } else {
-            builder.usePlaintext()
-        }
-        return builder.build()
     }
 }

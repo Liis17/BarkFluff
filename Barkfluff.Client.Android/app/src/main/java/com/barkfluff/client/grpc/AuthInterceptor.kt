@@ -10,8 +10,7 @@ import io.grpc.*
  * Использует заголовок x-auth-token (аналогично WPF/Mac клиентам и серверному JwtClientInterceptor).
  */
 class AuthInterceptor(
-    private val context: Context,
-    private val grpcManager: GrpcManager
+    private val context: Context
 ) : ClientInterceptor {
 
     companion object {
@@ -31,16 +30,12 @@ class AuthInterceptor(
             next.newCall(method, callOptions)
         ) {
             override fun start(responseListener: Listener<RespT>, headers: Metadata) {
-                // Добавляем access токен к запросу через x-auth-token (без "Bearer " префикса)
                 val accessToken = globalParam.accessToken
-                val serviceName = method.serviceName
-                val methodName = method.bareMethodName
 
                 if (!accessToken.isNullOrBlank()) {
                     headers.put(AUTH_TOKEN_KEY, accessToken)
-                    Log.d(TAG, "interceptCall: Добавлен токен для $serviceName/$methodName")
                 } else {
-                    Log.w(TAG, "interceptCall: НЕТ токена для $serviceName/$methodName")
+                    Log.w(TAG, "interceptCall: НЕТ токена для ${method.serviceName}/${method.bareMethodName}")
                 }
 
                 super.start(responseListener, headers)

@@ -14,7 +14,6 @@ import com.barkfluff.client.utils.AvatarLoader
  */
 class UserAdapter(
     private val onUserClick: (GrpcManager.UserData) -> Unit,
-    private val onActionClick: (GrpcManager.UserData) -> Unit,
     private val getFileUrlCallback: suspend (String) -> String?
 ) : ListAdapter<UserAdapter.UserDisplayItem, UserAdapter.UserViewHolder>(UserDiffCallback()) {
 
@@ -51,14 +50,9 @@ class UserAdapter(
                 }
             }
 
-            // Клик по элементу
+            // Клик по элементу - открывает чат
             binding.root.setOnClickListener {
                 onUserClick(item.userData)
-            }
-
-            // Клик по кнопке действия
-            binding.actionButton.setOnClickListener {
-                onActionClick(item.userData)
             }
         }
     }
