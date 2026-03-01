@@ -194,7 +194,8 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
     {
         var command = new SetPasswordCommand
         {
-            NewPassword = request.Password
+            NewPassword = request.Password,
+            OldPassword = request.OldPassword
         };
 
         await _mediator.Send(command);
