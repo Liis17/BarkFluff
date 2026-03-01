@@ -48,6 +48,7 @@ class GrpcManager {
         const val ERROR_OTP_CODE_NEEDED = "C1576884-12D8-4722-A7EE-9F9789AD1265"
         const val ERROR_NOT_VALID_OTP_CODE = "803B632C-4457-4B05-9435-9C3DD0F41E00"
         const val ERROR_INVALID_LOGIN_OR_PASSWORD = "21BFB9B5-C377-45D1-9B15-6B7F3432B397"
+        const val ERROR_INVALID_OLD_PASSWORD = "A7E3F1B2-9C4D-4E8A-B5F6-2D1A3C7E9F04"
 
         private val ERROR_CODE_KEY: Metadata.Key<String> =
             Metadata.Key.of("x-error-code", Metadata.ASCII_STRING_MARSHALLER)
@@ -1313,6 +1314,228 @@ class GrpcManager {
     }
 
     /**
+     * Изменяет имя и фамилию пользователя
+     */
+    suspend fun changeName(firstName: String, lastName: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (usersClient == null) {
+                return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            }
+
+            val request = UsersApiOuterClass.ChangeNameRequest.newBuilder()
+                .setFirstName(firstName)
+                .setLastName(lastName)
+                .build()
+
+            usersClient!!.changeName(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка изменения имени", e)
+            Result.failure(Exception("Ошибка изменения имени: ${e.message}"))
+        }
+    }
+
+    /**
+     * Изменяет имя пользователя (username)
+     */
+    suspend fun changeUsername(username: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (usersClient == null) {
+                return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            }
+
+            val request = UsersApiOuterClass.ChangeUsernameRequest.newBuilder()
+                .setUsername(username)
+                .build()
+
+            usersClient!!.changeUsername(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка изменения username", e)
+            Result.failure(Exception("Ошибка изменения username: ${e.message}"))
+        }
+    }
+
+    /**
+     * Получает список активных сессий
+     */
+    suspend fun getActiveSessions(): Result<List<SessionData>> = withContext(Dispatchers.IO) {
+        try {
+            if (identityClient == null) {
+                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
+            }
+
+            val request = IdentityApiOuterClass.GetActiveSessionsRequest.newBuilder().build()
+            val response = identityClient!!.getActiveSessions(request)
+
+            val sessions = response.sessionsList.map { session ->
+                SessionData(
+                    id = session.id,
+                    createdAt = session.createdAt.seconds * 1000,
+                    expirationAt = session.expirationAt.seconds * 1000,
+                    deviceId = session.deviceId,
+                    originalName = session.originalName,
+                    customName = session.customName,
+                    appName = session.appName,
+                    os = session.operationSystem,
+                    location = session.location
+                )
+            }
+
+            Result.success(sessions)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка получения сессий", e)
+            Result.failure(Exception("Ошибка получения сессий: ${e.message}"))
+        }
+    }
+
+    /**
+     * Удаляет активную сессию
+     */
+    suspend fun removeActiveSession(deviceId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (identityClient == null) {
+                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
+            }
+
+            val request = IdentityApiOuterClass.RemoveActiveSessionRequest.newBuilder()
+                .setDeviceId(deviceId)
+                .build()
+
+            identityClient!!.removeActiveSession(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка удаления сессии", e)
+            Result.failure(Exception("Ошибка удаления сессии: ${e.message}"))
+        }
+    }
+
+    /**
+     * Получает статус 2FA
+     */
+    suspend fun listOtpVerification(): Result<OtpStatus> = withContext(Dispatchers.IO) {
+        try {
+            if (identityClient == null) {
+                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
+            }
+
+            val request = IdentityApiOuterClass.ListOtpVerificationRequest.newBuilder().build()
+            val response = identityClient!!.listOtpVerification(request)
+
+            Result.success(
+                OtpStatus(
+                    authenticatorEnabled = response.authenticatorEnabled,
+                    emailEnabled = response.emailEnabled
+                )
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка получения статуса 2FA", e)
+            Result.failure(Exception("Ошибка получения статуса 2FA: ${e.message}"))
+        }
+    }
+
+    /**
+     * Включает 2FA по email
+     */
+    suspend fun enableOtpEmail(): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (identityClient == null) {
+                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
+            }
+
+            val request = IdentityApiOuterClass.EnableOtpVerificationRequest.newBuilder()
+                .setOtpType(IdentityApiOuterClass.OtpTypeId.Email)
+                .build()
+
+            identityClient!!.enableOtpVerification(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка включения 2FA по email", e)
+            Result.failure(Exception("Ошибка включения 2FA по email: ${e.message}"))
+        }
+    }
+
+    /**
+     * Отключает 2FA
+     */
+    suspend fun disableOtpVerification(type: IdentityApiOuterClass.OtpTypeId, code: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (identityClient == null) {
+                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
+            }
+
+            val request = IdentityApiOuterClass.DisableOtpVerificationRequest.newBuilder()
+                .setOtpType(type)
+                .setOtpCode(code)
+                .build()
+
+            identityClient!!.disableOtpVerification(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка отключения 2FA", e)
+            Result.failure(Exception("Ошибка отключения 2FA: ${e.message}"))
+        }
+    }
+
+    /**
+     * Изменяет пароль с проверкой старого
+     */
+    suspend fun changePassword(oldPassword: String, newPassword: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (identityClient == null) {
+                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
+            }
+
+            val request = IdentityApiOuterClass.SetPasswordRequest.newBuilder()
+                .setPassword(newPassword)
+                .setOldPassword(oldPassword)
+                .build()
+
+            identityClient!!.setPassword(request)
+            Result.success(Unit)
+        } catch (e: StatusRuntimeException) {
+            val errorCode = e.trailers?.get(ERROR_CODE_KEY)
+            if (errorCode == ERROR_INVALID_OLD_PASSWORD) {
+                Log.w(TAG, "Неверный старый пароль")
+                Result.failure(InvalidOldPasswordException())
+            } else {
+                Log.e(TAG, "Ошибка смены пароля", e)
+                Result.failure(Exception("Ошибка смены пароля: ${e.message}"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка смены пароля", e)
+            Result.failure(Exception("Ошибка смены пароля: ${e.message}"))
+        }
+    }
+
+    /**
+     * Получает информацию о хранилище пользователя
+     */
+    suspend fun getUserStorageInfo(): Result<StorageInfo> = withContext(Dispatchers.IO) {
+        try {
+            if (filesClient == null) {
+                return@withContext Result.failure(IllegalStateException("Files клиент не создан"))
+            }
+
+            val request = FilesApiOuterClass.GetUserStorageInfoRequest.newBuilder().build()
+            val response = filesClient!!.getUserStorageInfo(request)
+
+            val byType = response.storageByTypesList.associate { it.fileType.name to it.usedStorage }
+
+            Result.success(
+                StorageInfo(
+                    totalUsed = response.totalUsedStorage,
+                    limit = response.storageLimit,
+                    byType = byType
+                )
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка получения информации о хранилище", e)
+            Result.failure(Exception("Ошибка получения информации о хранилище: ${e.message}"))
+        }
+    }
+
+    /**
      * Отмечает сообщения как прочитанные
      */
     suspend fun markAsRead(messageIds: List<Long>): Result<Unit> = withContext(Dispatchers.IO) {
@@ -1434,4 +1657,29 @@ class GrpcManager {
         data object OtpRequired : AuthResult()
         data class Error(val message: String) : AuthResult()
     }
+
+    data class SessionData(
+        val id: Long,
+        val createdAt: Long,
+        val expirationAt: Long,
+        val deviceId: String,
+        val originalName: String,
+        val customName: String,
+        val appName: String,
+        val os: String,
+        val location: String
+    )
+
+    data class OtpStatus(
+        val authenticatorEnabled: Boolean,
+        val emailEnabled: Boolean
+    )
+
+    data class StorageInfo(
+        val totalUsed: Long,
+        val limit: Long,
+        val byType: Map<String, Long>
+    )
+
+    class InvalidOldPasswordException : Exception("Неверный старый пароль")
 }

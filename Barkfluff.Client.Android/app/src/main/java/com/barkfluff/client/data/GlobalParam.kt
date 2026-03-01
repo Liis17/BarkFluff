@@ -161,6 +161,37 @@ class GlobalParam(private val context: Context) {
         get() = sharedPreferences.getLong(KEY_REGISTRATION_DATE, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_REGISTRATION_DATE, value).apply()
 
+    var notificationsEnabled: Boolean
+        get() = sharedPreferences.getBoolean(KEY_NOTIFICATIONS_ENABLED, true)
+        set(value) = sharedPreferences.edit().putBoolean(KEY_NOTIFICATIONS_ENABLED, value).apply()
+
+    /**
+     * Очищает пользовательские данные (для выхода из аккаунта).
+     * Оставляет серверные адреса, device_id, server_name.
+     */
+    fun clearUserData() {
+        sharedPreferences.edit().apply {
+            remove(KEY_USER_ID)
+            remove(KEY_USER_NAME)
+            remove(KEY_FIRST_NAME)
+            remove(KEY_LAST_NAME)
+            remove(KEY_DESCRIPTION)
+            remove(KEY_EMAIL)
+            remove(KEY_PICTURE_ID)
+            remove(KEY_PICTURE_FILE_ID)
+            remove(KEY_PICTURE_PREVIEW_FILE_ID)
+            remove(KEY_PICTURE_URL)
+            remove(KEY_REGISTRATION_DATE)
+        }.apply()
+
+        securePreferences.edit().apply {
+            remove(KEY_REFRESH_TOKEN)
+            remove(KEY_ACCESS_TOKEN)
+            remove(KEY_ACCESS_TOKEN_EXPIRATION)
+            remove(KEY_REFRESH_TOKEN_EXPIRATION)
+        }.apply()
+    }
+
     companion object {
         private const val KEY_SOCKET_BEACON = "socket_beacon"
         private const val KEY_SOCKET_USERS = "socket_users"
@@ -193,6 +224,7 @@ class GlobalParam(private val context: Context) {
         private const val KEY_PICTURE_PREVIEW_FILE_ID = "picture_preview_file_id"
         private const val KEY_PICTURE_URL = "picture_url"
         private const val KEY_REGISTRATION_DATE = "registration_date"
+        private const val KEY_NOTIFICATIONS_ENABLED = "notifications_enabled"
 
         /**
          * Генерирует уникальный ID устройства
