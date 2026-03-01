@@ -43,6 +43,19 @@ struct ImageAttachmentView: View {
             }
         }
         .frame(width: targetSize.width, height: targetSize.height)
+        .contextMenu {
+            Button {
+                Task {
+                    try? await FileDownloadHelper.downloadToDownloads(
+                        fileID: attachment.fileID,
+                        fileName: attachment.fileName,
+                        fileService: container.fileService
+                    )
+                }
+            } label: {
+                Label("Скачать оригинал", systemImage: "arrow.down.circle")
+            }
+        }
     }
 
     // MARK: - Private Views

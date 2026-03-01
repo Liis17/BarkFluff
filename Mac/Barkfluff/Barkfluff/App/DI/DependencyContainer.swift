@@ -39,12 +39,14 @@ final class DependencyContainer {
     let updatesRepository: UpdatesRepository
     let fastAuthRepository: FastAuthRepository
     let navigatorRepository: NavigatorRepository
+    let onlinerRepository: OnlinerRepository
 
     // MARK: - Cache
 
     let userCache: UserCache
     let chatCache: ChatCache
     let fileCacheService: FileCacheService
+    let onlineStatusCache: OnlineStatusCache
 
     // MARK: - Services (BFCore)
 
@@ -57,10 +59,12 @@ final class DependencyContainer {
     let fastAuthService: FastAuthService
     let serverDiscoveryService: ServerDiscoveryService
     let sharedMediaService: SharedMediaService
+    let onlineStatusService: OnlineStatusService
 
     // MARK: - Streaming
 
     let updatesStreamManager: UpdatesStreamManager
+    let onlinerStreamManager: OnlinerStreamManager
 
     // MARK: - Settings
 
@@ -120,6 +124,7 @@ final class DependencyContainer {
             host: "navigator.barkfluff.com",
             port: 64646
         )
+        self.onlinerRepository = OnlinerRepository(connectionManager: connectionManager)
 
         // Token Refresh Coordinator
         self.tokenRefreshCoordinator = TokenRefreshCoordinator(
@@ -141,9 +146,17 @@ final class DependencyContainer {
         self.userCache = UserCache()
         self.chatCache = ChatCache()
         self.fileCacheService = FileCacheService()
+        self.onlineStatusCache = OnlineStatusCache()
 
         // Streaming
-        self.updatesStreamManager = UpdatesStreamManager(updatesRepository: updatesRepository)
+        self.updatesStreamManager = UpdatesStreamManager(
+            updatesRepository: updatesRepository,
+            tokenRefreshCoordinator: tokenRefreshCoordinator
+        )
+        self.onlinerStreamManager = OnlinerStreamManager(
+            onlinerRepository: onlinerRepository,
+            tokenRefreshCoordinator: tokenRefreshCoordinator
+        )
 
         // Services
         self.authService = AuthService(
@@ -185,6 +198,12 @@ final class DependencyContainer {
             fileService: fileService
         )
 
+        self.onlineStatusService = OnlineStatusService(
+            onlinerRepository: onlinerRepository,
+            streamManager: onlinerStreamManager,
+            cache: onlineStatusCache
+        )
+
         // Устанавливаем интерсепторы после создания всех зависимостей
         // (нужен Task т.к. connectionManager — actor)
         let deviceMetadataInterceptor = DeviceMetadataInterceptor(
@@ -214,9 +233,11 @@ final class DependencyContainer {
 
     /// Сбросить все данные (при выходе из аккаунта)
     func reset() async {
+        await onlineStatusService.stop()
         await tokenProvider.clearAll()
         await userCache.removeAll()
         await chatCache.removeAll()
+        await onlineStatusCache.removeAll()
         await fileCacheService.clearCache()
         await serverDiscoveryService.disconnect()
         currentUserID = 0

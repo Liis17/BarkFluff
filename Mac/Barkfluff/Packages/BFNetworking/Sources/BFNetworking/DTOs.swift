@@ -34,12 +34,20 @@ public struct TokenInfo: Sendable, Codable, Hashable {
 // MARK: - Session
 
 public struct SessionInfo: Sendable, Identifiable {
-    public let id: String
-    public let deviceName: String
-    public let deviceType: String
-    public let lastActive: Date
-    public let ipAddress: String?
-    public let isCurrent: Bool
+    public let id: Int64
+    public let createdAt: Date
+    public let expirationAt: Date
+    public let deviceId: String
+    public let originalName: String
+    public let customName: String
+    public let appName: String
+    public let operationSystem: String
+    public let location: String
+
+    /// Отображаемое имя (кастомное если задано, иначе оригинальное)
+    public var displayName: String {
+        customName.isEmpty ? originalName : customName
+    }
 }
 
 // MARK: - OTP

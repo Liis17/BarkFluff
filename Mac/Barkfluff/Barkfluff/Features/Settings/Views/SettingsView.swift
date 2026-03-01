@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct SettingsView: View {
+    @Environment(DependencyContainer.self) private var container
     @State private var viewModel = SettingsViewModel()
 
     var body: some View {
@@ -39,6 +40,7 @@ struct SettingsView: View {
         }
         .frame(minWidth: 500, minHeight: 400)
         .task {
+            viewModel.dependencyContainer = container
             await viewModel.loadSettings()
         }
     }

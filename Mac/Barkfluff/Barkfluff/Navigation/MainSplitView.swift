@@ -50,7 +50,10 @@ struct MainSplitView: View {
                         // Конфиденциальность - настройки безопасности и хранилища токенов
                         SecuritySettingsView(viewModel: container.settingsViewModel)
                             .navigationTitle("")
-                    case .general, .notifications, .dataAndStorage, .activeSessions:
+                    case .activeSessions:
+                        SessionsView(viewModel: container.settingsViewModel)
+                            .navigationTitle("")
+                    case .general, .notifications, .dataAndStorage:
                         SettingsPlaceholderView(category: category)
                             .navigationTitle("")
                     }

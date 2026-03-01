@@ -12,17 +12,19 @@ public struct FileIconView: View {
 
     let fileName: String
     let size: CGFloat
+    var backgroundColor: Color?
 
-    public init(fileName: String, size: CGFloat = 36) {
+    public init(fileName: String, size: CGFloat = 36, backgroundColor: Color? = nil) {
         self.fileName = fileName
         self.size = size
+        self.backgroundColor = backgroundColor
     }
 
     public var body: some View {
         ZStack {
             // Фон
             RoundedRectangle(cornerRadius: 8)
-                .fill(iconColor.opacity(0.15))
+                .fill(backgroundColor ?? iconColor.opacity(0.15))
 
             // Иконка
             Image(systemName: systemIcon)

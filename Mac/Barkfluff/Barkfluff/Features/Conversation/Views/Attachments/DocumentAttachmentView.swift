@@ -11,36 +11,55 @@ import BFCore
 struct DocumentAttachmentView: View {
     let attachment: MessageAttachment
     let onTap: () -> Void
+    var uploadProgress: Double?
+
+    private var isUploading: Bool {
+        if let p = uploadProgress { return p < 1.0 }
+        return false
+    }
 
     var body: some View {
-        Button(action: onTap) {
+        Button(action: { if !isUploading { onTap() } }) {
             HStack(spacing: 12) {
                 // Иконка файла
-                FileIconView(fileName: attachment.fileName, size: 44)
+                FileIconView(fileName: attachment.fileName, size: 44, backgroundColor: .white.opacity(0.15))
 
                 // Информация о файле
                 VStack(alignment: .leading, spacing: 4) {
                     Text(attachment.fileName)
                         .font(.subheadline)
                         .lineLimit(2)
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(.white)
                         .multilineTextAlignment(.leading)
 
-                    Text(attachment.formattedSize)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    if isUploading, let progress = uploadProgress {
+                        ProgressView(value: progress)
+                            .progressViewStyle(.linear)
+                            .tint(.white)
+                        Text("Загрузка \(Int(progress * 100))%")
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.7))
+                    } else {
+                        Text(attachment.formattedSize)
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.7))
+                    }
                 }
 
                 Spacer()
 
-                // Иконка скачивания
-                Image(systemName: "arrow.down.circle")
-                    .font(.title2)
-                    .foregroundStyle(.secondary)
+                // Иконка: прогресс или скачивание
+                if isUploading {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(.white)
+                } else {
+                    Image(systemName: "arrow.down.circle")
+                        .font(.title2)
+                        .foregroundStyle(.white.opacity(0.7))
+                }
             }
             .padding(12)
-            .background(.fill.tertiary)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(.plain)
     }

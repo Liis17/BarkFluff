@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import BFNetworking
 
 struct SessionsView: View {
     @Bindable var viewModel: SettingsViewModel
@@ -13,43 +14,94 @@ struct SessionsView: View {
     var body: some View {
         Form {
             Section {
-                if viewModel.sessions.isEmpty {
+                if viewModel.isSessionsLoading {
+                    HStack {
+                        Spacer()
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Загрузка сессий...")
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                    }
+                    .padding(.vertical, 8)
+                } else if viewModel.sessions.isEmpty {
                     Text("Нет активных сессий")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(viewModel.sessions) { session in
-                        HStack {
-                            Image(systemName: session.deviceType.icon)
+                        let isCurrent = session.deviceId == viewModel.currentDeviceId
+                        let localMeta = DeviceMetadataProvider.shared
+
+                        // Фолбэк: для пустых полей подставляем локальные данные (для текущей сессии)
+                        let name = !session.displayName.isEmpty
+                            ? session.displayName
+                            : (isCurrent ? localMeta.deviceName : "Неизвестное устройство")
+                        let os = !session.operationSystem.isEmpty
+                            ? session.operationSystem
+                            : (isCurrent ? localMeta.osName : "")
+                        let app = !session.appName.isEmpty
+                            ? session.appName
+                            : (isCurrent ? localMeta.appName : "")
+
+                        HStack(spacing: 12) {
+                            Image(systemName: iconForOS(os))
                                 .font(.title2)
-                                .foregroundStyle(Color.accentColor)
-                                .frame(width: 40)
+                                .foregroundStyle(isCurrent ? Color.accentColor : .secondary)
+                                .frame(width: 36)
 
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(session.deviceName)
-                                    .font(.headline)
-                                Text(session.lastActive, style: .relative)
+                                HStack(spacing: 6) {
+                                    Text(name)
+                                        .font(.headline)
+
+                                    if isCurrent {
+                                        Text("Текущая")
+                                            .font(.caption2)
+                                            .foregroundStyle(.white)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(Color.accentColor)
+                                            .clipShape(Capsule())
+                                    }
+                                }
+
+                                if !app.isEmpty || !os.isEmpty {
+                                    HStack(spacing: 4) {
+                                        if !app.isEmpty {
+                                            Text(app)
+                                        }
+                                        if !os.isEmpty {
+                                            if !app.isEmpty {
+                                                Text("·")
+                                            }
+                                            Text(os)
+                                        }
+                                    }
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
+                                }
+
+                                HStack(spacing: 4) {
+                                    if !session.location.isEmpty {
+                                        Text(session.location)
+                                        Text("·")
+                                    }
+                                    Text(session.createdAt, style: .date)
+                                }
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
                             }
 
                             Spacer()
 
-                            if !session.isCurrent {
+                            if !isCurrent {
                                 Button("Завершить", role: .destructive) {
                                     Task {
-                                        await viewModel.terminateSession(session.id)
+                                        await viewModel.terminateSession(deviceID: session.deviceId)
                                     }
                                 }
                                 .buttonStyle(.plain)
                                 .foregroundStyle(.red)
-                            } else {
-                                Text("Текущая")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(Color.accentColor.opacity(0.2))
-                                    .clipShape(Capsule())
                             }
                         }
                         .padding(.vertical, 4)
@@ -60,31 +112,52 @@ struct SessionsView: View {
             } footer: {
                 Text("Если вы видите незнакомые устройства, завершите сессию и смените пароль")
             }
+
+            if viewModel.sessions.count > 1 {
+                Section {
+                    Button("Завершить все кроме текущей", role: .destructive) {
+                        Task {
+                            await viewModel.terminateAllOtherSessions()
+                        }
+                    }
+                }
+            }
+
+            if let error = viewModel.errorMessage {
+                Section {
+                    Text(error)
+                        .foregroundStyle(.red)
+                        .font(.caption)
+                }
+            }
         }
         .formStyle(.grouped)
         .padding()
+        .task {
+            await viewModel.loadSessions()
+        }
     }
-}
 
-// Preview data models
-struct Session: Identifiable {
-    let id: String
-    let deviceName: String
-    let deviceType: DeviceType
-    let lastActive: Date
-    let isCurrent: Bool
+    // MARK: - Helpers
 
-    enum DeviceType {
-        case mac, iphone, ipad, web, other
-
-        var icon: String {
-            switch self {
-            case .mac: return "desktopcomputer"
-            case .iphone: return "iphone"
-            case .ipad: return "ipad"
-            case .web: return "globe"
-            case .other: return "questionmark.circle"
-            }
+    private func iconForOS(_ os: String) -> String {
+        let lower = os.lowercased()
+        if lower.contains("mac") || lower.contains("macos") {
+            return "desktopcomputer"
+        } else if lower.contains("iphone") || lower.contains("ios") {
+            return "iphone"
+        } else if lower.contains("ipad") {
+            return "ipad"
+        } else if lower.contains("android") {
+            return "smartphone"
+        } else if lower.contains("windows") {
+            return "pc"
+        } else if lower.contains("linux") {
+            return "server.rack"
+        } else if lower.contains("web") {
+            return "globe"
+        } else {
+            return "questionmark.circle"
         }
     }
 }

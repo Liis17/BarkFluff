@@ -33,7 +33,7 @@ struct SharedMediaGridView: View {
                     fileService: fileService,
                     allItems: items
                 )
-                .aspectRatio(1, contentMode: .fill)
+                .aspectRatio(1, contentMode: .fit)
                 .clipped()
                 .onAppear {
                     // Пагинация: загрузить ещё при приближении к концу
@@ -68,56 +68,60 @@ struct SharedMediaThumbnailView: View {
     @State private var isLoading = true
 
     var body: some View {
-        ZStack {
-            if let imageURL {
-                LazyImage(url: imageURL) { state in
-                    if let image = state.image {
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } else if state.isLoading {
-                        loadingPlaceholder
-                    } else {
-                        errorPlaceholder
+        Color.clear
+            .overlay {
+                if let imageURL {
+                    LazyImage(url: imageURL) { state in
+                        if let image = state.image {
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                        } else if state.isLoading {
+                            loadingPlaceholder
+                        } else {
+                            errorPlaceholder
+                        }
                     }
+                } else if isLoading {
+                    loadingPlaceholder
+                } else {
+                    errorPlaceholder
                 }
-            } else if isLoading {
-                loadingPlaceholder
-            } else {
-                errorPlaceholder
             }
+            .clipped()
+            .overlay {
+                // Оверлей для видео — иконка play
+                if item.type == .video {
+                    Color.black.opacity(0.3)
+                    Image(systemName: "play.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(.white)
+                }
 
-            // Оверлей для видео — иконка play
-            if item.type == .video {
-                Color.black.opacity(0.3)
-                Image(systemName: "play.circle.fill")
-                    .font(.title2)
-                    .foregroundStyle(.white)
-            }
-
-            // Оверлей для GIF — лейбл
-            if item.type == .gif {
-                VStack {
-                    Spacer()
-                    HStack {
-                        Text("GIF")
-                            .font(.caption2.bold())
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Capsule().fill(.black.opacity(0.6)))
+                // Оверлей для GIF — лейбл
+                if item.type == .gif {
+                    VStack {
                         Spacer()
+                        HStack {
+                            Text("GIF")
+                                .font(.caption2.bold())
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Capsule().fill(.black.opacity(0.6)))
+                            Spacer()
+                        }
+                        .padding(4)
                     }
-                    .padding(4)
                 }
             }
-        }
-        .task {
-            await resolvePreviewURL()
-        }
-        .onTapGesture {
-            openMediaViewer()
-        }
+            .contentShape(Rectangle())
+            .task {
+                await resolvePreviewURL()
+            }
+            .onTapGesture {
+                openMediaViewer()
+            }
     }
 
     private var loadingPlaceholder: some View {
@@ -169,6 +173,7 @@ struct SharedMediaThumbnailView: View {
         FullScreenMediaWindowManager.shared.openMediaViewer(
             attachments: attachments,
             initialIndex: index,
+            messageText: nil,
             container: container
         )
     }

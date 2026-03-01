@@ -20,4 +20,7 @@ public protocol ChatServiceProtocol: Sendable {
 
     /// Исключить пользователя из чата
     func kickUser(chatID: String, userID: Int64) async throws
+
+    /// Получить ID личного чата с пользователем (nil если чат не существует)
+    func getPersonChatId(userID: Int64) async throws -> String?
 }
