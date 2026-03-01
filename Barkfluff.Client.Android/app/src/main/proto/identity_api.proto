@@ -216,6 +216,7 @@ message Token {
 
 message SetPasswordRequest {
   string password = 1; // пароль
+  string old_password = 2; // старый пароль (обязателен если пароль уже установлен)
 }
 
 message SetPasswordResponse { }
