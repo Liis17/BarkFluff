@@ -4,6 +4,7 @@ namespace BarkFluff.Identity.Features.SetPassword;
 
 using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.Proto.Users;
+using BarkFluff.Shared.Exceptions.Identity;
 using BarkFluff.Shared.Identity;
 using BarkFluff.Shared.Queue.Notifications;
 using GrpcServer.XAuth;
@@ -45,6 +46,17 @@ public class SetPasswordCommandHandler : IRequestHandler<SetPasswordCommand>
             "Начало изменения пароля для пользователя {UserId}",
             _userContext.UserId
         );
+
+        var currentHash = await _passwordsStorage.GetUserPasswordHash(_userContext.UserId);
+        if (currentHash != null)
+        {
+            if (string.IsNullOrEmpty(request.OldPassword))
+                throw new InvalidOldPasswordException();
+
+            var oldHash = PasswordHasher.HashPassword(request.OldPassword);
+            if (!string.Equals(currentHash, oldHash))
+                throw new InvalidOldPasswordException();
+        }
 
         var passwordHash = PasswordHasher.HashPassword(request.NewPassword);
 
