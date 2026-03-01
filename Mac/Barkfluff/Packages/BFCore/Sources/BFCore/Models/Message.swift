@@ -7,16 +7,30 @@
 
 import Foundation
 
+/// Состояние отправки сообщения
+public enum MessageSendingState: Hashable, Sendable {
+    case sent       // Подтверждено сервером (default)
+    case sending    // Отправляется
+    case failed(String) // Ошибка (с текстом)
+}
+
 /// Сообщение в чате
 public struct Message: Identifiable, Hashable, Sendable {
-    public let id: Int64
+    public var id: Int64
     public let chatID: String
     public let senderID: Int64
     public let senderName: String?
     public var content: MessageContent
-    public let sentAt: Date
+    public var sentAt: Date
     public var readBy: [Int64]
     public let isSystem: Bool
+
+    /// Состояние отправки (для optimistic UI)
+    public var sendingState: MessageSendingState
+    /// Локальный ID для pending-сообщений (стабильная SwiftUI identity)
+    public var localID: String?
+    /// Прогресс загрузки вложений (0.0...1.0)
+    public var uploadProgress: Double?
 
     public init(
         id: Int64,
@@ -26,7 +40,10 @@ public struct Message: Identifiable, Hashable, Sendable {
         content: MessageContent,
         sentAt: Date,
         readBy: [Int64] = [],
-        isSystem: Bool = false
+        isSystem: Bool = false,
+        sendingState: MessageSendingState = .sent,
+        localID: String? = nil,
+        uploadProgress: Double? = nil
     ) {
         self.id = id
         self.chatID = chatID
@@ -36,6 +53,9 @@ public struct Message: Identifiable, Hashable, Sendable {
         self.sentAt = sentAt
         self.readBy = readBy
         self.isSystem = isSystem
+        self.sendingState = sendingState
+        self.localID = localID
+        self.uploadProgress = uploadProgress
     }
 
     /// Проверить, прочитано ли сообщение пользователем

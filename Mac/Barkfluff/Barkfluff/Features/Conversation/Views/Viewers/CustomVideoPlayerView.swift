@@ -73,6 +73,7 @@ struct FullScreenVideoPlayer: View {
     @State private var duration: CMTime = .zero
     @State private var showControls = true
     @State private var isDragging = false
+    @State private var timeObserverToken: Any?
 
     private var durationSeconds: Double {
         CMTimeGetSeconds(duration)
@@ -105,13 +106,14 @@ struct FullScreenVideoPlayer: View {
                 errorView
             }
         }
-        .onAppear {
-            setupTimeObserver()
-        }
         .task {
             await loadVideo()
         }
         .onDisappear {
+            if let token = timeObserverToken {
+                player?.removeTimeObserver(token)
+                timeObserverToken = nil
+            }
             player?.pause()
             player = nil
         }
@@ -319,6 +321,7 @@ struct FullScreenVideoPlayer: View {
             if let url = videoURL {
                 let playerItem = AVPlayerItem(url: url)
                 player = AVPlayer(playerItem: playerItem)
+                setupTimeObserver()
                 player?.play()
                 isPlaying = true
             }
@@ -333,7 +336,7 @@ struct FullScreenVideoPlayer: View {
         guard let player = player else { return }
 
         let interval = CMTime(seconds: 0.1, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
-        player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { time in
+        timeObserverToken = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { time in
             Task { @MainActor in
                 currentTime = time
                 if let duration = player.currentItem?.duration {

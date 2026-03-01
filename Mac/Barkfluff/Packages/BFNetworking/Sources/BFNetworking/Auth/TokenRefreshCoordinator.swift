@@ -28,8 +28,11 @@ public actor TokenRefreshCoordinator {
     public func refreshAccessToken() async throws -> String {
         // Если уже есть активная задача — ждём её
         if let existingTask = refreshTask {
+            print("⏳ [TokenRefreshCoordinator] Waiting for existing refresh task...")
             return try await existingTask.value
         }
+
+        print("🔄 [TokenRefreshCoordinator] Starting token refresh...")
 
         // Создаём новую задачу обновления
         let tokenProvider = self.tokenProvider
@@ -37,10 +40,12 @@ public actor TokenRefreshCoordinator {
 
         let task = Task<String, Error> {
             guard let refreshToken = await tokenProvider.currentRefreshToken else {
+                print("❌ [TokenRefreshCoordinator] No refresh token available")
                 throw BFNetworkingError.sessionExpired
             }
 
             // Вызываем Identity.CreateToken
+            print("📡 [TokenRefreshCoordinator] Calling createToken API...")
             let response = try await identityRepository.createToken(refreshToken: refreshToken)
 
             // Сохраняем новый access token
@@ -49,6 +54,7 @@ public actor TokenRefreshCoordinator {
                 expiresAt: response.expirationDate
             )
 
+            print("✅ [TokenRefreshCoordinator] Token refreshed, expires at: \(response.expirationDate)")
             return response.value
         }
 
@@ -60,6 +66,7 @@ public actor TokenRefreshCoordinator {
             return token
         } catch {
             refreshTask = nil
+            print("❌ [TokenRefreshCoordinator] Token refresh failed: \(error.localizedDescription)")
             throw error
         }
     }

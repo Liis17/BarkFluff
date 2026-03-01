@@ -66,6 +66,11 @@ final class AppCoordinator {
     /// Чат для отображения в панели профиля
     var profilePanelChat: Chat?
 
+    // MARK: - Chat List Reference
+
+    /// Weak ссылка на ChatListViewModel для уведомлений о прочтении
+    weak var chatListViewModel: ChatListViewModel?
+
     /// Тип модального окна
     enum SheetType: Identifiable {
         case createGroupChat
@@ -140,6 +145,16 @@ final class AppCoordinator {
     func closeProfilePanel() {
         showProfilePanel = false
         profilePanelChat = nil
+    }
+
+    /// Уведомить о прочтении чата (вызывается при открытии чата)
+    func notifyChatOpened(_ chatID: String) {
+        chatListViewModel?.markChatAsReadLocally(chatID: chatID)
+    }
+
+    /// Уведомить об отправке сообщения (вызывается для обновления lastMessage в списке чатов)
+    func notifyMessageSent(chatID: String, message: BFCore.Message) {
+        chatListViewModel?.updateLastMessage(chatID: chatID, message: message)
     }
 
     /// Выход из аккаунта
