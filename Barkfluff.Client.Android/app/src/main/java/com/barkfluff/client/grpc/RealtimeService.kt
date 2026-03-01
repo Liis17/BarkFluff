@@ -222,6 +222,8 @@ class RealtimeService(private val context: Context, private val grpcManager: Grp
         try {
             _newMessages.collect { event ->
                 try {
+                    if (!globalParam.notificationsEnabled) return@collect
+
                     val msg = event.message ?: return@collect
                     val senderId = msg.senderId
                     if (senderId == globalParam.userId) return@collect

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="16dp"
+    android:layout_marginVertical="4dp"
+    app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="0dp"
+    app:strokeColor="?attr/colorOutlineVariant"
+    app:strokeWidth="1dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="16dp">
+
+        <ImageView
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:importantForAccessibility="no"
+            android:src="@drawable/ic_smartphone"
+            app:tint="?attr/colorPrimary" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/textDeviceName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="?attr/colorOnSurface" />
+
+            <TextView
+                android:id="@+id/textDeviceInfo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+
+            <TextView
+                android:id="@+id/textDeviceLocation"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+
+        </LinearLayout>
+
+        <!-- Текущее устройство: Chip -->
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chipCurrent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Текущее"
+            android:visibility="gone"
+            app:chipBackgroundColor="?attr/colorPrimaryContainer"
+            android:textColor="?attr/colorOnPrimaryContainer" />
+
+        <!-- Другое устройство: кнопка завершения -->
+        <ImageButton
+            android:id="@+id/buttonRemove"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Завершить сессию"
+            android:src="@drawable/ic_close"
+            android:visibility="gone"
+            app:tint="?attr/colorOnSurfaceVariant" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

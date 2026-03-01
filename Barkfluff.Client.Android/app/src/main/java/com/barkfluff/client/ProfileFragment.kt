@@ -1,20 +1,121 @@
 package com.barkfluff.client
 
+import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
+import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.FragmentProfileBinding
+import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.utils.AvatarLoader
+import kotlinx.coroutines.launch
 
 class ProfileFragment : Fragment() {
 
     private var _binding: FragmentProfileBinding? = null
     private val binding get() = _binding!!
 
+    private lateinit var globalParam: GlobalParam
+    private lateinit var grpcManager: GrpcManager
+
+    companion object {
+        private const val TAG = "ProfileFragment"
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentProfileBinding.inflate(inflater, container, false)
         return binding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        val app = requireActivity().application as BarkFluffApplication
+        globalParam = GlobalParam(requireContext())
+        grpcManager = app.grpcManager
+
+        setupClickListeners()
+        updateUI()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshUserData()
+    }
+
+    private fun setupClickListeners() {
+        binding.itemAccount.setOnClickListener {
+            startActivity(Intent(requireContext(), AccountSettingsActivity::class.java))
+        }
+        binding.itemSecurity.setOnClickListener {
+            startActivity(Intent(requireContext(), SecuritySettingsActivity::class.java))
+        }
+        binding.itemStorage.setOnClickListener {
+            startActivity(Intent(requireContext(), StorageSettingsActivity::class.java))
+        }
+        binding.itemDevices.setOnClickListener {
+            startActivity(Intent(requireContext(), DevicesActivity::class.java))
+        }
+        binding.itemNotifications.setOnClickListener {
+            startActivity(Intent(requireContext(), NotificationSettingsActivity::class.java))
+        }
+    }
+
+    private fun updateUI() {
+        val fullName = "${globalParam.firstName} ${globalParam.lastName}".trim()
+        binding.textFullName.text = fullName.ifEmpty { "Пользователь" }
+        binding.textUsername.text = if (globalParam.userName.isNotEmpty()) "@${globalParam.userName}" else ""
+
+        loadAvatar()
+    }
+
+    private fun loadAvatar() {
+        val fileId = globalParam.picturePreviewFileId.ifEmpty { globalParam.pictureFileId }
+        val displayName = "${globalParam.firstName} ${globalParam.lastName}".trim()
+
+        if (fileId.isNotEmpty()) {
+            AvatarLoader.loadByFileId(
+                binding.avatarImage,
+                binding.avatarPlaceholder,
+                fileId,
+                displayName,
+                globalParam.userId
+            ) {
+                val result = grpcManager.getFileDownloadUrl(fileId)
+                if (result.isSuccess) result.getOrNull() else null
+            }
+        } else {
+            AvatarLoader.showPlaceholder(binding.avatarPlaceholder, displayName, globalParam.userId)
+            binding.avatarImage.visibility = View.GONE
+            binding.avatarPlaceholder.visibility = View.VISIBLE
+        }
+    }
+
+    private fun refreshUserData() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val result = grpcManager.getCurrentUserData()
+                if (result.isSuccess) {
+                    val userData = result.getOrNull() ?: return@launch
+                    globalParam.userName = userData.username
+                    globalParam.firstName = userData.firstName
+                    globalParam.lastName = userData.lastName
+                    globalParam.description = userData.bio
+                    globalParam.pictureFileId = userData.profilePictureFileId
+                    globalParam.picturePreviewFileId = userData.profilePicturePreviewFileId
+
+                    if (_binding != null) {
+                        updateUI()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Ошибка обновления данных профиля", e)
+            }
+        }
     }
 
     override fun onDestroyView() {

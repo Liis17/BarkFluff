@@ -107,6 +107,36 @@
             android:theme="@style/Theme.BarkfluffClientAndroid"
             android:screenOrientation="unspecified" />
 
+        <activity
+            android:name=".AccountSettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".SecuritySettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".StorageSettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".DevicesActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".NotificationSettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:screenOrientation="portrait" />
+
         <receiver
             android:name=".notifications.MarkAsReadReceiver"
             android:exported="false" />
