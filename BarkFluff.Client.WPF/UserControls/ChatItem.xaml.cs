@@ -100,8 +100,8 @@ namespace BarkFluff.Client.WPF.UserControls
             ChatId = chatId;
             _lastMessageId = lastMessageId;
             _isGroupChat = isGroupChat;
-            Title.Text = chatName;
-            _title = chatName;
+            Title.Text = chatName.Trim();
+            _title = chatName.Trim();
             LastMessage.Text = ProcessText(lastMessageText);
             _url = imageUrl;
             _userId = userId;
@@ -174,7 +174,7 @@ namespace BarkFluff.Client.WPF.UserControls
         private void ConfigureSelfChatAppearance()
         {
             // Принудительно устанавливаем название
-            Title.Text = "Избранное";
+            Title.Text = "Избранное".Trim();
             _title = "Избранное";
 
             // Скрываем галочки прочтения

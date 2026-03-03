@@ -135,6 +135,7 @@
                         FontFamily="{DynamicResource AdwaitaSans}"
                         FontWeight="Bold"
                         Opacity="0.9"
+                        TextWrapping="NoWrap"
                         Style="{DynamicResource LittleTitleTextStyle}"
                         Text="#publicusername" />
 
