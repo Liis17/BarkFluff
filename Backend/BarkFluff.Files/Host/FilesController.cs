@@ -41,10 +41,10 @@ public class FilesController : Controller
         
         try
         {
-            await _mediator.Send(command);
+            var resultFileId = await _mediator.Send(command);
             _metrics.Increment("files_uploaded");
             _metrics.Add("upload_bytes_total", file.Length);
-            return Ok(new { fileId = uploadId });
+            return Ok(new { fileId = resultFileId });
         }
         catch (FileAlreadyUploadedException ex)
         {
