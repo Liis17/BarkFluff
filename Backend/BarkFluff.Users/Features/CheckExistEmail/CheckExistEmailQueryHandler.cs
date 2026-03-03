@@ -19,17 +19,19 @@ public class CheckExistEmailQueryHandler : IRequestHandler<CheckExistEmailQuery,
 
     public async Task<CheckExistResponse> Handle(CheckExistEmailQuery request, CancellationToken cancellationToken)
     {
-        _logger.LogDebug("Проверка существования email: {Email}", request.Email);
+        var email = request.Email?.Trim();
 
-        var userByEmail = await _usersStorage.GetUserByEmail(request.Email);
+        _logger.LogDebug("Проверка существования email: {Email}", email);
+
+        var userByEmail = await _usersStorage.GetUserByEmail(email);
 
         if (userByEmail is null || userByEmail.IsDraft)
         {
-            _logger.LogDebug("Email {Email} свободен (не найден или черновик)", request.Email);
+            _logger.LogDebug("Email {Email} свободен (не найден или черновик)", email);
             return new CheckExistResponse { Exist = false };
         }
 
-        _logger.LogDebug("Email {Email} уже существует у пользователя {UserId}", request.Email, userByEmail.Id);
+        _logger.LogDebug("Email {Email} уже существует у пользователя {UserId}", email, userByEmail.Id);
         return new CheckExistResponse { Exist = true };
     }
 }
