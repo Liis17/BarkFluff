@@ -94,7 +94,30 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
         originalStream.Position = 0;
         
         _logger.LogInformation("Вычислен хеш файла: {FileHash}", fileHash);
-        
+
+        // Серверная дедупликация: проверяем, существует ли файл с таким хешем
+        var existingFileId = await _hashesStorage.GetFileIdByHash(fileHash);
+        if (existingFileId.HasValue)
+        {
+            _logger.LogInformation(
+                "Файл с хешем {FileHash} уже существует в хранилище (FileId: {ExistingFileId}). Дедупликация.",
+                fileHash, existingFileId.Value);
+
+            // Добавляем загрузчиков из текущего запроса к существующему файлу
+            foreach (var uploaderId in file.Uploaders)
+            {
+                await _filesStorage.AddUploaderToFile(existingFileId.Value, uploaderId);
+            }
+
+            // Удаляем неиспользуемую запись UploadFile, созданную при GetUploadUrl
+            await _filesStorage.DeleteFile(file.Id);
+
+            // Освобождаем поток — загрузка в S3 не требуется
+            await originalStream.DisposeAsync();
+
+            return existingFileId.Value.ToString();
+        }
+
         try
         {
             // Загружаем файл в S3 напрямую из стрима
