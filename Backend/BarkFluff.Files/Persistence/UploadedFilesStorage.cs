@@ -59,6 +59,19 @@ public class UploadedFilesStorage
             .ToListAsync();
     }
 
+    /// <summary>
+    /// Deletes an UploadFile record by its ID (used for cleanup during deduplication).
+    /// </summary>
+    public async Task DeleteFile(Guid fileId)
+    {
+        var file = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.Id == fileId);
+        if (file != null)
+        {
+            _context.UploadedFiles.Remove(file);
+            await _context.SaveChangesAsync();
+        }
+    }
+
     public async Task<UploadFile?> GetFileByPreviewId(Guid previewId)
     {
         return await _context.UploadedFiles.AsNoTracking().FirstOrDefaultAsync(x => x.PreviewId == previewId);
