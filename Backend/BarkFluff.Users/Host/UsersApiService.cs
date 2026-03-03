@@ -54,8 +54,8 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
     [AllowAnonymous]
     public override Task<CheckExistResponse> CheckExistEmail(CheckExistEmailRequest request, ServerCallContext context)
     {
-        var command = new CheckExistEmailQuery() { Email = request.Email };
-        
+        var command = new CheckExistEmailQuery() { Email = request.Email?.Trim() };
+
         return _mediator.Send(command);
     }
 
@@ -63,8 +63,8 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
     public override Task<CheckExistResponse> CheckExistUsername(CheckExistUsernameRequest request,
         ServerCallContext context)
     {
-        var command = new CheckExistUsernameQuery() { Username = request.Username };
-        
+        var command = new CheckExistUsernameQuery() { Username = request.Username?.Trim() };
+
         return _mediator.Send(command);
     }
 
@@ -73,10 +73,10 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
         _metrics.Increment("profile_updates");
         var command = new ChangeNameCommand()
         {
-            FirstName = request.FirstName,
-            LastName = request.LastName,
+            FirstName = request.FirstName?.Trim(),
+            LastName = request.LastName?.Trim(),
         };
-        
+
         await _mediator.Send(command);
 
         return new ChangeNameResponse();
@@ -87,11 +87,11 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
         _metrics.Increment("profile_updates");
         var command = new ChangeUsernameCommand()
         {
-            Username = request.Username
+            Username = request.Username?.Trim()
         };
-        
+
         await _mediator.Send(command);
-        
+
         return new ChangeUsernameResponse();
     }
 

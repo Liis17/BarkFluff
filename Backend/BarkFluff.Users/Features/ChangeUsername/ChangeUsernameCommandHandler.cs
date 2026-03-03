@@ -27,20 +27,22 @@ public class ChangeUsernameCommandHandler : IRequestHandler<ChangeUsernameComman
 
     public async Task Handle(ChangeUsernameCommand request, CancellationToken cancellationToken)
     {
+        var username = request.Username?.Trim();
+
         _logger.LogInformation(
             "Начало изменения username для пользователя {UserId}: '{Username}'",
             _userContext.UserId,
-            request.Username
+            username
         );
 
-        await _usersStorage.ChangeUsername(_userContext.UserId, request.Username);
+        await _usersStorage.ChangeUsername(_userContext.UserId, username);
 
         _logger.LogDebug(
             "Отправка события об изменении username в очередь RabbitMQ для пользователя {UserId}",
             _userContext.UserId
         );
 
-        await _userInfoQueueSender.UsernameChangedEvent(_userContext.UserId, request.Username);
+        await _userInfoQueueSender.UsernameChangedEvent(_userContext.UserId, username);
 
         _logger.LogInformation(
             "Username успешно изменен для пользователя {UserId}",

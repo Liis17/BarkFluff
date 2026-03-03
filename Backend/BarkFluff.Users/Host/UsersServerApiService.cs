@@ -51,28 +51,28 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
 
     public override Task<CheckExistResponse> CheckExistEmail(CheckExistEmailRequest request, ServerCallContext context)
     {
-        var command = new CheckExistEmailQuery() { Email = request.Email };
+        var command = new CheckExistEmailQuery() { Email = request.Email?.Trim() };
 
         return _mediator.Send(command);
     }
 
     public override Task<CheckExistResponse> CheckExistUsername(CheckExistUsernameRequest request, ServerCallContext context)
     {
-        var command = new CheckExistUsernameQuery() { Username = request.Username };
+        var command = new CheckExistUsernameQuery() { Username = request.Username?.Trim() };
 
         return _mediator.Send(command);
     }
 
     public override Task<FindByLoginResponse> FindByLogin(FindByLoginRequest request, ServerCallContext context)
     {
-        var command = new FindByLoginQuery() { Username = request.Username, Email = request.Email };
+        var command = new FindByLoginQuery() { Username = request.Username?.Trim(), Email = request.Email?.Trim() };
 
         return _mediator.Send(command);
     }
 
     public override Task<AddDraftUserResponse> AddDraftUser(AddDraftUserRequest request, ServerCallContext context)
     {
-        var command = new AddDraftUserCommand() { Username = request.Username, Email = request.Email, FirstName = request.FirstName, LastName = request.LastName };
+        var command = new AddDraftUserCommand() { Username = request.Username?.Trim(), Email = request.Email?.Trim(), FirstName = request.FirstName?.Trim(), LastName = request.LastName?.Trim() };
 
         return _mediator.Send(command);
     }
@@ -109,10 +109,10 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
     {
         var command = new OverrideDraftUserCommand()
         {
-            LastName = request.LastName,
-            FirstName = request.FirstName,
-            Email = request.Email,
-            Username = request.Username,
+            LastName = request.LastName?.Trim(),
+            FirstName = request.FirstName?.Trim(),
+            Email = request.Email?.Trim(),
+            Username = request.Username?.Trim(),
         };
 
         return _mediator.Send(command);
@@ -266,7 +266,7 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
     public override async Task<GetUserByUsernameResponse> GetUserByUsername(
         GetUserByUsernameRequest request, ServerCallContext context)
     {
-        var user = await _usersStorage.GetUserByUsername(request.Username);
+        var user = await _usersStorage.GetUserByUsername(request.Username?.Trim());
 
         if (user is null || user.IsDraft)
         {

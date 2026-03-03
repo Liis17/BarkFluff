@@ -20,17 +20,19 @@ public class CheckExistUsernameQueryHandler : IRequestHandler<CheckExistUsername
 
     public async Task<CheckExistResponse> Handle(CheckExistUsernameQuery request, CancellationToken cancellationToken)
     {
-        _logger.LogDebug("Проверка существования username: {Username}", request.Username);
+        var username = request.Username?.Trim();
 
-        var userByUsername = await _usersStorage.GetUserByUsername(request.Username);
+        _logger.LogDebug("Проверка существования username: {Username}", username);
+
+        var userByUsername = await _usersStorage.GetUserByUsername(username);
 
         if (userByUsername is null || userByUsername.IsDraft)
         {
-            _logger.LogDebug("Username {Username} свободен (не найден или черновик)", request.Username);
+            _logger.LogDebug("Username {Username} свободен (не найден или черновик)", username);
             return new CheckExistResponse { Exist = false };
         }
 
-        _logger.LogDebug("Username {Username} уже существует у пользователя {UserId}", request.Username, userByUsername.Id);
+        _logger.LogDebug("Username {Username} уже существует у пользователя {UserId}", username, userByUsername.Id);
         return new CheckExistResponse() { Exist = true };
     }
 }

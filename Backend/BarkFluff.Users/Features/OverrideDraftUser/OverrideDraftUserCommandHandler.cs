@@ -19,21 +19,26 @@ public class OverrideDraftUserCommandHandler : IRequestHandler<OverrideDraftUser
 
     public async Task<AddDraftUserResponse> Handle(OverrideDraftUserCommand request, CancellationToken cancellationToken)
     {
+        var email = request.Email?.Trim();
+        var username = request.Username?.Trim();
+        var firstName = request.FirstName?.Trim();
+        var lastName = request.LastName?.Trim();
+
         _logger.LogInformation(
             "Перезапись черновика пользователя. Username: {Username}, Email: {Email}",
-            request.Username,
-            request.Email
+            username,
+            email
         );
 
-        var user = await _usersStorage.GetUserByEmail(request.Email)
-                   ?? await _usersStorage.GetUserByUsername(request.Username);
+        var user = await _usersStorage.GetUserByEmail(email)
+                   ?? await _usersStorage.GetUserByUsername(username);
 
         if (user == null)
         {
             _logger.LogWarning(
                 "Пользователь не найден по Email {Email} или Username {Username}",
-                request.Email,
-                request.Username
+                email,
+                username
             );
             throw new UserNotFoundException();
         }
@@ -43,10 +48,10 @@ public class OverrideDraftUserCommandHandler : IRequestHandler<OverrideDraftUser
             user.Id
         );
 
-        user.FirstName = request.FirstName;
-        user.LastName = request.LastName;
-        user.Contact.Email = request.Email;
-        user.Username = request.Username;
+        user.FirstName = firstName;
+        user.LastName = lastName;
+        user.Contact.Email = email;
+        user.Username = username;
         user.ProfilePicture = null;
         user.RegistrationDate = DateTime.UtcNow;
         user.IsDraft = true;
@@ -56,7 +61,7 @@ public class OverrideDraftUserCommandHandler : IRequestHandler<OverrideDraftUser
         _logger.LogInformation(
             "Черновик пользователя {UserId} ({Username}) успешно перезаписан",
             user.Id,
-            request.Username
+            username
         );
 
         return new AddDraftUserResponse { UserId = user.Id };
