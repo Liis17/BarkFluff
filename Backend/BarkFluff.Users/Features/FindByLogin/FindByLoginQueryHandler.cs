@@ -21,29 +21,32 @@ public class FindByLoginQueryHandler : IRequestHandler<FindByLoginQuery, FindByL
 
     public async Task<FindByLoginResponse> Handle(FindByLoginQuery request, CancellationToken cancellationToken)
     {
+        var username = request.Username?.Trim();
+        var email = request.Email?.Trim();
+
         _logger.LogDebug(
             "Поиск пользователя по логину. Username: {Username}, Email: {Email}",
-            request.Username ?? "null",
-            request.Email ?? "null"
+            username ?? "null",
+            email ?? "null"
         );
 
         Domain.User? user = null;
-        if (!string.IsNullOrEmpty(request.Username))
+        if (!string.IsNullOrEmpty(username))
         {
-            user = await _usersStorage.GetUserByUsername(request.Username);
+            user = await _usersStorage.GetUserByUsername(username);
         }
 
-        if (!string.IsNullOrEmpty(request.Email))
+        if (!string.IsNullOrEmpty(email))
         {
-            user = await _usersStorage.GetUserByEmail(request.Email);
+            user = await _usersStorage.GetUserByEmail(email);
         }
 
         if (user is null)
         {
             _logger.LogWarning(
                 "Пользователь не найден. Username: {Username}, Email: {Email}",
-                request.Username ?? "null",
-                request.Email ?? "null"
+                username ?? "null",
+                email ?? "null"
             );
             throw new UserNotFoundException();
         }

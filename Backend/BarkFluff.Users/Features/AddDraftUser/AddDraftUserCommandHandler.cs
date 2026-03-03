@@ -29,9 +29,14 @@ public class AddDraftUserCommandHandler : IRequestHandler<AddDraftUserCommand, A
             request.LastName
         );
 
-        _logger.LogDebug("Проверка существования email: {Email}", request.Email);
+        var email = request.Email?.Trim();
+        var username = request.Username?.Trim();
+        var firstName = request.FirstName?.Trim();
+        var lastName = request.LastName?.Trim();
 
-        var userByEmail = await _usersStorage.GetUserByEmail(request.Email);
+        _logger.LogDebug("Проверка существования email: {Email}", email);
+
+        var userByEmail = await _usersStorage.GetUserByEmail(email);
 
         if (userByEmail != null)
         {
@@ -45,13 +50,13 @@ public class AddDraftUserCommandHandler : IRequestHandler<AddDraftUserCommand, A
                 throw new UserIsDraftException();
             }
 
-            _logger.LogWarning("Email {Email} уже существует у пользователя {UserId}", request.Email, userByEmail.Id);
+            _logger.LogWarning("Email {Email} уже существует у пользователя {UserId}", email, userByEmail.Id);
             throw new EmailExistException();
         }
 
-        _logger.LogDebug("Проверка существования username: {Username}", request.Username);
+        _logger.LogDebug("Проверка существования username: {Username}", username);
 
-        var userByUsername = await _usersStorage.GetUserByUsername(request.Username);
+        var userByUsername = await _usersStorage.GetUserByUsername(username);
 
         if (userByUsername != null)
         {
@@ -67,19 +72,19 @@ public class AddDraftUserCommandHandler : IRequestHandler<AddDraftUserCommand, A
 
             _logger.LogWarning(
                 "Username {Username} уже существует у пользователя {UserId}",
-                request.Username,
+                username,
                 userByUsername.Id
             );
             throw new UsernameExistException();
         }
 
-        var user = await _usersStorage.CreateUser(request.Username, request.FirstName, request.LastName, request.Email);
+        var user = await _usersStorage.CreateUser(username, firstName, lastName, email);
 
         _logger.LogInformation(
             "Черновик пользователя создан. UserId: {UserId}, Username: {Username}, Email: {Email}",
             user.Id,
-            request.Username,
-            request.Email
+            username,
+            email
         );
 
         return new AddDraftUserResponse { UserId = user.Id };

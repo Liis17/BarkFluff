@@ -40,14 +40,16 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
 
     public async Task<ResetPasswordResponse> Handle(ResetPasswordCommand request, CancellationToken cancellationToken)
     {
-        var login = request.Username ?? request.Email;
+        var username = request.Username?.Trim();
+        var email = request.Email?.Trim();
+        var login = username ?? email;
 
         _logger.LogInformation(
             "Запрос на сброс пароля для {Login}, тип OTP: {OtpType}",
             login,
             request.OtpType
         );
-        if (string.IsNullOrEmpty(request.Username) && string.IsNullOrEmpty(request.Email))
+        if (string.IsNullOrEmpty(username) && string.IsNullOrEmpty(email))
         {
             throw new NotSetUsernameOrEmailException();
         }
@@ -69,15 +71,15 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
         
         var usersRequest = new FindByLoginRequest();
 
-        if (!string.IsNullOrEmpty(request.Username))
+        if (!string.IsNullOrEmpty(username))
         {
-            usersRequest.Username = request.Username;
+            usersRequest.Username = username;
         }
         else
         {
-            usersRequest.Email = request.Email;
+            usersRequest.Email = email;
         }
-        
+
         _logger.LogDebug("Поиск пользователя по логину: {Login}", login);
 
         var user = await _usersClient.FindByLoginAsync(usersRequest);

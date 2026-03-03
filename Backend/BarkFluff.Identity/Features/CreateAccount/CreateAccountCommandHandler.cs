@@ -50,10 +50,10 @@ public class CreateAccountCommandHandler(UsersServerApi.UsersServerApiClient use
         
         var createAccountRequest = new AddDraftUserRequest()
         {
-            Email = request.Email,
-            Username = request.Username,
-            FirstName = request.FirstName,
-            LastName = request.LastName
+            Email = request.Email?.Trim(),
+            Username = request.Username?.Trim(),
+            FirstName = request.FirstName?.Trim(),
+            LastName = request.LastName?.Trim()
         };
 
         logger.LogDebug("Создание черновика пользователя {Username}", request.Username);

@@ -43,8 +43,8 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
 
         var command = new AuthCommand
         {
-            Username = request.Username,
-            Email = request.Email,
+            Username = request.Username?.Trim(),
+            Email = request.Email?.Trim(),
             OtpCode = request.OtpCode,
             Password = request.Password,
         };
@@ -72,10 +72,10 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
 
         var command = new CreateAccountCommand
         {
-            Username = request.Username,
-            Email = request.Email,
-            FirstName = request.FirstName,
-            LastName = request.LastName,
+            Username = request.Username?.Trim(),
+            Email = request.Email?.Trim(),
+            FirstName = request.FirstName?.Trim(),
+            LastName = request.LastName?.Trim(),
         };
 
         return await _mediator.Send(command);
@@ -170,9 +170,9 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
 
         var command = new ResetPasswordCommand()
         {
-            Email = request.Email, OtpType = (OtpType)(int)request.OtpType, Username = request.Username
+            Email = request.Email?.Trim(), OtpType = (OtpType)(int)request.OtpType, Username = request.Username?.Trim()
         };
-        
+
         return await _mediator.Send(command);
     }
 
