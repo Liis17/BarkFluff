@@ -1276,7 +1276,7 @@ namespace BarkFluff.Client.WPF.Pages
 
                 // Определяем статус чтения и заголовок
                 var isRead = ChatItem.ReadingStatus.ForMe;
-                var title = item.Title;
+                var title = item.Title.Trim();
                 var membersId = item.Members.Select(m => m.UserId).ToList();
                 bool isSelfChat = (item.Members.Count >= 2 &&
                                    App.GParam.UserId == item.Members[0].UserId &&
@@ -1904,7 +1904,7 @@ namespace BarkFluff.Client.WPF.Pages
                     }
                     if (chat.chatInfo.ChatId != string.Empty)
                     {
-                        var title = chat.chatInfo.Title;
+                        var title = chat.chatInfo.Title.Trim();
 
                         // Проверяем, является ли чат self-chat (Избранное)
                         bool isSelfChat = (chat.chatInfo.Members.Count >= 2 &&
