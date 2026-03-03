@@ -85,6 +85,7 @@
                             x:Name="AvatarCachedImage"
                             Width="110"
                             Height="110"
+                            AvatarSize="Big"
                             Margin="0,0,0,4"
                             HorizontalAlignment="Center"
                             CornerRadius="55"
