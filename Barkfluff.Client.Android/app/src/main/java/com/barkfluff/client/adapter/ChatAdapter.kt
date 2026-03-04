@@ -46,7 +46,7 @@ class ChatAdapter(
             val chat = item.chatData
 
             // Название чата
-            binding.chatTitle.text = item.displayTitle
+            binding.chatTitle.text = item.displayTitle.trim()
 
             // Аватар через AvatarLoader с fileId
             AvatarLoader.loadByFileId(
@@ -65,7 +65,7 @@ class ChatAdapter(
             if (chat.lastMessage != null) {
                 val text = chat.lastMessage.text
                 binding.lastMessage.text = when {
-                    text.isNotBlank() -> text
+                    text.isNotBlank() -> text.trim()
                     else -> "Вложение"
                 }
                 binding.lastMessage.visibility = View.VISIBLE
