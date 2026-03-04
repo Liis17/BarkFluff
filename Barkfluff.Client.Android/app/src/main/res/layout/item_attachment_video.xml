@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="200dp">
+
+    <!-- Превью видео -->
+    <ImageView
+        android:id="@+id/videoThumbnail"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:src="@drawable/ic_image_placeholder"
+        android:contentDescription="@null" />
+
+    <!-- Затемнение -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#66000000" />
+
+    <!-- Кнопка плей (центр) -->
+    <ImageButton
+        android:id="@+id/videoPlayButton"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_gravity="center"
+        android:background="@drawable/background_color_indicator"
+        android:src="@drawable/ic_play_arrow"
+        android:contentDescription="Воспроизвести видео"
+        android:scaleType="center"
+        android:padding="12dp"
+        android:alpha="0.6" />
+
+    <!-- Кнопка скачать (поверх кнопки плей, показывается пока не скачано) -->
+    <FrameLayout
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_gravity="center">
+
+        <ImageButton
+            android:id="@+id/videoDownloadButton"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="@drawable/background_color_indicator"
+            android:src="@drawable/ic_download"
+            android:contentDescription="Скачать видео"
+            android:scaleType="center"
+            android:padding="12dp"
+            android:visibility="gone" />
+
+    </FrameLayout>
+
+    <!-- Прогресс загрузки -->
+    <com.google.android.material.progressindicator.CircularProgressIndicator
+        android:id="@+id/videoDownloadProgress"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:indeterminate="true"
+        android:visibility="gone"
+        app:indicatorColor="@android:color/white"
+        app:indicatorSize="40dp" />
+
+</FrameLayout>

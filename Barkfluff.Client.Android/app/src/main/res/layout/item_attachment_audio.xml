@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingHorizontal="12dp"
+    android:paddingVertical="10dp"
+    android:minWidth="200dp">
+
+    <!-- Кнопка плей/пауза + кнопка скачать поверх -->
+    <FrameLayout
+        android:layout_width="40dp"
+        android:layout_height="40dp">
+
+        <ImageButton
+            android:id="@+id/playPauseButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/background_color_indicator"
+            android:src="@drawable/ic_play_arrow"
+            android:contentDescription="Воспроизвести"
+            android:scaleType="center"
+            android:padding="8dp" />
+
+        <ImageButton
+            android:id="@+id/downloadButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/background_color_indicator"
+            android:src="@drawable/ic_download"
+            android:contentDescription="Скачать"
+            android:scaleType="center"
+            android:padding="8dp"
+            android:visibility="gone" />
+
+    </FrameLayout>
+
+    <!-- Имя файла и прогресс/таймлайн -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginHorizontal="10dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/fileNameText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:singleLine="true"
+            android:ellipsize="middle"
+            android:textAppearance="?attr/textAppearanceLabelMedium"
+            android:textColor="?attr/colorOnSurface" />
+
+        <SeekBar
+            android:id="@+id/audioSeekBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:enabled="false"
+            android:max="1000"
+            android:progress="0" />
+
+    </LinearLayout>
+
+    <!-- Длительность -->
+    <TextView
+        android:id="@+id/durationText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?attr/textAppearanceLabelSmall"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:text="0:00" />
+
+</LinearLayout>
