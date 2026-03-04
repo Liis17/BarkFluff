@@ -21,7 +21,7 @@
         Padding="16"
         HorizontalAlignment="Center"
         VerticalAlignment="Center"
-        Background="#FF202020"
+        Background="{DynamicResource BorderBlock}"
         BorderBrush="#30FFFFFF"
         BorderThickness="1"
         CornerRadius="16">
@@ -54,43 +54,26 @@
                     x:Name="HeaderTextBlock"
                     Grid.Column="0"
                     VerticalAlignment="Center"
-                    FontFamily="{DynamicResource AdwaitaSans}"
-                    FontSize="20"
-                    FontWeight="SemiBold"
-                    Foreground="White"
+                    Style="{DynamicResource TitleTextStyle}"
                     Text="Предпросмотр вложений" />
 
                 <!--  Кнопка добавления вложений  -->
                 <ui:Button
                     x:Name="AddAttachmentButton"
                     Grid.Column="1"
-                    Width="32"
-                    Height="32"
-                    Margin="8,0"
-                    Padding="0"
-                    Background="#FF3C3C3C"
+                    Margin="5"
                     Click="AddAttachmentButton_Click"
-                    CornerRadius="8">
-                    <ui:SymbolIcon
-                        FontSize="16"
-                        Foreground="White"
-                        Symbol="Add24" />
+                    Style="{DynamicResource AdaptiveButton}">
+                    <ui:SymbolIcon Style="{DynamicResource AdaptiveButtonIconStyle}" Symbol="Add24" />
                 </ui:Button>
 
                 <!--  Кнопка закрытия  -->
                 <ui:Button
                     x:Name="CloseButton"
                     Grid.Column="2"
-                    Width="32"
-                    Height="32"
-                    Padding="0"
-                    Background="Transparent"
                     Click="CancelButton_Click"
-                    CornerRadius="8">
-                    <ui:SymbolIcon
-                        FontSize="16"
-                        Foreground="White"
-                        Symbol="Dismiss24" />
+                    Style="{DynamicResource AdaptiveButton}">
+                    <ui:SymbolIcon Style="{DynamicResource AdaptiveButtonIconStyle}" Symbol="Dismiss24" />
                 </ui:Button>
             </Grid>
 
@@ -99,7 +82,7 @@
                 Grid.Row="1"
                 Padding="8"
                 HorizontalAlignment="Center"
-                Background="#1a1a1a">
+                Background="{DynamicResource BorderBlock}">
                 <ScrollViewer
                     MaxHeight="400"
                     HorizontalAlignment="Center"
@@ -133,35 +116,18 @@
                     <ui:TextBox
                         x:Name="MessageTextBox"
                         Grid.Column="0"
-                        MinHeight="40"
-                        MaxHeight="80"
                         Margin="0,0,8,0"
-                        Padding="0,5"
-                        VerticalContentAlignment="Top"
-                        AcceptsReturn="True"
-                        BorderThickness="0"
-                        FontFamily="{DynamicResource AdwaitaSans}"
-                        FontSize="14"
-                        Foreground="White"
-                        PlaceholderEnabled="True"
                         PlaceholderText="Сообщение"
-                        Style="{StaticResource MessageInputTextBox}"
-                        TextWrapping="Wrap"
-                        VerticalScrollBarVisibility="Auto" />
+                        Style="{DynamicResource Template}"
+                        TextWrapping="Wrap" />
 
                     <ui:Button
                         x:Name="SendButton"
                         Grid.Column="1"
-                        Width="50"
-                        Height="40"
-                        Background="#FFCE6432"
                         Click="SendButton_Click"
-                        CornerRadius="8"
+                        Style="{DynamicResource RequiredButton}"
                         ToolTip="Отправить">
-                        <ui:SymbolIcon
-                            FontSize="20"
-                            Foreground="White"
-                            Symbol="Send24" />
+                        <ui:SymbolIcon Style="{DynamicResource RequiredButtonIconStyle}" Symbol="Send24" />
                     </ui:Button>
                 </Grid>
 
@@ -173,7 +139,7 @@
                         Content="Отправить без сжатия"
                         FontFamily="{DynamicResource AdwaitaSans}"
                         FontSize="13"
-                        Foreground="#FFAAAAAA"
+                        Foreground="{DynamicResource DescriptionText}"
                         Unchecked="SendAsFileCheckBox_Changed"
                         Visibility="Collapsed" />
                     <CheckBox
@@ -182,7 +148,7 @@
                         Content="Отправить без группировки"
                         FontFamily="{DynamicResource AdwaitaSans}"
                         FontSize="13"
-                        Foreground="#FFAAAAAA" />
+                        Foreground="{DynamicResource DescriptionText}" />
                 </StackPanel>
             </Grid>
 
