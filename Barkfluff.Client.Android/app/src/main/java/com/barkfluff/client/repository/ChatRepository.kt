@@ -281,6 +281,94 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
     }
 
     /**
+     * Получает список вложений в чате.
+     */
+    suspend fun getChatAttachments(
+        chatId: String,
+        attachmentType: barkfluff.shared.Shared.MessageAttachmentType = barkfluff.shared.Shared.MessageAttachmentType.MESSAGE_ATTACHMENT_TYPE_UNKNOWN,
+        pageSize: Int = 100
+    ): Result<List<MessagesApiOuterClass.ChatAttachmentInfo>> = withContext(Dispatchers.IO) {
+        try {
+            if (grpcManager.messagesClient == null) {
+                return@withContext Result.failure(IllegalStateException("Messages client not created"))
+            }
+
+            val request = MessagesApiOuterClass.ListChatAttachmentsRequest.newBuilder()
+                .setChatId(chatId)
+                .setAttachmentType(attachmentType)
+                .setSortDescending(true)
+                .setPagination(
+                    barkfluff.shared.Shared.PageRequest.newBuilder()
+                        .setOffset(0)
+                        .setSize(pageSize)
+                        .build()
+                )
+                .build()
+
+            val response = grpcManager.messagesClient!!.listChatAttachments(request)
+            Log.d(TAG, "Loaded ${response.attachmentsList.size} attachments for chat $chatId")
+            Result.success(response.attachmentsList)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error loading attachments for chat $chatId", e)
+            Result.failure(Exception("Ошибка загрузки вложений: ${e.message}"))
+        }
+    }
+
+    /**
+     * Скачивает файл по fileId в кэш. Возвращает File или null при ошибке.
+     * @param onProgress коллбек с прогрессом 0..100
+     */
+    suspend fun downloadFile(
+        fileId: String,
+        onProgress: (Int) -> Unit = {}
+    ): java.io.File? = withContext(Dispatchers.IO) {
+        try {
+            val downloadUrl = getFileDownloadUrl(fileId).getOrNull()
+                ?: return@withContext null
+
+            val url = java.net.URL(downloadUrl)
+            val connection = url.openConnection() as java.net.HttpURLConnection
+
+            if (connection is HttpsURLConnection) {
+                val trustManager = object : X509TrustManager {
+                    override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
+                    override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
+                    override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
+                }
+                val sslContext = SSLContext.getInstance("TLS")
+                sslContext.init(null, arrayOf<TrustManager>(trustManager), null)
+                connection.sslSocketFactory = sslContext.socketFactory
+                connection.hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true }
+            }
+
+            connection.connectTimeout = 30000
+            connection.readTimeout = 60000
+            connection.connect()
+
+            val totalBytes = connection.contentLength.toLong()
+            val buffer = ByteArray(8192)
+            val outputStream = java.io.ByteArrayOutputStream()
+            var bytesRead = 0L
+
+            connection.inputStream.use { input ->
+                var n: Int
+                while (input.read(buffer).also { n = it } != -1) {
+                    outputStream.write(buffer, 0, n)
+                    bytesRead += n
+                    if (totalBytes > 0) {
+                        onProgress((bytesRead * 100L / totalBytes).toInt())
+                    }
+                }
+            }
+
+            com.barkfluff.client.utils.FileCache.saveFile(fileId, outputStream.toByteArray())
+        } catch (e: Exception) {
+            Log.e(TAG, "Error downloading file $fileId", e)
+            null
+        }
+    }
+
+    /**
      * No-op для совместимости. Каналы управляются GrpcManager.
      */
     fun close() {

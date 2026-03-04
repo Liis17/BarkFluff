@@ -91,6 +91,28 @@
         <item quantity="other">Выбрано %d фото</item>
     </plurals>
 
+    <!-- Plurals for media counts -->
+    <plurals name="photos_count">
+        <item quantity="one">%d фото</item>
+        <item quantity="few">%d фото</item>
+        <item quantity="many">%d фото</item>
+        <item quantity="other">%d фото</item>
+    </plurals>
+
+    <plurals name="videos_count">
+        <item quantity="one">%d видео</item>
+        <item quantity="few">%d видео</item>
+        <item quantity="many">%d видео</item>
+        <item quantity="other">%d видео</item>
+    </plurals>
+
+    <plurals name="files_count">
+        <item quantity="one">%d файл</item>
+        <item quantity="few">%d файла</item>
+        <item quantity="many">%d файлов</item>
+        <item quantity="other">%d файлов</item>
+    </plurals>
+
     <!-- Common -->
     <string name="btn_skip">Пропустить</string>
     <string name="btn_next">Далее</string>

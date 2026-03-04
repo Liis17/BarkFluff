@@ -9,12 +9,10 @@ import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
+import android.view.MotionEvent
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.widget.ViewPager2
 import com.barkfluff.client.adapter.ImagePagerAdapter
@@ -26,8 +24,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Полноэкранный просмотрщик изображений с поддержкой
- * масштабирования (pinch-to-zoom) и свайпа между изображениями.
+ * Просмотрщик изображений с поддержкой масштабирования (pinch-to-zoom),
+ * свайпа между изображениями и свайпа вниз для закрытия.
+ * Не полноэкранный — статус-бар остаётся видимым.
  */
 class ImageViewerActivity : AppCompatActivity() {
 
@@ -37,6 +36,8 @@ class ImageViewerActivity : AppCompatActivity() {
     private var fileIds: List<String> = emptyList()
     private var previewUrls: List<String> = emptyList()
     private var startPosition: Int = 0
+
+    private var swipeTouchStartY = 0f
 
     companion object {
         private const val TAG = "ImageViewerActivity"
@@ -63,13 +64,6 @@ class ImageViewerActivity : AppCompatActivity() {
         binding = ActivityImageViewerBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Полноэкранный режим
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        val controller = WindowInsetsControllerCompat(window, binding.root)
-        controller.hide(WindowInsetsCompat.Type.systemBars())
-        controller.systemBarsBehavior =
-            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-
         chatRepository = ChatRepository(this, (application as BarkFluffApplication).grpcManager)
 
         fileIds = intent.getStringArrayListExtra(EXTRA_FILE_IDS) ?: emptyList()
@@ -83,6 +77,7 @@ class ImageViewerActivity : AppCompatActivity() {
 
         setupViewPager()
         setupButtons()
+        setupSwipeDismiss()
     }
 
     private fun setupViewPager() {
@@ -110,18 +105,65 @@ class ImageViewerActivity : AppCompatActivity() {
     }
 
     private fun setupButtons() {
-        binding.closeButton.setOnClickListener { finish() }
+        binding.closeButton.setOnClickListener { finishWithAnimation() }
+        binding.downloadButton.setOnClickListener { saveCurrentImage() }
+    }
 
-        binding.downloadButton.setOnClickListener {
-            saveCurrentImage()
+    private fun setupSwipeDismiss() {
+        var isSwipingDown = false
+
+        binding.root.setOnTouchListener { v, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    swipeTouchStartY = event.rawY
+                    isSwipingDown = false
+                    false
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val deltaY = event.rawY - swipeTouchStartY
+                    val deltaX = event.x  // approximate, just to check direction
+
+                    if (!isSwipingDown && deltaY > 20f) {
+                        isSwipingDown = true
+                    }
+
+                    if (isSwipingDown && deltaY > 0) {
+                        v.translationY = deltaY
+                        val screenH = resources.displayMetrics.heightPixels.toFloat()
+                        v.alpha = 1f - (deltaY / (screenH * 0.5f)).coerceIn(0f, 1f)
+                        true
+                    } else false
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    val deltaY = event.rawY - swipeTouchStartY
+                    val screenH = resources.displayMetrics.heightPixels.toFloat()
+                    if (isSwipingDown && deltaY > screenH * 0.25f) {
+                        finishWithAnimation()
+                    } else {
+                        v.animate().translationY(0f).alpha(1f).setDuration(200).start()
+                        isSwipingDown = false
+                    }
+                    false
+                }
+                else -> false
+            }
         }
+    }
+
+    private fun finishWithAnimation() {
+        val screenH = resources.displayMetrics.heightPixels.toFloat()
+        binding.root.animate()
+            .translationY(screenH)
+            .alpha(0f)
+            .setDuration(250)
+            .withEndAction { finish() }
+            .start()
     }
 
     private fun saveCurrentImage() {
         val currentPosition = binding.viewPager.currentItem
         val fileId = fileIds[currentPosition]
 
-        // Получаем PhotoView из текущей страницы ViewPager2
         val recyclerView = binding.viewPager.getChildAt(0) as? androidx.recyclerview.widget.RecyclerView
         val viewHolder = recyclerView?.findViewHolderForAdapterPosition(currentPosition)
         val photoView = (viewHolder?.itemView as? android.view.ViewGroup)?.getChildAt(0) as? PhotoView
@@ -143,51 +185,27 @@ class ImageViewerActivity : AppCompatActivity() {
                 val contentValues = ContentValues().apply {
                     put(MediaStore.Images.Media.DISPLAY_NAME, filename)
                     put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-                    put(
-                        MediaStore.Images.Media.RELATIVE_PATH,
-                        "${Environment.DIRECTORY_PICTURES}/BarkFluff"
-                    )
+                    put(MediaStore.Images.Media.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/BarkFluff")
                     put(MediaStore.Images.Media.IS_PENDING, 1)
                 }
-
-                val resolver = contentResolver
-                val uri = resolver.insert(
-                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                    contentValues
+                val uri = contentResolver.insert(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues
                 )
-
                 if (uri != null) {
-                    resolver.openOutputStream(uri)?.use { stream ->
+                    contentResolver.openOutputStream(uri)?.use { stream ->
                         bitmap.compress(Bitmap.CompressFormat.JPEG, 95, stream)
                     }
                     contentValues.clear()
                     contentValues.put(MediaStore.Images.Media.IS_PENDING, 0)
-                    resolver.update(uri, contentValues, null, null)
-
+                    contentResolver.update(uri, contentValues, null, null)
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(
-                            this@ImageViewerActivity,
-                            "Сохранено в Картинки/BarkFluff",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                } else {
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(
-                            this@ImageViewerActivity,
-                            "Ошибка сохранения",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        Toast.makeText(this@ImageViewerActivity, "Сохранено в Картинки/BarkFluff", Toast.LENGTH_SHORT).show()
                     }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error saving image", e)
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(
-                        this@ImageViewerActivity,
-                        "Ошибка сохранения: ${e.message}",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    Toast.makeText(this@ImageViewerActivity, "Ошибка сохранения: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
         }

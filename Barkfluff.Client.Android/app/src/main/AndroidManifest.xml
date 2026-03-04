@@ -112,6 +112,12 @@
             android:screenOrientation="unspecified" />
 
         <activity
+            android:name=".MediaViewerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:screenOrientation="unspecified" />
+
+        <activity
             android:name=".AccountSettingsActivity"
             android:exported="false"
             android:theme="@style/Theme.BarkfluffClientAndroid"

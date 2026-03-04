@@ -5,8 +5,10 @@ import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -17,6 +19,7 @@ import com.barkfluff.client.adapter.ReadStatus
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.OpenChatManager
 import com.barkfluff.client.databinding.ActivityChatBinding
+import com.barkfluff.client.databinding.DialogChatProfileBinding
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.picker.ImagePickerBottomSheet
@@ -185,6 +188,9 @@ class ChatActivity : AppCompatActivity() {
             isGroupChat = isGroupChat,
             getFileUrl = { fileId ->
                 chatRepository.getFileDownloadUrl(fileId).getOrNull()
+            },
+            downloadToCache = { fileId, onProgress ->
+                chatRepository.downloadFile(fileId, onProgress)
             },
             scope = scope
         )
@@ -912,9 +918,156 @@ class ChatActivity : AppCompatActivity() {
             .setNegativeButton("Закрыть", null)
             .create()
 
-        // TODO: Заполнить данными профиля
-        // Для группового чата — показать название и участников
-        // Для ЛС — показать имя, аватар, био, время онлайна
+        // Получаем ссылки на view
+        val avatarImageView = dialogView.findViewById<com.google.android.material.imageview.ShapeableImageView>(R.id.profileAvatarImageView)
+        val avatarPlaceholder = dialogView.findViewById<TextView>(R.id.profileAvatarPlaceholder)
+        val nameTextView = dialogView.findViewById<TextView>(R.id.profileNameTextView)
+        val usernameTextView = dialogView.findViewById<TextView>(R.id.profileUsernameTextView)
+        val onlineStatusTextView = dialogView.findViewById<TextView>(R.id.profileOnlineStatusTextView)
+        val bioTextView = dialogView.findViewById<TextView>(R.id.profileBioTextView)
+        val onlineIndicator = dialogView.findViewById<View>(R.id.onlineIndicator)
+        val mediaPhotosCount = dialogView.findViewById<TextView>(R.id.mediaPhotosCount)
+        val mediaVideosCount = dialogView.findViewById<TextView>(R.id.mediaVideosCount)
+        val mediaFilesCount = dialogView.findViewById<TextView>(R.id.mediaFilesCount)
+
+        if (isGroupChat) {
+            // Для группового чата — показываем название чата
+            nameTextView.text = chatTitle.trim()
+            usernameTextView.visibility = View.GONE
+            onlineStatusTextView.visibility = View.GONE
+            bioTextView.visibility = View.GONE
+
+            // Загрузка аватара чата
+            if (!chatAvatarFileId.isNullOrBlank()) {
+                AvatarLoader.loadByFileId(
+                    imageView = avatarImageView,
+                    placeholderView = avatarPlaceholder,
+                    fileId = chatAvatarFileId!!,
+                    displayName = chatTitle,
+                    userId = chatId.hashCode().toLong(),
+                    size = 240
+                ) {
+                    chatRepository.getFileDownloadUrl(chatAvatarFileId!!).getOrNull()
+                }
+            } else {
+                avatarImageView.visibility = View.GONE
+                avatarPlaceholder.visibility = View.VISIBLE
+                avatarPlaceholder.text = getInitials(chatTitle)
+            }
+        } else {
+            // Для ЛС — загружаем данные пользователя
+            if (otherUserId > 0) {
+                lifecycleScope.launch {
+                    try {
+                        val userResult = chatRepository.getUserData(otherUserId)
+                        if (userResult.isSuccess) {
+                            val user = userResult.getOrNull()!!
+
+                            // Имя
+                            val displayName = "${user.firstName} ${user.lastName}".trim()
+                            nameTextView.text = if (displayName.isNotBlank()) displayName else user.username
+
+                            // Username
+                            usernameTextView.text = "@${user.username}"
+                            usernameTextView.visibility = View.VISIBLE
+
+                            // Био
+                            if (user.bio.isNotBlank()) {
+                                bioTextView.text = user.bio
+                                bioTextView.visibility = View.VISIBLE
+                            } else {
+                                bioTextView.visibility = View.GONE
+                            }
+
+                            // Аватар
+                            val avatarFileId = user.profilePicturePreviewFileId.ifBlank { user.profilePictureFileId }
+                            if (!avatarFileId.isNullOrBlank()) {
+                                AvatarLoader.loadByFileId(
+                                    imageView = avatarImageView,
+                                    placeholderView = avatarPlaceholder,
+                                    fileId = avatarFileId,
+                                    displayName = displayName,
+                                    userId = otherUserId,
+                                    size = 240
+                                ) {
+                                    chatRepository.getFileDownloadUrl(avatarFileId).getOrNull()
+                                }
+                            } else {
+                                avatarImageView.visibility = View.GONE
+                                avatarPlaceholder.visibility = View.VISIBLE
+                                avatarPlaceholder.text = getInitials(displayName)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error loading user profile", e)
+                    }
+                }
+
+                // Статус онлайна
+                lifecycleScope.launch {
+                    try {
+                        val onlinerClient = grpcManager.onlinerClient
+                        if (onlinerClient != null) {
+                            val request = barkfluff.onliner.OnlinerApiOuterClass.GetOnlineStatusRequest.newBuilder()
+                                .addUserIds(otherUserId)
+                                .build()
+                            val response = onlinerClient.getOnlineStatus(request)
+                            val userStatus = response.usersStatusesList.firstOrNull()
+
+                            if (userStatus != null) {
+                                val isOnline = userStatus.status.getNumber() == barkfluff.onliner.OnlinerApiOuterClass.StatusTypeId.STATUS_ONLINE.getNumber()
+                                if (isOnline) {
+                                    onlineStatusTextView.text = "в сети"
+                                    onlineStatusTextView.setTextColor(ContextCompat.getColor(this@ChatActivity, R.color.primary))
+                                    onlineIndicator.visibility = View.VISIBLE
+                                } else {
+                                    val lastSeen = formatLastSeen(userStatus.lastSeen.seconds * 1000)
+                                    onlineStatusTextView.text = lastSeen
+                                    onlineStatusTextView.setTextColor(ContextCompat.getColor(this@ChatActivity, R.color.on_surface_variant))
+                                    onlineIndicator.visibility = View.GONE
+                                }
+                            } else {
+                                onlineStatusTextView.text = "был(а) недавно"
+                                onlineIndicator.visibility = View.GONE
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error loading online status for profile", e)
+                    }
+                }
+            }
+        }
+
+        // Загрузка количества медиафайлов
+        lifecycleScope.launch {
+            try {
+                val attachmentsResult = chatRepository.getChatAttachments(chatId)
+                if (attachmentsResult.isSuccess) {
+                    val attachments = attachmentsResult.getOrNull()!!
+
+                    // Подсчёт по типам
+                    var photosCount = 0
+                    var videosCount = 0
+                    var filesCount = 0
+
+                    for (attachment in attachments) {
+                        when (attachment.attachment.type) {
+                            barkfluff.shared.Shared.MessageAttachmentType.IMAGE -> photosCount++
+                            barkfluff.shared.Shared.MessageAttachmentType.VIDEO -> videosCount++
+                            barkfluff.shared.Shared.MessageAttachmentType.GIF -> photosCount++ // GIF считаем как фото
+                            barkfluff.shared.Shared.MessageAttachmentType.DOCUMENT -> filesCount++
+                            else -> filesCount++
+                        }
+                    }
+
+                    mediaPhotosCount.text = resources.getQuantityString(R.plurals.photos_count, photosCount, photosCount)
+                    mediaVideosCount.text = resources.getQuantityString(R.plurals.videos_count, videosCount, videosCount)
+                    mediaFilesCount.text = resources.getQuantityString(R.plurals.files_count, filesCount, filesCount)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading chat attachments", e)
+            }
+        }
 
         dialog.show()
     }
