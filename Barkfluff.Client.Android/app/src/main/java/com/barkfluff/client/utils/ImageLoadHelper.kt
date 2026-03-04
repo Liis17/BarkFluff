@@ -19,35 +19,49 @@ object ImageLoadHelper {
      * Использует URL-кэш и Coil (memory/disk cache внутри Coil).
      * Без CircleCropTransformation (для превью вложений и полноэкранного просмотра).
      * Использует lambda target вместо target(imageView) для защиты от race condition при recycling.
+     * @param size Размер изображения (0 = без ограничения, >0 = фиксированный размер)
      */
     fun loadByFileId(
         imageView: ImageView,
         fileId: String,
         getUrlCallback: suspend () -> String?,
         onSuccess: (() -> Unit)? = null,
-        onError: (() -> Unit)? = null
+        onError: (() -> Unit)? = null,
+        size: Int = 0
     ) {
         // Привязываем fileId к ImageView для защиты от race condition при recycling
         imageView.tag = fileId
 
-        // 1. URL cache — Coil сам проверит свой memory/disk cache по memoryCacheKey
+        // 1. Проверяем runtime кэш (ConcurrentHashMap из AvatarLoader)
         val cachedUrl = AvatarLoader.urlCache[fileId]
         if (cachedUrl != null) {
-            loadFromUrl(imageView, cachedUrl, fileId, onSuccess, onError)
+            loadFromUrl(imageView, cachedUrl, fileId, onSuccess, onError, size)
             return
         }
 
-        // 2. Fetch URL via callback (gRPC или preview_url)
+        // 2. Проверяем персистентный кэш
+        val persistentUrl = AvatarLoader.getUrlFromCache(fileId)
+        if (persistentUrl != null) {
+            // Сохраняем в runtime кэш для будущих запросов
+            AvatarLoader.urlCache[fileId] = persistentUrl
+            loadFromUrl(imageView, persistentUrl, fileId, onSuccess, onError, size)
+            return
+        }
+
+        // 3. Fetch URL via callback (gRPC или preview_url)
         MainScope().launch {
             val url = withContext(Dispatchers.IO) { getUrlCallback() }
             if (url.isNullOrBlank()) {
                 withContext(Dispatchers.Main) { if (imageView.tag == fileId) onError?.invoke() }
                 return@launch
             }
+            // Сохраняем URL в оба кэша
             AvatarLoader.urlCache[fileId] = url
+            AvatarLoader.putUrlInCache(fileId, url)
+            
             withContext(Dispatchers.Main) {
                 if (imageView.tag != fileId) return@withContext // View recycled
-                loadFromUrl(imageView, url, fileId, onSuccess, onError)
+                loadFromUrl(imageView, url, fileId, onSuccess, onError, size)
             }
         }
     }
@@ -57,14 +71,14 @@ object ImageLoadHelper {
         url: String,
         cacheKey: String,
         onSuccess: (() -> Unit)?,
-        onError: (() -> Unit)?
+        onError: (() -> Unit)?,
+        size: Int
     ) {
         val imageLoader = AvatarLoader.getImageLoader(imageView.context)
-        val request = ImageRequest.Builder(imageView.context)
+        val requestBuilder = ImageRequest.Builder(imageView.context)
             .data(url)
             .memoryCacheKey(cacheKey)
             .diskCacheKey(cacheKey)
-            .size(Size.ORIGINAL)
             .crossfade(200)
             .target(
                 onSuccess = { drawable ->
@@ -79,7 +93,15 @@ object ImageLoadHelper {
                     }
                 }
             )
-            .build()
+        
+        // Устанавливаем размер: если size > 0, используем его, иначе ORIGINAL
+        if (size > 0) {
+            requestBuilder.size(size)
+        } else {
+            requestBuilder.size(Size.ORIGINAL)
+        }
+        
+        val request = requestBuilder.build()
         imageLoader.enqueue(request)
     }
 }

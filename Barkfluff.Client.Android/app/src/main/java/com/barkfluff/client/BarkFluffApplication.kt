@@ -7,6 +7,7 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.notifications.NotificationHelper
+import com.barkfluff.client.utils.AvatarLoader
 import com.google.android.material.color.DynamicColors
 
 class BarkFluffApplication : Application() {
@@ -24,6 +25,9 @@ class BarkFluffApplication : Application() {
         NotificationHelper.createChannels(this)
         grpcManager = GrpcManager()
         realtimeService = RealtimeService(applicationContext, grpcManager)
+        
+        // Инициализируем персистентный кэш URL файлов
+        AvatarLoader.initializeCache(this)
 
         // Подписываемся на lifecycle всего приложения (foreground/background)
         // resume() вызывается когда ЛЮБАЯ activity приложения выходит на передний план
