@@ -18,6 +18,13 @@ class BarkFluffApplication : Application() {
     lateinit var realtimeService: RealtimeService
         private set
 
+    /**
+     * Флаг: приложение было свёрнуто и снова развёрнуто.
+     * Устанавливается в true при уходе в фон, сбрасывается компонентами при обработке.
+     */
+    @Volatile
+    var cameFromBackground: Boolean = false
+
     override fun onCreate() {
         super.onCreate()
         // Apply Material You dynamic colors system-wide (Android 12+)
@@ -38,6 +45,7 @@ class BarkFluffApplication : Application() {
             }
 
             override fun onStop(owner: LifecycleOwner) {
+                cameFromBackground = true
                 realtimeService.pause()
             }
         })

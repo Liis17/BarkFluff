@@ -53,7 +53,22 @@ class ChatsFragment : Fragment() {
         setupChatList()
         setupSearchButton()
 
+        subscribeToRealtimeEvents()
         checkTokenAndLoadChats()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val app = requireActivity().application as BarkFluffApplication
+        if (app.cameFromBackground) {
+            app.cameFromBackground = false
+            // Перезагружаем список чатов при возврате из фона,
+            // т.к. реалтайм-события в фоне не приходят
+            if (grpcManager.messagesClient != null) {
+                Log.d(TAG, "onResume: app came from background, reloading chats")
+                loadChats()
+            }
+        }
     }
 
     private fun setupSearchButton() {
@@ -207,12 +222,9 @@ class ChatsFragment : Fragment() {
                 chatAdapter.submitList(displayItems)
                 showEmptyState(displayItems.isEmpty())
 
-                // Подписываемся на онлайн-статусы всех участников чатов
+                // Обновляем подписку на онлайн-статусы всех участников чатов
                 val allMemberIds = chats.flatMap { it.memberIds }.distinct()
                 realtimeService.changeOnlineSubscription(allMemberIds)
-
-                // Подписываемся на обновления
-                subscribeToRealtimeEvents()
             } else {
                 Log.e(TAG, "Ошибка загрузки чатов", result.exceptionOrNull())
                 Snackbar.make(
