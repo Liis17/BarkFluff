@@ -1,5 +1,6 @@
 package com.barkfluff.client.utils
 
+import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.view.View
@@ -67,7 +68,30 @@ object AvatarLoader {
             .build()
     }
 
-    // Кэш URL-ов: fileId -> download URL (чтобы не делать gRPC запрос каждый раз)
+    // Кэш URL-ов: fileId -> download URL (персистентный кэш для предотвращения повторных gRPC запросов)
+    // Используем FileUrlCache для персистентности + ConcurrentHashMap для быстрого доступа в runtime
+    private var fileUrlCache: FileUrlCache? = null
+    
+    internal fun initializeCache(context: Context) {
+        if (fileUrlCache == null) {
+            fileUrlCache = FileUrlCache.getInstance(context)
+            MainScope().launch {
+                fileUrlCache?.initialize()
+            }
+        }
+    }
+    
+    internal fun getUrlFromCache(fileId: String): String? {
+        return fileUrlCache?.getUrl(fileId)
+    }
+    
+    internal fun putUrlInCache(fileId: String, url: String) {
+        MainScope().launch {
+            fileUrlCache?.putUrl(fileId, url)
+        }
+    }
+
+    // Кэш URL-ов в памяти для быстрого доступа (runtime only)
     internal val urlCache = ConcurrentHashMap<String, String>()
 
     // ImageLoader с кастомным OkHttpClient (ленивая инициализация)
@@ -87,9 +111,10 @@ object AvatarLoader {
                         .diskCache {
                             coil.disk.DiskCache.Builder()
                                 .directory(context.cacheDir.resolve("image_cache"))
-                                .maxSizePercent(0.05)
+                                .maxSizePercent(0.10)
                                 .build()
                         }
+                        .respectCacheHeaders(false) // Игнорируем HTTP Cache-Control заголовки сервера
                         .build()
                 }
             }
@@ -214,18 +239,29 @@ object AvatarLoader {
             return
         }
 
-        // 1. Проверяем URL кэш — если уже получали URL для этого fileId, загружаем через Coil
-        // (Coil сам проверит свой memory/disk cache по memoryCacheKey/diskCacheKey)
+        // 1. Проверяем runtime кэш (ConcurrentHashMap) — самый быстрый
         val cachedUrl = urlCache[fileId]
         if (cachedUrl != null) {
-            android.util.Log.d("AvatarLoader", "loadByFileId: URL cache hit for fileId=$fileId")
+            android.util.Log.d("AvatarLoader", "loadByFileId: Runtime cache hit for fileId=$fileId")
             showPlaceholderInternal(placeholderView, displayName, userId)
             imageView.visibility = View.GONE
             loadImageWithCoil(imageView, placeholderView, cachedUrl, fileId, displayName, userId, size)
             return
         }
 
-        // 2. Cache miss — показываем плейсхолдер и запрашиваем URL через gRPC
+        // 2. Проверяем персистентный кэш (SharedPreferences)
+        val persistentUrl = getUrlFromCache(fileId)
+        if (persistentUrl != null) {
+            android.util.Log.d("AvatarLoader", "loadByFileId: Persistent cache hit for fileId=$fileId")
+            // Сохраняем в runtime кэш для будущих запросов
+            urlCache[fileId] = persistentUrl
+            showPlaceholderInternal(placeholderView, displayName, userId)
+            imageView.visibility = View.GONE
+            loadImageWithCoil(imageView, placeholderView, persistentUrl, fileId, displayName, userId, size)
+            return
+        }
+
+        // 3. Cache miss — показываем плейсхолдер и запрашиваем URL через gRPC
         android.util.Log.d("AvatarLoader", "loadByFileId: Cache miss for fileId=$fileId, fetching URL...")
         showPlaceholderInternal(placeholderView, displayName, userId)
         imageView.visibility = View.GONE
@@ -241,8 +277,9 @@ object AvatarLoader {
                 return@launch
             }
 
-            // Сохраняем URL в кэш
+            // Сохраняем URL в оба кэша
             urlCache[fileId] = url
+            putUrlInCache(fileId, url)
 
             withContext(Dispatchers.Main) {
                 if (imageView.tag != fileId) return@withContext // View recycled
@@ -263,14 +300,16 @@ object AvatarLoader {
         userId: Long,
         size: Int
     ) {
-        android.util.Log.d("AvatarLoader", "loadImageWithCoil: Loading url=$url, cacheKey=$cacheKey")
+        android.util.Log.d("AvatarLoader", "loadImageWithCoil: Loading url=$url, cacheKey=$cacheKey, size=$size")
         val imageLoader = getImageLoader(imageView.context)
+
+        // Сохраняем cacheKey в tag для проверки при recycling
+        imageView.tag = cacheKey
 
         val requestBuilder = ImageRequest.Builder(imageView.context)
             .data(url)
             .memoryCacheKey(cacheKey)
             .diskCacheKey(cacheKey)
-            .size(Size.ORIGINAL)
             .crossfade(200)
             .transformations(CircleCropTransformation())
             .target(
@@ -291,8 +330,11 @@ object AvatarLoader {
                 }
             )
 
+        // Устанавливаем размер: если size > 0, используем его, иначе ORIGINAL
         if (size > 0) {
             requestBuilder.size(size)
+        } else {
+            requestBuilder.size(Size.ORIGINAL)
         }
 
         imageLoader.enqueue(requestBuilder.build())

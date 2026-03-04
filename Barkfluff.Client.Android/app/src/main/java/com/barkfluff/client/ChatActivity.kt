@@ -1,14 +1,11 @@
 package com.barkfluff.client
 
-import android.app.Activity
 import android.content.Intent
-import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -22,6 +19,8 @@ import com.barkfluff.client.data.OpenChatManager
 import com.barkfluff.client.databinding.ActivityChatBinding
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.grpc.RealtimeService
+import com.barkfluff.client.picker.ImagePickerBottomSheet
+import com.barkfluff.client.picker.ImagePickerResult
 import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.ImageCompressor
@@ -72,15 +71,6 @@ class ChatActivity : AppCompatActivity() {
 
     // Непрочитанные сообщения
     private var firstUnreadMessageId: Long = 0L
-
-    // Выбор изображений
-    private val imagePickerLauncher = registerForActivityResult(
-        ActivityResultContracts.GetMultipleContents()
-    ) { uris ->
-        if (uris.isNotEmpty()) {
-            handleSelectedImages(uris)
-        }
-    }
 
     companion object {
         private const val TAG = "ChatActivity"
@@ -167,7 +157,8 @@ class ChatActivity : AppCompatActivity() {
                 placeholderView = binding.chatAvatarPlaceholder,
                 fileId = fileId,
                 displayName = chatTitle,
-                userId = chatId.hashCode().toLong()
+                userId = chatId.hashCode().toLong(),
+                size = 80
             ) {
                 chatRepository.getFileDownloadUrl(fileId).getOrNull()
             }
@@ -244,15 +235,23 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun pickImages() {
-        imagePickerLauncher.launch("image/*")
+        val imagePicker = ImagePickerBottomSheet.newInstance { result ->
+            handleSelectedImages(result)
+        }
+        imagePicker.show(supportFragmentManager, "ImagePickerBottomSheet")
     }
 
-    private fun handleSelectedImages(uris: List<Uri>) {
+    private fun handleSelectedImages(result: ImagePickerResult) {
+        Log.d(TAG, "handleSelectedImages: uris.size=${result.uris.size}, uris=${result.uris}, sendAsFile=${result.sendAsFile}, sendSeparately=${result.sendSeparately}")
+
+        val uris = result.uris
         if (uris.isEmpty()) return
 
+        val sendAsFile = result.sendAsFile
+        val sendSeparately = result.sendSeparately
+
         lifecycleScope.launch {
-            val maxImages = 10
-            val selectedUris = uris.take(maxImages)
+            val selectedUris = uris.take(ImagePickerBottomSheet.MAX_SELECTION)
 
             if (selectedUris.size > 1) {
                 Toast.makeText(
@@ -262,33 +261,58 @@ class ChatActivity : AppCompatActivity() {
                 ).show()
             }
 
-            // Сжимаем и загружаем каждое изображение
+            // Определяем тип файла для загрузки
+            val uploadFileType = if (sendAsFile) {
+                barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_DOCUMENT
+            } else {
+                barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_IMAGE
+            }
+
+            // Загружаем каждое изображение
             val fileIds = mutableListOf<String>()
             for ((index, uri) in selectedUris.withIndex()) {
                 try {
-                    // Сжатие
-                    val compressedBytes = ImageCompressor.compressImage(uri, this@ChatActivity)
-                        .getOrNull() ?: continue
+                    val bytes = if (sendAsFile) {
+                        // Без сжатия — читаем оригинальный файл
+                        readBytesFromUri(uri)
+                    } else {
+                        // Со сжатием
+                        ImageCompressor.compressImage(uri, this@ChatActivity).getOrNull()
+                    }
+
+                    if (bytes == null) continue
 
                     // Загрузка на сервер
-                    val uploadResult = chatRepository.uploadFile(
-                        compressedBytes,
-                        barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_IMAGE
-                    )
+                    val uploadResult = chatRepository.uploadFile(bytes, uploadFileType)
 
                     if (uploadResult.isSuccess) {
-                        fileIds.add(uploadResult.getOrNull()!!)
-                        Log.d(TAG, "Image ${index + 1}/${selectedUris.size} uploaded: ${fileIds.last()}")
+                        val fileId = uploadResult.getOrNull()!!
+                        fileIds.add(fileId)
+                        Log.d(TAG, "Image ${index + 1}/${selectedUris.size} uploaded: $fileId, fileIds.size=${fileIds.size}")
+                    } else {
+                        Log.e(TAG, "Image ${index + 1}/${selectedUris.size} upload failed: ${uploadResult.exceptionOrNull()?.message}")
                     }
                 } catch (e: Exception) {
-                    Log.e(TAG, "Error processing image", e)
+                    Log.e(TAG, "Error processing image ${index + 1}/${selectedUris.size}", e)
                 }
             }
 
+            Log.d(TAG, "After upload loop: fileIds.size=${fileIds.size}, fileIds=$fileIds")
+
             if (fileIds.isNotEmpty()) {
-                // Отправляем сообщение с вложениями
-                sendMessage(fileIds = fileIds)
+                Log.d(TAG, "Sending ${fileIds.size} fileIds: $fileIds, sendSeparately=$sendSeparately")
+                if (sendSeparately) {
+                    // Отправляем каждое изображение отдельным сообщением
+                    for (fileId in fileIds) {
+                        sendMessage(fileIds = listOf(fileId))
+                    }
+                } else {
+                    // Отправляем все изображения в одном сообщении
+                    sendMessage(fileIds = fileIds)
+                }
             } else {
+                Log.w(TAG, "No fileIds to send! selectedUris.size=${selectedUris.size}")
+
                 Toast.makeText(
                     this@ChatActivity,
                     "Не удалось загрузить изображения",
@@ -298,9 +322,22 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
+    private suspend fun readBytesFromUri(uri: Uri): ByteArray? = withContext(Dispatchers.IO) {
+        try {
+            contentResolver.openInputStream(uri)?.use { inputStream ->
+                inputStream.readBytes()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error reading bytes from uri", e)
+            null
+        }
+    }
+
     private fun sendMessage(text: String = binding.messageEditText.text.toString(), fileIds: List<String> = emptyList()) {
         val messageText = text.trim()
         if (messageText.isBlank() && fileIds.isEmpty()) return
+
+        Log.d(TAG, "sendMessage: text='$messageText', fileIds=$fileIds")
 
         lifecycleScope.launch {
             try {
