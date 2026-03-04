@@ -29,6 +29,7 @@ public class S3BucketRegistry : IDisposable
         { UploadFileType.MessageAttachmentGif, "message-videos" },
         { UploadFileType.MessageAttachmentImage, "message-images" },
         { UploadFileType.ChatPicture, "chat-pictures" },
+        { UploadFileType.MessageAttachmentAudio, "message-audio" },
     };
 
     /// <summary>
@@ -42,6 +43,7 @@ public class S3BucketRegistry : IDisposable
         "message-videos",
         "message-images",
         "chat-pictures",
+        "message-audio",
         BadgeImagesBucketId
     };
 

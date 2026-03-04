@@ -65,6 +65,8 @@ enum MessageAttachmentType {
   GIF = 3; // Гифка
 
   DOCUMENT = 4; // Документ
+
+  AUDIO = 5; // Аудио
 }
 
 enum MessageContentType {
