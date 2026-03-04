@@ -794,6 +794,17 @@ class ChatActivity : AppCompatActivity() {
         messageAdapter.submitList(currentList)
     }
 
+    /**
+     * Возвращает true если RecyclerView прокручен до самого низа
+     * (последнее сообщение полностью видно или мы у нижней границы).
+     */
+    private fun isRecyclerViewAtBottom(): Boolean {
+        val layoutManager = binding.messagesRecyclerView.layoutManager as? LinearLayoutManager ?: return true
+        val lastVisible = layoutManager.findLastCompletelyVisibleItemPosition()
+        val total = layoutManager.itemCount
+        return total == 0 || lastVisible >= total - 1
+    }
+
     private fun subscribeToRealtimeEvents() {
         lifecycleScope.launch {
             realtimeService.newMessages.collect { event ->
@@ -851,11 +862,15 @@ class ChatActivity : AppCompatActivity() {
             currentList.add(MessageItem.createDateSeparator(formatDateSeparator(msgDate)))
         }
 
+        val isOwnMessage = msg.senderId == currentUserId
+        val wasAtBottom = isRecyclerViewAtBottom()
+
         currentList.add(messageItem)
         messageAdapter.submitList(currentList) {
-            val position = currentList.size - 1
-            if (position >= 0) {
-                binding.messagesRecyclerView.scrollToPosition(position)
+            // Своё сообщение — всегда скроллим вниз
+            // Чужое сообщение — скроллим только если уже были внизу
+            if (isOwnMessage || wasAtBottom) {
+                binding.messagesRecyclerView.scrollToPosition(currentList.size - 1)
             }
         }
 
