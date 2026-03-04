@@ -287,6 +287,11 @@ namespace BarkFluff.Client.WPF.UserControls
             bool showSavedChat = AvatarType == UserControls.AvatarType.SavedChat;
             bool showUserWithoutAvatar = AvatarType == UserControls.AvatarType.UserWithoutAvatar;
 
+            if (showImage == true)
+            {
+
+            }
+
             AvatarBorder.Visibility = showImage ? Visibility.Visible : Visibility.Collapsed;
             SavedChatAvatar.Visibility = showSavedChat ? Visibility.Visible : Visibility.Collapsed;
             UserWithoutAvatar.Visibility = showUserWithoutAvatar ? Visibility.Visible : Visibility.Collapsed;
@@ -355,7 +360,8 @@ namespace BarkFluff.Client.WPF.UserControls
         {
             try
             {
-                AvatarBrush.ImageSource = new BitmapImage(new Uri(FileCacheService.DefaultPlaceholder, UriKind.RelativeOrAbsolute));
+                //AvatarBrush.ImageSource = new BitmapImage(new Uri(FileCacheService.DefaultPlaceholder, UriKind.RelativeOrAbsolute));
+                this.AvatarType = AvatarType.UserWithoutAvatar;
                 SetDefaultShadow();
             }
             catch
