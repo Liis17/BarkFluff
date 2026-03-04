@@ -159,7 +159,8 @@ class AccountSettingsActivity : AppCompatActivity() {
                 binding.avatarPlaceholder,
                 fileId,
                 displayName,
-                globalParam.userId
+                globalParam.userId,
+                size = 192
             ) {
                 val result = grpcManager.getFileDownloadUrl(fileId)
                 if (result.isSuccess) result.getOrNull() else null

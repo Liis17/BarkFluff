@@ -55,7 +55,8 @@ class ChatAdapter(
                 fileId = item.displayAvatarFileId,
                 displayName = item.displayTitle,
                 userId = item.otherUserId.takeIf { it != 0L }
-                    ?: chat.id.hashCode().toLong()
+                    ?: chat.id.hashCode().toLong(),
+                size = 128
             ) {
                 // Callback для получения URL по fileId
                 getFileUrl(item.displayAvatarFileId ?: "")

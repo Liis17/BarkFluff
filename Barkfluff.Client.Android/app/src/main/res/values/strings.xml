@@ -65,6 +65,32 @@
     <string name="drawer_settings">Настройки</string>
     <string name="drawer_help">Помощь</string>
 
+    <!-- Image Picker -->
+    <string name="select_photos">Выберите фото</string>
+    <string name="options">Опции</string>
+    <string name="send">Отправить</string>
+    <string name="camera">Камера</string>
+    <string name="permission_required">Требуется разрешение</string>
+    <string name="permission_required_description">Для просмотра фотографий требуется доступ к хранилищу</string>
+    <string name="grant_permission">Разрешить</string>
+    <string name="no_photos">Нет фотографий</string>
+    <string name="no_photos_description">На устройстве не найдено фотографий</string>
+    <string name="send_as_file">Отправить как файл</string>
+    <string name="send_as_file_description">Изображения будут отправлены без сжатия</string>
+    <string name="send_separately">Отправить по отдельности</string>
+    <string name="send_separately_description">Каждое изображение отдельным сообщением</string>
+    <string name="selected_count">Выбрано: %1$d/%2$d</string>
+    <string name="send_photos">Отправить %1$d фото</string>
+    <string name="max_selection_reached">Максимум %1$d изображений</string>
+
+    <!-- Plurals for photos -->
+    <plurals name="photos_selected">
+        <item quantity="one">Выбрано %d фото</item>
+        <item quantity="few">Выбрано %d фото</item>
+        <item quantity="many">Выбрано %d фото</item>
+        <item quantity="other">Выбрано %d фото</item>
+    </plurals>
+
     <!-- Common -->
     <string name="btn_skip">Пропустить</string>
     <string name="btn_next">Далее</string>

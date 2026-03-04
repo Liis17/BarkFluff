@@ -27,6 +27,10 @@
         android:maxSdkVersion="32"
         tools:ignore="ScopedStorage" />
 
+    <!-- Camera permission for image picker -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-permission android:name="android.permission.CAMERA" />
+
     <application
         android:name=".BarkFluffApplication"
         android:allowBackup="true"
@@ -140,6 +144,17 @@
         <receiver
             android:name=".notifications.MarkAsReadReceiver"
             android:exported="false" />
+
+        <!-- FileProvider for sharing camera images -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
     </application>
 

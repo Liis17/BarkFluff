@@ -79,6 +79,7 @@ class ImagePagerAdapter(
                 imageView = photoView,
                 fileId = fileId,
                 getUrlCallback = getUrl,
+                size = 1024,
                 onSuccess = { progress.visibility = View.GONE },
                 onError = {
                     progress.visibility = View.GONE

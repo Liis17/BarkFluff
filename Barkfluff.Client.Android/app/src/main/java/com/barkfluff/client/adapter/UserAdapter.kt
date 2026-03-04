@@ -40,7 +40,8 @@ class UserAdapter(
                 placeholderView = binding.userAvatarPlaceholder,
                 fileId = item.displayAvatarFileId,
                 displayName = item.displayFullName,
-                userId = item.userData.userId
+                userId = item.userData.userId,
+                size = 96
             ) {
                 val fileId = item.displayAvatarFileId
                 if (fileId != null) {

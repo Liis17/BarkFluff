@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/action_send_as_file"
+        android:checkable="true"
+        android:checked="false"
+        android:title="@string/send_as_file" />
+    <item
+        android:id="@+id/action_send_separately"
+        android:checkable="true"
+        android:checked="false"
+        android:title="@string/send_separately" />
+</menu>

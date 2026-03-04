@@ -388,6 +388,7 @@ class AttachmentAdapter(
                 imageView = binding.attachmentImageView,
                 fileId = previewFileId,
                 getUrlCallback = getUrl,
+                size = 512,
                 onSuccess = {
                     binding.loadingProgress.visibility = View.GONE
                     binding.attachmentImageView.visibility = View.VISIBLE

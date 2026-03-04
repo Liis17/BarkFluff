@@ -101,13 +101,18 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
                 .addAllFilesIds(fileIds)
                 .build()
 
+            Log.d(TAG, "sendMessage: chatId=$chatId, text='$text', fileIds=$fileIds")
+            Log.d(TAG, "sendMessage: outgoingMessage.filesIdsCount=${outgoingMessage.filesIdsCount}, filesIdsList=${outgoingMessage.filesIdsList}")
+
             val request = MessagesApiOuterClass.SendMessageRequest.newBuilder()
                 .setChatId(chatId)
                 .setMessage(outgoingMessage)
                 .build()
 
+            Log.d(TAG, "sendMessage: request.message.filesIdsCount=${request.message.filesIdsCount}")
+
             val response = grpcManager.messagesClient!!.sendMessage(request)
-            Log.d(TAG, "Message sent to chat $chatId, id=${response.message.id}")
+            Log.d(TAG, "Message sent to chat $chatId, id=${response.message.id}, attachments=${response.message.content.attachmentsList.size}")
             Result.success(response.message)
         } catch (e: Exception) {
             Log.e(TAG, "Error sending message to chat $chatId", e)
@@ -251,14 +256,24 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
             }
 
             val responseCode = connection.responseCode
-            connection.disconnect()
-
-            if (responseCode !in 200..299) {
+            val responseBody = if (responseCode in 200..299) {
+                connection.inputStream.bufferedReader().readText()
+            } else {
+                connection.disconnect()
                 return@withContext Result.failure(Exception("Upload failed: HTTP $responseCode"))
             }
+            connection.disconnect()
 
-            Log.d(TAG, "File uploaded successfully, fileId: $fileId")
-            Result.success(fileId)
+            // Сервер может вернуть другой fileId при дедупликации (тот же контент уже загружен)
+            val actualFileId = try {
+                val json = org.json.JSONObject(responseBody)
+                json.optString("fileId", fileId)
+            } catch (e: Exception) {
+                fileId
+            }
+
+            Log.d(TAG, "File uploaded successfully, fileId: $actualFileId (original: $fileId)")
+            Result.success(actualFileId)
         } catch (e: Exception) {
             Log.e(TAG, "Error uploading file", e)
             Result.failure(Exception("Ошибка загрузки файла: ${e.message}"))
