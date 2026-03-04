@@ -30,15 +30,16 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:paddingHorizontal="14dp"
-                android:paddingTop="10dp"
-                android:paddingBottom="6dp">
+                android:minWidth="80dp">
 
                 <!-- Текст сообщения -->
                 <TextView
                     android:id="@+id/messageTextView"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="14dp"
+                    android:layout_marginTop="10dp"
+                    android:layout_marginBottom="4dp"
                     android:autoLink="web"
                     android:textAppearance="?attr/textAppearanceBodyLarge"
                     android:textColor="?attr/colorOnPrimaryContainer"
@@ -46,24 +47,23 @@
                     tools:text="Привет! Как дела?"
                     tools:visibility="visible" />
 
-                <!-- Контейнер для вложений -->
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/attachmentsRecyclerView"
-                    android:layout_width="wrap_content"
+                <!-- Контейнер для вложений (картинки edge-to-edge, аудио/видео/файлы с паддингом) -->
+                <FrameLayout
+                    android:id="@+id/attachmentsContainer"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="horizontal"
                     android:visibility="gone"
-                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-                    tools:layout_height="100dp"
-                    tools:visibility="visible" />
+                    tools:visibility="visible"
+                    tools:layout_height="120dp" />
 
                 <!-- Время и статус -->
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="end"
+                    android:layout_marginHorizontal="14dp"
                     android:layout_marginTop="4dp"
+                    android:layout_marginBottom="6dp"
                     android:gravity="center_vertical"
                     android:orientation="horizontal">
 

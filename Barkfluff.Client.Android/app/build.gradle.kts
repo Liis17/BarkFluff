@@ -125,4 +125,8 @@ dependencies {
     // Image viewer: pinch-to-zoom + swipe between images
     implementation("com.github.chrisbanes:PhotoView:2.3.0")
     implementation("androidx.viewpager2:viewpager2:1.1.0")
+
+    // ExoPlayer for video/audio playback
+    implementation("androidx.media3:media3-exoplayer:1.3.1")
+    implementation("androidx.media3:media3-ui:1.3.1")
 }
