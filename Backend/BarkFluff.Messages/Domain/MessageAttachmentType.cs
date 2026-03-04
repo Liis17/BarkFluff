@@ -11,4 +11,6 @@ public enum MessageAttachmentType
     Gif = 3,
     
     Document = 4,
+
+    Audio = 5,
 }
