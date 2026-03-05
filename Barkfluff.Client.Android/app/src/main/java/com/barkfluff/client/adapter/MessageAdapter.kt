@@ -125,13 +125,14 @@ class MessageAdapter(
                     it.type == Shared.MessageAttachmentType.VIDEO
                 }
                 val mediaWidthPx = if (hasMedia) calcMediaWidthPx(binding.root.context) else 0
-                binding.messageCard.layoutParams = binding.messageCard.layoutParams.also {
+                // Устанавливаем ширину контейнеру вложений, чтобы FrameLayout с wrap_content работал корректно
+                binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
                     it.width = if (mediaWidthPx > 0) mediaWidthPx else ViewGroup.LayoutParams.WRAP_CONTENT
                 }
                 setupAttachmentsContainer(binding.attachmentsContainer, item.attachments, mediaWidthPx)
                 binding.attachmentsContainer.visibility = View.VISIBLE
             } else {
-                binding.messageCard.layoutParams = binding.messageCard.layoutParams.also {
+                binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
                     it.width = ViewGroup.LayoutParams.WRAP_CONTENT
                 }
                 binding.attachmentsContainer.visibility = View.GONE
@@ -192,13 +193,14 @@ class MessageAdapter(
                     it.type == Shared.MessageAttachmentType.VIDEO
                 }
                 val mediaWidthPx = if (hasMedia) calcMediaWidthPx(binding.root.context) else 0
-                binding.messageCard.layoutParams = binding.messageCard.layoutParams.also {
+                // Устанавливаем ширину контейнеру вложений, чтобы FrameLayout с wrap_content работал корректно
+                binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
                     it.width = if (mediaWidthPx > 0) mediaWidthPx else ViewGroup.LayoutParams.WRAP_CONTENT
                 }
                 setupAttachmentsContainer(binding.attachmentsContainer, item.attachments, mediaWidthPx)
                 binding.attachmentsContainer.visibility = View.VISIBLE
             } else {
-                binding.messageCard.layoutParams = binding.messageCard.layoutParams.also {
+                binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
                     it.width = ViewGroup.LayoutParams.WRAP_CONTENT
                 }
                 binding.attachmentsContainer.visibility = View.GONE
@@ -299,9 +301,9 @@ class MessageAdapter(
         val context = container.context
         val wrapper = android.widget.LinearLayout(context).apply {
             orientation = android.widget.LinearLayout.VERTICAL
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
+            layoutParams = android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                android.widget.FrameLayout.LayoutParams.WRAP_CONTENT
             )
         }
 
@@ -344,7 +346,10 @@ class MessageAdapter(
 
         val column = android.widget.LinearLayout(context).apply {
             orientation = android.widget.LinearLayout.VERTICAL
-            layoutParams = ViewGroup.LayoutParams(maxWidth, ViewGroup.LayoutParams.WRAP_CONTENT)
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                maxWidth,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+            )
         }
 
         var itemIndex = 0
