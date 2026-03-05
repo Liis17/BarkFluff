@@ -6,7 +6,8 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="24dp">
+    android:padding="24dp"
+    android:maxHeight="600dp">
 
     <!-- Аватар пользователя -->
     <FrameLayout
@@ -96,7 +97,7 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:layout_marginBottom="16dp"
+        android:layout_marginBottom="12dp"
         android:background="?attr/colorOutline"
         android:alpha="0.3" />
 
@@ -104,102 +105,77 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp"
+        android:layout_marginBottom="8dp"
         android:text="Медиафайлы"
         android:textAppearance="?attr/textAppearanceTitleSmall"
         android:textColor="?attr/colorOnSurfaceVariant" />
 
-    <!-- Горизонтальная лента типов медиа -->
-    <LinearLayout
+    <!-- Кнопки типов медиа -->
+    <com.google.android.material.chip.ChipGroup
+        android:id="@+id/mediaTypeChipGroup"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center"
-        android:orientation="horizontal">
+        android:layout_marginBottom="12dp"
+        app:singleSelection="true"
+        app:selectionRequired="false">
 
-        <!-- Фото -->
-        <LinearLayout
-            android:id="@+id/mediaPhotosButton"
-            android:layout_width="0dp"
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chipPhotos"
+            style="@style/Widget.Material3.Chip.Filter"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:padding="12dp"
-            android:background="?attr/selectableItemBackgroundBorderless">
+            android:text="Фото" />
 
-            <ImageView
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:src="@drawable/ic_image_placeholder"
-                app:tint="?attr/colorPrimary" />
-
-            <TextView
-                android:id="@+id/mediaPhotosCount"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:textAppearance="?attr/textAppearanceLabelMedium"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                tools:text="24 фото" />
-
-        </LinearLayout>
-
-        <!-- Видео -->
-        <LinearLayout
-            android:id="@+id/mediaVideosButton"
-            android:layout_width="0dp"
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chipVideos"
+            style="@style/Widget.Material3.Chip.Filter"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:padding="12dp"
-            android:background="?attr/selectableItemBackgroundBorderless">
+            android:text="Видео" />
 
-            <ImageView
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:src="@drawable/ic_video"
-                app:tint="?attr/colorPrimary" />
-
-            <TextView
-                android:id="@+id/mediaVideosCount"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:textAppearance="?attr/textAppearanceLabelMedium"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                tools:text="5 видео" />
-
-        </LinearLayout>
-
-        <!-- Файлы -->
-        <LinearLayout
-            android:id="@+id/mediaFilesButton"
-            android:layout_width="0dp"
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chipFiles"
+            style="@style/Widget.Material3.Chip.Filter"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:padding="12dp"
-            android:background="?attr/selectableItemBackgroundBorderless">
+            android:text="Файлы" />
 
-            <ImageView
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:src="@drawable/ic_attachment"
-                app:tint="?attr/colorPrimary" />
+    </com.google.android.material.chip.ChipGroup>
 
-            <TextView
-                android:id="@+id/mediaFilesCount"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:textAppearance="?attr/textAppearanceLabelMedium"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                tools:text="12 файлов" />
+    <!-- Контейнер для сетки вложений -->
+    <FrameLayout
+        android:id="@+id/attachmentsContainer"
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:visibility="gone">
 
-        </LinearLayout>
+        <!-- Индикатор загрузки -->
+        <ProgressBar
+            android:id="@+id/attachmentsLoading"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:visibility="gone" />
 
-    </LinearLayout>
+        <!-- Сетка вложений -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/attachmentsRecyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            tools:listitem="@layout/item_attachment_preview" />
+
+        <!-- Пустое состояние -->
+        <TextView
+            android:id="@+id/attachmentsEmpty"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="Нет вложений"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:visibility="gone" />
+
+    </FrameLayout>
 
 </LinearLayout>

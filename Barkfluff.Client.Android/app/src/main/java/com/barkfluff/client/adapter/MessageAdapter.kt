@@ -5,13 +5,14 @@ import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.SeekBar
 import androidx.recyclerview.widget.DiffUtil
-import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import coil.size.Size
+import com.barkfluff.client.ImageViewerActivity
 import com.barkfluff.client.MediaViewerActivity
 import com.barkfluff.client.R
 import com.barkfluff.client.databinding.ItemAttachmentAudioBinding
@@ -32,7 +33,6 @@ import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import kotlin.math.min
 
 /**
  * Адаптер для отображения сообщений в чате с разделителями дат.
@@ -119,9 +119,21 @@ class MessageAdapter(
             }
 
             if (item.attachments.isNotEmpty()) {
-                setupAttachmentsContainer(binding.attachmentsContainer, item.attachments)
+                val hasMedia = item.attachments.any {
+                    it.type == Shared.MessageAttachmentType.IMAGE ||
+                    it.type == Shared.MessageAttachmentType.GIF  ||
+                    it.type == Shared.MessageAttachmentType.VIDEO
+                }
+                val mediaWidthPx = if (hasMedia) calcMediaWidthPx(binding.root.context) else 0
+                binding.messageCard.layoutParams = binding.messageCard.layoutParams.also {
+                    it.width = if (mediaWidthPx > 0) mediaWidthPx else ViewGroup.LayoutParams.WRAP_CONTENT
+                }
+                setupAttachmentsContainer(binding.attachmentsContainer, item.attachments, mediaWidthPx)
                 binding.attachmentsContainer.visibility = View.VISIBLE
             } else {
+                binding.messageCard.layoutParams = binding.messageCard.layoutParams.also {
+                    it.width = ViewGroup.LayoutParams.WRAP_CONTENT
+                }
                 binding.attachmentsContainer.visibility = View.GONE
                 binding.attachmentsContainer.removeAllViews()
             }
@@ -174,9 +186,21 @@ class MessageAdapter(
             binding.timeTextView.text = formatTime(item.timestamp)
 
             if (item.attachments.isNotEmpty()) {
-                setupAttachmentsContainer(binding.attachmentsContainer, item.attachments)
+                val hasMedia = item.attachments.any {
+                    it.type == Shared.MessageAttachmentType.IMAGE ||
+                    it.type == Shared.MessageAttachmentType.GIF  ||
+                    it.type == Shared.MessageAttachmentType.VIDEO
+                }
+                val mediaWidthPx = if (hasMedia) calcMediaWidthPx(binding.root.context) else 0
+                binding.messageCard.layoutParams = binding.messageCard.layoutParams.also {
+                    it.width = if (mediaWidthPx > 0) mediaWidthPx else ViewGroup.LayoutParams.WRAP_CONTENT
+                }
+                setupAttachmentsContainer(binding.attachmentsContainer, item.attachments, mediaWidthPx)
                 binding.attachmentsContainer.visibility = View.VISIBLE
             } else {
+                binding.messageCard.layoutParams = binding.messageCard.layoutParams.also {
+                    it.width = ViewGroup.LayoutParams.WRAP_CONTENT
+                }
                 binding.attachmentsContainer.visibility = View.GONE
                 binding.attachmentsContainer.removeAllViews()
             }
@@ -219,20 +243,55 @@ class MessageAdapter(
         fun bind(item: MessageItem) { binding.dateTextView.text = item.dateText }
     }
 
+    // ─── Helpers ──────────────────────────────────────────────────────────────
+
+    /**
+     * Определяет раскладку строк для медиа-сетки (как в WPF MultiImageGrid).
+     * Возвращает список, где каждый элемент — количество ячеек в строке.
+     */
+    private fun determineLayout(count: Int): List<Int> = when (count) {
+        0 -> emptyList()
+        1 -> listOf(1)
+        2 -> listOf(2)
+        3 -> listOf(2, 1)
+        4 -> listOf(2, 2)
+        5 -> listOf(3, 2)
+        6 -> listOf(3, 3)
+        7 -> listOf(3, 2, 2)
+        8 -> listOf(3, 3, 2)
+        9 -> listOf(3, 3, 3)
+        else -> listOf(3, 2, 2, 3)
+    }
+
+    /**
+     * Считает ширину медиа-области (px).
+     * ~70 % ширины экрана, максимум 320 dp.
+     */
+    private fun calcMediaWidthPx(context: android.content.Context): Int {
+        val dm = context.resources.displayMetrics
+        return minOf(
+            (dm.widthPixels * 0.70f).toInt(),
+            (320 * dm.density + 0.5f).toInt()
+        )
+    }
+
     // ─── Attachment Container Setup ───────────────────────────────────────────
 
     private fun setupAttachmentsContainer(
         container: ViewGroup,
-        attachments: List<Shared.MessageAttachment>
+        attachments: List<Shared.MessageAttachment>,
+        mediaWidthPx: Int = 0
     ) {
         container.removeAllViews()
 
-        val images = attachments.filter {
-            it.type == Shared.MessageAttachmentType.IMAGE || it.type == Shared.MessageAttachmentType.GIF
+        // IMAGE + GIF + VIDEO → единая медиа-сетка
+        val mediaItems = attachments.filter {
+            it.type == Shared.MessageAttachmentType.IMAGE ||
+            it.type == Shared.MessageAttachmentType.GIF  ||
+            it.type == Shared.MessageAttachmentType.VIDEO
         }
         val audios = attachments.filter { it.type == Shared.MessageAttachmentType.AUDIO }
-        val videos = attachments.filter { it.type == Shared.MessageAttachmentType.VIDEO }
-        val docs = attachments.filter {
+        val docs   = attachments.filter {
             it.type == Shared.MessageAttachmentType.DOCUMENT ||
             it.type == Shared.MessageAttachmentType.MESSAGE_ATTACHMENT_TYPE_UNKNOWN
         }
@@ -246,33 +305,16 @@ class MessageAdapter(
             )
         }
 
-        // Images — edge-to-edge grid
-        if (images.isNotEmpty()) {
-            val columnCount = min(images.size, 3)
-            val rv = RecyclerView(context).apply {
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                )
-                isNestedScrollingEnabled = false
-                layoutManager = GridLayoutManager(context, columnCount)
-                val adapter = ImageGridAdapter(getFileUrl)
-                this.adapter = adapter
-                adapter.submitList(images)
-            }
-            wrapper.addView(rv)
+        // Медиа-сетка (IMAGE / GIF / VIDEO) — ряды по алгоритму WPF MultiImageGrid
+        if (mediaItems.isNotEmpty() && mediaWidthPx > 0) {
+            val mediaGrid = buildMediaGrid(context, mediaItems, mediaWidthPx)
+            wrapper.addView(mediaGrid)
         }
 
         // Audio rows
         for (audio in audios) {
             val audioView = inflateAudioRow(container, audio)
             wrapper.addView(audioView)
-        }
-
-        // Video rows
-        for (video in videos) {
-            val videoView = inflateVideoRow(container, video)
-            wrapper.addView(videoView)
         }
 
         // Document rows
@@ -282,6 +324,128 @@ class MessageAdapter(
         }
 
         container.addView(wrapper)
+    }
+
+    // ─── Media Grid (row-based, matching WPF MultiImageGrid) ────────────────
+
+    /**
+     * Строит медиа-сетку из рядов с разным числом ячеек.
+     * Ячейки квадратные, между ними отступ 2 dp.
+     */
+    private fun buildMediaGrid(
+        context: android.content.Context,
+        mediaItems: List<Shared.MessageAttachment>,
+        maxWidth: Int
+    ): View {
+        val dm = context.resources.displayMetrics
+        val spacingPx = (2 * dm.density + 0.5f).toInt()
+        val capped = mediaItems.take(10)
+        val layout = determineLayout(capped.size)
+
+        val column = android.widget.LinearLayout(context).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            layoutParams = ViewGroup.LayoutParams(maxWidth, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+
+        var itemIndex = 0
+        for ((rowIdx, itemsInRow) in layout.withIndex()) {
+            val totalSpacing = spacingPx * (itemsInRow - 1)
+            val cellWidth = (maxWidth - totalSpacing) / itemsInRow
+            val cellHeight = cellWidth
+
+            val row = android.widget.LinearLayout(context).apply {
+                orientation = android.widget.LinearLayout.HORIZONTAL
+                layoutParams = android.widget.LinearLayout.LayoutParams(maxWidth, cellHeight).apply {
+                    if (rowIdx > 0) topMargin = spacingPx
+                }
+            }
+
+            for (col in 0 until itemsInRow) {
+                if (itemIndex >= capped.size) break
+                val attachment = capped[itemIndex]
+
+                val cellView = LayoutInflater.from(context)
+                    .inflate(R.layout.item_attachment_media_cell, row, false)
+                cellView.layoutParams = android.widget.LinearLayout.LayoutParams(cellWidth, cellHeight).apply {
+                    if (col > 0) marginStart = spacingPx
+                }
+
+                bindMediaCell(cellView, attachment, capped, itemIndex)
+                row.addView(cellView)
+                itemIndex++
+            }
+
+            column.addView(row)
+        }
+
+        return column
+    }
+
+    /**
+     * Привязывает данные к ячейке медиа-сетки: превью, оверлей видео, клик.
+     */
+    private fun bindMediaCell(
+        cellView: View,
+        attachment: Shared.MessageAttachment,
+        allMedia: List<Shared.MessageAttachment>,
+        position: Int
+    ) {
+        val thumbnail = cellView.findViewById<ImageView>(R.id.thumbnailImage)
+        val videoOverlay = cellView.findViewById<View>(R.id.videoOverlay)
+        val playIcon = cellView.findViewById<ImageView>(R.id.playIcon)
+
+        thumbnail.setImageDrawable(null)
+
+        val isVideo = attachment.type == Shared.MessageAttachmentType.VIDEO
+        videoOverlay.visibility = if (isVideo) View.VISIBLE else View.GONE
+        playIcon.visibility     = if (isVideo) View.VISIBLE else View.GONE
+
+        // Загружаем превью (previewFileId → fileId как fallback)
+        val previewFileId = attachment.previewFileId.ifBlank { attachment.fileId }
+        val previewUrl    = attachment.previewUrl
+
+        val getUrl: suspend () -> String? = if (previewUrl.isNotBlank()) {
+            { previewUrl }
+        } else {
+            { getFileUrl(previewFileId) }
+        }
+
+        ImageLoadHelper.loadByFileId(
+            imageView = thumbnail,
+            fileId = previewFileId,
+            getUrlCallback = getUrl,
+            onError = { thumbnail.setImageResource(R.drawable.ic_image_placeholder) }
+        )
+
+        // Клик: видео → MediaViewerActivity, картинка/gif → ImageViewerActivity
+        if (isVideo) {
+            cellView.setOnClickListener {
+                val ctx = cellView.context
+                val cachedPath = FileCache.getFile(attachment.fileId)?.absolutePath
+                ctx.startActivity(
+                    MediaViewerActivity.createIntent(
+                        ctx,
+                        attachment.fileId,
+                        attachment.fileName.ifBlank { "video" },
+                        cachedPath
+                    )
+                )
+            }
+        } else {
+            cellView.setOnClickListener {
+                val ctx = cellView.context
+                val imageItems = allMedia.filter {
+                    it.type == Shared.MessageAttachmentType.IMAGE ||
+                    it.type == Shared.MessageAttachmentType.GIF
+                }
+                val clickedIndex = imageItems.indexOf(attachment).coerceAtLeast(0)
+                val allFileIds    = imageItems.map { it.fileId }
+                val allPreviewUrls = imageItems.map { it.previewUrl }
+                ctx.startActivity(
+                    ImageViewerActivity.createIntent(ctx, allFileIds, allPreviewUrls, clickedIndex)
+                )
+            }
+        }
     }
 
     // ─── Audio Row ────────────────────────────────────────────────────────────

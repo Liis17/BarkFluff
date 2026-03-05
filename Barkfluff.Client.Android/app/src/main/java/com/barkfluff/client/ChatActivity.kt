@@ -26,6 +26,7 @@ import com.barkfluff.client.picker.ImagePickerBottomSheet
 import com.barkfluff.client.picker.ImagePickerResult
 import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.utils.AvatarLoader
+import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.ImageCompressor
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
@@ -490,6 +491,12 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
+    private fun getMimeType(fileName: String): String? {
+        val ext = fileName.substringAfterLast('.', "").lowercase()
+        if (ext.isEmpty()) return null
+        return android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
+    }
+
     private fun formatLastSeen(timestampMillis: Long): String {
         if (timestampMillis <= 0) return "был(а) недавно"
 
@@ -926,9 +933,89 @@ class ChatActivity : AppCompatActivity() {
         val onlineStatusTextView = dialogView.findViewById<TextView>(R.id.profileOnlineStatusTextView)
         val bioTextView = dialogView.findViewById<TextView>(R.id.profileBioTextView)
         val onlineIndicator = dialogView.findViewById<View>(R.id.onlineIndicator)
-        val mediaPhotosCount = dialogView.findViewById<TextView>(R.id.mediaPhotosCount)
-        val mediaVideosCount = dialogView.findViewById<TextView>(R.id.mediaVideosCount)
-        val mediaFilesCount = dialogView.findViewById<TextView>(R.id.mediaFilesCount)
+        val mediaTypeChipGroup = dialogView.findViewById<com.google.android.material.chip.ChipGroup>(R.id.mediaTypeChipGroup)
+        val chipPhotos = dialogView.findViewById<com.google.android.material.chip.Chip>(R.id.chipPhotos)
+        val chipVideos = dialogView.findViewById<com.google.android.material.chip.Chip>(R.id.chipVideos)
+        val chipFiles = dialogView.findViewById<com.google.android.material.chip.Chip>(R.id.chipFiles)
+        val attachmentsContainer = dialogView.findViewById<View>(R.id.attachmentsContainer)
+        val attachmentsRecyclerView = dialogView.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.attachmentsRecyclerView)
+        val attachmentsLoading = dialogView.findViewById<View>(R.id.attachmentsLoading)
+        val attachmentsEmpty = dialogView.findViewById<TextView>(R.id.attachmentsEmpty)
+
+        // Адаптер для вложений
+        var attachmentAdapter: com.barkfluff.client.adapter.AttachmentPreviewAdapter? = null
+        attachmentAdapter = com.barkfluff.client.adapter.AttachmentPreviewAdapter(
+            getFileUrl = { fileId -> chatRepository.getFileDownloadUrl(fileId).getOrNull() },
+            onAttachmentClick = { attachmentInfo ->
+                val att = attachmentInfo.attachment
+                when (att.type) {
+                    barkfluff.shared.Shared.MessageAttachmentType.IMAGE,
+                    barkfluff.shared.Shared.MessageAttachmentType.GIF -> {
+                        val adapter = attachmentAdapter
+                        if (adapter != null) {
+                            val allFileIds = adapter.currentList.map { it.attachment.fileId }
+                            val allPreviewUrls = adapter.currentList.map { it.attachment.previewUrl }
+                            val position = adapter.currentList.indexOf(attachmentInfo).coerceAtLeast(0)
+                            startActivity(
+                                ImageViewerActivity.createIntent(
+                                    this@ChatActivity, allFileIds, allPreviewUrls, position
+                                )
+                            )
+                        }
+                    }
+                    barkfluff.shared.Shared.MessageAttachmentType.VIDEO -> {
+                        val cachedPath = FileCache.getFile(att.fileId)?.absolutePath
+                        startActivity(
+                            MediaViewerActivity.createIntent(
+                                this@ChatActivity,
+                                att.fileId,
+                                att.fileName.ifBlank { "Видео" },
+                                cachedPath
+                            )
+                        )
+                    }
+                    else -> {
+                        // Документ / аудио — скачать и открыть системным приложением
+                        lifecycleScope.launch {
+                            try {
+                                val file = withContext(Dispatchers.IO) {
+                                    FileCache.getFile(att.fileId)
+                                        ?: chatRepository.downloadFile(att.fileId)
+                                }
+                                if (file != null) {
+                                    val uri = androidx.core.content.FileProvider.getUriForFile(
+                                        this@ChatActivity,
+                                        "${packageName}.fileprovider",
+                                        file
+                                    )
+                                    val mimeType = getMimeType(att.fileName) ?: "*/*"
+                                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                                        setDataAndType(uri, mimeType)
+                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    }
+                                    startActivity(Intent.createChooser(intent, "Открыть с помощью"))
+                                } else {
+                                    Toast.makeText(
+                                        this@ChatActivity,
+                                        "Не удалось скачать файл",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Error opening file", e)
+                                Toast.makeText(
+                                    this@ChatActivity,
+                                    "Ошибка открытия файла",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                    }
+                }
+            }
+        )
+        attachmentsRecyclerView.layoutManager = androidx.recyclerview.widget.GridLayoutManager(this, 3)
+        attachmentsRecyclerView.adapter = attachmentAdapter
 
         if (isGroupChat) {
             // Для группового чата — показываем название чата
@@ -979,8 +1066,8 @@ class ChatActivity : AppCompatActivity() {
                                 bioTextView.visibility = View.GONE
                             }
 
-                            // Аватар
-                            val avatarFileId = user.profilePicturePreviewFileId.ifBlank { user.profilePictureFileId }
+                            // Аватар - используем ПОЛНУЮ версию, а не превью
+                            val avatarFileId = user.profilePictureFileId
                             if (!avatarFileId.isNullOrBlank()) {
                                 AvatarLoader.loadByFileId(
                                     imageView = avatarImageView,
@@ -1038,36 +1125,81 @@ class ChatActivity : AppCompatActivity() {
             }
         }
 
-        // Загрузка количества медиафайлов
-        lifecycleScope.launch {
-            try {
-                val attachmentsResult = chatRepository.getChatAttachments(chatId)
-                if (attachmentsResult.isSuccess) {
-                    val attachments = attachmentsResult.getOrNull()!!
+        // Обработка выбора типа медиа
+        var currentType: barkfluff.shared.Shared.MessageAttachmentType? = null
 
-                    // Подсчёт по типам
-                    var photosCount = 0
-                    var videosCount = 0
-                    var filesCount = 0
+        fun loadAttachments(type: barkfluff.shared.Shared.MessageAttachmentType) {
+            attachmentsContainer.visibility = View.VISIBLE
+            attachmentsLoading.visibility = View.VISIBLE
+            attachmentsRecyclerView.visibility = View.GONE
+            attachmentsEmpty.visibility = View.GONE
 
-                    for (attachment in attachments) {
-                        when (attachment.attachment.type) {
-                            barkfluff.shared.Shared.MessageAttachmentType.IMAGE -> photosCount++
-                            barkfluff.shared.Shared.MessageAttachmentType.VIDEO -> videosCount++
-                            barkfluff.shared.Shared.MessageAttachmentType.GIF -> photosCount++ // GIF считаем как фото
-                            barkfluff.shared.Shared.MessageAttachmentType.DOCUMENT -> filesCount++
-                            else -> filesCount++
+            lifecycleScope.launch {
+                try {
+                    val result = chatRepository.getChatAttachments(chatId, type)
+                    if (result.isSuccess) {
+                        val attachments = result.getOrNull()!!
+                        if (attachments.isEmpty()) {
+                            attachmentsLoading.visibility = View.GONE
+                            attachmentsEmpty.visibility = View.VISIBLE
+                            attachmentsEmpty.text = when (type) {
+                                barkfluff.shared.Shared.MessageAttachmentType.IMAGE -> "Нет фото"
+                                barkfluff.shared.Shared.MessageAttachmentType.VIDEO -> "Нет видео"
+                                else -> "Нет файлов"
+                            }
+                        } else {
+                            attachmentAdapter.submitList(attachments)
+                            attachmentsLoading.visibility = View.GONE
+                            attachmentsRecyclerView.visibility = View.VISIBLE
                         }
+                    } else {
+                        attachmentsLoading.visibility = View.GONE
+                        attachmentsEmpty.visibility = View.VISIBLE
+                        attachmentsEmpty.text = "Ошибка загрузки"
                     }
-
-                    mediaPhotosCount.text = resources.getQuantityString(R.plurals.photos_count, photosCount, photosCount)
-                    mediaVideosCount.text = resources.getQuantityString(R.plurals.videos_count, videosCount, videosCount)
-                    mediaFilesCount.text = resources.getQuantityString(R.plurals.files_count, filesCount, filesCount)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error loading attachments", e)
+                    attachmentsLoading.visibility = View.GONE
+                    attachmentsEmpty.visibility = View.VISIBLE
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error loading chat attachments", e)
             }
         }
+
+        chipPhotos.setOnClickListener {
+            if (chipPhotos.isChecked) {
+                attachmentsRecyclerView.layoutManager =
+                    androidx.recyclerview.widget.GridLayoutManager(this@ChatActivity, 3)
+                loadAttachments(barkfluff.shared.Shared.MessageAttachmentType.IMAGE)
+            } else {
+                attachmentsContainer.visibility = View.GONE
+            }
+        }
+
+        chipVideos.setOnClickListener {
+            if (chipVideos.isChecked) {
+                attachmentsRecyclerView.layoutManager =
+                    androidx.recyclerview.widget.GridLayoutManager(this@ChatActivity, 3)
+                loadAttachments(barkfluff.shared.Shared.MessageAttachmentType.VIDEO)
+            } else {
+                attachmentsContainer.visibility = View.GONE
+            }
+        }
+
+        chipFiles.setOnClickListener {
+            if (chipFiles.isChecked) {
+                attachmentsRecyclerView.layoutManager =
+                    androidx.recyclerview.widget.LinearLayoutManager(this@ChatActivity)
+                loadAttachments(barkfluff.shared.Shared.MessageAttachmentType.DOCUMENT)
+            } else {
+                attachmentsContainer.visibility = View.GONE
+            }
+        }
+
+        // По умолчанию открываем вкладку с фотографиями
+        chipPhotos.isChecked = true
+        attachmentsRecyclerView.layoutManager =
+            androidx.recyclerview.widget.GridLayoutManager(this, 3)
+        loadAttachments(barkfluff.shared.Shared.MessageAttachmentType.IMAGE)
 
         dialog.show()
     }

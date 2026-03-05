@@ -14,6 +14,13 @@ class SquareImageView @JvmOverloads constructor(
 ) : AppCompatImageView(context, attrs, defStyleAttr) {
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        super.onMeasure(widthMeasureSpec, widthMeasureSpec)
+        // Force AT_MOST → EXACTLY so the cell always fills its span width,
+        // regardless of the loaded image's intrinsic size.
+        val w = MeasureSpec.getSize(widthMeasureSpec)
+        val exactSpec = if (MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.UNSPECIFIED)
+            widthMeasureSpec
+        else
+            MeasureSpec.makeMeasureSpec(w, MeasureSpec.EXACTLY)
+        super.onMeasure(exactSpec, exactSpec)
     }
 }
