@@ -138,7 +138,19 @@
                 <!-- SERVICES TABLE -->
                 <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
                     <div class="flex items-center justify-between mb-6">
-                        <h3 class="font-bold text-lg text-slate-700">Состояние сервисов</h3>
+                        <div class="flex items-center gap-3">
+                            <h3 class="font-bold text-lg text-slate-700">Состояние сервисов</h3>
+                            <button onclick="restartAllServices()"
+                                class="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">
+                                <i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i>
+                                Перезапустить все
+                            </button>
+                            <button onclick="updateAllServices()"
+                                class="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">
+                                <i data-lucide="download-cloud" class="w-3.5 h-3.5"></i>
+                                Обновить все
+                            </button>
+                        </div>
                         <button id="refreshBtn" class="text-sm text-blue-600 hover:underline flex items-center gap-1">
                             <i data-lucide="refresh-cw" class="w-4 h-4"></i>
                             Обновить
@@ -545,6 +557,73 @@
         document.getElementById('refreshBtn').addEventListener('click', () => {
             loadServices();
         });
+
+        // Перезапуск всех сервисов BarkFluff
+        async function restartAllServices() {
+            if (!confirm('Вы уверены, что хотите перезапустить ВСЕ сервисы BarkFluff?\n\n' +
+                'Сервисы будут перезапущены последовательно, начиная с Configuration.\n' +
+                'Это может занять несколько минут.')) {
+                return;
+            }
+
+            showNotification('success', 'Начинаем последовательный перезапуск всех сервисов...');
+
+            try {
+                const response = await fetch('/api/docker/containers/restart-all', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification('success', result.message);
+                    // Обновляем список сервисов через 5 секунд
+                    setTimeout(() => loadServices(), 5000);
+                } else {
+                    showNotification('error', result.message || 'Ошибка перезапуска сервисов');
+                }
+            } catch (error) {
+                console.error('Restart all error:', error);
+                showNotification('error', 'Ошибка перезапуска: ' + error.message);
+            }
+        }
+
+        // Обновление всех сервисов BarkFluff
+        async function updateAllServices() {
+            if (!confirm('Вы уверены, что хотите обновить ВСЕ сервисы BarkFluff?\n\n' +
+                'Будут загружены новые образы и контейнеры пересозданы.\n' +
+                'Сервисы будут обновлены последовательно, начиная с Configuration.\n' +
+                'Это может занять длительное время.')) {
+                return;
+            }
+
+            showNotification('success', 'Начинаем последовательное обновление всех сервисов...');
+
+            try {
+                const response = await fetch('/api/docker/containers/update-all', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification('success', result.message);
+                    // Обновляем список сервисов через 5 секунд
+                    setTimeout(() => loadServices(), 5000);
+                } else {
+                    showNotification('error', result.message || 'Ошибка обновления сервисов');
+                }
+            } catch (error) {
+                console.error('Update all error:', error);
+                showNotification('error', 'Ошибка обновления: ' + error.message);
+            }
+        }
 
         // Инициализация
         checkAuth();
