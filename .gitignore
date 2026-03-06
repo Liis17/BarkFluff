@@ -370,3 +370,6 @@ FodyWeavers.xsd
 !/BarkFluff.Client.WPF/UserControls/Debug/
 .DS_Store
 /nul
+
+#Билды линуха
+/Linux/build/
