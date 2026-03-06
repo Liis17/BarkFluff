@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Плейсхолдер для аватара - овал с нейтральным цветом.
+     AvatarLoader.showPlaceholder() динамически заменяет фон на цветной. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="rectangle">
-    <solid android:color="#FFFFFF" />
-    <corners android:radius="3dp" />
+    android:shape="oval">
+    <solid android:color="#9E9E9E" />
 </shape>

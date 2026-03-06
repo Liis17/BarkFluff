@@ -168,18 +168,8 @@ class ChatActivity : AppCompatActivity() {
                 chatRepository.getFileDownloadUrl(fileId).getOrNull()
             }
         } else {
+            AvatarLoader.showPlaceholder(binding.chatAvatarPlaceholder, chatTitle, chatId.hashCode().toLong())
             binding.chatAvatar.visibility = View.GONE
-            binding.chatAvatarPlaceholder.visibility = View.VISIBLE
-            binding.chatAvatarPlaceholder.text = getInitials(chatTitle)
-        }
-    }
-
-    private fun getInitials(name: String): String {
-        val parts = name.trim().split("\\s+".toRegex()).filter { it.isNotEmpty() }
-        return when {
-            parts.size >= 2 -> "${parts[0].first()}${parts[1].first()}".uppercase()
-            parts.size == 1 -> parts[0].first().uppercase()
-            else -> "?"
         }
     }
 
@@ -1039,9 +1029,8 @@ class ChatActivity : AppCompatActivity() {
                     chatRepository.getFileDownloadUrl(chatAvatarFileId!!).getOrNull()
                 }
             } else {
+                AvatarLoader.showPlaceholder(avatarPlaceholder, chatTitle, chatId.hashCode().toLong())
                 avatarImageView.visibility = View.GONE
-                avatarPlaceholder.visibility = View.VISIBLE
-                avatarPlaceholder.text = getInitials(chatTitle)
             }
         } else {
             // Для ЛС — загружаем данные пользователя
@@ -1082,9 +1071,8 @@ class ChatActivity : AppCompatActivity() {
                                     chatRepository.getFileDownloadUrl(avatarFileId).getOrNull()
                                 }
                             } else {
+                                AvatarLoader.showPlaceholder(avatarPlaceholder, displayName, otherUserId)
                                 avatarImageView.visibility = View.GONE
-                                avatarPlaceholder.visibility = View.VISIBLE
-                                avatarPlaceholder.text = getInitials(displayName)
                             }
                         }
                     } catch (e: Exception) {
