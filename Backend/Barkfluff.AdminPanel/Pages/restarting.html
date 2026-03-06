@@ -35,7 +35,7 @@
             <p class="text-lg text-slate-500 mb-2">Пожалуйста, подождите...</p>
             <p class="text-sm text-slate-400">
                 <i data-lucide="refresh-cw" class="w-4 h-4 inline mr-1"></i>
-                Проверка доступности каждые 5 секунд
+                Проверка доступности каждые 3 секунды
             </p>
             <div class="mt-8 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg inline-flex items-center gap-2">
                 <i data-lucide="clock" class="w-4 h-4"></i>
@@ -49,12 +49,14 @@
 
         let seconds = 0;
         const timerEl = document.getElementById('timer');
-        
-        // Обновляем таймер
+        let successCount = 0;
+        const requiredSuccessCount = 2; // Нужно 2 успешных ответа подряд
+
+        // Обновляем таймер каждую секунду
         setInterval(() => {
-            seconds += 5;
+            seconds++;
             timerEl.textContent = seconds;
-        }, 5000);
+        }, 1000);
 
         // Функция проверки доступности сервера
         async function checkServer() {
@@ -62,23 +64,34 @@
                 const response = await fetch('/api/auth/me', {
                     cache: 'no-cache'
                 });
-                
+
                 // Если получили 200 OK - сервер доступен
                 if (response.ok) {
-                    // Небольшая задержка чтобы сервер точно успел полностью запуститься
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                    window.location.href = '/services';
+                    successCount++;
+                    console.log(`Сервер ответил успешно (${successCount}/${requiredSuccessCount})`);
+
+                    if (successCount >= requiredSuccessCount) {
+                        // Дополнительная задержка 3 секунды чтобы сервер точно успел полностью запуститься
+                        console.log('Сервер стабильно отвечает, ждём 3 секунды перед переходом...');
+                        await new Promise(resolve => setTimeout(resolve, 3000));
+                        window.location.href = '/services';
+                    }
+                    // Иначе ждём следующую проверку
+                } else {
+                    successCount = 0; // Сбрасываем счётчик при любой ошибке
+                    console.log('Сервер вернул ошибку, сбрасываем счётчик');
                 }
             } catch (error) {
+                successCount = 0; // Сбрасываем счётчик при любой ошибке
                 // Сервер ещё недоступен, продолжаем ждать
                 console.log('Сервер ещё недоступен, ждём...');
             }
         }
 
-        // Проверяем каждые 5 секунд
-        setInterval(checkServer, 5000);
+        // Проверяем каждые 3 секунды
+        setInterval(checkServer, 3000);
 
-        // Первая проверка через 5 секунд
+        // Первая проверка через 5 секунд (время на остановку контейнера)
         setTimeout(checkServer, 5000);
     </script>
 </body>
