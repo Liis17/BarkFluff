@@ -42,7 +42,7 @@ class GrpcManager {
 
     companion object {
         private const val TAG = "GrpcManager"
-        const val DEFAULT_NAVIGATOR_URL = "navigator.barkfluff.com:64646"
+        const val DEFAULT_NAVIGATOR_URL = "https://navigator.barkfluff.com:443"
 
         // Error codes from x-error-code trailer
         const val ERROR_OTP_CODE_NEEDED = "C1576884-12D8-4722-A7EE-9F9789AD1265"

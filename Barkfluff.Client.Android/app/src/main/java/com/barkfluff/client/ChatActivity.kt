@@ -28,6 +28,7 @@ import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.ImageCompressor
+import com.barkfluff.client.utils.MessageItemAnimator
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -201,6 +202,7 @@ class ChatActivity : AppCompatActivity() {
                 stackFromEnd = true // Прокрутка к концу списка
             }
             adapter = messageAdapter
+            itemAnimator = MessageItemAnimator()
 
             // Обработчик скролла для пагинации
             addOnScrollListener(object : RecyclerView.OnScrollListener() {
