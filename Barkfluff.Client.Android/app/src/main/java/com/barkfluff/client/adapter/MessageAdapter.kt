@@ -25,6 +25,7 @@ import com.barkfluff.client.utils.AudioCallbacks
 import com.barkfluff.client.utils.AudioPlayerHelper
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.ImageLoadHelper
+import com.barkfluff.client.utils.AvatarLoader
 import barkfluff.shared.Shared
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -169,9 +170,11 @@ class MessageAdapter(
                     }
                 } else {
                     binding.senderAvatarImageView.visibility = View.GONE
-                    binding.senderAvatarPlaceholder.visibility = View.VISIBLE
-                    binding.senderAvatarPlaceholder.text = getInitials(item.senderName)
-                    binding.senderAvatarPlaceholder.setBackgroundColor(getColorForName(item.senderName))
+                    AvatarLoader.showPlaceholder(
+                        binding.senderAvatarPlaceholder,
+                        item.senderName ?: "",
+                        item.senderId
+                    )
                 }
             } else {
                 binding.senderInfoLayout.visibility = View.GONE
@@ -206,28 +209,6 @@ class MessageAdapter(
                 binding.attachmentsContainer.visibility = View.GONE
                 binding.attachmentsContainer.removeAllViews()
             }
-        }
-
-        private fun getInitials(name: String?): String {
-            if (name.isNullOrBlank()) return "?"
-            val parts = name.trim().split("\\s+".toRegex())
-            return when {
-                parts.size >= 2 -> "${parts[0].first()}${parts[1].first()}".uppercase()
-                parts.size == 1 -> parts[0].first().uppercase()
-                else -> "?"
-            }
-        }
-
-        private fun getColorForName(name: String?): Int {
-            if (name.isNullOrBlank()) return 0xFF6200EE.toInt()
-            val colors = listOf(
-                0xFFE91E63.toInt(), 0xFF9C27B0.toInt(), 0xFF673AB7.toInt(),
-                0xFF3F51B5.toInt(), 0xFF2196F3.toInt(), 0xFF03A9F4.toInt(),
-                0xFF00BCD4.toInt(), 0xFF009688.toInt(), 0xFF4CAF50.toInt(),
-                0xFF8BC34A.toInt(), 0xFFCDDC39.toInt(), 0xFFFFEB3B.toInt(),
-                0xFFFFC107.toInt(), 0xFFFF9800.toInt(), 0xFFFF5722.toInt()
-            )
-            return colors[Math.abs(name.hashCode() % colors.size)]
         }
     }
 

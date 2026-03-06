@@ -5,9 +5,7 @@ import android.animation.AnimatorListenerAdapter
 import android.animation.ObjectAnimator
 import android.animation.PropertyValuesHolder
 import android.view.View
-import android.view.ViewPropertyAnimator
 import android.view.animation.DecelerateInterpolator
-import android.view.animation.OvershootInterpolator
 import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.RecyclerView
 
@@ -24,19 +22,15 @@ import androidx.recyclerview.widget.RecyclerView
 class MessageItemAnimator : DefaultItemAnimator() {
 
     companion object {
-        private const val ANIMATION_DURATION = 400L
-        private const val ANIMATION_DURATION_SHORT = 120L
-        private const val SCALE_INITIAL = 1.2f
-        private const val SCALE_OVERSHOOT = 0.95f
+        private const val ANIMATION_DURATION = 350L
+        private const val SCALE_INITIAL = 1.08f
         private const val SCALE_FINAL = 1.0f
-        
-        // Интерполятор с плавным замедлением и небольшим overshoot эффектом
-        private val DECELERATE_INTERPOLATOR = DecelerateInterpolator(2.0f)
-        private val OVERSHOOT_INTERPOLATOR = OvershootInterpolator(1.2f)
+
+        // Интерполятор с плавным замедлением
+        private val DECELERATE_INTERPOLATOR = DecelerateInterpolator(1.5f)
     }
 
     private val pendingAnimations = mutableMapOf<RecyclerView.ViewHolder, Runnable>()
-    private val animatorMap = mutableMapOf<RecyclerView.ViewHolder, ViewPropertyAnimator>()
 
     override fun animateAdd(holder: RecyclerView.ViewHolder): Boolean {
         // Пропускаем анимацию для разделителей дат
@@ -49,52 +43,26 @@ class MessageItemAnimator : DefaultItemAnimator() {
         view.alpha = 0f
         view.scaleX = SCALE_INITIAL
         view.scaleY = SCALE_INITIAL
-        
+
         // Анимация появления: масштаб + прозрачность
         val scaleX = PropertyValuesHolder.ofFloat(View.SCALE_X, SCALE_INITIAL, SCALE_FINAL)
         val scaleY = PropertyValuesHolder.ofFloat(View.SCALE_Y, SCALE_INITIAL, SCALE_FINAL)
         val alpha = PropertyValuesHolder.ofFloat(View.ALPHA, 0f, 1f)
-        
+
         val animator = ObjectAnimator.ofPropertyValuesHolder(view, scaleX, scaleY, alpha)
         animator.duration = ANIMATION_DURATION
         animator.interpolator = DECELERATE_INTERPOLATOR
-        
-        // Добавляем spring-эффект в конце
         animator.addListener(object : AnimatorListenerAdapter() {
-            private var wasCancelled = false
-            
             override fun onAnimationEnd(animation: Animator) {
-                if (wasCancelled) return
-                
-                // Spring bounce анимация для эффекта "пружины"
-                view.animate()
-                    .scaleX(SCALE_OVERSHOOT)
-                    .scaleY(SCALE_OVERSHOOT)
-                    .setDuration(ANIMATION_DURATION_SHORT / 2)
-                    .setInterpolator(OVERSHOOT_INTERPOLATOR)
-                    .withEndAction {
-                        view.animate()
-                            .scaleX(SCALE_FINAL)
-                            .scaleY(SCALE_FINAL)
-                            .setDuration(ANIMATION_DURATION_SHORT)
-                            .setInterpolator(OVERSHOOT_INTERPOLATOR)
-                            .withEndAction {
-                                dispatchAddFinished(holder)
-                                animatorMap.remove(holder)
-                            }
-                            .start()
-                    }
-                    .start()
+                dispatchAddFinished(holder)
             }
-            
             override fun onAnimationCancel(animation: Animator) {
-                wasCancelled = true
                 view.alpha = 1f
                 view.scaleX = SCALE_FINAL
                 view.scaleY = SCALE_FINAL
             }
         })
-        
+
         animator.start()
         return true
     }
@@ -107,8 +75,31 @@ class MessageItemAnimator : DefaultItemAnimator() {
         toX: Int,
         toY: Int
     ): Boolean {
-        // Для изменений используем стандартную анимацию
-        return super.animateChange(oldHolder, newHolder, fromX, fromY, toX, toY)
+        // Для изменений используем плавную fade анимацию с масштабированием
+        val view = newHolder.itemView
+        view.alpha = 0f
+        view.scaleX = SCALE_INITIAL
+        view.scaleY = SCALE_INITIAL
+        
+        view.animate()
+            .alpha(1f)
+            .scaleX(SCALE_FINAL)
+            .scaleY(SCALE_FINAL)
+            .setDuration(ANIMATION_DURATION)
+            .setInterpolator(DECELERATE_INTERPOLATOR)
+            .setListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    dispatchChangeFinished(newHolder, true)
+                }
+                override fun onAnimationCancel(animation: Animator) {
+                    view.alpha = 1f
+                    view.scaleX = SCALE_FINAL
+                    view.scaleY = SCALE_FINAL
+                }
+            })
+            .start()
+        
+        return true
     }
 
     override fun animateMove(
@@ -118,37 +109,77 @@ class MessageItemAnimator : DefaultItemAnimator() {
         toX: Int,
         toY: Int
     ): Boolean {
-        // Сбрасываем состояние перед перемещением
-        resetViewHolderState(holder)
-        return super.animateMove(holder, fromX, fromY, toX, toY)
+        val view = holder.itemView
+
+        // Вычисляем дельту перемещения
+        val deltaX = toX - fromX
+        val deltaY = toY - fromY
+
+        // Начальное состояние - смещаем в противоположную сторону
+        view.translationX = -deltaX.toFloat()
+        view.translationY = -deltaY.toFloat()
+        view.alpha = 0.5f
+        view.scaleX = 0.95f
+        view.scaleY = 0.95f
+
+        // Анимация перемещения с плавным замедлением
+        view.animate()
+            .translationX(0f)
+            .translationY(0f)
+            .alpha(1f)
+            .scaleX(SCALE_FINAL)
+            .scaleY(SCALE_FINAL)
+            .setDuration(ANIMATION_DURATION)
+            .setInterpolator(DECELERATE_INTERPOLATOR)
+            .setListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    dispatchMoveFinished(holder)
+                }
+                override fun onAnimationCancel(animation: Animator) {
+                    view.translationX = 0f
+                    view.translationY = 0f
+                    view.alpha = 1f
+                    view.scaleX = SCALE_FINAL
+                    view.scaleY = SCALE_FINAL
+                }
+            })
+            .start()
+
+        return true
     }
 
     override fun animateRemove(holder: RecyclerView.ViewHolder): Boolean {
-        // Для удаления используем простую fade анимацию
-        val animator = holder.itemView.animate()
+        // Для удаления используем анимацию с масштабированием и fade
+        val view = holder.itemView
+
+        view.animate()
             .alpha(0f)
-            .setDuration(200L)
+            .scaleX(0.9f)
+            .scaleY(0.9f)
+            .setDuration(250L)
+            .setInterpolator(DECELERATE_INTERPOLATOR)
             .setListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {
                     dispatchRemoveFinished(holder)
-                    holder.itemView.alpha = 1f
+                    view.alpha = 1f
+                    view.scaleX = SCALE_FINAL
+                    view.scaleY = SCALE_FINAL
                 }
 
                 override fun onAnimationCancel(animation: Animator) {
-                    holder.itemView.alpha = 1f
+                    view.alpha = 1f
+                    view.scaleX = SCALE_FINAL
+                    view.scaleY = SCALE_FINAL
                 }
             })
-
-        animatorMap[holder] = animator
-        animator.start()
+            .start()
 
         return true
     }
 
     override fun endAnimation(holder: RecyclerView.ViewHolder) {
         // Отменяем все анимации для данного holder
-        animatorMap[holder]?.cancel()
-        animatorMap.remove(holder)
+        holder.itemView.animate().cancel()
 
         pendingAnimations[holder]?.let {
             holder.itemView.removeCallbacks(it)
@@ -163,9 +194,6 @@ class MessageItemAnimator : DefaultItemAnimator() {
 
     override fun endAnimations() {
         // Отменяем все анимации
-        animatorMap.values.forEach { it.cancel() }
-        animatorMap.clear()
-
         pendingAnimations.forEach { (holder, runnable) ->
             holder.itemView.removeCallbacks(runnable)
         }
@@ -175,7 +203,7 @@ class MessageItemAnimator : DefaultItemAnimator() {
     }
 
     override fun isRunning(): Boolean {
-        return animatorMap.isNotEmpty() || pendingAnimations.isNotEmpty() || super.isRunning()
+        return pendingAnimations.isNotEmpty() || super.isRunning()
     }
 
     override fun canReuseUpdatedViewHolder(holder: RecyclerView.ViewHolder): Boolean {
