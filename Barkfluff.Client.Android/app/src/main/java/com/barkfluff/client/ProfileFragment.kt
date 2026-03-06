@@ -75,8 +75,11 @@ class ProfileFragment : Fragment() {
 
     private fun loadAvatar() {
         val fileId = globalParam.picturePreviewFileId.ifEmpty { globalParam.pictureFileId }
-        val fileUrl = globalParam.picturePreviewFileId.ifEmpty { globalParam.pictureFileId }
         val displayName = "${globalParam.firstName} ${globalParam.lastName}".trim()
+
+        Log.d(TAG, "loadAvatar: displayName='$displayName', userId=${globalParam.userId}")
+        Log.d(TAG, "loadAvatar: picturePreviewUrl='${globalParam.picturePreviewUrl}', profilePictureUrl='${globalParam.profilePictureUrl}'")
+        Log.d(TAG, "loadAvatar: pictureFileId='$fileId', picturePreviewFileId='${globalParam.picturePreviewFileId}'")
 
         // Пробуем загрузить из URL напрямую если он есть
         val urlToUse = globalParam.picturePreviewUrl.ifBlank { globalParam.profilePictureUrl }
@@ -104,9 +107,9 @@ class ProfileFragment : Fragment() {
                 if (result.isSuccess) result.getOrNull() else null
             }
         } else {
+            Log.d(TAG, "loadAvatar: No URL or fileId, showing placeholder")
             AvatarLoader.showPlaceholder(binding.avatarPlaceholder, displayName, globalParam.userId)
             binding.avatarImage.visibility = View.GONE
-            binding.avatarPlaceholder.visibility = View.VISIBLE
         }
     }
 
