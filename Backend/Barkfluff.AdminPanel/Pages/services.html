@@ -52,12 +52,112 @@
         .animate-slide-in {
             animation: slide-in 0.3s ease-out;
         }
+
+        /* Modal styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            width: 90%;
+            max-width: 480px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .service-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin-bottom: 4px;
+        }
+
+        .service-item.current {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+        }
+
+        .service-item.completed {
+            opacity: 0.6;
+        }
+
+        .service-item.pending {
+            opacity: 0.4;
+        }
+
+        .service-item.error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-slate-800 font-sans antialiased">
 
     <div id="loadingOverlay">
         <div class="spinner"></div>
+    </div>
+
+    <!-- Progress Modal -->
+    <div id="progressModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="flex items-center gap-3 mb-6">
+                <div id="modalIcon" class="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
+                    <i data-lucide="rotate-cw" class="w-6 h-6 text-amber-600"></i>
+                </div>
+                <div>
+                    <h3 id="modalTitle" class="text-lg font-bold text-slate-800">Перезапуск сервисов</h3>
+                    <p id="modalSubtitle" class="text-sm text-slate-500">Выполняется последовательно...</p>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <div class="flex justify-between text-sm mb-2">
+                    <span id="progressText" class="font-medium text-slate-700">Подготовка...</span>
+                    <span id="progressCount" class="text-slate-500">0 / 10</span>
+                </div>
+                <div class="progress-bar-container">
+                    <div id="progressBar" class="progress-bar-fill" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div id="servicesList" class="max-h-48 overflow-y-auto mb-4">
+                <!-- Services will be rendered here -->
+            </div>
+
+            <div id="modalFooter" class="flex justify-end gap-2" style="display: none;">
+                <button onclick="closeProgressModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium transition-colors">
+                    Закрыть
+                </button>
+            </div>
+        </div>
     </div>
 
     <div class="flex h-screen overflow-hidden">
@@ -558,6 +658,195 @@
             loadServices();
         });
 
+        // Список сервисов BarkFluff в порядке перезапуска
+        const barkFluffServices = [
+            { name: 'configuration', label: 'Configuration' },
+            { name: 'beacon', label: 'Beacon' },
+            { name: 'files', label: 'Files' },
+            { name: 'identity', label: 'Identity' },
+            { name: 'messages', label: 'Messages' },
+            { name: 'notification', label: 'Notification' },
+            { name: 'users', label: 'Users' },
+            { name: 'fast-auth', label: 'FastAuth' },
+            { name: 'updates', label: 'Updates' },
+            { name: 'onliner', label: 'Onliner' }
+        ];
+
+        let progressState = {
+            services: [],
+            currentIndex: 0,
+            completed: [],
+            errors: [],
+            action: 'restart',
+            isRunning: false
+        };
+
+        // Открыть модалку прогресса
+        function openProgressModal(action) {
+            progressState = {
+                services: barkFluffServices.map(s => ({ ...s, status: 'pending' })),
+                currentIndex: 0,
+                completed: [],
+                errors: [],
+                action: action,
+                isRunning: true
+            };
+
+            const modal = document.getElementById('progressModal');
+            const icon = document.getElementById('modalIcon');
+            const title = document.getElementById('modalTitle');
+            const footer = document.getElementById('modalFooter');
+
+            if (action === 'restart') {
+                icon.className = 'w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center';
+                icon.innerHTML = '<i data-lucide="rotate-cw" class="w-6 h-6 text-amber-600"></i>';
+                title.textContent = 'Перезапуск сервисов';
+            } else {
+                icon.className = 'w-12 h-12 rounded-full bg-green-100 flex items-center justify-center';
+                icon.innerHTML = '<i data-lucide="download-cloud" class="w-6 h-6 text-green-600"></i>';
+                title.textContent = 'Обновление сервисов';
+            }
+
+            footer.style.display = 'none';
+            modal.style.display = 'flex';
+            lucide.createIcons();
+            updateProgressUI();
+        }
+
+        // Закрыть модалку прогресса
+        function closeProgressModal() {
+            document.getElementById('progressModal').style.display = 'none';
+            progressState.isRunning = false;
+            // Обновляем список сервисов
+            loadServices();
+        }
+
+        // Обновить UI прогресса
+        function updateProgressUI() {
+            const total = progressState.services.length;
+            const current = progressState.currentIndex;
+            const completed = progressState.completed.length;
+            const errors = progressState.errors.length;
+
+            // Прогресс бар
+            const progress = Math.round((completed / total) * 100);
+            document.getElementById('progressBar').style.width = `${progress}%`;
+            document.getElementById('progressCount').textContent = `${completed} / ${total}`;
+
+            // Текст текущего действия
+            if (progressState.isRunning && current < total) {
+                const service = progressState.services[current];
+                const actionText = progressState.action === 'restart' ? 'Перезапуск' : 'Обновление';
+                document.getElementById('progressText').textContent = `${actionText}: ${service.label}`;
+            } else if (!progressState.isRunning) {
+                if (errors > 0) {
+                    document.getElementById('progressText').textContent = `Завершено с ошибками (${errors})`;
+                    document.getElementById('progressText').className = 'font-medium text-red-600';
+                } else {
+                    document.getElementById('progressText').textContent = 'Завершено успешно';
+                    document.getElementById('progressText').className = 'font-medium text-green-600';
+                }
+            }
+
+            // Рендер списка сервисов
+            const listHtml = progressState.services.map((service, index) => {
+                let statusClass = 'pending';
+                let icon = '<i data-lucide="clock" class="w-4 h-4 text-slate-400"></i>';
+
+                if (service.status === 'completed') {
+                    statusClass = 'completed';
+                    icon = '<i data-lucide="check-circle" class="w-4 h-4 text-green-500"></i>';
+                } else if (service.status === 'error') {
+                    statusClass = 'error';
+                    icon = '<i data-lucide="x-circle" class="w-4 h-4 text-red-500"></i>';
+                } else if (service.status === 'current') {
+                    statusClass = 'current';
+                    icon = '<i data-lucide="loader" class="w-4 h-4 text-blue-500 animate-spin"></i>';
+                }
+
+                return `
+                    <div class="service-item ${statusClass}">
+                        ${icon}
+                        <span class="text-sm font-medium">${service.label}</span>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('servicesList').innerHTML = listHtml;
+            lucide.createIcons();
+        }
+
+        // Выполнить действие над одним сервисом
+        async function performServiceAction(serviceName, action) {
+            const endpoint = action === 'restart'
+                ? `/api/docker/containers/${serviceName}/restart`
+                : `/api/docker/containers/${serviceName}/pull`;
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            return await response.json();
+        }
+
+        // Запустить последовательную обработку
+        async function runSequentialProcessing(action) {
+            openProgressModal(action);
+
+            for (let i = 0; i < progressState.services.length; i++) {
+                if (!progressState.isRunning) break;
+
+                progressState.currentIndex = i;
+                progressState.services[i].status = 'current';
+                updateProgressUI();
+
+                try {
+                    const result = await performServiceAction(progressState.services[i].name, action);
+
+                    if (result.success) {
+                        progressState.services[i].status = 'completed';
+                        progressState.completed.push(progressState.services[i].name);
+                    } else {
+                        progressState.services[i].status = 'error';
+                        progressState.errors.push({
+                            name: progressState.services[i].name,
+                            error: result.message
+                        });
+                    }
+                } catch (error) {
+                    progressState.services[i].status = 'error';
+                    progressState.errors.push({
+                        name: progressState.services[i].name,
+                        error: error.message
+                    });
+                }
+
+                updateProgressUI();
+
+                // Пауза между сервисами
+                if (i < progressState.services.length - 1 && progressState.isRunning) {
+                    await new Promise(resolve => setTimeout(resolve, action === 'restart' ? 2000 : 3000));
+                }
+            }
+
+            progressState.isRunning = false;
+
+            // Показать кнопку закрытия
+            const icon = document.getElementById('modalIcon');
+            if (progressState.errors.length > 0) {
+                icon.className = 'w-12 h-12 rounded-full bg-red-100 flex items-center justify-center';
+                icon.innerHTML = '<i data-lucide="alert-circle" class="w-6 h-6 text-red-600"></i>';
+            } else {
+                icon.className = 'w-12 h-12 rounded-full bg-green-100 flex items-center justify-center';
+                icon.innerHTML = '<i data-lucide="check-circle" class="w-6 h-6 text-green-600"></i>';
+            }
+            lucide.createIcons();
+
+            document.getElementById('modalFooter').style.display = 'flex';
+            updateProgressUI();
+        }
+
         // Перезапуск всех сервисов BarkFluff
         async function restartAllServices() {
             if (!confirm('Вы уверены, что хотите перезапустить ВСЕ сервисы BarkFluff?\n\n' +
@@ -566,29 +855,7 @@
                 return;
             }
 
-            showNotification('success', 'Начинаем последовательный перезапуск всех сервисов...');
-
-            try {
-                const response = await fetch('/api/docker/containers/restart-all', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    showNotification('success', result.message);
-                    // Обновляем список сервисов через 5 секунд
-                    setTimeout(() => loadServices(), 5000);
-                } else {
-                    showNotification('error', result.message || 'Ошибка перезапуска сервисов');
-                }
-            } catch (error) {
-                console.error('Restart all error:', error);
-                showNotification('error', 'Ошибка перезапуска: ' + error.message);
-            }
+            await runSequentialProcessing('restart');
         }
 
         // Обновление всех сервисов BarkFluff
@@ -600,29 +867,7 @@
                 return;
             }
 
-            showNotification('success', 'Начинаем последовательное обновление всех сервисов...');
-
-            try {
-                const response = await fetch('/api/docker/containers/update-all', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    showNotification('success', result.message);
-                    // Обновляем список сервисов через 5 секунд
-                    setTimeout(() => loadServices(), 5000);
-                } else {
-                    showNotification('error', result.message || 'Ошибка обновления сервисов');
-                }
-            } catch (error) {
-                console.error('Update all error:', error);
-                showNotification('error', 'Ошибка обновления: ' + error.message);
-            }
+            await runSequentialProcessing('update');
         }
 
         // Инициализация
