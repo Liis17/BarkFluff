@@ -21,7 +21,8 @@
       "Bash(grep:*)",
       "WebSearch",
       "Bash(./gradlew assembleDebug:*)",
-      "Bash(./gradlew :app:compileDebugKotlin:*)"
+      "Bash(./gradlew :app:compileDebugKotlin:*)",
+      "Bash(./gradlew compileDebugKotlin:*)"
     ],
     "deny": [],
     "ask": []
