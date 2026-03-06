@@ -443,6 +443,158 @@ public class DockerService
     }
 
     /// <summary>
+    /// Порядок запуска сервисов BarkFluff (configuration первым, так как остальные от него зависят)
+    /// </summary>
+    private static readonly string[] BarkFluffServicesOrder = new[]
+    {
+        "configuration",
+        "beacon",
+        "files",
+        "identity",
+        "messages",
+        "notification",
+        "users",
+        "fast-auth",
+        "updates",
+        "onliner"
+    };
+
+    /// <summary>
+    /// Перезапустить все сервисы BarkFluff последовательно, начиная с configuration
+    /// </summary>
+    public async Task<ContainerActionResponseDto> RestartAllServicesAsync()
+    {
+        try
+        {
+            _logger.LogInformation("Начинаем последовательный перезапуск всех сервисов BarkFluff");
+
+            var results = new List<string>();
+            var errors = new List<string>();
+
+            foreach (var serviceName in BarkFluffServicesOrder)
+            {
+                try
+                {
+                    _logger.LogInformation("Перезапуск сервиса: {ServiceName}", serviceName);
+                    await RunDockerCommandAsync("restart", "-t", "30", serviceName);
+                    results.Add(serviceName);
+
+                    // Небольшая пауза чтобы сервис успел запуститься
+                    await Task.Delay(2000);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Ошибка перезапуска сервиса {ServiceName}", serviceName);
+                    errors.Add($"{serviceName}: {ex.Message}");
+                }
+            }
+
+            if (errors.Count > 0)
+            {
+                return new ContainerActionResponseDto
+                {
+                    Success = false,
+                    Message = $"Перезапущено: {string.Join(", ", results)}. Ошибки: {string.Join("; ", errors)}",
+                    ErrorDetails = string.Join("\n", errors)
+                };
+            }
+
+            return new ContainerActionResponseDto
+            {
+                Success = true,
+                Message = $"Все сервисы успешно перезапущены: {string.Join(", ", results)}"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка при массовом перезапуске сервисов");
+            return new ContainerActionResponseDto
+            {
+                Success = false,
+                Message = "Ошибка при массовом перезапуске сервисов",
+                ErrorDetails = ex.Message
+            };
+        }
+    }
+
+    /// <summary>
+    /// Обновить образы и пересоздать все сервисы BarkFluff последовательно, начиная с configuration
+    /// </summary>
+    public async Task<ContainerActionResponseDto> UpdateAllServicesAsync()
+    {
+        try
+        {
+            _logger.LogInformation("Начинаем последовательное обновление всех сервисов BarkFluff");
+
+            var results = new List<string>();
+            var errors = new List<string>();
+
+            foreach (var serviceName in BarkFluffServicesOrder)
+            {
+                try
+                {
+                    _logger.LogInformation("Обновление сервиса: {ServiceName}", serviceName);
+
+                    // 1. Pull нового образа
+                    await RunDockerComposeCommandAsync("--project-name", "barkfluff", "--env-file", "/.env", "-f", "/docker-compose.yml", "pull", serviceName);
+                    _logger.LogInformation("Образ для сервиса {ServiceName} обновлен", serviceName);
+
+                    // 2. Пересоздать контейнер
+                    await RunDockerComposeCommandAsync("--project-name", "barkfluff", "--env-file", "/.env", "-f", "/docker-compose.yml", "up", "--force-recreate", "--build", "-d", serviceName);
+                    _logger.LogInformation("Контейнер {ServiceName} пересоздан", serviceName);
+
+                    results.Add(serviceName);
+
+                    // Пауза чтобы сервис успел запуститься и инициализироваться
+                    await Task.Delay(3000);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Ошибка обновления сервиса {ServiceName}", serviceName);
+                    errors.Add($"{serviceName}: {ex.Message}");
+                }
+            }
+
+            // Очистка неиспользуемых образов в конце
+            try
+            {
+                await RunDockerCommandAsync("image", "prune", "-f");
+                _logger.LogInformation("Неиспользуемые образы очищены");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Не удалось очистить неиспользуемые образы");
+            }
+
+            if (errors.Count > 0)
+            {
+                return new ContainerActionResponseDto
+                {
+                    Success = false,
+                    Message = $"Обновлено: {string.Join(", ", results)}. Ошибки: {string.Join("; ", errors)}",
+                    ErrorDetails = string.Join("\n", errors)
+                };
+            }
+
+            return new ContainerActionResponseDto
+            {
+                Success = true,
+                Message = $"Все сервисы успешно обновлены: {string.Join(", ", results)}"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка при массовом обновлении сервисов");
+            return new ContainerActionResponseDto
+            {
+                Success = false,
+                Message = "Ошибка при массовом обновлении сервисов",
+                ErrorDetails = ex.Message
+            };
+        }
+    }
+
+    /// <summary>
     /// Обновить образ и пересоздать админ-панель через detached helper-контейнер.
     /// Файлы монтируются по их реальным хостовым путям, чтобы docker compose
     /// корректно разрешал относительные пути (./.env) внутри compose-файла.

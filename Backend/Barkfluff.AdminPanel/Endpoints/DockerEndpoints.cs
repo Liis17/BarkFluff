@@ -130,5 +130,33 @@ public static class DockerEndpoints
         })
         .WithName("UpdateAdminPanel")
         .WithOpenApi();
+
+        // Перезапустить все сервисы BarkFluff
+        group.MapPost("/containers/restart-all", async (
+            DockerService dockerService,
+            HttpContext context) =>
+        {
+            if (context.Items["AuthToken"] is not AuthToken)
+                return Results.Unauthorized();
+
+            var result = await dockerService.RestartAllServicesAsync();
+            return result.Success ? Results.Ok(result) : Results.BadRequest(result);
+        })
+        .WithName("RestartAllContainers")
+        .WithOpenApi();
+
+        // Обновить все сервисы BarkFluff
+        group.MapPost("/containers/update-all", async (
+            DockerService dockerService,
+            HttpContext context) =>
+        {
+            if (context.Items["AuthToken"] is not AuthToken)
+                return Results.Unauthorized();
+
+            var result = await dockerService.UpdateAllServicesAsync();
+            return result.Success ? Results.Ok(result) : Results.BadRequest(result);
+        })
+        .WithName("UpdateAllContainers")
+        .WithOpenApi();
     }
 }
