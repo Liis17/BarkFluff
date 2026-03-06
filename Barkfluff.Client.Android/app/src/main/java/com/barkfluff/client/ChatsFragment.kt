@@ -17,9 +17,7 @@ import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.utils.AvatarLoader
 import com.google.android.material.snackbar.Snackbar
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class ChatsFragment : Fragment() {
 
@@ -65,8 +63,17 @@ class ChatsFragment : Fragment() {
             // Перезагружаем список чатов при возврате из фона,
             // т.к. реалтайм-события в фоне не приходят
             if (grpcManager.messagesClient != null) {
-                Log.d(TAG, "onResume: app came from background, reloading chats")
-                loadChats()
+                Log.d(TAG, "onResume: app came from background, checking token and reloading chats")
+                viewLifecycleOwner.lifecycleScope.launch {
+                    // Сначала проверяем и обновляем токен при необходимости
+                    val tokenValid = grpcManager.ensureTokenValid(requireContext())
+                    if (!tokenValid) {
+                        Log.w(TAG, "onResume: Token refresh failed, navigating to login")
+                        navigateToLogin()
+                        return@launch
+                    }
+                    loadChats()
+                }
             }
         }
     }
@@ -79,9 +86,18 @@ class ChatsFragment : Fragment() {
     }
 
     private fun setupToolbar() {
-        val serverName = globalParam.serverName
-        if (serverName.isNotBlank()) {
-            binding.toolbar.title = serverName
+        // Убираем стандартный title toolbar'а, используем свой TextView
+        binding.toolbar.title = null
+        // Показываем имя пользователя
+        updateToolbarTitle()
+    }
+
+    private fun updateToolbarTitle(isConnecting: Boolean = false) {
+        if (isConnecting) {
+            binding.toolbarTitle.text = getString(R.string.connecting)
+        } else {
+            val fullName = "${globalParam.firstName} ${globalParam.lastName}".trim()
+            binding.toolbarTitle.text = fullName.ifBlank { globalParam.userName }
         }
     }
 
@@ -92,6 +108,21 @@ class ChatsFragment : Fragment() {
 
         Log.d(TAG, "loadUserAvatar: fullName='$fullName', avatarFileId='$avatarFileId', avatarPreviewFileId='$avatarPreviewFileId', userId=${globalParam.userId}")
 
+        // Пробуем загрузить из URL напрямую если он есть
+        val urlToUse = globalParam.picturePreviewUrl.ifBlank { globalParam.profilePictureUrl }
+
+        if (urlToUse.isNotBlank()) {
+            Log.d(TAG, "loadUserAvatar: Loading from URL=$urlToUse")
+            AvatarLoader.load(
+                imageView = binding.userAvatar,
+                placeholderView = binding.userAvatarPlaceholder,
+                avatarUrl = urlToUse,
+                displayName = fullName.ifBlank { globalParam.userName },
+                userId = globalParam.userId
+            )
+            return
+        }
+
         val useFileId = avatarPreviewFileId.ifBlank { avatarFileId }
 
         if (useFileId.isBlank()) {
@@ -101,36 +132,16 @@ class ChatsFragment : Fragment() {
             return
         }
 
-        AvatarLoader.showPlaceholder(binding.userAvatarPlaceholder, fullName.ifBlank { globalParam.userName }, globalParam.userId)
-        binding.userAvatar.visibility = View.GONE
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                val urlResult = grpcManager.getFileDownloadUrl(useFileId)
-                if (urlResult.isSuccess) {
-                    val url = urlResult.getOrNull()
-                    Log.d(TAG, "loadUserAvatar: Got URL for fileId=$useFileId, url=$url")
-
-                    if (url != null) {
-                        withContext(Dispatchers.Main) {
-                            AvatarLoader.loadByFileId(
-                                imageView = binding.userAvatar,
-                                placeholderView = binding.userAvatarPlaceholder,
-                                fileId = useFileId,
-                                displayName = fullName.ifBlank { globalParam.userName },
-                                userId = globalParam.userId,
-                                size = 64
-                            ) {
-                                url
-                            }
-                        }
-                    }
-                } else {
-                    Log.e(TAG, "loadUserAvatar: Failed to get URL - ${urlResult.exceptionOrNull()?.message}")
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "loadUserAvatar: Exception - ${e.message}")
-            }
+        AvatarLoader.loadByFileId(
+            imageView = binding.userAvatar,
+            placeholderView = binding.userAvatarPlaceholder,
+            fileId = useFileId,
+            displayName = fullName.ifBlank { globalParam.userName },
+            userId = globalParam.userId,
+            size = 64
+        ) {
+            val result = grpcManager.getFileDownloadUrl(useFileId)
+            if (result.isSuccess) result.getOrNull() else null
         }
     }
 
@@ -189,7 +200,9 @@ class ChatsFragment : Fragment() {
                     if (userData != null) {
                         globalParam.pictureFileId = userData.profilePictureFileId
                         globalParam.picturePreviewFileId = userData.profilePicturePreviewFileId
-                        Log.d(TAG, "checkTokenAndLoadChats: Загружены pictureFileId='${globalParam.pictureFileId}', picturePreviewFileId='${globalParam.picturePreviewFileId}'")
+                        globalParam.picturePreviewUrl = userData.profilePicturePreviewUrl
+                        globalParam.profilePictureUrl = userData.profilePictureUrl
+                        Log.d(TAG, "checkTokenAndLoadChats: Загружены pictureFileId='${globalParam.pictureFileId}', picturePreviewFileId='${globalParam.picturePreviewFileId}', picturePreviewUrl='${globalParam.picturePreviewUrl}', profilePictureUrl='${globalParam.profilePictureUrl}'")
                     }
                 }
             }
@@ -240,14 +253,32 @@ class ChatsFragment : Fragment() {
     }
 
     private fun subscribeToRealtimeEvents() {
+        // Подписка на новые сообщения
         viewLifecycleOwner.lifecycleScope.launch {
             realtimeService.newMessages.collect { event ->
                 handleNewMessage(event)
             }
         }
+        // Подписка на прочтение сообщений
         viewLifecycleOwner.lifecycleScope.launch {
             realtimeService.messagesRead.collect { event ->
                 handleMessageRead(event)
+            }
+        }
+        // Подписка на состояние соединения
+        viewLifecycleOwner.lifecycleScope.launch {
+            realtimeService.connectionState.collect { state ->
+                when (state) {
+                    RealtimeService.ConnectionState.CONNECTED -> {
+                        updateToolbarTitle(isConnecting = false)
+                    }
+                    RealtimeService.ConnectionState.CONNECTING -> {
+                        updateToolbarTitle(isConnecting = true)
+                    }
+                    RealtimeService.ConnectionState.DISCONNECTED -> {
+                        updateToolbarTitle(isConnecting = true)
+                    }
+                }
             }
         }
     }

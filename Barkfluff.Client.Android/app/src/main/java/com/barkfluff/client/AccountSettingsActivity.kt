@@ -150,25 +150,38 @@ class AccountSettingsActivity : AppCompatActivity() {
     }
 
     private fun loadAvatar() {
-        val fileId = globalParam.picturePreviewFileId.ifEmpty { globalParam.pictureFileId }
         val displayName = "${globalParam.firstName} ${globalParam.lastName}".trim()
 
-        if (fileId.isNotEmpty()) {
-            AvatarLoader.loadByFileId(
-                binding.avatarImage,
-                binding.avatarPlaceholder,
-                fileId,
-                displayName,
-                globalParam.userId,
-                size = 192
-            ) {
-                val result = grpcManager.getFileDownloadUrl(fileId)
-                if (result.isSuccess) result.getOrNull() else null
-            }
+        // Пробуем загрузить из URL напрямую если он есть
+        val urlToUse = globalParam.picturePreviewUrl.ifBlank { globalParam.profilePictureUrl }
+
+        if (urlToUse.isNotBlank()) {
+            AvatarLoader.load(
+                imageView = binding.avatarImage,
+                placeholderView = binding.avatarPlaceholder,
+                avatarUrl = urlToUse,
+                displayName = displayName,
+                userId = globalParam.userId
+            )
         } else {
-            AvatarLoader.showPlaceholder(binding.avatarPlaceholder, displayName, globalParam.userId)
-            binding.avatarImage.visibility = View.GONE
-            binding.avatarPlaceholder.visibility = View.VISIBLE
+            val fileId = globalParam.picturePreviewFileId.ifEmpty { globalParam.pictureFileId }
+            if (fileId.isNotEmpty()) {
+                AvatarLoader.loadByFileId(
+                    binding.avatarImage,
+                    binding.avatarPlaceholder,
+                    fileId,
+                    displayName,
+                    globalParam.userId,
+                    size = 192
+                ) {
+                    val result = grpcManager.getFileDownloadUrl(fileId)
+                    if (result.isSuccess) result.getOrNull() else null
+                }
+            } else {
+                AvatarLoader.showPlaceholder(binding.avatarPlaceholder, displayName, globalParam.userId)
+                binding.avatarImage.visibility = View.GONE
+                binding.avatarPlaceholder.visibility = View.VISIBLE
+            }
         }
     }
 
@@ -244,6 +257,8 @@ class AccountSettingsActivity : AppCompatActivity() {
                                 val userData = userDataResult.getOrNull()!!
                                 globalParam.pictureFileId = userData.profilePictureFileId
                                 globalParam.picturePreviewFileId = userData.profilePicturePreviewFileId
+                                globalParam.picturePreviewUrl = userData.profilePicturePreviewUrl
+                                globalParam.profilePictureUrl = userData.profilePictureUrl
                             }
                             updateUI()
                             Toast.makeText(this@AccountSettingsActivity, "Аватар обновлен", Toast.LENGTH_SHORT).show()

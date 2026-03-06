@@ -42,6 +42,7 @@ class GrpcManager {
 
     companion object {
         private const val TAG = "GrpcManager"
+        private const val TOKEN_BUFFER_MINUTES = 5
         const val DEFAULT_NAVIGATOR_URL = "https://navigator.barkfluff.com:443"
 
         // Error codes from x-error-code trailer
@@ -392,6 +393,77 @@ class GrpcManager {
     }
 
     /**
+     * Проверяет валидность access токена и обновляет его при необходимости.
+     * Вызывается перед критическими операциями (загрузка чатов, сообщений).
+     *
+     * @param context Контекст приложения
+     * @return true если токен валиден или успешно обновлён, false если обновление не удалось
+     */
+    suspend fun ensureTokenValid(context: Context): Boolean {
+        val globalParam = GlobalParam(context)
+        val expiration = globalParam.accessTokenExpiration
+        val now = System.currentTimeMillis()
+        val bufferMs = TOKEN_BUFFER_MINUTES * 60 * 1000L
+
+        // Токен ещё валиден
+        if (expiration > 0 && now + bufferMs < expiration) {
+            return true
+        }
+
+        Log.d(TAG, "ensureTokenValid: Token expiring soon, refreshing")
+        return refreshTokenInternal(globalParam, context)
+    }
+
+    /**
+     * Принудительно обновляет токен, игнорируя время истечения.
+     * Используется при получении UNAUTHENTICATED ошибки.
+     *
+     * @param context Контекст приложения
+     * @return true если токен успешно обновлён
+     */
+    suspend fun forceRefreshToken(context: Context): Boolean {
+        val globalParam = GlobalParam(context)
+        Log.d(TAG, "forceRefreshToken: Force refreshing token")
+        return refreshTokenInternal(globalParam, context)
+    }
+
+    private suspend fun refreshTokenInternal(globalParam: GlobalParam, context: Context): Boolean {
+        val refreshToken = globalParam.refreshToken
+        if (refreshToken.isNullOrBlank()) {
+            Log.e(TAG, "refreshTokenInternal: No refresh token available")
+            return false
+        }
+
+        val identityAddress = globalParam.socketIdentity
+        if (identityAddress.isBlank()) {
+            Log.e(TAG, "refreshTokenInternal: No identity address available")
+            return false
+        }
+
+        return try {
+            // Убеждаемся что identity клиент инициализирован
+            createIdentityClient(identityAddress, context, includeDeviceInfo = true)
+            val result = refreshAccessToken(refreshToken, globalParam.refreshTokenExpiration)
+
+            if (result.isSuccess) {
+                val tokenResult = result.getOrNull()!!
+                globalParam.accessToken = tokenResult.accessToken
+                globalParam.accessTokenExpiration = tokenResult.accessTokenExpiration
+                globalParam.refreshToken = tokenResult.refreshToken
+                globalParam.refreshTokenExpiration = tokenResult.refreshTokenExpiration
+                Log.i(TAG, "refreshTokenInternal: Token refreshed successfully")
+                true
+            } else {
+                Log.e(TAG, "refreshTokenInternal: Token refresh failed: ${result.exceptionOrNull()?.message}")
+                false
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "refreshTokenInternal: Error refreshing token", e)
+            false
+        }
+    }
+
+    /**
      * Получает данные текущего пользователя
      * Аналог GetUserData в WebApiUserManager
      */
@@ -410,6 +482,11 @@ class GrpcManager {
 
             Log.d(TAG, "getCurrentUserData: userId=${user.id}, username=${user.username}, profilePicture='$user.profilePicture', profilePicturePreview='$user.profilePicturePreview'")
 
+            val profilePictureFileId = extractGuidFromUrl(user.profilePicture)
+            val profilePicturePreviewFileId = extractGuidFromUrl(user.profilePicturePreview)
+            
+            Log.d(TAG, "getCurrentUserData: profilePictureFileId='$profilePictureFileId', profilePicturePreviewFileId='$profilePicturePreviewFileId'")
+
             Result.success(
                 UserData(
                     userId = user.id,
@@ -419,8 +496,8 @@ class GrpcManager {
                     bio = user.bio,
                     profilePictureUrl = user.profilePicture,
                     profilePicturePreviewUrl = user.profilePicturePreview,
-                    profilePictureFileId = extractGuidFromUrl(user.profilePicture),
-                    profilePicturePreviewFileId = extractGuidFromUrl(user.profilePicturePreview),
+                    profilePictureFileId = profilePictureFileId,
+                    profilePicturePreviewFileId = profilePicturePreviewFileId,
                     registrationDate = user.registrationDate.seconds * 1000
                 )
             )
@@ -973,15 +1050,19 @@ class GrpcManager {
                 return@withContext Result.failure(IllegalStateException("Files клиент не создан"))
             }
 
+            Log.d(TAG, "getFileDownloadUrl: Запрос URL для fileId=$fileId")
+
             val request = FilesApiOuterClass.GetTempDownloadUrlRequest.newBuilder()
                 .addFileIds(fileId)
                 .build()
 
             val response = filesClient!!.getTempDownloadUrl(request)
 
+            Log.d(TAG, "getFileDownloadUrl: Получен ответ, fileUrlsList.size=${response.fileUrlsList.size}")
+
             val fileUrl = response.fileUrlsList.firstOrNull()
             if (fileUrl == null) {
-                Log.e(TAG, "getFileDownloadUrl: Пустой список fileUrlsList для fileId=$fileId")
+                Log.e(TAG, "getFileDownloadUrl: Пустой список fileUrlsList для fileId=$fileId, response=$response")
                 return@withContext Result.failure(Exception("URL не получен: пустой ответ"))
             }
 
@@ -992,10 +1073,11 @@ class GrpcManager {
                 return@withContext Result.failure(Exception("URL не получен"))
             }
 
+            Log.d(TAG, "getFileDownloadUrl: Успешно получен URL для fileId=$fileId")
             Result.success(url)
         } catch (e: Exception) {
-            Log.e(TAG, "Ошибка получения URL файла", e)
-            Result.failure(Exception("Ошибка получения URL файла: ${e.message}"))
+            Log.e(TAG, "getFileDownloadUrl: Исключение", e)
+            Result.failure(Exception("Ошибка получения URL: ${e.message}"))
         }
     }
 
