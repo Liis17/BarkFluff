@@ -2,32 +2,37 @@ package com.barkfluff.client.utils
 
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
-import android.animation.TimeInterpolator
-import android.animation.ValueAnimator
+import android.animation.ObjectAnimator
+import android.animation.PropertyValuesHolder
 import android.view.View
 import android.view.ViewPropertyAnimator
 import android.view.animation.DecelerateInterpolator
+import android.view.animation.OvershootInterpolator
 import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.RecyclerView
 
 /**
  * Кастомный ItemAnimator для RecyclerView с iOS-подобной анимацией появления сообщений.
  * Анимация включает:
+ * - Появление из центра экрана с увеличенного масштаба
  * - Fade in (появление из прозрачности)
- * - Slide up (выезжание снизу)
- * - Scale bounce (эффект "пружины" - элемент сначала больше, потом уменьшается до нормального размера)
+ * - Spring bounce эффект при достижении конечной позиции
+ *
+ * Сообщения появляются снизу из центра экрана, начиная с увеличенного размера (1.2x),
+ * прозрачные, и плавно "встают" на своё место с эффектом пружины.
  */
 class MessageItemAnimator : DefaultItemAnimator() {
 
     companion object {
-        private const val ANIMATION_DURATION = 350L
-        private const val SLIDE_DISTANCE_DP = 60f
-        private const val SCALE_INITIAL = 1.12f
-        private const val SCALE_OVERSHOOT = 0.97f
+        private const val ANIMATION_DURATION = 400L
+        private const val ANIMATION_DURATION_SHORT = 120L
+        private const val SCALE_INITIAL = 1.2f
+        private const val SCALE_OVERSHOOT = 0.95f
         private const val SCALE_FINAL = 1.0f
-
-        // iOS-подобный интерполятор с небольшим bounce эффектом
-        private val BOUNCE_INTERPOLATOR = DecelerateInterpolator(1.8f)
+        
+        // Интерполятор с плавным замедлением и небольшим overshoot эффектом
+        private val DECELERATE_INTERPOLATOR = DecelerateInterpolator(2.0f)
+        private val OVERSHOOT_INTERPOLATOR = OvershootInterpolator(1.2f)
     }
 
     private val pendingAnimations = mutableMapOf<RecyclerView.ViewHolder, Runnable>()
@@ -40,48 +45,57 @@ class MessageItemAnimator : DefaultItemAnimator() {
             return false
         }
 
-        // Начальное состояние: прозрачный, смещён вниз, увеличен
-        holder.itemView.alpha = 0f
-        holder.itemView.translationY = SLIDE_DISTANCE_DP * holder.itemView.context.resources.displayMetrics.density
-        holder.itemView.scaleX = SCALE_INITIAL
-        holder.itemView.scaleY = SCALE_INITIAL
-
-        // Запускаем анимацию
-        val animator = holder.itemView.animate()
-            .alpha(1f)
-            .translationY(0f)
-            .scaleX(SCALE_OVERSHOOT)
-            .scaleY(SCALE_OVERSHOOT)
-            .setDuration(ANIMATION_DURATION)
-            .setInterpolator(BOUNCE_INTERPOLATOR)
-            .setListener(object : AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: Animator) {
-                    // Финальная анимация - возврат к нормальному размеру
-                    holder.itemView.animate()
-                        .scaleX(SCALE_FINAL)
-                        .scaleY(SCALE_FINAL)
-                        .setDuration(100L)
-                        .setInterpolator(DecelerateInterpolator())
-                        .setListener(object : AnimatorListenerAdapter() {
-                            override fun onAnimationEnd(animation: Animator) {
+        val view = holder.itemView
+        view.alpha = 0f
+        view.scaleX = SCALE_INITIAL
+        view.scaleY = SCALE_INITIAL
+        
+        // Анимация появления: масштаб + прозрачность
+        val scaleX = PropertyValuesHolder.ofFloat(View.SCALE_X, SCALE_INITIAL, SCALE_FINAL)
+        val scaleY = PropertyValuesHolder.ofFloat(View.SCALE_Y, SCALE_INITIAL, SCALE_FINAL)
+        val alpha = PropertyValuesHolder.ofFloat(View.ALPHA, 0f, 1f)
+        
+        val animator = ObjectAnimator.ofPropertyValuesHolder(view, scaleX, scaleY, alpha)
+        animator.duration = ANIMATION_DURATION
+        animator.interpolator = DECELERATE_INTERPOLATOR
+        
+        // Добавляем spring-эффект в конце
+        animator.addListener(object : AnimatorListenerAdapter() {
+            private var wasCancelled = false
+            
+            override fun onAnimationEnd(animation: Animator) {
+                if (wasCancelled) return
+                
+                // Spring bounce анимация для эффекта "пружины"
+                view.animate()
+                    .scaleX(SCALE_OVERSHOOT)
+                    .scaleY(SCALE_OVERSHOOT)
+                    .setDuration(ANIMATION_DURATION_SHORT / 2)
+                    .setInterpolator(OVERSHOOT_INTERPOLATOR)
+                    .withEndAction {
+                        view.animate()
+                            .scaleX(SCALE_FINAL)
+                            .scaleY(SCALE_FINAL)
+                            .setDuration(ANIMATION_DURATION_SHORT)
+                            .setInterpolator(OVERSHOOT_INTERPOLATOR)
+                            .withEndAction {
                                 dispatchAddFinished(holder)
                                 animatorMap.remove(holder)
                             }
-                        })
-                        .start()
-                }
-
-                override fun onAnimationCancel(animation: Animator) {
-                    holder.itemView.alpha = 1f
-                    holder.itemView.translationY = 0f
-                    holder.itemView.scaleX = SCALE_FINAL
-                    holder.itemView.scaleY = SCALE_FINAL
-                }
-            })
-
-        animatorMap[holder] = animator
+                            .start()
+                    }
+                    .start()
+            }
+            
+            override fun onAnimationCancel(animation: Animator) {
+                wasCancelled = true
+                view.alpha = 1f
+                view.scaleX = SCALE_FINAL
+                view.scaleY = SCALE_FINAL
+            }
+        })
+        
         animator.start()
-
         return true
     }
 
