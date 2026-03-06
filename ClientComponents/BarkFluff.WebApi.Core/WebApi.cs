@@ -104,7 +104,7 @@ namespace BarkFluff.WebApi.Core
 
         #region Создание клиентов (делегирование к ClientManager)
         public ErrorReturner CreateOnlyBeaconAC(GlobalParam gParam) => ClientManager.CreateOnlyBeaconAC(gParam);
-        public ErrorReturner CreateNavigatorAC(string navigatorUrl = "navigator.barkfluff.com:64646") => ClientManager.CreateNavigatorAC(navigatorUrl);
+        public ErrorReturner CreateNavigatorAC(string navigatorUrl = "https://navigator.barkfluff.com:443") => ClientManager.CreateNavigatorAC(navigatorUrl);
         public ErrorReturner CreateAC(GlobalParam gParam, string deviceName, string os, string appName, string appVersion, string ip) => ClientManager.CreateAC(gParam, deviceName, os, appName, appVersion, ip);
         #endregion
 

@@ -10,7 +10,7 @@ namespace BarkFluff.WebApi.Core.Managers
     /// </summary>
     internal class WebApiClientManager
     {
-        private const string DefaultNavigatorUrl = "navigator.barkfluff.com:64646";
+        private const string DefaultNavigatorUrl = "https://navigator.barkfluff.com:443";
 
         private readonly WebApi _webApi;
 
