@@ -1200,6 +1200,14 @@ class ChatActivity : AppCompatActivity() {
         // Ждём пока RealtimeService переподключится (каналы пересоздаются в ProcessLifecycleOwner.onStart).
         if (lastVisibleMessageId > 0L && !isLoadingMessages) {
             lifecycleScope.launch {
+                // Сначала проверяем и обновляем токен при необходимости
+                val tokenValid = grpcManager.ensureTokenValid(this@ChatActivity)
+                if (!tokenValid) {
+                    Log.w(TAG, "onStart: Token refresh failed, finishing activity")
+                    finish()
+                    return@launch
+                }
+
                 waitForConnection()
                 if (lastVisibleMessageId > 0L && !isLoadingMessages) {
                     Log.d(TAG, "onStart: loading missed messages from lastVisibleMessageId=$lastVisibleMessageId")

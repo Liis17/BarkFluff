@@ -15,47 +15,64 @@
         app:liftOnScrollTargetViewId="@id/chatRecyclerView"
         app:layout_constraintTop_toTopOf="parent">
 
-        <!-- Toolbar с аватаром и кнопкой поиска -->
+        <!-- Toolbar с аватаром слева, именем по центру и кнопкой поиска справа -->
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            app:title="BarkFluff"
             app:titleTextAppearance="?attr/textAppearanceTitleLarge"
             app:titleTextColor="?attr/colorOnSurface">
 
-            <!-- Аватар пользователя -->
-            <com.google.android.material.imageview.ShapeableImageView
-                android:id="@+id/userAvatar"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:layout_gravity="center_vertical|end"
-                android:layout_marginEnd="12dp"
-                android:scaleType="centerCrop"
-                android:visibility="gone"
-                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
+            <!-- Аватар пользователя слева (FrameLayout с ImageView и placeholder) -->
+            <FrameLayout
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_gravity="center_vertical|start">
 
-            <!-- Плейсхолдер аватара с инициалами -->
+                <!-- Аватар картинка -->
+                <com.google.android.material.imageview.ShapeableImageView
+                    android:id="@+id/userAvatar"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="center"
+                    android:scaleType="centerCrop"
+                    android:visibility="gone"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
+
+                <!-- Плейсхолдер аватара с инициалами -->
+                <TextView
+                    android:id="@+id/userAvatarPlaceholder"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/background_color_indicator"
+                    android:gravity="center"
+                    android:textColor="@android:color/white"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:visibility="visible" />
+
+            </FrameLayout>
+
+            <!-- Имя пользователя по центру -->
             <TextView
-                android:id="@+id/userAvatarPlaceholder"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:layout_gravity="center_vertical|end"
-                android:layout_marginEnd="8dp"
-                android:gravity="center"
-                android:textColor="?attr/colorOnPrimary"
-                android:textSize="14sp"
-                android:textStyle="bold"
-                android:visibility="visible"
-                android:background="@drawable/background_color_indicator" />
+                android:id="@+id/toolbarTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:textAppearance="?attr/textAppearanceTitleLarge"
+                android:textColor="?attr/colorOnSurface"
+                android:ellipsize="end"
+                android:maxLines="1"
+                tools:text="Иван Иванов" />
 
-            <!-- Кнопка поиска -->
+            <!-- Кнопка поиска справа -->
             <ImageButton
                 android:id="@+id/searchButton"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:layout_gravity="center_vertical|end"
-                android:layout_marginEnd="8dp"
+                android:layout_marginEnd="4dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Поиск"
                 android:padding="12dp"

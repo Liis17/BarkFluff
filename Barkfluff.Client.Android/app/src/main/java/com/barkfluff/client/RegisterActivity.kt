@@ -1043,6 +1043,8 @@ class RegisterActivity : AppCompatActivity() {
                     globalParam.pictureUrl = userData.profilePictureUrl
                     globalParam.pictureFileId = userData.profilePictureFileId
                     globalParam.picturePreviewFileId = userData.profilePicturePreviewFileId
+                    globalParam.picturePreviewUrl = userData.profilePicturePreviewUrl
+                    globalParam.profilePictureUrl = userData.profilePictureUrl
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to load user data: ${e.message}", e)

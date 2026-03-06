@@ -75,9 +75,23 @@ class ProfileFragment : Fragment() {
 
     private fun loadAvatar() {
         val fileId = globalParam.picturePreviewFileId.ifEmpty { globalParam.pictureFileId }
+        val fileUrl = globalParam.picturePreviewFileId.ifEmpty { globalParam.pictureFileId }
         val displayName = "${globalParam.firstName} ${globalParam.lastName}".trim()
 
-        if (fileId.isNotEmpty()) {
+        // Пробуем загрузить из URL напрямую если он есть
+        val urlToUse = globalParam.picturePreviewUrl.ifBlank { globalParam.profilePictureUrl }
+
+        if (urlToUse.isNotBlank()) {
+            Log.d(TAG, "loadAvatar: Loading from URL=$urlToUse")
+            AvatarLoader.load(
+                imageView = binding.avatarImage,
+                placeholderView = binding.avatarPlaceholder,
+                avatarUrl = urlToUse,
+                displayName = displayName,
+                userId = globalParam.userId
+            )
+        } else if (fileId.isNotEmpty()) {
+            Log.d(TAG, "loadAvatar: Loading from fileId=$fileId")
             AvatarLoader.loadByFileId(
                 binding.avatarImage,
                 binding.avatarPlaceholder,
@@ -108,6 +122,8 @@ class ProfileFragment : Fragment() {
                     globalParam.description = userData.bio
                     globalParam.pictureFileId = userData.profilePictureFileId
                     globalParam.picturePreviewFileId = userData.profilePicturePreviewFileId
+                    globalParam.picturePreviewUrl = userData.profilePicturePreviewUrl
+                    globalParam.profilePictureUrl = userData.profilePictureUrl
 
                     if (_binding != null) {
                         updateUI()

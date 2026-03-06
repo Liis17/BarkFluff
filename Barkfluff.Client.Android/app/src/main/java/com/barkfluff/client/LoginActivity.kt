@@ -239,9 +239,11 @@ class LoginActivity : AppCompatActivity() {
                                     globalParam.pictureId = userData.profilePictureUrl
                                     globalParam.pictureFileId = userData.profilePictureFileId
                                     globalParam.picturePreviewFileId = userData.profilePicturePreviewFileId
+                                    globalParam.picturePreviewUrl = userData.profilePicturePreviewUrl
+                                    globalParam.profilePictureUrl = userData.profilePictureUrl
                                     globalParam.registrationDate = userData.registrationDate
 
-                                    Log.d(TAG, "Login: Saved to GlobalParam - pictureFileId='${globalParam.pictureFileId}', picturePreviewFileId='${globalParam.picturePreviewFileId}'")
+                                    Log.d(TAG, "Login: Saved to GlobalParam - pictureFileId='${globalParam.pictureFileId}', picturePreviewFileId='${globalParam.picturePreviewFileId}', picturePreviewUrl='${globalParam.picturePreviewUrl}', profilePictureUrl='${globalParam.profilePictureUrl}'")
                                 }
                             }
                         }

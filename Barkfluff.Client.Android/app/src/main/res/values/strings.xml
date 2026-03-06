@@ -54,6 +54,7 @@
     <string name="chat_empty_title">Пока что здесь пусто</string>
     <string name="chat_empty_description">Начните диалог, найдя пользователя через поиск</string>
     <string name="btn_new_chat">Новый чат</string>
+    <string name="connecting">Соединение…</string>
 
     <!-- Drawer Menu -->
     <string name="drawer_favorites">Избранное</string>

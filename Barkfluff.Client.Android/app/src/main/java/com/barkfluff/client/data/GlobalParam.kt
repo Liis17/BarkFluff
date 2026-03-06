@@ -157,6 +157,14 @@ class GlobalParam(private val context: Context) {
         get() = sharedPreferences.getString(KEY_PICTURE_URL, "") ?: ""
         set(value) = sharedPreferences.edit().putString(KEY_PICTURE_URL, value).apply()
 
+    var picturePreviewUrl: String
+        get() = sharedPreferences.getString(KEY_PICTURE_PREVIEW_URL, "") ?: ""
+        set(value) = sharedPreferences.edit().putString(KEY_PICTURE_PREVIEW_URL, value).apply()
+
+    var profilePictureUrl: String
+        get() = sharedPreferences.getString(KEY_PROFILE_PICTURE_URL, "") ?: ""
+        set(value) = sharedPreferences.edit().putString(KEY_PROFILE_PICTURE_URL, value).apply()
+
     var registrationDate: Long
         get() = sharedPreferences.getLong(KEY_REGISTRATION_DATE, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_REGISTRATION_DATE, value).apply()
@@ -181,6 +189,8 @@ class GlobalParam(private val context: Context) {
             remove(KEY_PICTURE_FILE_ID)
             remove(KEY_PICTURE_PREVIEW_FILE_ID)
             remove(KEY_PICTURE_URL)
+            remove(KEY_PICTURE_PREVIEW_URL)
+            remove(KEY_PROFILE_PICTURE_URL)
             remove(KEY_REGISTRATION_DATE)
         }.apply()
 
@@ -223,6 +233,8 @@ class GlobalParam(private val context: Context) {
         private const val KEY_PICTURE_FILE_ID = "picture_file_id"
         private const val KEY_PICTURE_PREVIEW_FILE_ID = "picture_preview_file_id"
         private const val KEY_PICTURE_URL = "picture_url"
+        private const val KEY_PICTURE_PREVIEW_URL = "picture_preview_url"
+        private const val KEY_PROFILE_PICTURE_URL = "profile_picture_url"
         private const val KEY_REGISTRATION_DATE = "registration_date"
         private const val KEY_NOTIFICATIONS_ENABLED = "notifications_enabled"
 
