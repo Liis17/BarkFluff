@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "703876820930",
+    "project_id": "barkfluff-a0010",
+    "storage_bucket": "barkfluff-a0010.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:703876820930:android:5ce8c61be463a9239d305b",
+        "android_client_info": {
+          "package_name": "com.barkfluff.client"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCbjk8pssHTC5sgisbcSC1fPpZmPTfSY4Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
