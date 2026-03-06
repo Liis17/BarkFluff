@@ -3,6 +3,7 @@ package com.barkfluff.client.utils
 import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.util.Log
 import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
@@ -133,28 +134,35 @@ object AvatarLoader {
         displayName: String,
         userId: Long = 0
     ) {
+        Log.d("AvatarLoader", "load: avatarUrl='$avatarUrl', displayName='$displayName', userId=$userId")
+        
         if (!avatarUrl.isNullOrBlank()) {
-            imageView.visibility = View.VISIBLE
             placeholderView.visibility = View.GONE
+            imageView.visibility = View.VISIBLE
 
             val request = ImageRequest.Builder(imageView.context)
                 .data(avatarUrl)
                 .crossfade(200)
                 .transformations(CircleCropTransformation())
-                .listener(
-                    onError = { request, result ->
-                        android.util.Log.e("AvatarLoader", "load: onError url=$avatarUrl, error=${result.throwable}")
+                .target(
+                    onSuccess = { drawable ->
+                        android.util.Log.d("AvatarLoader", "load: onSuccess url=$avatarUrl")
+                        imageView.setImageDrawable(drawable)
+                        imageView.visibility = View.VISIBLE
+                        placeholderView.visibility = View.GONE
+                    },
+                    onError = {
+                        android.util.Log.e("AvatarLoader", "load: onError url=$avatarUrl")
                         imageView.visibility = View.GONE
                         showPlaceholderInternal(placeholderView, displayName, userId)
-                    },
-                    onSuccess = { request, result ->
-                        android.util.Log.d("AvatarLoader", "load: onSuccess url=$avatarUrl")
                     }
                 )
                 .build()
 
+            Log.d("AvatarLoader", "load: enqueueing request for url=$avatarUrl")
             getImageLoader(imageView.context).enqueue(request)
         } else {
+            Log.d("AvatarLoader", "load: avatarUrl is null or blank, showing placeholder")
             imageView.visibility = View.GONE
             showPlaceholderInternal(placeholderView, displayName, userId)
         }
@@ -353,13 +361,16 @@ object AvatarLoader {
         placeholderView.setTextColor(Color.WHITE)
 
         val color = getColorForId(userId)
+        Log.d("AvatarLoader", "showPlaceholderInternal: displayName=$displayName, userId=$userId, color=0x${Integer.toHexString(color)}, text=${getInitials(displayName)}")
+        
+        // Создаем oval drawable с нужным цветом
         val bg = GradientDrawable().apply {
             shape = GradientDrawable.OVAL
             setColor(color)
+            // Устанавливаем размер 1x1 чтобы drawable масштабировался правильно
+            setSize(1, 1)
         }
         placeholderView.background = bg
-
-        android.util.Log.d("AvatarLoader", "showPlaceholder: displayName=$displayName, userId=$userId, color=$color, text=${getInitials(displayName)}")
     }
 
     private fun createPlaceholderDrawable(displayName: String, userId: Long): GradientDrawable {
@@ -381,7 +392,8 @@ object AvatarLoader {
     }
 
     private fun getColorForId(userId: Long): Int {
-        val index = (userId.toInt() and 0x7FFFFFFF) % PLACEHOLDER_COLORS.size
+        // Используем hashCode для получения цвета, чтобы избежать проблем с большими Long
+        val index = (userId.hashCode() and 0x7FFFFFFF) % PLACEHOLDER_COLORS.size
         return PLACEHOLDER_COLORS[index]
     }
 }

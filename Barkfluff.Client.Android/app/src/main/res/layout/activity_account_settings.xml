@@ -59,7 +59,8 @@
                         android:gravity="center"
                         android:textColor="@android:color/white"
                         android:textSize="36sp"
-                        android:textStyle="bold" />
+                        android:textStyle="bold"
+                        android:visibility="visible" />
 
                 </FrameLayout>
 

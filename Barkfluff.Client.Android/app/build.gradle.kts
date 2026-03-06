@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("com.google.protobuf") version "0.9.4"
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -129,4 +130,8 @@ dependencies {
     // ExoPlayer for video/audio playback
     implementation("androidx.media3:media3-exoplayer:1.3.1")
     implementation("androidx.media3:media3-ui:1.3.1")
+
+    //firebase
+    implementation(platform("com.google.firebase:firebase-bom:34.10.0"))
+    implementation("com.google.firebase:firebase-analytics")
 }

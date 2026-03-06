@@ -17,7 +17,11 @@ import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.utils.AvatarLoader
 import com.google.android.material.snackbar.Snackbar
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class ChatsFragment : Fragment() {
 
@@ -113,6 +117,10 @@ class ChatsFragment : Fragment() {
 
         if (urlToUse.isNotBlank()) {
             Log.d(TAG, "loadUserAvatar: Loading from URL=$urlToUse")
+            // Сначала показываем placeholder пока изображение загружается
+            AvatarLoader.showPlaceholder(binding.userAvatarPlaceholder, fullName.ifBlank { globalParam.userName }, globalParam.userId)
+            binding.userAvatar.visibility = View.GONE
+            
             AvatarLoader.load(
                 imageView = binding.userAvatar,
                 placeholderView = binding.userAvatarPlaceholder,
@@ -132,6 +140,10 @@ class ChatsFragment : Fragment() {
             return
         }
 
+        // Сначала показываем placeholder пока изображение загружается
+        AvatarLoader.showPlaceholder(binding.userAvatarPlaceholder, fullName.ifBlank { globalParam.userName }, globalParam.userId)
+        binding.userAvatar.visibility = View.GONE
+        
         AvatarLoader.loadByFileId(
             imageView = binding.userAvatar,
             placeholderView = binding.userAvatarPlaceholder,
@@ -252,6 +264,9 @@ class ChatsFragment : Fragment() {
         }
     }
 
+    // Job для отложенного показа "Соединение..."
+    private var connectionCheckJob: Job? = null
+
     private fun subscribeToRealtimeEvents() {
         // Подписка на новые сообщения
         viewLifecycleOwner.lifecycleScope.launch {
@@ -265,18 +280,29 @@ class ChatsFragment : Fragment() {
                 handleMessageRead(event)
             }
         }
-        // Подписка на состояние соединения
+        // Подписка на состояние соединения с задержкой показа
         viewLifecycleOwner.lifecycleScope.launch {
             realtimeService.connectionState.collect { state ->
                 when (state) {
                     RealtimeService.ConnectionState.CONNECTED -> {
-                        updateToolbarTitle(isConnecting = false)
+                        // Отменяем отложенный показ "Соединение..."
+                        connectionCheckJob?.cancel()
+                        connectionCheckJob = null
+                        withContext(Dispatchers.Main) {
+                            updateToolbarTitle(isConnecting = false)
+                        }
                     }
-                    RealtimeService.ConnectionState.CONNECTING -> {
-                        updateToolbarTitle(isConnecting = true)
-                    }
+                    RealtimeService.ConnectionState.CONNECTING,
                     RealtimeService.ConnectionState.DISCONNECTED -> {
-                        updateToolbarTitle(isConnecting = true)
+                        // Показываем "Соединение..." только если не соединились в течение 1 секунды
+                        if (connectionCheckJob == null) {
+                            connectionCheckJob = launch {
+                                delay(1000) // Ждём 1 секунду
+                                withContext(Dispatchers.Main) {
+                                    updateToolbarTitle(isConnecting = true)
+                                }
+                            }
+                        }
                     }
                 }
             }
