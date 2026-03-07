@@ -36,6 +36,7 @@ public class ConfigurationDefaultsPopulator
         { ServiceId.FastAuth, "fast-auth" },
         { ServiceId.Updates, "updates" },
         { ServiceId.Onliner, "onliner" },
+        { ServiceId.CloudMessaging, "cloud-messaging" },
     };
 
     /// <summary>
