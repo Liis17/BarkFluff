@@ -101,7 +101,8 @@ public class PushNotificationConsumer : IConsumer<PushNotificationEvent>
                     chatAvatarUrl,
                     isGroupChat,
                     message.ContentType,
-                    message.ImagePreviewUrl);
+                    message.ImagePreviewUrl,
+                    message.AttachmentCount);
             }
 
             _logger.LogInformation(

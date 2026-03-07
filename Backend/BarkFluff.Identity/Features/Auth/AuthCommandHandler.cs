@@ -255,6 +255,9 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
 
         logger.LogDebug("Генерация refresh token для пользователя {UserId}", user.User.Id);
 
+        // Удаляем старые токены для этого устройства перед созданием нового
+        await refreshTokensStorage.DeleteRefreshTokensByDeviceIdSafe(requestContext.DeviceId, user.User.Id);
+
         var refreshTokenString = RefreshTokenGenerator.GenerateRefreshToken();
         await refreshTokensStorage.CreateNewRefreshToken(refreshTokenString, user.User.Id, requestContext.DeviceId, ExpDaysRefreshToken);
 
