@@ -7,6 +7,10 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Typeface
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -133,7 +137,7 @@ object NotificationHelper {
                 context,
                 notificationId,
                 contentIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
             )
 
             // "Прочитано" action
@@ -149,18 +153,16 @@ object NotificationHelper {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
-            // Иконка аватара
-            var avatarIcon: IconCompat? = null
-            if (avatarBitmap != null) {
-                val softBitmap = toSoftwareBitmap(avatarBitmap)
-                avatarIcon = IconCompat.createWithBitmap(softBitmap)
-            }
+            // Иконка аватара — если bitmap нет, генерируем placeholder с инициалами
+            val effectiveBitmap = avatarBitmap ?: createPlaceholderBitmap(senderName, chatId.hashCode().toLong())
+            val softBitmap = toSoftwareBitmap(effectiveBitmap)
+            val avatarIcon = IconCompat.createWithBitmap(softBitmap)
 
             // Person отправителя — его иконка станет большой круглой аватаркой
             val senderPerson = Person.Builder()
                 .setName(senderName)
                 .setKey(chatId)
-                .apply { if (avatarIcon != null) setIcon(avatarIcon) }
+                .setIcon(avatarIcon)
                 .build()
 
             // Динамический Shortcut — обязателен для Android 11+ чтобы уведомление
@@ -168,7 +170,7 @@ object NotificationHelper {
             val shortcut = ShortcutInfoCompat.Builder(context, chatId)
                 .setShortLabel(senderName)
                 .setLongLabel(senderName)
-                .setIcon(avatarIcon ?: IconCompat.createWithResource(context, R.drawable.ic_chat_bubble))
+                .setIcon(avatarIcon)
                 .setIntent(contentIntent)
                 .setLongLived(true)
                 .setPerson(senderPerson)
@@ -193,6 +195,7 @@ object NotificationHelper {
 
             val builder = NotificationCompat.Builder(context, CHANNEL_CHAT_MESSAGES)
                 .setSmallIcon(R.drawable.ic_chat_bubble)
+                .setLargeIcon(softBitmap)
                 .setColor(context.resources.getColor(R.color.primary, null))
                 .setAutoCancel(true)
                 .setShortcutId(chatId)
@@ -253,6 +256,52 @@ object NotificationHelper {
             bitmap.copy(Bitmap.Config.ARGB_8888, false)
         } else {
             bitmap
+        }
+    }
+
+    private val PLACEHOLDER_COLORS = intArrayOf(
+        0xFFE57373.toInt(), 0xFFFF8A65.toInt(), 0xFFFFB74D.toInt(),
+        0xFFFFD54F.toInt(), 0xFFAED581.toInt(), 0xFF4DB6AC.toInt(),
+        0xFF4FC3F7.toInt(), 0xFF7986CB.toInt(), 0xFFBA68C8.toInt(),
+        0xFFF06292.toInt(), 0xFF90A4AE.toInt(), 0xFFA1887F.toInt(),
+    )
+
+    /**
+     * Генерирует Bitmap-placeholder с инициалами на цветном круге.
+     * Используется когда реальный аватар недоступен.
+     */
+    private fun createPlaceholderBitmap(name: String, id: Long): Bitmap {
+        val size = 256
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+
+        val colorIndex = (id.hashCode() and 0x7FFFFFFF) % PLACEHOLDER_COLORS.size
+        val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = PLACEHOLDER_COLORS[colorIndex]
+            style = Paint.Style.FILL
+        }
+        canvas.drawCircle(size / 2f, size / 2f, size / 2f, bgPaint)
+
+        val initials = getInitials(name)
+        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            textSize = size * 0.38f
+            typeface = Typeface.DEFAULT_BOLD
+            textAlign = Paint.Align.CENTER
+        }
+        val textY = size / 2f - (textPaint.descent() + textPaint.ascent()) / 2f
+        canvas.drawText(initials, size / 2f, textY, textPaint)
+
+        return bitmap
+    }
+
+    private fun getInitials(name: String): String {
+        if (name.isBlank()) return "?"
+        val parts = name.trim().split("\\s+".toRegex())
+        return when {
+            parts.size >= 2 -> "${parts[0].first().uppercaseChar()}${parts[1].first().uppercaseChar()}"
+            parts[0].length >= 2 -> "${parts[0][0].uppercaseChar()}${parts[0][1].lowercaseChar()}"
+            else -> parts[0].first().uppercaseChar().toString()
         }
     }
 }
