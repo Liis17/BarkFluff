@@ -107,64 +107,52 @@ namespace BarkFluff.Client.WPF.UserControls
         /// </summary>
         private static bool IsImageFileType(UploadFileType fileType)
         {
-            return fileType == UploadFileType.MessageAttachmentImage || 
+            return fileType == UploadFileType.MessageAttachmentImage ||
                    fileType == UploadFileType.MessageAttachmentGif;
+        }
+
+        /// <summary>
+        /// Checks if the file type is a media type (not Document)
+        /// </summary>
+        private static bool IsMediaFileType(UploadFileType fileType)
+        {
+            return fileType != UploadFileType.MessageAttachmentDocument;
         }
 
         private void UpdateSendAsFileCheckbox()
         {
-            // Проверяем есть ли картинки и не-картинки, используя оригинальный тип или расширение файла
-            bool hasImages = false;
-            bool hasNonImages = false;
+            bool hasMedia = false;
 
             foreach (var item in _attachments)
             {
-                // Используем оригинальный тип если он есть, иначе текущий
                 var typeToCheck = item.OriginalFileType ?? item.FileType;
-                
-                if (IsImageFileType(typeToCheck))
+
+                if (IsMediaFileType(typeToCheck))
                 {
-                    hasImages = true;
-                }
-                else
-                {
-                    hasNonImages = true;
+                    hasMedia = true;
+                    break;
                 }
             }
 
-            _hasNonImageFiles = hasNonImages;
-
-            if (hasImages)
+            if (hasMedia)
             {
                 SendAsFileCheckBox.Visibility = Visibility.Visible;
-                
-                if (hasNonImages)
-                {
-                    // Force send as files when mixed content
-                    SendAsFileCheckBox.IsChecked = true;
-                    SendAsFileCheckBox.IsEnabled = false;
-                }
-                else
-                {
-                    // Only images - allow user to choose
-                    SendAsFileCheckBox.IsEnabled = true;
-                }
+                SendAsFileCheckBox.IsEnabled = true;
             }
             else
             {
-                // No images, hide checkbox
                 SendAsFileCheckBox.Visibility = Visibility.Collapsed;
             }
         }
 
         private void SendAsFileCheckBox_Changed(object sender, RoutedEventArgs e)
         {
-            // Update file types if sending as files
             if (SendAsFileCheckBox.IsChecked == true)
             {
+                // Все не-Document файлы отправляем как Document
                 foreach (var item in _attachments)
                 {
-                    if (IsImageFileType(item.FileType))
+                    if (item.FileType != UploadFileType.MessageAttachmentDocument)
                     {
                         item.OriginalFileType = item.FileType;
                         item.FileType = UploadFileType.MessageAttachmentDocument;
@@ -173,7 +161,7 @@ namespace BarkFluff.Client.WPF.UserControls
             }
             else
             {
-                // Restore original file types
+                // Восстанавливаем оригинальные типы
                 foreach (var item in _attachments)
                 {
                     if (item.OriginalFileType.HasValue)
@@ -183,8 +171,7 @@ namespace BarkFluff.Client.WPF.UserControls
                     }
                 }
             }
-            
-            // Обновляем весь UI чтобы превью переключилось между картинками и иконками
+
             RefreshUI();
         }
 
@@ -306,12 +293,14 @@ namespace BarkFluff.Client.WPF.UserControls
             {
                 if (item.FileType == UploadFileType.MessageAttachmentVideo)
                 {
-                    // Show video icon with file name
                     ShowFileIcon(previewBorder, item, Wpf.Ui.Controls.SymbolRegular.Video24);
+                }
+                else if (item.FileType == UploadFileType.MessageAttachmentAudio)
+                {
+                    ShowFileIcon(previewBorder, item, Wpf.Ui.Controls.SymbolRegular.MusicNote124);
                 }
                 else
                 {
-                    // Show document icon with file name
                     ShowFileIcon(previewBorder, item, Wpf.Ui.Controls.SymbolRegular.Document24);
                 }
             }
@@ -416,6 +405,7 @@ namespace BarkFluff.Client.WPF.UserControls
             var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".bmp", ".webp" };
             var videoExtensions = new[] { ".mp4", ".avi", ".mov", ".mkv", ".webm" };
             var gifExtensions = new[] { ".gif" };
+            var audioExtensions = new[] { ".mp3", ".wav", ".ogg", ".flac", ".aac", ".m4a", ".wma" };
 
             if (imageExtensions.Contains(extension))
                 return UploadFileType.MessageAttachmentImage;
@@ -423,6 +413,8 @@ namespace BarkFluff.Client.WPF.UserControls
                 return UploadFileType.MessageAttachmentVideo;
             else if (gifExtensions.Contains(extension))
                 return UploadFileType.MessageAttachmentGif;
+            else if (audioExtensions.Contains(extension))
+                return UploadFileType.MessageAttachmentAudio;
             else
                 return UploadFileType.MessageAttachmentDocument;
         }

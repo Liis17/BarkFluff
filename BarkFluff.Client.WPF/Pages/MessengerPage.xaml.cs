@@ -621,6 +621,7 @@ namespace BarkFluff.Client.WPF.Pages
                 MessageAttachmentType.Video => MessageBubble.MessageType.Video,
                 MessageAttachmentType.Gif => MessageBubble.MessageType.Gif,
                 MessageAttachmentType.Document => MessageBubble.MessageType.Document,
+                MessageAttachmentType.Audio => MessageBubble.MessageType.Audio,
                 _ => MessageBubble.MessageType.Text
             };
         }
@@ -2416,6 +2417,7 @@ namespace BarkFluff.Client.WPF.Pages
                 Proto.Files.UploadFileType.MessageAttachmentVideo => MessageAttachmentType.Video,
                 Proto.Files.UploadFileType.MessageAttachmentGif => MessageAttachmentType.Gif,
                 Proto.Files.UploadFileType.MessageAttachmentDocument => MessageAttachmentType.Document,
+                Proto.Files.UploadFileType.MessageAttachmentAudio => MessageAttachmentType.Audio,
                 _ => MessageAttachmentType.Document
             };
         }
@@ -2428,6 +2430,7 @@ namespace BarkFluff.Client.WPF.Pages
                 Proto.Files.UploadFileType.MessageAttachmentVideo => MessageBubble.MessageType.Video,
                 Proto.Files.UploadFileType.MessageAttachmentGif => MessageBubble.MessageType.Gif,
                 Proto.Files.UploadFileType.MessageAttachmentDocument => MessageBubble.MessageType.Document,
+                Proto.Files.UploadFileType.MessageAttachmentAudio => MessageBubble.MessageType.Audio,
                 _ => MessageBubble.MessageType.Document
             };
         }
