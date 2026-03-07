@@ -61,7 +61,11 @@ public class PushNotificationConsumer : IConsumer<PushNotificationEvent>
 
             var senderName = senderResponse.User != null
                 ? $"{senderResponse.User.FirstName} {senderResponse.User.LastName}".Trim()
-                : "Unknown";
+                : "";
+            if (string.IsNullOrWhiteSpace(senderName))
+            {
+                senderName = senderResponse.User?.Username ?? "Unknown";
+            }
 
             var senderAvatarUrl = senderResponse.User?.ProfilePicturePreview ?? string.Empty;
 
