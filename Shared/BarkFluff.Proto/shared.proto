@@ -56,7 +56,7 @@ message MessageAttachment {
 
 enum MessageAttachmentType {
 
-  MESSAGE_ATTACHMENT_TYPE_UNKNOWN = 0; // Неизвестно 
+  MESSAGE_ATTACHMENT_TYPE_UNKNOWN = 0; // Неизвестно
 
   IMAGE = 1; // Изображение
 
@@ -67,6 +67,8 @@ enum MessageAttachmentType {
   DOCUMENT = 4; // Документ
 
   AUDIO = 5; // Аудио
+
+  VOICE = 6; // Голосовое сообщение
 }
 
 enum MessageContentType {
