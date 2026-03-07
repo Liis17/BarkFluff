@@ -130,8 +130,11 @@ services:
     restart: always
     environment:
       <<: *common-variables
-    volumes:
-      - ./barkfluff-firebase-adminsdk.json:/app/firebase/barkfluff-firebase-adminsdk.json:ro
+      Firebase__ProjectId: "${FIREBASE_PROJECT_ID}"
+      Firebase__PrivateKeyId: "${FIREBASE_PRIVATE_KEY_ID}"
+      Firebase__PrivateKey: "${FIREBASE_PRIVATE_KEY}"
+      Firebase__ClientEmail: "${FIREBASE_CLIENT_EMAIL}"
+      Firebase__ClientId: "${FIREBASE_CLIENT_ID}"
     networks:
       - barkfluff-network
     depends_on:

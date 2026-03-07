@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FirebaseAdmin;
 using FirebaseAdmin.Messaging;
 using Google.Apis.Auth.OAuth2;
@@ -13,22 +14,39 @@ public class FirebaseService
     private readonly ILogger<FirebaseService> _logger;
     private readonly FirebaseMessaging? _messaging;
 
-    public FirebaseService(ILogger<FirebaseService> logger)
+    public FirebaseService(ILogger<FirebaseService> logger, IConfiguration configuration)
     {
         _logger = logger;
 
-        // Инициализация Firebase Admin SDK из service account JSON файла
-        var credentialPath = "/app/firebase/barkfluff-firebase-adminsdk.json";
-
-        if (!File.Exists(credentialPath))
-        {
-            _logger.LogWarning("Firebase credentials file not found at {Path}. Push notifications will not be sent.", credentialPath);
-            return;
-        }
-
         try
         {
-            var credential = GoogleCredential.FromFile(credentialPath);
+            var projectId = configuration["Firebase:ProjectId"];
+            var privateKeyId = configuration["Firebase:PrivateKeyId"];
+            var privateKey = configuration["Firebase:PrivateKey"];
+            var clientEmail = configuration["Firebase:ClientEmail"];
+            var clientId = configuration["Firebase:ClientId"];
+
+            if (string.IsNullOrEmpty(projectId) || string.IsNullOrEmpty(privateKey) || string.IsNullOrEmpty(clientEmail))
+            {
+                _logger.LogWarning("Firebase credentials not configured (Firebase:ProjectId, Firebase:PrivateKey, Firebase:ClientEmail). Push notifications will not be sent.");
+                return;
+            }
+
+            var serviceAccountJson = JsonSerializer.Serialize(new
+            {
+                type = "service_account",
+                project_id = projectId,
+                private_key_id = privateKeyId ?? "",
+                private_key = privateKey,
+                client_email = clientEmail,
+                client_id = clientId ?? "",
+                auth_uri = "https://accounts.google.com/o/oauth2/auth",
+                token_uri = "https://oauth2.googleapis.com/token",
+                auth_provider_x509_cert_url = "https://www.googleapis.com/oauth2/v1/certs",
+                client_x509_cert_url = $"https://www.googleapis.com/robot/v1/metadata/x509/{Uri.EscapeDataString(clientEmail)}"
+            });
+
+            var credential = GoogleCredential.FromJson(serviceAccountJson);
 
             if (FirebaseApp.DefaultInstance == null)
             {
