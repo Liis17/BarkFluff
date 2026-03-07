@@ -22,6 +22,10 @@ object NotificationHelper {
 
     private const val TAG = "NotificationHelper"
 
+    // Дедупликация уведомлений по messageId - публичный для использования в FirebaseMessagingService
+    val recentlyShownMessages = mutableSetOf<Long>()
+    private const val DEDUP_MAX_SIZE = 100
+
     // Группа
     private const val GROUP_ID = "barkfluff"
     private const val GROUP_NAME = "BarkFluff"
@@ -103,6 +107,20 @@ object NotificationHelper {
         imageBitmap: Bitmap? = null
     ) {
         try {
+            // Проверяем дубликаты по messageId
+            synchronized(recentlyShownMessages) {
+                if (messageId > 0 && recentlyShownMessages.contains(messageId)) {
+                    Log.d(TAG, "Skipping duplicate notification for messageId=$messageId")
+                    return
+                }
+                if (messageId > 0) {
+                    recentlyShownMessages.add(messageId)
+                    if (recentlyShownMessages.size > DEDUP_MAX_SIZE) {
+                        recentlyShownMessages.clear()
+                    }
+                }
+            }
+
             val notificationId = chatId.hashCode()
 
             // Content intent — открыть чат

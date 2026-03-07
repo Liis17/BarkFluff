@@ -104,7 +104,8 @@ public class FirebaseService
                     ["is_group_chat"] = isGroupChat.ToString().ToLowerInvariant(),
                     ["content_type"] = contentType.ToString(),
                     ["image_url"] = imagePreviewUrl ?? "",
-                    ["message_id"] = messageId.ToString()
+                    ["message_id"] = messageId.ToString(),
+                    ["message_text"] = messagePreview
                 },
                 Android = new AndroidConfig
                 {

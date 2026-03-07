@@ -61,14 +61,17 @@ public class PushNotificationSchedulerHandler : INotificationHandler<NewMessageN
                     var publisher = scope.ServiceProvider.GetRequiredService<IPublishEndpoint>();
 
                     // Извлекаем превью изображения из первого IMAGE вложения
+                    // Используем только PreviewUrl - fileId бесполезен для FCM (Android не может загрузить по fileId)
                     string? imagePreviewUrl = null;
                     var imageAttachment = notification.Message.Content?.Attachments
                         .FirstOrDefault(a => a.Type == MessageAttachmentType.Image);
                     if (imageAttachment != null)
                     {
-                        imagePreviewUrl = !string.IsNullOrEmpty(imageAttachment.PreviewUrl)
-                            ? imageAttachment.PreviewUrl
-                            : imageAttachment.PreviewFileId;
+                        imagePreviewUrl = imageAttachment.PreviewUrl;
+                        if (string.IsNullOrEmpty(imagePreviewUrl))
+                        {
+                            _logger.LogWarning("Image attachment has no PreviewUrl, BigPictureStyle не будет работать для сообщения {MessageId}", notification.Message.Id);
+                        }
                     }
 
                     await publisher.Publish(new PushNotificationEvent
