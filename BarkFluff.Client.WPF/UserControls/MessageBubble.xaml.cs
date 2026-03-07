@@ -42,6 +42,7 @@ namespace BarkFluff.Client.WPF.UserControls
         {
             PureImage,   // Все Image/Gif → MultiImageGrid
             PureVideo,   // Все Video → MultiVideoGrid
+            PureAudio,   // Все Audio → список AudioMessageContent
             Mixed        // Смешанные типы или есть Document → MultiDocumentList
         }
 
@@ -139,6 +140,9 @@ namespace BarkFluff.Client.WPF.UserControls
                     case MessageType.Video:
                         SetupVideoContent(message);
                         break;
+                    case MessageType.Audio:
+                        SetupAudioContent(message);
+                        break;
                     case MessageType.Text:
                     default:
                         SetupTextContent(message);
@@ -183,6 +187,20 @@ namespace BarkFluff.Client.WPF.UserControls
                     this.MinWidth = IMAGE_MAX_WIDTH;
                     break;
 
+                case AttachmentDisplayMode.PureAudio:
+                    // Все вложения - аудио → список AudioMessageContent
+                    var audioPanel = new StackPanel();
+                    foreach (var att in attachments)
+                    {
+                        var audioItem = new AudioMessageContent(att);
+                        audioItem.Margin = new Thickness(0, 0, 0, 4);
+                        audioPanel.Children.Add(audioItem);
+                    }
+                    MediaContentPresenter.Content = audioPanel;
+                    SetMediaContentMargin(true);
+                    this.MinWidth = 280;
+                    break;
+
                 case AttachmentDisplayMode.Mixed:
                     // Смешанные типы или есть документы → список файлов
                     var list = new MultiDocumentList();
@@ -205,35 +223,37 @@ namespace BarkFluff.Client.WPF.UserControls
             bool hasImage = false;
             bool hasVideo = false;
             bool hasDocument = false;
+            bool hasAudio = false;
 
-            // Анализируем ВСЕ вложения
             foreach (var attachment in attachments)
             {
                 if (IsImageType(attachment))
                     hasImage = true;
                 else if (IsVideoType(attachment))
                     hasVideo = true;
+                else if (IsAudioType(attachment))
+                    hasAudio = true;
                 else if (IsDocumentType(attachment))
                     hasDocument = true;
             }
 
-            // Если есть документ → смешанный режим (список)
             if (hasDocument)
                 return AttachmentDisplayMode.Mixed;
 
-            // Если есть и картинки и видео → смешанный режим (список)
-            if (hasImage && hasVideo)
+            // Один тип контента
+            int typeCount = (hasImage ? 1 : 0) + (hasVideo ? 1 : 0) + (hasAudio ? 1 : 0);
+            if (typeCount > 1)
                 return AttachmentDisplayMode.Mixed;
 
-            // Если только картинки → режим сетки картинок
-            if (hasImage && !hasVideo)
+            if (hasImage)
                 return AttachmentDisplayMode.PureImage;
 
-            // Если только видео → режим сетки видео
-            if (hasVideo && !hasImage)
+            if (hasVideo)
                 return AttachmentDisplayMode.PureVideo;
 
-            // Fallback
+            if (hasAudio)
+                return AttachmentDisplayMode.PureAudio;
+
             return AttachmentDisplayMode.Mixed;
         }
 
@@ -251,6 +271,11 @@ namespace BarkFluff.Client.WPF.UserControls
         private bool IsVideoType(AttachmentsModel attachment)
         {
             return attachment.Type == Proto.Shared.MessageAttachmentType.Video;
+        }
+
+        private bool IsAudioType(AttachmentsModel attachment)
+        {
+            return attachment.Type == Proto.Shared.MessageAttachmentType.Audio;
         }
 
         /// <summary>
@@ -323,7 +348,7 @@ namespace BarkFluff.Client.WPF.UserControls
             }
 
             // Set up document content
-            var documentContent = new DocumentMessageContent(attachment.FileId, attachment.PreviewUrl, attachment.Size);
+            var documentContent = new DocumentMessageContent(attachment);
             MediaContentPresenter.Content = documentContent;
             SetMediaContentMargin(true);
 
@@ -357,6 +382,32 @@ namespace BarkFluff.Client.WPF.UserControls
             SetMediaContentMargin(false);
 
             this.MinWidth = IMAGE_MAX_WIDTH;
+        }
+
+        private void SetupAudioContent(MessageModel message)
+        {
+            var attachment = message.Attachments?.FirstOrDefault();
+            if (attachment == null || string.IsNullOrEmpty(attachment.FileId))
+            {
+                SetupTextContent(message);
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(message.Text))
+            {
+                _textContent = new TextMessageContent(message.Text);
+                TextContentPresenter.Content = _textContent;
+            }
+            else
+            {
+                TextContentPresenter.Content = null;
+            }
+
+            var audioContent = new AudioMessageContent(attachment);
+            MediaContentPresenter.Content = audioContent;
+            SetMediaContentMargin(true);
+
+            this.MinWidth = 280;
         }
 
         private async void SendMessage((bool sendingRequired, bool isUserId, string recipient) options, string textMessage, List<string> filesId)
@@ -628,6 +679,7 @@ namespace BarkFluff.Client.WPF.UserControls
             Video,
             Gif,
             Document,
+            Audio,
         }
 
         public enum MessageOwner

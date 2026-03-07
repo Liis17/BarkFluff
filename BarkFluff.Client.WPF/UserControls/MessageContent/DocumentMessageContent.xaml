@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:local="clr-namespace:BarkFluff.Client.WPF.UserControls"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     d:DesignHeight="60"
     d:DesignWidth="300"
@@ -18,7 +19,7 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!--  Document icon  -->
+        <!--  Document icon (shown when no preview)  -->
         <Border
             x:Name="IconBorder"
             Grid.RowSpan="2"
@@ -32,6 +33,23 @@
                 FontSize="20"
                 Foreground="White"
                 Symbol="Document16" />
+        </Border>
+
+        <!--  Preview image (shown when preview available, hidden by default)  -->
+        <Border
+            x:Name="PreviewBorder"
+            Grid.RowSpan="2"
+            Width="40"
+            Height="40"
+            Margin="0,0,10,0"
+            CornerRadius="6"
+            ClipToBounds="True"
+            Visibility="Collapsed">
+            <local:CachedImage
+                x:Name="PreviewCachedImage"
+                Width="40"
+                Height="40"
+                Stretch="UniformToFill" />
         </Border>
 
         <!--  File name  -->
