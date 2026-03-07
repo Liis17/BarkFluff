@@ -54,4 +54,11 @@
         <item name="android:windowEnterAnimation">@anim/bottom_sheet_slide_in</item>
         <item name="android:windowExitAnimation">@anim/bottom_sheet_slide_out</item>
     </style>
+
+    <!-- Диалог без отступов для профиля чата -->
+    <style name="Theme.BarkfluffClientAndroid.Dialog.NoPadding" parent="Theme.Material3.DayNight.Dialog.Alert">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">true</item>
+    </style>
 </resources>

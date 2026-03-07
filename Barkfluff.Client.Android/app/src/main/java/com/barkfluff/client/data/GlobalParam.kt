@@ -173,6 +173,10 @@ class GlobalParam(private val context: Context) {
         get() = sharedPreferences.getBoolean(KEY_NOTIFICATIONS_ENABLED, true)
         set(value) = sharedPreferences.edit().putBoolean(KEY_NOTIFICATIONS_ENABLED, value).apply()
 
+    var firebaseToken: String
+        get() = sharedPreferences.getString(KEY_FIREBASE_TOKEN, "") ?: ""
+        set(value) = sharedPreferences.edit().putString(KEY_FIREBASE_TOKEN, value).apply()
+
     /**
      * Очищает пользовательские данные (для выхода из аккаунта).
      * Оставляет серверные адреса, device_id, server_name.
@@ -237,6 +241,7 @@ class GlobalParam(private val context: Context) {
         private const val KEY_PROFILE_PICTURE_URL = "profile_picture_url"
         private const val KEY_REGISTRATION_DATE = "registration_date"
         private const val KEY_NOTIFICATIONS_ENABLED = "notifications_enabled"
+        private const val KEY_FIREBASE_TOKEN = "firebase_token"
 
         /**
          * Генерирует уникальный ID устройства

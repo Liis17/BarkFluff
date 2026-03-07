@@ -16,6 +16,7 @@ import com.barkfluff.client.databinding.FragmentChatsBinding
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.utils.AvatarLoader
+import com.barkfluff.client.utils.FirebaseTokenHelper
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -221,6 +222,7 @@ class ChatsFragment : Fragment() {
 
             loadUserAvatar()
             loadChats()
+            sendFirebaseToken()
         }
     }
 
@@ -459,6 +461,16 @@ class ChatsFragment : Fragment() {
         val intent = Intent(requireContext(), LoginActivity::class.java)
         startActivity(intent)
         requireActivity().finish()
+    }
+
+    /**
+     * Отправляет Firebase токен на сервер при каждом запуске.
+     * Это нужно для получения push-уведомлений.
+     */
+    private fun sendFirebaseToken() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            FirebaseTokenHelper.getTokenAndSendToServer(requireContext(), grpcManager)
+        }
     }
 
     override fun onDestroyView() {
