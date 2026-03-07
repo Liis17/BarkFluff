@@ -28,6 +28,11 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
         /// <summary>
         /// Документ
         /// </summary>
-        Document
+        Document,
+
+        /// <summary>
+        /// Аудио файл
+        /// </summary>
+        Audio
     }
 }

@@ -1,8 +1,11 @@
+using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
+
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+
 using Wpf.Ui.Controls;
 
 namespace BarkFluff.Client.WPF.UserControls.MessageContent
@@ -15,6 +18,48 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
         {
             InitializeComponent();
             DocumentPanel.MouseLeftButtonDown += DocumentPanel_MouseLeftButtonDown;
+        }
+
+        public DocumentMessageContent(AttachmentsModel attachment) : this()
+        {
+            FileId = attachment.FileId;
+
+            SetIconForType(attachment.Type);
+
+            // Имя файла: приоритет FileName из сервера, затем fallback
+            if (!string.IsNullOrEmpty(attachment.FileName))
+            {
+                DocumentFileName.Text = attachment.FileName;
+            }
+            else if (!string.IsNullOrEmpty(attachment.PreviewUrl))
+            {
+                DocumentFileName.Text = Path.GetFileName(attachment.PreviewUrl);
+            }
+            else
+            {
+                DocumentFileName.Text = GenerateFileName(attachment.FileId, attachment.Type);
+            }
+
+            // Размер файла
+            if (attachment.Size > 0)
+            {
+                DocumentFileSize.Text = FormatFileSize(attachment.Size);
+                DocumentFileSize.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                DocumentFileSize.Visibility = Visibility.Collapsed;
+            }
+
+            // Превью-картинка если есть PreviewFileId
+            if (!string.IsNullOrEmpty(attachment.PreviewFileId))
+            {
+                IconBorder.Visibility = Visibility.Collapsed;
+                PreviewBorder.Visibility = Visibility.Visible;
+                PreviewCachedImage.FileId = attachment.PreviewFileId;
+                PreviewCachedImage.FileUrl = attachment.PreviewUrl;
+                PreviewCachedImage.FileType = Services.App.Caching.FileType.Image;
+            }
         }
 
         public DocumentMessageContent(string fileId, string previewUrl, long size) : this()
@@ -118,6 +163,11 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
                 case BarkFluff.Proto.Shared.MessageAttachmentType.Video:
                     DocumentIcon.Symbol = SymbolRegular.Video16;
                     IconBorder.Background = new SolidColorBrush(Color.FromRgb(0xF4, 0x43, 0x36)); // Красный
+                    break;
+
+                case BarkFluff.Proto.Shared.MessageAttachmentType.Audio:
+                    DocumentIcon.Symbol = SymbolRegular.MusicNote120;
+                    IconBorder.Background = new SolidColorBrush(Color.FromRgb(0xAB, 0x47, 0xBC)); // Фиолетовый
                     break;
 
                 case BarkFluff.Proto.Shared.MessageAttachmentType.Document:

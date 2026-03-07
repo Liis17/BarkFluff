@@ -76,6 +76,7 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
             Directory.CreateDirectory(GetCacheDirectory(FileType.Video));
             Directory.CreateDirectory(GetCacheDirectory(FileType.Gif));
             Directory.CreateDirectory(GetCacheDirectory(FileType.Document));
+            Directory.CreateDirectory(GetCacheDirectory(FileType.Audio));
 
             _db = new LiteDatabase(dbPath);
             _files = _db.GetCollection<CachedFile>("cached_files");
@@ -95,6 +96,7 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
                 FileType.Video => "videos",
                 FileType.Gif => "gifs",
                 FileType.Document => "documents",
+                FileType.Audio => "audio",
                 _ => "other"
             };
             return Path.Combine(_baseCacheDir, subDir);
@@ -112,6 +114,7 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
                 FileType.Video => VideoPlaceholder,
                 FileType.Gif => GifPlaceholder,
                 FileType.Document => DocumentPlaceholder,
+                FileType.Audio => AudioPlaceholder,
                 _ => DefaultPlaceholder
             };
         }
@@ -316,6 +319,7 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
                             FileType.Video => ".mp4",
                             FileType.Gif => ".gif",
                             FileType.Document => ".bin",
+                            FileType.Audio => ".mp3",
                             _ => ".bin"
                         };
                     }
@@ -353,6 +357,113 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
                 WPF.App.ErideMessage?.AddMessage(
                     $"Ошибка при загрузке файла {fileId}: {ex.Message}",
                     new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
+                FileDownloadFailed?.Invoke(fileId, ex.Message);
+                return null;
+            }
+            finally
+            {
+                _downloadSemaphore.Release();
+            }
+        }
+
+        /// <summary>
+        /// Загружает и кеширует файл с отчётом о прогрессе
+        /// </summary>
+        public async Task<string?> DownloadAndCacheFileWithProgressAsync(string fileId, FileType fileType, string? providedUrl, IProgress<double> progress)
+        {
+            await _downloadSemaphore.WaitAsync();
+            try
+            {
+                lock (_lock)
+                {
+                    var cached = _files.FindOne(x => x.Hash == fileId);
+                    if (cached != null && File.Exists(cached.Path))
+                    {
+                        progress.Report(1.0);
+                        return cached.Path;
+                    }
+                }
+
+                string url;
+                if (!string.IsNullOrEmpty(providedUrl))
+                {
+                    url = providedUrl;
+                }
+                else
+                {
+                    var response = await WPF.App.ServerCommunication.GetFile(WPF.App.GParam, fileId);
+                    if (!response.error.IsSuccess || string.IsNullOrEmpty(response.url))
+                    {
+                        FileDownloadFailed?.Invoke(fileId, response.error.ErrorMessage ?? "Неизвестная ошибка");
+                        return null;
+                    }
+                    url = response.url;
+                }
+
+                string extension;
+                try
+                {
+                    extension = Path.GetExtension(new Uri(url).AbsolutePath);
+                    if (string.IsNullOrEmpty(extension))
+                    {
+                        extension = fileType switch
+                        {
+                            FileType.Avatar => ".png",
+                            FileType.Image => ".png",
+                            FileType.Video => ".mp4",
+                            FileType.Gif => ".gif",
+                            FileType.Document => ".bin",
+                            FileType.Audio => ".mp3",
+                            _ => ".bin"
+                        };
+                    }
+                }
+                catch
+                {
+                    extension = ".bin";
+                }
+
+                var cacheDir = GetCacheDirectory(fileType);
+                var filePath = Path.Combine(cacheDir, $"{fileId}{extension}");
+
+                using var response2 = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+                response2.EnsureSuccessStatusCode();
+                var totalBytes = response2.Content.Headers.ContentLength ?? -1;
+
+                await using var contentStream = await response2.Content.ReadAsStreamAsync();
+                await using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
+
+                var buffer = new byte[8192];
+                long downloadedBytes = 0;
+                int bytesRead;
+
+                while ((bytesRead = await contentStream.ReadAsync(buffer)) > 0)
+                {
+                    await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead));
+                    downloadedBytes += bytesRead;
+                    if (totalBytes > 0)
+                    {
+                        progress.Report((double)downloadedBytes / totalBytes);
+                    }
+                }
+
+                progress.Report(1.0);
+
+                lock (_lock)
+                {
+                    _files.Upsert(new CachedFile
+                    {
+                        Hash = fileId,
+                        Path = filePath,
+                        FileType = fileType
+                    });
+                }
+
+                FileCached?.Invoke(fileId, filePath, fileType);
+                return filePath;
+            }
+            catch (Exception ex)
+            {
                 FileDownloadFailed?.Invoke(fileId, ex.Message);
                 return null;
             }

@@ -26,12 +26,7 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
 
             foreach (var attachment in attachments)
             {
-                // Передаем тип вложения для правильной иконки
-                var documentItem = new DocumentMessageContent(
-                    attachment.FileId,
-                    attachment.PreviewUrl,
-                    attachment.Size,
-                    attachment.Type);  // ← НОВЫЙ параметр
+                var documentItem = new DocumentMessageContent(attachment);
 
                 documentItem.Margin = new Thickness(0, 0, 0, 4);
                 DocumentStack.Children.Add(documentItem);
