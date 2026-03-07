@@ -45,6 +45,9 @@ service UsersApi {
 
   // Переименовать устройство
   rpc RenameDevice(RenameDeviceRequest) returns(RenameDeviceResponse);
+
+  // Установить Firebase токен устройства
+  rpc SetFirebaseToken(SetFirebaseTokenRequest) returns(SetFirebaseTokenResponse);
 }
 
 service UsersServerApi {
@@ -433,4 +436,12 @@ message GetUserByUsernameResponse {
   string bio = 5; // био
   string profile_picture = 6; // ссылка на аватарку
 }
+
+// Запросы и ответы для установки Firebase токена
+
+message SetFirebaseTokenRequest {
+  string firebase_token = 1; // Firebase токен устройства
+}
+
+message SetFirebaseTokenResponse { }
 

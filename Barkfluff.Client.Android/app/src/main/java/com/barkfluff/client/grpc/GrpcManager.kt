@@ -508,6 +508,28 @@ class GrpcManager {
     }
 
     /**
+     * Отправляет Firebase токен на сервер
+     */
+    suspend fun setFirebaseToken(token: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (usersClient == null) {
+                return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            }
+
+            val request = UsersApiOuterClass.SetFirebaseTokenRequest.newBuilder()
+                .setFirebaseToken(token)
+                .build()
+
+            usersClient!!.setFirebaseToken(request)
+            Log.d(TAG, "Firebase токен успешно отправлен на сервер")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка отправки Firebase токена", e)
+            Result.failure(Exception("Ошибка отправки Firebase токена: ${e.message}"))
+        }
+    }
+
+    /**
      * Получает список серверов из навигатора
      * Аналог GetServerList в WebApiServerManager
      */
