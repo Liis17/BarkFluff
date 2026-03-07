@@ -62,20 +62,11 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
         val attachmentCount = data["attachment_count"]?.toIntOrNull() ?: 0
         val messageText = data["message_text"] ?: ""
 
-        // Проверяем дубликаты (если gRPC уже показал уведомление)
-        synchronized(NotificationHelper.recentlyShownMessages) {
-            if (NotificationHelper.recentlyShownMessages.contains(messageId)) {
-                Log.d(TAG, "Skipping duplicate notification for messageId=$messageId")
-                return
-            }
-            NotificationHelper.recentlyShownMessages.add(messageId)
-            // Очищаем старые записи для предотвращения утечки памяти
-            if (NotificationHelper.recentlyShownMessages.size > 100) {
-                NotificationHelper.recentlyShownMessages.clear()
-            }
-        }
+        // Дедупликация обрабатывается в NotificationHelper.showMessageNotification()
+        // Здесь НЕ добавляем в recentlyShownMessages, иначе showMessageNotification
+        // найдёт messageId уже в сете и пропустит показ уведомления.
 
-        Log.d(TAG, "onMessageReceived: chatId=$chatId, sender=$senderName, isGroup=$isGroupChat, contentType=$contentType")
+        Log.d(TAG, "onMessageReceived: chatId=$chatId, sender=$senderName, isGroup=$isGroupChat, contentType=$contentType, messageId=$messageId")
 
         // Определяем отображаемое имя и аватар
         val displayName = if (isGroupChat && !chatTitle.isNullOrBlank()) {

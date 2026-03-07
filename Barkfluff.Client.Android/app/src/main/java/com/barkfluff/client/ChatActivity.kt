@@ -88,6 +88,16 @@ class ChatActivity : AppCompatActivity() {
         private const val LOAD_MESSAGES_DELAY_MS = 500L
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        val newChatId = intent.getStringExtra(EXTRA_CHAT_ID)
+        if (newChatId != null && newChatId != chatId) {
+            // Другой чат — пересоздаём activity с новым intent
+            setIntent(intent)
+            recreate()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityChatBinding.inflate(layoutInflater)

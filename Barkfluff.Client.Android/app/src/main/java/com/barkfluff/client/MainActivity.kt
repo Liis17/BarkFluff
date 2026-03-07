@@ -32,6 +32,15 @@ class MainActivity : AppCompatActivity() {
         private const val TAB_CHATS = 1
         private const val TAB_PROFILE = 2
         private const val KEY_CURRENT_TAB = "current_tab"
+
+        /**
+         * Хранит chatId для открытия после cold start (когда приложение убито
+         * и уведомление открывает MainActivity, минуя SplashActivity).
+         * SplashActivity выполнит инициализацию → вернётся в MainActivity →
+         * chatId будет прочитан из этого поля.
+         */
+        @Volatile
+        var pendingChatId: String? = null
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -64,24 +73,40 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleChatIntent(intent: Intent?) {
-        // extra_chat_id — из нашего PendingIntent, chat_id — fallback из FCM data payload
+        // extra_chat_id — из нашего PendingIntent, chat_id — fallback из FCM data payload,
+        // pendingChatId — сохранённый chatId после cold start через SplashActivity
         val chatId = intent?.getStringExtra(NotificationHelper.EXTRA_CHAT_ID)
             ?: intent?.getStringExtra("chat_id")
+            ?: pendingChatId
             ?: return
-        Log.d("MainActivity", "Opening chat from notification: chatId=$chatId")
 
-        // Устанавливаем чат как открытый
-        com.barkfluff.client.data.OpenChatManager.setOpenChat(chatId)
-        
-        // Открываем ChatActivity
-        val chatIntent = Intent(this, ChatActivity::class.java).apply {
-            putExtra("chat_id", chatId)
-        }
-        startActivity(chatIntent)
-        
-        // Очищаем extra чтобы не обрабатывать повторно
+        // Очищаем все источники чтобы не обрабатывать повторно
+        pendingChatId = null
         intent?.removeExtra(NotificationHelper.EXTRA_CHAT_ID)
         intent?.removeExtra("chat_id")
+
+        Log.d("MainActivity", "Opening chat from notification: chatId=$chatId")
+
+        // Проверяем инициализацию gRPC клиентов
+        val app = applicationContext as BarkFluffApplication
+        if (!app.grpcManager.isInitialized()) {
+            // Приложение было убито → gRPC не инициализирован.
+            // Сохраняем chatId и перенаправляем через SplashActivity для инициализации.
+            Log.d("MainActivity", "gRPC not initialized, redirecting through SplashActivity")
+            pendingChatId = chatId
+            startActivity(Intent(this, SplashActivity::class.java))
+            finish()
+            return
+        }
+
+        // gRPC готов — открываем ChatActivity
+        com.barkfluff.client.data.OpenChatManager.setOpenChat(chatId)
+
+        val chatIntent = Intent(this, ChatActivity::class.java).apply {
+            putExtra("chat_id", chatId)
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        startActivity(chatIntent)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
