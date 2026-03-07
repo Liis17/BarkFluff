@@ -38,17 +38,20 @@ public class GetChatInfoCommandHandler : IRequestHandler<GetChatInfoCommand, Get
             _userContext.UserId
         );
 
-        // Проверка доступа к чату
-        var hasAccess = await _chatsStorage.CheckAccessToChat(request.ChatId, _userContext.UserId);
-
-        if (!hasAccess)
+        // Проверка доступа к чату (сервисные токены имеют полный доступ)
+        if (_userContext.TokenType != BarkFluff.Shared.Identity.TokenType.Service)
         {
-            _logger.LogWarning(
-                "Пользователь {UserId} не имеет доступа к чату {ChatId}",
-                _userContext.UserId,
-                request.ChatId
-            );
-            throw new NoAccessToChatException();
+            var hasAccess = await _chatsStorage.CheckAccessToChat(request.ChatId, _userContext.UserId);
+
+            if (!hasAccess)
+            {
+                _logger.LogWarning(
+                    "Пользователь {UserId} не имеет доступа к чату {ChatId}",
+                    _userContext.UserId,
+                    request.ChatId
+                );
+                throw new NoAccessToChatException();
+            }
         }
 
         // Получение информации о чате
@@ -69,7 +72,8 @@ public class GetChatInfoCommandHandler : IRequestHandler<GetChatInfoCommand, Get
         };
 
         // Для личных чатов загружаем title и picture из кэша или Users API
-        if (!chatInfo.IsGroupChat)
+        // Для сервисных токенов пропускаем — нет контекста пользователя для определения собеседника
+        if (!chatInfo.IsGroupChat && _userContext.TokenType != BarkFluff.Shared.Identity.TokenType.Service)
         {
             var cachedTitle = await _chatCache.GetChatName(request.ChatId, _userContext.UserId);
             var cachedPicture = await _chatCache.GetChatImage(request.ChatId, _userContext.UserId);
