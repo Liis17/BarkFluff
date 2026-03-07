@@ -176,13 +176,22 @@ object NotificationHelper {
             val builder = NotificationCompat.Builder(context, CHANNEL_CHAT_MESSAGES)
                 .setSmallIcon(R.drawable.ic_chat_bubble)
                 .setColor(context.resources.getColor(R.color.primary, null))
-                .setStyle(messagingStyle)
                 .setAutoCancel(true)
                 .setShortcutId(chatId)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_MESSAGE)
                 .setContentIntent(contentPendingIntent)
                 .addAction(0, "Прочитано", readPendingIntent)
+
+            // BigPictureStyle для изображений, иначе MessagingStyle
+            if (imageBitmap != null) {
+                val bigPictureStyle = NotificationCompat.BigPictureStyle()
+                    .bigPicture(toSoftwareBitmap(imageBitmap))
+                    .setSummaryText(senderName)
+                builder.setStyle(bigPictureStyle)
+            } else {
+                builder.setStyle(messagingStyle)
+            }
 
             try {
                 NotificationManagerCompat.from(context).notify(notificationId, builder.build())
