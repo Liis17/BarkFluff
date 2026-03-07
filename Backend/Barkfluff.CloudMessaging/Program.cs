@@ -1,34 +1,51 @@
+using BarkFluff.GrpcServer;
+using BarkFluff.Proto.Users;
+using BarkFluff.Shared.Auth;
+using BarkFluff.Shared.Exceptions.Interceptors;
+using BarkFluff.Shared.Identity;
+using Barkfluff.CloudMessaging.Consumers;
+using Barkfluff.CloudMessaging.Services;
+using MassTransit;
+using Serilog;
 
-namespace Barkfluff.CloudMessaging
-{
-    public class Program
+var builder = WebApplication.CreateBuilder(args);
+
+builder.LoadConfiguration(ServiceId.CloudMessaging);
+builder.AddBarkFluffSerilog("BarkFluff.CloudMessaging");
+builder.SetRunningAddress(builder.Configuration);
+
+// Firebase service
+builder.Services.AddSingleton<FirebaseService>();
+
+// gRPC клиент к Users сервису
+builder.Services.AddGrpcClient<UsersServerApi.UsersServerApiClient>(o =>
     {
-        public static void Main(string[] args)
+        o.Address = new Uri(builder.Configuration["UsersService:Host"] ?? throw new InvalidOperationException("UsersService:Host not configured"));
+    })
+    .AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["UsersService:Token"] ?? throw new InvalidOperationException("UsersService:Token not configured")))
+    .AddInterceptor(() => new ExceptionClientInterceptor());
+
+// MassTransit RabbitMQ
+builder.Services.AddMassTransit(x =>
+{
+    x.AddConsumer<PushNotificationConsumer>();
+
+    x.UsingRabbitMq((context, cfg) =>
+    {
+        cfg.Host(builder.Configuration["RabbitMQ:Host"] ?? throw new InvalidOperationException("RabbitMQ:Host not configured"), "/", h =>
         {
-            var builder = WebApplication.CreateBuilder(args);
+            h.Username(builder.Configuration["RabbitMQ:Username"] ?? throw new InvalidOperationException("RabbitMQ:Username not configured"));
+            h.Password(builder.Configuration["RabbitMQ:Password"] ?? throw new InvalidOperationException("RabbitMQ:Password not configured"));
+        });
 
-            // Add services to the container.
+        cfg.ReceiveEndpoint("push-notifications-handler", e =>
+        {
+            e.ConfigureConsumer<PushNotificationConsumer>(context);
+        });
+    });
+});
 
-            builder.Services.AddControllers();
-            // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-            builder.Services.AddOpenApi();
+var app = builder.Build();
 
-            var app = builder.Build();
-
-            // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
-            {
-                app.MapOpenApi();
-            }
-
-            app.UseHttpsRedirection();
-
-            app.UseAuthorization();
-
-
-            app.MapControllers();
-
-            app.Run();
-        }
-    }
-}
+app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
+app.Run();

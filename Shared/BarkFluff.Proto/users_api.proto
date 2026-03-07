@@ -45,6 +45,9 @@ service UsersApi {
 
   // Переименовать устройство
   rpc RenameDevice(RenameDeviceRequest) returns(RenameDeviceResponse);
+
+  // Установить Firebase токен устройства
+  rpc SetFirebaseToken(SetFirebaseTokenRequest) returns(SetFirebaseTokenResponse);
 }
 
 service UsersServerApi {
@@ -120,6 +123,9 @@ service UsersServerApi {
 
   // Установить аватарку пользователю (для админ-панели)
   rpc SetProfilePictureServer(SetProfilePictureServerRequest) returns(SetProfilePictureServerResponse);
+
+  // Получить устройства с Firebase токенами
+  rpc GetDevicesWithFirebaseTokens(GetDevicesWithFirebaseTokensRequest) returns(GetDevicesWithFirebaseTokensResponse);
 }
 
 // Установить аватарку (серверный)
@@ -502,5 +508,29 @@ message GetUserByUsernameResponse {
   string username = 4; // юзернейм
   string bio = 5; // био
   string profile_picture = 6; // ссылка на аватарку
+}
+
+// Запросы и ответы для установки Firebase токена
+
+message SetFirebaseTokenRequest {
+  string firebase_token = 1; // Firebase токен устройства
+}
+
+message SetFirebaseTokenResponse { }
+
+// Запросы и ответы для получения устройств с Firebase токенами
+
+message GetDevicesWithFirebaseTokensRequest {
+  repeated int64 user_ids = 1; // идентификаторы пользователей
+}
+
+message GetDevicesWithFirebaseTokensResponse {
+  repeated DeviceFirebaseToken tokens = 1; // список токенов
+}
+
+message DeviceFirebaseToken {
+  int64 user_id = 1; // идентификатор пользователя
+  string device_id = 2; // идентификатор устройства
+  string firebase_token = 3; // Firebase токен
 }
 
