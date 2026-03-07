@@ -664,7 +664,10 @@ class ChatActivity : AppCompatActivity() {
 
         messageAdapter.submitList(messageItems) {
             if (scrollToPosition >= 0) {
-                binding.messagesRecyclerView.scrollToPosition(scrollToPosition)
+                // Используем scrollToPositionWithOffset чтобы разделитель непрочитанных
+                // появился в верхней части экрана, а не где-то в видимой области
+                val layoutManager = binding.messagesRecyclerView.layoutManager as LinearLayoutManager
+                layoutManager.scrollToPositionWithOffset(scrollToPosition, 0)
             }
         }
     }
