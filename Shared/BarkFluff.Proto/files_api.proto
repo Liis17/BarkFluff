@@ -84,21 +84,23 @@ message GetUploadUrlResponse {
 }
 
 enum UploadFileType {
-  UPLOAD_FILE_TYPE_UNKNOWN = 0; 
-  
+  UPLOAD_FILE_TYPE_UNKNOWN = 0;
+
   USER_AVATAR = 1; // Аватарка пользователя
-  
+
   MESSAGE_ATTACHMENT_IMAGE = 2; // Вложение сообщения - изображение
-  
+
   MESSAGE_ATTACHMENT_VIDEO = 3; // Вложение сообщения - видео
-  
-  MESSAGE_ATTACHMENT_GIF = 4; // Вложение сообщения - гифка 
-  
+
+  MESSAGE_ATTACHMENT_GIF = 4; // Вложение сообщения - гифка
+
   MESSAGE_ATTACHMENT_DOCUMENT = 5; // Вложение сообщения - документ
 
   CHAT_PICTURE = 6; // Обложка группового чата
 
   MESSAGE_ATTACHMENT_AUDIO = 7; // Вложение сообщения - аудио
+
+  MESSAGE_ATTACHMENT_VOICE = 8; // Вложение сообщения - голосовое сообщение
 }
 
 message UploadBadgeImageRequest {
