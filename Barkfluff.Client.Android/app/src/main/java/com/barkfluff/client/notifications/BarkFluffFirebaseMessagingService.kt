@@ -59,7 +59,8 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
         val contentType = data["content_type"]?.toIntOrNull() ?: 0
         val imageUrl = data["image_url"]?.takeIf { it.isNotBlank() }
         val messageId = data["message_id"]?.toLongOrNull() ?: 0
-        val messageText = remoteMessage.notification?.body ?: data["message_text"] ?: ""
+        val attachmentCount = data["attachment_count"]?.toIntOrNull() ?: 0
+        val messageText = data["message_text"] ?: ""
 
         // Проверяем дубликаты (если gRPC уже показал уведомление)
         synchronized(NotificationHelper.recentlyShownMessages) {
@@ -90,12 +91,13 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
         }
 
         // Формируем текст в зависимости от типа контента
+        val countSuffix = if (attachmentCount > 1) " ($attachmentCount)" else ""
         val displayText = when (contentType) {
-            ATTACHMENT_TYPE_IMAGE -> if (messageText.isBlank()) "\uD83D\uDCF7 Фото" else "\uD83D\uDCF7 $messageText"
-            ATTACHMENT_TYPE_VIDEO -> "\uD83C\uDFAC Видео"
-            ATTACHMENT_TYPE_GIF -> "\uD83C\uDF7F GIF"
-            ATTACHMENT_TYPE_DOCUMENT -> "\uD83D\uDCC4 Документ"
-            ATTACHMENT_TYPE_AUDIO -> "\uD83C\uDFB5 Аудио"
+            ATTACHMENT_TYPE_IMAGE -> if (messageText.isBlank()) "\uD83D\uDCF7 Фото$countSuffix" else "\uD83D\uDCF7 $messageText"
+            ATTACHMENT_TYPE_VIDEO -> "\uD83C\uDFAC Видео$countSuffix"
+            ATTACHMENT_TYPE_GIF -> "\uD83C\uDF7F GIF$countSuffix"
+            ATTACHMENT_TYPE_DOCUMENT -> "\uD83D\uDCC4 Документ$countSuffix"
+            ATTACHMENT_TYPE_AUDIO -> "\uD83C\uDFB5 Аудио$countSuffix"
             ATTACHMENT_TYPE_VOICE -> "\uD83C\uDFA4 Голосовое сообщение"
             else -> messageText
         }
