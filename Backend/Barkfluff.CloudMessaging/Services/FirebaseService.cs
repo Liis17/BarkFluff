@@ -78,12 +78,6 @@ public class FirebaseService
                 Sound = "default"
             };
 
-            // Добавляем картинку для BigPictureStyle если есть
-            if (!string.IsNullOrEmpty(imagePreviewUrl))
-            {
-                androidNotification.Image = imagePreviewUrl;
-            }
-
             var message = new Message
             {
                 Token = fcmToken,

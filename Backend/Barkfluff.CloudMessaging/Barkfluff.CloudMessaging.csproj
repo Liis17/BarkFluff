@@ -32,6 +32,7 @@
 
   <ItemGroup>
     <Protobuf Include="..\..\Shared\BarkFluff.Proto\users_api.proto" GrpcServices="Client" />
+    <Protobuf Include="..\..\Shared\BarkFluff.Proto\messages_api.proto" GrpcServices="Client" />
     <Protobuf Include="..\..\Shared\BarkFluff.Proto\shared.proto" GrpcServices="None" />
   </ItemGroup>
 
