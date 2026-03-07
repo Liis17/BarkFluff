@@ -64,7 +64,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleChatIntent(intent: Intent?) {
-        val chatId = intent?.getStringExtra(NotificationHelper.EXTRA_CHAT_ID) ?: return
+        // extra_chat_id — из нашего PendingIntent, chat_id — fallback из FCM data payload
+        val chatId = intent?.getStringExtra(NotificationHelper.EXTRA_CHAT_ID)
+            ?: intent?.getStringExtra("chat_id")
+            ?: return
         Log.d("MainActivity", "Opening chat from notification: chatId=$chatId")
 
         // Устанавливаем чат как открытый
@@ -78,6 +81,7 @@ class MainActivity : AppCompatActivity() {
         
         // Очищаем extra чтобы не обрабатывать повторно
         intent?.removeExtra(NotificationHelper.EXTRA_CHAT_ID)
+        intent?.removeExtra("chat_id")
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
