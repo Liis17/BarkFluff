@@ -48,16 +48,16 @@ public class PushNotificationConsumer : IConsumer<PushNotificationEvent>
         try
         {
             // Параллельно получаем данные отправителя и чата
-            var senderTask = _usersClient.GetByIdAsync(
+            var senderCall = _usersClient.GetByIdAsync(
                 new GetByIdRequest { UserId = message.SenderId });
 
-            var chatInfoTask = _messagesClient.GetChatInfoAsync(
+            var chatInfoCall = _messagesClient.GetChatInfoAsync(
                 new GetChatInfoRequest { ChatId = message.ChatId.ToString() });
 
-            await System.Threading.Tasks.Task.WhenAll(senderTask, chatInfoTask);
+            await System.Threading.Tasks.Task.WhenAll(senderCall.ResponseAsync, chatInfoCall.ResponseAsync);
 
-            var senderResponse = senderTask.Result;
-            var chatInfoResponse = chatInfoTask.Result;
+            var senderResponse = senderCall.ResponseAsync.Result;
+            var chatInfoResponse = chatInfoCall.ResponseAsync.Result;
 
             var senderName = senderResponse.User != null
                 ? $"{senderResponse.User.FirstName} {senderResponse.User.LastName}".Trim()
