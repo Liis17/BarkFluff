@@ -23,4 +23,5 @@ public class PushNotificationEvent
     // Контент сообщения
     public int ContentType { get; set; } // MessageContentType enum value
     public string? ImagePreviewUrl { get; set; } // URL превью картинки для BigPictureStyle
+    public int AttachmentCount { get; set; } // Количество вложений
 }
