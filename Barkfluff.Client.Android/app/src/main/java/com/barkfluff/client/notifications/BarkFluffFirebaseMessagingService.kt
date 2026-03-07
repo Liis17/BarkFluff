@@ -51,7 +51,7 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
         // Извлекаем данные
         val chatId = data["chat_id"] ?: return
         val senderId = data["sender_id"]?.toLongOrNull() ?: return
-        val senderName = data["sender_name"] ?: "Unknown"
+        val senderName = data["sender_name"]?.takeIf { it.isNotBlank() } ?: "Unknown"
         val avatarUrl = data["avatar_url"]?.takeIf { it.isNotBlank() }
         val chatTitle = data["chat_title"]?.takeIf { it.isNotBlank() }
         val chatAvatarUrl = data["chat_avatar_url"]?.takeIf { it.isNotBlank() }
@@ -60,6 +60,19 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
         val imageUrl = data["image_url"]?.takeIf { it.isNotBlank() }
         val messageId = data["message_id"]?.toLongOrNull() ?: 0
         val messageText = remoteMessage.notification?.body ?: data["message_text"] ?: ""
+
+        // Проверяем дубликаты (если gRPC уже показал уведомление)
+        synchronized(NotificationHelper.recentlyShownMessages) {
+            if (NotificationHelper.recentlyShownMessages.contains(messageId)) {
+                Log.d(TAG, "Skipping duplicate notification for messageId=$messageId")
+                return
+            }
+            NotificationHelper.recentlyShownMessages.add(messageId)
+            // Очищаем старые записи для предотвращения утечки памяти
+            if (NotificationHelper.recentlyShownMessages.size > 100) {
+                NotificationHelper.recentlyShownMessages.clear()
+            }
+        }
 
         Log.d(TAG, "onMessageReceived: chatId=$chatId, sender=$senderName, isGroup=$isGroupChat, contentType=$contentType")
 
