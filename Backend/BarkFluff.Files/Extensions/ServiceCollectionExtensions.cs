@@ -1,4 +1,5 @@
 using BarkFluff.Files.Infrastructure;
+using BarkFluff.Files.Services;
 
 namespace BarkFluff.Files.Extensions;
 
@@ -15,6 +16,12 @@ public static class ServiceCollectionExtensions
         // Регистрируем инициализатор бакетов
         services.AddSingleton<S3BucketInitializer>();
 
+        return services;
+    }
+
+    public static IServiceCollection AddFileTypeDetection(this IServiceCollection services)
+    {
+        services.AddSingleton<FileTypeDetector>();
         return services;
     }
 }
