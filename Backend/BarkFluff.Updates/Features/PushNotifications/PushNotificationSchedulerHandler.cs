@@ -82,7 +82,8 @@ public class PushNotificationSchedulerHandler : INotificationHandler<NewMessageN
                         MessageText = notification.Message.Content?.Text,
                         RecipientUserIds = [userId],
                         ContentType = (int)notification.Message.Type,
-                        ImagePreviewUrl = imagePreviewUrl
+                        ImagePreviewUrl = imagePreviewUrl,
+                        AttachmentCount = notification.Message.Content?.Attachments.Count ?? 0
                     });
 
                     _logger.LogInformation(

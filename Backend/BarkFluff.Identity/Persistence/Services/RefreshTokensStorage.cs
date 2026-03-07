@@ -68,4 +68,21 @@ public class RefreshTokensStorage(IdentityContext context)
 
         await context.SaveChangesAsync();
     }
+
+    /// <summary>
+    /// Удаляет все refresh токены для устройства. Не выбрасывает исключение если токенов нет.
+    /// Используется при логине для очистки старых токенов перед созданием нового.
+    /// </summary>
+    public async Task DeleteRefreshTokensByDeviceIdSafe(string deviceId, long userId)
+    {
+        var refreshTokens = await context.RefreshTokens
+            .Where(x => x.DeviceId == deviceId && x.UserId == userId)
+            .ToListAsync();
+
+        if (refreshTokens.Count > 0)
+        {
+            context.RefreshTokens.RemoveRange(refreshTokens);
+            await context.SaveChangesAsync();
+        }
+    }
 }
