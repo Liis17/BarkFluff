@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -912,12 +913,12 @@ class ChatActivity : AppCompatActivity() {
 
     private fun showChatProfile() {
         val dialogView = layoutInflater.inflate(R.layout.dialog_chat_profile, null)
-        val dialog = MaterialAlertDialogBuilder(this)
+        val dialog = MaterialAlertDialogBuilder(this, R.style.Theme_BarkfluffClientAndroid_Dialog_NoPadding)
             .setView(dialogView)
-            .setNegativeButton("Закрыть", null)
             .create()
 
         // Получаем ссылки на view
+        val closeButton = dialogView.findViewById<ImageButton>(R.id.closeButton)
         val avatarImageView = dialogView.findViewById<com.google.android.material.imageview.ShapeableImageView>(R.id.profileAvatarImageView)
         val avatarPlaceholder = dialogView.findViewById<TextView>(R.id.profileAvatarPlaceholder)
         val nameTextView = dialogView.findViewById<TextView>(R.id.profileNameTextView)
@@ -1190,6 +1191,11 @@ class ChatActivity : AppCompatActivity() {
         attachmentsRecyclerView.layoutManager =
             androidx.recyclerview.widget.GridLayoutManager(this, 3)
         loadAttachments(barkfluff.shared.Shared.MessageAttachmentType.IMAGE)
+
+        // Обработчик кнопки закрытия
+        closeButton.setOnClickListener {
+            dialog.dismiss()
+        }
 
         dialog.show()
     }
