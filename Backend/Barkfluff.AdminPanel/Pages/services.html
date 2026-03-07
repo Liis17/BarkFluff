@@ -12,6 +12,8 @@
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
+        #servicesList::-webkit-scrollbar { display: none; }
+
         #loadingOverlay {
             position: fixed;
             top: 0;
@@ -148,7 +150,7 @@
                 </div>
             </div>
 
-            <div id="servicesList" class="max-h-48 overflow-y-auto mb-4">
+            <div id="servicesList" class="max-h-48 overflow-y-auto mb-4" style="scrollbar-width: none; -ms-overflow-style: none;" onscroll="return false;">
                 <!-- Services will be rendered here -->
             </div>
 
@@ -776,6 +778,12 @@
 
             document.getElementById('servicesList').innerHTML = listHtml;
             lucide.createIcons();
+
+            // Автоматическая прокрутка к текущему элементу
+            const currentServiceItem = document.querySelector('.service-item.current');
+            if (currentServiceItem) {
+                currentServiceItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
         }
 
         // Выполнить действие над одним сервисом
@@ -847,6 +855,13 @@
 
             document.getElementById('modalFooter').style.display = 'flex';
             updateProgressUI();
+
+            // Автоматическое закрытие модалки через 2 секунды после завершения
+            if (progressState.errors.length === 0) {
+                setTimeout(() => {
+                    closeProgressModal();
+                }, 2000);
+            }
         }
 
         // Перезапуск всех сервисов BarkFluff
