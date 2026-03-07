@@ -19,6 +19,7 @@ using BarkFluff.Users.Features.GetUserContacts;
 using BarkFluff.Users.Features.ListByIds;
 using BarkFluff.Users.Features.Devices.DeleteUserDevice;
 using BarkFluff.Users.Features.Devices.GetUserDevices;
+using BarkFluff.Users.Features.Devices.GetDevicesWithFirebaseTokens;
 using BarkFluff.Users.Features.Devices.RegisterDevice;
 using BarkFluff.Users.Features.OverrideDraftUser;
 using BarkFluff.Users.Features.SearchUsersServer;
@@ -319,5 +320,15 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
         };
 
         return _mediator.Send(command);
+    }
+
+    public override Task<GetDevicesWithFirebaseTokensResponse> GetDevicesWithFirebaseTokens(GetDevicesWithFirebaseTokensRequest request, ServerCallContext context)
+    {
+        var query = new GetDevicesWithFirebaseTokensQuery
+        {
+            UserIds = request.UserIds.ToList()
+        };
+
+        return _mediator.Send(query);
     }
 }
