@@ -50,17 +50,19 @@ public class FirebaseService
     /// <summary>
     /// Отправляет push-уведомление на указанное устройство.
     /// </summary>
-    /// <param name="fcmToken">Firebase токен устройства</param>
-    /// <param name="senderName">Имя отправителя сообщения</param>
-    /// <param name="messagePreview">Текст сообщения (превью)</param>
-    /// <param name="chatId">ID чата</param>
-    /// <param name="senderId">ID отправителя</param>
     public async Task SendNotificationAsync(
         string fcmToken,
         string senderName,
         string messagePreview,
         string chatId,
-        long senderId)
+        long senderId,
+        long messageId,
+        string? avatarUrl,
+        string? chatTitle,
+        string? chatAvatarUrl,
+        bool isGroupChat,
+        int contentType,
+        string? imagePreviewUrl)
     {
         if (_messaging == null)
         {
@@ -70,6 +72,18 @@ public class FirebaseService
 
         try
         {
+            var androidNotification = new AndroidNotification
+            {
+                Priority = NotificationPriority.HIGH,
+                Sound = "default"
+            };
+
+            // Добавляем картинку для BigPictureStyle если есть
+            if (!string.IsNullOrEmpty(imagePreviewUrl))
+            {
+                androidNotification.Image = imagePreviewUrl;
+            }
+
             var message = new Message
             {
                 Token = fcmToken,
@@ -82,24 +96,28 @@ public class FirebaseService
                 {
                     ["chat_id"] = chatId,
                     ["sender_id"] = senderId.ToString(),
-                    ["type"] = "new_message"
+                    ["type"] = "new_message",
+                    ["sender_name"] = senderName,
+                    ["avatar_url"] = avatarUrl ?? "",
+                    ["chat_title"] = chatTitle ?? "",
+                    ["chat_avatar_url"] = chatAvatarUrl ?? "",
+                    ["is_group_chat"] = isGroupChat.ToString().ToLowerInvariant(),
+                    ["content_type"] = contentType.ToString(),
+                    ["image_url"] = imagePreviewUrl ?? "",
+                    ["message_id"] = messageId.ToString()
                 },
                 Android = new AndroidConfig
                 {
                     Priority = Priority.High,
-                    Notification = new AndroidNotification
-                    {
-                        Priority = NotificationPriority.HIGH,
-                        Sound = "default"
-                    }
+                    Notification = androidNotification
                 }
             };
 
-            var messageId = await _messaging.SendAsync(message);
+            var resultMessageId = await _messaging.SendAsync(message);
 
             _logger.LogInformation(
                 "Push-уведомление отправлено. MessageId: {MessageId}, Token: {TokenPrefix}...",
-                messageId,
+                resultMessageId,
                 fcmToken[..Math.Min(10, fcmToken.Length)]);
         }
         catch (FirebaseMessagingException ex)

@@ -1,3 +1,4 @@
+using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Queue.Messages;
 using Barkfluff.CloudMessaging.Services;
@@ -12,15 +13,18 @@ namespace Barkfluff.CloudMessaging.Consumers;
 public class PushNotificationConsumer : IConsumer<PushNotificationEvent>
 {
     private readonly UsersServerApi.UsersServerApiClient _usersClient;
+    private readonly MessagesApi.MessagesApiClient _messagesClient;
     private readonly FirebaseService _firebaseService;
     private readonly ILogger<PushNotificationConsumer> _logger;
 
     public PushNotificationConsumer(
         UsersServerApi.UsersServerApiClient usersClient,
+        MessagesApi.MessagesApiClient messagesClient,
         FirebaseService firebaseService,
         ILogger<PushNotificationConsumer> logger)
     {
         _usersClient = usersClient;
+        _messagesClient = messagesClient;
         _firebaseService = firebaseService;
         _logger = logger;
     }
@@ -43,13 +47,27 @@ public class PushNotificationConsumer : IConsumer<PushNotificationEvent>
 
         try
         {
-            // Получаем имя отправителя
-            var senderResponse = await _usersClient.GetByIdAsync(
+            // Параллельно получаем данные отправителя и чата
+            var senderTask = _usersClient.GetByIdAsync(
                 new GetByIdRequest { UserId = message.SenderId });
+
+            var chatInfoTask = _messagesClient.GetChatInfoAsync(
+                new GetChatInfoRequest { ChatId = message.ChatId.ToString() });
+
+            await System.Threading.Tasks.Task.WhenAll(senderTask, chatInfoTask);
+
+            var senderResponse = senderTask.Result;
+            var chatInfoResponse = chatInfoTask.Result;
 
             var senderName = senderResponse.User != null
                 ? $"{senderResponse.User.FirstName} {senderResponse.User.LastName}".Trim()
                 : "Unknown";
+
+            var senderAvatarUrl = senderResponse.User?.ProfilePicturePreview ?? string.Empty;
+
+            var isGroupChat = chatInfoResponse.IsGroupChat;
+            var chatTitle = chatInfoResponse.Title ?? string.Empty;
+            var chatAvatarUrl = chatInfoResponse.Picture ?? string.Empty;
 
             // Получаем FCM токены устройств получателей
             var tokensResponse = await _usersClient.GetDevicesWithFirebaseTokensAsync(
@@ -72,13 +90,21 @@ public class PushNotificationConsumer : IConsumer<PushNotificationEvent>
                     senderName,
                     message.MessageText ?? string.Empty,
                     message.ChatId.ToString(),
-                    message.SenderId);
+                    message.SenderId,
+                    message.MessageId,
+                    senderAvatarUrl,
+                    chatTitle,
+                    chatAvatarUrl,
+                    isGroupChat,
+                    message.ContentType,
+                    message.ImagePreviewUrl);
             }
 
             _logger.LogInformation(
-                "Push-уведомления отправлены. Отправитель: {SenderName}, Устройств: {Count}",
+                "Push-уведомления отправлены. Отправитель: {SenderName}, Устройств: {Count}, IsGroupChat: {IsGroupChat}",
                 senderName,
-                tokensResponse.Tokens.Count);
+                tokensResponse.Tokens.Count,
+                isGroupChat);
         }
         catch (Exception ex)
         {
