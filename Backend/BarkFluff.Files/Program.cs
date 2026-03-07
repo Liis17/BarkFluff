@@ -51,6 +51,7 @@ public class Program
         builder.Services.AddScoped<ImageCompressor>();
 
         builder.Services.AddMinioS3(builder.Configuration);
+        builder.Services.AddFileTypeDetection();
 
         builder.Services.AddDbContext<FilesContext>(options =>
             options.UseNpgsql(builder.Configuration["FilesDb"]));
