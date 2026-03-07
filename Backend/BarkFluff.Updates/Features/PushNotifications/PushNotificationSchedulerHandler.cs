@@ -1,3 +1,4 @@
+using BarkFluff.Proto.Shared;
 using BarkFluff.Shared.Queue.Messages;
 using BarkFluff.Updates.Features.SubscribeNewMessages;
 using MassTransit;
@@ -59,13 +60,26 @@ public class PushNotificationSchedulerHandler : INotificationHandler<NewMessageN
                     using var scope = _scopeFactory.CreateScope();
                     var publisher = scope.ServiceProvider.GetRequiredService<IPublishEndpoint>();
 
+                    // Извлекаем превью изображения из первого IMAGE вложения
+                    string? imagePreviewUrl = null;
+                    var imageAttachment = notification.Message.Content?.Attachments
+                        .FirstOrDefault(a => a.Type == MessageAttachmentType.Image);
+                    if (imageAttachment != null)
+                    {
+                        imagePreviewUrl = !string.IsNullOrEmpty(imageAttachment.PreviewUrl)
+                            ? imageAttachment.PreviewUrl
+                            : imageAttachment.PreviewFileId;
+                    }
+
                     await publisher.Publish(new PushNotificationEvent
                     {
                         ChatId = notification.ChatId,
                         SenderId = notification.Message.SenderId,
                         MessageId = notification.Message.Id,
                         MessageText = notification.Message.Content?.Text,
-                        RecipientUserIds = [userId]
+                        RecipientUserIds = [userId],
+                        ContentType = (int)notification.Message.Type,
+                        ImagePreviewUrl = imagePreviewUrl
                     });
 
                     _logger.LogInformation(

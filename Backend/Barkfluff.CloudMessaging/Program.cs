@@ -1,4 +1,5 @@
 using BarkFluff.GrpcServer;
+using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Auth;
 using BarkFluff.Shared.Exceptions.Interceptors;
@@ -23,6 +24,14 @@ builder.Services.AddGrpcClient<UsersServerApi.UsersServerApiClient>(o =>
         o.Address = new Uri(builder.Configuration["UsersService:Host"] ?? throw new InvalidOperationException("UsersService:Host not configured"));
     })
     .AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["UsersService:Token"] ?? throw new InvalidOperationException("UsersService:Token not configured")))
+    .AddInterceptor(() => new ExceptionClientInterceptor());
+
+// gRPC клиент к Messages сервису
+builder.Services.AddGrpcClient<MessagesApi.MessagesApiClient>(o =>
+    {
+        o.Address = new Uri(builder.Configuration["MessagesService:Host"] ?? throw new InvalidOperationException("MessagesService:Host not configured"));
+    })
+    .AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["MessagesService:Token"] ?? throw new InvalidOperationException("MessagesService:Token not configured")))
     .AddInterceptor(() => new ExceptionClientInterceptor());
 
 // MassTransit RabbitMQ
