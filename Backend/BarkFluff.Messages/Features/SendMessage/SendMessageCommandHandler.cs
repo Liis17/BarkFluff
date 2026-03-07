@@ -34,7 +34,8 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             { UploadFileType.MessageAttachmentDocument, Domain.MessageAttachmentType.Document },
             { UploadFileType.MessageAttachmentGif, Domain.MessageAttachmentType.Gif },
             { UploadFileType.MessageAttachmentVideo, Domain.MessageAttachmentType.Video },
-            { UploadFileType.MessageAttachmentAudio, Domain.MessageAttachmentType.Audio }
+            { UploadFileType.MessageAttachmentAudio, Domain.MessageAttachmentType.Audio },
+            { UploadFileType.MessageAttachmentVoice, Domain.MessageAttachmentType.Voice }
         };
 
     public SendMessageCommandHandler(ChatsStorage chatsStorage, UsersServerApi.UsersServerApiClient usersServerApiClient,

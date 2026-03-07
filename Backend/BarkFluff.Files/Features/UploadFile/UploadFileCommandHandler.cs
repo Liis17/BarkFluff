@@ -18,6 +18,7 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
     private readonly S3Uploader _s3Uploader;
     private readonly S3BucketRegistry _bucketRegistry;
     private readonly ImageCompressor _imageCompressor;
+    private readonly FileTypeDetector _fileTypeDetector;
     private readonly ILogger<UploadFileCommandHandler> _logger;
 
 
@@ -29,12 +30,25 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
         { UploadFileType.UserAvatar, 64 }
     };
 
+    /// <summary>
+    /// Типы файлов, для которых нужно проверять реальный тип по содержимому.
+    /// </summary>
+    private static readonly HashSet<UploadFileType> TypesRequiringDetection =
+    [
+        UploadFileType.MessageAttachmentImage,
+        UploadFileType.MessageAttachmentVideo,
+        UploadFileType.MessageAttachmentGif,
+        UploadFileType.MessageAttachmentAudio,
+        UploadFileType.MessageAttachmentVoice
+    ];
+
     public UploadFileCommandHandler(
         UploadedFilesStorage filesStorage,
         FileHashesStorage hashesStorage,
         S3Uploader s3Uploader,
         S3BucketRegistry bucketRegistry,
         ImageCompressor imageCompressor,
+        FileTypeDetector fileTypeDetector,
         ILogger<UploadFileCommandHandler> logger)
     {
         _filesStorage = filesStorage;
@@ -42,6 +56,7 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
         _s3Uploader = s3Uploader;
         _bucketRegistry = bucketRegistry;
         _imageCompressor = imageCompressor;
+        _fileTypeDetector = fileTypeDetector;
         _logger = logger;
     }
 
@@ -92,8 +107,28 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
         }
         
         originalStream.Position = 0;
-        
+
         _logger.LogInformation("Вычислен хеш файла: {FileHash}", fileHash);
+
+        // Определяем реальный тип файла по содержимому для MessageAttachment типов
+        if (TypesRequiringDetection.Contains(file.Type))
+        {
+            var detectedType = await _fileTypeDetector.DetectAsync(originalStream);
+            var newFileType = MapDetectedTypeToUploadFileType(detectedType, file.Type);
+
+            if (newFileType != file.Type)
+            {
+                _logger.LogInformation(
+                    "Тип файла изменён с {OriginalType} на {NewType} на основе содержимого",
+                    file.Type, newFileType);
+                file.Type = newFileType;
+
+                // Пересчитываем bucketName для нового типа
+                bucketName = _bucketRegistry.GetBucketName(file.Type);
+            }
+        }
+
+        originalStream.Position = 0;
 
         // Серверная дедупликация: проверяем, существует ли файл с таким хешем
         var existingFileId = await _hashesStorage.GetFileIdByHash(fileHash);
@@ -188,7 +223,26 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
         _logger.LogInformation("Хеш файла сохранен в базу данных");
         
         _logger.LogInformation("Обработка файла {FileId} успешно завершена", file.Id);
-        
+
         return file.Id.ToString();
+    }
+
+    /// <summary>
+    /// Преобразует определённый тип файла в UploadFileType.
+    /// Если тип не удалось определить, возвращает MessageAttachmentDocument.
+    /// </summary>
+    private static UploadFileType MapDetectedTypeToUploadFileType(DetectedFileType detectedType, UploadFileType originalType)
+    {
+        return detectedType switch
+        {
+            DetectedFileType.Image => UploadFileType.MessageAttachmentImage,
+            DetectedFileType.Video => UploadFileType.MessageAttachmentVideo,
+            DetectedFileType.Gif => UploadFileType.MessageAttachmentGif,
+            DetectedFileType.Audio => UploadFileType.MessageAttachmentAudio,
+            DetectedFileType.Voice => UploadFileType.MessageAttachmentVoice,
+            DetectedFileType.Unknown => UploadFileType.MessageAttachmentDocument,
+            DetectedFileType.Document => UploadFileType.MessageAttachmentDocument,
+            _ => UploadFileType.MessageAttachmentDocument
+        };
     }
 }
