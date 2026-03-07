@@ -125,6 +125,19 @@ services:
     depends_on:
       - configuration
 
+  cloud-messaging:
+    image: docker.barkfluff.com:5000/barkfluff-cloud-messaging:latest
+    container_name: cloud-messaging
+    restart: always
+    environment:
+      <<: *common-variables
+    volumes:
+      - ./barkfluff-firebase-adminsdk.json:/app/firebase/barkfluff-firebase-adminsdk.json:ro
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
+
   # Панель администрирования
   admin-panel:
     image: docker.barkfluff.com:5000/barkfluff-admin-panel:latest

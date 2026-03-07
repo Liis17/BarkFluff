@@ -21,5 +21,7 @@ public enum ServiceId
     Updates = 8,
     
     Onliner = 9,
-    
+
+    CloudMessaging = 10,
+
 }

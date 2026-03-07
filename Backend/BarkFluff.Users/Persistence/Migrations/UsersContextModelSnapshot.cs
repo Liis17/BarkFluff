@@ -167,6 +167,9 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.Property<string>("CustomName")
                         .HasColumnType("text");
 
+                    b.Property<string>("FirebaseDeviceToken")
+                        .HasColumnType("text");
+
                     b.Property<string>("Location")
                         .HasColumnType("text");
 

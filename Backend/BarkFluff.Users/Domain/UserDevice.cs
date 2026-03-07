@@ -22,4 +22,6 @@ public class UserDevice
     public string? OperationSystem { get; set; }
 
     public string? Location { get; set; }
+
+    public string? FirebaseDeviceToken { get; set; }
 }

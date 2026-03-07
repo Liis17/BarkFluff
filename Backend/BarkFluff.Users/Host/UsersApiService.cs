@@ -12,6 +12,7 @@ using BarkFluff.Users.Features.Badges.GetUserBadges;
 using BarkFluff.Users.Features.Devices.GetCurrentDevice;
 using BarkFluff.Users.Features.Devices.GetDevices;
 using BarkFluff.Users.Features.Devices.RenameDevice;
+using BarkFluff.Users.Features.Devices.SetFirebaseToken;
 using Grpc.Core;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -153,5 +154,18 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
         };
 
         return _mediator.Send(command);
+    }
+
+    public override async Task<SetFirebaseTokenResponse> SetFirebaseToken(SetFirebaseTokenRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("firebase_token_updates");
+        var command = new SetFirebaseTokenCommand
+        {
+            FirebaseToken = request.FirebaseToken
+        };
+
+        await _mediator.Send(command);
+
+        return new SetFirebaseTokenResponse();
     }
 }
