@@ -62,7 +62,8 @@ public class FirebaseService
         string? chatAvatarUrl,
         bool isGroupChat,
         int contentType,
-        string? imagePreviewUrl)
+        string? imagePreviewUrl,
+        int attachmentCount)
     {
         if (_messaging == null)
         {
@@ -72,20 +73,13 @@ public class FirebaseService
 
         try
         {
-            var androidNotification = new AndroidNotification
-            {
-                Priority = NotificationPriority.HIGH,
-                Sound = "default"
-            };
-
+            // Data-only сообщение: без блока Notification, чтобы onMessageReceived
+            // всегда вызывался (и в foreground, и в background).
+            // Это позволяет Android-клиенту самому формировать уведомление
+            // с аватаром, эмодзи-форматированием и правильным PendingIntent.
             var message = new Message
             {
                 Token = fcmToken,
-                Notification = new Notification
-                {
-                    Title = senderName,
-                    Body = TruncateMessage(messagePreview, 100)
-                },
                 Data = new Dictionary<string, string>
                 {
                     ["chat_id"] = chatId,
@@ -99,12 +93,12 @@ public class FirebaseService
                     ["content_type"] = contentType.ToString(),
                     ["image_url"] = imagePreviewUrl ?? "",
                     ["message_id"] = messageId.ToString(),
-                    ["message_text"] = messagePreview
+                    ["message_text"] = TruncateMessage(messagePreview, 100),
+                    ["attachment_count"] = attachmentCount.ToString()
                 },
                 Android = new AndroidConfig
                 {
-                    Priority = Priority.High,
-                    Notification = androidNotification
+                    Priority = Priority.High
                 }
             };
 
