@@ -1,7 +1,6 @@
 package com.barkfluff.client.adapter
 
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -10,8 +9,7 @@ import com.barkfluff.client.databinding.ItemDeviceBinding
 import com.barkfluff.client.grpc.GrpcManager
 
 class DeviceAdapter(
-    private val currentDeviceId: String,
-    private val onRemoveClick: (GrpcManager.SessionData) -> Unit
+    private val onItemClick: (GrpcManager.SessionData) -> Unit
 ) : ListAdapter<GrpcManager.SessionData, DeviceAdapter.DeviceViewHolder>(DeviceDiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DeviceViewHolder {
@@ -30,19 +28,10 @@ class DeviceAdapter(
         fun bind(session: GrpcManager.SessionData) {
             val deviceName = session.customName.ifEmpty { session.originalName }
             binding.textDeviceName.text = deviceName.ifEmpty { "Неизвестное устройство" }
-            binding.textDeviceInfo.text = "${session.appName} \u00B7 ${session.os}"
-            binding.textDeviceLocation.text = session.location.ifEmpty { "Местоположение неизвестно" }
+            binding.textDeviceInfo.text = session.appName
 
-            val isCurrent = session.deviceId == currentDeviceId
-            if (isCurrent) {
-                binding.chipCurrent.visibility = View.VISIBLE
-                binding.buttonRemove.visibility = View.GONE
-            } else {
-                binding.chipCurrent.visibility = View.GONE
-                binding.buttonRemove.visibility = View.VISIBLE
-                binding.buttonRemove.setOnClickListener {
-                    onRemoveClick(session)
-                }
+            binding.root.setOnClickListener {
+                onItemClick(session)
             }
         }
     }

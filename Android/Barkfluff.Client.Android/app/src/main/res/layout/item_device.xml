@@ -3,13 +3,15 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginHorizontal="16dp"
-    android:layout_marginVertical="4dp"
+    android:layout_marginBottom="8dp"
     app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
-    app:cardCornerRadius="16dp"
+    app:cardCornerRadius="20dp"
     app:cardElevation="0dp"
     app:strokeColor="?attr/colorOutlineVariant"
-    app:strokeWidth="1dp">
+    app:strokeWidth="1dp"
+    android:checkable="true"
+    android:clickable="true"
+    android:focusable="true">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -19,16 +21,17 @@
         android:padding="16dp">
 
         <ImageView
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:id="@+id/imageDeviceIcon"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
             android:importantForAccessibility="no"
             android:src="@drawable/ic_smartphone"
-            app:tint="?attr/colorPrimary" />
+            app:tint="?attr/colorOnSurfaceVariant" />
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
+            android:layout_marginStart="14dp"
             android:layout_weight="1"
             android:orientation="vertical">
 
@@ -47,35 +50,13 @@
                 android:textAppearance="?attr/textAppearanceBodySmall"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
-            <TextView
-                android:id="@+id/textDeviceLocation"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:textAppearance="?attr/textAppearanceBodySmall"
-                android:textColor="?attr/colorOnSurfaceVariant" />
-
         </LinearLayout>
 
-        <!-- Текущее устройство: Chip -->
-        <com.google.android.material.chip.Chip
-            android:id="@+id/chipCurrent"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Текущее"
-            android:visibility="gone"
-            app:chipBackgroundColor="?attr/colorPrimaryContainer"
-            android:textColor="?attr/colorOnPrimaryContainer" />
-
-        <!-- Другое устройство: кнопка завершения -->
-        <ImageButton
-            android:id="@+id/buttonRemove"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Завершить сессию"
-            android:src="@drawable/ic_close"
-            android:visibility="gone"
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:importantForAccessibility="no"
+            android:src="@drawable/ic_chevron_right"
             app:tint="?attr/colorOnSurfaceVariant" />
 
     </LinearLayout>
