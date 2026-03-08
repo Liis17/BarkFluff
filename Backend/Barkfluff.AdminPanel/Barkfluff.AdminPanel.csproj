@@ -12,6 +12,7 @@
     <None Remove="Pages\Login.html" />
     <None Remove="Pages\logs.html" />
     <None Remove="Pages\restarting.html" />
+    <None Remove="Pages\s3-storage.html" />
     <None Remove="Pages\services.html" />
     <None Remove="Pages\updating.html" />
     <None Remove="Pages\users.html" />
@@ -34,6 +35,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Pages\restarting.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\s3-storage.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Pages\services.html">
