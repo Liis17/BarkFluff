@@ -32,13 +32,13 @@ jobs:
         dotnet-version: '10.0.x'
 
     - name: Restore dependencies
-      run: dotnet restore BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj
+      run: dotnet restore Windows/BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj
 
     - name: Build
-      run: dotnet build BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj --no-restore --configuration Release
+      run: dotnet build Windows/BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj --no-restore --configuration Release
 
     - name: Publish
-      run: dotnet publish BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj --configuration Release --runtime win-x64 --self-contained true  --output ./publish
+      run: dotnet publish Windows/BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj --configuration Release --runtime win-x64 --self-contained true  --output ./publish
 
     - name: Zip build
       uses: vimtor/action-zip@v1
