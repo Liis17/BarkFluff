@@ -19,7 +19,8 @@ public static class ConfigurationEndpoints
         // Получить S3 конфигурацию (все бакеты)
         group.MapGet("/s3-configuration", async (
             ConfigurationApi.ConfigurationApiClient configClient,
-            HttpContext context) =>
+            HttpContext context,
+            ILogger logger) =>
         {
             if (context.Items["AuthToken"] is not AuthToken)
                 return Results.Unauthorized();
@@ -43,7 +44,7 @@ public static class ConfigurationEndpoints
                             bucketName = g.FirstOrDefault(c => c.Key == "BucketName")?.Value ?? "",
                             accessKey = g.FirstOrDefault(c => c.Key == "AccessKey")?.Value ?? "",
                             secretKey = g.FirstOrDefault(c => c.Key == "SecretKey")?.Value ?? "",
-                            editedAt = g.MaxBy(c => c.EditedAt)?.EditedAt?.ToDateTime().ToString("o")
+                            editedAt = g.MaxBy(c => c.EditedAt)?.EditedAt?.ToDateTime().ToString("o") ?? DateTime.UtcNow.ToString("o")
                         }
                     );
 
@@ -51,11 +52,10 @@ public static class ConfigurationEndpoints
             }
             catch (Exception ex)
             {
+                logger.LogError(ex, "Ошибка получения S3 конфигурации");
                 return Results.Problem($"Ошибка получения конфигурации: {ex.Message}");
             }
-        })
-        .WithName("GetS3Configuration")
-        .WithOpenApi();
+        });
 
         // Обновить S3 конфигурацию для конкретного бакета
         group.MapPost("/s3/update", async (
@@ -146,9 +146,7 @@ public static class ConfigurationEndpoints
             {
                 return Results.Problem($"Ошибка обновления конфигурации: {ex.Message}");
             }
-        })
-        .WithName("UpdateS3Configuration")
-        .WithOpenApi();
+        });
     }
 }
 

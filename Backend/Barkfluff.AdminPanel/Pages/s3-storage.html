@@ -302,6 +302,7 @@
                 document.getElementById('token-name').textContent = data.name || '-';
                 document.getElementById('token-created').textContent = formatDate(data.createdAt);
                 document.getElementById('loading-overlay').classList.add('hidden');
+                lucide.createIcons();
                 return data;
             } catch {
                 window.location.href = '/';

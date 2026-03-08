@@ -149,16 +149,17 @@ services:
     user: root
     environment:
       <<: *common-variables
-      ConfigurationServiceAddr: "${CONFIGURATION_SERVICE_URL}"
+      ConfigurationService__Host: "${CONFIGURATION_SERVICE_HOST}"
+      ConfigurationService__Token: "${CONFIGURATION_SERVICE_TOKEN}"
       Telegram__BotToken: "${TELEGRAM_BOT_TOKEN}"
       Telegram__Admins: "${TELEGRAM_ADMINS}"
       Seq__ServerUrl: "http://seq:80"
       Seq__ApiKey: "${SEQ_API_KEY:-}"
-      UsersService__Host: "http://users:7001"
-      FilesService__Host: "http://files:7005"
+      UsersService__Host: "${USERS_SERVICE_HOST}"
+      FilesService__Host: "${FILES_SERVICE_HOST}"
       UsersService__Token: "${USERS_SERVICE_TOKEN}"
       FilesService__Token: "${FILES_SERVICE_TOKEN}"
-      IdentityService__Host: "http://identity:7000"
+      IdentityService__Host: "${IDENTITY_SERVICE_HOST}"
       IdentityService__Token: "${IDENTITY_SERVICE_TOKEN}"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
