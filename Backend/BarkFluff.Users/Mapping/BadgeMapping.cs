@@ -1,7 +1,9 @@
-using Google.Protobuf.WellKnownTypes;
 using BarkFluff.Users.Domain;
-using ProtoUserBadge = BarkFluff.Proto.Users.UserBadge;
+
+using Google.Protobuf.WellKnownTypes;
+
 using ProtoBadge = BarkFluff.Proto.Users.Badge;
+using ProtoUserBadge = BarkFluff.Proto.Users.UserBadge;
 
 namespace BarkFluff.Users.Mapping;
 

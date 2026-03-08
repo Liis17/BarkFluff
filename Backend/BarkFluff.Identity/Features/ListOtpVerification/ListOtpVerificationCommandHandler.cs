@@ -2,8 +2,8 @@ using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Identity.Persistence.Exceptions;
 using BarkFluff.Identity.Persistence.Services;
 using BarkFluff.Proto.Identity;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Identity.Features.ListOtpVerification;
 

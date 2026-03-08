@@ -1,4 +1,5 @@
 using BarkFluff.Proto.Onliner;
+
 using MediatR;
 
 namespace BarkFluff.Onliner.Features.GetOnlineStatus;

@@ -1,6 +1,7 @@
 using BarkFluff.Identity.Domain;
 using BarkFluff.Identity.Persistence.Contexts;
 using BarkFluff.Identity.Persistence.Exceptions;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace BarkFluff.Identity.Persistence.Services;

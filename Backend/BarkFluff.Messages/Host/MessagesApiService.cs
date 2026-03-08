@@ -14,9 +14,13 @@ using BarkFluff.Proto.Shared;
 using BarkFluff.Shared.Exceptions.Files;
 using BarkFluff.Shared.Exceptions.Messages;
 using BarkFluff.Shared.Identity;
+
 using Grpc.Core;
+
 using MediatR;
+
 using Microsoft.AspNetCore.Authorization;
+
 using OutgoingMessage = BarkFluff.Messages.Features.SendMessage.OutgoingMessage;
 
 namespace BarkFluff.Messages.Host;
@@ -41,13 +45,13 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
             Size = 10,
             Offset = 0
         };
-        
+
         var command = new ListChatsCommand()
         {
             Size = request.Pagination.Size,
             Skip = request.Pagination.Offset,
         };
-        
+
         return await _mediator.Send(command);
     }
 
@@ -87,7 +91,7 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
             Count = request.Pagination.Size,
             Skip = request.Pagination.Offset,
         };
-        
+
         return await _mediator.Send(command);
     }
 
@@ -99,7 +103,7 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
         {
             throw new MessageNotContainContextException();
         }
-        
+
         var command = new SendMessageCommand()
         {
             Message = new OutgoingMessage
@@ -147,28 +151,28 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
             UserIds = request.UserIds.ToList(),
             PictureFileId = pictureFileId
         };
-        
+
         return await _mediator.Send(command);
     }
 
     public override async Task<KickUserResponse> KickUser(KickUserRequest request, ServerCallContext context)
     {
-       var hasValidGuid = Guid.TryParse(request.ChatId, out Guid chatId);
+        var hasValidGuid = Guid.TryParse(request.ChatId, out Guid chatId);
 
-       if (!hasValidGuid)
-       {
-           throw new ChatIdNotValidException();
-       }
+        if (!hasValidGuid)
+        {
+            throw new ChatIdNotValidException();
+        }
 
-       var command = new KickUserCommand()
-       {
-           UserId = request.UserId,
-           ChatId = chatId
-       };
+        var command = new KickUserCommand()
+        {
+            UserId = request.UserId,
+            ChatId = chatId
+        };
 
-       await _mediator.Send(command);
+        await _mediator.Send(command);
 
-       return new KickUserResponse();
+        return new KickUserResponse();
     }
 
     public override async Task<MarkAsReadResponse> MarkAsRead(MarkAsReadRequest request, ServerCallContext context)

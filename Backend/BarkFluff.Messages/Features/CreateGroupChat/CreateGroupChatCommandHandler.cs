@@ -5,9 +5,9 @@ using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Shared.Exceptions.Messages;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
-using ChatMember = BarkFluff.Messages.Domain.ChatMember;
+
 using Message = BarkFluff.Messages.Domain.Message;
 using MessageContent = BarkFluff.Messages.Domain.MessageContent;
 using MessageContentType = BarkFluff.Messages.Domain.MessageContentType;
@@ -49,7 +49,7 @@ public class CreateGroupChatCommandHandler : IRequestHandler<CreateGroupChatComm
         {
             throw new GroupChatTitleIsEmptyException();
         }
-        
+
         if (!request.UserIds.Any())
         {
             throw new GroupChatUsersIsEmptyException();
@@ -67,7 +67,7 @@ public class CreateGroupChatCommandHandler : IRequestHandler<CreateGroupChatComm
             _logger.LogDebug("Получение информации о файле картинки группового чата {FileId}", request.PictureFileId);
 
             var fileInfo = await _filesServerApiClient.GetFileDataAsync(new GetFileDataRequest
-                { FileId = request.PictureFileId.Value.ToString() });
+            { FileId = request.PictureFileId.Value.ToString() });
 
             if (fileInfo.FileInfo.Type != UploadFileType.ChatPicture)
             {
@@ -96,7 +96,7 @@ public class CreateGroupChatCommandHandler : IRequestHandler<CreateGroupChatComm
         };
 
         await _chatsStorage.CreateGroupChatInfo(groupChatInfo);
-        
+
         var message = new Message()
         {
             ChatId = groupChat.Id,

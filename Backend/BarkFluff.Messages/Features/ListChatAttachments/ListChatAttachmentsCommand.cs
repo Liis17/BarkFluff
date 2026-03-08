@@ -1,5 +1,6 @@
 using BarkFluff.Messages.Domain;
 using BarkFluff.Proto.Messages;
+
 using MediatR;
 
 namespace BarkFluff.Messages.Features.ListChatAttachments;

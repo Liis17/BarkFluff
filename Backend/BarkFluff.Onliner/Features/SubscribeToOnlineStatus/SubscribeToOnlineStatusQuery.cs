@@ -1,4 +1,5 @@
 using BarkFluff.Proto.Onliner;
+
 using Grpc.Core;
 
 namespace BarkFluff.Onliner.Features.SubscribeToOnlineStatus;

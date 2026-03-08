@@ -9,7 +9,7 @@ public class FileHash
 {
     [Key]
     public Guid FileId { get; set; }
-    
+
     /// <summary>
     /// SHA256 hash of the file content (hex string, 64 characters).
     /// </summary>

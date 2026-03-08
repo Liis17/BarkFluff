@@ -1,9 +1,13 @@
 namespace BarkFluff.Users.Features.SearchUsers;
 
 using Mapping;
+
 using MediatR;
+
 using Microsoft.Extensions.Logging;
+
 using Persistence.Services;
+
 using Proto.Users;
 
 public class SearchUsersQueryHandler : IRequestHandler<SearchUsersQuery, SearchUsersResponse>
@@ -54,7 +58,8 @@ public class SearchUsersQueryHandler : IRequestHandler<SearchUsersQuery, SearchU
 
         return new SearchUsersResponse
         {
-            Users = { usersResult.Users.Select(x => x.ToGrpc()) }, TotalCount = usersResult.TotalCount
+            Users = { usersResult.Users.Select(x => x.ToGrpc()) },
+            TotalCount = usersResult.TotalCount
         };
     }
 }

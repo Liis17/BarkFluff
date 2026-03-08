@@ -1,4 +1,5 @@
 using BarkFluff.Files.Domain;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace BarkFluff.Files.Persistence;
@@ -29,7 +30,7 @@ public class FileHashesStorage
         var fileHash = await _context.FileHashes
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Hash == hash);
-        
+
         return fileHash?.FileId;
     }
 

@@ -1,12 +1,12 @@
 using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.XAuth;
-using BarkFluff.Onliner;
 using BarkFluff.Onliner.Features.SubscribeToOnlineStatus;
 using BarkFluff.Onliner.Host;
 using BarkFluff.Onliner.Persistence.Contexts;
-using BarkFluff.Shared.Exceptions.Interceptors;
 using BarkFluff.Shared.Identity;
+
 using Microsoft.EntityFrameworkCore;
+
 using Serilog;
 
 namespace BarkFluff.Onliner;

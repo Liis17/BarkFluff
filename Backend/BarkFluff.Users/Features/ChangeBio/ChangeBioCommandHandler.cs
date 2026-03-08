@@ -1,9 +1,9 @@
 using BarkFluff.GrpcServer.XAuth;
+using BarkFluff.Shared.Exceptions.Users;
 using BarkFluff.Users.Infrastructure;
 using BarkFluff.Users.Persistence.Services;
+
 using MediatR;
-using BarkFluff.Shared.Exceptions.Users;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Users.Features.ChangeBio;
 

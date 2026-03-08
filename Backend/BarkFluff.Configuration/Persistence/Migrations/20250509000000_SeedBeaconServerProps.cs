@@ -1,4 +1,3 @@
-using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -12,7 +11,7 @@ namespace BarkFluff.Configuration.Persistence.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             var now = DateTime.UtcNow;
-            
+
             migrationBuilder.InsertData(
                 table: "Configurations",
                 columns: new[] { "Section", "Key", "Value", "EditedAt", "EditedBy", "EditedFrom", "ServiceId" },

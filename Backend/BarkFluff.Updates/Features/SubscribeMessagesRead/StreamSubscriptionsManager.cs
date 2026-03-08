@@ -24,7 +24,7 @@ public class StreamSubscriptionsManager
         if (_userSubscriptions.TryGetValue(userId, out var userStreams))
         {
             userStreams.TryRemove(subscriptionId, out _);
-            
+
             // Очищаем пустые записи пользователей
             if (userStreams.IsEmpty)
             {

@@ -1,9 +1,13 @@
 using BarkFluff.Onliner.Persistence.Contexts;
 using BarkFluff.Onliner.Services;
 using BarkFluff.Proto.Onliner;
+
 using Google.Protobuf.WellKnownTypes;
+
 using MediatR;
+
 using Microsoft.EntityFrameworkCore;
+
 using ProtoStatusTypeId = BarkFluff.Proto.Onliner.StatusTypeId;
 
 namespace BarkFluff.Onliner.Features.GetOnlineStatus;
@@ -88,7 +92,7 @@ public class GetOnlineStatusQueryHandler : IRequestHandler<GetOnlineStatusQuery,
         return domainStatus switch
         {
             Domain.Enums.StatusTypeId.Online => ProtoStatusTypeId.StatusOnline,
-            Domain.Enums.StatusTypeId.Offline =>ProtoStatusTypeId.StatusOffline,
+            Domain.Enums.StatusTypeId.Offline => ProtoStatusTypeId.StatusOffline,
             _ => ProtoStatusTypeId.Unknown
         };
     }

@@ -6,13 +6,13 @@ on:
       - dev
       - master
     paths:
-      - 'BarkFluff.Client.WPF/**'
+      - 'Windows/BarkFluff.Client.WPF/**'
       - '.github/workflows/client-build.yml'
-      - 'BarkFluff.Shared.Exceptions/**'
+      - 'Shared/BarkFluff.Shared.Exceptions/**'
       - 'Shared/BarkFluff.Shared.Auth/**'
       - 'Shared/BarkFluff.Shared.SecurityUtilities/**'
-      - 'ClientComponents/BarkFluff.WebApi.Core/**'
-      - 'client-rebuild.trigger'
+      - 'Windows/BarkFluff.WebApi.Core/**'
+      - 'Windows/client-rebuild.trigger'
 
 jobs:
   build:

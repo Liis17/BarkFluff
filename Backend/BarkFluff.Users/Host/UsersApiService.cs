@@ -1,25 +1,29 @@
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Identity;
+using BarkFluff.Users.Features.Badges.GetUserBadges;
 using BarkFluff.Users.Features.ChangeBio;
 using BarkFluff.Users.Features.ChangeName;
 using BarkFluff.Users.Features.ChangeUsername;
 using BarkFluff.Users.Features.CheckExistEmail;
 using BarkFluff.Users.Features.CheckExistUsername;
-using BarkFluff.Users.Features.GetUser;
-using BarkFluff.Users.Features.SetProfilePicture;
-using BarkFluff.Users.Features.Badges.GetUserBadges;
 using BarkFluff.Users.Features.Devices.GetCurrentDevice;
 using BarkFluff.Users.Features.Devices.GetDevices;
 using BarkFluff.Users.Features.Devices.RenameDevice;
 using BarkFluff.Users.Features.Devices.SetFirebaseToken;
+using BarkFluff.Users.Features.GetUser;
+using BarkFluff.Users.Features.SetProfilePicture;
+
 using Grpc.Core;
+
 using MediatR;
+
 using Microsoft.AspNetCore.Authorization;
 
 namespace BarkFluff.Users.Host;
 
 using Features.SearchUsers;
+
 using Proto.Shared;
 
 [Authorize(Policy = nameof(TokenType.User))]
@@ -48,7 +52,7 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
         {
             FileId = string.IsNullOrEmpty(request.FileId) ? null : Guid.Parse(request.FileId)
         };
-        
+
         return _mediator.Send(command);
     }
 
@@ -102,7 +106,7 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
         var command = new ChangeBioCommand() { Bio = request.Bio };
 
         await _mediator.Send(command);
-        
+
         return new ChangeBioResponse();
     }
 

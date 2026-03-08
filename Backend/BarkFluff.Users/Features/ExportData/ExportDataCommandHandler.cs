@@ -1,12 +1,12 @@
-using System.Text;
-using System.Text.Json;
 using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
 using BarkFluff.Users.Persistence.Services;
-using Google.Protobuf;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
+
+using System.Text.Json;
+
 using FilesServerApiClient = BarkFluff.Proto.Files.FilesServerApi.FilesServerApiClient;
 using MessagesServerApiClient = BarkFluff.Proto.Messages.MessagesServerApi.MessagesServerApiClient;
 

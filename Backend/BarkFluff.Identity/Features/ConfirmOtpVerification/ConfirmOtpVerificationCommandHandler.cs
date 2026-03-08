@@ -1,4 +1,3 @@
-using System.Globalization;
 using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Identity.Infrastructure;
@@ -8,9 +7,13 @@ using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Identity;
 using BarkFluff.Shared.Identity;
 using BarkFluff.Shared.Queue.Notifications;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
+
 using OtpNet;
+
+using System.Globalization;
+
 using OtpNotCreatedException = BarkFluff.Identity.Persistence.Exceptions.OtpNotCreatedException;
 using OtpType = BarkFluff.Identity.Domain.OtpType;
 

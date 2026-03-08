@@ -1,8 +1,8 @@
 using BarkFluff.Files.Persistence;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Proto.Files;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Files.Features.GetUserStorageInfo;
 

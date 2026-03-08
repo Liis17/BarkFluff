@@ -1,4 +1,5 @@
 using BarkFluff.Proto.Files;
+
 using Google.Protobuf.WellKnownTypes;
 
 namespace BarkFluff.Messages.Mapping;
@@ -13,7 +14,7 @@ public static class MessageMapping
         {
             Id = message.Id,
             SentAt = Timestamp.FromDateTime(message.SentAt),
-            ReadBy = { message.ReadBy }, 
+            ReadBy = { message.ReadBy },
             SenderId = message.SenderId,
             Content = message.Content?.ToGrpc(),
             Type = (MessageContentType)(int)message.Type
@@ -26,7 +27,7 @@ public static class MessageMapping
         {
             Id = message.Id,
             SentAt = Timestamp.FromDateTime(message.SentAt),
-            ReadBy = { message.ReadBy }, 
+            ReadBy = { message.ReadBy },
             SenderId = message.SenderId,
             Content = message.Content?.ToGrpc(filesInfoMap),
             Type = (MessageContentType)(int)message.Type

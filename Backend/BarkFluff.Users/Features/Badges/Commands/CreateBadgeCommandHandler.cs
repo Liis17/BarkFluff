@@ -1,8 +1,9 @@
 using BarkFluff.Proto.Users;
 using BarkFluff.Users.Mapping;
 using BarkFluff.Users.Persistence.Services;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
+
 using DomainBadge = BarkFluff.Users.Domain.Badge;
 
 namespace BarkFluff.Users.Features.Badges.Commands;

@@ -1,9 +1,13 @@
 namespace BarkFluff.Messages.Infrastructure;
 
 using Domain;
+
 using Google.Protobuf;
+
 using Mapping;
+
 using MassTransit;
+
 using Shared.Queue.Messages;
 
 public class MessageQueueSender
@@ -23,7 +27,7 @@ public class MessageQueueSender
             ChatMembers = chatMembers,
             Message = message.ToGrpc().ToByteArray()
         };
-        
+
         await _publishEndpoint.Publish(newMessageEvent);
     }
 }

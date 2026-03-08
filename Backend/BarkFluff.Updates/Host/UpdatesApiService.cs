@@ -1,14 +1,21 @@
 namespace BarkFluff.Updates.Host;
 
+using BarkFluff.GrpcServer.Metrics;
+
+using Features.SubscribeNewMessages;
+
+using Grpc.Core;
+
+using GrpcServer.XAuth;
+
+using Microsoft.AspNetCore.Authorization;
+
+using Proto.Updates;
+
+using Shared.Identity;
+
 using System.Threading;
 using System.Threading.Tasks;
-using BarkFluff.GrpcServer.Metrics;
-using Features.SubscribeNewMessages;
-using Grpc.Core;
-using GrpcServer.XAuth;
-using Microsoft.AspNetCore.Authorization;
-using Proto.Updates;
-using Shared.Identity;
 
 [Authorize(Policy = nameof(TokenType.User))]
 public class UpdatesApiService : BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiBase

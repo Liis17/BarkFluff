@@ -1,6 +1,7 @@
 using BarkFluff.Identity.Domain;
 using BarkFluff.Identity.Persistence.Contexts;
 using BarkFluff.Identity.Persistence.Exceptions;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace BarkFluff.Identity.Persistence.Services;
@@ -33,7 +34,7 @@ public class AuthPropertiesStorage
                 UserId = userId,
                 OtpSecret = secretKey
             };
-            
+
             await _context.AuthUserProperties.AddAsync(props);
             await _context.SaveChangesAsync();
 
@@ -41,22 +42,22 @@ public class AuthPropertiesStorage
         }
 
         props.OtpSecret = secretKey;
-        
+
         await _context.SaveChangesAsync();
     }
-    
+
     public async Task<string?> GetOtpSecretKey(long userId)
     {
         var props = await _context.AuthUserProperties.FirstOrDefaultAsync(x => x.UserId == userId);
-        
+
         if (props is null)
         {
             throw new OtpNotCreatedException();
         }
-        
+
         return props.OtpSecret;
     }
-    
+
     public async Task EnableOtp(long userId)
     {
         var props = await _context.AuthUserProperties.FirstOrDefaultAsync(x => x.UserId == userId);
@@ -65,9 +66,9 @@ public class AuthPropertiesStorage
         {
             throw new OtpNotCreatedException();
         }
-        
+
         props.OtpEnabled = true;
-        
+
         await _context.SaveChangesAsync();
     }
 
@@ -79,9 +80,9 @@ public class AuthPropertiesStorage
         {
             throw new OtpNotCreatedException();
         }
-        
+
         props.EmailOtpEnabled = true;
-        
+
         await _context.SaveChangesAsync();
     }
 
@@ -98,9 +99,9 @@ public class AuthPropertiesStorage
         {
             throw new OtpNotCreatedException();
         }
-        
+
         props.OtpEnabled = false;
-        
+
         await _context.SaveChangesAsync();
     }
 
@@ -112,9 +113,9 @@ public class AuthPropertiesStorage
         {
             throw new OtpNotCreatedException();
         }
-        
+
         props.EmailOtpEnabled = false;
-        
+
         await _context.SaveChangesAsync();
     }
 
@@ -129,29 +130,29 @@ public class AuthPropertiesStorage
                 UserId = userId,
                 LastEmailAuthCode = code
             };
-            
+
             await _context.AuthUserProperties.AddAsync(props);
             await _context.SaveChangesAsync();
 
             return;
         }
-        
+
         props.LastEmailAuthCode = code;
-        
+
         await _context.SaveChangesAsync();
     }
 
     public async Task UpdateOptType(OtpType type, long userId)
     {
         var props = await _context.AuthUserProperties.FirstOrDefaultAsync(x => x.UserId == userId);
-        
+
         if (props is null)
         {
             throw new OtpNotCreatedException();
         }
-        
+
         props.SelectedOtpType = type;
-        
+
         await _context.SaveChangesAsync();
     }
 }

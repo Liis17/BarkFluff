@@ -1,6 +1,6 @@
 using BarkFluff.Proto.FastAuth;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.FastAuth.Features.GenerateConnectDeviceToken;
 

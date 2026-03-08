@@ -1,6 +1,5 @@
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Identity.Domain;
-using BarkFluff.Proto.Identity;
 using BarkFluff.Identity.Features.Auth;
 using BarkFluff.Identity.Features.ConfirmAccount;
 using BarkFluff.Identity.Features.ConfirmOtpVerification;
@@ -13,10 +12,13 @@ using BarkFluff.Identity.Features.ListOtpVerification;
 using BarkFluff.Identity.Features.RemoveActiveSession;
 using BarkFluff.Identity.Features.ResetPassword;
 using BarkFluff.Identity.Services;
-using BarkFluff.Shared.Exceptions.Identity;
+using BarkFluff.Proto.Identity;
 using BarkFluff.Shared.Identity;
+
 using Grpc.Core;
+
 using MediatR;
+
 using Microsoft.AspNetCore.Authorization;
 
 namespace BarkFluff.Identity.Host;
@@ -88,7 +90,7 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
             Code = request.CodeValue,
             CodeId = request.CodeId,
         };
-        
+
         return _mediator.Send(command);
     }
 
@@ -103,7 +105,7 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
     public override Task<GetActiveSessionsResponse> GetActiveSessions(GetActiveSessionsRequest request, ServerCallContext context)
     {
         var command = new GetActiveSessionsCommand();
-        
+
         return _mediator.Send(command);
     }
 
@@ -128,7 +130,7 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
         {
             OptType = request.OtpType,
         };
-        
+
         return _mediator.Send(command);
     }
 
@@ -151,7 +153,7 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
             OtpCode = request.OtpCode,
             OptType = request.OtpType
         };
-        
+
         return _mediator.Send(command);
     }
 
@@ -159,7 +161,7 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
     public override Task<ListOtpVerificationResponse> ListOtpVerification(ListOtpVerificationRequest request, ServerCallContext context)
     {
         var command = new ListOtpVerificationCommand();
-        
+
         return _mediator.Send(command);
     }
 
@@ -170,7 +172,9 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
 
         var command = new ResetPasswordCommand()
         {
-            Email = request.Email?.Trim(), OtpType = (OtpType)(int)request.OtpType, Username = request.Username?.Trim()
+            Email = request.Email?.Trim(),
+            OtpType = (OtpType)(int)request.OtpType,
+            Username = request.Username?.Trim()
         };
 
         return await _mediator.Send(command);
@@ -183,7 +187,7 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
             OtpCode = request.OtpCode,
             ResetId = Guid.Parse(request.ResetId)
         };
-        
+
         var result = await _mediator.Send(command);
 
         return result;

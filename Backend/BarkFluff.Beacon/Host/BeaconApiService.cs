@@ -1,7 +1,9 @@
 using BarkFluff.Beacon.Features.GetServerInfo;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Beacon;
+
 using Grpc.Core;
+
 using MediatR;
 
 namespace BarkFluff.Beacon.Host;

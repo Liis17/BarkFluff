@@ -1,6 +1,7 @@
-using System.Text;
 using Grpc.Core;
 using Grpc.Core.Interceptors;
+
+using System.Text;
 
 namespace BarkFluff.Shared.Auth;
 
@@ -19,7 +20,7 @@ public class XIpClientInterceptor : Interceptor
         AsyncUnaryCallContinuation<TRequest, TResponse> continuation)
     {
         var metadata = context.Options.Headers ?? new Metadata();
-        
+
         var ipAddress = Convert.ToBase64String(Encoding.UTF8.GetBytes(_ipAddr));
 
         metadata.Add(MetadataKeys.IpAddress, ipAddress);

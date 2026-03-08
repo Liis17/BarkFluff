@@ -1,7 +1,4 @@
-using System.Globalization;
 using BarkFluff.GrpcServer.Tracker;
-using BarkFluff.GrpcServer.XAuth;
-using BarkFluff.Identity.Domain;
 using BarkFluff.Identity.Features.CreateToken;
 using BarkFluff.Identity.Infrastructure;
 using BarkFluff.Identity.Persistence.Services;
@@ -11,10 +8,14 @@ using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Identity;
 using BarkFluff.Shared.Identity;
 using BarkFluff.Shared.Queue.Notifications;
+
 using Google.Protobuf.WellKnownTypes;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
+
 using OtpNet;
+
+using System.Globalization;
 
 namespace BarkFluff.Identity.Features.Auth;
 
@@ -25,7 +26,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
 {
 
     private const int ExpDaysRefreshToken = 9999;
-    
+
     public async Task<AuthResponse> Handle(AuthCommand request, CancellationToken cancellationToken)
     {
         var login = request.Username ?? request.Email;
@@ -113,7 +114,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                 var code = CodeGenerator.GenerateDigitalCode(6);
 
                 await authPropertiesStorage.UpdateLastEmailAuthCode(userContactInfo.User.Id, code);
-                
+
                 // Получаем данные о местоположении IP-адреса
                 string locationInfo = "-";
                 if (!string.IsNullOrEmpty(requestContext.IpAddress))
@@ -124,7 +125,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                         locationInfo = $"{ipLocation.Country}, {ipLocation.RegionName}, {ipLocation.City}";
                     }
                 }
-            
+
                 var emailNotification = new EmailNotification
                 {
                     OwnerId = userContactInfo.User.Id,
@@ -148,7 +149,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
 
                 await notificationQueueSender.SendNotification(emailNotification);
             }
-            
+
             throw new OtpCodeNeedException();
         }
 
@@ -322,7 +323,9 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
             user.User.Id
         );
 
-        var response = new AuthResponse { RefreshToken = new Token
+        var response = new AuthResponse
+        {
+            RefreshToken = new Token
             {
                 Value = refreshTokenString,
                 ExpirationDate = Timestamp.FromDateTime(DateTime.UtcNow.AddDays(ExpDaysRefreshToken))

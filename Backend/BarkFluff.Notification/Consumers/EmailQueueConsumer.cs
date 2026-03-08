@@ -1,8 +1,8 @@
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Notification.Senders;
 using BarkFluff.Shared.Queue.Notifications;
+
 using MassTransit;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Notification.Consumers;
 

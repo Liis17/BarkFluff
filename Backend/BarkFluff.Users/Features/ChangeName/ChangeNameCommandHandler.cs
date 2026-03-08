@@ -1,8 +1,8 @@
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Users.Infrastructure;
 using BarkFluff.Users.Persistence.Services;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Users.Features.ChangeName;
 

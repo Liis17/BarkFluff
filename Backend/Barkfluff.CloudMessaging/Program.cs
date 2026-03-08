@@ -1,12 +1,15 @@
+using Barkfluff.CloudMessaging.Consumers;
+using Barkfluff.CloudMessaging.Services;
+
 using BarkFluff.GrpcServer;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Auth;
 using BarkFluff.Shared.Exceptions.Interceptors;
 using BarkFluff.Shared.Identity;
-using Barkfluff.CloudMessaging.Consumers;
-using Barkfluff.CloudMessaging.Services;
+
 using MassTransit;
+
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);

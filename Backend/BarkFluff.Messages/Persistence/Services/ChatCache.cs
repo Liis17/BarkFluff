@@ -50,7 +50,7 @@ public class ChatCache
             return null;
         }
     }
-    
+
     public async Task SetChatImage(Guid chatId, long userId, string image)
     {
         try

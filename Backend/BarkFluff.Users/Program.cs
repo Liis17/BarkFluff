@@ -13,6 +13,7 @@ using BarkFluff.Users.Persistence.Services;
 using MassTransit;
 
 using Microsoft.EntityFrameworkCore;
+
 using Serilog;
 
 namespace BarkFluff.Users;

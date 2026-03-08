@@ -5,6 +5,7 @@ using BarkFluff.Files.Infrastructure;
 using BarkFluff.Files.Persistence;
 using BarkFluff.GrpcServer.Settings;
 using BarkFluff.Proto.Files;
+
 using MediatR;
 
 namespace BarkFluff.Files.Features.UploadBadgeImage;

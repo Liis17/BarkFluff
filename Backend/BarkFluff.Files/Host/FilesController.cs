@@ -2,7 +2,9 @@ using BarkFluff.Files.Exceptions;
 using BarkFluff.Files.Features.DownloadFile;
 using BarkFluff.Files.Features.UploadFile;
 using BarkFluff.GrpcServer.Metrics;
+
 using MediatR;
+
 using Microsoft.AspNetCore.Mvc;
 
 namespace BarkFluff.Files.Host;
@@ -21,24 +23,24 @@ public class FilesController : Controller
     [HttpPost("upload/{uploadId}")]
     [RequestSizeLimit(500_000_000)]
     [RequestFormLimits(MultipartBodyLengthLimit = 500_000_000)]
-    public async Task<IActionResult> UploadFile([FromRoute]Guid uploadId, [FromForm] IFormFile? file)
+    public async Task<IActionResult> UploadFile([FromRoute] Guid uploadId, [FromForm] IFormFile? file)
     {
         if (file == null || file.Length == 0)
         {
             return BadRequest("Файл не выбран или пустой.");
         }
-        
+
         var memoryStream = new MemoryStream();
         await file.CopyToAsync(memoryStream);
         memoryStream.Position = 0; // Сбрасываем позицию в начало
-        
+
         var command = new UploadFileCommand()
         {
             FileId = uploadId,
             FileStream = memoryStream,
             FileName = file.FileName
         };
-        
+
         try
         {
             var resultFileId = await _mediator.Send(command);
@@ -57,9 +59,9 @@ public class FilesController : Controller
             throw;
         }
     }
-    
+
     [HttpGet("download/{fileId}")]
-    public async Task<IActionResult> DownloadFile([FromRoute]Guid fileId)
+    public async Task<IActionResult> DownloadFile([FromRoute] Guid fileId)
     {
         try
         {
@@ -67,9 +69,9 @@ public class FilesController : Controller
             {
                 FileId = fileId
             };
-            
+
             var result = await _mediator.Send(command);
-            
+
             return File(result.FileStream, result.ContentType, result.FileName);
         }
         catch (FileNotUploadedException ex)

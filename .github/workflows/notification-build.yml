@@ -6,10 +6,10 @@ on:
       - master
     paths:
       - 'Backend/BarkFluff.Notification/**'
-      - 'BarkFluff.Shared.Queue/**'
+      - 'Shared/BarkFluff.Shared.Queue/**'
       - 'Backend/BarkFluff.GrpcServer/**'
       - '.github/workflows/notification-build.yml'
-      - 'rebuild.trigger'
+      - 'Backend/rebuild.trigger'
 jobs:
   build-notification:
     runs-on: self-hosted

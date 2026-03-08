@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BarkFluff.Identity.Persistence.Services;
 
-public class ResetPasswordsStorage (IdentityContext context)
+public class ResetPasswordsStorage(IdentityContext context)
 {
     public async Task<ResetPassword?> GetResetPassword(Guid resetId)
     {
@@ -17,7 +17,7 @@ public class ResetPasswordsStorage (IdentityContext context)
         context.ResetPasswords.Add(resetPassword);
 
         await context.SaveChangesAsync();
-        
+
         return resetPassword;
     }
 }
