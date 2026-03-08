@@ -1,6 +1,8 @@
-using System.Collections.Concurrent;
 using BarkFluff.Proto.Onliner;
+
 using Grpc.Core;
+
+using System.Collections.Concurrent;
 
 namespace BarkFluff.Onliner.Services;
 

@@ -9,7 +9,7 @@ on:
       - 'Backend/BarkFluff.Identity/**'
       - 'Backend/BarkFluff.GrpcServer/**'
       - '.github/workflows/fast-auth-build.yml'
-      - 'rebuild.trigger'
+      - 'Backend/rebuild.trigger'
 jobs:
   build-fast-auth:
     runs-on: self-hosted

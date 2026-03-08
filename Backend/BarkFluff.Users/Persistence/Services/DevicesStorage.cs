@@ -1,5 +1,6 @@
 using BarkFluff.Users.Domain;
 using BarkFluff.Users.Persistence.Contexts;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace BarkFluff.Users.Persistence.Services;

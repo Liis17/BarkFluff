@@ -1,9 +1,10 @@
 using BarkFluff.Proto.Shared;
 using BarkFluff.Shared.Queue.Messages;
 using BarkFluff.Updates.Features.SubscribeNewMessages;
+
 using MassTransit;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Updates.Features.PushNotifications;
 

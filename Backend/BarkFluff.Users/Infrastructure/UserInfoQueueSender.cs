@@ -1,4 +1,5 @@
 using BarkFluff.Shared.Queue.Users;
+
 using MassTransit;
 
 namespace BarkFluff.Users.Infrastructure;
@@ -22,7 +23,7 @@ public class UserInfoQueueSender
             NewFirstName = newFirstName,
             NewLastName = newLastName
         };
-        
+
         await _publishEndpoint.Publish(userChangeNameEvent);
     }
 
@@ -33,7 +34,7 @@ public class UserInfoQueueSender
             NewUsername = newUsername,
             UserId = userId
         };
-        
+
         await _publishEndpoint.Publish(usernameChangedEvent);
     }
 
@@ -45,7 +46,7 @@ public class UserInfoQueueSender
             ProfilePictureUrl = profilePictureUrl,
             ProfilePictureUrlPreview = profilePicturePreviewUrl
         };
-        
+
         await _publishEndpoint.Publish(userChangedAvatarEvent);
     }
 
@@ -55,10 +56,10 @@ public class UserInfoQueueSender
         {
             UserId = userId
         };
-        
+
         await _publishEndpoint.Publish(userChangedPasswordEvent);
     }
-    
+
     public async Task UserBioChangedEvent(long userId, string newUsername)
     {
         var usernameChangedEvent = new UserChangedBio()
@@ -66,7 +67,7 @@ public class UserInfoQueueSender
             NewBio = newUsername,
             UserId = userId
         };
-        
+
         await _publishEndpoint.Publish(usernameChangedEvent);
     }
 }

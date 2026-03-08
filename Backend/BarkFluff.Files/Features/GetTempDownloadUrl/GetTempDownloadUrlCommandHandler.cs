@@ -2,9 +2,8 @@ using BarkFluff.Files.Helpers;
 using BarkFluff.Files.Persistence;
 using BarkFluff.GrpcServer.Settings;
 using BarkFluff.Proto.Files;
+
 using MediatR;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Files.Features.GetTempDownloadUrl;
 

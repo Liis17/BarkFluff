@@ -1,5 +1,3 @@
-using Microsoft.EntityFrameworkCore;
-
 namespace BarkFluff.Users.Persistence.Extensions;
 
 /// <summary>
@@ -19,8 +17,8 @@ public static class PostgresFullTextSearchExtensions
     /// <summary>
     /// Расширение для выполнения полнотекстового поиска в EF Core с использованием Npgsql
     /// </summary>
-    public static IQueryable<T> FullTextSearch<T>(this IQueryable<T> source, 
-        string searchTerm, 
+    public static IQueryable<T> FullTextSearch<T>(this IQueryable<T> source,
+        string searchTerm,
         params string[] propertyNames) where T : class
     {
         // Это просто вспомогательный метод, мы будем использовать

@@ -1,13 +1,13 @@
 using BarkFluff.GrpcServer.XAuth;
-using BarkFluff.Messages.Persistence.Exceptions;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Shared;
 using BarkFluff.Shared.Exceptions.Messages;
+
 using Google.Protobuf.WellKnownTypes;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Messages.Features.ListChatAttachments;
 

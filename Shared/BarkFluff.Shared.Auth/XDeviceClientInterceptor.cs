@@ -1,6 +1,7 @@
-using System.Text;
 using Grpc.Core;
 using Grpc.Core.Interceptors;
+
+using System.Text;
 
 namespace BarkFluff.Shared.Auth;
 
@@ -19,7 +20,7 @@ public class XDeviceClientInterceptor : Interceptor
         AsyncUnaryCallContinuation<TRequest, TResponse> continuation)
     {
         var metadata = context.Options.Headers ?? new Metadata();
-        
+
         var deviceName = Convert.ToBase64String(Encoding.UTF8.GetBytes(_deviceName));
 
         metadata.Add(MetadataKeys.DeviceName, deviceName);

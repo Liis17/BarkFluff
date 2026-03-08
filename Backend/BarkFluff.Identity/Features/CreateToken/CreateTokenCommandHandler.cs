@@ -2,8 +2,8 @@ using BarkFluff.Identity.Persistence.Services;
 using BarkFluff.Identity.Services;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Shared.Exceptions.Identity;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Identity.Features.CreateToken;
 

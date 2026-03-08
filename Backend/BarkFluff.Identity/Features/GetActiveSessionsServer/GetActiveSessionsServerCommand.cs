@@ -1,4 +1,5 @@
 using BarkFluff.Proto.Identity;
+
 using MediatR;
 
 namespace BarkFluff.Identity.Features.GetActiveSessionsServer;

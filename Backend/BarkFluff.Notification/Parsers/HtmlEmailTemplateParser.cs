@@ -17,13 +17,13 @@ public class HtmlEmailTemplateParser
         { NotificationType.PasswordChanged, "password_changed.html"},
         { NotificationType.TwoFactorMethodChanged, "two_factor_method_changed.html"},
     };
-    
+
     public async Task<string> Parse(NotificationType type, Dictionary<string, string> payload)
     {
         var templateName = _templatesMap[type];
 
         var fileName = Path.Combine(Environment.CurrentDirectory, "Templates", templateName);
-        
+
         var fileContent = await File.ReadAllTextAsync(fileName);
 
         foreach (var payloadItem in payload)

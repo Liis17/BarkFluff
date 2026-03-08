@@ -7,11 +7,17 @@ using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Identity;
 using BarkFluff.Shared.Identity;
 using BarkFluff.Shared.Queue.Notifications;
+
 using GrpcServer.XAuth;
+
 using Infrastructure;
+
 using MediatR;
+
 using Microsoft.Extensions.Logging;
+
 using Persistence.Services;
+
 using Services;
 
 public class SetPasswordCommandHandler : IRequestHandler<SetPasswordCommand>

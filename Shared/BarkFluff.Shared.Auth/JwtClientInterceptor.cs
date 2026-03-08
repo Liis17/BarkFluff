@@ -27,4 +27,4 @@ public class JwtClientInterceptor : Interceptor
 
         return continuation(request, newContext);
     }
-} 
+}

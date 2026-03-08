@@ -4,8 +4,11 @@ using BarkFluff.Identity.Features.ListOtpVerificationServer;
 using BarkFluff.Identity.Features.RemoveActiveSessionServer;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Shared.Identity;
+
 using Grpc.Core;
+
 using MediatR;
+
 using Microsoft.AspNetCore.Authorization;
 
 namespace BarkFluff.Identity.Host;

@@ -1,9 +1,10 @@
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Onliner.Services;
 using BarkFluff.Proto.Onliner;
+
 using Grpc.Core;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Onliner.Features.ChangeUsersInSubscription;
 

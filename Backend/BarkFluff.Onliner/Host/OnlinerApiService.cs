@@ -5,8 +5,11 @@ using BarkFluff.Onliner.Features.SetOnlineStatus;
 using BarkFluff.Onliner.Features.SubscribeToOnlineStatus;
 using BarkFluff.Proto.Onliner;
 using BarkFluff.Shared.Identity;
+
 using Grpc.Core;
+
 using MediatR;
+
 using Microsoft.AspNetCore.Authorization;
 
 namespace BarkFluff.Onliner.Host;

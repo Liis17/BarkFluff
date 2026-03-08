@@ -3,9 +3,8 @@ using BarkFluff.Files.Mapping;
 using BarkFluff.Files.Persistence;
 using BarkFluff.GrpcServer.Settings;
 using BarkFluff.Proto.Files;
+
 using MediatR;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Files.Features.GetFilesData;
 

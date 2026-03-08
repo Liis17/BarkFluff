@@ -1,8 +1,11 @@
 namespace BarkFluff.Navigator.Features.ListServers;
 
 using MediatR;
+
 using Microsoft.Extensions.Logging;
+
 using Persistence;
+
 using Proto.Navigator;
 
 public class ListServersQueryHandler : IRequestHandler<ListServersQuery, ListServersResponse>

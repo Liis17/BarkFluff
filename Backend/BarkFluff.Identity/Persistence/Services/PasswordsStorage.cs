@@ -21,9 +21,9 @@ public class PasswordsStorage
         if (userPassword is null)
         {
             userPassword = new UserPassword { UserId = userId, ChangedAt = DateTime.UtcNow, PasswordHash = passwordHash };
-            
+
             _context.UserPasswords.Add(userPassword);
-            
+
             await _context.SaveChangesAsync();
 
             return true;
@@ -31,9 +31,9 @@ public class PasswordsStorage
 
         userPassword.ChangedAt = DateTime.UtcNow;
         userPassword.PasswordHash = passwordHash;
-        
+
         _context.UserPasswords.Update(userPassword);
-        
+
         await _context.SaveChangesAsync();
 
         return false;
@@ -44,7 +44,7 @@ public class PasswordsStorage
         var userPassword = await _context.UserPasswords
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.UserId == userId);
-        
+
         return userPassword?.PasswordHash;
     }
 }

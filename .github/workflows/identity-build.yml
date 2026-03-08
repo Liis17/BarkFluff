@@ -6,12 +6,12 @@ on:
       - master
     paths:
       - 'Backend/BarkFluff.Identity/**'
-      - 'BarkFluff.Shared.Queue/**'
+      - 'Shared/BarkFluff.Shared.Queue/**'
       - 'Shared/BarkFluff.Shared.Identity/**'
-      - 'BarkFluff.Shared.Exceptions/**'
+      - 'Shared/BarkFluff.Shared.Exceptions/**'
       - 'Backend/BarkFluff.GrpcServer/**'
       - '.github/workflows/identity-build.yml'
-      - 'rebuild.trigger'
+      - 'Backend/rebuild.trigger'
 jobs:
   build-identity:
     runs-on: self-hosted

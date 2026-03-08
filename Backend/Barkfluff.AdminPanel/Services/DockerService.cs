@@ -1,4 +1,5 @@
 using Barkfluff.AdminPanel.Models.Dtos;
+
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
@@ -172,7 +173,7 @@ public class DockerService
         try
         {
             var serviceName = ConvertContainerNameToServiceName(containerName);
-            
+
             _logger.LogInformation("Обновление контейнера {ContainerName} (сервис: {ServiceName})", containerName, serviceName);
 
             // 1. Pull нового образа через docker compose pull <service>

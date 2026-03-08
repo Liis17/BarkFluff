@@ -1,6 +1,7 @@
-using System.Collections.Concurrent;
 using BarkFluff.Onliner.Domain.Entities;
 using BarkFluff.Onliner.Domain.Enums;
+
+using System.Collections.Concurrent;
 
 namespace BarkFluff.Onliner.Services;
 

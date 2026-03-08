@@ -1,6 +1,5 @@
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Onliner.Services;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Onliner.Features.SubscribeToOnlineStatus;
 

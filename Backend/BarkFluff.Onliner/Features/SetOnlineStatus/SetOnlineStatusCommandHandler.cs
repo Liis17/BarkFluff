@@ -1,8 +1,8 @@
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Onliner.Services;
 using BarkFluff.Proto.Onliner;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Onliner.Features.SetOnlineStatus;
 

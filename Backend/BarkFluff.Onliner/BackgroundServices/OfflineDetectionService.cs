@@ -1,7 +1,5 @@
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Onliner.Services;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Onliner.BackgroundServices;
 

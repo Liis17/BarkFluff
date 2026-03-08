@@ -1,6 +1,6 @@
 using BarkFluff.Updates.Features.SubscribeMessagesRead;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Updates.Features.PushNotifications;
 

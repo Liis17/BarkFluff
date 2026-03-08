@@ -1,9 +1,10 @@
 using BarkFluff.Identity.Persistence.Services;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Proto.Users;
+
 using Google.Protobuf.WellKnownTypes;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Identity.Features.GetActiveSessionsServer;
 

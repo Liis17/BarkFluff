@@ -1,9 +1,13 @@
 namespace BarkFluff.Messages.Consumers;
 
 using BarkFluff.GrpcServer.Metrics;
+
 using MassTransit;
+
 using Microsoft.Extensions.Logging;
+
 using Persistence.Services;
+
 using Shared.Queue.Users;
 
 public class UserChangedNameConsumer : IConsumer<UserChangedName>

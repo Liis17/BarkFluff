@@ -8,7 +8,7 @@ on:
       - 'Backend/BarkFluff.Onliner/**'
       - 'Backend/BarkFluff.GrpcServer/**'
       - '.github/workflows/onliner-build.yml'
-      - 'rebuild.trigger'
+      - 'Backend/rebuild.trigger'
 jobs:
   build-onliner:
     runs-on: self-hosted

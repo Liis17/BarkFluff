@@ -1,4 +1,3 @@
-using System.Globalization;
 using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.Identity.Infrastructure;
 using BarkFluff.Identity.Persistence.Services;
@@ -8,9 +7,12 @@ using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Identity;
 using BarkFluff.Shared.Identity;
 using BarkFluff.Shared.Queue.Notifications;
+
 using Google.Protobuf.WellKnownTypes;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
+
+using System.Globalization;
 
 namespace BarkFluff.Identity.Features.ConfirmAccount;
 
@@ -32,8 +34,8 @@ public class ConfirmAccountCommandHandler(ConfirmationCodesStorage confirmationC
         if (string.IsNullOrEmpty(requestContext.DeviceName))
         {
             throw new XDeviceNameIsRequiredException();
-        } 
-        
+        }
+
         var codeId = Guid.Parse(request.CodeId);
 
         logger.LogDebug("Получение кода подтверждения {CodeId}", codeId);

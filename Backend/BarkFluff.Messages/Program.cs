@@ -13,6 +13,7 @@ using BarkFluff.Shared.Identity;
 using MassTransit;
 
 using Microsoft.EntityFrameworkCore;
+
 using Serilog;
 
 namespace BarkFluff.Messages;

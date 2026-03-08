@@ -1,4 +1,5 @@
 using BarkFluff.Messages.Domain;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

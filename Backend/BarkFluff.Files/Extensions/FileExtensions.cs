@@ -1,5 +1,3 @@
-using System.IO;
-
 namespace BarkFluff.Files.Extensions;
 
 public static class FileExtensions
@@ -13,9 +11,9 @@ public static class FileExtensions
     {
         if (string.IsNullOrEmpty(fileName))
             return "application/octet-stream";
-            
+
         var extension = Path.GetExtension(fileName).ToLowerInvariant();
-        
+
         return extension switch
         {
             ".jpg" or ".jpeg" => "image/jpeg",
@@ -24,7 +22,7 @@ public static class FileExtensions
             ".bmp" => "image/bmp",
             ".webp" => "image/webp",
             ".svg" => "image/svg+xml",
-            
+
             ".pdf" => "application/pdf",
             ".doc" => "application/msword",
             ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -32,14 +30,14 @@ public static class FileExtensions
             ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             ".ppt" => "application/vnd.ms-powerpoint",
             ".pptx" => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-            
+
             ".txt" => "text/plain",
             ".html" or ".htm" => "text/html",
             ".css" => "text/css",
             ".js" => "text/javascript",
             ".json" => "application/json",
             ".xml" => "application/xml",
-            
+
             ".mp3" => "audio/mpeg",
             ".wav" => "audio/wav",
             ".ogg" => "audio/ogg",
@@ -50,11 +48,11 @@ public static class FileExtensions
             ".mp4" => "video/mp4",
             ".avi" => "video/x-msvideo",
             ".mov" => "video/quicktime",
-            
+
             ".zip" => "application/zip",
             ".rar" => "application/x-rar-compressed",
             ".7z" => "application/x-7z-compressed",
-            
+
             _ => "application/octet-stream"
         };
     }

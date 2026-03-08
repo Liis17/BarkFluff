@@ -1,7 +1,7 @@
 using BarkFluff.Identity.Persistence.Services;
 using BarkFluff.Proto.Identity;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Identity.Features.DisableOtpVerificationServer;
 

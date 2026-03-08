@@ -1,11 +1,14 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 using BarkFluff.Identity.Settings;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Shared.Identity;
+
 using Google.Protobuf.WellKnownTypes;
+
 using Microsoft.IdentityModel.Tokens;
+
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace BarkFluff.Identity.Services;
 
@@ -18,7 +21,7 @@ public class JwtService(JwtSettings jwtSettings)
             new(IdentityClaims.UserId, userId.ToString()),
             new(IdentityClaims.TokenType, TokenType.User.ToString()),
         };
-        
+
         var dateEnd = DateTime.UtcNow.AddMinutes(jwtSettings.ExpiryMinutes);
 
         var token = CreateToken(claims, dateEnd);
@@ -33,19 +36,19 @@ public class JwtService(JwtSettings jwtSettings)
             new(IdentityClaims.ServiceId, serviceId.ToString()),
             new(IdentityClaims.TokenType, TokenType.Service.ToString()),
         };
-        
+
         var dateEnd = new DateTime(9999, 12, 31, 23, 59, 59);
 
         var token = CreateToken(claims, dateEnd);
 
         return token;
     }
-    
+
     private string CreateToken(IEnumerable<Claim> claims, DateTime expiration)
     {
         var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey));
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
-        
+
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
@@ -59,5 +62,5 @@ public class JwtService(JwtSettings jwtSettings)
         var token = tokenHandler.CreateToken(tokenDescriptor);
 
         return tokenHandler.WriteToken(token);
-    } 
+    }
 }

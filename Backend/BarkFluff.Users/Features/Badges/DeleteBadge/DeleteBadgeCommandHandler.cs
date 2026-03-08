@@ -1,5 +1,6 @@
 using BarkFluff.Proto.Users;
 using BarkFluff.Users.Persistence.Services;
+
 using MediatR;
 
 namespace BarkFluff.Users.Features.Badges.DeleteBadge;

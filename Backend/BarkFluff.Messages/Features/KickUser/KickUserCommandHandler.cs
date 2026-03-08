@@ -3,8 +3,8 @@ using BarkFluff.Messages.Domain;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Messages;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Messages.Features.KickUser;
 
@@ -52,19 +52,19 @@ public class KickUserCommandHandler : IRequestHandler<KickUserCommand>
         {
             throw new NoAccessToChatException();
         }
-        
+
         if (!chatInfo.IsGroupChat)
         {
             throw new IsNotGroupChatException();
         }
-        
+
         var chatMember = chatInfo.Members!.FirstOrDefault(x => x.Id == request.UserId);
 
         if (chatMember == null)
         {
             throw new UserNotMemberChatException();
         }
-        
+
         var groupChatInfo = await _chatsStorage.GetGroupChatInfo(request.ChatId);
 
         if (groupChatInfo == null)
@@ -89,13 +89,13 @@ public class KickUserCommandHandler : IRequestHandler<KickUserCommand>
 
         var administatorUserInfoResponse = await
             _usersServerApiClient.GetByIdAsync(new GetByIdRequest() { UserId = _userContext.UserId });
-        
+
         var kickedUserInfoResponse = await _usersServerApiClient.GetByIdAsync(new GetByIdRequest() { UserId = chatMember.UserId });
-        
+
         var adminName = $"{administatorUserInfoResponse.User.FirstName} {administatorUserInfoResponse.User.LastName}";
 
         var kickedName = $"{kickedUserInfoResponse.User.FirstName} {kickedUserInfoResponse.User.LastName}";
-        
+
         var kickSystemMessage = new Message()
         {
             ChatId = request.ChatId,
@@ -108,7 +108,7 @@ public class KickUserCommandHandler : IRequestHandler<KickUserCommand>
             SentAt = DateTime.UtcNow,
             Type = MessageContentType.System
         };
-        
+
         _logger.LogDebug("Отправка системного сообщения об исключении пользователя");
 
         await _messageQueueSender.SendMessage(kickSystemMessage, request.ChatId, chatInfo.Members!

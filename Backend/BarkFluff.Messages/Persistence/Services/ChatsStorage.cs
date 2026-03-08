@@ -1,4 +1,5 @@
 using BarkFluff.Messages.Domain;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace BarkFluff.Messages.Persistence.Services;
@@ -77,16 +78,16 @@ public class ChatsStorage
 
     public async Task<bool> CheckAccessToChat(Guid chatId, long userId)
     {
-        var chat = await _context.Chats.Include(x=> x.Members).FirstOrDefaultAsync(x => x.Id == chatId);
+        var chat = await _context.Chats.Include(x => x.Members).FirstOrDefaultAsync(x => x.Id == chatId);
 
         if (chat is null)
         {
             return false;
         }
-        
+
         return chat.Members.Any(x => x.UserId == userId);
     }
-    
+
     public async Task<int> GetTotalUserChats(long userId)
     {
         // Считаем только чаты, у которых есть сообщения (исключаем пустые чаты)
@@ -125,15 +126,15 @@ public class ChatsStorage
 
             IsGroupChat = false
         };
-        
+
         var result = await _context.Chats.AddAsync(chat);
-        
+
         await _context.SaveChangesAsync();
 
         return result.Entity;
     }
 
-    public async Task<Chat> CreateGroupChat(List<long> members,  string title, string? picture)
+    public async Task<Chat> CreateGroupChat(List<long> members, string title, string? picture)
     {
         var chat = new Chat()
         {
@@ -143,11 +144,11 @@ public class ChatsStorage
             Members = members.Select(x => new ChatMember() { UserId = x, JoinedAt = DateTime.UtcNow })
                 .ToList()
         };
-        
+
         var result = await _context.Chats.AddAsync(chat);
-        
+
         await _context.SaveChangesAsync();
-        
+
         return result.Entity;
     }
 
@@ -156,7 +157,7 @@ public class ChatsStorage
         await _context.GroupChatInfos.AddAsync(groupChatInfo);
         await _context.SaveChangesAsync();
     }
-    
+
     public async Task<GroupChatInfo?> GetGroupChatInfo(Guid chatId)
     {
         return await _context.GroupChatInfos.FirstOrDefaultAsync(x => x.ChatId == chatId);

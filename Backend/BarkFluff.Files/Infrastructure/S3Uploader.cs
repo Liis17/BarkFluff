@@ -1,5 +1,3 @@
-using Amazon.S3;
-
 namespace BarkFluff.Files.Infrastructure;
 
 public class S3Uploader

@@ -20,6 +20,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\..\BarkFluff.Shared.Queue\BarkFluff.Shared.Queue.csproj" />
+      <ProjectReference Include="..\..\Shared\BarkFluff.Shared.Queue\BarkFluff.Shared.Queue.csproj" />
       <ProjectReference Include="..\BarkFluff.GrpcServer\BarkFluff.GrpcServer.csproj" />
     </ItemGroup>
 

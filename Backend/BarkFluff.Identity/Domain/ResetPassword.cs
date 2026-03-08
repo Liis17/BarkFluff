@@ -9,10 +9,10 @@ public class ResetPassword
     public long UserId { get; set; }
 
     public DateTime CreatedAt { get; set; }
-    
+
     public OtpType OtpType { get; set; }
-    
+
     public string? OtpCode { get; set; }
-    
+
     public bool IsApproved { get; set; }
 }

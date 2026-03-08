@@ -1,5 +1,6 @@
 using BarkFluff.Configuration.Domain;
 using BarkFluff.Shared.Identity;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace BarkFluff.Configuration.Infrastructure;

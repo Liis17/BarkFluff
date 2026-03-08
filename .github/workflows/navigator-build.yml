@@ -8,7 +8,7 @@ on:
       - 'Backend/BarkFluff.Navigator/**'
       - 'Backend/BarkFluff.GrpcServer/**'
       - '.github/workflows/navigator-build.yml'
-      - 'rebuild.trigger'
+      - 'Backend/rebuild.trigger'
 jobs:
   build-navigator:
     runs-on: self-hosted

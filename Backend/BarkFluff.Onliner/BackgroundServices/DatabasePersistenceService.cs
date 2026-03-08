@@ -1,9 +1,7 @@
 using BarkFluff.Onliner.Persistence.Contexts;
 using BarkFluff.Onliner.Services;
+
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Onliner.BackgroundServices;
 

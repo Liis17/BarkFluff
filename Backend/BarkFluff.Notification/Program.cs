@@ -4,7 +4,9 @@ using BarkFluff.Notification.Consumers;
 using BarkFluff.Notification.Parsers;
 using BarkFluff.Notification.Senders;
 using BarkFluff.Shared.Identity;
+
 using MassTransit;
+
 using Serilog;
 
 namespace BarkFluff.Notification;
@@ -26,7 +28,7 @@ public class Program
         builder.Services.AddMassTransit(x =>
         {
             x.AddConsumer<EmailQueueConsumer>();
-    
+
             x.UsingRabbitMq((context, cfg) =>
             {
                 cfg.Host(builder.Configuration["RabbitMQ:Host"], "/", h =>
@@ -34,7 +36,7 @@ public class Program
                     h.Username(builder.Configuration["RabbitMQ:Username"]);
                     h.Password(builder.Configuration["RabbitMQ:Password"]);
                 });
-        
+
                 cfg.ReceiveEndpoint("notifications-email-handler", e =>
                 {
                     e.ConfigureConsumer<EmailQueueConsumer>(context);

@@ -1,9 +1,10 @@
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Shared.Queue.Messages;
 using BarkFluff.Updates.Features.SubscribeMessagesRead;
+
 using MassTransit;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Updates.Consumers;
 

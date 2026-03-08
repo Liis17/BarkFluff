@@ -1,4 +1,3 @@
-using System.Globalization;
 using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Identity.Infrastructure;
@@ -9,10 +8,14 @@ using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Identity;
 using BarkFluff.Shared.Identity;
 using BarkFluff.Shared.Queue.Notifications;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
+
 using OtpNet;
+
 using QRCoder;
+
+using System.Globalization;
 
 namespace BarkFluff.Identity.Features.EnableOtpVerification;
 
@@ -52,7 +55,7 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
         }
 
         if (string.IsNullOrEmpty(_requestContext.OperationSystem))
-        { 
+        {
             throw new XOsNameIsRequiredException();
         }
 
@@ -60,7 +63,7 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
         {
             throw new XAppInfoIsRequiedException();
         }
-        
+
         var userInfo = await _usersClient.GetByIdAsync(new GetByIdRequest() { UserId = _userContext.UserId });
 
         if (request.OptType == OtpTypeId.Authenticator)
@@ -186,6 +189,6 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
             _userContext.UserId
         );
 
-        return new EnableOtpVerificationResponse() { OtpQr = string.Empty };;
+        return new EnableOtpVerificationResponse() { OtpQr = string.Empty }; ;
     }
 }

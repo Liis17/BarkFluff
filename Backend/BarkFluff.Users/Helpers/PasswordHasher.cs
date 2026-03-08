@@ -11,4 +11,4 @@ public static class PasswordHasher
         var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
         return Convert.ToBase64String(hashedBytes);
     }
-} 
+}

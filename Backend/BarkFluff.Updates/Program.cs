@@ -1,11 +1,12 @@
 using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Shared.Identity;
-using BarkFluff.Shared.Queue.Messages;
 using BarkFluff.Updates;
 using BarkFluff.Updates.Consumers;
 using BarkFluff.Updates.Host;
+
 using MassTransit;
+
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -31,7 +32,7 @@ builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<NewMessageConsumer>();
     x.AddConsumer<ReadByConsumer>();
-    
+
     x.UsingRabbitMq((context, cfg) =>
     {
         cfg.Host(builder.Configuration["RabbitMQ:Host"], "/", h =>
@@ -39,12 +40,12 @@ builder.Services.AddMassTransit(x =>
             h.Username(builder.Configuration["RabbitMQ:Username"]);
             h.Password(builder.Configuration["RabbitMQ:Password"]);
         });
-        
+
         cfg.ReceiveEndpoint("new-messages-updates-handler", e =>
         {
             e.ConfigureConsumer<NewMessageConsumer>(context);
         });
-        
+
         cfg.ReceiveEndpoint("read-receipts-updates-handler", e =>
         {
             e.ConfigureConsumer<ReadByConsumer>(context);
@@ -55,9 +56,9 @@ builder.Services.AddMassTransit(x =>
 var app = builder.Build();
 app.MapGrpcReflectionService();
 app.UseRouting();
-        
+
 app.UseXAuth();
-        
+
 app.MapGrpcService<UpdatesApiService>();
 
 app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);

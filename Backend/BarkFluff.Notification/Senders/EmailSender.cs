@@ -1,9 +1,9 @@
-using System.Net;
-using System.Net.Mail;
 using BarkFluff.Notification.Configurations;
 using BarkFluff.Notification.Parsers;
 using BarkFluff.Shared.Queue.Notifications;
-using Microsoft.Extensions.Logging;
+
+using System.Net;
+using System.Net.Mail;
 
 namespace BarkFluff.Notification.Senders;
 

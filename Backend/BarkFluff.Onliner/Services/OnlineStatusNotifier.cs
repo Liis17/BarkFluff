@@ -1,6 +1,6 @@
 using BarkFluff.Proto.Onliner;
+
 using Google.Protobuf.WellKnownTypes;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Onliner.Services;
 

@@ -1,5 +1,6 @@
 using BarkFluff.Identity.Domain;
 using BarkFluff.Identity.Persistence.Contexts;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace BarkFluff.Identity.Persistence.Services;
@@ -16,7 +17,7 @@ public class ConfirmationCodesStorage
     public async Task<ConfirmationCode> AddCode(ConfirmationCode confirmationCode)
     {
         _context.ConfirmationCodes.Add(confirmationCode);
-        
+
         await _context.SaveChangesAsync();
 
         return confirmationCode;

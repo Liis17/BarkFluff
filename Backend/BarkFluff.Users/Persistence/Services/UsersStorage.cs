@@ -1,7 +1,9 @@
 using BarkFluff.Shared.Exceptions.Identity;
 using BarkFluff.Users.Domain;
 using BarkFluff.Users.Persistence.Contexts;
+
 using Microsoft.EntityFrameworkCore;
+
 using Npgsql;
 
 namespace BarkFluff.Users.Persistence.Services;
@@ -19,15 +21,15 @@ public class UsersStorage
     {
         var user = await _usersContext.Users.Include(u => u.Contact)
             .FirstOrDefaultAsync(x => string.Equals(x.Username.ToLower(), username.ToLower()));
-        
+
         return user;
     }
-    
+
     public async Task<User?> GetUserByEmail(string email)
     {
         var userContact = await _usersContext.UserContacts.Include(u => u.User)
             .FirstOrDefaultAsync(x => string.Equals(x.Email.ToLower(), email.ToLower()));
-        
+
         return userContact?.User;
     }
 
@@ -68,7 +70,7 @@ public class UsersStorage
         // Не требует настройки специальных функций в EF Core
         var skip = (page - 1) * pageSize;
         var normalizedSearchTerm = searchTerm.Trim().ToLower();
-    
+
         var sql = @"
             SELECT u.""Id"", u.""FirstName"", u.""LastName"", u.""Username"", u.""RegistrationDate"", 
                    u.""ProfilePicture"", u.""ProfilePicturePreviewUrl"", u.""Bio"", u.""IsDraft"", u.""StorageLimitGb"",
@@ -81,8 +83,8 @@ public class UsersStorage
             LIMIT @pageSize OFFSET @skip";
 
         var users = await _usersContext.Users
-            .FromSqlRaw(sql, 
-                new NpgsqlParameter("@searchTerm", normalizedSearchTerm), 
+            .FromSqlRaw(sql,
+                new NpgsqlParameter("@searchTerm", normalizedSearchTerm),
                 new NpgsqlParameter("@pageSize", pageSize),
                 new NpgsqlParameter("@skip", skip))
             .Include(u => u.Contact)
@@ -95,7 +97,7 @@ public class UsersStorage
             WHERE to_tsvector('russian', u.""FirstName"" || ' ' || u.""LastName"" || ' ' || u.""Username"") @@ plainto_tsquery('russian', @searchTerm)
             AND u.""IsDraft"" = false";
 
-        var totalCount = await _usersContext.Database.ExecuteSqlRawAsync(countSql, 
+        var totalCount = await _usersContext.Database.ExecuteSqlRawAsync(countSql,
             new NpgsqlParameter("@searchTerm", normalizedSearchTerm));
 
         return (users, totalCount);
@@ -138,7 +140,7 @@ public class UsersStorage
             LIMIT @pageSize OFFSET @skip";
 
         var users = await _usersContext.Users
-            .FromSqlRaw(sql, 
+            .FromSqlRaw(sql,
                 new NpgsqlParameter("@searchTerm", normalizedSearchTerm),
                 new NpgsqlParameter("@threshold", similarityThreshold),
                 new NpgsqlParameter("@pageSize", pageSize),
@@ -155,7 +157,7 @@ public class UsersStorage
                OR similarity(u.""Username"", @searchTerm) > @threshold)
             AND u.""IsDraft"" = false";
 
-        var totalCount = await _usersContext.Database.ExecuteSqlRawAsync(countSql, 
+        var totalCount = await _usersContext.Database.ExecuteSqlRawAsync(countSql,
             new NpgsqlParameter("@searchTerm", normalizedSearchTerm),
             new NpgsqlParameter("@threshold", similarityThreshold));
 
@@ -167,18 +169,18 @@ public class UsersStorage
         var contactUser = new UserContact { Email = email };
 
         var unixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        
+
         var user = new User
         {
             Id = unixTimestamp,
             Username = username,
-            FirstName = firstName, 
+            FirstName = firstName,
             LastName = lastName,
             RegistrationDate = DateTime.UtcNow,
             Contact = contactUser,
             IsDraft = true,
         };
-        
+
         await _usersContext.Users.AddAsync(user);
 
         await _usersContext.SaveChangesAsync();
@@ -194,26 +196,26 @@ public class UsersStorage
         {
             throw new UserNotFoundException();
         }
-        
+
         user.IsDraft = isDraft;
-        
+
         await _usersContext.SaveChangesAsync();
     }
 
-     public async Task UpdateProfilePicture(long userId, string profilePictureUrl, string profilePicturePreviewUrl)
-     {
+    public async Task UpdateProfilePicture(long userId, string profilePictureUrl, string profilePicturePreviewUrl)
+    {
         var user = await _usersContext.Users.FirstOrDefaultAsync(x => x.Id == userId);
-        
+
         if (user is null)
         {
             throw new UserNotFoundException();
         }
-        
+
         user.ProfilePicture = profilePictureUrl;
         user.ProfilePicturePreviewUrl = profilePicturePreviewUrl;
         await _usersContext.SaveChangesAsync();
-     }
-    
+    }
+
 
     public async Task UpdateTrackedUser(User user)
     {
@@ -230,10 +232,10 @@ public class UsersStorage
         {
             throw new UserNotFoundException();
         }
-        
+
         user.FirstName = firstName;
         user.LastName = lastName;
-        
+
         await _usersContext.SaveChangesAsync();
     }
 
@@ -244,12 +246,12 @@ public class UsersStorage
         {
             throw new UserNotFoundException();
         }
-        
+
         user.Username = username;
-        
+
         await _usersContext.SaveChangesAsync();
     }
-    
+
     public async Task ChangeBio(long userId, string newBio)
     {
         var user = await _usersContext.Users.FirstOrDefaultAsync(x => x.Id == userId);

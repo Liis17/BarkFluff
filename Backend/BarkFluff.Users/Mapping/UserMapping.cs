@@ -1,4 +1,5 @@
 using BarkFluff.Proto.Users;
+
 using Google.Protobuf.WellKnownTypes;
 
 namespace BarkFluff.Users.Mapping;

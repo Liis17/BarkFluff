@@ -4,5 +4,5 @@ namespace BarkFluff.Users.Features.OverrideDraftUser;
 
 public class OverrideDraftUserCommand : AddDraftUserCommand
 {
-    
+
 }

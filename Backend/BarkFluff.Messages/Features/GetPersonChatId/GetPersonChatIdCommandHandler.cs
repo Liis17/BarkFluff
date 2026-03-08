@@ -2,8 +2,8 @@ using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Messages.Features.GetPersonChatId;
 

@@ -1,7 +1,9 @@
 using BarkFluff.Messages.Domain;
 using BarkFluff.Messages.Persistence.Exceptions;
 using BarkFluff.Messages.Persistence.Services.Dtos;
+
 using Microsoft.EntityFrameworkCore;
+
 using Npgsql;
 
 namespace BarkFluff.Messages.Persistence.Services;
@@ -19,7 +21,7 @@ public class MessagesStorage
 
     public async Task<List<Message>> GetChatMessages(Guid chatId, long? fromMessageId, int count)
     {
-        
+
         var startDate = DateTime.MaxValue;
 
         if (fromMessageId != null)
@@ -57,7 +59,7 @@ public class MessagesStorage
     public async Task<List<Message>> GetChatMessagesWithOffset(Guid chatId, long? fromMessageId, int offsetBefore, int offsetAfter)
     {
         const int MaxOffset = 50;
-        
+
         if (fromMessageId == null)
         {
             // If no reference message, return the latest messages (use offsetBefore as count, capped at MaxOffset)

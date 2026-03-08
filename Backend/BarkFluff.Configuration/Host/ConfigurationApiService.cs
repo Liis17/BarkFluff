@@ -2,7 +2,9 @@ using BarkFluff.Configuration.Features.GetConfiguration;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Configuration;
 using BarkFluff.Shared.Identity;
+
 using Grpc.Core;
+
 using MediatR;
 
 namespace BarkFluff.Configuration.Host;

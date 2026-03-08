@@ -1,7 +1,9 @@
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.FastAuth;
 using BarkFluff.Shared.Identity;
+
 using Grpc.Core;
+
 using Microsoft.AspNetCore.Authorization;
 
 namespace BarkFluff.FastAuth.Host;

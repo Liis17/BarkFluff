@@ -1,4 +1,3 @@
-using System.Globalization;
 using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.Identity.Domain;
 using BarkFluff.Identity.Infrastructure;
@@ -9,8 +8,10 @@ using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Identity;
 using BarkFluff.Shared.Identity;
 using BarkFluff.Shared.Queue.Notifications;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
+
+using System.Globalization;
 
 namespace BarkFluff.Identity.Features.ResetPassword;
 
@@ -68,7 +69,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
         {
             throw new XAppInfoIsRequiedException();
         }
-        
+
         var usersRequest = new FindByLoginRequest();
 
         if (!string.IsNullOrEmpty(username))
@@ -115,7 +116,10 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
 
             var resetPassword = new Domain.ResetPassword()
             {
-                CreatedAt = DateTime.UtcNow, IsApproved = false, OtpType = request.OtpType, UserId = user.User.Id
+                CreatedAt = DateTime.UtcNow,
+                IsApproved = false,
+                OtpType = request.OtpType,
+                UserId = user.User.Id
             };
 
             var resp = await _resetPasswordsStorage.AddResetPassword(resetPassword);
@@ -126,9 +130,9 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
                 user.User.Id
             );
 
-            return new ResetPasswordResponse {ResetId = resp.Id.ToString()};
+            return new ResetPasswordResponse { ResetId = resp.Id.ToString() };
         }
-        
+
         _logger.LogInformation(
             "Создание запроса на сброс пароля с Email OTP для пользователя {UserId}",
             user.User.Id
@@ -142,9 +146,13 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
 
         var resetEmailPassword = new Domain.ResetPassword()
         {
-            CreatedAt = DateTime.UtcNow, OtpCode = code, IsApproved = false, OtpType = request.OtpType, UserId = user.User.Id
+            CreatedAt = DateTime.UtcNow,
+            OtpCode = code,
+            IsApproved = false,
+            OtpType = request.OtpType,
+            UserId = user.User.Id
         };
-        
+
         // Получаем данные о местоположении IP-адреса
         string locationInfo = "-";
         if (!string.IsNullOrEmpty(_requestContext.IpAddress))
@@ -155,7 +163,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
                 locationInfo = $"{ipLocation.Country}, {ipLocation.RegionName}, {ipLocation.City}";
             }
         }
-        
+
         var emailNotification = new EmailNotification()
         {
             OwnerId = user.User.Id,
@@ -176,7 +184,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
             Title = "Код подтверждения для сброса пароля",
             Type = NotificationType.ResetPassword
         };
-        
+
         resetEmailPassword = await _resetPasswordsStorage.AddResetPassword(resetEmailPassword);
 
         _logger.LogDebug(

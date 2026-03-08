@@ -1,7 +1,9 @@
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Shared.Exceptions;
+
 using Grpc.Core;
 using Grpc.Core.Interceptors;
+
 using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.GrpcServer;

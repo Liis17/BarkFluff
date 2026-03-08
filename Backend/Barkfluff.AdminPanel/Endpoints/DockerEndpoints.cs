@@ -1,5 +1,4 @@
 using Barkfluff.AdminPanel.Models;
-using Barkfluff.AdminPanel.Models.Dtos;
 using Barkfluff.AdminPanel.Services;
 
 namespace Barkfluff.AdminPanel.Endpoints;

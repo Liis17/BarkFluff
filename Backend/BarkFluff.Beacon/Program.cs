@@ -5,6 +5,7 @@ using BarkFluff.Proto.Configuration;
 using BarkFluff.Shared.Identity;
 
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+
 using Serilog;
 
 namespace BarkFluff.Beacon;

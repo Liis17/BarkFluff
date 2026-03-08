@@ -1,12 +1,5 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Navigator;
-using MediatR;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Beacon.Features.RegisterServer;
 
@@ -81,4 +74,4 @@ public class ServerRegistrationService : BackgroundService
             await Task.Delay(_interval, stoppingToken);
         }
     }
-} 
+}

@@ -9,7 +9,7 @@ on:
       - 'Backend/BarkFluff.Identity/**'
       - 'Backend/BarkFluff.GrpcServer/**'
       - '.github/workflows/configuration-build.yml'
-      - 'rebuild.trigger'
+      - 'Backend/rebuild.trigger'
 jobs:
   build-configuration:
     runs-on: self-hosted

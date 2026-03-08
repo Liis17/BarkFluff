@@ -1,15 +1,15 @@
+using Barkfluff.AdminPanel.Data;
+using Barkfluff.AdminPanel.Endpoints;
+using Barkfluff.AdminPanel.Middleware;
+using Barkfluff.AdminPanel.Models;
+using Barkfluff.AdminPanel.Services;
+
 using BarkFluff.GrpcServer;
 using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Auth;
 using BarkFluff.Shared.Identity;
-using Barkfluff.AdminPanel.Data;
-using Barkfluff.AdminPanel.Endpoints;
-using Barkfluff.AdminPanel.Middleware;
-using Barkfluff.AdminPanel.Models;
-using Barkfluff.AdminPanel.Services;
-using Microsoft.Extensions.Options;
 
 namespace Barkfluff.AdminPanel;
 

@@ -1,10 +1,11 @@
 using BarkFluff.Messages.Persistence;
-using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Messages;
+
 using Google.Protobuf.WellKnownTypes;
+
 using MediatR;
+
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Messages.Features.ExportData;
 
