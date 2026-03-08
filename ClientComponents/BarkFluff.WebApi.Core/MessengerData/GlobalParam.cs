@@ -6,6 +6,37 @@ using System.Text.Json;
 
 namespace BarkFluff.WebApi.Core.MessengerData
 {
+    /// <summary>
+    /// Режим отображения уведомлений
+    /// </summary>
+    public enum NotificationDisplayMode
+    {
+        /// <summary>
+        /// Уведомления полностью отключены
+        /// </summary>
+        Disabled = 0,
+
+        /// <summary>
+        /// Скрыть отправителя и содержимое ("Вам пришло новое сообщение")
+        /// </summary>
+        HiddenContent = 1,
+
+        /// <summary>
+        /// Показать отправителя, скрыть содержимое
+        /// </summary>
+        SenderOnly = 2,
+
+        /// <summary>
+        /// Показать отправителя и текст, без превью медиа
+        /// </summary>
+        FullTextNoPreview = 3,
+
+        /// <summary>
+        /// Полное отображение: отправитель, текст и превью медиа
+        /// </summary>
+        FullWithPreview = 4
+    }
+
     public class GlobalParam
     {
         #region Приложение 
@@ -24,6 +55,7 @@ namespace BarkFluff.WebApi.Core.MessengerData
         public ClientColors Colors { get; set; } = new ClientColors();
         public string IpAddress { get; set; } = string.Empty;
         public string AppTheme { get; set; } = "light"; // "light" или "dark" или "system"
+        public NotificationDisplayMode NotificationMode { get; set; } = NotificationDisplayMode.FullWithPreview;
 
         #endregion
         #region Пользователь

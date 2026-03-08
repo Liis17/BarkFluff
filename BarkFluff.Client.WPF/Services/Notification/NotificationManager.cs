@@ -1,10 +1,12 @@
 using BarkFluff.Client.WPF.Services.App;
 using BarkFluff.Client.WPF.Services.App.Caching;
 using BarkFluff.Proto.Shared;
+using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
 using Microsoft.Toolkit.Uwp.Notifications;
 
+using System.Collections.Concurrent;
 using System.IO;
 using System.Net.Http;
 
@@ -26,6 +28,21 @@ namespace BarkFluff.Client.WPF.Services.Notification
         private WindowStateService? _windowStateService;
         private FileCacheService? _fileCacheService;
         private bool _disposed;
+
+        /// <summary>
+        /// Группа для toast-уведомлений сообщений (используется для очистки)
+        /// </summary>
+        private const string ToastGroup = "messages";
+
+        /// <summary>
+        /// Интервал антиспама: не показывать больше одного уведомления на чат за этот период
+        /// </summary>
+        private static readonly TimeSpan ThrottleInterval = TimeSpan.FromSeconds(15);
+
+        /// <summary>
+        /// Время последнего показанного уведомления для каждого чата
+        /// </summary>
+        private readonly ConcurrentDictionary<string, DateTime> _lastNotificationTime = new();
 
         /// <summary>
         /// Событие при клике на уведомление
@@ -66,12 +83,24 @@ namespace BarkFluff.Client.WPF.Services.Notification
         }
 
         /// <summary>
+        /// Получает текущий режим отображения уведомлений из настроек
+        /// </summary>
+        private static NotificationDisplayMode GetCurrentDisplayMode()
+        {
+            return WPF.App.GParam?.NotificationMode ?? NotificationDisplayMode.FullWithPreview;
+        }
+
+        /// <summary>
         /// Проверяет, нужно ли показывать уведомление для данного чата
         /// </summary>
         /// <param name="chatId">ID чата</param>
         /// <returns>true, если нужно показать уведомление</returns>
         public bool ShouldShowNotification(string chatId)
         {
+            // Проверяем настройку: если уведомления отключены - сразу false
+            if (GetCurrentDisplayMode() == NotificationDisplayMode.Disabled)
+                return false;
+
             if (_windowStateService == null)
                 return true;
 
@@ -99,11 +128,32 @@ namespace BarkFluff.Client.WPF.Services.Notification
         }
 
         /// <summary>
+        /// Проверяет throttling для чата (не чаще одного уведомления за ThrottleInterval)
+        /// </summary>
+        private bool IsThrottled(string chatId)
+        {
+            var now = DateTime.UtcNow;
+
+            if (_lastNotificationTime.TryGetValue(chatId, out var lastTime))
+            {
+                if (now - lastTime < ThrottleInterval)
+                    return true;
+            }
+
+            _lastNotificationTime[chatId] = now;
+            return false;
+        }
+
+        /// <summary>
         /// Показать уведомление о новом сообщении
         /// </summary>
         public async Task ShowMessageNotificationAsync(MessageModel message, string senderName, string? avatarFileId = null, string? avatarUrl = null)
         {
             if (!ShouldShowNotification(message.ChatId))
+                return;
+
+            // Антиспам: не показываем больше одного уведомления на чат за 15 секунд
+            if (IsThrottled(message.ChatId))
                 return;
 
             var data = CreateNotificationData(message, senderName, avatarFileId, avatarUrl);
@@ -214,12 +264,29 @@ namespace BarkFluff.Client.WPF.Services.Notification
         private static readonly TimeSpan ImageLoadTimeout = TimeSpan.FromSeconds(10);
 
         /// <summary>
-        /// Показать уведомление
+        /// Генерирует Tag для toast-уведомления (макс 64 символа)
+        /// </summary>
+        private static string GetToastTag(string chatId)
+        {
+            // Tag ограничен 64 символами в Windows Toast API
+            if (chatId.Length <= 64)
+                return chatId;
+            return chatId[..64];
+        }
+
+        /// <summary>
+        /// Показать уведомление с учётом текущего режима отображения
         /// </summary>
         public async Task ShowNotificationAsync(NotificationData data)
         {
             try
             {
+                var displayMode = GetCurrentDisplayMode();
+
+                // Повторная проверка на случай изменения настройки между вызовами
+                if (displayMode == NotificationDisplayMode.Disabled)
+                    return;
+
                 var builder = new ToastContentBuilder();
 
                 // Добавляем аргументы для обработки клика
@@ -227,49 +294,45 @@ namespace BarkFluff.Client.WPF.Services.Notification
                 builder.AddArgument("chatId", data.ChatId);
                 builder.AddArgument("messageId", data.LastMessageId.ToString());
 
-                // Получаем путь к аватару из кеша или скачиваем
-                string? avatarUri = await GetImageUriForToastAsync(data.AvatarFileId, data.AvatarUrl, FileType.Avatar);
-                if (!string.IsNullOrEmpty(avatarUri))
+                // === Формируем содержимое toast в зависимости от режима ===
+
+                switch (displayMode)
                 {
-                    builder.AddAppLogoOverride(new Uri(avatarUri), ToastGenericAppLogoCrop.Circle);
-                }
+                    case NotificationDisplayMode.HiddenContent:
+                        // Скрываем всё: нет аватара, нет имени, нет текста
+                        builder.AddText("BarkFluff");
+                        builder.AddText("Вам пришло новое сообщение");
+                        break;
 
-                // Добавляем заголовок
-                builder.AddText(data.Title);
+                    case NotificationDisplayMode.SenderOnly:
+                        // Показываем отправителя и аватар, но скрываем текст
+                        await AddAvatarToBuilder(builder, data);
+                        builder.AddText(data.Title);
+                        builder.AddText("Новое сообщение");
+                        break;
 
-                // Получаем путь к изображению из кеша или скачиваем (если есть)
-                string? imageUri = null;
-                if ((data.Type == NotificationType.ImageMessage || data.Type == NotificationType.GifMessage)
-                    && (!string.IsNullOrEmpty(data.ImageFileId) || !string.IsNullOrEmpty(data.ImageUrl)))
-                {
-                    imageUri = await GetImageUriForToastAsync(data.ImageFileId, data.ImageUrl, FileType.Image);
-                }
+                    case NotificationDisplayMode.FullTextNoPreview:
+                        // Показываем отправителя, аватар и текст, но без превью медиа
+                        await AddAvatarToBuilder(builder, data);
+                        builder.AddText(data.Title);
+                        builder.AddText(data.Message);
+                        break;
 
-                // Формируем текст сообщения
-                string messageText = data.Message;
-                
-                // Если изображение не загрузилось, но тип сообщения - картинка, добавляем текстовое обозначение
-                if (string.IsNullOrEmpty(imageUri) && (data.Type == NotificationType.ImageMessage || data.Type == NotificationType.GifMessage))
-                {
-                    if (!string.IsNullOrEmpty(data.Message) && !data.Message.StartsWith("📷"))
-                    {
-                        if (data.FileCount > 1)
-                            messageText = $"{data.Message} [📷 {data.FileCount} {GetFilesWordForm(data.FileCount, "фото")}]";
-                        else
-                            messageText = $"{data.Message} [📷 Фото]";
-                    }
-                }
-
-                builder.AddText(messageText);
-
-                // Добавляем превью изображения если получилось загрузить
-                if (!string.IsNullOrEmpty(imageUri))
-                {
-                    builder.AddInlineImage(new Uri(imageUri));
+                    case NotificationDisplayMode.FullWithPreview:
+                    default:
+                        // Полное отображение: отправитель, аватар, текст и превью медиа
+                        await AddAvatarToBuilder(builder, data);
+                        builder.AddText(data.Title);
+                        await AddMessageContentToBuilder(builder, data);
+                        break;
                 }
 
                 var toastContent = builder.GetToastContent();
                 var toast = new ToastNotification(toastContent.GetXml());
+
+                // Устанавливаем Tag и Group для возможности очистки уведомлений по чату
+                toast.Tag = GetToastTag(data.ChatId);
+                toast.Group = ToastGroup;
 
                 ToastNotificationManager.CreateToastNotifier(WPF.App.AppUserModelIdPublic).Show(toast);
 
@@ -280,6 +343,76 @@ namespace BarkFluff.Client.WPF.Services.Notification
             {
                 WPF.App.ErideMessage?.AddMessage(
                     $"Ошибка при показе уведомления: {ex.Message}",
+                    new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Error });
+            }
+        }
+
+        /// <summary>
+        /// Добавляет аватар отправителя в toast builder
+        /// </summary>
+        private async Task AddAvatarToBuilder(ToastContentBuilder builder, NotificationData data)
+        {
+            string? avatarUri = await GetImageUriForToastAsync(data.AvatarFileId, data.AvatarUrl, FileType.Avatar);
+            if (!string.IsNullOrEmpty(avatarUri))
+            {
+                builder.AddAppLogoOverride(new Uri(avatarUri), ToastGenericAppLogoCrop.Circle);
+            }
+        }
+
+        /// <summary>
+        /// Добавляет текст сообщения и превью медиа в toast builder (полный режим)
+        /// </summary>
+        private async Task AddMessageContentToBuilder(ToastContentBuilder builder, NotificationData data)
+        {
+            // Получаем путь к изображению из кеша или скачиваем (если есть)
+            string? imageUri = null;
+            if ((data.Type == NotificationType.ImageMessage || data.Type == NotificationType.GifMessage)
+                && (!string.IsNullOrEmpty(data.ImageFileId) || !string.IsNullOrEmpty(data.ImageUrl)))
+            {
+                imageUri = await GetImageUriForToastAsync(data.ImageFileId, data.ImageUrl, FileType.Image);
+            }
+
+            // Формируем текст сообщения
+            string messageText = data.Message;
+
+            // Если изображение не загрузилось, но тип сообщения - картинка, добавляем текстовое обозначение
+            if (string.IsNullOrEmpty(imageUri) && (data.Type == NotificationType.ImageMessage || data.Type == NotificationType.GifMessage))
+            {
+                if (!string.IsNullOrEmpty(data.Message) && !data.Message.StartsWith("📷"))
+                {
+                    if (data.FileCount > 1)
+                        messageText = $"{data.Message} [📷 {data.FileCount} {GetFilesWordForm(data.FileCount, "фото")}]";
+                    else
+                        messageText = $"{data.Message} [📷 Фото]";
+                }
+            }
+
+            builder.AddText(messageText);
+
+            // Добавляем превью изображения если получилось загрузить
+            if (!string.IsNullOrEmpty(imageUri))
+            {
+                builder.AddInlineImage(new Uri(imageUri));
+            }
+        }
+
+        /// <summary>
+        /// Очищает все уведомления для указанного чата из Action Center
+        /// </summary>
+        public void ClearNotificationsForChat(string chatId)
+        {
+            try
+            {
+                var tag = GetToastTag(chatId);
+                ToastNotificationManager.History.Remove(tag, ToastGroup, WPF.App.AppUserModelIdPublic);
+
+                // Сбрасываем throttle для этого чата
+                _lastNotificationTime.TryRemove(chatId, out _);
+            }
+            catch (Exception ex)
+            {
+                WPF.App.ErideMessage?.AddMessage(
+                    $"Ошибка очистки уведомлений: {ex.Message}",
                     new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Error });
             }
         }
@@ -358,21 +491,21 @@ namespace BarkFluff.Client.WPF.Services.Notification
             {
                 using var client = new HttpClient();
                 client.Timeout = ImageLoadTimeout;
-                
+
                 var bytes = await client.GetByteArrayAsync(url, cancellationToken);
-                
+
                 var fileName = fileType switch
                 {
                     FileType.Avatar => "notification_avatar.png",
                     FileType.Image => "notification_image.png",
                     _ => "notification_file.png"
                 };
-                
+
                 var tempPath = Path.Combine(Path.GetTempPath(), "BarkFluff", fileName);
                 Directory.CreateDirectory(Path.GetDirectoryName(tempPath)!);
-                
+
                 await File.WriteAllBytesAsync(tempPath, bytes, cancellationToken);
-                
+
                 return new Uri(tempPath).AbsoluteUri;
             }
             catch
@@ -394,6 +527,9 @@ namespace BarkFluff.Client.WPF.Services.Notification
                 {
                     args.TryGetValue("messageId", out string? messageIdStr);
                     long.TryParse(messageIdStr, out long messageId);
+
+                    // Очищаем уведомления этого чата из Action Center
+                    ClearNotificationsForChat(chatId);
 
                     var data = new NotificationData
                     {
