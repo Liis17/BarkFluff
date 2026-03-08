@@ -319,7 +319,7 @@
             const errorState = document.getElementById('error-state');
 
             try {
-                const response = await fetch('/api/seq/s3-configuration');
+                const response = await fetch('/api/configuration/s3-configuration');
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}`);
                 }
