@@ -1684,7 +1684,7 @@ namespace BarkFluff.Client.WPF.Pages
         {
             CenterPanel.Child = null;
 
-            CenterPanel.Child = new BarkFluff.Client.WPF.UserControls.Debug.Menu();
+            CenterPanel.Child = new BarkFluff.Client.WPF.UserControls.DevTools.Menu();
 
             OpenCenterPanel();
         }
