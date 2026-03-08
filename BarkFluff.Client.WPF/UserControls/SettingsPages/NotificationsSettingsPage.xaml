@@ -30,91 +30,202 @@
             <!-- Заголовок страницы -->
             <TextBlock Style="{DynamicResource HeaderSettings}" Text="Уведомления" />
 
-            <!-- Настройки уведомлений -->
-            <StackPanel Margin="0,10,0,0">
+            <!-- Описание -->
+            <TextBlock
+                Margin="0,8,0,16"
+                Foreground="#A0A0A0"
+                FontSize="12"
+                TextWrapping="Wrap"
+                Text="Выберите, какую информацию показывать в уведомлениях о новых сообщениях" />
+
+            <!-- Режимы уведомлений -->
+            <StackPanel x:Name="NotificationModePanel" Margin="0,4,0,0">
+
+                <!-- Отключены -->
                 <Border
+                    x:Name="ModeDisabled"
                     Padding="16"
                     Background="#2D2D2D"
                     CornerRadius="8"
-                    Margin="0,8">
+                    Margin="0,4"
+                    Cursor="Hand"
+                    MouseLeftButtonUp="Mode_Click"
+                    Tag="0">
                     <Grid>
                         <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Звук уведомлений" />
-                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,4,0,0" Text="Включен" />
-                        </StackPanel>
                         <ui:SymbolIcon
-                            Grid.Column="1"
-                            Foreground="#FFB35844"
-                            Symbol="Speaker224" />
+                            Grid.Column="0"
+                            Margin="0,0,12,0"
+                            VerticalAlignment="Center"
+                            Foreground="#A0A0A0"
+                            Symbol="AlertOff24" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Отключены" />
+                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,2,0,0" Text="Уведомления не будут показываться" />
+                        </StackPanel>
+                        <Ellipse
+                            x:Name="RadioDisabled"
+                            Grid.Column="2"
+                            Width="20" Height="20"
+                            VerticalAlignment="Center"
+                            Stroke="#A0A0A0"
+                            StrokeThickness="2"
+                            Fill="Transparent" />
                     </Grid>
                 </Border>
 
+                <!-- Скрыть всё -->
                 <Border
+                    x:Name="ModeHidden"
                     Padding="16"
                     Background="#2D2D2D"
                     CornerRadius="8"
-                    Margin="0,8">
+                    Margin="0,4"
+                    Cursor="Hand"
+                    MouseLeftButtonUp="Mode_Click"
+                    Tag="1">
                     <Grid>
                         <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Вибрация" />
-                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,4,0,0" Text="Включена" />
-                        </StackPanel>
                         <ui:SymbolIcon
-                            Grid.Column="1"
-                            Foreground="#FFB35844"
-                            Symbol="PhoneVibrate24" />
+                            Grid.Column="0"
+                            Margin="0,0,12,0"
+                            VerticalAlignment="Center"
+                            Foreground="#A0A0A0"
+                            Symbol="EyeOff24" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Скрыть содержимое" />
+                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,2,0,0" Text="Только &quot;Вам пришло новое сообщение&quot;" />
+                        </StackPanel>
+                        <Ellipse
+                            x:Name="RadioHidden"
+                            Grid.Column="2"
+                            Width="20" Height="20"
+                            VerticalAlignment="Center"
+                            Stroke="#A0A0A0"
+                            StrokeThickness="2"
+                            Fill="Transparent" />
                     </Grid>
                 </Border>
 
+                <!-- Только отправитель -->
                 <Border
+                    x:Name="ModeSenderOnly"
                     Padding="16"
                     Background="#2D2D2D"
                     CornerRadius="8"
-                    Margin="0,8">
+                    Margin="0,4"
+                    Cursor="Hand"
+                    MouseLeftButtonUp="Mode_Click"
+                    Tag="2">
                     <Grid>
                         <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Тип уведомлений" />
-                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,4,0,0" Text="Все сообщения" />
-                        </StackPanel>
                         <ui:SymbolIcon
-                            Grid.Column="1"
-                            Foreground="#FFB35844"
-                            Symbol="Alert24" />
+                            Grid.Column="0"
+                            Margin="0,0,12,0"
+                            VerticalAlignment="Center"
+                            Foreground="#A0A0A0"
+                            Symbol="Person24" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Только отправитель" />
+                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,2,0,0" Text="Имя отправителя без текста сообщения" />
+                        </StackPanel>
+                        <Ellipse
+                            x:Name="RadioSenderOnly"
+                            Grid.Column="2"
+                            Width="20" Height="20"
+                            VerticalAlignment="Center"
+                            Stroke="#A0A0A0"
+                            StrokeThickness="2"
+                            Fill="Transparent" />
                     </Grid>
                 </Border>
 
+                <!-- Текст без превью -->
                 <Border
+                    x:Name="ModeFullText"
                     Padding="16"
                     Background="#2D2D2D"
                     CornerRadius="8"
-                    Margin="0,8">
+                    Margin="0,4"
+                    Cursor="Hand"
+                    MouseLeftButtonUp="Mode_Click"
+                    Tag="3">
                     <Grid>
                         <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Предпросмотр" />
-                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,4,0,0" Text="Показывать текст сообщения" />
-                        </StackPanel>
                         <ui:SymbolIcon
-                            Grid.Column="1"
-                            Foreground="#FFB35844"
-                            Symbol="Eye24" />
+                            Grid.Column="0"
+                            Margin="0,0,12,0"
+                            VerticalAlignment="Center"
+                            Foreground="#A0A0A0"
+                            Symbol="TextDescription24" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Текст без превью" />
+                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,2,0,0" Text="Имя и текст сообщения, без изображений" />
+                        </StackPanel>
+                        <Ellipse
+                            x:Name="RadioFullText"
+                            Grid.Column="2"
+                            Width="20" Height="20"
+                            VerticalAlignment="Center"
+                            Stroke="#A0A0A0"
+                            StrokeThickness="2"
+                            Fill="Transparent" />
                     </Grid>
                 </Border>
+
+                <!-- Полностью с превью -->
+                <Border
+                    x:Name="ModeFullPreview"
+                    Padding="16"
+                    Background="#2D2D2D"
+                    CornerRadius="8"
+                    Margin="0,4"
+                    Cursor="Hand"
+                    MouseLeftButtonUp="Mode_Click"
+                    Tag="4">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <ui:SymbolIcon
+                            Grid.Column="0"
+                            Margin="0,0,12,0"
+                            VerticalAlignment="Center"
+                            Foreground="#A0A0A0"
+                            Symbol="Image24" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Полностью с превью" />
+                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,2,0,0" Text="Имя, текст и превью изображений" />
+                        </StackPanel>
+                        <Ellipse
+                            x:Name="RadioFullPreview"
+                            Grid.Column="2"
+                            Width="20" Height="20"
+                            VerticalAlignment="Center"
+                            Stroke="#A0A0A0"
+                            StrokeThickness="2"
+                            Fill="Transparent" />
+                    </Grid>
+                </Border>
+
             </StackPanel>
         </StackPanel>
     </Grid>
