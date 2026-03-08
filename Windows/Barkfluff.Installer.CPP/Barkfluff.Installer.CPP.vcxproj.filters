@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Исходные файлы">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Файлы заголовков">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Файлы ресурсов">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Исходные файлы\Services">
+      <UniqueIdentifier>{8E5F1B5A-9C3D-4F8E-A5E2-1D2B3C4D5E6F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Файлы заголовков\Services">
+      <UniqueIdentifier>{9E6F2C6B-0D4E-5F9F-B6F3-2E3C4D5E6F70}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="framework.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="targetver.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="Resource.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="Barkfluff.Installer.CPP.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="HttpClient.h">
+      <Filter>Файлы заголовков\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="GitHubService.h">
+      <Filter>Файлы заголовков\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="ZipExtractor.h">
+      <Filter>Файлы заголовков\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="ProtocolService.h">
+      <Filter>Файлы заголовков\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="ShortcutService.h">
+      <Filter>Файлы заголовков\Services</Filter>
+    </ClInclude>
+    <ClInclude Include="Installer.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Barkfluff.Installer.CPP.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="HttpClient.cpp">
+      <Filter>Исходные файлы\Services</Filter>
+    </ClCompile>
+    <ClCompile Include="GitHubService.cpp">
+      <Filter>Исходные файлы\Services</Filter>
+    </ClCompile>
+    <ClCompile Include="ZipExtractor.cpp">
+      <Filter>Исходные файлы\Services</Filter>
+    </ClCompile>
+    <ClCompile Include="ProtocolService.cpp">
+      <Filter>Исходные файлы\Services</Filter>
+    </ClCompile>
+    <ClCompile Include="ShortcutService.cpp">
+      <Filter>Исходные файлы\Services</Filter>
+    </ClCompile>
+    <ClCompile Include="Installer.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Barkfluff.Installer.CPP.rc">
+      <Filter>Файлы ресурсов</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="small.ico">
+      <Filter>Файлы ресурсов</Filter>
+    </Image>
+    <Image Include="Barkfluff.Installer.CPP.ico">
+      <Filter>Файлы ресурсов</Filter>
+    </Image>
+  </ItemGroup>
+</Project>
