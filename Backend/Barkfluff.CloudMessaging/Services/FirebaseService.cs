@@ -1,8 +1,9 @@
-using System.Text.Json;
 using FirebaseAdmin;
 using FirebaseAdmin.Messaging;
+
 using Google.Apis.Auth.OAuth2;
-using Microsoft.Extensions.Logging;
+
+using System.Text.Json;
 
 namespace Barkfluff.CloudMessaging.Services;
 

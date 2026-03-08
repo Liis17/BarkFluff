@@ -1,6 +1,6 @@
 ﻿namespace BarkFluff.Shared.SecurityUtilities
 {
-    public  class SecurityUtilities
+    public class SecurityUtilities
     {
         public static int EvaluatePasswordStrength(string password)
         {

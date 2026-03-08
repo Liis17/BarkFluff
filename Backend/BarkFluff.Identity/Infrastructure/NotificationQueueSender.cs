@@ -1,4 +1,5 @@
 using BarkFluff.Shared.Queue.Notifications;
+
 using MassTransit;
 
 namespace BarkFluff.Identity.Infrastructure;

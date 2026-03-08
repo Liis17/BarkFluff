@@ -1,6 +1,5 @@
 using BarkFluff.Onliner.BackgroundServices;
 using BarkFluff.Onliner.Services;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace BarkFluff.Onliner;
 

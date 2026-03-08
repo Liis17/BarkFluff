@@ -1,4 +1,5 @@
 using BarkFluff.Configuration.Domain;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace BarkFluff.Configuration.Infrastructure;

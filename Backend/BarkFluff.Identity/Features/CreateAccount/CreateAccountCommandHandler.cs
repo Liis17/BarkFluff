@@ -1,4 +1,3 @@
-using System.Globalization;
 using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.Identity.Domain;
 using BarkFluff.Identity.Infrastructure;
@@ -10,9 +9,10 @@ using BarkFluff.Shared.Exceptions.Identity;
 using BarkFluff.Shared.Exceptions.Users;
 using BarkFluff.Shared.Identity;
 using BarkFluff.Shared.Queue.Notifications;
-using MassTransit;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
+
+using System.Globalization;
 
 namespace BarkFluff.Identity.Features.CreateAccount;
 
@@ -47,7 +47,7 @@ public class CreateAccountCommandHandler(UsersServerApi.UsersServerApiClient use
         {
             throw new XAppInfoIsRequiedException();
         }
-        
+
         var createAccountRequest = new AddDraftUserRequest()
         {
             Email = request.Email?.Trim(),
@@ -107,7 +107,7 @@ public class CreateAccountCommandHandler(UsersServerApi.UsersServerApiClient use
             {"appname", $"{requestContext.AppName} v.{requestContext.AppVersion}"},
             {"datetime", DateTime.UtcNow.ToString("G", CultureInfo.GetCultureInfo("ru-RU"))}
         };
-        
+
         logger.LogDebug(
             "Отправка кода подтверждения на адрес {Email} для пользователя {UserId}",
             request.Email,
@@ -133,6 +133,6 @@ public class CreateAccountCommandHandler(UsersServerApi.UsersServerApiClient use
             confirmationCode.Id
         );
 
-        return new CreateAccountResponse { CodeId = confirmationCode.Id.ToString()};
+        return new CreateAccountResponse { CodeId = confirmationCode.Id.ToString() };
     }
 }

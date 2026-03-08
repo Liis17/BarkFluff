@@ -1,6 +1,7 @@
 namespace BarkFluff.Messages.Mapping;
 
 using BarkFluff.Proto.Files;
+
 using Proto.Shared;
 
 public static class MessageContentMapping
@@ -21,11 +22,11 @@ public static class MessageContentMapping
         {
             return content;
         }
-        
+
         foreach (var attachment in messageContent.Attachments)
         {
             var fileInfo = filesInfoMap?.GetValueOrDefault(attachment.FileId);
-            
+
             content.Attachments.Add(new MessageAttachment()
             {
                 FileId = attachment.FileId,

@@ -1,11 +1,13 @@
-using System.Net;
-using System.Text;
 using BarkFluff.Shared.Auth;
+
 using Grpc.Core;
 using Grpc.Core.Interceptors;
+
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+
+using System.Text;
 
 namespace BarkFluff.GrpcServer.Tracker;
 

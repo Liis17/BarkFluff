@@ -4,8 +4,8 @@ using BarkFluff.Identity.Persistence.Services;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Identity;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Identity.Features.RemoveActiveSession;
 

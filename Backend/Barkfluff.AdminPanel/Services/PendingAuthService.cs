@@ -1,6 +1,8 @@
-using System.Collections.Concurrent;
 using Barkfluff.AdminPanel.Models;
+
 using Microsoft.Extensions.Options;
+
+using System.Collections.Concurrent;
 
 namespace Barkfluff.AdminPanel.Services;
 

@@ -1,4 +1,4 @@
-name: "\U0001F40B Сборка образа Barkfluff.AdminPanel"
+name: "🐋 Сборка образа Barkfluff.AdminPanel"
 on:
   push:
     branches:
@@ -7,7 +7,7 @@ on:
     paths:
       - 'Backend/Barkfluff.AdminPanel/**'
       - '.github/workflows/admin-panel-build.yml'
-      - 'rebuild.trigger'
+      - 'Backend/rebuild.trigger'
 jobs:
   build-admin-panel:
     runs-on: self-hosted

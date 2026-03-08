@@ -1,7 +1,7 @@
 using BarkFluff.Proto.Users;
 using BarkFluff.Users.Persistence.Services;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Users.Features.Devices.DeleteUserDevice;
 

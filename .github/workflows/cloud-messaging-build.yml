@@ -6,12 +6,12 @@ on:
       - master
     paths:
       - 'Backend/Barkfluff.CloudMessaging/**'
-      - 'BarkFluff.Shared.Queue/**'
-      - 'BarkFluff.Shared.Exceptions/**'
+      - 'Shared/BarkFluff.Shared.Queue/**'
+      - 'Shared/BarkFluff.Shared.Exceptions/**'
       - 'Shared/BarkFluff.Shared.Auth/**'
       - 'Backend/BarkFluff.GrpcServer/**'
       - '.github/workflows/cloud-messaging-build.yml'
-      - 'rebuild.trigger'
+      - 'Backend/rebuild.trigger'
 jobs:
   build-cloud-messaging:
     runs-on: self-hosted

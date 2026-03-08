@@ -1,9 +1,10 @@
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Proto.Users;
 using BarkFluff.Users.Persistence.Services;
+
 using Google.Protobuf.WellKnownTypes;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Users.Features.Devices.GetDevices;
 

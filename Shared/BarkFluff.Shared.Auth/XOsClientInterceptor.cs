@@ -1,6 +1,7 @@
-using System.Text;
 using Grpc.Core;
 using Grpc.Core.Interceptors;
+
+using System.Text;
 
 namespace BarkFluff.Shared.Auth;
 
@@ -19,7 +20,7 @@ public class XOsClientInterceptor : Interceptor
         AsyncUnaryCallContinuation<TRequest, TResponse> continuation)
     {
         var metadata = context.Options.Headers ?? new Metadata();
-        
+
         var osName = Convert.ToBase64String(Encoding.UTF8.GetBytes(_osName));
 
         metadata.Add(MetadataKeys.OsName, osName);

@@ -1,7 +1,9 @@
 using BarkFluff.Files.Domain;
 using BarkFluff.Files.Helpers;
 using BarkFluff.Proto.Files;
+
 using Google.Protobuf.WellKnownTypes;
+
 using UploadFileType = BarkFluff.Proto.Files.UploadFileType;
 
 namespace BarkFluff.Files.Mapping;

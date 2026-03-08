@@ -1,11 +1,12 @@
 using BarkFluff.Users.Domain;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace BarkFluff.Users.Persistence.Contexts;
 
 public class UsersContext : DbContext
 {
-    public UsersContext(DbContextOptions<UsersContext> options)  : base(options) { }
+    public UsersContext(DbContextOptions<UsersContext> options) : base(options) { }
 
     public DbSet<User> Users { get; set; }
 
@@ -16,7 +17,7 @@ public class UsersContext : DbContext
     public DbSet<UserBadge> UserBadges { get; set; }
 
     public DbSet<UserDevice> UserDevices { get; set; }
-    
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<User>()
@@ -51,7 +52,7 @@ public class UsersContext : DbContext
             .OnDelete(DeleteBehavior.Cascade);
 
         base.OnModelCreating(modelBuilder);
-    
+
         // Настройка функций полнотекстового поиска
         modelBuilder.ConfigureFullTextSearch();
     }

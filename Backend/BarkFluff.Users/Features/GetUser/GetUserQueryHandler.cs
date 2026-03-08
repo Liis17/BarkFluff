@@ -3,10 +3,8 @@ using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Identity;
 using BarkFluff.Users.Mapping;
 using BarkFluff.Users.Persistence.Services;
-using Google.Protobuf.WellKnownTypes;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
-using User = BarkFluff.Proto.Users.User;
 
 namespace BarkFluff.Users.Features.GetUser;
 
@@ -56,4 +54,4 @@ public class GetUserQueryHandler : IRequestHandler<GetUserQuery, GetUserResponse
             User = user.ToGrpc()
         };
     }
-} 
+}

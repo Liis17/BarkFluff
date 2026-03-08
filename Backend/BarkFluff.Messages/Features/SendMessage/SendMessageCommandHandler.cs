@@ -5,8 +5,9 @@ using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Messages;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
+
 using Message = BarkFluff.Messages.Domain.Message;
 using MessageAttachment = BarkFluff.Messages.Domain.MessageAttachment;
 using MessageContent = BarkFluff.Messages.Domain.MessageContent;
@@ -87,7 +88,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
 
             var hasAccess = await _chatsStorage.CheckAccessToChat(chatId.Value, _userContext.UserId);
 
-            if(!hasAccess)
+            if (!hasAccess)
             {
                 _logger.LogWarning(
                     "Пользователь {UserId} не имеет доступа к чату {ChatId}",
@@ -159,7 +160,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                 request.Message.FileIds.Count()
             );
 
-            var filesInfo = await _filesServerApiClient.GetFilesDataAsync(new GetFilesDataRequest { FileIds = { request.Message.FileIds.Select(x => x.ToString())}});
+            var filesInfo = await _filesServerApiClient.GetFilesDataAsync(new GetFilesDataRequest { FileIds = { request.Message.FileIds.Select(x => x.ToString()) } });
 
             if (filesInfo.FilesInfos.Any(x => !_attachmentMap.ContainsKey(x.Type)))
             {
@@ -172,10 +173,13 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
 
             filesInfoMap = filesInfo.FilesInfos.ToDictionary(f => f.Id, f => f);
 
-            attachments = filesInfo.FilesInfos.Select(x => new Domain.MessageAttachment { FileId = x.Id,
+            attachments = filesInfo.FilesInfos.Select(x => new Domain.MessageAttachment
+            {
+                FileId = x.Id,
                 FileSize = x.FileSize,
                 PreviewUrl = x.PreviewUrl,
-                Type = _attachmentMap[x.Type]}).ToList();
+                Type = _attachmentMap[x.Type]
+            }).ToList();
 
             _logger.LogDebug(
                 "Добавлено {AttachmentCount} вложений к сообщению",
@@ -190,9 +194,11 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
 
         var message = new Message
         {
-            ChatId = chatId.Value, Content = new MessageContent()
+            ChatId = chatId.Value,
+            Content = new MessageContent()
             {
-                Attachments = attachments, Text = request.Message.Text
+                Attachments = attachments,
+                Text = request.Message.Text
             },
             ReadBy = [_userContext.UserId],
             SenderId = _userContext.UserId,

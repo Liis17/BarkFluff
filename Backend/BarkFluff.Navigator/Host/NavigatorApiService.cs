@@ -1,12 +1,14 @@
 namespace BarkFluff.Navigator.Host;
 
-using Features.ListServers;
-using Grpc.Core;
-using MediatR;
-using Proto.Navigator;
-using BarkFluff.Navigator.Persistence;
-using Features.RegisterServer;
 using BarkFluff.GrpcServer.XAuth;
+
+using Features.ListServers;
+
+using Grpc.Core;
+
+using MediatR;
+
+using Proto.Navigator;
 
 public class NavigatorApiService : NavigatorApi.NavigatorApiBase
 {
@@ -22,7 +24,7 @@ public class NavigatorApiService : NavigatorApi.NavigatorApiBase
     public override async Task<ListServersResponse> ListServers(ListServersRequest request, ServerCallContext context)
     {
         var command = new ListServersQuery();
-        
+
         return await _mediator.Send(command, context.CancellationToken);
     }
 

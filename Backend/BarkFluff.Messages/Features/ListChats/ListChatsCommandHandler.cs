@@ -4,9 +4,11 @@ using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
+
 using MediatR;
+
 using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Logging;
+
 using Chat = BarkFluff.Messages.Domain.Chat;
 
 namespace BarkFluff.Messages.Features.ListChats;
@@ -66,11 +68,11 @@ public class ListChatsCommandHandler : IRequestHandler<ListChatsCommand, ListCha
             }
         }
 
-        foreach (var groupChat in chats.Where(x=> x.IsGroupChat))
+        foreach (var groupChat in chats.Where(x => x.IsGroupChat))
         {
             groupChat.Members = [];
         }
-        
+
         var totalCount = await _chatsStorage.GetTotalUserChats(_userContext.UserId);
 
         _logger.LogDebug(
@@ -79,7 +81,7 @@ public class ListChatsCommandHandler : IRequestHandler<ListChatsCommand, ListCha
             totalCount,
             _userContext.UserId
         );
-        
+
         var fileIds = chats
             .Where(c => c.LastMessage?.Content?.Attachments != null)
             .SelectMany(c => c.LastMessage!.Content!.Attachments!)
@@ -101,7 +103,7 @@ public class ListChatsCommandHandler : IRequestHandler<ListChatsCommand, ListCha
             chats.Count
         );
 
-        return new ListChatsResponse { Chats = { chats.Select(x => x.ToGrpc(filesInfoMap)) }, TotalCount = totalCount};
+        return new ListChatsResponse { Chats = { chats.Select(x => x.ToGrpc(filesInfoMap)) }, TotalCount = totalCount };
     }
 
     private async Task LoadNameAndImageChat(Chat chat)

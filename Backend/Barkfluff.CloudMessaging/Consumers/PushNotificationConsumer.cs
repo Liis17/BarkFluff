@@ -1,9 +1,10 @@
+using Barkfluff.CloudMessaging.Services;
+
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Queue.Messages;
-using Barkfluff.CloudMessaging.Services;
+
 using MassTransit;
-using Microsoft.Extensions.Logging;
 
 namespace Barkfluff.CloudMessaging.Consumers;
 

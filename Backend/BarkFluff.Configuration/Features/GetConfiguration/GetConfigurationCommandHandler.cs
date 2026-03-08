@@ -1,8 +1,9 @@
 using BarkFluff.Configuration.Infrastructure;
 using BarkFluff.Proto.Configuration;
+
 using Google.Protobuf.WellKnownTypes;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Configuration.Features.GetConfiguration;
 

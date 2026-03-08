@@ -1,5 +1,6 @@
 using BarkFluff.Proto.Configuration;
 using BarkFluff.Shared.Identity;
+
 using MediatR;
 
 namespace BarkFluff.Configuration.Features.GetConfiguration;

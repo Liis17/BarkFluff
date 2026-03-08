@@ -1,10 +1,12 @@
-using System.Text;
 using BarkFluff.Shared.Identity;
+
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+
+using System.Text;
 
 namespace BarkFluff.GrpcServer.XAuth;
 
@@ -36,7 +38,7 @@ public static class XAuthExtensions
                         {
                             context.Token = token;
                         }
-                        
+
                         return Task.CompletedTask;
                     }
                 };
@@ -44,10 +46,10 @@ public static class XAuthExtensions
 
         services.AddAuthorization(options =>
         {
-            options.AddPolicy(nameof(TokenType.Service), 
+            options.AddPolicy(nameof(TokenType.Service),
                 p => p.RequireClaim(IdentityClaims.TokenType, "Service"));
-            
-            options.AddPolicy(nameof(TokenType.User), 
+
+            options.AddPolicy(nameof(TokenType.User),
                 p => p.RequireClaim(IdentityClaims.TokenType, "User", "Service"));
         });
 
@@ -56,7 +58,7 @@ public static class XAuthExtensions
 
         return services;
     }
-    
+
     public static IApplicationBuilder UseXAuth(this IApplicationBuilder app)
     {
         app.UseAuthentication();

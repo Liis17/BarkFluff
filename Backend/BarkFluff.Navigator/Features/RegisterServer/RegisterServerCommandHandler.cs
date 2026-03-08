@@ -3,7 +3,6 @@ using BarkFluff.Proto.Navigator;
 using BarkFluff.Shared.Exceptions.Navigator;
 
 using MediatR;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Navigator.Features.RegisterServer;
 

@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
 VisualStudioVersion = 18.3.11218.70
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Client.WPF", "BarkFluff.Client.WPF\BarkFluff.Client.WPF.csproj", "{867B0465-D663-4751-87D1-1DA2ED41B125}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Client.WPF", "Windows\BarkFluff.Client.WPF\BarkFluff.Client.WPF.csproj", "{867B0465-D663-4751-87D1-1DA2ED41B125}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Backend", "Backend", "{7E5A1AA1-A416-4D7E-B885-FC81F6CEBF07}"
 EndProject
@@ -27,19 +27,17 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.GrpcServer", "Bac
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Shared.Identity", "Shared\BarkFluff.Shared.Identity\BarkFluff.Shared.Identity.csproj", "{E54B6364-8B84-4604-8262-68C674EA4CEE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Shared.Exceptions", "BarkFluff.Shared.Exceptions\BarkFluff.Shared.Exceptions.csproj", "{6776F83E-E661-43A8-85A1-077750F5AC3B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Shared.Exceptions", "Shared\BarkFluff.Shared.Exceptions\BarkFluff.Shared.Exceptions.csproj", "{6776F83E-E661-43A8-85A1-077750F5AC3B}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Shared.Auth", "Shared\BarkFluff.Shared.Auth\BarkFluff.Shared.Auth.csproj", "{DEE15A10-7293-42F9-A17E-0E29301C7233}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Shared.Queue", "BarkFluff.Shared.Queue\BarkFluff.Shared.Queue.csproj", "{C5F262E3-2EA8-4483-A3F7-6F20540A1B33}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Shared.Queue", "Shared\BarkFluff.Shared.Queue\BarkFluff.Shared.Queue.csproj", "{C5F262E3-2EA8-4483-A3F7-6F20540A1B33}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Configuration", "Backend\BarkFluff.Configuration\BarkFluff.Configuration.csproj", "{0C185FA4-1C9B-4CE5-BED4-09928E4A05F5}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Shared.SecurityUtilities", "Shared\BarkFluff.Shared.SecurityUtilities\BarkFluff.Shared.SecurityUtilities.csproj", "{BD13B521-8B78-4A10-A498-2236C81ED12C}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ClientComponents", "ClientComponents", "{36D591C7-65C7-A0D1-1CBC-10CDE441BDC8}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.WebApi.Core", "ClientComponents\BarkFluff.WebApi.Core\BarkFluff.WebApi.Core.csproj", "{78AD9B01-7852-4B2F-B141-3BB37C2A0448}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.WebApi.Core", "Windows\BarkFluff.WebApi.Core\BarkFluff.WebApi.Core.csproj", "{78AD9B01-7852-4B2F-B141-3BB37C2A0448}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{089100B1-113F-4E66-888A-E83F3999EAFD}"
 	ProjectSection(SolutionItems) = preProject
@@ -54,19 +52,19 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Navigator", "Back
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Updates", "Backend\BarkFluff.Updates\BarkFluff.Updates.csproj", "{DD28DFCD-5588-4E7B-BF53-DDCACEE3C213}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ExternalEnvironmentApplications", "ExternalEnvironmentApplications", "{C71695D9-DCBE-32C0-BF7A-7B5E62F77FEC}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.DBEditor", "Windows\BarkFluff.DBEditor\BarkFluff.DBEditor.csproj", "{71ECCD49-6FEE-467C-ACF5-90BCA69D975A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.DBEditor", "BarkFluff.DBEditor\BarkFluff.DBEditor.csproj", "{71ECCD49-6FEE-467C-ACF5-90BCA69D975A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Barkfluff.Updater.CLI", "Windows\Barkfluff.Updater.CLI\Barkfluff.Updater.CLI.csproj", "{8104EA7A-F96A-4954-9007-CB777B422861}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Barkfluff.Updater.CLI", "Barkfluff.Updater.CLI\Barkfluff.Updater.CLI.csproj", "{8104EA7A-F96A-4954-9007-CB777B422861}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Barkfluff.WebServer", "Barkfluff.WebServer\Barkfluff.WebServer.csproj", "{278924E1-5CD0-4370-8E81-2DE81499DCC9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Barkfluff.WebServer", "Backend\Barkfluff.WebServer\Barkfluff.WebServer.csproj", "{278924E1-5CD0-4370-8E81-2DE81499DCC9}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Onliner", "Backend\BarkFluff.Onliner\BarkFluff.Onliner.csproj", "{BBBE3323-70E5-41D0-820B-F2E5E94B1B9E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Barkfluff.AdminPanel", "Backend\Barkfluff.AdminPanel\Barkfluff.AdminPanel.csproj", "{97712092-D590-55C6-1FBD-6D1A88049067}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Barkfluff.CloudMessaging", "Backend\Barkfluff.CloudMessaging\Barkfluff.CloudMessaging.csproj", "{9867C147-5584-4470-87BA-24F3FC64B212}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Windows", "Windows", "{2025C280-3C60-4211-9768-B271D4317C90}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -281,6 +279,7 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{867B0465-D663-4751-87D1-1DA2ED41B125} = {2025C280-3C60-4211-9768-B271D4317C90}
 		{63E44669-571D-4663-9850-33A1B63338F1} = {7E5A1AA1-A416-4D7E-B885-FC81F6CEBF07}
 		{6733B771-5545-4D93-B4BD-594D010ACBFE} = {7E5A1AA1-A416-4D7E-B885-FC81F6CEBF07}
 		{F7D54E83-77C4-43A0-9EB0-FA439BEA77EE} = {7E5A1AA1-A416-4D7E-B885-FC81F6CEBF07}
@@ -295,13 +294,13 @@ Global
 		{C5F262E3-2EA8-4483-A3F7-6F20540A1B33} = {3282AE17-EFD0-495E-9958-FB40F68DA873}
 		{0C185FA4-1C9B-4CE5-BED4-09928E4A05F5} = {7E5A1AA1-A416-4D7E-B885-FC81F6CEBF07}
 		{BD13B521-8B78-4A10-A498-2236C81ED12C} = {3282AE17-EFD0-495E-9958-FB40F68DA873}
-		{78AD9B01-7852-4B2F-B141-3BB37C2A0448} = {36D591C7-65C7-A0D1-1CBC-10CDE441BDC8}
+		{78AD9B01-7852-4B2F-B141-3BB37C2A0448} = {2025C280-3C60-4211-9768-B271D4317C90}
 		{B688B2A8-0EFF-4890-B45E-4798B5BDA5C2} = {7E5A1AA1-A416-4D7E-B885-FC81F6CEBF07}
 		{3BC0D2B3-FF38-4F44-8276-F41BA8FE332D} = {7E5A1AA1-A416-4D7E-B885-FC81F6CEBF07}
 		{DD28DFCD-5588-4E7B-BF53-DDCACEE3C213} = {7E5A1AA1-A416-4D7E-B885-FC81F6CEBF07}
-		{71ECCD49-6FEE-467C-ACF5-90BCA69D975A} = {C71695D9-DCBE-32C0-BF7A-7B5E62F77FEC}
-		{8104EA7A-F96A-4954-9007-CB777B422861} = {C71695D9-DCBE-32C0-BF7A-7B5E62F77FEC}
-		{278924E1-5CD0-4370-8E81-2DE81499DCC9} = {C71695D9-DCBE-32C0-BF7A-7B5E62F77FEC}
+		{71ECCD49-6FEE-467C-ACF5-90BCA69D975A} = {2025C280-3C60-4211-9768-B271D4317C90}
+		{8104EA7A-F96A-4954-9007-CB777B422861} = {2025C280-3C60-4211-9768-B271D4317C90}
+		{278924E1-5CD0-4370-8E81-2DE81499DCC9} = {7E5A1AA1-A416-4D7E-B885-FC81F6CEBF07}
 		{BBBE3323-70E5-41D0-820B-F2E5E94B1B9E} = {7E5A1AA1-A416-4D7E-B885-FC81F6CEBF07}
 		{97712092-D590-55C6-1FBD-6D1A88049067} = {7E5A1AA1-A416-4D7E-B885-FC81F6CEBF07}
 		{9867C147-5584-4470-87BA-24F3FC64B212} = {7E5A1AA1-A416-4D7E-B885-FC81F6CEBF07}

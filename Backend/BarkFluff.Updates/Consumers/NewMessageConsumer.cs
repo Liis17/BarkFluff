@@ -1,11 +1,17 @@
 namespace BarkFluff.Updates.Consumers;
 
 using BarkFluff.GrpcServer.Metrics;
+
 using Features.SubscribeNewMessages;
+
 using MassTransit;
+
 using MediatR;
+
 using Microsoft.Extensions.Logging;
+
 using Proto.Shared;
+
 using Shared.Queue.Messages;
 
 public class NewMessageConsumer : IConsumer<NewMessageEvent>

@@ -1,6 +1,7 @@
-using System.Text;
 using Grpc.Core;
 using Grpc.Core.Interceptors;
+
+using System.Text;
 
 namespace BarkFluff.Shared.Auth;
 
@@ -20,10 +21,10 @@ public class XAppClientInterceptor : Interceptor
         ClientInterceptorContext<TRequest, TResponse> context, AsyncUnaryCallContinuation<TRequest, TResponse> continuation)
     {
         var metadata = context.Options.Headers ?? new Metadata();
-        
+
         var appName = Convert.ToBase64String(Encoding.UTF8.GetBytes(_appName));
         var appVersion = Convert.ToBase64String(Encoding.UTF8.GetBytes(_appVersion));
-        
+
         metadata.Add(MetadataKeys.AppName, appName);
         metadata.Add(MetadataKeys.AppVersion, appVersion);
 

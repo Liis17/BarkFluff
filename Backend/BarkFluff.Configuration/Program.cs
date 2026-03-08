@@ -1,8 +1,10 @@
 using BarkFluff.Configuration.Host;
 using BarkFluff.Configuration.Infrastructure;
 using BarkFluff.GrpcServer;
+
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
+
 using Serilog;
 
 namespace BarkFluff.Configuration;

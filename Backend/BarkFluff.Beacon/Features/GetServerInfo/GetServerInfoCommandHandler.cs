@@ -2,8 +2,8 @@ using BarkFluff.Beacon.Configurations;
 using BarkFluff.Proto.Beacon;
 using BarkFluff.Proto.Configuration;
 using BarkFluff.Shared.Identity;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Beacon.Features.GetServerInfo;
 

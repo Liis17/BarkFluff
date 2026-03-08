@@ -5,8 +5,11 @@ using BarkFluff.Files.Features.UploadAvatarServer;
 using BarkFluff.Files.Features.UploadBadgeImage;
 using BarkFluff.Proto.Files;
 using BarkFluff.Shared.Identity;
+
 using Grpc.Core;
+
 using MediatR;
+
 using Microsoft.AspNetCore.Authorization;
 
 namespace BarkFluff.Files.Host;
@@ -30,7 +33,7 @@ public class FilesServerApiService : FilesServerApi.FilesServerApiBase
 
         return _mediator.Send(command);
     }
-    
+
     public override Task<GetFilesDataResponse> GetFilesData(GetFilesDataRequest request, ServerCallContext context)
     {
         var command = new GetFilesDataCommand()

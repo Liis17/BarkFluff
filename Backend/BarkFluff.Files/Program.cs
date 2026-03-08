@@ -8,6 +8,7 @@ using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Shared.Identity;
 
 using Microsoft.EntityFrameworkCore;
+
 using Serilog;
 
 namespace BarkFluff.Files;

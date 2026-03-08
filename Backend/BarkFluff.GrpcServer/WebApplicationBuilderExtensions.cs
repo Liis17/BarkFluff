@@ -1,8 +1,9 @@
 using BarkFluff.GrpcServer.Settings;
 using BarkFluff.Proto.Configuration;
 using BarkFluff.Shared.Identity;
-using Grpc.Core;
+
 using Grpc.Net.Client;
+
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -68,7 +69,7 @@ public static class WebApplicationBuilderExtensions
         var channel = GrpcChannel.ForAddress(configurationServiceAddress);
         var configurationApiClient = new ConfigurationApi.ConfigurationApiClient(channel);
 
-        var config = configurationApiClient.GetConfiguration(new GetConfigurationRequest {ServiceId = (int)serviceId});
+        var config = configurationApiClient.GetConfiguration(new GetConfigurationRequest { ServiceId = (int)serviceId });
 
         var configurationDictionary = new Dictionary<string, string>();
 

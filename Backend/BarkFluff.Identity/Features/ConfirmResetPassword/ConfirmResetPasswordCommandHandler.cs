@@ -2,7 +2,7 @@ using BarkFluff.Identity.Persistence.Services;
 using BarkFluff.Shared.Exceptions.Identity;
 
 using MediatR;
-using Microsoft.Extensions.Logging;
+
 using OtpNet;
 
 using OtpType = BarkFluff.Identity.Domain.OtpType;
@@ -10,9 +10,13 @@ using OtpType = BarkFluff.Identity.Domain.OtpType;
 namespace BarkFluff.Identity.Features.ConfirmResetPassword
 {
     using CreateToken;
+
     using Google.Protobuf.WellKnownTypes;
+
     using GrpcServer.Tracker;
+
     using Proto.Identity;
+
     using Services;
 
     public class ConfirmResetPasswordCommandHandler : IRequestHandler<ConfirmResetPasswordCommand, ConfirmResetPasswordResponse>
@@ -61,7 +65,7 @@ namespace BarkFluff.Identity.Features.ConfirmResetPassword
             {
                 throw new XAppInfoIsRequiedException();
             }
-            
+
             var resetPasswordInfo = await _resetPasswordsStorage.GetResetPassword(request.ResetId);
 
             if (resetPasswordInfo is null)

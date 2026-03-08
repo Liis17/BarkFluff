@@ -1,8 +1,7 @@
 using BarkFluff.Proto.Users;
-using BarkFluff.Users.Features.CheckExistEmail;
 using BarkFluff.Users.Persistence.Services;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Users.Features.CheckExistUsername;
 

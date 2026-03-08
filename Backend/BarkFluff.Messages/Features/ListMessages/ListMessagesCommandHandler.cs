@@ -5,8 +5,8 @@ using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Shared.Exceptions.Messages;
+
 using MediatR;
-using Microsoft.Extensions.Logging;
 
 namespace BarkFluff.Messages.Features.ListMessages;
 
