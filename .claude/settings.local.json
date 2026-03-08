@@ -23,7 +23,8 @@
       "Bash(./gradlew assembleDebug:*)",
       "Bash(./gradlew :app:compileDebugKotlin:*)",
       "Bash(./gradlew compileDebugKotlin:*)",
-      "Bash(git check-ignore:*)"
+      "Bash(git check-ignore:*)",
+      "Bash(\"C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe\":*)"
     ],
     "deny": [],
     "ask": []
