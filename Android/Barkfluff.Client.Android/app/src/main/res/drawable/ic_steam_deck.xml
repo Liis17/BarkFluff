@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Корпус + дыры (evenOdd = внутренние фигуры вырезаются) -->
+    <path
+        android:fillColor="@android:color/white"
+        android:fillType="evenOdd"
+        android:pathData="
+            M2,5
+            L22,5
+            Q24,5 24,7
+            L24,17
+            Q24,19 22,19
+            L2,19
+            Q0,19 0,17
+            L0,7
+            Q0,5 2,5
+            Z
+
+            M7,8
+            L17,8
+            L17,13
+            L7,13
+            Z
+
+            M4,7
+            A1.5,1.5 0,1,1 4,10
+            A1.5,1.5 0,1,1 4,7
+            Z
+
+            M20,7
+            A1.5,1.5 0,1,1 20,10
+            A1.5,1.5 0,1,1 20,7
+            Z
+
+            M4,10.8
+            A1.2,1.2 0,1,1 4,13.2
+            A1.2,1.2 0,1,1 4,10.8
+            Z
+
+            M20,10.8
+            A1.2,1.2 0,1,1 20,13.2
+            A1.2,1.2 0,1,1 20,10.8
+            Z
+
+            M3,14.5
+            L5,14.5
+            L5,16.5
+            L3,16.5
+            Z
+
+            M19,14.5
+            L21,14.5
+            L21,16.5
+            L19,16.5
+            Z
+        " />
+
+</vector>
