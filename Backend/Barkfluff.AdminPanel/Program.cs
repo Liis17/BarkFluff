@@ -78,6 +78,11 @@ public class Program
             o.Address = new Uri(builder.Configuration["IdentityService:Host"] ?? "http://identity:7000");
         }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["IdentityService:Token"] ?? string.Empty));
 
+        builder.Services.AddGrpcClient<BarkFluff.Proto.Configuration.ConfigurationApi.ConfigurationApiClient>(o =>
+        {
+            o.Address = new Uri(builder.Configuration["ConfigurationService:Host"] ?? "http://configuration:7010");
+        }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["ConfigurationService:Token"] ?? string.Empty));
+
         // Configure and validate TelegramSettings
         builder.Services.AddOptions<TelegramSettings>()
             .PostConfigure(settings =>
@@ -158,6 +163,9 @@ public class Program
         // Map Users Endpoints
         app.MapUsersEndpoints();
 
+        // Map Configuration Endpoints
+        app.MapConfigurationEndpoints();
+
         // Static files for Pages directory
         app.UseStaticFiles(new StaticFileOptions
         {
@@ -185,6 +193,7 @@ public class Program
         app.MapGet("/logs", async context => await ServeHtmlFile(context, "logs.html"));
         app.MapGet("/badges", async context => await ServeHtmlFile(context, "badges.html"));
         app.MapGet("/users", async context => await ServeHtmlFile(context, "users.html"));
+        app.MapGet("/s3-storage", async context => await ServeHtmlFile(context, "s3-storage.html"));
         app.MapGet("/restarting", async context => await ServeHtmlFile(context, "restarting.html"));
         app.MapGet("/updating", async context => await ServeHtmlFile(context, "updating.html"));
 
