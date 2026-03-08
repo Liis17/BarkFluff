@@ -10,13 +10,13 @@ import java.io.ByteArrayOutputStream
 /**
  * Утилита для сжатия изображений перед загрузкой на сервер.
  * Сжимает изображение только если одна из осей превышает 2500 пикселей.
- * Качество JPEG: 80%
+ * Качество JPEG: 90%
  */
 object ImageCompressor {
 
     private const val TAG = "ImageCompressor"
     private const val MAX_DIMENSION = 2500
-    private const val JPEG_QUALITY = 80
+    private const val JPEG_QUALITY = 90
 
     /**
      * Сжимает изображение из Uri до заданных размеров и качества.
@@ -61,11 +61,15 @@ object ImageCompressor {
                 return Result.failure(Exception("Не удалось декодировать изображение"))
             }
 
+            // Точное масштабирование, если после inSampleSize размер всё ещё превышает MAX_DIMENSION
+            val scaledBitmap = scaleToFit(bitmap)
+
             // Сжимаем в JPEG
             val outputStream = ByteArrayOutputStream()
-            bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, outputStream)
+            scaledBitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, outputStream)
             val compressedBytes = outputStream.toByteArray()
             outputStream.close()
+            if (scaledBitmap !== bitmap) scaledBitmap.recycle()
             bitmap.recycle()
 
             Log.d(TAG, "Compressed image size: ${compressedBytes.size / 1024} KB")
@@ -137,11 +141,15 @@ object ImageCompressor {
                 return Result.failure(Exception("Не удалось декодировать изображение"))
             }
 
+            // Точное масштабирование, если после inSampleSize размер всё ещё превышает MAX_DIMENSION
+            val scaledBitmap = scaleToFit(bitmap)
+
             // Сжимаем в JPEG
             val outputStream = ByteArrayOutputStream()
-            bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, outputStream)
+            scaledBitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, outputStream)
             val compressedBytes = outputStream.toByteArray()
             outputStream.close()
+            if (scaledBitmap !== bitmap) scaledBitmap.recycle()
             bitmap.recycle()
 
             Log.d(TAG, "Compressed image size: ${compressedBytes.size / 1024} KB")
@@ -150,6 +158,26 @@ object ImageCompressor {
             Log.e(TAG, "Error compressing image from bytes", e)
             Result.failure(Exception("Ошибка сжатия изображения: ${e.message}"))
         }
+    }
+
+    /**
+     * Масштабирует bitmap так, чтобы максимальная сторона не превышала MAX_DIMENSION,
+     * сохраняя соотношение сторон. Возвращает исходный bitmap, если масштабирование не требуется.
+     */
+    private fun scaleToFit(bitmap: Bitmap): Bitmap {
+        val width = bitmap.width
+        val height = bitmap.height
+
+        if (width <= MAX_DIMENSION && height <= MAX_DIMENSION) {
+            return bitmap
+        }
+
+        val scale = MAX_DIMENSION.toFloat() / maxOf(width, height)
+        val newWidth = (width * scale).toInt()
+        val newHeight = (height * scale).toInt()
+
+        Log.d(TAG, "Scaling from ${width}x${height} to ${newWidth}x${newHeight}")
+        return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
     }
 
     /**
