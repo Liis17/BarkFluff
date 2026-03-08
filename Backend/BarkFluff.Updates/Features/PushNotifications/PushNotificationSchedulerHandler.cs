@@ -78,7 +78,7 @@ public class PushNotificationSchedulerHandler : INotificationHandler<NewMessageN
                     // а НЕ из Message.Type (MessageContentType: GENERIC=1, SYSTEM=2).
                     var attachmentType = imageAttachment?.Type
                         ?? notification.Message.Content?.Attachments.FirstOrDefault()?.Type
-                        ?? MessageAttachmentType.MessageAttachmentTypeUnknown;
+                        ?? MessageAttachmentType.Unknown;
 
                     await publisher.Publish(new PushNotificationEvent
                     {
