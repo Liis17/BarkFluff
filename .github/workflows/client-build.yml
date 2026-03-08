@@ -104,7 +104,7 @@ jobs:
         TG_CHANNEL: ${{ secrets.TELEGRAM_CHANNEL }}
         THIS_BRANCH: ${{ github.ref == 'refs/heads/dev' && 'Dev' || 'Master' }}
       run: |
-        $versionFile = "$env:GITHUB_WORKSPACE\BarkFluff.Client.WPF\Services\App\AppVersion.cs"
+        $versionFile = "$env:GITHUB_WORKSPACE\Windows\BarkFluff.Client.WPF\Services\App\AppVersion.cs"
         $content = Get-Content $versionFile -Raw
         if ($content -match 'Version\s*\{\s*get;\s*set;\s*\}\s*=\s*"([^"]+)"') {
             $version = $matches[1]
