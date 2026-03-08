@@ -19,8 +19,7 @@ public static class ConfigurationEndpoints
         // Получить S3 конфигурацию (все бакеты)
         group.MapGet("/s3-configuration", async (
             ConfigurationApi.ConfigurationApiClient configClient,
-            HttpContext context,
-            ILogger logger) =>
+            HttpContext context) =>
         {
             if (context.Items["AuthToken"] is not AuthToken)
                 return Results.Unauthorized();
@@ -52,7 +51,6 @@ public static class ConfigurationEndpoints
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Ошибка получения S3 конфигурации");
                 return Results.Problem($"Ошибка получения конфигурации: {ex.Message}");
             }
         });
