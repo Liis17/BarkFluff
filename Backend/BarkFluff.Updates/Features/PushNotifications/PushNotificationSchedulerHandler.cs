@@ -74,6 +74,12 @@ public class PushNotificationSchedulerHandler : INotificationHandler<NewMessageN
                         }
                     }
 
+                    // Тип вложения: берём из первого attachment (MessageAttachmentType),
+                    // а НЕ из Message.Type (MessageContentType: GENERIC=1, SYSTEM=2).
+                    var attachmentType = imageAttachment?.Type
+                        ?? notification.Message.Content?.Attachments.FirstOrDefault()?.Type
+                        ?? MessageAttachmentType.MessageAttachmentTypeUnknown;
+
                     await publisher.Publish(new PushNotificationEvent
                     {
                         ChatId = notification.ChatId,
@@ -81,7 +87,7 @@ public class PushNotificationSchedulerHandler : INotificationHandler<NewMessageN
                         MessageId = notification.Message.Id,
                         MessageText = notification.Message.Content?.Text,
                         RecipientUserIds = [userId],
-                        ContentType = (int)notification.Message.Type,
+                        ContentType = (int)attachmentType,
                         ImagePreviewUrl = imagePreviewUrl,
                         AttachmentCount = notification.Message.Content?.Attachments.Count ?? 0
                     });
