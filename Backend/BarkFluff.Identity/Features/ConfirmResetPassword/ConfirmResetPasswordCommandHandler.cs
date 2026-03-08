@@ -111,7 +111,7 @@ namespace BarkFluff.Identity.Features.ConfirmResetPassword
             }
             else
             {
-                if (!string.Equals(request.OtpCode, request.OtpCode))
+                if (!string.Equals(resetPasswordInfo.OtpCode, request.OtpCode, StringComparison.Ordinal))
                 {
                     _logger.LogWarning(
                         "Неверный Email OTP код для пользователя {UserId}",
@@ -129,6 +129,14 @@ namespace BarkFluff.Identity.Features.ConfirmResetPassword
             await refreshTokensStorage.CreateNewRefreshToken(refreshTokenString, resetPasswordInfo.UserId, requestContext.DeviceId ?? requestContext.DeviceName, ExpDaysRefreshToken);
 
             var accessTokenResponse = await _mediator.Send(new CreateTokenCommand { RefreshToken = refreshTokenString }, cancellationToken);
+
+            // Отметить запрос сброса как использованный
+            _logger.LogDebug("Отметка запроса сброса {ResetId} как использованного", request.ResetId);
+            await _resetPasswordsStorage.SetApproved(request.ResetId);
+
+            // Очистить хеш пароля для возможности установки нового без старого
+            _logger.LogDebug("Очистка хеша пароля для пользователя {UserId}", resetPasswordInfo.UserId);
+            await _passwordsStorage.ClearUserPasswordHash(resetPasswordInfo.UserId);
 
             _logger.LogInformation(
                 "Сброс пароля успешно подтвержден для пользователя {UserId}, устройство: {DeviceName}",
