@@ -1,63 +1,90 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp"
-    android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
+    android:width="30dp"
+    android:height="20dp"
+    android:viewportWidth="30"
+    android:viewportHeight="20">
 
-    <!-- Корпус + дыры (evenOdd = внутренние фигуры вырезаются) -->
+    <!-- Основной корпус (скруглённый прямоугольник) -->
     <path
         android:fillColor="@android:color/white"
         android:fillType="evenOdd"
         android:pathData="
-            M2,5
-            L22,5
-            Q24,5 24,7
-            L24,17
-            Q24,19 22,19
-            L2,19
-            Q0,19 0,17
-            L0,7
-            Q0,5 2,5
-            Z
+            M2,1
+            h26
+            q2,0 2,1.5
+            v15
+            q0,1.5 -2,1.5
+            H2
+            q-2,0 -2,-1.5
+            v-15
+            q0,-1.5 2,-1.5
+            z
 
-            M7,8
-            L17,8
-            L17,13
-            L7,13
-            Z
+            M11,4
+            h8
+            v12
+            h-8
+            V4
+            z
 
-            M4,7
-            A1.5,1.5 0,1,1 4,10
-            A1.5,1.5 0,1,1 4,7
-            Z
+            M2,4
+            h4
+            v4
+            H2
+            V4
+            z
 
-            M20,7
-            A1.5,1.5 0,1,1 20,10
-            A1.5,1.5 0,1,1 20,7
-            Z
+            M2,12
+            h4
+            v4
+            H2
+            v-4
+            z
 
-            M4,10.8
-            A1.2,1.2 0,1,1 4,13.2
-            A1.2,1.2 0,1,1 4,10.8
-            Z
+            M3,9
+            h0.6
+            v0.5
+            h0.5
+            v0.6
+            h-0.5
+            v0.5
+            H3
+            v-0.5
+            H2.5
+            V9.5
+            H3
+            V9
+            z
 
-            M20,10.8
-            A1.2,1.2 0,1,1 20,13.2
-            A1.2,1.2 0,1,1 20,10.8
-            Z
+            M24,4
+            h4
+            v4
+            h-4
+            V4
+            z
 
-            M3,14.5
-            L5,14.5
-            L5,16.5
-            L3,16.5
-            Z
+            M24,12
+            h4
+            v4
+            h-4
+            v-4
+            z
 
-            M19,14.5
-            L21,14.5
-            L21,16.5
-            L19,16.5
-            Z
+            M25,9
+            h0.6
+            v0.5
+            h0.5
+            v0.6
+            h-0.5
+            v0.5
+            H25
+            v-0.5
+            h-0.5
+            V9.5
+            h0.5
+            V9
+            z
         " />
 
 </vector>
