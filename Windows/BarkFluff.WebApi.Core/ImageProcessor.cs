@@ -1,5 +1,6 @@
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp.Processing;
 
 using System.Drawing.Imaging;
 
@@ -19,7 +20,8 @@ namespace BarkFluff.WebApi.Core
     /// </summary>
     public static class ImageProcessor
     {
-        private const int JPEG_QUALITY = 85;
+        private const int JPEG_QUALITY = 90;
+        private const int MAX_DIMENSION = 2500;
         private const long MAX_IMAGE_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB limit
 
         private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
@@ -100,6 +102,8 @@ namespace BarkFluff.WebApi.Core
                 {
                     using (var image = SixLabors.ImageSharp.Image.Load(sourcePath))
                     {
+                        ResizeIfNeeded(image);
+
                         var encoder = new JpegEncoder
                         {
                             Quality = quality
@@ -126,19 +130,42 @@ namespace BarkFluff.WebApi.Core
             {
                 try
                 {
-                    using (var image = System.Drawing.Image.FromFile(sourcePath))
+                    using (var original = System.Drawing.Image.FromFile(sourcePath))
                     {
+                        var imageToSave = original;
+                        bool resized = false;
+
+                        if (original.Width > MAX_DIMENSION || original.Height > MAX_DIMENSION)
+                        {
+                            double scale = Math.Min((double)MAX_DIMENSION / original.Width, (double)MAX_DIMENSION / original.Height);
+                            int newWidth = (int)Math.Round(original.Width * scale);
+                            int newHeight = (int)Math.Round(original.Height * scale);
+
+                            var bitmap = new System.Drawing.Bitmap(newWidth, newHeight);
+                            using (var g = System.Drawing.Graphics.FromImage(bitmap))
+                            {
+                                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                                g.DrawImage(original, 0, 0, newWidth, newHeight);
+                            }
+                            imageToSave = bitmap;
+                            resized = true;
+                        }
+
                         // Get JPEG codec
                         var jpegCodec = GetEncoderInfo("image/jpeg");
                         if (jpegCodec == null)
+                        {
+                            if (resized) imageToSave.Dispose();
                             return false;
+                        }
 
                         // Set quality parameter
                         var encoderParameters = new EncoderParameters(1);
                         encoderParameters.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, quality);
 
                         // Save as JPEG
-                        image.Save(outputPath, jpegCodec, encoderParameters);
+                        imageToSave.Save(outputPath, jpegCodec, encoderParameters);
+                        if (resized) imageToSave.Dispose();
                         return true;
                     }
                 }
@@ -191,6 +218,21 @@ namespace BarkFluff.WebApi.Core
             }
 
             return tempPath;
+        }
+
+        /// <summary>
+        /// Resizes an ImageSharp image so its longest side does not exceed MAX_DIMENSION, preserving aspect ratio.
+        /// </summary>
+        private static void ResizeIfNeeded(SixLabors.ImageSharp.Image image)
+        {
+            if (image.Width <= MAX_DIMENSION && image.Height <= MAX_DIMENSION)
+                return;
+
+            double scale = Math.Min((double)MAX_DIMENSION / image.Width, (double)MAX_DIMENSION / image.Height);
+            int newWidth = (int)Math.Round(image.Width * scale);
+            int newHeight = (int)Math.Round(image.Height * scale);
+
+            image.Mutate(x => x.Resize(newWidth, newHeight));
         }
 
         /// <summary>
