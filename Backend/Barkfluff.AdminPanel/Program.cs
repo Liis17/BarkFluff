@@ -50,6 +50,9 @@ public class Program
         // Register HttpClient for SeqService
         builder.Services.AddHttpClient<SeqService>();
 
+        // Register S3BrowserService as Singleton
+        builder.Services.AddSingleton<S3BrowserService>();
+
         // Register DockerService as Singleton
         builder.Services.AddSingleton<DockerService>();
 
@@ -166,6 +169,9 @@ public class Program
         // Map Configuration Endpoints
         app.MapConfigurationEndpoints();
 
+        // Map S3 Browser Endpoints
+        app.MapS3BrowserEndpoints();
+
         // Static files for Pages directory
         app.UseStaticFiles(new StaticFileOptions
         {
@@ -194,6 +200,7 @@ public class Program
         app.MapGet("/badges", async context => await ServeHtmlFile(context, "badges.html"));
         app.MapGet("/users", async context => await ServeHtmlFile(context, "users.html"));
         app.MapGet("/s3-storage", async context => await ServeHtmlFile(context, "s3-storage.html"));
+        app.MapGet("/s3-browser", async context => await ServeHtmlFile(context, "s3-browser.html"));
         app.MapGet("/restarting", async context => await ServeHtmlFile(context, "restarting.html"));
         app.MapGet("/updating", async context => await ServeHtmlFile(context, "updating.html"));
 
