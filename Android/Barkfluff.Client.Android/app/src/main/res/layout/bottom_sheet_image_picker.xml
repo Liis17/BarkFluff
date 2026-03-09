@@ -64,18 +64,6 @@
                 android:visibility="gone"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
-            <!-- Send button -->
-            <ImageButton
-                android:id="@+id/sendButton"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/send"
-                android:padding="8dp"
-                android:src="@drawable/ic_send_filled"
-                android:visibility="gone"
-                app:tint="?attr/colorPrimary" />
-
         </LinearLayout>
 
         <!-- Permission denied message -->
@@ -138,7 +126,7 @@
             android:layout_weight="1"
             android:clipToPadding="false"
             android:paddingHorizontal="4dp"
-            android:paddingBottom="16dp"
+            android:paddingBottom="4dp"
             android:visibility="gone"
             tools:listitem="@layout/item_image_picker" />
 
@@ -174,6 +162,45 @@
                 android:text="@string/no_photos_description"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
                 android:textColor="?attr/colorOnSurfaceVariant" />
+
+        </LinearLayout>
+
+        <!-- Bottom input bar -->
+        <LinearLayout
+            android:id="@+id/inputBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="6dp"
+            android:gravity="center_vertical"
+            android:visibility="gone">
+
+            <EditText
+                android:id="@+id/captionEditText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="Добавить подпись..."
+                android:inputType="textMultiLine"
+                android:maxLines="3"
+                android:background="@android:color/transparent"
+                android:paddingVertical="8dp"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="?attr/colorOnSurface"
+                android:textColorHint="?attr/colorOnSurfaceVariant" />
+
+            <ImageButton
+                android:id="@+id/sendButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/send"
+                android:padding="12dp"
+                android:src="@drawable/ic_send_filled"
+                android:enabled="false"
+                android:alpha="0.5"
+                app:tint="?attr/colorPrimary" />
 
         </LinearLayout>
 
