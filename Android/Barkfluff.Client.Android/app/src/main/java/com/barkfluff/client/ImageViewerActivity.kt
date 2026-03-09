@@ -1,5 +1,7 @@
 package com.barkfluff.client
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -11,8 +13,10 @@ import android.provider.MediaStore
 import android.util.Log
 import android.view.MotionEvent
 import android.view.View
+import android.widget.PopupMenu
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.widget.ViewPager2
 import com.barkfluff.client.adapter.ImagePagerAdapter
@@ -106,7 +110,64 @@ class ImageViewerActivity : AppCompatActivity() {
 
     private fun setupButtons() {
         binding.closeButton.setOnClickListener { finishWithAnimation() }
-        binding.downloadButton.setOnClickListener { saveCurrentImage() }
+        binding.moreButton.setOnClickListener { showMoreMenu(it) }
+    }
+
+    private fun showMoreMenu(anchor: View) {
+        val popup = PopupMenu(this, anchor)
+        popup.menu.add(0, 1, 0, "Сохранить")
+        popup.menu.add(0, 2, 1, "Копировать в буфер")
+        popup.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                1 -> { saveCurrentImage(); true }
+                2 -> { copyCurrentImageToClipboard(); true }
+                else -> false
+            }
+        }
+        popup.show()
+    }
+
+    private fun copyCurrentImageToClipboard() {
+        val currentPosition = binding.viewPager.currentItem
+        val recyclerView = binding.viewPager.getChildAt(0) as? androidx.recyclerview.widget.RecyclerView
+        val viewHolder = recyclerView?.findViewHolderForAdapterPosition(currentPosition)
+        val photoView = (viewHolder?.itemView as? android.view.ViewGroup)?.getChildAt(0) as? PhotoView
+        val drawable = photoView?.drawable
+
+        if (drawable is BitmapDrawable && drawable.bitmap != null) {
+            lifecycleScope.launch {
+                copyBitmapToClipboard(drawable.bitmap)
+            }
+        } else {
+            Toast.makeText(this, "Изображение ещё загружается", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private suspend fun copyBitmapToClipboard(bitmap: Bitmap) {
+        withContext(Dispatchers.IO) {
+            try {
+                val file = java.io.File(cacheDir, "clipboard_temp_${System.currentTimeMillis()}.png")
+                file.outputStream().use { out ->
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                }
+                val uri = FileProvider.getUriForFile(
+                    this@ImageViewerActivity,
+                    "${packageName}.fileprovider",
+                    file
+                )
+                withContext(Dispatchers.Main) {
+                    val clipData = ClipData.newUri(contentResolver, "Image", uri)
+                    val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(clipData)
+                    Toast.makeText(this@ImageViewerActivity, "Скопировано в буфер обмена", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error copying to clipboard", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@ImageViewerActivity, "Ошибка копирования: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 
     private fun setupSwipeDismiss() {

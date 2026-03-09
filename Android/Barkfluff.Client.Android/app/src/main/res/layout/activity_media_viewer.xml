@@ -45,12 +45,12 @@
             android:layout_weight="1" />
 
         <ImageButton
-            android:id="@+id/saveButton"
+            android:id="@+id/moreButton"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_download"
-            android:contentDescription="Сохранить в галерею"
+            android:src="@drawable/ic_more_vert"
+            android:contentDescription="Ещё"
             app:tint="@android:color/white" />
 
     </LinearLayout>

@@ -10,6 +10,7 @@ import android.provider.MediaStore
 import android.util.Log
 import android.view.MotionEvent
 import android.view.View
+import android.widget.PopupMenu
 import android.widget.SeekBar
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -46,7 +47,8 @@ class MediaViewerActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "MediaViewerActivity"
-        private const val EXTRA_FILE_ID = "file_id"
+        const val RESULT_CACHE_DELETED = 100
+        const val EXTRA_FILE_ID = "file_id"
         private const val EXTRA_FILE_NAME = "file_name"
         private const val EXTRA_CACHED_PATH = "cached_path"
 
@@ -179,7 +181,31 @@ class MediaViewerActivity : AppCompatActivity() {
             override fun onStopTrackingTouch(sb: SeekBar) {}
         })
 
-        binding.saveButton.setOnClickListener { saveToGallery() }
+        binding.moreButton.setOnClickListener { showMoreMenu(it) }
+    }
+
+    private fun showMoreMenu(anchor: View) {
+        val popup = PopupMenu(this, anchor)
+        popup.menu.add(0, 1, 0, "Сохранить")
+        popup.menu.add(0, 2, 1, "Удалить из кэша")
+        popup.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                1 -> { saveToGallery(); true }
+                2 -> { deleteFromCacheAndClose(); true }
+                else -> false
+            }
+        }
+        popup.show()
+    }
+
+    private fun deleteFromCacheAndClose() {
+        player?.stop()
+        player?.release()
+        player = null
+        FileCache.deleteFile(fileId)
+        Toast.makeText(this, "Видео удалено из кэша", Toast.LENGTH_SHORT).show()
+        setResult(RESULT_CACHE_DELETED)
+        finish()
     }
 
     private fun setupSwipeDismiss() {

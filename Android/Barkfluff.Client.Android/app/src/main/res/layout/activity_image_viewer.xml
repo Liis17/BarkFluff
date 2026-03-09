@@ -36,22 +36,31 @@
             android:src="@drawable/ic_close"
             app:tint="@android:color/white" />
 
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
         <TextView
             android:id="@+id/counterTextView"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:gravity="center"
             android:textColor="@android:color/white"
             android:textSize="16sp" />
 
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
         <ImageButton
-            android:id="@+id/downloadButton"
+            android:id="@+id/moreButton"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Скачать"
-            android:src="@drawable/ic_download"
+            android:contentDescription="Ещё"
+            android:src="@drawable/ic_more_vert"
             app:tint="@android:color/white" />
 
     </LinearLayout>

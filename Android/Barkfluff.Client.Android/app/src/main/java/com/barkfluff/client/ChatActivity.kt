@@ -252,13 +252,14 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun handleSelectedImages(result: ImagePickerResult) {
-        Log.d(TAG, "handleSelectedImages: uris.size=${result.uris.size}, uris=${result.uris}, sendAsFile=${result.sendAsFile}, sendSeparately=${result.sendSeparately}")
+        Log.d(TAG, "handleSelectedImages: uris.size=${result.uris.size}, uris=${result.uris}, sendAsFile=${result.sendAsFile}, sendSeparately=${result.sendSeparately}, caption=${result.captionText}")
 
         val uris = result.uris
         if (uris.isEmpty()) return
 
         val sendAsFile = result.sendAsFile
         val sendSeparately = result.sendSeparately
+        val captionText = result.captionText
 
         lifecycleScope.launch {
             val selectedUris = uris.take(ImagePickerBottomSheet.MAX_SELECTION)
@@ -313,12 +314,14 @@ class ChatActivity : AppCompatActivity() {
                 Log.d(TAG, "Sending ${fileIds.size} fileIds: $fileIds, sendSeparately=$sendSeparately")
                 if (sendSeparately) {
                     // Отправляем каждое изображение отдельным сообщением
-                    for (fileId in fileIds) {
-                        sendMessage(fileIds = listOf(fileId))
+                    // Первое сообщение получает подпись, остальные без текста
+                    for ((index, fileId) in fileIds.withIndex()) {
+                        val text = if (index == 0) captionText else ""
+                        sendMessage(text = text, fileIds = listOf(fileId))
                     }
                 } else {
-                    // Отправляем все изображения в одном сообщении
-                    sendMessage(fileIds = fileIds)
+                    // Отправляем все изображения в одном сообщении с подписью
+                    sendMessage(text = captionText, fileIds = fileIds)
                 }
             } else {
                 Log.w(TAG, "No fileIds to send! selectedUris.size=${selectedUris.size}")
@@ -1248,6 +1251,14 @@ class ChatActivity : AppCompatActivity() {
             }
         } catch (e: Exception) {
             Log.w(TAG, "waitForConnection timed out, proceeding anyway")
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Обновляем список, чтобы отразить изменения кэша (например, после удаления видео из кэша)
+        if (::messageAdapter.isInitialized) {
+            messageAdapter.notifyDataSetChanged()
         }
     }
 
