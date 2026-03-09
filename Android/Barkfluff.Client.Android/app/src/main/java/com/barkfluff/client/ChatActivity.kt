@@ -1,5 +1,6 @@
 package com.barkfluff.client
 
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -8,8 +9,10 @@ import android.view.View
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -31,6 +34,7 @@ import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.ImageCompressor
 import com.barkfluff.client.utils.MessageItemAnimator
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.yalantis.ucrop.UCrop
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -38,6 +42,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -77,6 +82,23 @@ class ChatActivity : AppCompatActivity() {
 
     // Непрочитанные сообщения
     private var firstUnreadMessageId: Long = 0L
+
+    // Вставленные из буфера обмена изображения
+    private val pendingPastedImages = mutableListOf<Uri>()
+    private val pendingCropQueue = ArrayDeque<Uri>()
+
+    private val pasteUCropLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+            val croppedUri = UCrop.getOutput(result.data!!)
+            if (croppedUri != null) {
+                pendingPastedImages.add(croppedUri)
+                updateAttachmentPreview()
+            }
+        }
+        processNextCropFromQueue()
+    }
 
     companion object {
         private const val TAG = "ChatActivity"
@@ -252,16 +274,46 @@ class ChatActivity : AppCompatActivity() {
 
     private fun setupMessageInput() {
         binding.sendButton.setOnClickListener {
-            sendMessage()
+            if (pendingPastedImages.isNotEmpty()) {
+                sendMessageWithPastedImages()
+            } else {
+                sendMessage()
+            }
         }
 
         binding.messageEditText.setOnEditorActionListener { _, _, _ ->
-            sendMessage()
+            if (pendingPastedImages.isNotEmpty()) {
+                sendMessageWithPastedImages()
+            } else {
+                sendMessage()
+            }
             true
         }
 
         binding.attachButton.setOnClickListener {
             pickImages()
+        }
+
+        binding.clearAttachmentsButton.setOnClickListener {
+            pendingPastedImages.clear()
+            updateAttachmentPreview()
+        }
+
+        // Обработка вставки изображений из буфера обмена
+        ViewCompat.setOnReceiveContentListener(
+            binding.messageEditText,
+            arrayOf("image/*")
+        ) { _, payload ->
+            val split = payload.partition { it.uri != null }
+            val uriContent = split.first
+            if (uriContent != null) {
+                val clip = uriContent.clip
+                for (i in 0 until clip.itemCount) {
+                    clip.getItemAt(i).uri?.let { uri -> pendingCropQueue.addLast(uri) }
+                }
+                processNextCropFromQueue()
+            }
+            split.second
         }
     }
 
@@ -364,6 +416,76 @@ class ChatActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Log.e(TAG, "Error reading bytes from uri", e)
             null
+        }
+    }
+
+    private fun processNextCropFromQueue() {
+        val next = pendingCropQueue.removeFirstOrNull() ?: return
+        openPasteCropper(next)
+    }
+
+    private fun openPasteCropper(sourceUri: Uri) {
+        val destinationUri = Uri.fromFile(
+            File(cacheDir, "paste_crop_${System.currentTimeMillis()}.jpg")
+        )
+        val options = UCrop.Options().apply {
+            setCompressionFormat(android.graphics.Bitmap.CompressFormat.JPEG)
+            setCompressionQuality(95)
+            setFreeStyleCropEnabled(true)
+            setToolbarColor(getColor(android.R.color.white))
+            setStatusBarColor(getColor(android.R.color.black))
+            setActiveControlsWidgetColor(getColor(android.R.color.black))
+        }
+        pasteUCropLauncher.launch(
+            UCrop.of(sourceUri, destinationUri).withOptions(options).getIntent(this)
+        )
+    }
+
+    private fun updateAttachmentPreview() {
+        if (pendingPastedImages.isEmpty()) {
+            binding.attachmentPreviewBar.visibility = View.GONE
+        } else {
+            binding.attachmentPreviewBar.visibility = View.VISIBLE
+            binding.attachmentCountText.text = getString(R.string.attached_photos_count, pendingPastedImages.size)
+        }
+    }
+
+    private fun sendMessageWithPastedImages() {
+        val text = binding.messageEditText.text.toString().trim()
+        val images = pendingPastedImages.toList()
+        pendingPastedImages.clear()
+        updateAttachmentPreview()
+        binding.messageEditText.text?.clear()
+
+        lifecycleScope.launch {
+            val fileIds = mutableListOf<String>()
+            for ((index, uri) in images.withIndex()) {
+                try {
+                    val bytes = ImageCompressor.compressImage(uri, this@ChatActivity).getOrNull()
+                        ?: continue
+                    val uploadResult = chatRepository.uploadFile(
+                        bytes,
+                        barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_IMAGE
+                    )
+                    if (uploadResult.isSuccess) {
+                        fileIds.add(uploadResult.getOrNull()!!)
+                    } else {
+                        Log.e(TAG, "Pasted image ${index + 1}/${images.size} upload failed: ${uploadResult.exceptionOrNull()?.message}")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error processing pasted image ${index + 1}/${images.size}", e)
+                }
+            }
+
+            if (fileIds.isNotEmpty()) {
+                sendMessage(text = text, fileIds = fileIds)
+            } else {
+                Toast.makeText(this@ChatActivity, "Не удалось загрузить изображения", Toast.LENGTH_SHORT).show()
+                // Отправить текст если есть
+                if (text.isNotBlank()) {
+                    sendMessage(text = text)
+                }
+            }
         }
     }
 

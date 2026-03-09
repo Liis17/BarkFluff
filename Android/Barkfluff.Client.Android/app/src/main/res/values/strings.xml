@@ -114,6 +114,9 @@
         <item quantity="other">%d файлов</item>
     </plurals>
 
+    <!-- Paste attachments -->
+    <string name="attached_photos_count">Прикреплено фото: %d</string>
+
     <!-- Common -->
     <string name="btn_skip">Пропустить</string>
     <string name="btn_next">Далее</string>

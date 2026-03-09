@@ -123,7 +123,7 @@
         android:paddingTop="8dp"
         android:paddingBottom="8dp"
         app:layout_constraintTop_toBottomOf="@id/appBarLayout"
-        app:layout_constraintBottom_toTopOf="@id/messageInputCard"
+        app:layout_constraintBottom_toTopOf="@id/attachmentPreviewBar"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         tools:listitem="@layout/item_message_sent" />
@@ -151,8 +151,52 @@
         android:visibility="gone"
         app:fabSize="mini"
         app:srcCompat="@drawable/ic_arrow_down"
-        app:layout_constraintBottom_toTopOf="@id/messageInputCard"
+        app:layout_constraintBottom_toTopOf="@id/attachmentPreviewBar"
         app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Панель превью прикреплённых изображений -->
+    <LinearLayout
+        android:id="@+id/attachmentPreviewBar"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="8dp"
+        android:background="?attr/colorSurfaceContainerHigh"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/messageInputCard"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_attachment"
+            app:tint="?attr/colorOnSurfaceVariant"
+            android:contentDescription="@null" />
+
+        <TextView
+            android:id="@+id/attachmentCountText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="?attr/colorOnSurface"
+            tools:text="Прикреплено фото: 1" />
+
+        <ImageButton
+            android:id="@+id/clearAttachmentsButton"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Очистить вложения"
+            android:padding="6dp"
+            android:src="@drawable/ic_close"
+            app:tint="?attr/colorOnSurfaceVariant" />
+
+    </LinearLayout>
 
     <!-- Панель ввода сообщения -->
     <com.google.android.material.card.MaterialCardView
