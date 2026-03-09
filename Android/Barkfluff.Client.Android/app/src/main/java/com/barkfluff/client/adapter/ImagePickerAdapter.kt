@@ -18,16 +18,22 @@ import com.barkfluff.client.databinding.ItemImagePickerBinding
  * - Кнопку камеры в начале списка
  * - Множественный выбор до maxSelection изображений
  * - Нумерацию выбранных элементов в порядке выбора
+ * - Раздельные зоны: галочка = выбор, превью = кропер
+ * - Индикатор обрезки (ножницы) для обрезанных изображений
  */
 class ImagePickerAdapter(
     private val onCameraClick: () -> Unit,
-    private val onImageClick: (ImageItem) -> Unit,
+    private val onCheckboxClick: (ImageItem) -> Unit,
+    private val onImagePreviewClick: (ImageItem) -> Unit,
     private val maxSelection: Int = 10
 ) : ListAdapter<ImagePickerAdapter.ListItem, RecyclerView.ViewHolder>(DiffCallback()) {
 
     // Выбранные изображения в порядке выбора
     private val selectedItems = mutableListOf<ImageItem>()
     private val selectedUris = mutableSetOf<Uri>()
+
+    // Маппинг оригинальный URI → обрезанный URI
+    private val croppedUris = mutableMapOf<Uri, Uri>()
 
     companion object {
         private const val VIEW_TYPE_CAMERA = 0
@@ -93,7 +99,7 @@ class ImagePickerAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(item: ImageItem) {
-            // Загрузка изображения через Coil
+            // Загрузка оригинального изображения через Coil (не обрезанного)
             binding.imageView.load(item.uri) {
                 crossfade(true)
                 placeholder(R.color.surface_container_high)
@@ -102,6 +108,7 @@ class ImagePickerAdapter(
 
             val isSelected = selectedUris.contains(item.uri)
             val selectionIndex = selectedItems.indexOfFirst { it.uri == item.uri }
+            val isCropped = croppedUris.containsKey(item.uri)
 
             // Состояние выбора
             if (isSelected && selectionIndex >= 0) {
@@ -119,8 +126,16 @@ class ImagePickerAdapter(
                 binding.selectionNumber.visibility = View.GONE
             }
 
-            // Клик по изображению
+            // Индикатор обрезки (ножницы)
+            binding.cropIndicator.visibility = if (isCropped) View.VISIBLE else View.GONE
+
+            // Клик по превью = открытие кропера
             binding.cardView.setOnClickListener {
+                onImagePreviewClick(item)
+            }
+
+            // Клик по галочке = выбор/снятие выбора
+            binding.checkboxTouchTarget.setOnClickListener {
                 toggleSelection(item)
             }
         }
@@ -142,7 +157,42 @@ class ImagePickerAdapter(
 
             // Уведомляем об изменении для обновления нумерации
             notifySelectionChanged()
-            onImageClick(item)
+            onCheckboxClick(item)
+        }
+    }
+
+    /**
+     * Сохраняет обрезанный URI для оригинального изображения.
+     */
+    fun setCroppedUri(originalUri: Uri, croppedUri: Uri) {
+        croppedUris[originalUri] = croppedUri
+        // Обновляем отображение для этого элемента
+        val position = currentList.indexOfFirst {
+            it is ListItem.Image && it.imageItem.uri == originalUri
+        }
+        if (position >= 0) {
+            notifyItemChanged(position)
+        }
+    }
+
+    /**
+     * Программно выбирает элемент (используется для авто-выбора после обрезки).
+     */
+    fun selectItem(item: ImageItem) {
+        if (selectedUris.contains(item.uri)) return
+        if (selectedItems.size >= maxSelection) return
+
+        selectedUris.add(item.uri)
+        selectedItems.add(item)
+        notifySelectionChanged()
+    }
+
+    /**
+     * Возвращает URIs для отправки — обрезанный URI если есть, иначе оригинальный.
+     */
+    fun getSelectedUrisForSending(): List<Uri> {
+        return selectedItems.map { item ->
+            croppedUris[item.uri] ?: item.uri
         }
     }
 

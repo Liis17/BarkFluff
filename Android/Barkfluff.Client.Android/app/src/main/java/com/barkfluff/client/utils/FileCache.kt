@@ -45,6 +45,16 @@ object FileCache {
         return file
     }
 
+    fun deleteFile(fileId: String): Boolean {
+        if (!::cacheDir.isInitialized) return false
+        val file = File(cacheDir, sanitize(fileId))
+        return if (file.exists()) {
+            val deleted = file.delete()
+            Log.d(TAG, "Deleted file: ${file.name} -> $deleted")
+            deleted
+        } else false
+    }
+
     private fun sanitize(fileId: String): String =
         fileId.replace(Regex("[^a-zA-Z0-9_\\-]"), "_")
 }

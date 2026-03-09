@@ -13,7 +13,6 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.animation.PathInterpolator
 import android.widget.PopupMenu
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -25,11 +24,12 @@ import com.barkfluff.client.adapter.ImageItem
 import com.barkfluff.client.adapter.ImagePickerAdapter
 import com.barkfluff.client.databinding.BottomSheetImagePickerBinding
 import com.google.android.material.bottomsheet.BottomSheetBehavior
-import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import com.yalantis.ucrop.UCrop
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * BottomSheet для выбора изображений с устройства.
@@ -39,6 +39,8 @@ import kotlinx.coroutines.withContext
  * - Сетка изображений 3 колонки
  * - Множественный выбор до 10 изображений
  * - Кнопка камеры в начале сетки
+ * - Раздельные зоны: галочка = выбор, превью = кропер
+ * - Поле для подписи + кнопка отправки внизу
  * - Меню с опциями: "Отправить как файл", "Отправить по отдельности"
  */
 class ImagePickerBottomSheet : BottomSheetDialogFragment() {
@@ -54,6 +56,9 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
 
     // Callback для возврата результата
     private var onResult: ((ImagePickerResult) -> Unit)? = null
+
+    // Pending crop item
+    private var pendingCropItem: ImageItem? = null
 
     // Лаунчер для камеры
     private val cameraLauncher = registerForActivityResult(
@@ -75,6 +80,26 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
                     dismiss()
                 }
             }
+        }
+    }
+
+    // Лаунчер для UCrop
+    private val uCropLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val item = pendingCropItem ?: return@registerForActivityResult
+        pendingCropItem = null
+
+        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+            val croppedUri = UCrop.getOutput(result.data!!)
+            if (croppedUri != null) {
+                adapter.setCroppedUri(item.uri, croppedUri)
+                adapter.selectItem(item)
+                updateSelectionUI()
+            }
+        } else if (result.resultCode == UCrop.RESULT_ERROR && result.data != null) {
+            val error = UCrop.getError(result.data!!)
+            Log.e(TAG, "UCrop error", error)
         }
     }
 
@@ -127,6 +152,7 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        cleanOldCropFiles()
         setupRecyclerView()
         setupButtons()
         setupAnimation()
@@ -153,7 +179,8 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
     private fun setupRecyclerView() {
         adapter = ImagePickerAdapter(
             onCameraClick = { openCamera() },
-            onImageClick = { updateSelectionUI() },
+            onCheckboxClick = { updateSelectionUI() },
+            onImagePreviewClick = { item -> openCropper(item) },
             maxSelection = MAX_SELECTION
         )
 
@@ -217,6 +244,7 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
         binding.imagesRecyclerView.visibility = View.GONE
         binding.loadingProgress.visibility = View.GONE
         binding.emptyStateLayout.visibility = View.GONE
+        binding.inputBar.visibility = View.GONE
     }
 
     private fun loadImages() {
@@ -224,6 +252,7 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
         binding.loadingProgress.visibility = View.VISIBLE
         binding.imagesRecyclerView.visibility = View.GONE
         binding.emptyStateLayout.visibility = View.GONE
+        binding.inputBar.visibility = View.GONE
 
         lifecycleScope.launch {
             try {
@@ -281,6 +310,7 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
         binding.loadingProgress.visibility = View.GONE
         binding.imagesRecyclerView.visibility = View.VISIBLE
         binding.emptyStateLayout.visibility = View.GONE
+        binding.inputBar.visibility = View.VISIBLE
         adapter.setImages(images)
     }
 
@@ -288,6 +318,7 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
         binding.loadingProgress.visibility = View.GONE
         binding.imagesRecyclerView.visibility = View.GONE
         binding.emptyStateLayout.visibility = View.VISIBLE
+        binding.inputBar.visibility = View.GONE
     }
 
     private fun openCamera() {
@@ -313,6 +344,28 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
         }
     }
 
+    private fun openCropper(item: ImageItem) {
+        pendingCropItem = item
+
+        val destinationUri = Uri.fromFile(
+            File(requireContext().cacheDir, "crop_${item.id}_${System.currentTimeMillis()}.jpg")
+        )
+
+        val options = UCrop.Options().apply {
+            setCompressionFormat(android.graphics.Bitmap.CompressFormat.JPEG)
+            setCompressionQuality(95)
+            setFreeStyleCropEnabled(true)
+            setToolbarColor(requireContext().getColor(android.R.color.white))
+            setStatusBarColor(requireContext().getColor(android.R.color.black))
+            setActiveControlsWidgetColor(requireContext().getColor(android.R.color.black))
+        }
+
+        val uCrop = UCrop.of(item.uri, destinationUri)
+            .withOptions(options)
+
+        uCropLauncher.launch(uCrop.getIntent(requireContext()))
+    }
+
     private fun updateSelectionUI() {
         val count = adapter.getSelectionCount()
 
@@ -324,7 +377,8 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
                 MAX_SELECTION
             )
             binding.menuButton.visibility = View.VISIBLE
-            binding.sendButton.visibility = View.VISIBLE
+            binding.sendButton.isEnabled = true
+            binding.sendButton.alpha = 1.0f
             binding.titleTextView.text = resources.getQuantityString(
                 R.plurals.photos_selected,
                 count,
@@ -333,7 +387,8 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
         } else {
             binding.selectionCountTextView.visibility = View.GONE
             binding.menuButton.visibility = View.GONE
-            binding.sendButton.visibility = View.GONE
+            binding.sendButton.isEnabled = false
+            binding.sendButton.alpha = 0.5f
             binding.titleTextView.setText(R.string.select_photos)
         }
     }
@@ -365,22 +420,39 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
     }
 
     private fun sendSelected() {
-        val selectedItems = adapter.getSelectedItems()
-        Log.d(TAG, "sendSelected: ${selectedItems.size} items selected")
-        if (selectedItems.isEmpty()) return
+        val count = adapter.getSelectionCount()
+        Log.d(TAG, "sendSelected: $count items selected")
+        if (count == 0) return
 
-        val uris = selectedItems.map { it.uri }
-        Log.d(TAG, "sendSelected: uris=$uris, sendAsFile=$sendAsFile, sendSeparately=$sendSeparately")
+        val uris = adapter.getSelectedUrisForSending()
+        val captionText = binding.captionEditText.text.toString().trim()
+        Log.d(TAG, "sendSelected: uris=$uris, sendAsFile=$sendAsFile, sendSeparately=$sendSeparately, caption=$captionText")
 
         onResult?.invoke(
             ImagePickerResult(
                 uris = uris,
                 sendAsFile = sendAsFile,
                 sendSeparately = sendSeparately,
-                fromCamera = false
+                fromCamera = false,
+                captionText = captionText
             )
         )
         dismiss()
+    }
+
+    /**
+     * Удаляет старые crop-файлы (старше 1 часа) при открытии пикера.
+     */
+    private fun cleanOldCropFiles() {
+        try {
+            val cacheDir = requireContext().cacheDir
+            val oneHourAgo = System.currentTimeMillis() - 3600_000
+            cacheDir.listFiles()?.filter {
+                it.name.startsWith("crop_") && it.lastModified() < oneHourAgo
+            }?.forEach { it.delete() }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error cleaning old crop files", e)
+        }
     }
 
     private suspend fun saveBitmapToTempFile(bitmap: android.graphics.Bitmap): Uri? {
@@ -419,5 +491,6 @@ data class ImagePickerResult(
     val uris: List<Uri>,
     val sendAsFile: Boolean,
     val sendSeparately: Boolean,
-    val fromCamera: Boolean = false
+    val fromCamera: Boolean = false,
+    val captionText: String = ""
 )
