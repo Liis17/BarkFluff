@@ -33,21 +33,6 @@
                 android:orientation="vertical"
                 android:minWidth="80dp">
 
-                <!-- Текст сообщения -->
-                <TextView
-                    android:id="@+id/messageTextView"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginHorizontal="14dp"
-                    android:layout_marginTop="10dp"
-                    android:layout_marginBottom="4dp"
-                    android:autoLink="web"
-                    android:textAppearance="?attr/textAppearanceBodyLarge"
-                    android:textColor="?attr/colorOnPrimaryContainer"
-                    android:visibility="gone"
-                    tools:text="Привет! Как дела?"
-                    tools:visibility="visible" />
-
                 <!-- Контейнер для вложений (картинки edge-to-edge, аудио/видео/файлы с паддингом) -->
                 <FrameLayout
                     android:id="@+id/attachmentsContainer"
@@ -56,6 +41,21 @@
                     android:visibility="gone"
                     tools:visibility="visible"
                     tools:layout_height="120dp" />
+
+                <!-- Текст сообщения -->
+                <TextView
+                    android:id="@+id/messageTextView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="14dp"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginBottom="4dp"
+                    android:autoLink="web"
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                    android:textColor="?attr/colorOnPrimaryContainer"
+                    android:visibility="gone"
+                    tools:text="Привет! Как дела?"
+                    tools:visibility="visible" />
 
                 <!-- Время и статус -->
                 <LinearLayout

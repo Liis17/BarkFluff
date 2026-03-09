@@ -258,25 +258,25 @@ class MediaViewerActivity : AppCompatActivity() {
         lifecycleScope.launch {
             withContext(Dispatchers.IO) {
                 try {
-                    val displayName = "BarkFluff_${System.currentTimeMillis()}.mp4"
+                    val displayName = fileName.ifBlank { "BarkFluff_${System.currentTimeMillis()}.mp4" }
                     val contentValues = ContentValues().apply {
-                        put(MediaStore.Video.Media.DISPLAY_NAME, displayName)
-                        put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
-                        put(MediaStore.Video.Media.RELATIVE_PATH, "${Environment.DIRECTORY_MOVIES}/BarkFluff")
-                        put(MediaStore.Video.Media.IS_PENDING, 1)
+                        put(MediaStore.Downloads.DISPLAY_NAME, displayName)
+                        put(MediaStore.Downloads.MIME_TYPE, "video/mp4")
+                        put(MediaStore.Downloads.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/BarkFluff")
+                        put(MediaStore.Downloads.IS_PENDING, 1)
                     }
                     val uri = contentResolver.insert(
-                        MediaStore.Video.Media.EXTERNAL_CONTENT_URI, contentValues
+                        MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues
                     )
                     if (uri != null) {
                         contentResolver.openOutputStream(uri)?.use { out ->
                             cachedFile.inputStream().use { it.copyTo(out) }
                         }
                         contentValues.clear()
-                        contentValues.put(MediaStore.Video.Media.IS_PENDING, 0)
+                        contentValues.put(MediaStore.Downloads.IS_PENDING, 0)
                         contentResolver.update(uri, contentValues, null, null)
                         withContext(Dispatchers.Main) {
-                            Toast.makeText(this@MediaViewerActivity, "Сохранено в Видео/BarkFluff", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@MediaViewerActivity, "Сохранено в Downloads/BarkFluff", Toast.LENGTH_SHORT).show()
                         }
                     }
                 } catch (e: Exception) {
