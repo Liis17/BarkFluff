@@ -244,23 +244,23 @@ class ImageViewerActivity : AppCompatActivity() {
             try {
                 val filename = "BarkFluff_${fileId.take(8)}_${System.currentTimeMillis()}.jpg"
                 val contentValues = ContentValues().apply {
-                    put(MediaStore.Images.Media.DISPLAY_NAME, filename)
-                    put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-                    put(MediaStore.Images.Media.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/BarkFluff")
-                    put(MediaStore.Images.Media.IS_PENDING, 1)
+                    put(MediaStore.Downloads.DISPLAY_NAME, filename)
+                    put(MediaStore.Downloads.MIME_TYPE, "image/jpeg")
+                    put(MediaStore.Downloads.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/BarkFluff")
+                    put(MediaStore.Downloads.IS_PENDING, 1)
                 }
                 val uri = contentResolver.insert(
-                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues
+                    MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues
                 )
                 if (uri != null) {
                     contentResolver.openOutputStream(uri)?.use { stream ->
                         bitmap.compress(Bitmap.CompressFormat.JPEG, 95, stream)
                     }
                     contentValues.clear()
-                    contentValues.put(MediaStore.Images.Media.IS_PENDING, 0)
+                    contentValues.put(MediaStore.Downloads.IS_PENDING, 0)
                     contentResolver.update(uri, contentValues, null, null)
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(this@ImageViewerActivity, "Сохранено в Картинки/BarkFluff", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@ImageViewerActivity, "Сохранено в Downloads/BarkFluff", Toast.LENGTH_SHORT).show()
                     }
                 }
             } catch (e: Exception) {

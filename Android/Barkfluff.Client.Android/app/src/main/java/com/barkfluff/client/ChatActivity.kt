@@ -205,7 +205,7 @@ class ChatActivity : AppCompatActivity() {
             adapter = messageAdapter
             itemAnimator = MessageItemAnimator()
 
-            // Обработчик скролла для пагинации
+            // Обработчик скролла для пагинации и кнопки "вниз"
             addOnScrollListener(object : RecyclerView.OnScrollListener() {
                 override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                     super.onScrolled(recyclerView, dx, dy)
@@ -224,9 +224,30 @@ class ChatActivity : AppCompatActivity() {
                     if (lastVisibleItem >= totalItemCount - 10 && !isLoadingMessages && hasMoreMessagesDown) {
                         loadMessagesDown()
                     }
+
+                    // Показ/скрытие кнопки прокрутки вниз
+                    updateScrollToBottomButton()
                 }
             })
         }
+
+        // Обработчик клика на кнопку прокрутки вниз
+        binding.scrollToBottomButton.setOnClickListener {
+            binding.messagesRecyclerView.smoothScrollToPosition(messageAdapter.itemCount - 1)
+        }
+    }
+
+    private fun updateScrollToBottomButton() {
+        val adapter = binding.messagesRecyclerView.adapter ?: return
+
+        if (adapter.itemCount == 0) {
+            binding.scrollToBottomButton.visibility = View.GONE
+            return
+        }
+
+        // Показываем кнопку если можно прокрутить вниз (не в самом низу)
+        val canScrollDown = binding.messagesRecyclerView.canScrollVertically(1)
+        binding.scrollToBottomButton.visibility = if (canScrollDown) View.VISIBLE else View.GONE
     }
 
     private fun setupMessageInput() {
@@ -682,6 +703,7 @@ class ChatActivity : AppCompatActivity() {
                 val layoutManager = binding.messagesRecyclerView.layoutManager as LinearLayoutManager
                 layoutManager.scrollToPositionWithOffset(scrollToPosition, 0)
             }
+            updateScrollToBottomButton()
         }
     }
 
@@ -894,6 +916,7 @@ class ChatActivity : AppCompatActivity() {
             if (isOwnMessage || wasAtBottom) {
                 binding.messagesRecyclerView.scrollToPosition(currentList.size - 1)
             }
+            updateScrollToBottomButton()
         }
 
         lastVisibleMessageId = msg.id

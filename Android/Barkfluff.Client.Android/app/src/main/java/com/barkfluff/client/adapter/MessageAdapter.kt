@@ -1,12 +1,24 @@
 package com.barkfluff.client.adapter
 
+import android.content.ContentValues
+import android.content.Context
+import android.content.Intent
+import android.media.MediaMetadataRetriever
+import android.net.Uri
+import android.os.Build
+import android.os.Environment
 import android.os.Handler
 import android.os.Looper
+import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.MimeTypeMap
 import android.widget.ImageView
+import android.widget.PopupMenu
 import android.widget.SeekBar
+import android.widget.Toast
+import androidx.core.content.FileProvider
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -31,6 +43,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileInputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -431,6 +445,75 @@ class MessageAdapter(
                     ImageViewerActivity.createIntent(ctx, allFileIds, allPreviewUrls, clickedIndex)
                 )
             }
+
+            // Long press → context menu для картинок
+            cellView.setOnLongClickListener { view ->
+                val imageItems = allMedia.filter {
+                    it.type == Shared.MessageAttachmentType.IMAGE ||
+                    it.type == Shared.MessageAttachmentType.GIF
+                }
+                showImageContextMenu(view, cellView.context, imageItems)
+                true
+            }
+        }
+    }
+
+    private fun showImageContextMenu(
+        anchor: View,
+        context: Context,
+        imageItems: List<Shared.MessageAttachment>
+    ) {
+        val popup = PopupMenu(context, anchor)
+        val menuInflater = popup.menuInflater
+        menuInflater.inflate(R.menu.menu_image_attachment, popup.menu)
+
+        popup.setOnMenuItemClickListener { menuItem ->
+            when (menuItem.itemId) {
+                R.id.action_save_all_images -> {
+                    saveAllImages(context, imageItems)
+                    true
+                }
+                else -> false
+            }
+        }
+        popup.show()
+    }
+
+    private fun saveAllImages(context: Context, imageItems: List<Shared.MessageAttachment>) {
+        if (imageItems.isEmpty()) {
+            Toast.makeText(context, "Нет картинок для сохранения", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        Toast.makeText(context, "Сохранение ${imageItems.size} картинок...", Toast.LENGTH_SHORT).show()
+
+        scope.launch {
+            var savedCount = 0
+            for (image in imageItems) {
+                val fileId = image.fileId
+                val fileName = image.fileName.ifBlank { "image_${fileId.take(8)}.jpg" }
+
+                // Скачиваем файл в кеш если его нет
+                var cachedFile = FileCache.getFile(fileId)
+                if (cachedFile == null) {
+                    cachedFile = downloadToCache(fileId) { _ -> }
+                }
+
+                if (cachedFile != null) {
+                    withContext(Dispatchers.Main) {
+                        saveFileToDownloads(context, cachedFile, fileName)
+                    }
+                    savedCount++
+                }
+            }
+
+            withContext(Dispatchers.Main) {
+                if (savedCount > 0) {
+                    Toast.makeText(context, "Сохранено $savedCount картинок", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "Не удалось сохранить картинки", Toast.LENGTH_SHORT).show()
+                }
+            }
         }
     }
 
@@ -440,28 +523,46 @@ class MessageAdapter(
         val binding = ItemAttachmentAudioBinding.inflate(
             LayoutInflater.from(container.context), container, false
         )
+        val context = container.context
         val fileId = attachment.fileId
         val fileName = attachment.fileName.ifBlank { "audio" }
 
         binding.fileNameText.text = fileName
+        binding.durationText.text = "0:00"
 
-        fun updateUiForCached() {
+        fun updateUiForCached(durationMs: Int = 0) {
             binding.downloadButton.visibility = View.GONE
+            binding.downloadProgressBar.visibility = View.GONE
+            binding.audioSeekBar.visibility = View.VISIBLE
             binding.playPauseButton.isEnabled = true
             binding.playPauseButton.alpha = 1f
             binding.audioSeekBar.isEnabled = true
+            if (durationMs > 0) {
+                binding.durationText.text = formatAudioTime(durationMs.toLong())
+            }
         }
 
         fun updateUiForNotCached() {
             binding.downloadButton.visibility = View.VISIBLE
+            binding.downloadProgressBar.visibility = View.GONE
+            binding.audioSeekBar.visibility = View.GONE
             binding.playPauseButton.isEnabled = false
             binding.playPauseButton.alpha = 0.4f
-            binding.audioSeekBar.isEnabled = false
         }
 
+        fun updateUiForDownloading() {
+            binding.downloadButton.visibility = View.VISIBLE
+            binding.downloadButton.isEnabled = false
+            binding.downloadButton.alpha = 0.4f
+            binding.downloadProgressBar.visibility = View.VISIBLE
+            binding.audioSeekBar.visibility = View.GONE
+        }
+
+        // Get duration if cached
         if (FileCache.hasFile(fileId)) {
-            updateUiForCached()
-            // Update play/pause state if this is the currently playing file
+            val cachedFile = FileCache.getFile(fileId)
+            val durationMs = cachedFile?.let { getAudioDuration(it) } ?: 0
+            updateUiForCached(durationMs)
             if (AudioPlayerHelper.isActiveFile(fileId)) {
                 updateAudioPlaybackUI(binding, AudioPlayerHelper.isPlaying())
                 if (AudioPlayerHelper.isPlaying()) startAudioProgressPolling(fileId, binding)
@@ -472,30 +573,24 @@ class MessageAdapter(
 
         // Download button
         binding.downloadButton.setOnClickListener {
-            binding.downloadButton.isEnabled = false
-            binding.downloadButton.alpha = 0.4f
+            updateUiForDownloading()
+            binding.downloadProgressBar.progress = 0
 
             binding.downloadButton.tag = fileId
             scope.launch {
-                // Use seekbar as progress during download
-                withContext(Dispatchers.Main) {
-                    binding.audioSeekBar.isEnabled = false
-                    binding.audioSeekBar.max = 100
-                    binding.audioSeekBar.progress = 0
-                }
                 val file = downloadToCache(fileId) { progress ->
                     scope.launch(Dispatchers.Main) {
                         if (binding.downloadButton.tag == fileId) {
-                            binding.audioSeekBar.progress = progress
+                            binding.downloadProgressBar.progress = progress
                         }
                     }
                 }
                 withContext(Dispatchers.Main) {
                     if (file != null) {
-                        binding.audioSeekBar.max = 1000
-                        binding.audioSeekBar.progress = 0
-                        updateUiForCached()
+                        val durationMs = getAudioDuration(file)
+                        updateUiForCached(durationMs)
                     } else {
+                        updateUiForNotCached()
                         binding.downloadButton.isEnabled = true
                         binding.downloadButton.alpha = 1f
                     }
@@ -550,7 +645,74 @@ class MessageAdapter(
             override fun onStopTrackingTouch(seekBar: SeekBar) {}
         })
 
+        // Long press → context menu
+        binding.root.setOnLongClickListener { view ->
+            showAudioContextMenu(view, context, fileId, fileName, binding)
+            true
+        }
+
         return binding.root
+    }
+
+    private fun showAudioContextMenu(
+        anchor: View,
+        context: Context,
+        fileId: String,
+        fileName: String,
+        binding: ItemAttachmentAudioBinding
+    ) {
+        val popup = PopupMenu(context, anchor)
+        val menuInflater = popup.menuInflater
+        menuInflater.inflate(R.menu.menu_audio_attachment, popup.menu)
+
+        val isCached = FileCache.hasFile(fileId)
+        popup.menu.findItem(R.id.action_delete_from_cache).isVisible = isCached
+
+        popup.setOnMenuItemClickListener { menuItem ->
+            when (menuItem.itemId) {
+                R.id.action_save_audio -> {
+                    if (FileCache.hasFile(fileId)) {
+                        val cachedFile = FileCache.getFile(fileId)
+                        if (cachedFile != null) {
+                            saveFileToDownloads(context, cachedFile, fileName)
+                        }
+                    } else {
+                        Toast.makeText(context, "Сначала скачайте аудио", Toast.LENGTH_SHORT).show()
+                    }
+                    true
+                }
+                R.id.action_delete_from_cache -> {
+                    if (AudioPlayerHelper.isActiveFile(fileId)) {
+                        AudioPlayerHelper.stop()
+                    }
+                    FileCache.deleteFile(fileId)
+                    binding.downloadButton.visibility = View.VISIBLE
+                    binding.downloadButton.isEnabled = true
+                    binding.downloadButton.alpha = 1f
+                    binding.downloadProgressBar.visibility = View.GONE
+                    binding.audioSeekBar.visibility = View.GONE
+                    binding.playPauseButton.isEnabled = false
+                    binding.playPauseButton.alpha = 0.4f
+                    binding.durationText.text = "0:00"
+                    Toast.makeText(context, "Аудио удалено из кеша", Toast.LENGTH_SHORT).show()
+                    true
+                }
+                else -> false
+            }
+        }
+        popup.show()
+    }
+
+    private fun getAudioDuration(file: File): Int {
+        return try {
+            val retriever = MediaMetadataRetriever()
+            retriever.setDataSource(file.absolutePath)
+            val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toIntOrNull() ?: 0
+            retriever.release()
+            duration
+        } catch (e: Exception) {
+            0
+        }
     }
 
     private fun updateAudioPlaybackUI(
@@ -656,20 +818,219 @@ class MessageAdapter(
         val binding = ItemAttachmentDocumentBinding.inflate(
             LayoutInflater.from(container.context), container, false
         )
-        binding.docFileName.text = attachment.fileName.ifBlank { "file" }
-        binding.docFileSize.text = formatFileSize(attachment.attachmentSize)
+        val context = container.context
+        val fileId = attachment.fileId
+        val fileName = attachment.fileName.ifBlank { "file" }
+        val previewUrl = attachment.previewUrl
 
-        binding.docDownloadButton.setOnClickListener {
+        binding.docFileName.text = fileName
+        binding.docFileSize.text = formatFileSize(attachment.attachmentSize)
+        binding.docDownloadProgress.visibility = View.GONE
+
+        fun updateUiForCached() {
+            binding.docDownloadButton.visibility = View.GONE
+            binding.docOpenButton.visibility = View.VISIBLE
+            binding.docDownloadProgress.visibility = View.GONE
+        }
+
+        fun updateUiForNotCached() {
+            binding.docDownloadButton.visibility = View.VISIBLE
+            binding.docOpenButton.visibility = View.GONE
+            binding.docDownloadProgress.visibility = View.GONE
+            binding.docDownloadButton.isEnabled = true
+        }
+
+        fun updateUiForDownloading() {
+            binding.docDownloadButton.visibility = View.VISIBLE
             binding.docDownloadButton.isEnabled = false
+            binding.docOpenButton.visibility = View.GONE
+            binding.docDownloadProgress.visibility = View.VISIBLE
+            binding.docDownloadProgress.progress = 0
+        }
+
+        if (FileCache.hasFile(fileId)) {
+            updateUiForCached()
+        } else {
+            updateUiForNotCached()
+        }
+
+        // Download button
+        binding.docDownloadButton.setOnClickListener {
+            updateUiForDownloading()
+
             scope.launch {
-                downloadToCache(attachment.fileId) { _ -> }
+                val file = downloadToCache(fileId) { progress ->
+                    scope.launch(Dispatchers.Main) {
+                        binding.docDownloadProgress.progress = progress
+                    }
+                }
                 withContext(Dispatchers.Main) {
-                    binding.docDownloadButton.isEnabled = true
+                    if (file != null) {
+                        updateUiForCached()
+                    } else {
+                        updateUiForNotCached()
+                    }
                 }
             }
         }
 
+        // Open button
+        binding.docOpenButton.setOnClickListener {
+            val cachedFile = FileCache.getFile(fileId) ?: return@setOnClickListener
+            openFile(context, cachedFile, fileName, fileId, previewUrl)
+        }
+
+        // Long press → context menu
+        binding.root.setOnLongClickListener { view ->
+            showDocumentContextMenu(view, context, fileId, fileName, binding)
+            true
+        }
+
         return binding.root
+    }
+
+    private fun showDocumentContextMenu(
+        anchor: View,
+        context: Context,
+        fileId: String,
+        fileName: String,
+        binding: ItemAttachmentDocumentBinding
+    ) {
+        val popup = PopupMenu(context, anchor)
+        val menuInflater = popup.menuInflater
+        menuInflater.inflate(R.menu.menu_document_attachment, popup.menu)
+
+        val isCached = FileCache.hasFile(fileId)
+        popup.menu.findItem(R.id.action_delete_doc_from_cache).isVisible = isCached
+        popup.menu.findItem(R.id.action_save_document).isVisible = isCached
+
+        popup.setOnMenuItemClickListener { menuItem ->
+            when (menuItem.itemId) {
+                R.id.action_save_document -> {
+                    val cachedFile = FileCache.getFile(fileId)
+                    if (cachedFile != null) {
+                        saveFileToDownloads(context, cachedFile, fileName)
+                    } else {
+                        Toast.makeText(context, "Сначала скачайте файл", Toast.LENGTH_SHORT).show()
+                    }
+                    true
+                }
+                R.id.action_delete_doc_from_cache -> {
+                    FileCache.deleteFile(fileId)
+                    binding.docDownloadButton.visibility = View.VISIBLE
+                    binding.docDownloadButton.isEnabled = true
+                    binding.docOpenButton.visibility = View.GONE
+                    binding.docDownloadProgress.visibility = View.GONE
+                    Toast.makeText(context, "Файл удалён из кеша", Toast.LENGTH_SHORT).show()
+                    true
+                }
+                else -> false
+            }
+        }
+        popup.show()
+    }
+
+    private fun openFile(context: Context, file: File, fileName: String, fileId: String, previewUrl: String) {
+        val mimeType = getMimeType(fileName)
+
+        when {
+            isImageFile(fileName) -> {
+                // Open in ImageViewerActivity
+                val intent = ImageViewerActivity.createIntent(
+                    context,
+                    listOf(fileId),
+                    listOf(previewUrl),
+                    0
+                )
+                context.startActivity(intent)
+            }
+            isVideoFile(fileName) -> {
+                // Open in MediaViewerActivity
+                val intent = MediaViewerActivity.createIntent(
+                    context,
+                    fileId,
+                    fileName,
+                    file.absolutePath
+                )
+                context.startActivity(intent)
+            }
+            else -> {
+                // Open with system chooser
+                try {
+                    val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                        FileProvider.getUriForFile(
+                            context,
+                            "${context.packageName}.fileprovider",
+                            file
+                        )
+                    } else {
+                        Uri.fromFile(file)
+                    }
+
+                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(uri, mimeType)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                    }
+
+                    val chooser = Intent.createChooser(intent, "Открыть с помощью")
+                    context.startActivity(chooser)
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Не удалось открыть файл", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun isImageFile(fileName: String): Boolean {
+        val ext = fileName.substringAfterLast('.', "").lowercase()
+        return ext in setOf("jpg", "jpeg", "png", "gif", "webp", "bmp", "heic", "heif")
+    }
+
+    private fun isVideoFile(fileName: String): Boolean {
+        val ext = fileName.substringAfterLast('.', "").lowercase()
+        return ext in setOf("mp4", "mkv", "webm", "avi", "mov", "3gp", "flv", "wmv")
+    }
+
+    private fun getMimeType(fileName: String): String {
+        val ext = fileName.substringAfterLast('.', "")
+        return MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext) ?: "application/octet-stream"
+    }
+
+    private fun saveFileToDownloads(context: Context, sourceFile: File, fileName: String) {
+        try {
+            val resolver = context.contentResolver
+            val contentValues = ContentValues().apply {
+                put(MediaStore.Downloads.DISPLAY_NAME, fileName)
+                put(MediaStore.Downloads.MIME_TYPE, getMimeType(fileName))
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    put(MediaStore.Downloads.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/BarkFluff")
+                    put(MediaStore.Downloads.IS_PENDING, 1)
+                }
+            }
+
+            val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+
+            if (uri != null) {
+                resolver.openOutputStream(uri).use { outputStream ->
+                    FileInputStream(sourceFile).use { inputStream ->
+                        inputStream.copyTo(outputStream!!)
+                    }
+                }
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    contentValues.clear()
+                    contentValues.put(MediaStore.Downloads.IS_PENDING, 0)
+                    resolver.update(uri, contentValues, null, null)
+                }
+
+                Toast.makeText(context, "Файл сохранён в Downloads/BarkFluff", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(context, "Не удалось сохранить файл", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(context, "Ошибка сохранения: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
     }
 
     // ─── Formatting Helpers ───────────────────────────────────────────────────

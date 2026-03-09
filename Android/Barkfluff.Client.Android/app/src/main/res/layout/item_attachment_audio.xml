@@ -2,77 +2,104 @@
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:gravity="center_vertical"
+    android:orientation="vertical"
     android:paddingHorizontal="12dp"
     android:paddingVertical="10dp"
-    android:minWidth="200dp">
+    android:minWidth="280dp">
 
-    <!-- Кнопка плей/пауза + кнопка скачать поверх -->
-    <FrameLayout
-        android:layout_width="40dp"
-        android:layout_height="40dp">
-
-        <ImageButton
-            android:id="@+id/playPauseButton"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="@drawable/background_color_indicator"
-            android:src="@drawable/ic_play_arrow"
-            android:contentDescription="Воспроизвести"
-            android:scaleType="center"
-            android:padding="8dp" />
-
-        <ImageButton
-            android:id="@+id/downloadButton"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="@drawable/background_color_indicator"
-            android:src="@drawable/ic_download"
-            android:contentDescription="Скачать"
-            android:scaleType="center"
-            android:padding="8dp"
-            android:visibility="gone" />
-
-    </FrameLayout>
-
-    <!-- Имя файла и прогресс/таймлайн -->
+    <!-- Первая строка: кнопка плей + имя файла + длительность -->
     <LinearLayout
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:layout_marginHorizontal="10dp"
-        android:orientation="vertical">
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
 
-        <TextView
-            android:id="@+id/fileNameText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:singleLine="true"
-            android:ellipsize="middle"
-            android:textAppearance="?attr/textAppearanceLabelMedium"
-            android:textColor="?attr/colorOnSurface" />
+        <!-- Кнопка плей/пауза + кнопка скачать поверх -->
+        <FrameLayout
+            android:layout_width="40dp"
+            android:layout_height="40dp">
 
-        <SeekBar
-            android:id="@+id/audioSeekBar"
-            android:layout_width="match_parent"
+            <ImageButton
+                android:id="@+id/playPauseButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/background_color_indicator"
+                android:src="@drawable/ic_play_arrow"
+                android:contentDescription="Воспроизвести"
+                android:scaleType="center"
+                android:padding="8dp" />
+
+            <ImageButton
+                android:id="@+id/downloadButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/background_color_indicator"
+                android:src="@drawable/ic_download"
+                android:contentDescription="Скачать"
+                android:scaleType="center"
+                android:padding="8dp"
+                android:visibility="gone" />
+
+        </FrameLayout>
+
+        <!-- Имя файла и длительность -->
+        <LinearLayout
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:enabled="false"
-            android:max="1000"
-            android:progress="0" />
+            android:layout_weight="1"
+            android:layout_marginStart="10dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/fileNameText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:singleLine="true"
+                android:ellipsize="middle"
+                android:textAppearance="?attr/textAppearanceLabelMedium"
+                android:textColor="?attr/colorOnSurface"
+                tools:text="audio_file_name.mp3" />
+
+            <TextView
+                android:id="@+id/durationText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:textAppearance="?attr/textAppearanceLabelSmall"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                tools:text="3:45" />
+
+        </LinearLayout>
 
     </LinearLayout>
 
-    <!-- Длительность -->
-    <TextView
-        android:id="@+id/durationText"
-        android:layout_width="wrap_content"
+    <!-- Прогресс бар для скачивания -->
+    <ProgressBar
+        android:id="@+id/downloadProgressBar"
+        style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="6dp"
+        android:layout_marginTop="8dp"
+        android:max="100"
+        android:progress="0"
+        android:visibility="gone"
+        tools:visibility="visible" />
+
+    <!-- Таймлайн воспроизведения (SeekBar) -->
+    <SeekBar
+        android:id="@+id/audioSeekBar"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textAppearance="?attr/textAppearanceLabelSmall"
-        android:textColor="?attr/colorOnSurfaceVariant"
-        android:text="0:00" />
+        android:layout_marginTop="4dp"
+        android:enabled="false"
+        android:max="1000"
+        android:progress="0"
+        android:visibility="gone"
+        tools:visibility="visible" />
 
 </LinearLayout>

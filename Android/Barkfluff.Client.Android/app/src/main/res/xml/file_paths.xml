@@ -2,6 +2,8 @@
 <paths>
     <!-- Cache directory for camera images -->
     <cache-path name="camera_images" path="." />
+    <!-- Cache directory for media files (audio, documents) -->
+    <cache-path name="media_files" path="media_files/" />
     <files-path name="files" path="." />
     <external-files-path name="external_files" path="." />
     <external-cache-path name="external_cache" path="." />
