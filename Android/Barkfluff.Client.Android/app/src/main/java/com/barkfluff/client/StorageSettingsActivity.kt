@@ -104,17 +104,12 @@ class StorageSettingsActivity : AppCompatActivity() {
     private fun clearCache() {
         lifecycleScope.launch {
             withContext(Dispatchers.IO) {
-                // Очистить memory cache Coil
-                AvatarLoader.getImageLoader(this@StorageSettingsActivity).memoryCache?.clear()
+                // Очищаем все кеши через AvatarLoader
+                AvatarLoader.clearAllCaches(this@StorageSettingsActivity)
 
-                // Удалить файлы кеша
-                val imageCacheDir = File(cacheDir, "image_cache")
+                // Удаляем дополнительные папки кеша (если есть)
                 val bitmapCacheDir = File(cacheDir, "bitmap_cache")
-                imageCacheDir.deleteRecursively()
                 bitmapCacheDir.deleteRecursively()
-
-                // Очистить URL кеш аватаров
-                AvatarLoader.urlCache.clear()
             }
 
             updateCacheSize()
