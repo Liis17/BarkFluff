@@ -157,6 +157,31 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
 
         try
         {
+            // Принудительное сжатие оригинала изображения по требованиям дизайн-документа
+            if (file.Type == UploadFileType.MessageAttachmentImage && contentType.StartsWith("image/"))
+            {
+                originalStream.Position = 0;
+
+                var (compressedBytes, wasCompressed) =
+                    await _imageCompressor.EnforceOriginalLimitsAsync(originalStream);
+
+                if (wasCompressed)
+                {
+                    _logger.LogInformation(
+                        "Изображение {FileId} сжато сервером (превышены лимиты: 2500px / 2МБ). Новый размер: {NewSize} байт",
+                        file.Id, compressedBytes!.Length);
+
+                    await originalStream.DisposeAsync();
+                    originalStream = new MemoryStream(compressedBytes);
+                    fileSize = originalStream.Length;
+                    contentType = "image/jpeg";
+                }
+                else
+                {
+                    originalStream.Position = 0;
+                }
+            }
+
             // Загружаем файл в S3 напрямую из стрима
             var etag = await _s3Uploader.UploadAsync(
                 bucketName, // Имя бакета на основе типа файла
