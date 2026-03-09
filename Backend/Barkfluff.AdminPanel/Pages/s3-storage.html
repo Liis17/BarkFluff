@@ -150,11 +150,22 @@
                 <i data-lucide="users" class="w-5 h-5"></i>
                 <span>Юзеры</span>
             </a>
-            <a href="/s3-storage"
-               class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-blue-600 text-white font-medium transition-colors">
-                <i data-lucide="hard-drive" class="w-5 h-5"></i>
-                <span>Хранилище S3</span>
-            </a>
+            <!-- S3 Storage with submenu -->
+            <div>
+                <div class="flex items-center">
+                    <a href="/s3-storage"
+                       class="flex-1 flex items-center gap-3 px-3 py-2.5 rounded-lg bg-blue-600 text-white font-medium transition-colors">
+                        <i data-lucide="hard-drive" class="w-5 h-5"></i>
+                        <span>Хранилище S3</span>
+                    </a>
+                    <button onclick="toggleS3Menu()" class="p-1.5 text-slate-400 hover:text-white transition-colors">
+                        <i data-lucide="chevron-down" id="s3-chevron" class="w-4 h-4" style="transition:transform 0.2s ease"></i>
+                    </button>
+                </div>
+                <div id="s3-submenu" class="hidden ml-6 mt-1 space-y-0.5">
+                    <div class="text-xs text-slate-500 py-1">Загрузка...</div>
+                </div>
+            </div>
         </nav>
 
         <!-- Sidebar Footer -->
@@ -288,6 +299,47 @@
                 'badge-images': 'award'
             };
             return icons[bucketId] || 'hard-drive';
+        }
+
+        // ---- S3 Submenu ----
+        let s3MenuLoaded = false;
+        function toggleS3Menu() {
+            const submenu = document.getElementById('s3-submenu');
+            const chevron = document.getElementById('s3-chevron');
+            const isHidden = submenu.classList.contains('hidden');
+            if (isHidden) {
+                submenu.classList.remove('hidden');
+                chevron.style.transform = 'rotate(180deg)';
+                localStorage.setItem('s3-menu-open', 'true');
+                if (!s3MenuLoaded) loadS3Submenu();
+            } else {
+                submenu.classList.add('hidden');
+                chevron.style.transform = '';
+                localStorage.setItem('s3-menu-open', 'false');
+            }
+        }
+        async function loadS3Submenu() {
+            try {
+                const res = await fetch('/api/s3/buckets');
+                if (!res.ok) throw new Error();
+                const buckets = await res.json();
+                const submenu = document.getElementById('s3-submenu');
+                submenu.innerHTML = buckets.map(b =>
+                    `<a href="/s3-browser?bucket=${encodeURIComponent(b.id)}" class="block px-3 py-1.5 text-xs text-slate-400 hover:text-white rounded" style="background:transparent" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'">${b.displayName}</a>`
+                ).join('');
+                s3MenuLoaded = true;
+            } catch (e) { console.error('S3 submenu error:', e); }
+        }
+        function initS3Menu() {
+            if (localStorage.getItem('s3-menu-open') === 'true') {
+                const submenu = document.getElementById('s3-submenu');
+                const chevron = document.getElementById('s3-chevron');
+                if (submenu && chevron) {
+                    submenu.classList.remove('hidden');
+                    chevron.style.transform = 'rotate(180deg)';
+                    loadS3Submenu();
+                }
+            }
         }
 
         // ---- Auth ----
@@ -476,7 +528,22 @@
 
         function onFieldChange(bucketId) {
             modifiedBuckets.add(bucketId);
-            renderBuckets(s3Config);
+            // Find the card for this bucket and update only the button area
+            const input = document.querySelector(`[data-bucket="${bucketId}"]`);
+            if (!input) return;
+            const card = input.closest('.bg-white');
+            if (!card) return;
+            const buttonArea = card.querySelector('.mt-4.h-10');
+            if (!buttonArea) return;
+            buttonArea.innerHTML = `
+                <div class="save-button-container">
+                    <button onclick="saveBucket('${bucketId}')"
+                            class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 border border-green-700 rounded-lg hover:bg-green-700 transition-colors">
+                        <i data-lucide="check" class="w-4 h-4"></i>
+                        Сохранить
+                    </button>
+                </div>
+            `;
             lucide.createIcons();
         }
 
@@ -526,8 +593,16 @@
                 };
 
                 modifiedBuckets.delete(bucketId);
-                renderBuckets(s3Config);
-                lucide.createIcons();
+                // Update only the button area instead of re-rendering the whole grid
+                const buttonArea = bucket.querySelector('.mt-4.h-10');
+                if (buttonArea) {
+                    buttonArea.innerHTML = `<span class="text-xs text-gray-400 italic">Без изменений</span>`;
+                }
+                // Update the "last updated" date
+                const clockSpan = bucket.querySelector('.border-t.border-gray-100 span');
+                if (clockSpan) {
+                    clockSpan.textContent = 'Обновлено: ' + formatDate(new Date().toISOString());
+                }
 
                 showNotification('success', `Бакет "${bucketId}" успешно обновлён`);
             } catch (error) {
@@ -627,6 +702,7 @@
 
         // Initialize
         checkAuth();
+        initS3Menu();
         loadS3Config();
     </script>
 </body>
