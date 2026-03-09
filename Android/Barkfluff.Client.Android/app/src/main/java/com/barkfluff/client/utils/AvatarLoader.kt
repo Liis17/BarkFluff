@@ -95,6 +95,25 @@ object AvatarLoader {
     // Кэш URL-ов в памяти для быстрого доступа (runtime only)
     internal val urlCache = ConcurrentHashMap<String, String>()
 
+    /**
+     * Очищает все кеши: memory, disk, URL cache (runtime и персистентный)
+     */
+    fun clearAllCaches(context: Context) {
+        // Очищаем memory cache Coil
+        imageLoaderInstance?.memoryCache?.clear()
+
+        // Очищаем disk cache Coil через API
+        imageLoaderInstance?.diskCache?.clear()
+
+        // Очищаем runtime URL кеш
+        urlCache.clear()
+
+        // Очищаем персистентный URL кеш
+        MainScope().launch {
+            fileUrlCache?.clear()
+        }
+    }
+
     // ImageLoader с кастомным OkHttpClient (ленивая инициализация)
     private var imageLoaderInstance: ImageLoader? = null
 
