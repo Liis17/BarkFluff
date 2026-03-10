@@ -14,8 +14,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\BarkFluff.Shared.Queue\BarkFluff.Shared.Queue.csproj" />
-    <ProjectReference Include="..\..\BarkFluff.Shared.Exceptions\BarkFluff.Shared.Exceptions.csproj" />
     <ProjectReference Include="..\..\Shared\BarkFluff.Shared.Auth\BarkFluff.Shared.Auth.csproj" />
     <ProjectReference Include="..\..\Shared\BarkFluff.Shared.Exceptions\BarkFluff.Shared.Exceptions.csproj" />
     <ProjectReference Include="..\..\Shared\BarkFluff.Shared.Queue\BarkFluff.Shared.Queue.csproj" />
