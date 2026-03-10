@@ -24,6 +24,7 @@
                 x:Name="CachedContentImage"
                 MaxWidth="400"
                 MaxHeight="300"
+                MinHeight="200"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 DecodePixelWidth="400"

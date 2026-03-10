@@ -325,6 +325,7 @@ namespace BarkFluff.Client.WPF.UserControls
             SetMediaContentMargin(false);
 
             this.MinWidth = IMAGE_MAX_WIDTH;
+            this.MinHeight = IMAGE_MAX_HEIGHT;
         }
 
         private void SetupDocumentContent(MessageModel message)
