@@ -226,7 +226,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
         );
 
         await _messageQueueSender.SendMessage(message, chatId.Value, members
-            .Select(x => x.UserId).ToList());
+            .Select(x => x.UserId).ToList(), filesInfoMap);
 
         _logger.LogInformation(
             "Сообщение {MessageId} успешно отправлено в чат {ChatId} от пользователя {UserId}",
