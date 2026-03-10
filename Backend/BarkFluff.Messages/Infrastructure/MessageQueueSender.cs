@@ -8,6 +8,8 @@ using Mapping;
 
 using MassTransit;
 
+using Proto.Files;
+
 using Shared.Queue.Messages;
 
 public class MessageQueueSender
@@ -19,13 +21,13 @@ public class MessageQueueSender
         _publishEndpoint = publishEndpoint;
     }
 
-    public async Task SendMessage(Message message, Guid chatId, List<long> chatMembers)
+    public async Task SendMessage(Message message, Guid chatId, List<long> chatMembers, Dictionary<string, UploadFileInfo>? filesInfoMap = null)
     {
         var newMessageEvent = new NewMessageEvent()
         {
             ChatId = chatId,
             ChatMembers = chatMembers,
-            Message = message.ToGrpc().ToByteArray()
+            Message = message.ToGrpc(filesInfoMap).ToByteArray()
         };
 
         await _publishEndpoint.Publish(newMessageEvent);
