@@ -49,7 +49,7 @@
                 android:layout_marginEnd="8dp"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
                 android:textColor="?attr/colorPrimary"
-                android:visibility="gone"
+                android:visibility="visible"
                 tools:text="3/10" />
 
             <!-- Menu button -->
@@ -61,7 +61,7 @@
                 android:contentDescription="@string/options"
                 android:padding="8dp"
                 android:src="@drawable/ic_more_vert"
-                android:visibility="gone"
+                android:visibility="visible"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
         </LinearLayout>

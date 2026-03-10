@@ -60,25 +60,40 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
     // Pending crop item
     private var pendingCropItem: ImageItem? = null
 
-    // Лаунчер для камеры
+    // Pending camera URI для full-res capture
+    private var pendingCameraUri: Uri? = null
+
+    // Лаунчер для камеры (full-res)
     private val cameraLauncher = registerForActivityResult(
-        ActivityResultContracts.TakePicturePreview()
-    ) { bitmap ->
-        if (bitmap != null) {
-            // Сохраняем bitmap во временный файл и возвращаем как Uri
-            lifecycleScope.launch {
-                val tempUri = saveBitmapToTempFile(bitmap)
-                if (tempUri != null) {
-                    onResult?.invoke(
-                        ImagePickerResult(
-                            uris = listOf(tempUri),
-                            sendAsFile = false,
-                            sendSeparately = false,
-                            fromCamera = true
-                        )
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && pendingCameraUri != null) {
+            // Открыть UCrop для обрезки фото с камеры
+            openCameraCropper(pendingCameraUri!!)
+        } else {
+            pendingCameraUri = null
+        }
+    }
+
+    // Лаунчер для UCrop после камеры
+    private val cameraCropLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val sourceUri = pendingCameraUri
+        pendingCameraUri = null
+
+        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+            val croppedUri = UCrop.getOutput(result.data!!)
+            if (croppedUri != null) {
+                onResult?.invoke(
+                    ImagePickerResult(
+                        uris = listOf(croppedUri),
+                        sendAsFile = false,
+                        sendSeparately = false,
+                        fromCamera = true
                     )
-                    dismiss()
-                }
+                )
+                dismiss()
             }
         }
     }
@@ -123,6 +138,25 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
             doOpenCamera()
         } else {
             Toast.makeText(requireContext(), "Разрешение на камеру отклонено", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Лаунчер для выбора файлов
+    private val filePickerLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenMultipleDocuments()
+    ) { uris ->
+        if (uris.isNotEmpty()) {
+            onResult?.invoke(
+                ImagePickerResult(
+                    uris = uris,
+                    sendAsFile = false,
+                    sendSeparately = false,
+                    fromCamera = false,
+                    captionText = "",
+                    isDocuments = true
+                )
+            )
+            dismiss()
         }
     }
 
@@ -179,6 +213,7 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
     private fun setupRecyclerView() {
         adapter = ImagePickerAdapter(
             onCameraClick = { openCamera() },
+            onFileClick = { openFilePicker() },
             onCheckboxClick = { updateSelectionUI() },
             onImagePreviewClick = { item -> openCropper(item) },
             maxSelection = MAX_SELECTION
@@ -337,10 +372,50 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
 
     private fun doOpenCamera() {
         try {
-            cameraLauncher.launch(null)
+            // Создаём временный файл для full-res фото
+            val tempFile = File.createTempFile(
+                "camera_${System.currentTimeMillis()}",
+                ".jpg",
+                requireContext().cacheDir
+            )
+            pendingCameraUri = androidx.core.content.FileProvider.getUriForFile(
+                requireContext(),
+                "${requireContext().packageName}.fileprovider",
+                tempFile
+            )
+            cameraLauncher.launch(pendingCameraUri)
         } catch (e: Exception) {
             Log.e(TAG, "Error opening camera", e)
             Toast.makeText(requireContext(), "Не удалось открыть камеру", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun openCameraCropper(sourceUri: Uri) {
+        val destinationUri = Uri.fromFile(
+            File(requireContext().cacheDir, "camera_crop_${System.currentTimeMillis()}.jpg")
+        )
+
+        val options = UCrop.Options().apply {
+            setCompressionFormat(android.graphics.Bitmap.CompressFormat.JPEG)
+            setCompressionQuality(95)
+            setFreeStyleCropEnabled(true)
+            setToolbarColor(requireContext().getColor(android.R.color.white))
+            setStatusBarColor(requireContext().getColor(android.R.color.black))
+            setActiveControlsWidgetColor(requireContext().getColor(android.R.color.black))
+        }
+
+        val uCrop = UCrop.of(sourceUri, destinationUri)
+            .withOptions(options)
+
+        cameraCropLauncher.launch(uCrop.getIntent(requireContext()))
+    }
+
+    private fun openFilePicker() {
+        try {
+            filePickerLauncher.launch(arrayOf("*/*"))
+        } catch (e: Exception) {
+            Log.e(TAG, "Error opening file picker", e)
+            Toast.makeText(requireContext(), "Не удалось открыть выбор файлов", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -369,14 +444,16 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
     private fun updateSelectionUI() {
         val count = adapter.getSelectionCount()
 
+        // Always show counter and menu button
+        binding.selectionCountTextView.visibility = View.VISIBLE
+        binding.selectionCountTextView.text = getString(
+            R.string.selected_count,
+            count,
+            MAX_SELECTION
+        )
+        binding.menuButton.visibility = View.VISIBLE
+
         if (count > 0) {
-            binding.selectionCountTextView.visibility = View.VISIBLE
-            binding.selectionCountTextView.text = getString(
-                R.string.selected_count,
-                count,
-                MAX_SELECTION
-            )
-            binding.menuButton.visibility = View.VISIBLE
             binding.sendButton.isEnabled = true
             binding.sendButton.alpha = 1.0f
             binding.titleTextView.text = resources.getQuantityString(
@@ -385,8 +462,6 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
                 count
             )
         } else {
-            binding.selectionCountTextView.visibility = View.GONE
-            binding.menuButton.visibility = View.GONE
             binding.sendButton.isEnabled = false
             binding.sendButton.alpha = 0.5f
             binding.titleTextView.setText(R.string.select_photos)
@@ -455,29 +530,6 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
         }
     }
 
-    private suspend fun saveBitmapToTempFile(bitmap: android.graphics.Bitmap): Uri? {
-        return withContext(Dispatchers.IO) {
-            try {
-                val tempFile = java.io.File.createTempFile(
-                    "camera_${System.currentTimeMillis()}",
-                    ".jpg",
-                    requireContext().cacheDir
-                )
-                java.io.FileOutputStream(tempFile).use { out ->
-                    bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, out)
-                }
-                androidx.core.content.FileProvider.getUriForFile(
-                    requireContext(),
-                    "${requireContext().packageName}.fileprovider",
-                    tempFile
-                )
-            } catch (e: Exception) {
-                Log.e(TAG, "Error saving bitmap to temp file", e)
-                null
-            }
-        }
-    }
-
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
@@ -492,5 +544,6 @@ data class ImagePickerResult(
     val sendAsFile: Boolean,
     val sendSeparately: Boolean,
     val fromCamera: Boolean = false,
-    val captionText: String = ""
+    val captionText: String = "",
+    val isDocuments: Boolean = false
 )

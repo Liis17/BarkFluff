@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import com.barkfluff.client.R
 import com.barkfluff.client.databinding.ItemCameraButtonBinding
+import com.barkfluff.client.databinding.ItemFileButtonBinding
 import com.barkfluff.client.databinding.ItemImagePickerBinding
 
 /**
@@ -23,6 +24,7 @@ import com.barkfluff.client.databinding.ItemImagePickerBinding
  */
 class ImagePickerAdapter(
     private val onCameraClick: () -> Unit,
+    private val onFileClick: () -> Unit,
     private val onCheckboxClick: (ImageItem) -> Unit,
     private val onImagePreviewClick: (ImageItem) -> Unit,
     private val maxSelection: Int = 10
@@ -38,19 +40,22 @@ class ImagePickerAdapter(
     companion object {
         private const val VIEW_TYPE_CAMERA = 0
         private const val VIEW_TYPE_IMAGE = 1
+        private const val VIEW_TYPE_FILE = 2
     }
 
     /**
-     * Элемент списка (камера или изображение)
+     * Элемент списка (камера, файл или изображение)
      */
     sealed class ListItem {
         data object Camera : ListItem()
+        data object File : ListItem()
         data class Image(val imageItem: ImageItem) : ListItem()
     }
 
     override fun getItemViewType(position: Int): Int {
         return when (getItem(position)) {
             is ListItem.Camera -> VIEW_TYPE_CAMERA
+            is ListItem.File -> VIEW_TYPE_FILE
             is ListItem.Image -> VIEW_TYPE_IMAGE
         }
     }
@@ -64,6 +69,14 @@ class ImagePickerAdapter(
                     false
                 )
                 CameraViewHolder(binding)
+            }
+            VIEW_TYPE_FILE -> {
+                val binding = ItemFileButtonBinding.inflate(
+                    LayoutInflater.from(parent.context),
+                    parent,
+                    false
+                )
+                FileViewHolder(binding)
             }
             else -> {
                 val binding = ItemImagePickerBinding.inflate(
@@ -79,6 +92,7 @@ class ImagePickerAdapter(
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         when (val item = getItem(position)) {
             is ListItem.Camera -> (holder as CameraViewHolder).bind()
+            is ListItem.File -> (holder as FileViewHolder).bind()
             is ListItem.Image -> (holder as ImageViewHolder).bind(item.imageItem)
         }
     }
@@ -90,6 +104,17 @@ class ImagePickerAdapter(
         fun bind() {
             binding.cardView.setOnClickListener {
                 onCameraClick()
+            }
+        }
+    }
+
+    inner class FileViewHolder(
+        private val binding: ItemFileButtonBinding
+    ) : RecyclerView.ViewHolder(binding.root) {
+
+        fun bind() {
+            binding.cardView.setOnClickListener {
+                onFileClick()
             }
         }
     }
@@ -199,9 +224,10 @@ class ImagePickerAdapter(
     /**
      * Уведомляет об изменении выделения.
      * Обновляем все видимые элементы для корректной нумерации.
+     * Начинаем с индекса 2 (пропускаем Camera и File).
      */
     private fun notifySelectionChanged() {
-        notifyItemRangeChanged(1, currentList.size - 1)
+        notifyItemRangeChanged(2, currentList.size - 2)
     }
 
     /**
@@ -215,7 +241,7 @@ class ImagePickerAdapter(
     fun clearSelection() {
         selectedItems.clear()
         selectedUris.clear()
-        notifyItemRangeChanged(1, currentList.size - 1)
+        notifyItemRangeChanged(2, currentList.size - 2)
     }
 
     /**
@@ -225,9 +251,10 @@ class ImagePickerAdapter(
 
     /**
      * Устанавливает изображения в адаптер.
+     * Список начинается с кнопок Camera и File, затем изображения.
      */
     fun setImages(images: List<ImageItem>) {
-        val items = mutableListOf<ListItem>(ListItem.Camera)
+        val items = mutableListOf<ListItem>(ListItem.Camera, ListItem.File)
         items.addAll(images.map { ListItem.Image(it) })
         submitList(items)
     }
@@ -236,6 +263,7 @@ class ImagePickerAdapter(
         override fun areItemsTheSame(oldItem: ListItem, newItem: ListItem): Boolean {
             return when {
                 oldItem is ListItem.Camera && newItem is ListItem.Camera -> true
+                oldItem is ListItem.File && newItem is ListItem.File -> true
                 oldItem is ListItem.Image && newItem is ListItem.Image ->
                     oldItem.imageItem.uri == newItem.imageItem.uri
                 else -> false

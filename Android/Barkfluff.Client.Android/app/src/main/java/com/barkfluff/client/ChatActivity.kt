@@ -85,6 +85,7 @@ class ChatActivity : AppCompatActivity() {
 
     // Вставленные из буфера обмена изображения
     private val pendingPastedImages = mutableListOf<Uri>()
+    private val pendingDocumentUris = mutableListOf<Uri>()
     private val pendingCropQueue = ArrayDeque<Uri>()
 
     private val pasteUCropLauncher = registerForActivityResult(
@@ -274,18 +275,20 @@ class ChatActivity : AppCompatActivity() {
 
     private fun setupMessageInput() {
         binding.sendButton.setOnClickListener {
-            if (pendingPastedImages.isNotEmpty()) {
-                sendMessageWithPastedImages()
-            } else {
-                sendMessage()
+            when {
+                pendingDocumentUris.isNotEmpty() || pendingPastedImages.isNotEmpty() ->
+                    sendMessageWithPendingAttachments()
+                else ->
+                    sendMessage()
             }
         }
 
         binding.messageEditText.setOnEditorActionListener { _, _, _ ->
-            if (pendingPastedImages.isNotEmpty()) {
-                sendMessageWithPastedImages()
-            } else {
-                sendMessage()
+            when {
+                pendingDocumentUris.isNotEmpty() || pendingPastedImages.isNotEmpty() ->
+                    sendMessageWithPendingAttachments()
+                else ->
+                    sendMessage()
             }
             true
         }
@@ -296,6 +299,7 @@ class ChatActivity : AppCompatActivity() {
 
         binding.clearAttachmentsButton.setOnClickListener {
             pendingPastedImages.clear()
+            pendingDocumentUris.clear()
             updateAttachmentPreview()
         }
 
@@ -325,11 +329,26 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun handleSelectedImages(result: ImagePickerResult) {
-        Log.d(TAG, "handleSelectedImages: uris.size=${result.uris.size}, uris=${result.uris}, sendAsFile=${result.sendAsFile}, sendSeparately=${result.sendSeparately}, caption=${result.captionText}")
+        Log.d(TAG, "handleSelectedImages: uris.size=${result.uris.size}, uris=${result.uris}, sendAsFile=${result.sendAsFile}, sendSeparately=${result.sendSeparately}, caption=${result.captionText}, isDocuments=${result.isDocuments}, fromCamera=${result.fromCamera}")
 
         val uris = result.uris
         if (uris.isEmpty()) return
 
+        // Если выбраны документы — добавить в pendingDocumentUris и показать превью
+        if (result.isDocuments) {
+            pendingDocumentUris.addAll(uris)
+            updateAttachmentPreview()
+            return
+        }
+
+        // Если фото с камеры — добавить в pendingPastedImages и показать превью
+        if (result.fromCamera) {
+            pendingPastedImages.addAll(uris)
+            updateAttachmentPreview()
+            return
+        }
+
+        // Обычный выбор фото из галереи — отправляем сразу
         val sendAsFile = result.sendAsFile
         val sendSeparately = result.sendSeparately
         val captionText = result.captionText
@@ -442,24 +461,38 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun updateAttachmentPreview() {
-        if (pendingPastedImages.isEmpty()) {
+        val photosCount = pendingPastedImages.size
+        val filesCount = pendingDocumentUris.size
+
+        if (photosCount == 0 && filesCount == 0) {
             binding.attachmentPreviewBar.visibility = View.GONE
         } else {
             binding.attachmentPreviewBar.visibility = View.VISIBLE
-            binding.attachmentCountText.text = getString(R.string.attached_photos_count, pendingPastedImages.size)
+            binding.attachmentCountText.text = when {
+                photosCount > 0 && filesCount > 0 ->
+                    getString(R.string.attached_mixed_count, photosCount, filesCount)
+                filesCount > 0 ->
+                    getString(R.string.attached_files_count, filesCount)
+                else ->
+                    getString(R.string.attached_photos_count, photosCount)
+            }
         }
     }
 
-    private fun sendMessageWithPastedImages() {
+    private fun sendMessageWithPendingAttachments() {
         val text = binding.messageEditText.text.toString().trim()
-        val images = pendingPastedImages.toList()
+        val photos = pendingPastedImages.toList()
+        val documents = pendingDocumentUris.toList()
         pendingPastedImages.clear()
+        pendingDocumentUris.clear()
         updateAttachmentPreview()
         binding.messageEditText.text?.clear()
 
         lifecycleScope.launch {
             val fileIds = mutableListOf<String>()
-            for ((index, uri) in images.withIndex()) {
+
+            // Загружаем фото (со сжатием)
+            for ((index, uri) in photos.withIndex()) {
                 try {
                     val bytes = ImageCompressor.compressImage(uri, this@ChatActivity).getOrNull()
                         ?: continue
@@ -470,18 +503,35 @@ class ChatActivity : AppCompatActivity() {
                     if (uploadResult.isSuccess) {
                         fileIds.add(uploadResult.getOrNull()!!)
                     } else {
-                        Log.e(TAG, "Pasted image ${index + 1}/${images.size} upload failed: ${uploadResult.exceptionOrNull()?.message}")
+                        Log.e(TAG, "Photo ${index + 1}/${photos.size} upload failed: ${uploadResult.exceptionOrNull()?.message}")
                     }
                 } catch (e: Exception) {
-                    Log.e(TAG, "Error processing pasted image ${index + 1}/${images.size}", e)
+                    Log.e(TAG, "Error processing photo ${index + 1}/${photos.size}", e)
+                }
+            }
+
+            // Загружаем документы (без сжатия)
+            for ((index, uri) in documents.withIndex()) {
+                try {
+                    val bytes = readBytesFromUri(uri) ?: continue
+                    val uploadResult = chatRepository.uploadFile(
+                        bytes,
+                        barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_DOCUMENT
+                    )
+                    if (uploadResult.isSuccess) {
+                        fileIds.add(uploadResult.getOrNull()!!)
+                    } else {
+                        Log.e(TAG, "Document ${index + 1}/${documents.size} upload failed: ${uploadResult.exceptionOrNull()?.message}")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error processing document ${index + 1}/${documents.size}", e)
                 }
             }
 
             if (fileIds.isNotEmpty()) {
                 sendMessage(text = text, fileIds = fileIds)
             } else {
-                Toast.makeText(this@ChatActivity, "Не удалось загрузить изображения", Toast.LENGTH_SHORT).show()
-                // Отправить текст если есть
+                Toast.makeText(this@ChatActivity, "Не удалось загрузить файлы", Toast.LENGTH_SHORT).show()
                 if (text.isNotBlank()) {
                     sendMessage(text = text)
                 }
