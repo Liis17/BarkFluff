@@ -584,21 +584,26 @@ namespace BarkFluff.Client.WPF.Pages
                 }
             }
 
-            // Выполняем скролл после добавления всех сообщений
+            // Выполняем скролл после добавления всех сообщений и завершения layout
             if (scrollToFirstUnread && _firstUnreadMessageId != 0)
             {
                 Dispatcher.BeginInvoke(new Action(() =>
                 {
+                    MessageArea.UpdateLayout();
                     ScrollToMessage(_firstUnreadMessageId);
                     // После скролла отмечаем видимые сообщения как прочитанные
                     MarkVisibleMessagesAsRead();
-                }), System.Windows.Threading.DispatcherPriority.Loaded);
+                }), System.Windows.Threading.DispatcherPriority.ContextIdle);
             }
             else
             {
-                MessageScrollViewer.ScrollToEnd();
-                // При обычной загрузке тоже отмечаем сообщения
-                MarkVisibleMessagesAsRead();
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    MessageArea.UpdateLayout();
+                    MessageScrollViewer.ScrollToEnd();
+                    // При обычной загрузке тоже отмечаем сообщения
+                    MarkVisibleMessagesAsRead();
+                }), System.Windows.Threading.DispatcherPriority.ContextIdle);
             }
         }
 
@@ -1815,6 +1820,7 @@ namespace BarkFluff.Client.WPF.Pages
                     // Проверяем, есть ли у нас уже это сообщение (например, наше отправленное сообщение)
                     bool messageExists = false;
                     MessageBubble? existingBubble = null;
+                    bool isPendingMatch = false;
 
                     foreach (var child in MessageArea.Children)
                     {
@@ -1824,10 +1830,29 @@ namespace BarkFluff.Client.WPF.Pages
                             existingBubble = bubble;
                             break;
                         }
+
+                        // Проверка оптимистичного сообщения: пустой MessageId от текущего пользователя
+                        if (child is MessageBubble pendingBubble
+                            && string.IsNullOrEmpty(pendingBubble.MessageId)
+                            && pendingBubble.SenderId == message.SenderId
+                            && message.SenderId == App.GParam.UserId)
+                        {
+                            messageExists = true;
+                            existingBubble = pendingBubble;
+                            isPendingMatch = true;
+                            break;
+                        }
                     }
 
                     if (messageExists && existingBubble != null)
                     {
+                        // Если это был оптимистичный пендинг - обновляем его полностью
+                        if (isPendingMatch)
+                        {
+                            existingBubble.MessageId = message.MessageId.ToString();
+                            existingBubble.MarkAsSent();
+                        }
+
                         // Обновляем существующее сообщение (например, изменился список ReadBy)
                         existingBubble.UpdateReadByList(message.ReadBy);
                     }
@@ -2086,6 +2111,17 @@ namespace BarkFluff.Client.WPF.Pages
             _hasMoreHistory = true;
             ChatId.Value = chatId;
             IsGroup = isGroupChat;
+
+            // Сбрасываем бейдж непрочитанных сообщений при открытии чата
+            foreach (var child in ChatList.Children)
+            {
+                if (child is ChatItem chatItem && chatItem.ChatId == chatId)
+                {
+                    chatItem.ResetUnreadCount();
+                    chatItem.ResetFirstUnreadId();
+                    break;
+                }
+            }
 
             GetChatInfo(userId);
             ChatIdbyUserId.Dispose();
