@@ -39,6 +39,8 @@ import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.ImageLoadHelper
 import com.barkfluff.client.utils.AvatarLoader
 import barkfluff.shared.Shared
+import android.content.res.ColorStateList
+import android.graphics.drawable.GradientDrawable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -144,7 +146,7 @@ class MessageAdapter(
                 binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
                     it.width = if (mediaWidthPx > 0) mediaWidthPx else ViewGroup.LayoutParams.WRAP_CONTENT
                 }
-                setupAttachmentsContainer(binding.attachmentsContainer, item.attachments, mediaWidthPx)
+                setupAttachmentsContainer(binding.attachmentsContainer, item.attachments, mediaWidthPx, isSentByMe = true)
                 binding.attachmentsContainer.visibility = View.VISIBLE
             } else {
                 binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
@@ -240,6 +242,23 @@ class MessageAdapter(
         fun bind(item: MessageItem) { binding.dateTextView.text = item.dateText }
     }
 
+    // ─── Color Helpers ─────────────────────────────────────────────────────────
+
+    private fun resolveColor(context: Context, attr: Int): Int {
+        val tv = android.util.TypedValue()
+        context.theme.resolveAttribute(attr, tv, true)
+        return tv.data
+    }
+
+    private fun resolveOnPrimaryContainerColor(context: Context): Int =
+        resolveColor(context, com.google.android.material.R.attr.colorOnPrimaryContainer)
+
+    private fun resolveOnPrimaryContainerVariantColor(context: Context): Int =
+        androidx.core.graphics.ColorUtils.setAlphaComponent(resolveOnPrimaryContainerColor(context), 180)
+
+    private fun resolvePrimaryContainerColor(context: Context): Int =
+        resolveColor(context, com.google.android.material.R.attr.colorPrimaryContainer)
+
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
     /**
@@ -277,7 +296,8 @@ class MessageAdapter(
     private fun setupAttachmentsContainer(
         container: ViewGroup,
         attachments: List<Shared.MessageAttachment>,
-        mediaWidthPx: Int = 0
+        mediaWidthPx: Int = 0,
+        isSentByMe: Boolean = false
     ) {
         container.removeAllViews()
 
@@ -310,13 +330,13 @@ class MessageAdapter(
 
         // Audio rows
         for (audio in audios) {
-            val audioView = inflateAudioRow(container, audio)
+            val audioView = inflateAudioRow(container, audio, isSentByMe)
             wrapper.addView(audioView)
         }
 
         // Document rows
         for (doc in docs) {
-            val docView = inflateDocRow(container, doc)
+            val docView = inflateDocRow(container, doc, isSentByMe)
             wrapper.addView(docView)
         }
 
@@ -519,7 +539,7 @@ class MessageAdapter(
 
     // ─── Audio Row ────────────────────────────────────────────────────────────
 
-    private fun inflateAudioRow(container: ViewGroup, attachment: Shared.MessageAttachment): View {
+    private fun inflateAudioRow(container: ViewGroup, attachment: Shared.MessageAttachment, isSentByMe: Boolean = false): View {
         val binding = ItemAttachmentAudioBinding.inflate(
             LayoutInflater.from(container.context), container, false
         )
@@ -529,6 +549,42 @@ class MessageAdapter(
 
         binding.fileNameText.text = fileName
         binding.durationText.text = "0:00"
+
+        // Перекраска для отправленных сообщений (контраст на primaryContainer)
+        if (isSentByMe) {
+            val onContainer = resolveOnPrimaryContainerColor(context)
+            val onContainerVariant = resolveOnPrimaryContainerVariantColor(context)
+            val containerColor = resolvePrimaryContainerColor(context)
+            val onContainerCsl = ColorStateList.valueOf(onContainer)
+            val onContainerVariantCsl = ColorStateList.valueOf(onContainerVariant)
+
+            binding.fileNameText.setTextColor(onContainer)
+            binding.durationText.setTextColor(onContainerVariant)
+
+            // Play/Pause button: oval background → onPrimaryContainer, icon tint → primaryContainer
+            val playBg = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(onContainer)
+            }
+            binding.playPauseButton.background = playBg
+            binding.playPauseButton.imageTintList = ColorStateList.valueOf(containerColor)
+
+            // Download button: аналогично
+            val dlBg = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(onContainer)
+            }
+            binding.downloadButton.background = dlBg
+            binding.downloadButton.imageTintList = ColorStateList.valueOf(containerColor)
+
+            // SeekBar
+            binding.audioSeekBar.thumbTintList = onContainerCsl
+            binding.audioSeekBar.progressTintList = onContainerCsl
+            binding.audioSeekBar.progressBackgroundTintList = onContainerVariantCsl
+
+            // Download progress
+            binding.downloadProgressBar.progressTintList = onContainerCsl
+        }
 
         fun updateUiForCached(durationMs: Int = 0) {
             binding.downloadButton.visibility = View.GONE
@@ -814,7 +870,7 @@ class MessageAdapter(
 
     // ─── Document Row ─────────────────────────────────────────────────────────
 
-    private fun inflateDocRow(container: ViewGroup, attachment: Shared.MessageAttachment): View {
+    private fun inflateDocRow(container: ViewGroup, attachment: Shared.MessageAttachment, isSentByMe: Boolean = false): View {
         val binding = ItemAttachmentDocumentBinding.inflate(
             LayoutInflater.from(container.context), container, false
         )
@@ -826,6 +882,20 @@ class MessageAdapter(
         binding.docFileName.text = fileName
         binding.docFileSize.text = formatFileSize(attachment.attachmentSize)
         binding.docDownloadProgress.visibility = View.GONE
+
+        // Перекраска для отправленных сообщений (контраст на primaryContainer)
+        if (isSentByMe) {
+            val onContainer = resolveOnPrimaryContainerColor(context)
+            val onContainerVariant = resolveOnPrimaryContainerVariantColor(context)
+            val onContainerCsl = ColorStateList.valueOf(onContainer)
+
+            binding.docFileIcon.imageTintList = onContainerCsl
+            binding.docFileName.setTextColor(onContainer)
+            binding.docFileSize.setTextColor(onContainerVariant)
+            binding.docDownloadButton.imageTintList = onContainerCsl
+            binding.docOpenButton.imageTintList = onContainerCsl
+            binding.docDownloadProgress.progressTintList = onContainerCsl
+        }
 
         fun updateUiForCached() {
             binding.docDownloadButton.visibility = View.GONE
