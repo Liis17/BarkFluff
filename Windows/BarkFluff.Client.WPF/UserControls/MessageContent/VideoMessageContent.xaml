@@ -57,22 +57,40 @@
                         Symbol="Play24" />
                 </Border>
 
-                <!--  Download button (shown when not cached, top-right)  -->
+                <!--  Download progress bar (shown during download, top of preview)  -->
+                <ProgressBar
+                    x:Name="DownloadProgressBar"
+                    Height="4"
+                    VerticalAlignment="Top"
+                    Background="#30FFFFFF"
+                    Foreground="#df5000"
+                    Maximum="100"
+                    Visibility="Collapsed" />
+
+                <!--  File size + download button pill (top-right)  -->
                 <Border
-                    x:Name="DownloadButton"
-                    Width="40"
-                    Height="40"
+                    x:Name="DownloadPill"
                     Margin="0,8,8,0"
+                    Padding="8,4"
                     HorizontalAlignment="Right"
                     VerticalAlignment="Top"
                     Background="#CC000000"
-                    CornerRadius="20"
+                    CornerRadius="12"
                     Cursor="Hand"
                     Visibility="Collapsed">
-                    <ui:SymbolIcon
-                        FontSize="20"
-                        Foreground="White"
-                        Symbol="ArrowDownload24" />
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon
+                            FontSize="14"
+                            Foreground="White"
+                            Symbol="ArrowDownload24" />
+                        <TextBlock
+                            x:Name="FileSizeText"
+                            Margin="4,0,0,0"
+                            FontFamily="{DynamicResource AdwaitaSans}"
+                            FontSize="11"
+                            Foreground="White"
+                            Text="" />
+                    </StackPanel>
                 </Border>
 
                 <!--  Download progress overlay (shown during download)  -->
