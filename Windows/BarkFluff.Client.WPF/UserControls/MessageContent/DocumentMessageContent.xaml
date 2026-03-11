@@ -74,5 +74,18 @@
             Foreground="#AAFFFFFF"
             Text=""
             Visibility="Collapsed" />
+
+        <!--  Download progress bar  -->
+        <ProgressBar
+            x:Name="DownloadProgressBar"
+            Grid.Row="1"
+            Grid.Column="1"
+            Height="4"
+            Margin="0,2,0,0"
+            VerticalAlignment="Bottom"
+            Background="#30FFFFFF"
+            Foreground="#4A9FD4"
+            Maximum="100"
+            Visibility="Collapsed" />
     </Grid>
 </UserControl>
