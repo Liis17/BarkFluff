@@ -21,6 +21,8 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
         private string? _cachedFilePath;
         private readonly DispatcherTimer _positionTimer;
         private bool _isDragging;
+        private Border? _trackFill;
+        private Border? _thumb;
 
         // Singleton: только один аудио может играть одновременно
         private static AudioMessageContent? _currentlyPlaying;
@@ -49,14 +51,29 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
             _positionTimer.Tick += PositionTimer_Tick;
 
             ActionButton.MouseLeftButtonDown += ActionButton_Click;
-            TimelineSlider.PreviewMouseLeftButtonDown += TimelineSlider_DragStarted;
-            TimelineSlider.PreviewMouseLeftButtonUp += TimelineSlider_DragCompleted;
+            TimelineSlider.AddHandler(Slider.PreviewMouseLeftButtonDownEvent,
+                new MouseButtonEventHandler(TimelineSlider_DragStarted), true);
+            TimelineSlider.AddHandler(Slider.PreviewMouseLeftButtonUpEvent,
+                new MouseButtonEventHandler(TimelineSlider_DragCompleted), true);
             TimelineSlider.ValueChanged += TimelineSlider_ValueChanged;
+            TimelineSlider.Loaded += TimelineSlider_Loaded;
+            TimelineSlider.SizeChanged += TimelineSlider_SizeChanged;
+            TimelineSlider.IsVisibleChanged += TimelineSlider_IsVisibleChanged;
         }
 
         public AudioMessageContent(AttachmentsModel attachment) : this()
         {
             _attachment = attachment;
+
+            // Установить оригинальное имя файла
+            if (!string.IsNullOrEmpty(attachment.FileName))
+            {
+                FileNameText.Text = attachment.FileName;
+            }
+            else
+            {
+                FileNameText.Text = $"audio_{attachment.FileId}.mp3";
+            }
 
             _isCached = !string.IsNullOrEmpty(attachment.FileId) &&
                         App.FileCacheService.IsFileCached(attachment.FileId);
@@ -150,7 +167,7 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
             });
 
             var result = await App.FileCacheService.DownloadAndCacheFileWithProgressAsync(
-                _attachment.FileId, FileType.Audio, null, progress);
+                _attachment.FileId, FileType.Audio, null, progress, _attachment.FileName);
 
             _isDownloading = false;
             _isCached = result != null;
@@ -240,10 +257,11 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
         private void TimelineSlider_DragCompleted(object sender, MouseButtonEventArgs e)
         {
             _isDragging = false;
-            if (_currentlyPlaying == this)
+            if (_currentlyPlaying == this && _mediaPlayer.NaturalDuration.HasTimeSpan)
             {
                 _mediaPlayer.Position = TimeSpan.FromSeconds(TimelineSlider.Value);
             }
+            UpdateTrackFill();
         }
 
         private void TimelineSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -253,6 +271,62 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
                 TimeDisplay.Text = FormatTime(TimeSpan.FromSeconds(TimelineSlider.Value)) + " / " +
                                    FormatTime(_mediaPlayer.NaturalDuration.TimeSpan);
             }
+            UpdateTrackFill();
+        }
+
+        private void TimelineSlider_Loaded(object sender, RoutedEventArgs e)
+        {
+            TryFindTrackElements();
+            UpdateTrackFill();
+        }
+
+        private void TimelineSlider_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            UpdateTrackFill();
+        }
+
+        private void TimelineSlider_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+        {
+            if ((bool)e.NewValue)
+            {
+                // Когда слайдер становится видимым, применяем шаблон и ищем элементы
+                TimelineSlider.ApplyTemplate();
+                TimelineSlider.UpdateLayout();
+                TryFindTrackElements();
+                UpdateTrackFill();
+            }
+        }
+
+        private void TryFindTrackElements()
+        {
+            _trackFill ??= FindChild<Border>(TimelineSlider, "TrackFill");
+            _thumb ??= FindChild<Border>(TimelineSlider, "Thumb");
+        }
+
+        private void UpdateTrackFill()
+        {
+            if (_trackFill == null || _thumb == null) return;
+            if (TimelineSlider.Maximum <= 0) return;
+
+            var ratio = TimelineSlider.Value / TimelineSlider.Maximum;
+            var sliderWidth = TimelineSlider.ActualWidth;
+            if (sliderWidth <= 0) return;
+            _trackFill.Width = Math.Max(0, ratio * sliderWidth);
+            _thumb.Margin = new Thickness(Math.Max(0, ratio * sliderWidth - 6), 0, 0, 0);
+        }
+
+        private static T? FindChild<T>(DependencyObject parent, string childName) where T : DependencyObject
+        {
+            int count = VisualTreeHelper.GetChildrenCount(parent);
+            for (int i = 0; i < count; i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T typedChild && child is FrameworkElement fe && fe.Name == childName)
+                    return typedChild;
+                var result = FindChild<T>(child, childName);
+                if (result != null) return result;
+            }
+            return null;
         }
 
         private static string FormatTime(TimeSpan time)

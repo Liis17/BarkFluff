@@ -57,6 +57,12 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
                 }
             }
 
+            // Размер файла
+            if (attachment.Size > 0)
+            {
+                FileSizeText.Text = FormatFileSize(attachment.Size);
+            }
+
             // Проверяем кеш
             _isCached = !string.IsNullOrEmpty(attachment.FileId) &&
                         App.FileCacheService.IsFileCached(attachment.FileId);
@@ -69,20 +75,23 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
             if (_isDownloading)
             {
                 PlayButton.Visibility = Visibility.Collapsed;
-                DownloadButton.Visibility = Visibility.Collapsed;
+                DownloadPill.Visibility = Visibility.Collapsed;
                 ProgressOverlay.Visibility = Visibility.Visible;
+                DownloadProgressBar.Visibility = Visibility.Visible;
             }
             else if (_isCached)
             {
                 PlayButton.Visibility = Visibility.Visible;
-                DownloadButton.Visibility = Visibility.Collapsed;
+                DownloadPill.Visibility = Visibility.Collapsed;
                 ProgressOverlay.Visibility = Visibility.Collapsed;
+                DownloadProgressBar.Visibility = Visibility.Collapsed;
             }
             else
             {
                 PlayButton.Visibility = Visibility.Collapsed;
-                DownloadButton.Visibility = Visibility.Visible;
+                DownloadPill.Visibility = Visibility.Visible;
                 ProgressOverlay.Visibility = Visibility.Collapsed;
+                DownloadProgressBar.Visibility = Visibility.Collapsed;
             }
         }
 
@@ -97,11 +106,11 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
             }
 
             // Определяем, кликнули ли на кнопку скачивания
-            var hitPoint = e.GetPosition(DownloadButton);
-            if (DownloadButton.Visibility == Visibility.Visible &&
+            var hitPoint = e.GetPosition(DownloadPill);
+            if (DownloadPill.Visibility == Visibility.Visible &&
                 hitPoint.X >= 0 && hitPoint.Y >= 0 &&
-                hitPoint.X <= DownloadButton.ActualWidth &&
-                hitPoint.Y <= DownloadButton.ActualHeight)
+                hitPoint.X <= DownloadPill.ActualWidth &&
+                hitPoint.Y <= DownloadPill.ActualHeight)
             {
                 StartDownload();
                 e.Handled = true;
@@ -126,12 +135,14 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
             {
                 Dispatcher.Invoke(() =>
                 {
-                    ProgressText.Text = $"{(int)(p * 100)}%";
+                    var percent = (int)(p * 100);
+                    ProgressText.Text = $"{percent}%";
+                    DownloadProgressBar.Value = percent;
                 });
             });
 
             var result = await App.FileCacheService.DownloadAndCacheFileWithProgressAsync(
-                _attachment.FileId, FileType.Video, null, progress);
+                _attachment.FileId, FileType.Video, null, progress, _attachment.FileName);
 
             _isDownloading = false;
             _isCached = result != null;
@@ -149,6 +160,19 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
             var parent = VisualTreeHelper.GetParent(child);
             if (parent == null) return null;
             return parent is T ? (T)parent : FindParent<T>(parent);
+        }
+
+        private static string FormatFileSize(long bytes)
+        {
+            string[] sizes = { "B", "KB", "MB", "GB" };
+            int order = 0;
+            double size = bytes;
+            while (size >= 1024 && order < sizes.Length - 1)
+            {
+                order++;
+                size /= 1024;
+            }
+            return $"{size:0.##} {sizes[order]}";
         }
 
         private void VideoMessageContent_SizeChanged(object sender, SizeChangedEventArgs e)

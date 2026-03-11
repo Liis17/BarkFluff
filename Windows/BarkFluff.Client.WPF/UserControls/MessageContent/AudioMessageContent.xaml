@@ -10,7 +10,8 @@
     mc:Ignorable="d">
     <Border
         x:Name="AudioContainer"
-        MinWidth="280"
+        MinWidth="260"
+        MaxWidth="380"
         Padding="12"
         Background="#20000000"
         CornerRadius="12">

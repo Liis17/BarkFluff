@@ -1,5 +1,7 @@
+using BarkFluff.Client.WPF.Services.App.Caching;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -12,7 +14,32 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
 {
     public partial class DocumentMessageContent : UserControl
     {
+        private static readonly HashSet<string> _safeExtensions = new(StringComparer.OrdinalIgnoreCase)
+        {
+            // Images
+            ".jpg", ".jpeg", ".png", ".bmp", ".webp", ".gif",
+            // Video
+            ".mp4", ".avi", ".mov", ".mkv", ".webm",
+            // Archives
+            ".zip", ".rar", ".7z", ".tar", ".gz",
+            // Text/Code
+            ".txt", ".md", ".json", ".xml", ".csv", ".log", ".html", ".css", ".js", ".ts",
+            ".cs", ".py", ".java", ".cpp", ".c", ".h", ".go", ".rs", ".rb", ".php", ".sql",
+            ".yaml", ".yml", ".toml", ".ini", ".cfg", ".conf",
+            // Documents
+            ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+            // Audio
+            ".mp3", ".wav", ".flac", ".ogg", ".m4a", ".aac",
+        };
+
+        private static readonly HashSet<string> _blockedExtensions = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ".exe", ".bat", ".cmd", ".ps1", ".sh", ".msi", ".com", ".vbs", ".wsf", ".scr", ".pif", ".dll",
+        };
+
         public string? FileId { get; private set; }
+        private string? _fileName;
+        private bool _isDownloading;
 
         public DocumentMessageContent()
         {
@@ -23,6 +50,7 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
         public DocumentMessageContent(AttachmentsModel attachment) : this()
         {
             FileId = attachment.FileId;
+            _fileName = attachment.FileName;
 
             SetIconForType(attachment.Type);
 
@@ -106,17 +134,84 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
             }
         }
 
-        private void DocumentPanel_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        private async void DocumentPanel_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (!string.IsNullOrEmpty(FileId))
+            e.Handled = true;
+
+            if (string.IsNullOrEmpty(FileId) || _isDownloading) return;
+
+            // Check extension safety
+            var extension = Path.GetExtension(_fileName ?? string.Empty);
+            if (_blockedExtensions.Contains(extension))
             {
                 var msgType = new Services.Erida.MessageType
                 {
-                    Type = Services.Erida.MessageType.MessageTypeEnum.Info
+                    Type = Services.Erida.MessageType.MessageTypeEnum.Warning
                 };
-                App.ErideMessage.AddMessage($"Document clicked: {FileId}", msgType);
+                App.ErideMessage.AddMessage($"Открытие файлов типа {extension} заблокировано в целях безопасности", msgType);
+                return;
             }
-            e.Handled = true;
+
+            if (!string.IsNullOrEmpty(extension) && !_safeExtensions.Contains(extension))
+            {
+                var msgType = new Services.Erida.MessageType
+                {
+                    Type = Services.Erida.MessageType.MessageTypeEnum.Warning
+                };
+                App.ErideMessage.AddMessage($"Неизвестный тип файла {extension}. Открытие заблокировано", msgType);
+                return;
+            }
+
+            // Check if already cached
+            if (App.FileCacheService.IsFileCached(FileId))
+            {
+                var cachedPath = App.FileCacheService.GetCachedFilePath(FileId, FileType.Document);
+                OpenFile(cachedPath);
+                return;
+            }
+
+            // Download with progress
+            _isDownloading = true;
+            DownloadProgressBar.Visibility = Visibility.Visible;
+
+            var progress = new Progress<double>(p =>
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    DownloadProgressBar.Value = (int)(p * 100);
+                });
+            });
+
+            var result = await App.FileCacheService.DownloadAndCacheFileWithProgressAsync(
+                FileId, FileType.Document, null, progress, _fileName);
+
+            _isDownloading = false;
+            DownloadProgressBar.Visibility = Visibility.Collapsed;
+
+            if (!string.IsNullOrEmpty(result))
+            {
+                OpenFile(result);
+            }
+        }
+
+        private void OpenFile(string filePath)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = Path.GetFullPath(filePath),
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                var msgType = new Services.Erida.MessageType
+                {
+                    Type = Services.Erida.MessageType.MessageTypeEnum.Error
+                };
+                App.ErideMessage.AddMessage($"Не удалось открыть файл: {ex.Message}", msgType);
+            }
         }
 
         public void SetFileName(string fileName)

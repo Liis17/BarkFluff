@@ -269,7 +269,7 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
         /// <summary>
         /// Загружает и кеширует файл
         /// </summary>
-        private async Task<string?> DownloadAndCacheFileAsync(string fileId, FileType fileType, string? providedUrl)
+        private async Task<string?> DownloadAndCacheFileAsync(string fileId, FileType fileType, string? providedUrl, string? originalFileName = null)
         {
             await _downloadSemaphore.WaitAsync();
             try
@@ -306,28 +306,7 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
                 }
 
                 // Определяем расширение файла
-                string extension;
-                try
-                {
-                    extension = Path.GetExtension(new Uri(url).AbsolutePath);
-                    if (string.IsNullOrEmpty(extension))
-                    {
-                        extension = fileType switch
-                        {
-                            FileType.Avatar => ".png",
-                            FileType.Image => ".png",
-                            FileType.Video => ".mp4",
-                            FileType.Gif => ".gif",
-                            FileType.Document => ".bin",
-                            FileType.Audio => ".mp3",
-                            _ => ".bin"
-                        };
-                    }
-                }
-                catch
-                {
-                    extension = ".png";
-                }
+                var extension = ResolveFileExtension(url, fileType, originalFileName);
 
                 var cacheDir = GetCacheDirectory(fileType);
                 var filePath = Path.Combine(cacheDir, $"{fileId}{extension}");
@@ -369,7 +348,7 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
         /// <summary>
         /// Загружает и кеширует файл с отчётом о прогрессе
         /// </summary>
-        public async Task<string?> DownloadAndCacheFileWithProgressAsync(string fileId, FileType fileType, string? providedUrl, IProgress<double> progress)
+        public async Task<string?> DownloadAndCacheFileWithProgressAsync(string fileId, FileType fileType, string? providedUrl, IProgress<double> progress, string? originalFileName = null)
         {
             await _downloadSemaphore.WaitAsync();
             try
@@ -400,28 +379,7 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
                     url = response.url;
                 }
 
-                string extension;
-                try
-                {
-                    extension = Path.GetExtension(new Uri(url).AbsolutePath);
-                    if (string.IsNullOrEmpty(extension))
-                    {
-                        extension = fileType switch
-                        {
-                            FileType.Avatar => ".png",
-                            FileType.Image => ".png",
-                            FileType.Video => ".mp4",
-                            FileType.Gif => ".gif",
-                            FileType.Document => ".bin",
-                            FileType.Audio => ".mp3",
-                            _ => ".bin"
-                        };
-                    }
-                }
-                catch
-                {
-                    extension = ".bin";
-                }
+                var extension = ResolveFileExtension(url, fileType, originalFileName);
 
                 var cacheDir = GetCacheDirectory(fileType);
                 var filePath = Path.Combine(cacheDir, $"{fileId}{extension}");
@@ -471,6 +429,41 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
             {
                 _downloadSemaphore.Release();
             }
+        }
+
+        /// <summary>
+        /// Определяет расширение файла: приоритет — оригинальное имя, затем URL, затем fallback по типу
+        /// </summary>
+        private static string ResolveFileExtension(string url, FileType fileType, string? originalFileName)
+        {
+            // 1. Из оригинального имени файла
+            if (!string.IsNullOrEmpty(originalFileName))
+            {
+                var ext = Path.GetExtension(originalFileName);
+                if (!string.IsNullOrEmpty(ext))
+                    return ext;
+            }
+
+            // 2. Из URL
+            try
+            {
+                var ext = Path.GetExtension(new Uri(url).AbsolutePath);
+                if (!string.IsNullOrEmpty(ext))
+                    return ext;
+            }
+            catch { }
+
+            // 3. Fallback по типу файла
+            return fileType switch
+            {
+                FileType.Avatar => ".png",
+                FileType.Image => ".png",
+                FileType.Video => ".mp4",
+                FileType.Gif => ".gif",
+                FileType.Document => ".bin",
+                FileType.Audio => ".mp3",
+                _ => ".bin"
+            };
         }
 
         /// <summary>

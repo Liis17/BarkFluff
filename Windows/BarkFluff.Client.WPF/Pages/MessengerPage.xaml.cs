@@ -627,6 +627,7 @@ namespace BarkFluff.Client.WPF.Pages
                 MessageAttachmentType.Gif => MessageBubble.MessageType.Gif,
                 MessageAttachmentType.Document => MessageBubble.MessageType.Document,
                 MessageAttachmentType.Audio => MessageBubble.MessageType.Audio,
+                MessageAttachmentType.Voice => MessageBubble.MessageType.Voice,
                 _ => MessageBubble.MessageType.Text
             };
         }

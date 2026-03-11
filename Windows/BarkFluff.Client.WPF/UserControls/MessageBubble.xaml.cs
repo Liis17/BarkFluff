@@ -143,6 +143,9 @@ namespace BarkFluff.Client.WPF.UserControls
                     case MessageType.Audio:
                         SetupAudioContent(message);
                         break;
+                    case MessageType.Voice:
+                        SetupVoiceContent(message);
+                        break;
                     case MessageType.Text:
                     default:
                         SetupTextContent(message);
@@ -198,7 +201,7 @@ namespace BarkFluff.Client.WPF.UserControls
                     }
                     MediaContentPresenter.Content = audioPanel;
                     SetMediaContentMargin(true);
-                    this.MinWidth = 280;
+                    this.MinWidth = 320;
                     break;
 
                 case AttachmentDisplayMode.Mixed:
@@ -224,6 +227,7 @@ namespace BarkFluff.Client.WPF.UserControls
             bool hasVideo = false;
             bool hasDocument = false;
             bool hasAudio = false;
+            bool hasVoice = false;
 
             foreach (var attachment in attachments)
             {
@@ -233,11 +237,13 @@ namespace BarkFluff.Client.WPF.UserControls
                     hasVideo = true;
                 else if (IsAudioType(attachment))
                     hasAudio = true;
+                else if (IsVoiceType(attachment))
+                    hasVoice = true;
                 else if (IsDocumentType(attachment))
                     hasDocument = true;
             }
 
-            if (hasDocument)
+            if (hasDocument || hasVoice)
                 return AttachmentDisplayMode.Mixed;
 
             // Один тип контента
@@ -408,7 +414,40 @@ namespace BarkFluff.Client.WPF.UserControls
             MediaContentPresenter.Content = audioContent;
             SetMediaContentMargin(true);
 
-            this.MinWidth = 280;
+            this.MinWidth = 320;
+        }
+
+        private void SetupVoiceContent(MessageModel message)
+        {
+            if (!string.IsNullOrEmpty(message.Text))
+            {
+                _textContent = new TextMessageContent(message.Text);
+                TextContentPresenter.Content = _textContent;
+            }
+            else
+            {
+                TextContentPresenter.Content = null;
+            }
+
+            var voicePlaceholder = new TextBlock
+            {
+                Text = "\U0001F3A4 Голосовое сообщение (скоро)",
+                FontFamily = (System.Windows.Media.FontFamily)FindResource("AdwaitaSans"),
+                FontSize = 13,
+                Foreground = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromArgb(0xAA, 0xFF, 0xFF, 0xFF)),
+                Margin = new Thickness(4, 8, 4, 4),
+            };
+
+            MediaContentPresenter.Content = voicePlaceholder;
+            SetMediaContentMargin(true);
+
+            this.MinWidth = 250;
+        }
+
+        private bool IsVoiceType(AttachmentsModel attachment)
+        {
+            return attachment.Type == Proto.Shared.MessageAttachmentType.Voice;
         }
 
         private async void SendMessage((bool sendingRequired, bool isUserId, string recipient) options, string textMessage, List<string> filesId)
@@ -681,6 +720,7 @@ namespace BarkFluff.Client.WPF.UserControls
             Gif,
             Document,
             Audio,
+            Voice,
         }
 
         public enum MessageOwner
