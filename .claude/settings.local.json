@@ -24,7 +24,10 @@
       "Bash(./gradlew :app:compileDebugKotlin:*)",
       "Bash(./gradlew compileDebugKotlin:*)",
       "Bash(git check-ignore:*)",
-      "Bash(\"C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe\":*)"
+      "Bash(\"C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe\":*)",
+      "Bash(ls /k/source/BarkFluff/Windows/BarkFluff.Client.WPF/*.csproj /k/source/BarkFluff/Windows/BarkFluff.Client.WPF/*.xaml 2>/dev/null | head -5)",
+      "Bash(find /k/source/BarkFluff/Mac/Barkfluff -maxdepth 2 -type f \\\\\\( -name \"*.swift\" -o -name \"*.xcodeproj\" \\\\\\) 2>/dev/null | head -10)",
+      "Bash(find /k/source/BarkFluff/iOS/Barkfluff -maxdepth 2 -type f \\\\\\( -name \"*.swift\" -o -name \"*.xcodeproj\" \\\\\\) 2>/dev/null | head -10)"
     ],
     "deny": [],
     "ask": []
