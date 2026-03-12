@@ -54,7 +54,6 @@ namespace BarkFluff.WebApi.Core.MessengerData
         public string DeviceId { get; set; } = string.Empty;
         public ClientColors Colors { get; set; } = new ClientColors();
         public string IpAddress { get; set; } = string.Empty;
-        public string AppTheme { get; set; } = "light"; // "light" или "dark" или "system"
         public NotificationDisplayMode NotificationMode { get; set; } = NotificationDisplayMode.FullWithPreview;
 
         #endregion
