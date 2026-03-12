@@ -8,6 +8,9 @@ using System.IO;
 using System.Windows;
 using System.Windows.Input;
 
+using BarkFluff.Client.WPF.Services.App;
+
+using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
 
 using Erida = BarkFluff.Client.WPF.Services.Erida.MessageType;
@@ -73,6 +76,21 @@ namespace BarkFluff.Client.WPF
             {
                 ExecuteComboAction();
             }
+
+            if (e.Key == Key.F8)
+            {
+                ToggleTheme();
+            }
+        }
+
+        private void ToggleTheme()
+        {
+            var current = ThemeRegistryHelper.GetTheme();
+            var newTheme = current == "dark" ? "light" : "dark";
+            var appTheme = newTheme == "dark" ? ApplicationTheme.Dark : ApplicationTheme.Light;
+
+            ThemeRegistryHelper.SetTheme(newTheme);
+            App.ApplyTheme(appTheme);
         }
 
         private void OnKeyUp(object sender, KeyEventArgs e)

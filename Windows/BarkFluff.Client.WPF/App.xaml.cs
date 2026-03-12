@@ -14,6 +14,8 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 
+using BarkFluff.Client.WPF.Services.App;
+
 using Wpf.Ui.Appearance;
 
 namespace BarkFluff.Client.WPF
@@ -72,6 +74,8 @@ namespace BarkFluff.Client.WPF
             #endregion
 
             base.OnStartup(e);
+
+            ThemeLoader();
 
             // Проверяем регистрацию (используем ваш ProtocolHelper)
             if (!ProtocolHelper.IsBFProtocolRegistered())
@@ -209,8 +213,6 @@ namespace BarkFluff.Client.WPF
             {
                 MessengerWindow.OpenPinCodeSecurePage();
             }
-
-            ThemeLoader();
         }
 
         /// <summary>
@@ -238,7 +240,6 @@ namespace BarkFluff.Client.WPF
 
             var ip = GParam.IpAddress;
             var appPath = GParam.AppPath;
-            var theme = GParam.AppTheme;
             var machineName = GParam.MachineName;
 
             var servername = App.GParam.ServerName;
@@ -258,7 +259,6 @@ namespace BarkFluff.Client.WPF
 
             GParam.IpAddress = ip;
             GParam.AppPath = appPath;
-            GParam.AppTheme = theme;
             GParam.MachineName = machineName;
 
             App.GParam.ServerName = servername;
@@ -282,7 +282,7 @@ namespace BarkFluff.Client.WPF
         {
             ApplicationTheme appTheme;
 
-            switch (App.GParam?.AppTheme?.ToLower())
+            switch (ThemeRegistryHelper.GetTheme())
             {
                 case "light":
                     appTheme = ApplicationTheme.Light;
