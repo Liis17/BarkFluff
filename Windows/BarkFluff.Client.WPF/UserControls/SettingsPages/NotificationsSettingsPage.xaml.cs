@@ -14,13 +14,9 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
     {
         public override string Title => "Уведомления";
 
-        private static readonly SolidColorBrush AccentBrush = new(Color.FromRgb(0xB3, 0x58, 0x44)); // #FFB35844
-        private static readonly SolidColorBrush InactiveBrush = new(Color.FromRgb(0xA0, 0xA0, 0xA0));
+        private static readonly SolidColorBrush AccentBrush = new(Color.FromRgb(0xB3, 0x58, 0x44));
         private static readonly SolidColorBrush TransparentBrush = new(Colors.Transparent);
 
-        /// <summary>
-        /// Маппинг enum-значений на Ellipse-индикаторы
-        /// </summary>
         private readonly Dictionary<NotificationDisplayMode, Ellipse> _radioMap;
 
         public NotificationsSettingsPage()
@@ -36,13 +32,7 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
                 { NotificationDisplayMode.FullWithPreview, RadioFullPreview }
             };
 
-            // Устанавливаем текущий выбранный режим
             UpdateRadioVisuals(App.GParam?.NotificationMode ?? NotificationDisplayMode.FullWithPreview);
-        }
-
-        private void GoBack_Click(object sender, RoutedEventArgs e)
-        {
-            GoBack();
         }
 
         private void Mode_Click(object sender, MouseButtonEventArgs e)
@@ -55,7 +45,6 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
 
             var mode = (NotificationDisplayMode)modeInt;
 
-            // Сохраняем настройку
             if (App.GParam != null)
             {
                 App.GParam.NotificationMode = mode;
@@ -64,9 +53,6 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
             UpdateRadioVisuals(mode);
         }
 
-        /// <summary>
-        /// Обновляет визуальные индикаторы (radio-кнопки)
-        /// </summary>
         private void UpdateRadioVisuals(NotificationDisplayMode selectedMode)
         {
             foreach (var (mode, ellipse) in _radioMap)
@@ -78,7 +64,7 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
                 }
                 else
                 {
-                    ellipse.Stroke = InactiveBrush;
+                    ellipse.Stroke = (SolidColorBrush)FindResource("DescriptionText");
                     ellipse.Fill = TransparentBrush;
                 }
             }

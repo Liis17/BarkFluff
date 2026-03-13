@@ -6,127 +6,110 @@
     xmlns:local="clr-namespace:BarkFluff.Client.WPF.UserControls.SettingsPages"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-    Height="550"
     d:DesignHeight="550"
     d:DesignWidth="500"
     mc:Ignorable="d">
-    <Grid Background="#1f1f1f">
-        <StackPanel Margin="20">
-            <!-- Кнопка "Назад" -->
-            <Button
-                HorizontalAlignment="Left"
-                Click="GoBack_Click"
-                Cursor="Hand"
-                Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}">
-                <StackPanel Orientation="Horizontal">
-                    <ui:SymbolIcon
-                        Margin="0,0,8,0"
-                        Foreground="#E0E0E0"
-                        Symbol="ArrowLeft24" />
-                    <TextBlock Foreground="#E0E0E0" Text="Назад" />
-                </StackPanel>
-            </Button>
-
+    <Grid Background="{DynamicResource SettingsContentBackground}">
+        <StackPanel Margin="24,16,24,24">
             <!-- Заголовок страницы -->
             <TextBlock Style="{DynamicResource HeaderSettings}" Text="Облако" />
 
-            <!-- Настройки облака -->
-            <StackPanel Margin="0,10,0,0">
-                <Border
-                    Padding="16"
-                    Background="#2D2D2D"
-                    CornerRadius="8"
-                    Margin="0,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Используемое место" />
-                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,4,0,0" Text="12.4 ГБ из 50 ГБ" />
-                        </StackPanel>
-                        <ui:SymbolIcon
-                            Grid.Column="1"
-                            Foreground="#FF79AEDC"
-                            Symbol="Cloud24" />
-                    </Grid>
-                </Border>
-
-                <!-- Прогресс бар использования -->
-                <Border
-                    Padding="16,12"
-                    Background="#2D2D2D"
-                    CornerRadius="8"
-                    Margin="0,8">
-                    <StackPanel>
-                        <TextBlock Foreground="#E0E0E0" FontSize="12" Margin="0,0,0,8" Text="Использование хранилища" />
-                        <Border
-                            Height="8"
-                            Background="#3D3D3D"
-                            CornerRadius="4">
-                            <Border
-                                Width="124"
-                                HorizontalAlignment="Left"
-                                Background="#FF79AEDC"
-                                CornerRadius="4" />
-                        </Border>
-                        <TextBlock Foreground="#A0A0A0" FontSize="11" Margin="0,8,0,0" Text="25% использовано" />
+            <!-- Общее использование -->
+            <Border
+                Padding="16"
+                Background="{DynamicResource TextBackground}"
+                CornerRadius="8"
+                Margin="0,8">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <ui:SymbolIcon Foreground="#FF79AEDC" Symbol="Cloud24" Margin="0,0,8,0" />
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Использование хранилища" />
                     </StackPanel>
-                </Border>
+                    <TextBlock
+                        x:Name="UsageText"
+                        Foreground="{DynamicResource DescriptionText}"
+                        FontSize="12"
+                        Margin="0,0,0,8"
+                        Text="Загрузка..." />
+                    <Border
+                        Height="8"
+                        Background="{DynamicResource ButtonBackground}"
+                        CornerRadius="4">
+                        <Border
+                            x:Name="UsageBar"
+                            Width="0"
+                            HorizontalAlignment="Left"
+                            Background="#FF79AEDC"
+                            CornerRadius="4" />
+                    </Border>
+                    <TextBlock
+                        x:Name="UsagePercentText"
+                        Foreground="{DynamicResource DescriptionText}"
+                        FontSize="11"
+                        Margin="0,8,0,0" />
+                </StackPanel>
+            </Border>
 
-                <Border
-                    Padding="16"
-                    Background="#2D2D2D"
-                    CornerRadius="8"
-                    Margin="0,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Фото и видео" />
-                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,4,0,0" Text="8.2 ГБ" />
-                        </StackPanel>
-                        <ui:SymbolIcon
-                            Grid.Column="1"
-                            Foreground="#FF79AEDC"
-                            Symbol="Image24" />
-                    </Grid>
-                </Border>
+            <!-- Разбивка по типам -->
+            <Border
+                x:Name="ImagesBorder"
+                Padding="16"
+                Background="{DynamicResource TextBackground}"
+                CornerRadius="8"
+                Margin="0,8"
+                Visibility="Collapsed">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Фото" />
+                        <TextBlock x:Name="ImagesSize" Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,4,0,0" />
+                    </StackPanel>
+                    <ui:SymbolIcon Grid.Column="1" Foreground="#FF57BB62" Symbol="Image24" />
+                </Grid>
+            </Border>
 
-                <Border
-                    Padding="16"
-                    Background="#2D2D2D"
-                    CornerRadius="8"
-                    Margin="0,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Документы" />
-                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,4,0,0" Text="4.2 ГБ" />
-                        </StackPanel>
-                        <ui:SymbolIcon
-                            Grid.Column="1"
-                            Foreground="#FF79AEDC"
-                            Symbol="Document24" />
-                    </Grid>
-                </Border>
+            <Border
+                x:Name="VideosBorder"
+                Padding="16"
+                Background="{DynamicResource TextBackground}"
+                CornerRadius="8"
+                Margin="0,8"
+                Visibility="Collapsed">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Видео" />
+                        <TextBlock x:Name="VideosSize" Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,4,0,0" />
+                    </StackPanel>
+                    <ui:SymbolIcon Grid.Column="1" Foreground="#FF3D50B7" Symbol="Video24" />
+                </Grid>
+            </Border>
 
-                <Button
-                    Width="180"
-                    Margin="0,20,0,0"
-                    HorizontalAlignment="Center"
-                    Background="#df5000"
-                    Content="Управление файлами"
-                    Cursor="Hand"
-                    Foreground="White"
-                    Padding="16,8" />
-            </StackPanel>
+            <Border
+                x:Name="DocumentsBorder"
+                Padding="16"
+                Background="{DynamicResource TextBackground}"
+                CornerRadius="8"
+                Margin="0,8"
+                Visibility="Collapsed">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Документы" />
+                        <TextBlock x:Name="DocumentsSize" Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,4,0,0" />
+                    </StackPanel>
+                    <ui:SymbolIcon Grid.Column="1" Foreground="#FFCA6D34" Symbol="Document24" />
+                </Grid>
+            </Border>
         </StackPanel>
     </Grid>
 </local:BaseSettingsPage>

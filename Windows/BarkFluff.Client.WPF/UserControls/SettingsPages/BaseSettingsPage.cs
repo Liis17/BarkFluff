@@ -25,5 +25,12 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
         {
             BackRequested?.Invoke(this, EventArgs.Empty);
         }
+
+        /// <summary>
+        /// Вызывается при переключении на эту страницу.
+        /// </summary>
+        public virtual void OnNavigatedTo()
+        {
+        }
     }
 }

@@ -68,4 +68,10 @@
     <SolidColorBrush x:Key="ProgressRingColor" Color="#df5000" />
     <SolidColorBrush x:Key="ProgressRingAlternativeColor" Color="#FF3D38DE" />
 
+    <!--  Настройки (sidebar)  -->
+    <SolidColorBrush x:Key="SettingsSidebarBackground" Color="#1a1a1a" />
+    <SolidColorBrush x:Key="SettingsSidebarItemHover" Color="#2d2d2d" />
+    <SolidColorBrush x:Key="SettingsSidebarItemSelected" Color="#333333" />
+    <SolidColorBrush x:Key="SettingsContentBackground" Color="#1f1f1f" />
+
 </ResourceDictionary>

@@ -1395,4 +1395,67 @@
         </Setter>
     </Style>
 
+    <!--  Заголовок секции настроек  -->
+    <Style x:Key="HeaderSettings" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="22" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource TitleText}" />
+        <Setter Property="Margin" Value="0,16,0,8" />
+    </Style>
+
+    <!--  Settings Sidebar ListBox  -->
+    <Style x:Key="SettingsSidebarListBox" TargetType="ListBox">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+    </Style>
+
+    <!--  Settings Sidebar Item  -->
+    <Style x:Key="SettingsSidebarItem" TargetType="ListBoxItem">
+        <Setter Property="Height" Value="36" />
+        <Setter Property="Margin" Value="4,1" />
+        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBoxItem">
+                    <Grid>
+                        <Border
+                            x:Name="Bg"
+                            Background="Transparent"
+                            CornerRadius="6" />
+                        <Border
+                            x:Name="Accent"
+                            Width="2"
+                            Height="16"
+                            HorizontalAlignment="Left"
+                            Background="#df5000"
+                            CornerRadius="1"
+                            Visibility="Collapsed" />
+                        <ContentPresenter
+                            Margin="{TemplateBinding Padding}"
+                            VerticalAlignment="Center" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{DynamicResource SettingsSidebarItemHover}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{DynamicResource SettingsSidebarItemSelected}" />
+                            <Setter TargetName="Accent" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!--  Settings Sidebar Separator  -->
+    <Style x:Key="SettingsSidebarSeparator" TargetType="Separator">
+        <Setter Property="Margin" Value="12,4" />
+        <Setter Property="Background" Value="{DynamicResource SeparatorBackground}" />
+    </Style>
+
 </ResourceDictionary>
