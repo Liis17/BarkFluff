@@ -1,6 +1,8 @@
 using BarkFluff.GrpcServer.XAuth;
+using BarkFluff.Shared.Exceptions.Identity;
 using BarkFluff.Users.Infrastructure;
 using BarkFluff.Users.Persistence.Services;
+using BarkFluff.Users.Services;
 
 using MediatR;
 
@@ -11,15 +13,17 @@ public class ChangeUsernameCommandHandler : IRequestHandler<ChangeUsernameComman
 
     private readonly UserContext _userContext;
     private readonly UsersStorage _usersStorage;
+    private readonly ReservedUsernamesService _reservedUsernamesService;
     private readonly UserInfoQueueSender _userInfoQueueSender;
     private readonly ILogger<ChangeUsernameCommandHandler> _logger;
 
 
-    public ChangeUsernameCommandHandler(UserContext userContext, UsersStorage usersStorage, UserInfoQueueSender userInfoQueueSender,
-        ILogger<ChangeUsernameCommandHandler> logger)
+    public ChangeUsernameCommandHandler(UserContext userContext, UsersStorage usersStorage, ReservedUsernamesService reservedUsernamesService,
+        UserInfoQueueSender userInfoQueueSender, ILogger<ChangeUsernameCommandHandler> logger)
     {
         _userContext = userContext;
         _usersStorage = usersStorage;
+        _reservedUsernamesService = reservedUsernamesService;
         _userInfoQueueSender = userInfoQueueSender;
         _logger = logger;
     }
@@ -33,6 +37,12 @@ public class ChangeUsernameCommandHandler : IRequestHandler<ChangeUsernameComman
             _userContext.UserId,
             username
         );
+
+        if (_reservedUsernamesService.IsReserved(username))
+        {
+            _logger.LogWarning("Username {Username} является зарезервированным именем", username);
+            throw new UsernameReservedException();
+        }
 
         await _usersStorage.ChangeUsername(_userContext.UserId, username);
 

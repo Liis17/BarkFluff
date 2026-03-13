@@ -9,6 +9,7 @@ using BarkFluff.Users.Host;
 using BarkFluff.Users.Infrastructure;
 using BarkFluff.Users.Persistence.Contexts;
 using BarkFluff.Users.Persistence.Services;
+using BarkFluff.Users.Services;
 
 using MassTransit;
 
@@ -42,6 +43,7 @@ public class Program
         builder.Services.AddTransient<UsersStorage>();
         builder.Services.AddTransient<DevicesStorage>();
         builder.Services.AddScoped<UserInfoQueueSender>();
+        builder.Services.AddSingleton<ReservedUsernamesService>();
 
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
 
