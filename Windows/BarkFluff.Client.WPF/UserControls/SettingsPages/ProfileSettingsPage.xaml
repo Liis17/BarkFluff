@@ -4,118 +4,184 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="clr-namespace:BarkFluff.Client.WPF.UserControls.SettingsPages"
+    xmlns:controls="clr-namespace:BarkFluff.Client.WPF.UserControls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-    Height="550"
     d:DesignHeight="550"
     d:DesignWidth="500"
     mc:Ignorable="d">
-    <Grid Background="#1f1f1f">
-        <StackPanel Margin="20">
-            <!-- Кнопка "Назад" -->
-            <ui:Button
-                HorizontalAlignment="Left"
-                Click="GoBack_Click"
-                Cursor="Hand"
-                Style="{DynamicResource Win11Default}">
-                <StackPanel Orientation="Horizontal">
-                    <ui:SymbolIcon
-                        Margin="0,0,8,0"
-                        Foreground="#E0E0E0"
-                        Symbol="ArrowLeft24" />
-                    <TextBlock Foreground="#E0E0E0" Text="Назад" />
-                </StackPanel>
-            </ui:Button>
-
+    <Grid Background="{DynamicResource SettingsContentBackground}">
+        <StackPanel Margin="24,16,24,24">
             <!-- Заголовок страницы -->
             <TextBlock Style="{DynamicResource HeaderSettings}" Text="Профиль" />
 
-            <!-- Настройки профиля -->
-            <StackPanel Margin="0,10,0,0">
-                <Border
-                    Padding="16"
-                    Background="#2D2D2D"
-                    CornerRadius="8"
-                    Margin="0,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Имя" />
-                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,4,0,0" Text="Изменить отображаемое имя" />
-                        </StackPanel>
-                        <ui:SymbolIcon
-                            Grid.Column="1"
-                            Foreground="#FFDA5151"
-                            Symbol="Person24" />
-                    </Grid>
-                </Border>
+            <!-- Аватар -->
+            <Border
+                Padding="16"
+                Background="{DynamicResource TextBackground}"
+                CornerRadius="8"
+                Margin="0,8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <controls:CachedAvatar
+                        x:Name="ProfileAvatar"
+                        Grid.Column="0"
+                        Width="64"
+                        Height="64"
+                        CornerRadius="32"
+                        EnableDynamicShadow="False" />
+                    <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
+                        <TextBlock
+                            x:Name="AvatarNameText"
+                            Foreground="{DynamicResource TitleText}"
+                            FontSize="16"
+                            FontWeight="SemiBold" />
+                        <TextBlock
+                            x:Name="AvatarEmailText"
+                            Foreground="{DynamicResource DescriptionText}"
+                            FontSize="12"
+                            Margin="0,2,0,0" />
+                    </StackPanel>
+                    <ui:Button
+                        Grid.Column="2"
+                        VerticalAlignment="Center"
+                        Click="ChangeAvatar_Click"
+                        Cursor="Hand"
+                        Style="{DynamicResource Win11Default}"
+                        Content="Изменить" />
+                </Grid>
+            </Border>
 
-                <Border
-                    Padding="16"
-                    Background="#2D2D2D"
-                    CornerRadius="8"
-                    Margin="0,8">
-                    <Grid>
+            <!-- Имя -->
+            <Border
+                Padding="16"
+                Background="{DynamicResource TextBackground}"
+                CornerRadius="8"
+                Margin="0,8">
+                <StackPanel>
+                    <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Text="Имя" />
+                    <Grid Margin="0,6,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Статус" />
-                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,4,0,0" Text="Установить статус профиля" />
-                        </StackPanel>
-                        <ui:SymbolIcon
+                        <ui:TextBox
+                            x:Name="FirstNameBox"
+                            Grid.Column="0"
+                            FontSize="14"
+                            PlaceholderText="Имя" />
+                        <ui:Button
                             Grid.Column="1"
-                            Foreground="#FFDA5151"
-                            Symbol="Emoji24" />
+                            Margin="8,0,0,0"
+                            Click="SaveName_Click"
+                            Cursor="Hand"
+                            Style="{DynamicResource Win11Default}"
+                            Content="Сохранить" />
                     </Grid>
-                </Border>
+                </StackPanel>
+            </Border>
 
-                <Border
-                    Padding="16"
-                    Background="#2D2D2D"
-                    CornerRadius="8"
-                    Margin="0,8">
-                    <Grid>
+            <!-- Фамилия -->
+            <Border
+                Padding="16"
+                Background="{DynamicResource TextBackground}"
+                CornerRadius="8"
+                Margin="0,8">
+                <StackPanel>
+                    <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Text="Фамилия" />
+                    <Grid Margin="0,6,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Описание" />
-                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,4,0,0" Text="Добавить описание профиля" />
-                        </StackPanel>
-                        <ui:SymbolIcon
+                        <ui:TextBox
+                            x:Name="LastNameBox"
+                            Grid.Column="0"
+                            FontSize="14"
+                            PlaceholderText="Фамилия" />
+                        <ui:Button
                             Grid.Column="1"
-                            Foreground="#FFDA5151"
-                            Symbol="Textbox24" />
+                            Margin="8,0,0,0"
+                            Click="SaveName_Click"
+                            Cursor="Hand"
+                            Style="{DynamicResource Win11Default}"
+                            Content="Сохранить" />
                     </Grid>
-                </Border>
+                </StackPanel>
+            </Border>
 
-                <Border
-                    Padding="16"
-                    Background="#2D2D2D"
-                    CornerRadius="8"
-                    Margin="0,8">
-                    <Grid>
+            <!-- Username -->
+            <Border
+                Padding="16"
+                Background="{DynamicResource TextBackground}"
+                CornerRadius="8"
+                Margin="0,8">
+                <StackPanel>
+                    <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Text="Имя пользователя" />
+                    <Grid Margin="0,6,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Аватар" />
-                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,4,0,0" Text="Изменить фото профиля" />
-                        </StackPanel>
-                        <ui:SymbolIcon
+                        <ui:TextBox
+                            x:Name="UsernameBox"
+                            Grid.Column="0"
+                            FontSize="14"
+                            PlaceholderText="username" />
+                        <ui:Button
                             Grid.Column="1"
-                            Foreground="#FFDA5151"
-                            Symbol="Image24" />
+                            Margin="8,0,0,0"
+                            Click="SaveUsername_Click"
+                            Cursor="Hand"
+                            Style="{DynamicResource Win11Default}"
+                            Content="Сохранить" />
                     </Grid>
-                </Border>
-            </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Описание -->
+            <Border
+                Padding="16"
+                Background="{DynamicResource TextBackground}"
+                CornerRadius="8"
+                Margin="0,8">
+                <StackPanel>
+                    <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Text="Описание" />
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <ui:TextBox
+                            x:Name="BioBox"
+                            Grid.Column="0"
+                            FontSize="14"
+                            PlaceholderText="О себе"
+                            AcceptsReturn="True"
+                            MinHeight="60"
+                            TextWrapping="Wrap" />
+                        <ui:Button
+                            Grid.Column="1"
+                            Margin="8,0,0,0"
+                            VerticalAlignment="Top"
+                            Click="SaveBio_Click"
+                            Cursor="Hand"
+                            Style="{DynamicResource Win11Default}"
+                            Content="Сохранить" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Статус -->
+            <TextBlock
+                x:Name="StatusText"
+                Margin="0,12,0,0"
+                FontSize="12"
+                Foreground="{DynamicResource DescriptionText}" />
         </StackPanel>
     </Grid>
 </local:BaseSettingsPage>

@@ -6,34 +6,18 @@
     xmlns:local="clr-namespace:BarkFluff.Client.WPF.UserControls.SettingsPages"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-    Height="550"
     d:DesignHeight="550"
     d:DesignWidth="500"
     mc:Ignorable="d">
-    <Grid Background="#1f1f1f">
-        <StackPanel Margin="20">
-            <!-- Кнопка "Назад" -->
-            <Button
-                HorizontalAlignment="Left"
-                Click="GoBack_Click"
-                Cursor="Hand"
-                Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}">
-                <StackPanel Orientation="Horizontal">
-                    <ui:SymbolIcon
-                        Margin="0,0,8,0"
-                        Foreground="#E0E0E0"
-                        Symbol="ArrowLeft24" />
-                    <TextBlock Foreground="#E0E0E0" Text="Назад" />
-                </StackPanel>
-            </Button>
-
+    <Grid Background="{DynamicResource SettingsContentBackground}">
+        <StackPanel Margin="24,16,24,24">
             <!-- Заголовок страницы -->
             <TextBlock Style="{DynamicResource HeaderSettings}" Text="Уведомления" />
 
             <!-- Описание -->
             <TextBlock
                 Margin="0,8,0,16"
-                Foreground="#A0A0A0"
+                Foreground="{DynamicResource DescriptionText}"
                 FontSize="12"
                 TextWrapping="Wrap"
                 Text="Выберите, какую информацию показывать в уведомлениях о новых сообщениях" />
@@ -45,7 +29,7 @@
                 <Border
                     x:Name="ModeDisabled"
                     Padding="16"
-                    Background="#2D2D2D"
+                    Background="{DynamicResource TextBackground}"
                     CornerRadius="8"
                     Margin="0,4"
                     Cursor="Hand"
@@ -61,18 +45,18 @@
                             Grid.Column="0"
                             Margin="0,0,12,0"
                             VerticalAlignment="Center"
-                            Foreground="#A0A0A0"
+                            Foreground="{DynamicResource DescriptionText}"
                             Symbol="AlertOff24" />
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Отключены" />
-                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,2,0,0" Text="Уведомления не будут показываться" />
+                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Отключены" />
+                            <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,2,0,0" Text="Уведомления не будут показываться" />
                         </StackPanel>
                         <Ellipse
                             x:Name="RadioDisabled"
                             Grid.Column="2"
                             Width="20" Height="20"
                             VerticalAlignment="Center"
-                            Stroke="#A0A0A0"
+                            Stroke="{DynamicResource DescriptionText}"
                             StrokeThickness="2"
                             Fill="Transparent" />
                     </Grid>
@@ -82,7 +66,7 @@
                 <Border
                     x:Name="ModeHidden"
                     Padding="16"
-                    Background="#2D2D2D"
+                    Background="{DynamicResource TextBackground}"
                     CornerRadius="8"
                     Margin="0,4"
                     Cursor="Hand"
@@ -98,18 +82,18 @@
                             Grid.Column="0"
                             Margin="0,0,12,0"
                             VerticalAlignment="Center"
-                            Foreground="#A0A0A0"
+                            Foreground="{DynamicResource DescriptionText}"
                             Symbol="EyeOff24" />
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Скрыть содержимое" />
-                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,2,0,0" Text="Только &quot;Вам пришло новое сообщение&quot;" />
+                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Скрыть содержимое" />
+                            <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,2,0,0" Text="Только &quot;Вам пришло новое сообщение&quot;" />
                         </StackPanel>
                         <Ellipse
                             x:Name="RadioHidden"
                             Grid.Column="2"
                             Width="20" Height="20"
                             VerticalAlignment="Center"
-                            Stroke="#A0A0A0"
+                            Stroke="{DynamicResource DescriptionText}"
                             StrokeThickness="2"
                             Fill="Transparent" />
                     </Grid>
@@ -119,7 +103,7 @@
                 <Border
                     x:Name="ModeSenderOnly"
                     Padding="16"
-                    Background="#2D2D2D"
+                    Background="{DynamicResource TextBackground}"
                     CornerRadius="8"
                     Margin="0,4"
                     Cursor="Hand"
@@ -135,18 +119,18 @@
                             Grid.Column="0"
                             Margin="0,0,12,0"
                             VerticalAlignment="Center"
-                            Foreground="#A0A0A0"
+                            Foreground="{DynamicResource DescriptionText}"
                             Symbol="Person24" />
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Только отправитель" />
-                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,2,0,0" Text="Имя отправителя без текста сообщения" />
+                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Только отправитель" />
+                            <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,2,0,0" Text="Имя отправителя без текста сообщения" />
                         </StackPanel>
                         <Ellipse
                             x:Name="RadioSenderOnly"
                             Grid.Column="2"
                             Width="20" Height="20"
                             VerticalAlignment="Center"
-                            Stroke="#A0A0A0"
+                            Stroke="{DynamicResource DescriptionText}"
                             StrokeThickness="2"
                             Fill="Transparent" />
                     </Grid>
@@ -156,7 +140,7 @@
                 <Border
                     x:Name="ModeFullText"
                     Padding="16"
-                    Background="#2D2D2D"
+                    Background="{DynamicResource TextBackground}"
                     CornerRadius="8"
                     Margin="0,4"
                     Cursor="Hand"
@@ -172,18 +156,18 @@
                             Grid.Column="0"
                             Margin="0,0,12,0"
                             VerticalAlignment="Center"
-                            Foreground="#A0A0A0"
+                            Foreground="{DynamicResource DescriptionText}"
                             Symbol="TextDescription24" />
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Текст без превью" />
-                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,2,0,0" Text="Имя и текст сообщения, без изображений" />
+                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Текст без превью" />
+                            <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,2,0,0" Text="Имя и текст сообщения, без изображений" />
                         </StackPanel>
                         <Ellipse
                             x:Name="RadioFullText"
                             Grid.Column="2"
                             Width="20" Height="20"
                             VerticalAlignment="Center"
-                            Stroke="#A0A0A0"
+                            Stroke="{DynamicResource DescriptionText}"
                             StrokeThickness="2"
                             Fill="Transparent" />
                     </Grid>
@@ -193,7 +177,7 @@
                 <Border
                     x:Name="ModeFullPreview"
                     Padding="16"
-                    Background="#2D2D2D"
+                    Background="{DynamicResource TextBackground}"
                     CornerRadius="8"
                     Margin="0,4"
                     Cursor="Hand"
@@ -209,18 +193,18 @@
                             Grid.Column="0"
                             Margin="0,0,12,0"
                             VerticalAlignment="Center"
-                            Foreground="#A0A0A0"
+                            Foreground="{DynamicResource DescriptionText}"
                             Symbol="Image24" />
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Полностью с превью" />
-                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,2,0,0" Text="Имя, текст и превью изображений" />
+                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Полностью с превью" />
+                            <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,2,0,0" Text="Имя, текст и превью изображений" />
                         </StackPanel>
                         <Ellipse
                             x:Name="RadioFullPreview"
                             Grid.Column="2"
                             Width="20" Height="20"
                             VerticalAlignment="Center"
-                            Stroke="#A0A0A0"
+                            Stroke="{DynamicResource DescriptionText}"
                             StrokeThickness="2"
                             Fill="Transparent" />
                     </Grid>

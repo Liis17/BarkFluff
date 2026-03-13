@@ -11,10 +11,5 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
         {
             InitializeComponent();
         }
-
-        private void GoBack_Click(object sender, System.Windows.RoutedEventArgs e)
-        {
-            GoBack();
-        }
     }
 }

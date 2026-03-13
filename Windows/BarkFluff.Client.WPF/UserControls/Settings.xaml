@@ -5,259 +5,150 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="clr-namespace:BarkFluff.Client.WPF.UserControls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:settingsControls="clr-namespace:BarkFluff.Client.WPF.UserControls.SettingsPages"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     HorizontalAlignment="Stretch"
     VerticalAlignment="Stretch"
     d:DesignHeight="700"
-    d:DesignWidth="500"
+    d:DesignWidth="720"
     mc:Ignorable="d">
     <Border
         HorizontalAlignment="Stretch"
         VerticalAlignment="Stretch"
-        Background="#1f1f1f"
+        Background="{DynamicResource SettingsContentBackground}"
         ClipToBounds="True"
         CornerRadius="12">
-        <Grid
-            x:Name="ContentContainer"
-            HorizontalAlignment="Stretch"
-            VerticalAlignment="Stretch">
-            <ScrollViewer
-                HorizontalAlignment="Stretch"
-                VerticalAlignment="Stretch"
-                HorizontalScrollBarVisibility="Disabled"
-                VerticalScrollBarVisibility="Visible">
-                <Grid
-                    Margin="10,0,10,0"
-                    HorizontalAlignment="Stretch"
-                    VerticalAlignment="Stretch">
-                    <StackPanel
-                        x:Name="MainMenuPanel"
-                        HorizontalAlignment="Stretch"
-                        VerticalAlignment="Stretch"
-                        Orientation="Vertical">
-                        <Border
-                            x:Name="Avatar"
-                            Height="140"
-                            Margin="0 50 0 0"
-                            HorizontalAlignment="Stretch"
-                            VerticalAlignment="Top">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="200" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Sidebar -->
+            <Border
+                Grid.Column="0"
+                Background="{DynamicResource SettingsSidebarBackground}"
+                CornerRadius="12,0,0,12">
+                <DockPanel Margin="0,12,0,12">
+                    <!-- Profile header -->
+                    <StackPanel DockPanel.Dock="Top" Margin="12,8,12,0">
+                        <Grid Margin="4,0,4,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
                             <local:CachedAvatar
-                                x:Name="AvatarCachedImage"
-                                Width="110"
-                                Height="110"
-                                Margin="0,0,0,16"
-                                HorizontalAlignment="Center"
-                                CornerRadius="55"
-                                EnableDynamicShadow="True"
-                                ShadowBlurRadius="25"
-                                ShadowOpacity="0.5" />
-                        </Border>
-                        <settingsControls:UsedSpaceProgressBar HorizontalAlignment="Stretch" />
-
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="*" />
-                                <RowDefinition Height="*" />
-                                <RowDefinition Height="*" />
-                                <RowDefinition Height="*" />
-                                <RowDefinition Height="*" />
-                                <RowDefinition Height="*" />
-                                <RowDefinition Height="*" />
-                                <RowDefinition Height="*" />
-                                <RowDefinition Height="*" />
-
-                            </Grid.RowDefinitions>
-                            <TextBlock
-                                Grid.Row="0"
-                                Grid.Column="0"
-                                Style="{DynamicResource HeaderSettings}"
-                                Text="Оформление" />
-                            <Border
-                                Grid.Row="1"
-                                Grid.Column="0"
-                                Margin="5"
-                                Padding="5,0,5,0"
-                                Background="#1f1f1f"
-                                Style="{DynamicResource Win11CardStyle}">
-                                <settingsControls:SettingsMenuBlock
-                                    Command="{Binding NavigateCommand}"
-                                    CommandParameter="Chats"
-                                    IconColor="#FF5086B5"
-                                    IconSymbol="ChatEmpty24"
-                                    Text="Чаты" />
-                            </Border>
-                            <Border
-                                Grid.Row="1"
-                                Grid.Column="1"
-                                Margin="5"
-                                Padding="5,0,5,0"
-                                Background="#1f1f1f"
-                                Style="{DynamicResource Win11CardStyle}">
-                                <settingsControls:SettingsMenuBlock
-                                    Command="{Binding NavigateCommand}"
-                                    CommandParameter="Profile"
-                                    IconColor="#FFDA5151"
-                                    IconSymbol="Person24"
-                                    Text="Профиль" />
-                            </Border>
-
-                            <TextBlock
-                                Grid.Row="2"
-                                Grid.Column="0"
-                                Style="{DynamicResource HeaderSettings}"
-                                Text="Приложение" />
-
-                            <Border
-                                Grid.Row="3"
-                                Grid.Column="1"
-                                Margin="5"
-                                Padding="5,0,5,0"
-                                Background="#1f1f1f"
-                                Style="{DynamicResource Win11CardStyle}">
-                                <settingsControls:SettingsMenuBlock
-                                    Command="{Binding NavigateCommand}"
-                                    CommandParameter="Language"
-                                    IconColor="#FF8E469A"
-                                    IconSymbol="Globe24"
-                                    Text="Язык" />
-                            </Border>
-                            <Border
-                                Grid.Row="3"
-                                Grid.Column="0"
-                                Margin="5"
-                                Padding="5,0,5,0"
-                                Background="#1f1f1f"
-                                Style="{DynamicResource Win11CardStyle}">
-                                <settingsControls:SettingsMenuBlock
-                                    Command="{Binding NavigateCommand}"
-                                    CommandParameter="Notifications"
-                                    IconColor="#FFB35844"
-                                    IconSymbol="CommentNote24"
-                                    Text="Уведомления" />
-                            </Border>
-
-
-                            <TextBlock
-                                Grid.Row="4"
-                                Grid.Column="0"
-                                Style="{DynamicResource HeaderSettings}"
-                                Text="Безопасность" />
-                            <Border
-                                Grid.Row="5"
-                                Grid.Column="0"
-                                Margin="5"
-                                Padding="5,0,5,0"
-                                Background="#1f1f1f"
-                                Style="{DynamicResource Win11CardStyle}">
-                                <settingsControls:SettingsMenuBlock
-                                    Command="{Binding NavigateCommand}"
-                                    CommandParameter="Security"
-                                    IconColor="#FFC58C39"
-                                    IconSymbol="LockClosed32"
-                                    Text="Защита" />
-                            </Border>
-                            <Border
-                                Grid.Row="5"
-                                Grid.Column="1"
-                                Margin="5"
-                                Padding="5,0,5,0"
-                                Background="#1f1f1f"
-                                Style="{DynamicResource Win11CardStyle}">
-                                <settingsControls:SettingsMenuBlock
-                                    Command="{Binding NavigateCommand}"
-                                    CommandParameter="Privacy"
-                                    IconColor="#FF3FA29F"
-                                    IconSymbol="ShieldLock28"
-                                    Text="Конфиденциальность" />
-                            </Border>
-
-
-
+                                x:Name="SidebarAvatar"
+                                Width="48"
+                                Height="48"
+                                CornerRadius="24"
+                                EnableDynamicShadow="False" />
+                            <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                <TextBlock
+                                    x:Name="SidebarDisplayName"
+                                    FontSize="14"
+                                    FontWeight="SemiBold"
+                                    Foreground="{DynamicResource TitleText}"
+                                    TextTrimming="CharacterEllipsis"
+                                    Text="" />
+                                <TextBlock
+                                    x:Name="SidebarUsername"
+                                    FontSize="12"
+                                    Foreground="{DynamicResource DescriptionText}"
+                                    TextTrimming="CharacterEllipsis"
+                                    Text="" />
+                            </StackPanel>
                         </Grid>
-                        <Border
-                            Grid.Row="6"
-                            Grid.Column="3"
-                            Margin="5"
-                            Padding="5,0,5,0"
-                            Background="#1f1f1f"
-                            Style="{DynamicResource Win11CardStyle}">
-                            <settingsControls:SettingsMenuDeviceBlock
-                                Command="{Binding NavigateCommand}"
-                                CommandParameter="Devices"
-                                IconColor="#FF156ADC"
-                                IconSymbol="PhoneDesktop28"
-                                Text="Устройства" />
-                        </Border>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="*" />
-                                <RowDefinition Height="*" />
-                            </Grid.RowDefinitions>
-                            <TextBlock
-                                Grid.Row="0"
-                                Grid.Column="0"
-                                Style="{DynamicResource HeaderSettings}"
-                                Text="Данные и память" />
-
-                            <Border
-                                Grid.Row="1"
-                                Grid.Column="1"
-                                Margin="5"
-                                Padding="5,0,5,0"
-                                Background="#1f1f1f"
-                                Style="{DynamicResource Win11CardStyle}">
-                                <settingsControls:SettingsMenuBlock
-                                    Command="{Binding NavigateCommand}"
-                                    CommandParameter="Cache"
-                                    IconColor="#FF68A540"
-                                    IconSymbol="DatabaseStack16"
-                                    Text="Кеш" />
-                            </Border>
-                            <Border
-                                Grid.Row="1"
-                                Grid.Column="0"
-                                Margin="5"
-                                Padding="5,0,5,0"
-                                Background="#1f1f1f"
-                                Style="{DynamicResource Win11CardStyle}">
-                                <settingsControls:SettingsMenuBlock
-                                    Command="{Binding NavigateCommand}"
-                                    CommandParameter="Cloud"
-                                    IconColor="#FF79AEDC"
-                                    IconSymbol="Cloud24"
-                                    Text="Облако" />
-                            </Border>
-                        </Grid>
-
-
+                        <Separator Style="{DynamicResource SettingsSidebarSeparator}" />
                     </StackPanel>
 
-                    <!--  Контейнер для страниц настроек  -->
-                    <Grid
-                        x:Name="PageContainer"
+                    <!-- Version at bottom -->
+                    <TextBlock
+                        DockPanel.Dock="Bottom"
+                        Margin="16,0,0,4"
+                        FontSize="11"
+                        Foreground="{DynamicResource DescriptionText}"
+                        Text="BarkFluff Desktop" />
+
+                    <!-- Navigation items -->
+                    <ListBox
+                        x:Name="NavListBox"
+                        Style="{DynamicResource SettingsSidebarListBox}"
+                        SelectionChanged="NavListBox_SelectionChanged">
+                        <ListBoxItem Style="{DynamicResource SettingsSidebarItem}" Tag="Profile">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon Margin="0,0,8,0" FontSize="16" Foreground="{DynamicResource TitleText}" Symbol="Person24" />
+                                <TextBlock FontSize="13" Foreground="{DynamicResource TitleText}" Text="Профиль" />
+                            </StackPanel>
+                        </ListBoxItem>
+                        <ListBoxItem Style="{DynamicResource SettingsSidebarItem}" Tag="Chats">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon Margin="0,0,8,0" FontSize="16" Foreground="{DynamicResource TitleText}" Symbol="ChatEmpty24" />
+                                <TextBlock FontSize="13" Foreground="{DynamicResource TitleText}" Text="Чаты" />
+                            </StackPanel>
+                        </ListBoxItem>
+                        <Separator Style="{DynamicResource SettingsSidebarSeparator}" />
+                        <ListBoxItem Style="{DynamicResource SettingsSidebarItem}" Tag="Notifications">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon Margin="0,0,8,0" FontSize="16" Foreground="{DynamicResource TitleText}" Symbol="CommentNote24" />
+                                <TextBlock FontSize="13" Foreground="{DynamicResource TitleText}" Text="Уведомления" />
+                            </StackPanel>
+                        </ListBoxItem>
+                        <ListBoxItem Style="{DynamicResource SettingsSidebarItem}" Tag="Language">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon Margin="0,0,8,0" FontSize="16" Foreground="{DynamicResource TitleText}" Symbol="Globe24" />
+                                <TextBlock FontSize="13" Foreground="{DynamicResource TitleText}" Text="Язык" />
+                            </StackPanel>
+                        </ListBoxItem>
+                        <Separator Style="{DynamicResource SettingsSidebarSeparator}" />
+                        <ListBoxItem Style="{DynamicResource SettingsSidebarItem}" Tag="Security">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon Margin="0,0,8,0" FontSize="16" Foreground="{DynamicResource TitleText}" Symbol="LockClosed32" />
+                                <TextBlock FontSize="13" Foreground="{DynamicResource TitleText}" Text="Защита" />
+                            </StackPanel>
+                        </ListBoxItem>
+                        <ListBoxItem Style="{DynamicResource SettingsSidebarItem}" Tag="Privacy">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon Margin="0,0,8,0" FontSize="16" Foreground="{DynamicResource TitleText}" Symbol="ShieldLock28" />
+                                <TextBlock FontSize="13" Foreground="{DynamicResource TitleText}" Text="Конфиденциальность" />
+                            </StackPanel>
+                        </ListBoxItem>
+                        <ListBoxItem Style="{DynamicResource SettingsSidebarItem}" Tag="Devices">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon Margin="0,0,8,0" FontSize="16" Foreground="{DynamicResource TitleText}" Symbol="PhoneDesktop28" />
+                                <TextBlock FontSize="13" Foreground="{DynamicResource TitleText}" Text="Устройства" />
+                            </StackPanel>
+                        </ListBoxItem>
+                        <Separator Style="{DynamicResource SettingsSidebarSeparator}" />
+                        <ListBoxItem Style="{DynamicResource SettingsSidebarItem}" Tag="Cloud">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon Margin="0,0,8,0" FontSize="16" Foreground="{DynamicResource TitleText}" Symbol="Cloud24" />
+                                <TextBlock FontSize="13" Foreground="{DynamicResource TitleText}" Text="Облако" />
+                            </StackPanel>
+                        </ListBoxItem>
+                        <ListBoxItem Style="{DynamicResource SettingsSidebarItem}" Tag="Cache">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon Margin="0,0,8,0" FontSize="16" Foreground="{DynamicResource TitleText}" Symbol="DatabaseStack16" />
+                                <TextBlock FontSize="13" Foreground="{DynamicResource TitleText}" Text="Кеш" />
+                            </StackPanel>
+                        </ListBoxItem>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+
+            <!-- Content area -->
+            <Border
+                Grid.Column="1"
+                Background="{DynamicResource SettingsContentBackground}"
+                CornerRadius="0,12,12,0">
+                <ScrollViewer
+                    HorizontalScrollBarVisibility="Disabled"
+                    VerticalScrollBarVisibility="Auto">
+                    <ContentControl
+                        x:Name="PageContentControl"
                         HorizontalAlignment="Stretch"
-                        VerticalAlignment="Stretch"
-                        Visibility="Collapsed">
-                        <ContentControl
-                            x:Name="PageContentControl"
-                            HorizontalAlignment="Stretch"
-                            VerticalAlignment="Stretch" />
-                    </Grid>
-                </Grid>
-
-            </ScrollViewer>
-            <!--  Главное меню настроек  -->
-
+                        VerticalAlignment="Stretch" />
+                </ScrollViewer>
+            </Border>
         </Grid>
     </Border>
 </UserControl>

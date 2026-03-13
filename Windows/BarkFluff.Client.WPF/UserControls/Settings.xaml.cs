@@ -4,7 +4,6 @@ using BarkFluff.Client.WPF.UserControls.SettingsPages;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media;
 using System.Windows.Media.Animation;
 
 namespace BarkFluff.Client.WPF.UserControls
@@ -14,136 +13,77 @@ namespace BarkFluff.Client.WPF.UserControls
     /// </summary>
     public partial class Settings : UserControl
     {
-        private BaseSettingsPage? _currentPage;
         private readonly Dictionary<string, Func<BaseSettingsPage>> _pages;
-
-        public ICommand NavigateCommand { get; }
 
         public Settings()
         {
             InitializeComponent();
-            DataContext = this;
-            LoadAvatar(App.GParam.PictureUrl);
 
-            // Регистрация страниц настроек
             _pages = new Dictionary<string, Func<BaseSettingsPage>>
             {
-                { "Chats", () => new SettingsPages.ChatsSettingsPage() },
-                { "Profile", () => new SettingsPages.ProfileSettingsPage() },
-                { "Language", () => new SettingsPages.LanguageSettingsPage() },
-                { "Notifications", () => new SettingsPages.NotificationsSettingsPage() },
-                { "Security", () => new SettingsPages.SecuritySettingsPage() },
-                { "Privacy", () => new SettingsPages.PrivacySettingsPage() },
-                { "Devices", () => new SettingsPages.DevicesSettingsPage() },
-                { "Cache", () => new SettingsPages.CacheSettingsPage() },
-                { "Cloud", () => new SettingsPages.CloudSettingsPage() }
+                { "Profile", () => new ProfileSettingsPage() },
+                { "Chats", () => new ChatsSettingsPage() },
+                { "Notifications", () => new NotificationsSettingsPage() },
+                { "Language", () => new LanguageSettingsPage() },
+                { "Security", () => new SecuritySettingsPage() },
+                { "Privacy", () => new PrivacySettingsPage() },
+                { "Devices", () => new DevicesSettingsPage() },
+                { "Cloud", () => new CloudSettingsPage() },
+                { "Cache", () => new CacheSettingsPage() }
             };
 
-            NavigateCommand = new RelayCommand<string>(NavigateTo);
+            LoadSidebarProfile();
+
+            // Автовыбор первого пункта
+            Loaded += (_, _) =>
+            {
+                if (NavListBox.Items.Count > 0)
+                    NavListBox.SelectedIndex = 0;
+            };
+        }
+
+        private void LoadSidebarProfile()
+        {
+            var gp = App.GParam;
+            if (gp == null) return;
+
+            var displayName = $"{gp.FirstName} {gp.LastName}".Trim();
+            SidebarDisplayName.Text = string.IsNullOrEmpty(displayName) ? gp.UserName : displayName;
+            SidebarUsername.Text = $"@{gp.UserName}";
+
+            LoadAvatar(gp.PictureUrl);
         }
 
         private void LoadAvatar(string? avatarUrl)
         {
             if (string.IsNullOrEmpty(avatarUrl))
             {
-                AvatarCachedImage.FileId = null;
-                AvatarCachedImage.FileUrl = null;
+                SidebarAvatar.FileId = null;
+                SidebarAvatar.FileUrl = null;
                 return;
             }
 
             var fileId = FileCacheService.ExtractFileIdFromUrl(avatarUrl);
-            AvatarCachedImage.FileId = fileId;
-            AvatarCachedImage.FileUrl = avatarUrl;
+            SidebarAvatar.FileId = fileId;
+            SidebarAvatar.FileUrl = avatarUrl;
         }
 
-        /// <summary>
-        /// Навигация к странице настроек с анимацией.
-        /// </summary>
-        private void NavigateTo(string pageKey)
+        private void NavListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (!_pages.TryGetValue(pageKey, out var pageFactory))
-            {
+            if (NavListBox.SelectedItem is not ListBoxItem item)
                 return;
-            }
 
-            var newPage = pageFactory();
-            newPage.BackRequested += (s, e) => GoBack();
+            var pageKey = item.Tag as string;
+            if (string.IsNullOrEmpty(pageKey) || !_pages.TryGetValue(pageKey, out var factory))
+                return;
 
-            _currentPage = newPage;
-            PageContentControl.Content = newPage;
+            var page = factory();
+            page.OnNavigatedTo();
 
-            // Анимация перехода
-            AnimateTransition(true);
-        }
-
-        /// <summary>
-        /// Возврат к главному меню с анимацией.
-        /// </summary>
-        private void GoBack()
-        {
-            AnimateTransition(false);
-        }
-
-        /// <summary>
-        /// Анимация перехода между меню и страницей.
-        /// </summary>
-        /// <param name="navigateForward">true - переход к странице, false - возврат к меню</param>
-        private void AnimateTransition(bool navigateForward)
-        {
-            const double offset = 500;
-            const int durationMs = 300;
-
-            FrameworkElement currentContent = navigateForward ? MainMenuPanel : PageContainer;
-            FrameworkElement newContent = navigateForward ? PageContainer : MainMenuPanel;
-
-            // Настраиваем Transform для анимации
-            currentContent.RenderTransform = new TranslateTransform();
-            newContent.RenderTransform = new TranslateTransform();
-
-            // Показываем новый контейнер
-            newContent.Visibility = Visibility.Visible;
-
-            // Создаем Storyboard для анимации
-            var storyboard = new Storyboard();
-
-            // Анимация ухода текущего контента
-            var currentAnimation = new DoubleAnimation
-            {
-                To = navigateForward ? -offset : offset,
-                Duration = TimeSpan.FromMilliseconds(durationMs),
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-            };
-            Storyboard.SetTarget(currentAnimation, currentContent);
-            Storyboard.SetTargetProperty(currentAnimation, new PropertyPath("(UIElement.RenderTransform).(TranslateTransform.X)"));
-            storyboard.Children.Add(currentAnimation);
-
-            // Анимация появления нового контента
-            var newAnimation = new DoubleAnimation
-            {
-                From = navigateForward ? offset : -offset,
-                To = 0,
-                Duration = TimeSpan.FromMilliseconds(durationMs),
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-            };
-            Storyboard.SetTarget(newAnimation, newContent);
-            Storyboard.SetTargetProperty(newAnimation, new PropertyPath("(UIElement.RenderTransform).(TranslateTransform.X)"));
-            storyboard.Children.Add(newAnimation);
-
-            // После завершения анимации скрываем ушедший контент
-            storyboard.Completed += (s, e) =>
-            {
-                currentContent.Visibility = Visibility.Collapsed;
-                currentContent.RenderTransform = null;
-                newContent.RenderTransform = null;
-
-                if (!navigateForward)
-                {
-                    _currentPage = null;
-                    PageContentControl.Content = null;
-                }
-            };
-
-            storyboard.Begin();
+            // Fade-анимация при смене страницы
+            var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(150));
+            PageContentControl.Content = page;
+            PageContentControl.BeginAnimation(OpacityProperty, fadeIn);
         }
     }
 

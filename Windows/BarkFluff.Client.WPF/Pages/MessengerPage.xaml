@@ -146,7 +146,7 @@
         <!--  Центральный блок для оверлеев  -->
         <Border
             x:Name="CenterPanel"
-            Width="550"
+            Width="720"
             MaxHeight="1200"
             Margin="30,50,30,30"
             HorizontalAlignment="Center"
