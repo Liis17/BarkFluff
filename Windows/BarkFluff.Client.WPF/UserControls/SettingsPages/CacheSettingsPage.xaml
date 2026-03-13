@@ -6,126 +6,57 @@
     xmlns:local="clr-namespace:BarkFluff.Client.WPF.UserControls.SettingsPages"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-    Height="550"
     d:DesignHeight="550"
     d:DesignWidth="500"
     mc:Ignorable="d">
-    <Grid Background="#1f1f1f">
-        <StackPanel Margin="20">
-            <!-- Кнопка "Назад" -->
-            <Button
-                HorizontalAlignment="Left"
-                Click="GoBack_Click"
-                Cursor="Hand"
-                Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}">
-                <StackPanel Orientation="Horizontal">
-                    <ui:SymbolIcon
-                        Margin="0,0,8,0"
-                        Foreground="#E0E0E0"
-                        Symbol="ArrowLeft24" />
-                    <TextBlock Foreground="#E0E0E0" Text="Назад" />
-                </StackPanel>
-            </Button>
-
+    <Grid Background="{DynamicResource SettingsContentBackground}">
+        <StackPanel Margin="24,16,24,24">
             <!-- Заголовок страницы -->
             <TextBlock Style="{DynamicResource HeaderSettings}" Text="Кеш" />
 
-            <!-- Настройки кеша -->
-            <StackPanel Margin="0,10,0,0">
-                <Border
-                    Padding="16"
-                    Background="#2D2D2D"
-                    CornerRadius="8"
-                    Margin="0,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Размер кеша" />
-                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,4,0,0" Text="2.4 ГБ" />
-                        </StackPanel>
-                        <ui:SymbolIcon
-                            Grid.Column="1"
-                            Foreground="#FF68A540"
-                            Symbol="DatabaseStack16" />
-                    </Grid>
-                </Border>
+            <!-- Размер кеша -->
+            <Border
+                Padding="16"
+                Background="{DynamicResource TextBackground}"
+                CornerRadius="8"
+                Margin="0,8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Размер кеша" />
+                        <TextBlock
+                            x:Name="CacheSizeText"
+                            Foreground="{DynamicResource DescriptionText}"
+                            FontSize="12"
+                            Margin="0,4,0,0"
+                            Text="Подсчёт..." />
+                    </StackPanel>
+                    <ui:SymbolIcon
+                        Grid.Column="1"
+                        Foreground="#FF68A540"
+                        Symbol="DatabaseStack16" />
+                </Grid>
+            </Border>
 
-                <Border
-                    Padding="16"
-                    Background="#2D2D2D"
-                    CornerRadius="8"
-                    Margin="0,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Медиа файлы" />
-                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,4,0,0" Text="1.8 ГБ" />
-                        </StackPanel>
-                        <ui:SymbolIcon
-                            Grid.Column="1"
-                            Foreground="#FF68A540"
-                            Symbol="Image24" />
-                    </Grid>
-                </Border>
+            <!-- Очистка -->
+            <ui:Button
+                Margin="0,16,0,0"
+                HorizontalAlignment="Left"
+                Click="ClearCache_Click"
+                Cursor="Hand"
+                Background="#df5000"
+                Foreground="White"
+                Content="Очистить кеш" />
 
-                <Border
-                    Padding="16"
-                    Background="#2D2D2D"
-                    CornerRadius="8"
-                    Margin="0,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Временные файлы" />
-                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,4,0,0" Text="600 МБ" />
-                        </StackPanel>
-                        <ui:SymbolIcon
-                            Grid.Column="1"
-                            Foreground="#FF68A540"
-                            Symbol="Document24" />
-                    </Grid>
-                </Border>
-
-                <Border
-                    Padding="16"
-                    Background="#2D2D2D"
-                    CornerRadius="8"
-                    Margin="0,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Автоочистка" />
-                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,4,0,0" Text="При достижении 5 ГБ" />
-                        </StackPanel>
-                        <ui:SymbolIcon
-                            Grid.Column="1"
-                            Foreground="#FF68A540"
-                            Symbol="Delete24" />
-                    </Grid>
-                </Border>
-
-                <Button
-                    Width="200"
-                    Margin="0,20,0,0"
-                    HorizontalAlignment="Center"
-                    Background="#df5000"
-                    Content="Очистить кеш"
-                    Cursor="Hand"
-                    Foreground="White"
-                    Padding="16,8" />
-            </StackPanel>
+            <!-- Статус -->
+            <TextBlock
+                x:Name="StatusText"
+                Margin="0,12,0,0"
+                FontSize="12"
+                Foreground="{DynamicResource DescriptionText}" />
         </StackPanel>
     </Grid>
 </local:BaseSettingsPage>

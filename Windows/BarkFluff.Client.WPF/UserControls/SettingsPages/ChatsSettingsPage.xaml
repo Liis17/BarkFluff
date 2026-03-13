@@ -6,116 +6,98 @@
     xmlns:local="clr-namespace:BarkFluff.Client.WPF.UserControls.SettingsPages"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-    Height="550"
     d:DesignHeight="550"
     d:DesignWidth="500"
     mc:Ignorable="d">
-    <Grid Background="#1f1f1f">
-        <StackPanel Margin="20">
-            <!-- Кнопка "Назад" -->
-            <Button
-                HorizontalAlignment="Left"
-                Click="GoBack_Click"
-                Cursor="Hand"
-                Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}">
-                <StackPanel Orientation="Horizontal">
-                    <ui:SymbolIcon
-                        Margin="0,0,8,0"
-                        Foreground="#E0E0E0"
-                        Symbol="ArrowLeft24" />
-                    <TextBlock Foreground="#E0E0E0" Text="Назад" />
-                </StackPanel>
-            </Button>
-
+    <Grid Background="{DynamicResource SettingsContentBackground}">
+        <StackPanel Margin="24,16,24,24">
             <!-- Заголовок страницы -->
             <TextBlock Style="{DynamicResource HeaderSettings}" Text="Чаты" />
 
-            <!-- Настройки чатов -->
-            <StackPanel Margin="0,10,0,0">
-                <Border
-                    Padding="16"
-                    Background="#2D2D2D"
-                    CornerRadius="8"
-                    Margin="0,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Тема чатов" />
-                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,4,0,0" Text="Выбор цветовой схемы" />
-                        </StackPanel>
-                        <ui:SymbolIcon
-                            Grid.Column="1"
-                            Foreground="#FF5086B5"
-                            Symbol="PaintBrush24" />
-                    </Grid>
-                </Border>
-
-                <Border
-                    Padding="16"
-                    Background="#2D2D2D"
-                    CornerRadius="8"
-                    Margin="0,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Размер шрифта" />
-                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,4,0,0" Text="Настройка размера текста сообщений" />
-                        </StackPanel>
-                        <ui:SymbolIcon
-                            Grid.Column="1"
-                            Foreground="#FF5086B5"
-                            Symbol="TextFont24" />
-                    </Grid>
-                </Border>
-
-                <Border
-                    Padding="16"
-                    Background="#2D2D2D"
-                    CornerRadius="8"
-                    Margin="0,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Фон сообщений" />
-                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,4,0,0" Text="Выбор фона для пузырьков сообщений" />
-                        </StackPanel>
-                        <ui:SymbolIcon
-                            Grid.Column="1"
-                            Foreground="#FF5086B5"
-                            Symbol="Image24" />
-                    </Grid>
-                </Border>
-
-                <Border
-                    Padding="16"
-                    Background="#2D2D2D"
-                    CornerRadius="8"
-                    Margin="0,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Foreground="#E0E0E0" FontSize="14" FontWeight="Medium" Text="Показывать время" />
-                            <TextBlock Foreground="#A0A0A0" FontSize="12" Margin="0,4,0,0" Text="Отображение времени сообщений" />
-                        </StackPanel>
-                        <ui:SymbolIcon
-                            Grid.Column="1"
-                            Foreground="#FF5086B5"
-                            Symbol="Clock24" />
-                    </Grid>
-                </Border>
-            </StackPanel>
+            <!-- Тема приложения -->
+            <Border
+                Padding="16"
+                Background="{DynamicResource TextBackground}"
+                CornerRadius="8"
+                Margin="0,8">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <ui:SymbolIcon Foreground="#FF5086B5" Symbol="PaintBrush24" Margin="0,0,8,0" />
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Тема приложения" />
+                    </StackPanel>
+                    <StackPanel x:Name="ThemePanel" Margin="0,4,0,0">
+                        <Border
+                            x:Name="ThemeLight"
+                            Padding="12"
+                            CornerRadius="6"
+                            Margin="0,2"
+                            Cursor="Hand"
+                            MouseLeftButtonUp="ThemeOption_Click"
+                            Tag="light">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" Text="Светлая" />
+                                <Ellipse
+                                    x:Name="RadioLight"
+                                    Grid.Column="1"
+                                    Width="18" Height="18"
+                                    Stroke="{DynamicResource DescriptionText}"
+                                    StrokeThickness="2"
+                                    Fill="Transparent" />
+                            </Grid>
+                        </Border>
+                        <Border
+                            x:Name="ThemeDark"
+                            Padding="12"
+                            CornerRadius="6"
+                            Margin="0,2"
+                            Cursor="Hand"
+                            MouseLeftButtonUp="ThemeOption_Click"
+                            Tag="dark">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" Text="Тёмная" />
+                                <Ellipse
+                                    x:Name="RadioDark"
+                                    Grid.Column="1"
+                                    Width="18" Height="18"
+                                    Stroke="{DynamicResource DescriptionText}"
+                                    StrokeThickness="2"
+                                    Fill="Transparent" />
+                            </Grid>
+                        </Border>
+                        <Border
+                            x:Name="ThemeSystem"
+                            Padding="12"
+                            CornerRadius="6"
+                            Margin="0,2"
+                            Cursor="Hand"
+                            MouseLeftButtonUp="ThemeOption_Click"
+                            Tag="system">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" Text="Системная" />
+                                <Ellipse
+                                    x:Name="RadioSystem"
+                                    Grid.Column="1"
+                                    Width="18" Height="18"
+                                    Stroke="{DynamicResource DescriptionText}"
+                                    StrokeThickness="2"
+                                    Fill="Transparent" />
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
         </StackPanel>
     </Grid>
 </local:BaseSettingsPage>
