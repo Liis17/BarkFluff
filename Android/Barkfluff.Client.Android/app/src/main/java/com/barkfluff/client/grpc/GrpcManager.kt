@@ -1785,5 +1785,108 @@ class GrpcManager {
         val byType: Map<String, Long>
     )
 
+    data class ConfirmResetPasswordResult(
+        val accessToken: String,
+        val accessTokenExpiration: Long,
+        val refreshToken: String,
+        val refreshTokenExpiration: Long
+    )
+
     class InvalidOldPasswordException : Exception("Неверный старый пароль")
+
+    /**
+     * Запрашивает сброс пароля через код на email.
+     * @param email Email пользователя (если username null)
+     * @param username Username пользователя (если email null)
+     * @return resetId для подтверждения сброса
+     */
+    suspend fun resetPassword(email: String? = null, username: String? = null): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            if (identityClient == null) {
+                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
+            }
+
+            if (email.isNullOrBlank() && username.isNullOrBlank()) {
+                return@withContext Result.failure(IllegalArgumentException("Email или username должны быть указаны"))
+            }
+
+            val requestBuilder = IdentityApiOuterClass.ResetPasswordRequest.newBuilder()
+                .setOtpType(IdentityApiOuterClass.OtpTypeId.Email)
+
+            if (!email.isNullOrBlank()) {
+                requestBuilder.email = email
+            } else if (!username.isNullOrBlank()) {
+                requestBuilder.username = username
+            }
+
+            val request = requestBuilder.build()
+            val response = identityClient!!.resetPassword(request)
+
+            Log.d(TAG, "resetPassword: resetId=${response.resetId}")
+            Result.success(response.resetId)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка запроса сброса пароля", e)
+            Result.failure(Exception("Ошибка запроса сброса пароля: ${e.message}"))
+        }
+    }
+
+    /**
+     * Подтверждает сброс пароля кодом с почты.
+     * После успешного подтверждения хеш пароля очищается и возвращаются новые токены.
+     * @param resetId ID запроса сброса пароля
+     * @param otpCode 6-значный код подтверждения
+     * @return Новые токены (access и refresh)
+     */
+    suspend fun confirmResetPassword(resetId: String, otpCode: String): Result<ConfirmResetPasswordResult> = withContext(Dispatchers.IO) {
+        try {
+            if (identityClient == null) {
+                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
+            }
+
+            val request = IdentityApiOuterClass.ConfirmResetPasswordRequest.newBuilder()
+                .setResetId(resetId)
+                .setOtpCode(otpCode)
+                .build()
+
+            val response = identityClient!!.confirmResetPassword(request)
+
+            Log.d(TAG, "confirmResetPassword: Токены получены успешно")
+            Result.success(
+                ConfirmResetPasswordResult(
+                    accessToken = response.accessToken.value,
+                    accessTokenExpiration = response.accessToken.expirationDate.seconds * 1000,
+                    refreshToken = response.refreshToken.value,
+                    refreshTokenExpiration = response.refreshToken.expirationDate.seconds * 1000
+                )
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка подтверждения сброса пароля", e)
+            Result.failure(Exception("Ошибка подтверждения сброса пароля: ${e.message}"))
+        }
+    }
+
+    /**
+     * Устанавливает новый пароль после сброса (без требования старого пароля).
+     * Используется после успешного подтверждения кода сброса.
+     * @param newPassword Новый пароль
+     */
+    suspend fun setPasswordAfterReset(newPassword: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (identityClient == null) {
+                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
+            }
+
+            // После сброса пароля хеш очищен, поэтому old_password не требуется
+            val request = IdentityApiOuterClass.SetPasswordRequest.newBuilder()
+                .setPassword(newPassword)
+                .build()
+
+            identityClient!!.setPassword(request)
+            Log.d(TAG, "setPasswordAfterReset: Пароль успешно установлен")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка установки пароля после сброса", e)
+            Result.failure(Exception("Ошибка установки пароля: ${e.message}"))
+        }
+    }
 }
