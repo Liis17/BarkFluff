@@ -22,7 +22,6 @@ public static class FileExtensions
             ".bmp" => "image/bmp",
             ".webp" => "image/webp",
             ".svg" => "image/svg+xml",
-            
 
             ".pdf" => "application/pdf",
             ".doc" => "application/msword",

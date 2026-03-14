@@ -29,7 +29,6 @@ public partial class CheckFileHashCommandHandler : IRequestHandler<CheckFileHash
         _filesStorage = filesStorage;
         _userContext = userContext;
         _logger = logger;
-        
     }
 
     public async Task<CheckFileHashResponse> Handle(CheckFileHashCommand request, CancellationToken cancellationToken)
