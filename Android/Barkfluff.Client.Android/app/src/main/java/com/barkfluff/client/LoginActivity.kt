@@ -103,7 +103,8 @@ class LoginActivity : AppCompatActivity() {
         }
 
         binding.forgotPasswordLink.setOnClickListener {
-            Snackbar.make(binding.root, "Сброс пароля скоро будет доступен", Snackbar.LENGTH_SHORT).show()
+            val intent = Intent(this, ResetPasswordActivity::class.java)
+            startActivity(intent)
         }
     }
 

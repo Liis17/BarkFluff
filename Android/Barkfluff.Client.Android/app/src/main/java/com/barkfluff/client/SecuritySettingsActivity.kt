@@ -1,5 +1,6 @@
 package com.barkfluff.client
 
+import android.content.Intent
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.util.Base64
@@ -89,76 +90,176 @@ class SecuritySettingsActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Модалка смены пароля через код на email (recommended flow)
+     * 3 шага: запрос кода → подтверждение кода → новый пароль
+     */
     private fun showChangePasswordDialog() {
+        var resetId: String? = null
+        var currentStep = 1
+        
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             val hPad = (24 * resources.displayMetrics.density).toInt()
             setPadding(hPad, 0, hPad, 0)
         }
-
-        val oldPasswordLayout = TextInputLayout(this).apply {
-            hint = "Старый пароль"
-            endIconMode = TextInputLayout.END_ICON_PASSWORD_TOGGLE
+        
+        val stepIndicator = android.widget.TextView(this).apply {
+            text = "Шаг 1 из 3: Запрос кода"
+            textSize = 14f
+            gravity = android.view.Gravity.CENTER
+            setTextColor(getColor(android.R.color.holo_blue_dark))
         }
-        val oldPasswordEdit = TextInputEditText(oldPasswordLayout.context).apply {
-            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+        container.addView(stepIndicator)
+        
+        // Шаг 1: Кнопка отправки кода
+        val sendCodeButton = com.google.android.material.button.MaterialButton(this).apply {
+            text = "Отправить код на почту"
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = (16 * resources.displayMetrics.density).toInt()
+            }
         }
-        oldPasswordLayout.addView(oldPasswordEdit)
-        container.addView(oldPasswordLayout)
-
+        container.addView(sendCodeButton)
+        
+        // Шаг 2: Поле ввода OTP
+        val otpContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = android.view.View.GONE
+        }
+        
+        val otpLayout = TextInputLayout(this).apply {
+            hint = "Код из email"
+        }
+        val otpEdit = TextInputEditText(otpLayout.context).apply {
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+        }
+        otpLayout.addView(otpEdit)
+        otpContainer.addView(otpLayout)
+        
+        val confirmCodeButton = com.google.android.material.button.MaterialButton(this).apply {
+            text = "Подтвердить код"
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = (8 * resources.displayMetrics.density).toInt()
+            }
+        }
+        otpContainer.addView(confirmCodeButton)
+        container.addView(otpContainer)
+        
+        // Шаг 3: Поля нового пароля
+        val passwordContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = android.view.View.GONE
+        }
+        
         val newPasswordLayout = TextInputLayout(this).apply {
             hint = "Новый пароль"
-            endIconMode = TextInputLayout.END_ICON_PASSWORD_TOGGLE
         }
         val newPasswordEdit = TextInputEditText(newPasswordLayout.context).apply {
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
         }
         newPasswordLayout.addView(newPasswordEdit)
-        container.addView(newPasswordLayout)
-
+        passwordContainer.addView(newPasswordLayout)
+        
         val confirmPasswordLayout = TextInputLayout(this).apply {
-            hint = "Подтверждение пароля"
-            endIconMode = TextInputLayout.END_ICON_PASSWORD_TOGGLE
+            hint = "Подтвердите пароль"
         }
         val confirmPasswordEdit = TextInputEditText(confirmPasswordLayout.context).apply {
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
         }
         confirmPasswordLayout.addView(confirmPasswordEdit)
-        container.addView(confirmPasswordLayout)
-
-        MaterialAlertDialogBuilder(this)
+        passwordContainer.addView(confirmPasswordLayout)
+        
+        val savePasswordButton = com.google.android.material.button.MaterialButton(this).apply {
+            text = "Сохранить новый пароль"
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = (8 * resources.displayMetrics.density).toInt()
+            }
+        }
+        passwordContainer.addView(savePasswordButton)
+        container.addView(passwordContainer)
+        
+        val dialog = MaterialAlertDialogBuilder(this)
             .setTitle("Смена пароля")
             .setView(container)
-            .setPositiveButton("Сменить") { _, _ ->
-                val oldPassword = oldPasswordEdit.text?.toString() ?: ""
-                val newPassword = newPasswordEdit.text?.toString() ?: ""
-                val confirmPassword = confirmPasswordEdit.text?.toString() ?: ""
-
-                if (newPassword.isEmpty()) {
-                    Toast.makeText(this, "Введите новый пароль", Toast.LENGTH_SHORT).show()
-                    return@setPositiveButton
-                }
-                if (newPassword != confirmPassword) {
-                    Toast.makeText(this, "Пароли не совпадают", Toast.LENGTH_SHORT).show()
-                    return@setPositiveButton
-                }
-
-                lifecycleScope.launch {
-                    val result = grpcManager.changePassword(oldPassword, newPassword)
-                    if (result.isSuccess) {
-                        Toast.makeText(this@SecuritySettingsActivity, "Пароль изменен", Toast.LENGTH_SHORT).show()
-                    } else {
-                        val error = result.exceptionOrNull()
-                        if (error is GrpcManager.InvalidOldPasswordException) {
-                            Toast.makeText(this@SecuritySettingsActivity, "Неверный старый пароль", Toast.LENGTH_SHORT).show()
-                        } else {
-                            Toast.makeText(this@SecuritySettingsActivity, "Ошибка: ${error?.message}", Toast.LENGTH_SHORT).show()
-                        }
-                    }
+            .setNegativeButton("Отмена", null)
+            .create()
+        
+        // Шаг 1: Отправка кода
+        sendCodeButton.setOnClickListener {
+            lifecycleScope.launch {
+                val result = grpcManager.resetPassword()
+                if (result.isSuccess) {
+                    resetId = result.getOrNull()
+                    currentStep = 2
+                    stepIndicator.text = "Шаг 2 из 3: Подтверждение кода"
+                    stepIndicator.setTextColor(getColor(android.R.color.holo_green_dark))
+                    sendCodeButton.visibility = android.view.View.GONE
+                    otpContainer.visibility = android.view.View.VISIBLE
+                    Toast.makeText(this@SecuritySettingsActivity, "Код отправлен на email", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this@SecuritySettingsActivity, "Ошибка: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
                 }
             }
-            .setNegativeButton("Отмена", null)
-            .show()
+        }
+        
+        // Шаг 2: Подтверждение кода
+        confirmCodeButton.setOnClickListener {
+            val code = otpEdit.text?.toString() ?: ""
+            if (code.length != 6) {
+                Toast.makeText(this, "Код должен содержать 6 цифр", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            
+            lifecycleScope.launch {
+                val result = grpcManager.confirmResetPassword(resetId!!, code)
+                if (result.isSuccess) {
+                    currentStep = 3
+                    stepIndicator.text = "Шаг 3 из 3: Новый пароль"
+                    stepIndicator.setTextColor(getColor(android.R.color.holo_green_dark))
+                    otpContainer.visibility = android.view.View.GONE
+                    passwordContainer.visibility = android.view.View.VISIBLE
+                    Toast.makeText(this@SecuritySettingsActivity, "Код подтверждён", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this@SecuritySettingsActivity, "Неверный код", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+        
+        // Шаг 3: Сохранение нового пароля
+        savePasswordButton.setOnClickListener {
+            val newPassword = newPasswordEdit.text?.toString() ?: ""
+            val confirmPassword = confirmPasswordEdit.text?.toString() ?: ""
+            
+            if (newPassword.length < 6) {
+                Toast.makeText(this, "Пароль должен быть не менее 6 символов", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            if (newPassword != confirmPassword) {
+                Toast.makeText(this, "Пароли не совпадают", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            
+            lifecycleScope.launch {
+                val result = grpcManager.setPasswordAfterReset(newPassword)
+                if (result.isSuccess) {
+                    Toast.makeText(this@SecuritySettingsActivity, "Пароль успешно изменён", Toast.LENGTH_SHORT).show()
+                    dialog.dismiss()
+                } else {
+                    Toast.makeText(this@SecuritySettingsActivity, "Ошибка: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+        
+        dialog.show()
     }
 
     private fun enableAuthenticator2FA() {
