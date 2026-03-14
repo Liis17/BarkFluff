@@ -228,34 +228,44 @@ jobs:
 
       - name: "\U00002705 Уведомление об успехе"
         if: success()
-        run: |
-          MSG="✅ *Сборка успешна*
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ✅ *Сборка успешна*
 
-🐋 *BarkFluff.Identity*
-📌 Ветка: \`${{ github.ref_name }}\`
-🔗 Коммит: \`${{ github.sha }}\`
-👤 Автор: *${{ github.actor }}*
-🏷️ Теги: \`${{ steps.vars.outputs.tags }}\`"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" \
-            --data-urlencode "text=$MSG"
+            🐋 *BarkFluff\.Identity*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Теги: `${{ steps.vars.outputs.tags }}`
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
 
       - name: "\U0000274C Уведомление об ошибке"
         if: failure()
-        run: |
-          MSG="❌ *Сборка провалена*
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ❌ *Сборка провалена*
 
-🐋 *BarkFluff.Identity*
-📌 Ветка: \`${{ github.ref_name }}\`
-🔗 Коммит: \`${{ github.sha }}\`
-👤 Автор: *${{ github.actor }}*"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" \
-            --data-urlencode "text=$MSG"
+            🐋 *BarkFluff\.Identity*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
 
   # --- Users ---
   build-users:
@@ -308,34 +318,44 @@ jobs:
 
       - name: "\U00002705 Уведомление об успехе"
         if: success()
-        run: |
-          MSG="✅ *Сборка успешна*
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ✅ *Сборка успешна*
 
-🐋 *BarkFluff.Users*
-📌 Ветка: \`${{ github.ref_name }}\`
-🔗 Коммит: \`${{ github.sha }}\`
-👤 Автор: *${{ github.actor }}*
-🏷️ Теги: \`${{ steps.vars.outputs.tags }}\`"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" \
-            --data-urlencode "text=$MSG"
+            🐋 *BarkFluff\.Users*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Теги: `${{ steps.vars.outputs.tags }}`
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
 
       - name: "\U0000274C Уведомление об ошибке"
         if: failure()
-        run: |
-          MSG="❌ *Сборка провалена*
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ❌ *Сборка провалена*
 
-🐋 *BarkFluff.Users*
-📌 Ветка: \`${{ github.ref_name }}\`
-🔗 Коммит: \`${{ github.sha }}\`
-👤 Автор: *${{ github.actor }}*"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" \
-            --data-urlencode "text=$MSG"
+            🐋 *BarkFluff\.Users*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
 
   # --- Messages ---
   build-messages:
@@ -388,34 +408,44 @@ jobs:
 
       - name: "\U00002705 Уведомление об успехе"
         if: success()
-        run: |
-          MSG="✅ *Сборка успешна*
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ✅ *Сборка успешна*
 
-🐋 *BarkFluff.Messages*
-📌 Ветка: \`${{ github.ref_name }}\`
-🔗 Коммит: \`${{ github.sha }}\`
-👤 Автор: *${{ github.actor }}*
-🏷️ Теги: \`${{ steps.vars.outputs.tags }}\`"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" \
-            --data-urlencode "text=$MSG"
+            🐋 *BarkFluff\.Messages*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Теги: `${{ steps.vars.outputs.tags }}`
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
 
       - name: "\U0000274C Уведомление об ошибке"
         if: failure()
-        run: |
-          MSG="❌ *Сборка провалена*
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ❌ *Сборка провалена*
 
-🐋 *BarkFluff.Messages*
-📌 Ветка: \`${{ github.ref_name }}\`
-🔗 Коммит: \`${{ github.sha }}\`
-👤 Автор: *${{ github.actor }}*"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" \
-            --data-urlencode "text=$MSG"
+            🐋 *BarkFluff\.Messages*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
 
   # --- Files ---
   build-files:
@@ -468,34 +498,44 @@ jobs:
 
       - name: "\U00002705 Уведомление об успехе"
         if: success()
-        run: |
-          MSG="✅ *Сборка успешна*
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ✅ *Сборка успешна*
 
-🐋 *BarkFluff.Files*
-📌 Ветка: \`${{ github.ref_name }}\`
-🔗 Коммит: \`${{ github.sha }}\`
-👤 Автор: *${{ github.actor }}*
-🏷️ Теги: \`${{ steps.vars.outputs.tags }}\`"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" \
-            --data-urlencode "text=$MSG"
+            🐋 *BarkFluff\.Files*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Теги: `${{ steps.vars.outputs.tags }}`
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
 
       - name: "\U0000274C Уведомление об ошибке"
         if: failure()
-        run: |
-          MSG="❌ *Сборка провалена*
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ❌ *Сборка провалена*
 
-🐋 *BarkFluff.Files*
-📌 Ветка: \`${{ github.ref_name }}\`
-🔗 Коммит: \`${{ github.sha }}\`
-👤 Автор: *${{ github.actor }}*"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" \
-            --data-urlencode "text=$MSG"
+            🐋 *BarkFluff\.Files*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
 
   # --- Updates ---
   build-updates:
@@ -548,34 +588,44 @@ jobs:
 
       - name: "\U00002705 Уведомление об успехе"
         if: success()
-        run: |
-          MSG="✅ *Сборка успешна*
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ✅ *Сборка успешна*
 
-🐋 *BarkFluff.Updates*
-📌 Ветка: \`${{ github.ref_name }}\`
-🔗 Коммит: \`${{ github.sha }}\`
-👤 Автор: *${{ github.actor }}*
-🏷️ Теги: \`${{ steps.vars.outputs.tags }}\`"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" \
-            --data-urlencode "text=$MSG"
+            🐋 *BarkFluff\.Updates*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Теги: `${{ steps.vars.outputs.tags }}`
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
 
       - name: "\U0000274C Уведомление об ошибке"
         if: failure()
-        run: |
-          MSG="❌ *Сборка провалена*
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ❌ *Сборка провалена*
 
-🐋 *BarkFluff.Updates*
-📌 Ветка: \`${{ github.ref_name }}\`
-🔗 Коммит: \`${{ github.sha }}\`
-👤 Автор: *${{ github.actor }}*"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" \
-            --data-urlencode "text=$MSG"
+            🐋 *BarkFluff\.Updates*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
 
   # --- Notification ---
   build-notification:
@@ -628,34 +678,44 @@ jobs:
 
       - name: "\U00002705 Уведомление об успехе"
         if: success()
-        run: |
-          MSG="✅ *Сборка успешна*
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ✅ *Сборка успешна*
 
-🐋 *BarkFluff.Notification*
-📌 Ветка: \`${{ github.ref_name }}\`
-🔗 Коммит: \`${{ github.sha }}\`
-👤 Автор: *${{ github.actor }}*
-🏷️ Теги: \`${{ steps.vars.outputs.tags }}\`"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" \
-            --data-urlencode "text=$MSG"
+            🐋 *BarkFluff\.Notification*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Теги: `${{ steps.vars.outputs.tags }}`
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
 
       - name: "\U0000274C Уведомление об ошибке"
         if: failure()
-        run: |
-          MSG="❌ *Сборка провалена*
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ❌ *Сборка провалена*
 
-🐋 *BarkFluff.Notification*
-📌 Ветка: \`${{ github.ref_name }}\`
-🔗 Коммит: \`${{ github.sha }}\`
-👤 Автор: *${{ github.actor }}*"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" \
-            --data-urlencode "text=$MSG"
+            🐋 *BarkFluff\.Notification*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
 
   # --- Configuration ---
   build-configuration:
@@ -708,34 +768,44 @@ jobs:
 
       - name: "\U00002705 Уведомление об успехе"
         if: success()
-        run: |
-          MSG="✅ *Сборка успешна*
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ✅ *Сборка успешна*
 
-🐋 *BarkFluff.Configuration*
-📌 Ветка: \`${{ github.ref_name }}\`
-🔗 Коммит: \`${{ github.sha }}\`
-👤 Автор: *${{ github.actor }}*
-🏷️ Теги: \`${{ steps.vars.outputs.tags }}\`"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" \
-            --data-urlencode "text=$MSG"
+            🐋 *BarkFluff\.Configuration*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Теги: `${{ steps.vars.outputs.tags }}`
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
 
       - name: "\U0000274C Уведомление об ошибке"
         if: failure()
-        run: |
-          MSG="❌ *Сборка провалена*
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ❌ *Сборка провалена*
 
-🐋 *BarkFluff.Configuration*
-📌 Ветка: \`${{ github.ref_name }}\`
-🔗 Коммит: \`${{ github.sha }}\`
-👤 Автор: *${{ github.actor }}*"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" \
-            --data-urlencode "text=$MSG"
+            🐋 *BarkFluff\.Configuration*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
 
   # --- Beacon ---
   build-beacon:
@@ -788,34 +858,44 @@ jobs:
 
       - name: "\U00002705 Уведомление об успехе"
         if: success()
-        run: |
-          MSG="✅ *Сборка успешна*
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ✅ *Сборка успешна*
 
-🐋 *BarkFluff.Beacon*
-📌 Ветка: \`${{ github.ref_name }}\`
-🔗 Коммит: \`${{ github.sha }}\`
-👤 Автор: *${{ github.actor }}*
-🏷️ Теги: \`${{ steps.vars.outputs.tags }}\`"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" \
-            --data-urlencode "text=$MSG"
+            🐋 *BarkFluff\.Beacon*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Теги: `${{ steps.vars.outputs.tags }}`
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
 
       - name: "\U0000274C Уведомление об ошибке"
         if: failure()
-        run: |
-          MSG="❌ *Сборка провалена*
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ❌ *Сборка провалена*
 
-🐋 *BarkFluff.Beacon*
-📌 Ветка: \`${{ github.ref_name }}\`
-🔗 Коммит: \`${{ github.sha }}\`
-👤 Автор: *${{ github.actor }}*"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" \
-            --data-urlencode "text=$MSG"
+            🐋 *BarkFluff\.Beacon*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
 
   # --- FastAuth ---
   build-fast-auth:
@@ -868,34 +948,44 @@ jobs:
 
       - name: "\U00002705 Уведомление об успехе"
         if: success()
-        run: |
-          MSG="✅ *Сборка успешна*
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ✅ *Сборка успешна*
 
-🐋 *BarkFluff.FastAuth*
-📌 Ветка: \`${{ github.ref_name }}\`
-🔗 Коммит: \`${{ github.sha }}\`
-👤 Автор: *${{ github.actor }}*
-🏷️ Теги: \`${{ steps.vars.outputs.tags }}\`"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" \
-            --data-urlencode "text=$MSG"
+            🐋 *BarkFluff\.FastAuth*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Теги: `${{ steps.vars.outputs.tags }}`
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
 
       - name: "\U0000274C Уведомление об ошибке"
         if: failure()
-        run: |
-          MSG="❌ *Сборка провалена*
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ❌ *Сборка провалена*
 
-🐋 *BarkFluff.FastAuth*
-📌 Ветка: \`${{ github.ref_name }}\`
-🔗 Коммит: \`${{ github.sha }}\`
-👤 Автор: *${{ github.actor }}*"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" \
-            --data-urlencode "text=$MSG"
+            🐋 *BarkFluff\.FastAuth*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
 
   # --- Navigator ---
   build-navigator:
@@ -948,34 +1038,44 @@ jobs:
 
       - name: "\U00002705 Уведомление об успехе"
         if: success()
-        run: |
-          MSG="✅ *Сборка успешна*
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ✅ *Сборка успешна*
 
-🐋 *BarkFluff.Navigator*
-📌 Ветка: \`${{ github.ref_name }}\`
-🔗 Коммит: \`${{ github.sha }}\`
-👤 Автор: *${{ github.actor }}*
-🏷️ Теги: \`${{ steps.vars.outputs.tags }}\`"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" \
-            --data-urlencode "text=$MSG"
+            🐋 *BarkFluff\.Navigator*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Теги: `${{ steps.vars.outputs.tags }}`
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
 
       - name: "\U0000274C Уведомление об ошибке"
         if: failure()
-        run: |
-          MSG="❌ *Сборка провалена*
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ❌ *Сборка провалена*
 
-🐋 *BarkFluff.Navigator*
-📌 Ветка: \`${{ github.ref_name }}\`
-🔗 Коммит: \`${{ github.sha }}\`
-👤 Автор: *${{ github.actor }}*"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" \
-            --data-urlencode "text=$MSG"
+            🐋 *BarkFluff\.Navigator*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
 
   # --- Onliner ---
   build-onliner:
@@ -1028,34 +1128,44 @@ jobs:
 
       - name: "\U00002705 Уведомление об успехе"
         if: success()
-        run: |
-          MSG="✅ *Сборка успешна*
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ✅ *Сборка успешна*
 
-🐋 *BarkFluff.Onliner*
-📌 Ветка: \`${{ github.ref_name }}\`
-🔗 Коммит: \`${{ github.sha }}\`
-👤 Автор: *${{ github.actor }}*
-🏷️ Теги: \`${{ steps.vars.outputs.tags }}\`"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" \
-            --data-urlencode "text=$MSG"
+            🐋 *BarkFluff\.Onliner*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Теги: `${{ steps.vars.outputs.tags }}`
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
 
       - name: "\U0000274C Уведомление об ошибке"
         if: failure()
-        run: |
-          MSG="❌ *Сборка провалена*
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ❌ *Сборка провалена*
 
-🐋 *BarkFluff.Onliner*
-📌 Ветка: \`${{ github.ref_name }}\`
-🔗 Коммит: \`${{ github.sha }}\`
-👤 Автор: *${{ github.actor }}*"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" \
-            --data-urlencode "text=$MSG"
+            🐋 *BarkFluff\.Onliner*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
 
   # --- CloudMessaging ---
   build-cloud-messaging:
@@ -1108,34 +1218,44 @@ jobs:
 
       - name: "\U00002705 Уведомление об успехе"
         if: success()
-        run: |
-          MSG="✅ *Сборка успешна*
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ✅ *Сборка успешна*
 
-🐋 *Barkfluff.CloudMessaging*
-📌 Ветка: \`${{ github.ref_name }}\`
-🔗 Коммит: \`${{ github.sha }}\`
-👤 Автор: *${{ github.actor }}*
-🏷️ Теги: \`${{ steps.vars.outputs.tags }}\`"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" \
-            --data-urlencode "text=$MSG"
+            🐋 *Barkfluff\.CloudMessaging*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Теги: `${{ steps.vars.outputs.tags }}`
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
 
       - name: "\U0000274C Уведомление об ошибке"
         if: failure()
-        run: |
-          MSG="❌ *Сборка провалена*
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ❌ *Сборка провалена*
 
-🐋 *Barkfluff.CloudMessaging*
-📌 Ветка: \`${{ github.ref_name }}\`
-🔗 Коммит: \`${{ github.sha }}\`
-👤 Автор: *${{ github.actor }}*"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" \
-            --data-urlencode "text=$MSG"
+            🐋 *Barkfluff\.CloudMessaging*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
 
   # --- AdminPanel ---
   build-admin-panel:
@@ -1188,34 +1308,44 @@ jobs:
 
       - name: "\U00002705 Уведомление об успехе"
         if: success()
-        run: |
-          MSG="✅ *Сборка успешна*
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ✅ *Сборка успешна*
 
-🐋 *Barkfluff.AdminPanel*
-📌 Ветка: \`${{ github.ref_name }}\`
-🔗 Коммит: \`${{ github.sha }}\`
-👤 Автор: *${{ github.actor }}*
-🏷️ Теги: \`${{ steps.vars.outputs.tags }}\`"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" \
-            --data-urlencode "text=$MSG"
+            🐋 *Barkfluff\.AdminPanel*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Теги: `${{ steps.vars.outputs.tags }}`
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
 
       - name: "\U0000274C Уведомление об ошибке"
         if: failure()
-        run: |
-          MSG="❌ *Сборка провалена*
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ❌ *Сборка провалена*
 
-🐋 *Barkfluff.AdminPanel*
-📌 Ветка: \`${{ github.ref_name }}\`
-🔗 Коммит: \`${{ github.sha }}\`
-👤 Автор: *${{ github.actor }}*"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" \
-            --data-urlencode "text=$MSG"
+            🐋 *Barkfluff\.AdminPanel*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
 
   # --- ClientStorage ---
   build-client-storage:
@@ -1268,34 +1398,44 @@ jobs:
 
       - name: "\U00002705 Уведомление об успехе"
         if: success()
-        run: |
-          MSG="✅ *Сборка успешна*
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ✅ *Сборка успешна*
 
-🐋 *BarkFluff.ClientStorage*
-📌 Ветка: \`${{ github.ref_name }}\`
-🔗 Коммит: \`${{ github.sha }}\`
-👤 Автор: *${{ github.actor }}*
-🏷️ Теги: \`${{ steps.vars.outputs.tags }}\`"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" \
-            --data-urlencode "text=$MSG"
+            🐋 *BarkFluff\.ClientStorage*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Теги: `${{ steps.vars.outputs.tags }}`
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
 
       - name: "\U0000274C Уведомление об ошибке"
         if: failure()
-        run: |
-          MSG="❌ *Сборка провалена*
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ❌ *Сборка провалена*
 
-🐋 *BarkFluff.ClientStorage*
-📌 Ветка: \`${{ github.ref_name }}\`
-🔗 Коммит: \`${{ github.sha }}\`
-👤 Автор: *${{ github.actor }}*"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" \
-            --data-urlencode "text=$MSG"
+            🐋 *BarkFluff\.ClientStorage*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
 
   # ═══════════════════════════════════════════════════════════════
   #  WPF Client — сборка + релиз в GitHub
@@ -1374,31 +1514,41 @@ jobs:
 
       - name: "\U00002705 Уведомление об успехе"
         if: success()
-        run: |
-          MSG="✅ *Сборка успешна*
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ✅ *Сборка успешна*
 
-📦 *WPF Client* v${{ steps.meta.outputs.version }}
-📌 Ветка: \`${{ github.ref_name }}\`
-🔗 Коммит: \`${{ github.sha }}\`
-👤 Автор: *${{ github.actor }}*
-🏷️ Тег: \`${{ steps.meta.outputs.tag }}\`"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" \
-            --data-urlencode "text=$MSG"
+            📦 *WPF Client* v${{ steps.meta.outputs.version }}
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Тег: `${{ steps.meta.outputs.tag }}`
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
 
       - name: "\U0000274C Уведомление об ошибке"
         if: failure()
-        run: |
-          MSG="❌ *Сборка провалена*
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ❌ *Сборка провалена*
 
-📦 *WPF Client*
-📌 Ветка: \`${{ github.ref_name }}\`
-🔗 Коммит: \`${{ github.sha }}\`
-👤 Автор: *${{ github.actor }}*"
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHANNEL_ID }}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" \
-            --data-urlencode "text=$MSG"
+            📦 *WPF Client*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
