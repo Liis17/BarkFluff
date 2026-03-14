@@ -6,7 +6,7 @@
     xmlns:local="clr-namespace:BarkFluff.Client.WPF.UserControls.SettingsPages"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-    d:DesignHeight="550"
+    d:DesignHeight="650"
     d:DesignWidth="500"
     mc:Ignorable="d">
     <Grid Background="{DynamicResource SettingsContentBackground}">
@@ -25,23 +25,59 @@
                         <ui:SymbolIcon Foreground="#FFC58C39" Symbol="LockClosed32" Margin="0,0,8,0" />
                         <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Смена пароля" />
                     </StackPanel>
-                    <PasswordBox
-                        x:Name="NewPasswordBox"
-                        Margin="0,4"
-                        Padding="8"
-                        FontSize="14" />
-                    <PasswordBox
-                        x:Name="ConfirmPasswordBox"
-                        Margin="0,4"
-                        Padding="8"
-                        FontSize="14" />
-                    <ui:Button
-                        Margin="0,8,0,0"
-                        HorizontalAlignment="Left"
-                        Click="ChangePassword_Click"
-                        Cursor="Hand"
-                        Style="{DynamicResource Win11Default}"
-                        Content="Изменить пароль" />
+
+                    <TextBlock
+                        x:Name="PasswordStepText"
+                        Foreground="{DynamicResource DescriptionText}"
+                        FontSize="12"
+                        Margin="0,0,0,8"
+                        TextWrapping="Wrap"
+                        Text="Для смены пароля на вашу почту будет отправлен код подтверждения" />
+
+                    <!-- Шаг 1: Запрос кода -->
+                    <StackPanel x:Name="PasswordStep1" Visibility="Visible">
+                        <ui:Button
+                            Click="RequestPasswordReset_Click"
+                            Cursor="Hand"
+                            Style="{DynamicResource Win11Default}"
+                            Content="Отправить код на почту" />
+                    </StackPanel>
+
+                    <!-- Шаг 2: Ввод кода -->
+                    <StackPanel x:Name="PasswordStep2" Visibility="Collapsed">
+                        <ui:TextBox
+                            x:Name="ResetCodeBox"
+                            Margin="0,4"
+                            FontSize="14"
+                            MaxLength="6"
+                            PlaceholderText="6-значный код из письма" />
+                        <ui:Button
+                            Margin="0,8,0,0"
+                            Click="ConfirmResetCode_Click"
+                            Cursor="Hand"
+                            Style="{DynamicResource Win11Default}"
+                            Content="Подтвердить код" />
+                    </StackPanel>
+
+                    <!-- Шаг 3: Новый пароль -->
+                    <StackPanel x:Name="PasswordStep3" Visibility="Collapsed">
+                        <PasswordBox
+                            x:Name="NewPasswordBox"
+                            Margin="0,4"
+                            Padding="8"
+                            FontSize="14" />
+                        <PasswordBox
+                            x:Name="ConfirmPasswordBox"
+                            Margin="0,4"
+                            Padding="8"
+                            FontSize="14" />
+                        <ui:Button
+                            Margin="0,8,0,0"
+                            Click="SetNewPassword_Click"
+                            Cursor="Hand"
+                            Style="{DynamicResource Win11Default}"
+                            Content="Сохранить новый пароль" />
+                    </StackPanel>
                 </StackPanel>
             </Border>
 
