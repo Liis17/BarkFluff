@@ -1,0 +1,1554 @@
+name: "\U0001F680 BarkFluff CI/CD"
+
+on:
+  push:
+    branches:
+      - dev
+      - master
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+jobs:
+  # ═══════════════════════════════════════════════════════════════
+  #  Определение изменений
+  # ═══════════════════════════════════════════════════════════════
+  detect-changes:
+    name: "\U0001F50D Определение изменений"
+    runs-on: self-hosted
+    outputs:
+      identity: ${{ steps.changes.outputs.identity }}
+      users: ${{ steps.changes.outputs.users }}
+      messages: ${{ steps.changes.outputs.messages }}
+      files: ${{ steps.changes.outputs.files }}
+      updates: ${{ steps.changes.outputs.updates }}
+      notification: ${{ steps.changes.outputs.notification }}
+      configuration: ${{ steps.changes.outputs.configuration }}
+      beacon: ${{ steps.changes.outputs.beacon }}
+      fast-auth: ${{ steps.changes.outputs.fast-auth }}
+      navigator: ${{ steps.changes.outputs.navigator }}
+      onliner: ${{ steps.changes.outputs.onliner }}
+      cloud-messaging: ${{ steps.changes.outputs.cloud-messaging }}
+      admin-panel: ${{ steps.changes.outputs.admin-panel }}
+      client-storage: ${{ steps.changes.outputs.client-storage }}
+      wpf-client: ${{ steps.changes.outputs.wpf-client }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Определение изменённых файлов
+        id: changes
+        shell: bash
+        run: |
+          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD)
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          check_paths() {
+            local name=$1
+            shift
+            for pattern in "$@"; do
+              if echo "$CHANGED" | grep -q "$pattern"; then
+                echo "${name}=true" >> $GITHUB_OUTPUT
+                return
+              fi
+            done
+            echo "${name}=false" >> $GITHUB_OUTPUT
+          }
+
+          # Backend trigger file перезапускает все бэкенд-сервисы
+          BACKEND_REBUILD=false
+          if echo "$CHANGED" | grep -q "Backend/rebuild.trigger"; then
+            BACKEND_REBUILD=true
+          fi
+
+          # Shared libraries
+          GRPC_SERVER=false
+          SHARED_QUEUE=false
+          SHARED_IDENTITY=false
+          SHARED_EXCEPTIONS=false
+          SHARED_AUTH=false
+          SHARED_SECURITY=false
+          if echo "$CHANGED" | grep -q "Backend/BarkFluff.GrpcServer/"; then GRPC_SERVER=true; fi
+          if echo "$CHANGED" | grep -q "Shared/BarkFluff.Shared.Queue/"; then SHARED_QUEUE=true; fi
+          if echo "$CHANGED" | grep -q "Shared/BarkFluff.Shared.Identity/"; then SHARED_IDENTITY=true; fi
+          if echo "$CHANGED" | grep -q "Shared/BarkFluff.Shared.Exceptions/"; then SHARED_EXCEPTIONS=true; fi
+          if echo "$CHANGED" | grep -q "Shared/BarkFluff.Shared.Auth/"; then SHARED_AUTH=true; fi
+          if echo "$CHANGED" | grep -q "Shared/BarkFluff.Shared.SecurityUtilities/"; then SHARED_SECURITY=true; fi
+
+          # Identity: own code + Queue + Identity shared + Exceptions + GrpcServer
+          if echo "$CHANGED" | grep -q "Backend/BarkFluff.Identity/" \
+             || [ "$SHARED_QUEUE" = "true" ] \
+             || [ "$SHARED_IDENTITY" = "true" ] \
+             || [ "$SHARED_EXCEPTIONS" = "true" ] \
+             || [ "$GRPC_SERVER" = "true" ] \
+             || [ "$BACKEND_REBUILD" = "true" ]; then
+            echo "identity=true" >> $GITHUB_OUTPUT
+          else
+            echo "identity=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Users: own code + Queue + Exceptions + GrpcServer
+          if echo "$CHANGED" | grep -q "Backend/BarkFluff.Users/" \
+             || [ "$SHARED_QUEUE" = "true" ] \
+             || [ "$SHARED_EXCEPTIONS" = "true" ] \
+             || [ "$GRPC_SERVER" = "true" ] \
+             || [ "$BACKEND_REBUILD" = "true" ]; then
+            echo "users=true" >> $GITHUB_OUTPUT
+          else
+            echo "users=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Messages: own code + Queue + Auth + GrpcServer
+          if echo "$CHANGED" | grep -q "Backend/BarkFluff.Messages/" \
+             || [ "$SHARED_QUEUE" = "true" ] \
+             || [ "$SHARED_AUTH" = "true" ] \
+             || [ "$GRPC_SERVER" = "true" ] \
+             || [ "$BACKEND_REBUILD" = "true" ]; then
+            echo "messages=true" >> $GITHUB_OUTPUT
+          else
+            echo "messages=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Files: own code + GrpcServer
+          if echo "$CHANGED" | grep -q "Backend/BarkFluff.Files/" \
+             || [ "$GRPC_SERVER" = "true" ] \
+             || [ "$BACKEND_REBUILD" = "true" ]; then
+            echo "files=true" >> $GITHUB_OUTPUT
+          else
+            echo "files=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Updates: own code + Queue + GrpcServer
+          if echo "$CHANGED" | grep -q "Backend/BarkFluff.Updates/" \
+             || [ "$SHARED_QUEUE" = "true" ] \
+             || [ "$GRPC_SERVER" = "true" ] \
+             || [ "$BACKEND_REBUILD" = "true" ]; then
+            echo "updates=true" >> $GITHUB_OUTPUT
+          else
+            echo "updates=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Notification: own code + Queue + GrpcServer
+          if echo "$CHANGED" | grep -q "Backend/BarkFluff.Notification/" \
+             || [ "$SHARED_QUEUE" = "true" ] \
+             || [ "$GRPC_SERVER" = "true" ] \
+             || [ "$BACKEND_REBUILD" = "true" ]; then
+            echo "notification=true" >> $GITHUB_OUTPUT
+          else
+            echo "notification=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Configuration: own code + Identity + GrpcServer
+          IDENTITY_CHANGED=false
+          if echo "$CHANGED" | grep -q "Backend/BarkFluff.Identity/"; then IDENTITY_CHANGED=true; fi
+          if echo "$CHANGED" | grep -q "Backend/BarkFluff.Configuration/" \
+             || [ "$IDENTITY_CHANGED" = "true" ] \
+             || [ "$GRPC_SERVER" = "true" ] \
+             || [ "$BACKEND_REBUILD" = "true" ]; then
+            echo "configuration=true" >> $GITHUB_OUTPUT
+          else
+            echo "configuration=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Beacon: own code + GrpcServer
+          if echo "$CHANGED" | grep -q "Backend/BarkFluff.Beacon/" \
+             || [ "$GRPC_SERVER" = "true" ] \
+             || [ "$BACKEND_REBUILD" = "true" ]; then
+            echo "beacon=true" >> $GITHUB_OUTPUT
+          else
+            echo "beacon=false" >> $GITHUB_OUTPUT
+          fi
+
+          # FastAuth: own code + Identity + GrpcServer
+          if echo "$CHANGED" | grep -q "Backend/BarkFluff.FastAuth/" \
+             || [ "$IDENTITY_CHANGED" = "true" ] \
+             || [ "$GRPC_SERVER" = "true" ] \
+             || [ "$BACKEND_REBUILD" = "true" ]; then
+            echo "fast-auth=true" >> $GITHUB_OUTPUT
+          else
+            echo "fast-auth=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Navigator: own code + GrpcServer
+          if echo "$CHANGED" | grep -q "Backend/BarkFluff.Navigator/" \
+             || [ "$GRPC_SERVER" = "true" ] \
+             || [ "$BACKEND_REBUILD" = "true" ]; then
+            echo "navigator=true" >> $GITHUB_OUTPUT
+          else
+            echo "navigator=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Onliner: own code + GrpcServer
+          if echo "$CHANGED" | grep -q "Backend/BarkFluff.Onliner/" \
+             || [ "$GRPC_SERVER" = "true" ] \
+             || [ "$BACKEND_REBUILD" = "true" ]; then
+            echo "onliner=true" >> $GITHUB_OUTPUT
+          else
+            echo "onliner=false" >> $GITHUB_OUTPUT
+          fi
+
+          # CloudMessaging: own code + Queue + Exceptions + Auth + GrpcServer
+          if echo "$CHANGED" | grep -q "Backend/Barkfluff.CloudMessaging/" \
+             || [ "$SHARED_QUEUE" = "true" ] \
+             || [ "$SHARED_EXCEPTIONS" = "true" ] \
+             || [ "$SHARED_AUTH" = "true" ] \
+             || [ "$GRPC_SERVER" = "true" ] \
+             || [ "$BACKEND_REBUILD" = "true" ]; then
+            echo "cloud-messaging=true" >> $GITHUB_OUTPUT
+          else
+            echo "cloud-messaging=false" >> $GITHUB_OUTPUT
+          fi
+
+          # AdminPanel: own code
+          if echo "$CHANGED" | grep -q "Backend/Barkfluff.AdminPanel/" \
+             || [ "$BACKEND_REBUILD" = "true" ]; then
+            echo "admin-panel=true" >> $GITHUB_OUTPUT
+          else
+            echo "admin-panel=false" >> $GITHUB_OUTPUT
+          fi
+
+          # ClientStorage: own code + GrpcServer
+          if echo "$CHANGED" | grep -q "Backend/BarkFluff.ClientStorage/" \
+             || [ "$GRPC_SERVER" = "true" ] \
+             || [ "$BACKEND_REBUILD" = "true" ]; then
+            echo "client-storage=true" >> $GITHUB_OUTPUT
+          else
+            echo "client-storage=false" >> $GITHUB_OUTPUT
+          fi
+
+          # WPF Client: own code + shared libs + trigger
+          if echo "$CHANGED" | grep -q "Windows/BarkFluff.Client.WPF/" \
+             || echo "$CHANGED" | grep -q "Windows/BarkFluff.WebApi.Core/" \
+             || echo "$CHANGED" | grep -q "Windows/client-rebuild.trigger" \
+             || [ "$SHARED_EXCEPTIONS" = "true" ] \
+             || [ "$SHARED_AUTH" = "true" ] \
+             || [ "$SHARED_SECURITY" = "true" ]; then
+            echo "wpf-client=true" >> $GITHUB_OUTPUT
+          else
+            echo "wpf-client=false" >> $GITHUB_OUTPUT
+          fi
+
+  # ═══════════════════════════════════════════════════════════════
+  #  Backend Docker builds
+  # ═══════════════════════════════════════════════════════════════
+
+  # --- Identity ---
+  build-identity:
+    name: "\U0001F433 Identity"
+    needs: detect-changes
+    if: needs.detect-changes.outputs.identity == 'true'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "\U0001F4F2 Запрос подтверждения сборки"
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "🐋 *BarkFluff\\.Identity*\n\nВетка: `${{ github.ref_name }}`\nКоммит: `${{ github.sha }}`\nАвтор: *${{ github.actor }}*\n\nЗапустить сборку?"
+          APPROVAL_BUTTON: "✅ Собрать"
+          REJECT_BUTTON: "❌ Отменить"
+          APPROVED_TEXT: "✅ Сборка Identity одобрена"
+          REJECTED_TEXT: "❌ Сборка Identity отклонена"
+          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Login to Private Registry
+        uses: docker/login-action@v2
+        with:
+          registry: docker.barkfluff.com:5000
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Set tags
+        id: vars
+        shell: pwsh
+        run: |
+          if ("${{ github.ref_name }}" -eq "dev") {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-identity-dev:latest,docker.barkfluff.com:5000/barkfluff-identity-dev:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-identity:latest,docker.barkfluff.com:5000/barkfluff-identity:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Build and Push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Backend/BarkFluff.Identity/Dockerfile
+          push: true
+          tags: ${{ steps.vars.outputs.tags }}
+
+      - name: "\U00002705 Уведомление об успехе"
+        if: success()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ✅ *Сборка успешна*
+
+            🐋 *BarkFluff\.Identity*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Теги: `${{ steps.vars.outputs.tags }}`
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+      - name: "\U0000274C Уведомление об ошибке"
+        if: failure()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ❌ *Сборка провалена*
+
+            🐋 *BarkFluff\.Identity*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+  # --- Users ---
+  build-users:
+    name: "\U0001F433 Users"
+    needs: detect-changes
+    if: needs.detect-changes.outputs.users == 'true'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "\U0001F4F2 Запрос подтверждения сборки"
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "🐋 *BarkFluff\\.Users*\n\nВетка: `${{ github.ref_name }}`\nКоммит: `${{ github.sha }}`\nАвтор: *${{ github.actor }}*\n\nЗапустить сборку?"
+          APPROVAL_BUTTON: "✅ Собрать"
+          REJECT_BUTTON: "❌ Отменить"
+          APPROVED_TEXT: "✅ Сборка Users одобрена"
+          REJECTED_TEXT: "❌ Сборка Users отклонена"
+          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Login to Private Registry
+        uses: docker/login-action@v2
+        with:
+          registry: docker.barkfluff.com:5000
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Set tags
+        id: vars
+        shell: pwsh
+        run: |
+          if ("${{ github.ref_name }}" -eq "dev") {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-users-dev:latest,docker.barkfluff.com:5000/barkfluff-users-dev:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-users:latest,docker.barkfluff.com:5000/barkfluff-users:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Build and Push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Backend/BarkFluff.Users/Dockerfile
+          push: true
+          tags: ${{ steps.vars.outputs.tags }}
+
+      - name: "\U00002705 Уведомление об успехе"
+        if: success()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ✅ *Сборка успешна*
+
+            🐋 *BarkFluff\.Users*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Теги: `${{ steps.vars.outputs.tags }}`
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+      - name: "\U0000274C Уведомление об ошибке"
+        if: failure()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ❌ *Сборка провалена*
+
+            🐋 *BarkFluff\.Users*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+  # --- Messages ---
+  build-messages:
+    name: "\U0001F433 Messages"
+    needs: detect-changes
+    if: needs.detect-changes.outputs.messages == 'true'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "\U0001F4F2 Запрос подтверждения сборки"
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "🐋 *BarkFluff\\.Messages*\n\nВетка: `${{ github.ref_name }}`\nКоммит: `${{ github.sha }}`\nАвтор: *${{ github.actor }}*\n\nЗапустить сборку?"
+          APPROVAL_BUTTON: "✅ Собрать"
+          REJECT_BUTTON: "❌ Отменить"
+          APPROVED_TEXT: "✅ Сборка Messages одобрена"
+          REJECTED_TEXT: "❌ Сборка Messages отклонена"
+          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Login to Private Registry
+        uses: docker/login-action@v2
+        with:
+          registry: docker.barkfluff.com:5000
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Set tags
+        id: vars
+        shell: pwsh
+        run: |
+          if ("${{ github.ref_name }}" -eq "dev") {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-messages-dev:latest,docker.barkfluff.com:5000/barkfluff-messages-dev:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-messages:latest,docker.barkfluff.com:5000/barkfluff-messages:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Build and Push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Backend/BarkFluff.Messages/Dockerfile
+          push: true
+          tags: ${{ steps.vars.outputs.tags }}
+
+      - name: "\U00002705 Уведомление об успехе"
+        if: success()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ✅ *Сборка успешна*
+
+            🐋 *BarkFluff\.Messages*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Теги: `${{ steps.vars.outputs.tags }}`
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+      - name: "\U0000274C Уведомление об ошибке"
+        if: failure()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ❌ *Сборка провалена*
+
+            🐋 *BarkFluff\.Messages*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+  # --- Files ---
+  build-files:
+    name: "\U0001F433 Files"
+    needs: detect-changes
+    if: needs.detect-changes.outputs.files == 'true'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "\U0001F4F2 Запрос подтверждения сборки"
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "🐋 *BarkFluff\\.Files*\n\nВетка: `${{ github.ref_name }}`\nКоммит: `${{ github.sha }}`\nАвтор: *${{ github.actor }}*\n\nЗапустить сборку?"
+          APPROVAL_BUTTON: "✅ Собрать"
+          REJECT_BUTTON: "❌ Отменить"
+          APPROVED_TEXT: "✅ Сборка Files одобрена"
+          REJECTED_TEXT: "❌ Сборка Files отклонена"
+          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Login to Private Registry
+        uses: docker/login-action@v2
+        with:
+          registry: docker.barkfluff.com:5000
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Set tags
+        id: vars
+        shell: pwsh
+        run: |
+          if ("${{ github.ref_name }}" -eq "dev") {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-files-dev:latest,docker.barkfluff.com:5000/barkfluff-files-dev:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-files:latest,docker.barkfluff.com:5000/barkfluff-files:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Build and Push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Backend/BarkFluff.Files/Dockerfile
+          push: true
+          tags: ${{ steps.vars.outputs.tags }}
+
+      - name: "\U00002705 Уведомление об успехе"
+        if: success()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ✅ *Сборка успешна*
+
+            🐋 *BarkFluff\.Files*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Теги: `${{ steps.vars.outputs.tags }}`
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+      - name: "\U0000274C Уведомление об ошибке"
+        if: failure()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ❌ *Сборка провалена*
+
+            🐋 *BarkFluff\.Files*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+  # --- Updates ---
+  build-updates:
+    name: "\U0001F433 Updates"
+    needs: detect-changes
+    if: needs.detect-changes.outputs.updates == 'true'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "\U0001F4F2 Запрос подтверждения сборки"
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "🐋 *BarkFluff\\.Updates*\n\nВетка: `${{ github.ref_name }}`\nКоммит: `${{ github.sha }}`\nАвтор: *${{ github.actor }}*\n\nЗапустить сборку?"
+          APPROVAL_BUTTON: "✅ Собрать"
+          REJECT_BUTTON: "❌ Отменить"
+          APPROVED_TEXT: "✅ Сборка Updates одобрена"
+          REJECTED_TEXT: "❌ Сборка Updates отклонена"
+          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Login to Private Registry
+        uses: docker/login-action@v2
+        with:
+          registry: docker.barkfluff.com:5000
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Set tags
+        id: vars
+        shell: pwsh
+        run: |
+          if ("${{ github.ref_name }}" -eq "dev") {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-updates-dev:latest,docker.barkfluff.com:5000/barkfluff-updates-dev:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-updates:latest,docker.barkfluff.com:5000/barkfluff-updates:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Build and Push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Backend/BarkFluff.Updates/Dockerfile
+          push: true
+          tags: ${{ steps.vars.outputs.tags }}
+
+      - name: "\U00002705 Уведомление об успехе"
+        if: success()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ✅ *Сборка успешна*
+
+            🐋 *BarkFluff\.Updates*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Теги: `${{ steps.vars.outputs.tags }}`
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+      - name: "\U0000274C Уведомление об ошибке"
+        if: failure()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ❌ *Сборка провалена*
+
+            🐋 *BarkFluff\.Updates*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+  # --- Notification ---
+  build-notification:
+    name: "\U0001F433 Notification"
+    needs: detect-changes
+    if: needs.detect-changes.outputs.notification == 'true'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "\U0001F4F2 Запрос подтверждения сборки"
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "🐋 *BarkFluff\\.Notification*\n\nВетка: `${{ github.ref_name }}`\nКоммит: `${{ github.sha }}`\nАвтор: *${{ github.actor }}*\n\nЗапустить сборку?"
+          APPROVAL_BUTTON: "✅ Собрать"
+          REJECT_BUTTON: "❌ Отменить"
+          APPROVED_TEXT: "✅ Сборка Notification одобрена"
+          REJECTED_TEXT: "❌ Сборка Notification отклонена"
+          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Login to Private Registry
+        uses: docker/login-action@v2
+        with:
+          registry: docker.barkfluff.com:5000
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Set tags
+        id: vars
+        shell: pwsh
+        run: |
+          if ("${{ github.ref_name }}" -eq "dev") {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-notification-dev:latest,docker.barkfluff.com:5000/barkfluff-notification-dev:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-notification:latest,docker.barkfluff.com:5000/barkfluff-notification:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Build and Push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Backend/BarkFluff.Notification/Dockerfile
+          push: true
+          tags: ${{ steps.vars.outputs.tags }}
+
+      - name: "\U00002705 Уведомление об успехе"
+        if: success()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ✅ *Сборка успешна*
+
+            🐋 *BarkFluff\.Notification*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Теги: `${{ steps.vars.outputs.tags }}`
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+      - name: "\U0000274C Уведомление об ошибке"
+        if: failure()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ❌ *Сборка провалена*
+
+            🐋 *BarkFluff\.Notification*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+  # --- Configuration ---
+  build-configuration:
+    name: "\U0001F433 Configuration"
+    needs: detect-changes
+    if: needs.detect-changes.outputs.configuration == 'true'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "\U0001F4F2 Запрос подтверждения сборки"
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "🐋 *BarkFluff\\.Configuration*\n\nВетка: `${{ github.ref_name }}`\nКоммит: `${{ github.sha }}`\nАвтор: *${{ github.actor }}*\n\nЗапустить сборку?"
+          APPROVAL_BUTTON: "✅ Собрать"
+          REJECT_BUTTON: "❌ Отменить"
+          APPROVED_TEXT: "✅ Сборка Configuration одобрена"
+          REJECTED_TEXT: "❌ Сборка Configuration отклонена"
+          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Login to Private Registry
+        uses: docker/login-action@v2
+        with:
+          registry: docker.barkfluff.com:5000
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Set tags
+        id: vars
+        shell: pwsh
+        run: |
+          if ("${{ github.ref_name }}" -eq "dev") {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-configuration-dev:latest,docker.barkfluff.com:5000/barkfluff-configuration-dev:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-configuration:latest,docker.barkfluff.com:5000/barkfluff-configuration:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Build and Push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Backend/BarkFluff.Configuration/Dockerfile
+          push: true
+          tags: ${{ steps.vars.outputs.tags }}
+
+      - name: "\U00002705 Уведомление об успехе"
+        if: success()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ✅ *Сборка успешна*
+
+            🐋 *BarkFluff\.Configuration*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Теги: `${{ steps.vars.outputs.tags }}`
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+      - name: "\U0000274C Уведомление об ошибке"
+        if: failure()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ❌ *Сборка провалена*
+
+            🐋 *BarkFluff\.Configuration*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+  # --- Beacon ---
+  build-beacon:
+    name: "\U0001F433 Beacon"
+    needs: detect-changes
+    if: needs.detect-changes.outputs.beacon == 'true'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "\U0001F4F2 Запрос подтверждения сборки"
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "🐋 *BarkFluff\\.Beacon*\n\nВетка: `${{ github.ref_name }}`\nКоммит: `${{ github.sha }}`\nАвтор: *${{ github.actor }}*\n\nЗапустить сборку?"
+          APPROVAL_BUTTON: "✅ Собрать"
+          REJECT_BUTTON: "❌ Отменить"
+          APPROVED_TEXT: "✅ Сборка Beacon одобрена"
+          REJECTED_TEXT: "❌ Сборка Beacon отклонена"
+          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Login to Private Registry
+        uses: docker/login-action@v2
+        with:
+          registry: docker.barkfluff.com:5000
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Set tags
+        id: vars
+        shell: pwsh
+        run: |
+          if ("${{ github.ref_name }}" -eq "dev") {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-beacon-dev:latest,docker.barkfluff.com:5000/barkfluff-beacon-dev:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-beacon:latest,docker.barkfluff.com:5000/barkfluff-beacon:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Build and Push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Backend/BarkFluff.Beacon/Dockerfile
+          push: true
+          tags: ${{ steps.vars.outputs.tags }}
+
+      - name: "\U00002705 Уведомление об успехе"
+        if: success()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ✅ *Сборка успешна*
+
+            🐋 *BarkFluff\.Beacon*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Теги: `${{ steps.vars.outputs.tags }}`
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+      - name: "\U0000274C Уведомление об ошибке"
+        if: failure()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ❌ *Сборка провалена*
+
+            🐋 *BarkFluff\.Beacon*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+  # --- FastAuth ---
+  build-fast-auth:
+    name: "\U0001F433 FastAuth"
+    needs: detect-changes
+    if: needs.detect-changes.outputs.fast-auth == 'true'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "\U0001F4F2 Запрос подтверждения сборки"
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "🐋 *BarkFluff\\.FastAuth*\n\nВетка: `${{ github.ref_name }}`\nКоммит: `${{ github.sha }}`\nАвтор: *${{ github.actor }}*\n\nЗапустить сборку?"
+          APPROVAL_BUTTON: "✅ Собрать"
+          REJECT_BUTTON: "❌ Отменить"
+          APPROVED_TEXT: "✅ Сборка FastAuth одобрена"
+          REJECTED_TEXT: "❌ Сборка FastAuth отклонена"
+          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Login to Private Registry
+        uses: docker/login-action@v2
+        with:
+          registry: docker.barkfluff.com:5000
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Set tags
+        id: vars
+        shell: pwsh
+        run: |
+          if ("${{ github.ref_name }}" -eq "dev") {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-fast-auth-dev:latest,docker.barkfluff.com:5000/barkfluff-fast-auth-dev:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-fast-auth:latest,docker.barkfluff.com:5000/barkfluff-fast-auth:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Build and Push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Backend/BarkFluff.FastAuth/Dockerfile
+          push: true
+          tags: ${{ steps.vars.outputs.tags }}
+
+      - name: "\U00002705 Уведомление об успехе"
+        if: success()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ✅ *Сборка успешна*
+
+            🐋 *BarkFluff\.FastAuth*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Теги: `${{ steps.vars.outputs.tags }}`
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+      - name: "\U0000274C Уведомление об ошибке"
+        if: failure()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ❌ *Сборка провалена*
+
+            🐋 *BarkFluff\.FastAuth*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+  # --- Navigator ---
+  build-navigator:
+    name: "\U0001F433 Navigator"
+    needs: detect-changes
+    if: needs.detect-changes.outputs.navigator == 'true'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "\U0001F4F2 Запрос подтверждения сборки"
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "🐋 *BarkFluff\\.Navigator*\n\nВетка: `${{ github.ref_name }}`\nКоммит: `${{ github.sha }}`\nАвтор: *${{ github.actor }}*\n\nЗапустить сборку?"
+          APPROVAL_BUTTON: "✅ Собрать"
+          REJECT_BUTTON: "❌ Отменить"
+          APPROVED_TEXT: "✅ Сборка Navigator одобрена"
+          REJECTED_TEXT: "❌ Сборка Navigator отклонена"
+          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Login to Private Registry
+        uses: docker/login-action@v2
+        with:
+          registry: docker.barkfluff.com:5000
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Set tags
+        id: vars
+        shell: pwsh
+        run: |
+          if ("${{ github.ref_name }}" -eq "dev") {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-navigator-dev:latest,docker.barkfluff.com:5000/barkfluff-navigator-dev:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-navigator:latest,docker.barkfluff.com:5000/barkfluff-navigator:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Build and Push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Backend/BarkFluff.Navigator/Dockerfile
+          push: true
+          tags: ${{ steps.vars.outputs.tags }}
+
+      - name: "\U00002705 Уведомление об успехе"
+        if: success()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ✅ *Сборка успешна*
+
+            🐋 *BarkFluff\.Navigator*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Теги: `${{ steps.vars.outputs.tags }}`
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+      - name: "\U0000274C Уведомление об ошибке"
+        if: failure()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ❌ *Сборка провалена*
+
+            🐋 *BarkFluff\.Navigator*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+  # --- Onliner ---
+  build-onliner:
+    name: "\U0001F433 Onliner"
+    needs: detect-changes
+    if: needs.detect-changes.outputs.onliner == 'true'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "\U0001F4F2 Запрос подтверждения сборки"
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "🐋 *BarkFluff\\.Onliner*\n\nВетка: `${{ github.ref_name }}`\nКоммит: `${{ github.sha }}`\nАвтор: *${{ github.actor }}*\n\nЗапустить сборку?"
+          APPROVAL_BUTTON: "✅ Собрать"
+          REJECT_BUTTON: "❌ Отменить"
+          APPROVED_TEXT: "✅ Сборка Onliner одобрена"
+          REJECTED_TEXT: "❌ Сборка Onliner отклонена"
+          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Login to Private Registry
+        uses: docker/login-action@v2
+        with:
+          registry: docker.barkfluff.com:5000
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Set tags
+        id: vars
+        shell: pwsh
+        run: |
+          if ("${{ github.ref_name }}" -eq "dev") {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-onliner-dev:latest,docker.barkfluff.com:5000/barkfluff-onliner-dev:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-onliner:latest,docker.barkfluff.com:5000/barkfluff-onliner:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Build and Push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Backend/BarkFluff.Onliner/Dockerfile
+          push: true
+          tags: ${{ steps.vars.outputs.tags }}
+
+      - name: "\U00002705 Уведомление об успехе"
+        if: success()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ✅ *Сборка успешна*
+
+            🐋 *BarkFluff\.Onliner*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Теги: `${{ steps.vars.outputs.tags }}`
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+      - name: "\U0000274C Уведомление об ошибке"
+        if: failure()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ❌ *Сборка провалена*
+
+            🐋 *BarkFluff\.Onliner*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+  # --- CloudMessaging ---
+  build-cloud-messaging:
+    name: "\U0001F433 CloudMessaging"
+    needs: detect-changes
+    if: needs.detect-changes.outputs.cloud-messaging == 'true'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "\U0001F4F2 Запрос подтверждения сборки"
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "🐋 *Barkfluff\\.CloudMessaging*\n\nВетка: `${{ github.ref_name }}`\nКоммит: `${{ github.sha }}`\nАвтор: *${{ github.actor }}*\n\nЗапустить сборку?"
+          APPROVAL_BUTTON: "✅ Собрать"
+          REJECT_BUTTON: "❌ Отменить"
+          APPROVED_TEXT: "✅ Сборка CloudMessaging одобрена"
+          REJECTED_TEXT: "❌ Сборка CloudMessaging отклонена"
+          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Login to Private Registry
+        uses: docker/login-action@v2
+        with:
+          registry: docker.barkfluff.com:5000
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Set tags
+        id: vars
+        shell: pwsh
+        run: |
+          if ("${{ github.ref_name }}" -eq "dev") {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-cloud-messaging-dev:latest,docker.barkfluff.com:5000/barkfluff-cloud-messaging-dev:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-cloud-messaging:latest,docker.barkfluff.com:5000/barkfluff-cloud-messaging:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Build and Push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Backend/Barkfluff.CloudMessaging/Dockerfile
+          push: true
+          tags: ${{ steps.vars.outputs.tags }}
+
+      - name: "\U00002705 Уведомление об успехе"
+        if: success()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ✅ *Сборка успешна*
+
+            🐋 *Barkfluff\.CloudMessaging*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Теги: `${{ steps.vars.outputs.tags }}`
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+      - name: "\U0000274C Уведомление об ошибке"
+        if: failure()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ❌ *Сборка провалена*
+
+            🐋 *Barkfluff\.CloudMessaging*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+  # --- AdminPanel ---
+  build-admin-panel:
+    name: "\U0001F433 AdminPanel"
+    needs: detect-changes
+    if: needs.detect-changes.outputs.admin-panel == 'true'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "\U0001F4F2 Запрос подтверждения сборки"
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "🐋 *Barkfluff\\.AdminPanel*\n\nВетка: `${{ github.ref_name }}`\nКоммит: `${{ github.sha }}`\nАвтор: *${{ github.actor }}*\n\nЗапустить сборку?"
+          APPROVAL_BUTTON: "✅ Собрать"
+          REJECT_BUTTON: "❌ Отменить"
+          APPROVED_TEXT: "✅ Сборка AdminPanel одобрена"
+          REJECTED_TEXT: "❌ Сборка AdminPanel отклонена"
+          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Login to Private Registry
+        uses: docker/login-action@v2
+        with:
+          registry: docker.barkfluff.com:5000
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Set tags
+        id: vars
+        shell: pwsh
+        run: |
+          if ("${{ github.ref_name }}" -eq "dev") {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-admin-panel-dev:latest,docker.barkfluff.com:5000/barkfluff-admin-panel-dev:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-admin-panel:latest,docker.barkfluff.com:5000/barkfluff-admin-panel:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Build and Push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Backend/Barkfluff.AdminPanel/Dockerfile
+          push: true
+          tags: ${{ steps.vars.outputs.tags }}
+
+      - name: "\U00002705 Уведомление об успехе"
+        if: success()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ✅ *Сборка успешна*
+
+            🐋 *Barkfluff\.AdminPanel*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Теги: `${{ steps.vars.outputs.tags }}`
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+      - name: "\U0000274C Уведомление об ошибке"
+        if: failure()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ❌ *Сборка провалена*
+
+            🐋 *Barkfluff\.AdminPanel*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+  # --- ClientStorage ---
+  build-client-storage:
+    name: "\U0001F433 ClientStorage"
+    needs: detect-changes
+    if: needs.detect-changes.outputs.client-storage == 'true'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "\U0001F4F2 Запрос подтверждения сборки"
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "🐋 *BarkFluff\\.ClientStorage*\n\nВетка: `${{ github.ref_name }}`\nКоммит: `${{ github.sha }}`\nАвтор: *${{ github.actor }}*\n\nЗапустить сборку?"
+          APPROVAL_BUTTON: "✅ Собрать"
+          REJECT_BUTTON: "❌ Отменить"
+          APPROVED_TEXT: "✅ Сборка ClientStorage одобрена"
+          REJECTED_TEXT: "❌ Сборка ClientStorage отклонена"
+          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Login to Private Registry
+        uses: docker/login-action@v2
+        with:
+          registry: docker.barkfluff.com:5000
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Set tags
+        id: vars
+        shell: pwsh
+        run: |
+          if ("${{ github.ref_name }}" -eq "dev") {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-client-storage-dev:latest,docker.barkfluff.com:5000/barkfluff-client-storage-dev:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "tags=docker.barkfluff.com:5000/barkfluff-client-storage:latest,docker.barkfluff.com:5000/barkfluff-client-storage:${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Build and Push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Backend/BarkFluff.ClientStorage/Dockerfile
+          push: true
+          tags: ${{ steps.vars.outputs.tags }}
+
+      - name: "\U00002705 Уведомление об успехе"
+        if: success()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ✅ *Сборка успешна*
+
+            🐋 *BarkFluff\.ClientStorage*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Теги: `${{ steps.vars.outputs.tags }}`
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+      - name: "\U0000274C Уведомление об ошибке"
+        if: failure()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ❌ *Сборка провалена*
+
+            🐋 *BarkFluff\.ClientStorage*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+  # ═══════════════════════════════════════════════════════════════
+  #  WPF Client — сборка + релиз в GitHub
+  # ═══════════════════════════════════════════════════════════════
+  build-wpf-client:
+    name: "\U0001F4E6 WPF Client"
+    needs: detect-changes
+    if: needs.detect-changes.outputs.wpf-client == 'true'
+    runs-on: self-hosted
+    steps:
+      - name: Configure Git safe directory
+        run: git config --global --add safe.directory "$env:GITHUB_WORKSPACE"
+
+      - uses: actions/checkout@v4
+
+      - name: "\U0001F4F2 Запрос подтверждения сборки"
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "📦 *WPF Client*\n\nВетка: `${{ github.ref_name }}`\nКоммит: `${{ github.sha }}`\nАвтор: *${{ github.actor }}*\n\nЗапустить сборку клиента?"
+          APPROVAL_BUTTON: "✅ Собрать"
+          REJECT_BUTTON: "❌ Отменить"
+          APPROVED_TEXT: "✅ Сборка WPF Client одобрена"
+          REJECTED_TEXT: "❌ Сборка WPF Client отклонена"
+          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore Windows/BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj
+
+      - name: Build
+        run: dotnet build Windows/BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj --no-restore --configuration Release
+
+      - name: Publish
+        run: dotnet publish Windows/BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj --configuration Release --runtime win-x64 --self-contained true --output ./publish
+
+      - name: Zip build
+        uses: vimtor/action-zip@v1
+        with:
+          files: publish/
+          dest: wpf-build.zip
+
+      - name: Get version
+        id: version
+        shell: pwsh
+        run: |
+          $versionFile = "$env:GITHUB_WORKSPACE\Windows\BarkFluff.Client.WPF\Services\App\AppVersion.cs"
+          $content = Get-Content $versionFile -Raw
+          if ($content -match 'Version\s*\{\s*get;\s*set;\s*\}\s*=\s*"([^"]+)"') {
+            $version = $matches[1]
+          } else {
+            $version = "0.0.0"
+          }
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Generate tag
+        id: tag
+        shell: pwsh
+        run: |
+          $commitHash = $(git rev-parse --short HEAD)
+          $timestamp = $(Get-Date -Format 'yyyyMMddHHmmss')
+          $random = Get-Random -Minimum 1000 -Maximum 9999
+          $branch = "${{ github.ref_name }}"
+          $tag = "$branch-$timestamp-$commitHash-$random"
+          echo "tag=$tag" >> $env:GITHUB_OUTPUT
+
+      - name: "\U0001F680 Создать релиз"
+        uses: softprops/action-gh-release@v2
+        with:
+          repository: ${{ secrets.OWNER_RELEASE_REPO }}/${{ secrets.RELEASE_REPO_NAME }}
+          token: ${{ secrets.PUBLIC_REPO_TOKEN }}
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: "BarkFluff WPF Client v${{ steps.version.outputs.version }}"
+          body: |
+            ## 📦 BarkFluff WPF Client
+
+            **Версия:** `${{ steps.version.outputs.version }}`
+            **Ветка:** `${{ github.ref_name }}`
+            **Коммит:** `${{ github.sha }}`
+            **Автор:** ${{ github.actor }}
+
+            ---
+
+            🔗 [Workflow запуск](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          draft: false
+          prerelease: ${{ github.ref_name == 'dev' }}
+          files: wpf-build.zip
+
+      - name: "\U00002705 Уведомление об успехе"
+        if: success()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ✅ *Сборка успешна*
+
+            📦 *WPF Client* v${{ steps.version.outputs.version }}
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Тег: `${{ steps.tag.outputs.tag }}`
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+      - name: "\U0000274C Уведомление об ошибке"
+        if: failure()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ❌ *Сборка провалена*
+
+            📦 *WPF Client*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+
+            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
