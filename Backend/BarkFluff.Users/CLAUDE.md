@@ -1,37 +1,95 @@
-# Микросервис Users
+# CLAUDE.md
 
-## Описание
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Микросервис `Users` отвечает за управление профилями пользователей и связанной с ними информацией в системе BarkFluff.
+## Назначение микросервиса
 
-## Механика работы
+`BarkFluff.Users` — управление профилями пользователей, бейджами, устройствами и GDPR-экспортом данных. Порт: 7001.
 
-Сервис предоставляет gRPC API для выполнения следующих операций:
+## Сборка и запуск
 
-*   **Создание и подтверждение пользователей:** Позволяет создавать черновые версии пользователей, подтверждать их и перезаписывать данные.
-*   **Управление профилем:** Пользователи могут изменять свою биографию, имя, имя пользователя и устанавливать изображение профиля.
-*   **Поиск и получение информации о пользователях:** Позволяет искать пользователей по логину, получать информацию о конкретном пользователе, его контактах, а также получать списки пользователей по их идентификаторам.
-*   **Валидация:** Позволяет проверять существование электронной почты и имени пользователя в системе.
+```bash
+# Сборка
+dotnet build BarkFluff.Users.csproj
 
-## Возможности
+# Миграции применяются автоматически при старте (Program.cs)
+# Ручное применение:
+dotnet ef database update --project BarkFluff.Users.csproj
+```
 
-*   Создание, подтверждение и обновление профилей пользователей.
-*   Поиск пользователей по различным критериям.
-*   Получение информации о пользователях и их контактах.
-*   Управление изображениями профилей.
-*   Проверка уникальности электронной почты и имени пользователя.
+Тестов нет. Полный запуск — через Docker Compose в корне Backend.
 
-## Технический стек
+## Архитектура
 
-*   **Фреймворк:** ASP.NET Core
-*   **API:** gRPC
-*   **База данных:** PostgreSQL (с использованием Npgsql.EntityFrameworkCore.PostgreSQL)
-*   **Обмен сообщениями:** RabbitMQ (с использованием MassTransit.RabbitMQ)
-*   **Другое:** MediatR
+### Два gRPC-сервиса
 
-## Зависимости
+- **`UsersApiService`** — клиентское API (`[Authorize(Policy = nameof(TokenType.User))]`)
+- **`UsersServerApiService`** — межсервисное API (`[Authorize(Policy = nameof(TokenType.Service))]`)
 
-*   **PostgreSQL:** Используется для хранения информации о профилях пользователей.
-*   **RabbitMQ:** Используется для отправки сообщений другим сервисам при изменении информации о пользователе (например, при изменении имени или аватара).
-*   **Микросервис Files:** Взаимодействует с микросервисом `Files` для управления изображениями профилей.
-*   **Микросервис Configuration:** Используется для обнаружения других сервисов.
+### Слои
+
+- `Domain/` — EF Core сущности (`User`, `UserContact`, `Badge`, `UserBadge`, `UserDevice`)
+- `Features/` — MediatR команды/запросы (CQRS), организованы по фичам
+- `Host/` — gRPC-сервисы, делегируют в MediatR
+- `Persistence/Services/` — `UsersStorage` и `DevicesStorage` (Transient), инкапсулируют запросы к БД
+- `Infrastructure/` — `UserInfoQueueSender` для публикации RabbitMQ-событий
+- `Mapping/` — extension-методы для маппинга доменных объектов в protobuf
+
+### Ключевые паттерны
+
+**Draft-пользователи.** Регистрация двухфазная: `AddDraftUser` (IsDraft=true) → `ConfirmUser` (IsDraft=false). Identity-сервис управляет этим процессом.
+
+**ID пользователя** генерируется как `DateTimeOffset.UtcNow.ToUnixTimeSeconds()` при создании.
+
+**Зарезервированные имена.** `ReservedUsernamesService` (Singleton) загружает список из конфига `ReservedNames:Usernames` (через запятую), проверяется при AddDraftUser и CheckExistUsername.
+
+**Поиск пользователей.** `SearchUsers` использует два механизма PostgreSQL:
+- Full-text search (русский язык, tsvector + plainto_tsquery) для точных совпадений
+- Trigram fuzzy matching (`pg_trgm`, порог similarity 0.3) для опечаток
+Запросы выполняются через `FromSqlRaw()` с `NpgsqlParameter`.
+
+**Бейджи.** Уникальное ограничение (UserId, BadgeId). `Priority` — целое число, меньше = выше приоритет (default 1000).
+
+**Устройства.** `RegisterDevice` — upsert по DeviceId (Guid). Хранит AppName, OS, Location, FirebaseDeviceToken.
+
+### RabbitMQ-события (публикуются)
+
+Все через `UserInfoQueueSender.PublishEndpoint`:
+
+| Событие | Триггер |
+|---------|---------|
+| `UserChangedName` | ChangeName |
+| `UserChangedUsername` | ChangeUsername |
+| `UserChangedAvatar` | SetProfilePicture |
+| `UserChangedPassword` | (вызывается Identity через серверное API) |
+| `UserChangedBio` | ChangeBio |
+
+### gRPC-клиенты
+
+- `FilesServerApi.FilesServerApiClient` — валидация типа файла аватара, получение данных файла
+- `MessagesServerApi.MessagesServerApiClient` — получение чатов и сообщений для GDPR-экспорта (`ExportData`)
+
+## Ключевые файлы
+
+| Файл | Назначение |
+|------|-----------|
+| `Program.cs` | Startup, DI-регистрация |
+| `Persistence/Contexts/UsersContext.cs` | DbContext, конфигурация связей |
+| `Persistence/Services/UsersStorage.cs` | Основной слой данных для пользователей и бейджей |
+| `Persistence/Services/DevicesStorage.cs` | Слой данных для устройств |
+| `Host/UsersApiService.cs` | Клиентский gRPC-сервис |
+| `Host/UsersServerApiService.cs` | Межсервисный gRPC-сервис |
+| `Infrastructure/UserInfoQueueSender.cs` | Публикация событий в RabbitMQ |
+| `../../Shared/BarkFluff.Proto/users_api.proto` | Proto-контракт |
+
+## Конфигурация (ключи)
+
+| Ключ | Описание |
+|------|---------|
+| `UsersDb` | PostgreSQL connection string |
+| `RabbitMQ:Host`, `RabbitMQ:Username`, `RabbitMQ:Password` | RabbitMQ |
+| `FilesService:Host`, `FilesService:Token` | gRPC-клиент Files |
+| `MessagesService:Host`, `MessagesService:Token` | gRPC-клиент Messages |
+| `ReservedNames:Usernames` | Зарезервированные имена через запятую |
+
+Конфигурация загружается из сервиса Configuration при старте: `builder.LoadConfiguration(ServiceId.Users)`.
