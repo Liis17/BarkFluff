@@ -239,8 +239,6 @@ jobs:
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
             🏷️ Теги: `${{ steps.vars.outputs.tags }}`
-
-            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
@@ -259,8 +257,6 @@ jobs:
             📌 Ветка: `${{ github.ref_name }}`
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
-
-            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
@@ -329,8 +325,6 @@ jobs:
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
             🏷️ Теги: `${{ steps.vars.outputs.tags }}`
-
-            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
@@ -349,8 +343,6 @@ jobs:
             📌 Ветка: `${{ github.ref_name }}`
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
-
-            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
@@ -419,8 +411,6 @@ jobs:
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
             🏷️ Теги: `${{ steps.vars.outputs.tags }}`
-
-            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
@@ -439,8 +429,6 @@ jobs:
             📌 Ветка: `${{ github.ref_name }}`
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
-
-            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
@@ -509,8 +497,6 @@ jobs:
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
             🏷️ Теги: `${{ steps.vars.outputs.tags }}`
-
-            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
@@ -529,8 +515,6 @@ jobs:
             📌 Ветка: `${{ github.ref_name }}`
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
-
-            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
@@ -599,8 +583,6 @@ jobs:
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
             🏷️ Теги: `${{ steps.vars.outputs.tags }}`
-
-            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
@@ -619,8 +601,6 @@ jobs:
             📌 Ветка: `${{ github.ref_name }}`
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
-
-            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
@@ -689,8 +669,6 @@ jobs:
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
             🏷️ Теги: `${{ steps.vars.outputs.tags }}`
-
-            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
@@ -709,8 +687,6 @@ jobs:
             📌 Ветка: `${{ github.ref_name }}`
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
-
-            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
@@ -779,8 +755,6 @@ jobs:
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
             🏷️ Теги: `${{ steps.vars.outputs.tags }}`
-
-            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
@@ -799,8 +773,6 @@ jobs:
             📌 Ветка: `${{ github.ref_name }}`
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
-
-            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
@@ -869,8 +841,6 @@ jobs:
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
             🏷️ Теги: `${{ steps.vars.outputs.tags }}`
-
-            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
@@ -889,8 +859,6 @@ jobs:
             📌 Ветка: `${{ github.ref_name }}`
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
-
-            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
@@ -959,8 +927,6 @@ jobs:
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
             🏷️ Теги: `${{ steps.vars.outputs.tags }}`
-
-            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
@@ -979,8 +945,6 @@ jobs:
             📌 Ветка: `${{ github.ref_name }}`
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
-
-            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
@@ -1049,8 +1013,6 @@ jobs:
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
             🏷️ Теги: `${{ steps.vars.outputs.tags }}`
-
-            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
@@ -1069,8 +1031,6 @@ jobs:
             📌 Ветка: `${{ github.ref_name }}`
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
-
-            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
@@ -1139,8 +1099,6 @@ jobs:
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
             🏷️ Теги: `${{ steps.vars.outputs.tags }}`
-
-            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
@@ -1159,8 +1117,6 @@ jobs:
             📌 Ветка: `${{ github.ref_name }}`
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
-
-            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
@@ -1229,8 +1185,6 @@ jobs:
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
             🏷️ Теги: `${{ steps.vars.outputs.tags }}`
-
-            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
@@ -1249,8 +1203,6 @@ jobs:
             📌 Ветка: `${{ github.ref_name }}`
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
-
-            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
@@ -1319,8 +1271,6 @@ jobs:
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
             🏷️ Теги: `${{ steps.vars.outputs.tags }}`
-
-            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
@@ -1339,8 +1289,6 @@ jobs:
             📌 Ветка: `${{ github.ref_name }}`
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
-
-            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
@@ -1409,8 +1357,6 @@ jobs:
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
             🏷️ Теги: `${{ steps.vars.outputs.tags }}`
-
-            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
@@ -1429,8 +1375,6 @@ jobs:
             📌 Ветка: `${{ github.ref_name }}`
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
-
-            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
@@ -1526,7 +1470,7 @@ jobs:
             👤 Автор: *${{ github.actor }}*
             🏷️ Тег: `${{ steps.meta.outputs.tag }}`
 
-            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            [Скачать релиз](https://github.com/${{ secrets.OWNER_RELEASE_REPO }}/${{ secrets.RELEASE_REPO_NAME }}/releases/tag/${{ steps.meta.outputs.tag }})
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
@@ -1545,8 +1489,6 @@ jobs:
             📌 Ветка: `${{ github.ref_name }}`
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
-
-            [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
