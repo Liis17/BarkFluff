@@ -24,6 +24,7 @@ public class XDeviceIdInterceptor : Interceptor
         var osName = Convert.ToBase64String(Encoding.UTF8.GetBytes(_deviceId));
 
         metadata.Add(MetadataKeys.DeviceId, osName);
+        
 
         var newContext = new ClientInterceptorContext<TRequest, TResponse>(
             context.Method,

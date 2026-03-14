@@ -9,4 +9,5 @@ public class MessageReadEvent
     public List<long> NewReadBy { get; set; }
 
     public List<long> ChatMembers { get; set; }
+    
 }
