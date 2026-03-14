@@ -53,4 +53,80 @@ public class ConfigurationStorage
 
         await _context.SaveChangesAsync();
     }
+
+    // ─── Reserved Names ─────────────────────────────────────────────────────────
+
+    private const string ReservedNamesSection = "ReservedNames";
+
+    public async Task<List<string>> GetReservedNamesAsync()
+    {
+        return await _context.Configurations
+            .AsNoTracking()
+            .Where(x => x.Section == ReservedNamesSection && x.ServiceId == ServiceId.Unknown)
+            .Select(x => x.Key)
+            .ToListAsync();
+    }
+
+    public async Task AddReservedNameAsync(string name)
+    {
+        var normalized = name.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(normalized))
+            throw new ArgumentException("Имя не может быть пустым");
+
+        var exists = await _context.Configurations
+            .AnyAsync(x => x.Section == ReservedNamesSection && x.Key == normalized && x.ServiceId == ServiceId.Unknown);
+
+        if (exists)
+            throw new InvalidOperationException($"Имя '{normalized}' уже зарезервировано");
+
+        await _context.Configurations.AddAsync(new ConfigurationItem
+        {
+            Section = ReservedNamesSection,
+            Key = normalized,
+            Value = normalized,
+            EditedAt = DateTime.UtcNow,
+            EditedBy = "AdminPanel",
+            EditedFrom = "AdminPanel",
+            ServiceId = ServiceId.Unknown
+        });
+
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task UpdateReservedNameAsync(string oldName, string newName)
+    {
+        var normalizedNew = newName.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(normalizedNew))
+            throw new ArgumentException("Новое имя не может быть пустым");
+
+        var existing = await _context.Configurations
+            .FirstOrDefaultAsync(x => x.Section == ReservedNamesSection && x.Key == oldName && x.ServiceId == ServiceId.Unknown);
+
+        if (existing == null)
+            throw new InvalidOperationException($"Имя '{oldName}' не найдено");
+
+        var duplicate = await _context.Configurations
+            .AnyAsync(x => x.Section == ReservedNamesSection && x.Key == normalizedNew && x.ServiceId == ServiceId.Unknown);
+
+        if (duplicate)
+            throw new InvalidOperationException($"Имя '{normalizedNew}' уже зарезервировано");
+
+        existing.Key = normalizedNew;
+        existing.Value = normalizedNew;
+        existing.EditedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task DeleteReservedNameAsync(string name)
+    {
+        var existing = await _context.Configurations
+            .FirstOrDefaultAsync(x => x.Section == ReservedNamesSection && x.Key == name && x.ServiceId == ServiceId.Unknown);
+
+        if (existing == null)
+            throw new InvalidOperationException($"Имя '{name}' не найдено");
+
+        _context.Configurations.Remove(existing);
+        await _context.SaveChangesAsync();
+    }
 }

@@ -169,6 +169,9 @@ public class Program
         // Map Configuration Endpoints
         app.MapConfigurationEndpoints();
 
+        // Map Reserved Names Endpoints
+        app.MapReservedNamesEndpoints();
+
         // Map S3 Browser Endpoints
         app.MapS3BrowserEndpoints();
 

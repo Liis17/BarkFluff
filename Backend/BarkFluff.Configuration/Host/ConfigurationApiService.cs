@@ -1,5 +1,9 @@
+using BarkFluff.Configuration.Features.AddReservedName;
+using BarkFluff.Configuration.Features.DeleteReservedName;
 using BarkFluff.Configuration.Features.GetConfiguration;
+using BarkFluff.Configuration.Features.GetReservedNames;
 using BarkFluff.Configuration.Features.UpdateConfiguration;
+using BarkFluff.Configuration.Features.UpdateReservedName;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Configuration;
 using BarkFluff.Shared.Identity;
@@ -47,5 +51,31 @@ public class ConfigurationApiService : BarkFluff.Proto.Configuration.Configurati
         };
 
         return await _mediator.Send(command);
+    }
+
+    // ─── Reserved Names ─────────────────────────────────────────────────────────
+
+    public override async Task<GetReservedNamesResponse> GetReservedNames(GetReservedNamesRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("reserved_names_get_requests");
+        return await _mediator.Send(new GetReservedNamesCommand());
+    }
+
+    public override async Task<AddReservedNameResponse> AddReservedName(AddReservedNameRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("reserved_names_add_requests");
+        return await _mediator.Send(new AddReservedNameCommand { Name = request.Name });
+    }
+
+    public override async Task<UpdateReservedNameResponse> UpdateReservedName(UpdateReservedNameRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("reserved_names_update_requests");
+        return await _mediator.Send(new UpdateReservedNameCommand { OldName = request.OldName, NewName = request.NewName });
+    }
+
+    public override async Task<DeleteReservedNameResponse> DeleteReservedName(DeleteReservedNameRequest request, ServerCallContext context)
+    {
+        _metrics.Increment("reserved_names_delete_requests");
+        return await _mediator.Send(new DeleteReservedNameCommand { Name = request.Name });
     }
 }
