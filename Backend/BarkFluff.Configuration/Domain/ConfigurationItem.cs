@@ -8,7 +8,6 @@ public class ConfigurationItem
 {
     [Key]
     public long Id { get; set; }
-
     public string Section { get; set; }
 
     public string Key { get; set; }
