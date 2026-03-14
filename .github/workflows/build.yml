@@ -41,97 +41,137 @@ jobs:
 
       - name: Определение изменённых файлов
         id: changes
-        shell: pwsh
         run: |
-          # Получаем список изменённых файлов
-          $changed = git diff --name-only HEAD~1 HEAD 2>$null
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "HEAD~1 недоступен, берём все файлы текущего коммита"
-            $changed = git diff-tree --no-commit-id --name-only -r HEAD
-          }
-          Write-Host "Changed files:"
-          Write-Host $changed
+          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff-tree --no-commit-id --name-only -r HEAD)
+          echo "Changed files:"
+          echo "$CHANGED"
 
-          $changedList = $changed -split "`n" | Where-Object { $_ -ne "" }
-
-          function Test-Path-Changed($pattern) {
-            return ($changedList | Where-Object { $_ -like "$pattern" }).Count -gt 0
+          has_match() {
+            echo "$CHANGED" | grep -q "$1" && echo "true" || echo "false"
           }
 
-          # Backend trigger file перезапускает все бэкенд-сервисы
-          $backendRebuild = Test-Path-Changed "Backend/rebuild.trigger"
+          BACKEND_REBUILD=$(has_match "Backend/rebuild.trigger")
+          GRPC_SERVER=$(has_match "Backend/BarkFluff.GrpcServer/")
+          SHARED_QUEUE=$(has_match "Shared/BarkFluff.Shared.Queue/")
+          SHARED_IDENTITY=$(has_match "Shared/BarkFluff.Shared.Identity/")
+          SHARED_EXCEPTIONS=$(has_match "Shared/BarkFluff.Shared.Exceptions/")
+          SHARED_AUTH=$(has_match "Shared/BarkFluff.Shared.Auth/")
+          SHARED_SECURITY=$(has_match "Shared/BarkFluff.Shared.SecurityUtilities/")
+          IDENTITY_CHANGED=$(has_match "Backend/BarkFluff.Identity/")
 
-          # Shared libraries
-          $grpcServer       = Test-Path-Changed "Backend/BarkFluff.GrpcServer/*"
-          $sharedQueue      = Test-Path-Changed "Shared/BarkFluff.Shared.Queue/*"
-          $sharedIdentity   = Test-Path-Changed "Shared/BarkFluff.Shared.Identity/*"
-          $sharedExceptions = Test-Path-Changed "Shared/BarkFluff.Shared.Exceptions/*"
-          $sharedAuth       = Test-Path-Changed "Shared/BarkFluff.Shared.Auth/*"
-          $sharedSecurity   = Test-Path-Changed "Shared/BarkFluff.Shared.SecurityUtilities/*"
-          $identityChanged  = Test-Path-Changed "Backend/BarkFluff.Identity/*"
+          is_true() {
+            for v in "$@"; do [ "$v" = "true" ] && return 0; done
+            return 1
+          }
 
           # Identity
-          $val = (Test-Path-Changed "Backend/BarkFluff.Identity/*") -or $sharedQueue -or $sharedIdentity -or $sharedExceptions -or $grpcServer -or $backendRebuild
-          echo "identity=$($val.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+          if is_true "$(has_match 'Backend/BarkFluff.Identity/')" "$SHARED_QUEUE" "$SHARED_IDENTITY" "$SHARED_EXCEPTIONS" "$GRPC_SERVER" "$BACKEND_REBUILD"; then
+            echo "identity=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "identity=false" >> "$GITHUB_OUTPUT"
+          fi
 
           # Users
-          $val = (Test-Path-Changed "Backend/BarkFluff.Users/*") -or $sharedQueue -or $sharedExceptions -or $grpcServer -or $backendRebuild
-          echo "users=$($val.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+          if is_true "$(has_match 'Backend/BarkFluff.Users/')" "$SHARED_QUEUE" "$SHARED_EXCEPTIONS" "$GRPC_SERVER" "$BACKEND_REBUILD"; then
+            echo "users=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "users=false" >> "$GITHUB_OUTPUT"
+          fi
 
           # Messages
-          $val = (Test-Path-Changed "Backend/BarkFluff.Messages/*") -or $sharedQueue -or $sharedAuth -or $grpcServer -or $backendRebuild
-          echo "messages=$($val.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+          if is_true "$(has_match 'Backend/BarkFluff.Messages/')" "$SHARED_QUEUE" "$SHARED_AUTH" "$GRPC_SERVER" "$BACKEND_REBUILD"; then
+            echo "messages=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "messages=false" >> "$GITHUB_OUTPUT"
+          fi
 
           # Files
-          $val = (Test-Path-Changed "Backend/BarkFluff.Files/*") -or $grpcServer -or $backendRebuild
-          echo "files=$($val.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+          if is_true "$(has_match 'Backend/BarkFluff.Files/')" "$GRPC_SERVER" "$BACKEND_REBUILD"; then
+            echo "files=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "files=false" >> "$GITHUB_OUTPUT"
+          fi
 
           # Updates
-          $val = (Test-Path-Changed "Backend/BarkFluff.Updates/*") -or $sharedQueue -or $grpcServer -or $backendRebuild
-          echo "updates=$($val.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+          if is_true "$(has_match 'Backend/BarkFluff.Updates/')" "$SHARED_QUEUE" "$GRPC_SERVER" "$BACKEND_REBUILD"; then
+            echo "updates=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "updates=false" >> "$GITHUB_OUTPUT"
+          fi
 
           # Notification
-          $val = (Test-Path-Changed "Backend/BarkFluff.Notification/*") -or $sharedQueue -or $grpcServer -or $backendRebuild
-          echo "notification=$($val.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+          if is_true "$(has_match 'Backend/BarkFluff.Notification/')" "$SHARED_QUEUE" "$GRPC_SERVER" "$BACKEND_REBUILD"; then
+            echo "notification=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "notification=false" >> "$GITHUB_OUTPUT"
+          fi
 
           # Configuration
-          $val = (Test-Path-Changed "Backend/BarkFluff.Configuration/*") -or $identityChanged -or $grpcServer -or $backendRebuild
-          echo "configuration=$($val.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+          if is_true "$(has_match 'Backend/BarkFluff.Configuration/')" "$IDENTITY_CHANGED" "$GRPC_SERVER" "$BACKEND_REBUILD"; then
+            echo "configuration=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configuration=false" >> "$GITHUB_OUTPUT"
+          fi
 
           # Beacon
-          $val = (Test-Path-Changed "Backend/BarkFluff.Beacon/*") -or $grpcServer -or $backendRebuild
-          echo "beacon=$($val.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+          if is_true "$(has_match 'Backend/BarkFluff.Beacon/')" "$GRPC_SERVER" "$BACKEND_REBUILD"; then
+            echo "beacon=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "beacon=false" >> "$GITHUB_OUTPUT"
+          fi
 
           # FastAuth
-          $val = (Test-Path-Changed "Backend/BarkFluff.FastAuth/*") -or $identityChanged -or $grpcServer -or $backendRebuild
-          echo "fast-auth=$($val.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+          if is_true "$(has_match 'Backend/BarkFluff.FastAuth/')" "$IDENTITY_CHANGED" "$GRPC_SERVER" "$BACKEND_REBUILD"; then
+            echo "fast-auth=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "fast-auth=false" >> "$GITHUB_OUTPUT"
+          fi
 
           # Navigator
-          $val = (Test-Path-Changed "Backend/BarkFluff.Navigator/*") -or $grpcServer -or $backendRebuild
-          echo "navigator=$($val.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+          if is_true "$(has_match 'Backend/BarkFluff.Navigator/')" "$GRPC_SERVER" "$BACKEND_REBUILD"; then
+            echo "navigator=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "navigator=false" >> "$GITHUB_OUTPUT"
+          fi
 
           # Onliner
-          $val = (Test-Path-Changed "Backend/BarkFluff.Onliner/*") -or $grpcServer -or $backendRebuild
-          echo "onliner=$($val.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+          if is_true "$(has_match 'Backend/BarkFluff.Onliner/')" "$GRPC_SERVER" "$BACKEND_REBUILD"; then
+            echo "onliner=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "onliner=false" >> "$GITHUB_OUTPUT"
+          fi
 
           # CloudMessaging
-          $val = (Test-Path-Changed "Backend/Barkfluff.CloudMessaging/*") -or $sharedQueue -or $sharedExceptions -or $sharedAuth -or $grpcServer -or $backendRebuild
-          echo "cloud-messaging=$($val.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+          if is_true "$(has_match 'Backend/Barkfluff.CloudMessaging/')" "$SHARED_QUEUE" "$SHARED_EXCEPTIONS" "$SHARED_AUTH" "$GRPC_SERVER" "$BACKEND_REBUILD"; then
+            echo "cloud-messaging=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "cloud-messaging=false" >> "$GITHUB_OUTPUT"
+          fi
 
           # AdminPanel
-          $val = (Test-Path-Changed "Backend/Barkfluff.AdminPanel/*") -or $backendRebuild
-          echo "admin-panel=$($val.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+          if is_true "$(has_match 'Backend/Barkfluff.AdminPanel/')" "$BACKEND_REBUILD"; then
+            echo "admin-panel=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "admin-panel=false" >> "$GITHUB_OUTPUT"
+          fi
 
           # ClientStorage
-          $val = (Test-Path-Changed "Backend/BarkFluff.ClientStorage/*") -or $grpcServer -or $backendRebuild
-          echo "client-storage=$($val.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+          if is_true "$(has_match 'Backend/BarkFluff.ClientStorage/')" "$GRPC_SERVER" "$BACKEND_REBUILD"; then
+            echo "client-storage=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "client-storage=false" >> "$GITHUB_OUTPUT"
+          fi
 
           # WPF Client
-          $val = (Test-Path-Changed "Windows/BarkFluff.Client.WPF/*") -or (Test-Path-Changed "Windows/BarkFluff.WebApi.Core/*") -or (Test-Path-Changed "Windows/client-rebuild.trigger") -or $sharedExceptions -or $sharedAuth -or $sharedSecurity
-          echo "wpf-client=$($val.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+          if is_true "$(has_match 'Windows/BarkFluff.Client.WPF/')" "$(has_match 'Windows/BarkFluff.WebApi.Core/')" "$(has_match 'Windows/client-rebuild.trigger')" "$SHARED_EXCEPTIONS" "$SHARED_AUTH" "$SHARED_SECURITY"; then
+            echo "wpf-client=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "wpf-client=false" >> "$GITHUB_OUTPUT"
+          fi
 
-          Write-Host "`nOutputs:"
-          Get-Content $env:GITHUB_OUTPUT
+          echo ""
+          echo "Outputs:"
+          cat "$GITHUB_OUTPUT"
 
   # ═══════════════════════════════════════════════════════════════
   #  Backend Docker builds
@@ -171,13 +211,12 @@ jobs:
 
       - name: Set tags
         id: vars
-        shell: pwsh
         run: |
-          if ("${{ github.ref_name }}" -eq "dev") {
-            echo "tags=docker.barkfluff.com:5000/barkfluff-identity-dev:latest,docker.barkfluff.com:5000/barkfluff-identity-dev:${{ github.sha }}" >> $env:GITHUB_OUTPUT
-          } else {
-            echo "tags=docker.barkfluff.com:5000/barkfluff-identity:latest,docker.barkfluff.com:5000/barkfluff-identity:${{ github.sha }}" >> $env:GITHUB_OUTPUT
-          }
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            echo "tags=docker.barkfluff.com:5000/barkfluff-identity-dev:latest,docker.barkfluff.com:5000/barkfluff-identity-dev:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tags=docker.barkfluff.com:5000/barkfluff-identity:latest,docker.barkfluff.com:5000/barkfluff-identity:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Build and Push
         uses: docker/build-push-action@v4
@@ -256,13 +295,12 @@ jobs:
 
       - name: Set tags
         id: vars
-        shell: pwsh
         run: |
-          if ("${{ github.ref_name }}" -eq "dev") {
-            echo "tags=docker.barkfluff.com:5000/barkfluff-users-dev:latest,docker.barkfluff.com:5000/barkfluff-users-dev:${{ github.sha }}" >> $env:GITHUB_OUTPUT
-          } else {
-            echo "tags=docker.barkfluff.com:5000/barkfluff-users:latest,docker.barkfluff.com:5000/barkfluff-users:${{ github.sha }}" >> $env:GITHUB_OUTPUT
-          }
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            echo "tags=docker.barkfluff.com:5000/barkfluff-users-dev:latest,docker.barkfluff.com:5000/barkfluff-users-dev:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tags=docker.barkfluff.com:5000/barkfluff-users:latest,docker.barkfluff.com:5000/barkfluff-users:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Build and Push
         uses: docker/build-push-action@v4
@@ -341,13 +379,12 @@ jobs:
 
       - name: Set tags
         id: vars
-        shell: pwsh
         run: |
-          if ("${{ github.ref_name }}" -eq "dev") {
-            echo "tags=docker.barkfluff.com:5000/barkfluff-messages-dev:latest,docker.barkfluff.com:5000/barkfluff-messages-dev:${{ github.sha }}" >> $env:GITHUB_OUTPUT
-          } else {
-            echo "tags=docker.barkfluff.com:5000/barkfluff-messages:latest,docker.barkfluff.com:5000/barkfluff-messages:${{ github.sha }}" >> $env:GITHUB_OUTPUT
-          }
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            echo "tags=docker.barkfluff.com:5000/barkfluff-messages-dev:latest,docker.barkfluff.com:5000/barkfluff-messages-dev:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tags=docker.barkfluff.com:5000/barkfluff-messages:latest,docker.barkfluff.com:5000/barkfluff-messages:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Build and Push
         uses: docker/build-push-action@v4
@@ -426,13 +463,12 @@ jobs:
 
       - name: Set tags
         id: vars
-        shell: pwsh
         run: |
-          if ("${{ github.ref_name }}" -eq "dev") {
-            echo "tags=docker.barkfluff.com:5000/barkfluff-files-dev:latest,docker.barkfluff.com:5000/barkfluff-files-dev:${{ github.sha }}" >> $env:GITHUB_OUTPUT
-          } else {
-            echo "tags=docker.barkfluff.com:5000/barkfluff-files:latest,docker.barkfluff.com:5000/barkfluff-files:${{ github.sha }}" >> $env:GITHUB_OUTPUT
-          }
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            echo "tags=docker.barkfluff.com:5000/barkfluff-files-dev:latest,docker.barkfluff.com:5000/barkfluff-files-dev:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tags=docker.barkfluff.com:5000/barkfluff-files:latest,docker.barkfluff.com:5000/barkfluff-files:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Build and Push
         uses: docker/build-push-action@v4
@@ -511,13 +547,12 @@ jobs:
 
       - name: Set tags
         id: vars
-        shell: pwsh
         run: |
-          if ("${{ github.ref_name }}" -eq "dev") {
-            echo "tags=docker.barkfluff.com:5000/barkfluff-updates-dev:latest,docker.barkfluff.com:5000/barkfluff-updates-dev:${{ github.sha }}" >> $env:GITHUB_OUTPUT
-          } else {
-            echo "tags=docker.barkfluff.com:5000/barkfluff-updates:latest,docker.barkfluff.com:5000/barkfluff-updates:${{ github.sha }}" >> $env:GITHUB_OUTPUT
-          }
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            echo "tags=docker.barkfluff.com:5000/barkfluff-updates-dev:latest,docker.barkfluff.com:5000/barkfluff-updates-dev:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tags=docker.barkfluff.com:5000/barkfluff-updates:latest,docker.barkfluff.com:5000/barkfluff-updates:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Build and Push
         uses: docker/build-push-action@v4
@@ -596,13 +631,12 @@ jobs:
 
       - name: Set tags
         id: vars
-        shell: pwsh
         run: |
-          if ("${{ github.ref_name }}" -eq "dev") {
-            echo "tags=docker.barkfluff.com:5000/barkfluff-notification-dev:latest,docker.barkfluff.com:5000/barkfluff-notification-dev:${{ github.sha }}" >> $env:GITHUB_OUTPUT
-          } else {
-            echo "tags=docker.barkfluff.com:5000/barkfluff-notification:latest,docker.barkfluff.com:5000/barkfluff-notification:${{ github.sha }}" >> $env:GITHUB_OUTPUT
-          }
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            echo "tags=docker.barkfluff.com:5000/barkfluff-notification-dev:latest,docker.barkfluff.com:5000/barkfluff-notification-dev:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tags=docker.barkfluff.com:5000/barkfluff-notification:latest,docker.barkfluff.com:5000/barkfluff-notification:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Build and Push
         uses: docker/build-push-action@v4
@@ -681,13 +715,12 @@ jobs:
 
       - name: Set tags
         id: vars
-        shell: pwsh
         run: |
-          if ("${{ github.ref_name }}" -eq "dev") {
-            echo "tags=docker.barkfluff.com:5000/barkfluff-configuration-dev:latest,docker.barkfluff.com:5000/barkfluff-configuration-dev:${{ github.sha }}" >> $env:GITHUB_OUTPUT
-          } else {
-            echo "tags=docker.barkfluff.com:5000/barkfluff-configuration:latest,docker.barkfluff.com:5000/barkfluff-configuration:${{ github.sha }}" >> $env:GITHUB_OUTPUT
-          }
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            echo "tags=docker.barkfluff.com:5000/barkfluff-configuration-dev:latest,docker.barkfluff.com:5000/barkfluff-configuration-dev:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tags=docker.barkfluff.com:5000/barkfluff-configuration:latest,docker.barkfluff.com:5000/barkfluff-configuration:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Build and Push
         uses: docker/build-push-action@v4
@@ -766,13 +799,12 @@ jobs:
 
       - name: Set tags
         id: vars
-        shell: pwsh
         run: |
-          if ("${{ github.ref_name }}" -eq "dev") {
-            echo "tags=docker.barkfluff.com:5000/barkfluff-beacon-dev:latest,docker.barkfluff.com:5000/barkfluff-beacon-dev:${{ github.sha }}" >> $env:GITHUB_OUTPUT
-          } else {
-            echo "tags=docker.barkfluff.com:5000/barkfluff-beacon:latest,docker.barkfluff.com:5000/barkfluff-beacon:${{ github.sha }}" >> $env:GITHUB_OUTPUT
-          }
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            echo "tags=docker.barkfluff.com:5000/barkfluff-beacon-dev:latest,docker.barkfluff.com:5000/barkfluff-beacon-dev:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tags=docker.barkfluff.com:5000/barkfluff-beacon:latest,docker.barkfluff.com:5000/barkfluff-beacon:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Build and Push
         uses: docker/build-push-action@v4
@@ -851,13 +883,12 @@ jobs:
 
       - name: Set tags
         id: vars
-        shell: pwsh
         run: |
-          if ("${{ github.ref_name }}" -eq "dev") {
-            echo "tags=docker.barkfluff.com:5000/barkfluff-fast-auth-dev:latest,docker.barkfluff.com:5000/barkfluff-fast-auth-dev:${{ github.sha }}" >> $env:GITHUB_OUTPUT
-          } else {
-            echo "tags=docker.barkfluff.com:5000/barkfluff-fast-auth:latest,docker.barkfluff.com:5000/barkfluff-fast-auth:${{ github.sha }}" >> $env:GITHUB_OUTPUT
-          }
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            echo "tags=docker.barkfluff.com:5000/barkfluff-fast-auth-dev:latest,docker.barkfluff.com:5000/barkfluff-fast-auth-dev:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tags=docker.barkfluff.com:5000/barkfluff-fast-auth:latest,docker.barkfluff.com:5000/barkfluff-fast-auth:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Build and Push
         uses: docker/build-push-action@v4
@@ -936,13 +967,12 @@ jobs:
 
       - name: Set tags
         id: vars
-        shell: pwsh
         run: |
-          if ("${{ github.ref_name }}" -eq "dev") {
-            echo "tags=docker.barkfluff.com:5000/barkfluff-navigator-dev:latest,docker.barkfluff.com:5000/barkfluff-navigator-dev:${{ github.sha }}" >> $env:GITHUB_OUTPUT
-          } else {
-            echo "tags=docker.barkfluff.com:5000/barkfluff-navigator:latest,docker.barkfluff.com:5000/barkfluff-navigator:${{ github.sha }}" >> $env:GITHUB_OUTPUT
-          }
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            echo "tags=docker.barkfluff.com:5000/barkfluff-navigator-dev:latest,docker.barkfluff.com:5000/barkfluff-navigator-dev:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tags=docker.barkfluff.com:5000/barkfluff-navigator:latest,docker.barkfluff.com:5000/barkfluff-navigator:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Build and Push
         uses: docker/build-push-action@v4
@@ -1021,13 +1051,12 @@ jobs:
 
       - name: Set tags
         id: vars
-        shell: pwsh
         run: |
-          if ("${{ github.ref_name }}" -eq "dev") {
-            echo "tags=docker.barkfluff.com:5000/barkfluff-onliner-dev:latest,docker.barkfluff.com:5000/barkfluff-onliner-dev:${{ github.sha }}" >> $env:GITHUB_OUTPUT
-          } else {
-            echo "tags=docker.barkfluff.com:5000/barkfluff-onliner:latest,docker.barkfluff.com:5000/barkfluff-onliner:${{ github.sha }}" >> $env:GITHUB_OUTPUT
-          }
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            echo "tags=docker.barkfluff.com:5000/barkfluff-onliner-dev:latest,docker.barkfluff.com:5000/barkfluff-onliner-dev:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tags=docker.barkfluff.com:5000/barkfluff-onliner:latest,docker.barkfluff.com:5000/barkfluff-onliner:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Build and Push
         uses: docker/build-push-action@v4
@@ -1106,13 +1135,12 @@ jobs:
 
       - name: Set tags
         id: vars
-        shell: pwsh
         run: |
-          if ("${{ github.ref_name }}" -eq "dev") {
-            echo "tags=docker.barkfluff.com:5000/barkfluff-cloud-messaging-dev:latest,docker.barkfluff.com:5000/barkfluff-cloud-messaging-dev:${{ github.sha }}" >> $env:GITHUB_OUTPUT
-          } else {
-            echo "tags=docker.barkfluff.com:5000/barkfluff-cloud-messaging:latest,docker.barkfluff.com:5000/barkfluff-cloud-messaging:${{ github.sha }}" >> $env:GITHUB_OUTPUT
-          }
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            echo "tags=docker.barkfluff.com:5000/barkfluff-cloud-messaging-dev:latest,docker.barkfluff.com:5000/barkfluff-cloud-messaging-dev:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tags=docker.barkfluff.com:5000/barkfluff-cloud-messaging:latest,docker.barkfluff.com:5000/barkfluff-cloud-messaging:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Build and Push
         uses: docker/build-push-action@v4
@@ -1191,13 +1219,12 @@ jobs:
 
       - name: Set tags
         id: vars
-        shell: pwsh
         run: |
-          if ("${{ github.ref_name }}" -eq "dev") {
-            echo "tags=docker.barkfluff.com:5000/barkfluff-admin-panel-dev:latest,docker.barkfluff.com:5000/barkfluff-admin-panel-dev:${{ github.sha }}" >> $env:GITHUB_OUTPUT
-          } else {
-            echo "tags=docker.barkfluff.com:5000/barkfluff-admin-panel:latest,docker.barkfluff.com:5000/barkfluff-admin-panel:${{ github.sha }}" >> $env:GITHUB_OUTPUT
-          }
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            echo "tags=docker.barkfluff.com:5000/barkfluff-admin-panel-dev:latest,docker.barkfluff.com:5000/barkfluff-admin-panel-dev:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tags=docker.barkfluff.com:5000/barkfluff-admin-panel:latest,docker.barkfluff.com:5000/barkfluff-admin-panel:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Build and Push
         uses: docker/build-push-action@v4
@@ -1276,13 +1303,12 @@ jobs:
 
       - name: Set tags
         id: vars
-        shell: pwsh
         run: |
-          if ("${{ github.ref_name }}" -eq "dev") {
-            echo "tags=docker.barkfluff.com:5000/barkfluff-client-storage-dev:latest,docker.barkfluff.com:5000/barkfluff-client-storage-dev:${{ github.sha }}" >> $env:GITHUB_OUTPUT
-          } else {
-            echo "tags=docker.barkfluff.com:5000/barkfluff-client-storage:latest,docker.barkfluff.com:5000/barkfluff-client-storage:${{ github.sha }}" >> $env:GITHUB_OUTPUT
-          }
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            echo "tags=docker.barkfluff.com:5000/barkfluff-client-storage-dev:latest,docker.barkfluff.com:5000/barkfluff-client-storage-dev:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tags=docker.barkfluff.com:5000/barkfluff-client-storage:latest,docker.barkfluff.com:5000/barkfluff-client-storage:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Build and Push
         uses: docker/build-push-action@v4
@@ -1336,9 +1362,6 @@ jobs:
     if: needs.detect-changes.outputs.wpf-client == 'true'
     runs-on: self-hosted
     steps:
-      - name: Configure Git safe directory
-        run: git config --global --add safe.directory "$env:GITHUB_WORKSPACE"
-
       - uses: actions/checkout@v4
 
       - name: "\U0001F4F2 Запрос подтверждения сборки"
@@ -1374,41 +1397,29 @@ jobs:
           files: publish/
           dest: wpf-build.zip
 
-      - name: Get version
-        id: version
-        shell: pwsh
+      - name: Get version and tag
+        id: meta
         run: |
-          $versionFile = "$env:GITHUB_WORKSPACE\Windows\BarkFluff.Client.WPF\Services\App\AppVersion.cs"
-          $content = Get-Content $versionFile -Raw
-          if ($content -match 'Version\s*\{\s*get;\s*set;\s*\}\s*=\s*"([^"]+)"') {
-            $version = $matches[1]
-          } else {
-            $version = "0.0.0"
-          }
-          echo "version=$version" >> $env:GITHUB_OUTPUT
+          VERSION=$(grep -oP 'Version\s*\{\s*get;\s*set;\s*\}\s*=\s*"\K[^"]+' Windows/BarkFluff.Client.WPF/Services/App/AppVersion.cs || echo "0.0.0")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Generate tag
-        id: tag
-        shell: pwsh
-        run: |
-          $commitHash = $(git rev-parse --short HEAD)
-          $timestamp = $(Get-Date -Format 'yyyyMMddHHmmss')
-          $random = Get-Random -Minimum 1000 -Maximum 9999
-          $branch = "${{ github.ref_name }}"
-          $tag = "$branch-$timestamp-$commitHash-$random"
-          echo "tag=$tag" >> $env:GITHUB_OUTPUT
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          RANDOM_NUM=$((RANDOM % 9000 + 1000))
+          TAG="${{ github.ref_name }}-${TIMESTAMP}-${COMMIT_HASH}-${RANDOM_NUM}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - name: "\U0001F680 Создать релиз"
         uses: softprops/action-gh-release@v2
         with:
           repository: ${{ secrets.OWNER_RELEASE_REPO }}/${{ secrets.RELEASE_REPO_NAME }}
           token: ${{ secrets.PUBLIC_REPO_TOKEN }}
-          tag_name: ${{ steps.tag.outputs.tag }}
-          name: "BarkFluff WPF Client v${{ steps.version.outputs.version }}"
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: "BarkFluff WPF Client v${{ steps.meta.outputs.version }}"
           body: |
             ## 📦 BarkFluff WPF Client
 
-            **Версия:** `${{ steps.version.outputs.version }}`
+            **Версия:** `${{ steps.meta.outputs.version }}`
             **Ветка:** `${{ github.ref_name }}`
             **Коммит:** `${{ github.sha }}`
             **Автор:** ${{ github.actor }}
@@ -1430,11 +1441,11 @@ jobs:
           message: |
             ✅ *Сборка успешна*
 
-            📦 *WPF Client* v${{ steps.version.outputs.version }}
+            📦 *WPF Client* v${{ steps.meta.outputs.version }}
             📌 Ветка: `${{ github.ref_name }}`
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
-            🏷️ Тег: `${{ steps.tag.outputs.tag }}`
+            🏷️ Тег: `${{ steps.meta.outputs.tag }}`
 
             [Открыть workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
