@@ -1378,13 +1378,19 @@ jobs:
           UPDATE_REQUESTS: 120
 
       - name: Restore dependencies
-        run: dotnet restore Windows/BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj -p:EnableWindowsTargeting=true
+        env:
+          EnableWindowsTargeting: true
+        run: dotnet restore Windows/BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj
 
       - name: Build
-        run: dotnet build Windows/BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj --no-restore --configuration Release -p:EnableWindowsTargeting=true
+        env:
+          EnableWindowsTargeting: true
+        run: dotnet build Windows/BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj --no-restore --configuration Release
 
       - name: Publish
-        run: dotnet publish Windows/BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj --configuration Release --runtime win-x64 --self-contained true --output ./publish -p:EnableWindowsTargeting=true
+        env:
+          EnableWindowsTargeting: true
+        run: dotnet publish Windows/BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj --configuration Release --runtime win-x64 --self-contained true --output ./publish
 
       - name: Zip build
         uses: vimtor/action-zip@v1
