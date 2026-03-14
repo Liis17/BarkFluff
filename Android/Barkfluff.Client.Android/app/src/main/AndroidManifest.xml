@@ -125,6 +125,13 @@
             android:screenOrientation="portrait" />
 
         <activity
+            android:name=".ResetPasswordActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
             android:name=".SecuritySettingsActivity"
             android:exported="false"
             android:theme="@style/Theme.BarkfluffClientAndroid"
