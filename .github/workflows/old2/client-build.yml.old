@@ -1,0 +1,115 @@
+name: 📦 Сборка клиента BarkFluff мессенджера
+
+on:
+  push:
+    branches:
+      - dev
+      - master
+    paths:
+      - 'Windows/BarkFluff.Client.WPF/**'
+      - '.github/workflows/client-build.yml'
+      - 'Shared/BarkFluff.Shared.Exceptions/**'
+      - 'Shared/BarkFluff.Shared.Auth/**'
+      - 'Shared/BarkFluff.Shared.SecurityUtilities/**'
+      - 'Windows/BarkFluff.WebApi.Core/**'
+      - 'Windows/client-rebuild.trigger'
+
+jobs:
+  build:
+    runs-on: self-hosted
+    steps:
+    - name: Debug GITHUB_WORKSPACE
+      run: echo "GITHUB_WORKSPACE is $env:GITHUB_WORKSPACE"
+
+    - name: Configure Git safe directory
+      run: git config --global --add safe.directory "$env:GITHUB_WORKSPACE"
+
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore Windows/BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj
+
+    - name: Build
+      run: dotnet build Windows/BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj --no-restore --configuration Release
+
+    - name: Publish
+      run: dotnet publish Windows/BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj --configuration Release --runtime win-x64 --self-contained true  --output ./publish
+
+    - name: Zip build
+      uses: vimtor/action-zip@v1
+      with:
+        files: publish/
+        dest: wpf-build.zip
+
+    - name: Verify zip file
+      run: |
+        if (Test-Path wpf-build.zip) { echo "wpf-build.zip exists" } else { echo "wpf-build.zip not found"; exit 1 }
+        dir wpf-build.zip
+
+    - name: Generate tag for dev
+      if: github.ref == 'refs/heads/dev'
+      id: generate_tag_dev
+      run: |
+        $commitHash = $(git rev-parse --short HEAD)
+        $timestamp = $(Get-Date -Format 'yyyyMMddHHmmss')
+        $random = Get-Random -Minimum 1000 -Maximum 9999
+        $tag = "dev-$timestamp-$commitHash-$random"
+        echo "TAG=$tag" >> $env:GITHUB_ENV
+        echo "Generated tag: $tag"
+
+    - name: Generate tag for master
+      if: github.ref == 'refs/heads/master'
+      id: generate_tag_master
+      run: |
+        $commitHash = $(git rev-parse --short HEAD)
+        $timestamp = $(Get-Date -Format 'yyyyMMddHHmmss')
+        $random = Get-Random -Minimum 1000 -Maximum 9999
+        $tag = "master-$timestamp-$commitHash-$random"
+        echo "TAG=$tag" >> $env:GITHUB_ENV
+        echo "Generated tag: $tag"
+
+    - name: Delete existing tag and release if it exists
+      shell: pwsh
+      env:
+        GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+        TAG: ${{ env.TAG }}
+        GH_USER: ${{ secrets.OWNER_RELEASE_REPO }}
+        TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TG_CHANNEL: ${{ secrets.TELEGRAM_CHANNEL }} 
+        THIS_BRANCH: ${{ github.ref == 'refs/heads/dev' && 'Dev' || 'Master' }}
+        REPO: ${{ secrets.RELEASE_REPO_NAME }}
+      run: |
+        gh release view $env:TAG --repo Liis17/BarkFluff.Releases > $null 2>&1
+        if ($LASTEXITCODE -eq 0) {
+          Write-Host "Tag $env:TAG already exists, deleting it"
+          gh release delete $env:TAG --repo Liis17/BarkFluff.Releases --yes
+          git push --delete origin $env:TAG
+        } else {
+          Write-Host "Tag $env:TAG does not exist, proceeding"
+        }
+        exit 0
+
+    - name: Upload Release
+      shell: pwsh
+      env:
+        GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+        GH_USER: ${{ secrets.OWNER_RELEASE_REPO }}
+        REPO: ${{ secrets.RELEASE_REPO_NAME }}
+        TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TG_CHANNEL: ${{ secrets.TELEGRAM_CHANNEL }}
+        THIS_BRANCH: ${{ github.ref == 'refs/heads/dev' && 'Dev' || 'Master' }}
+      run: |
+        $versionFile = "$env:GITHUB_WORKSPACE\Windows\BarkFluff.Client.WPF\Services\App\AppVersion.cs"
+        $content = Get-Content $versionFile -Raw
+        if ($content -match 'Version\s*\{\s*get;\s*set;\s*\}\s*=\s*"([^"]+)"') {
+            $version = $matches[1]
+        } else {
+            Write-Error "Версия не найдена"
+            exit 1
+        }
+        C:\ProgramData\gituploader\GitReleaseUploader.exe ${{ env.GH_USER }} ${{ env.GH_TOKEN }} ${{ env.REPO }} "$env:GITHUB_WORKSPACE\wpf-build.zip" true ${{ env.TG_TOKEN }} ${{ env.TG_CHANNEL }} ${{ env.THIS_BRANCH }} WPF-Client $version
