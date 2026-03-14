@@ -18,7 +18,6 @@ message GetServerInfoResponse {
   
   string name = 1; // Имя сервера
   
-  
   string description = 2; // Описание сервера
   
   ServerColor color = 3; // Цвета сервера
