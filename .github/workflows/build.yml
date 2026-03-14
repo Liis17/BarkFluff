@@ -191,7 +191,7 @@ jobs:
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "🐋 *BarkFluff\\.Identity*\n\nВетка: `${{ github.ref_name }}`\nКоммит: `${{ github.sha }}`\nАвтор: *${{ github.actor }}*\n\nЗапустить сборку?"
+          APPROVAL_TEXT: "Запустить сборку BarkFluff.Identity?"
           APPROVAL_BUTTON: "✅ Собрать"
           REJECT_BUTTON: "❌ Отменить"
           APPROVED_TEXT: "✅ Сборка Identity одобрена"
@@ -275,7 +275,7 @@ jobs:
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "🐋 *BarkFluff\\.Users*\n\nВетка: `${{ github.ref_name }}`\nКоммит: `${{ github.sha }}`\nАвтор: *${{ github.actor }}*\n\nЗапустить сборку?"
+          APPROVAL_TEXT: "Запустить сборку BarkFluff.Users?"
           APPROVAL_BUTTON: "✅ Собрать"
           REJECT_BUTTON: "❌ Отменить"
           APPROVED_TEXT: "✅ Сборка Users одобрена"
@@ -359,7 +359,7 @@ jobs:
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "🐋 *BarkFluff\\.Messages*\n\nВетка: `${{ github.ref_name }}`\nКоммит: `${{ github.sha }}`\nАвтор: *${{ github.actor }}*\n\nЗапустить сборку?"
+          APPROVAL_TEXT: "Запустить сборку BarkFluff.Messages?"
           APPROVAL_BUTTON: "✅ Собрать"
           REJECT_BUTTON: "❌ Отменить"
           APPROVED_TEXT: "✅ Сборка Messages одобрена"
@@ -443,7 +443,7 @@ jobs:
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "🐋 *BarkFluff\\.Files*\n\nВетка: `${{ github.ref_name }}`\nКоммит: `${{ github.sha }}`\nАвтор: *${{ github.actor }}*\n\nЗапустить сборку?"
+          APPROVAL_TEXT: "Запустить сборку BarkFluff.Files?"
           APPROVAL_BUTTON: "✅ Собрать"
           REJECT_BUTTON: "❌ Отменить"
           APPROVED_TEXT: "✅ Сборка Files одобрена"
@@ -527,7 +527,7 @@ jobs:
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "🐋 *BarkFluff\\.Updates*\n\nВетка: `${{ github.ref_name }}`\nКоммит: `${{ github.sha }}`\nАвтор: *${{ github.actor }}*\n\nЗапустить сборку?"
+          APPROVAL_TEXT: "Запустить сборку BarkFluff.Updates?"
           APPROVAL_BUTTON: "✅ Собрать"
           REJECT_BUTTON: "❌ Отменить"
           APPROVED_TEXT: "✅ Сборка Updates одобрена"
@@ -611,7 +611,7 @@ jobs:
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "🐋 *BarkFluff\\.Notification*\n\nВетка: `${{ github.ref_name }}`\nКоммит: `${{ github.sha }}`\nАвтор: *${{ github.actor }}*\n\nЗапустить сборку?"
+          APPROVAL_TEXT: "Запустить сборку BarkFluff.Notification?"
           APPROVAL_BUTTON: "✅ Собрать"
           REJECT_BUTTON: "❌ Отменить"
           APPROVED_TEXT: "✅ Сборка Notification одобрена"
@@ -695,7 +695,7 @@ jobs:
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "🐋 *BarkFluff\\.Configuration*\n\nВетка: `${{ github.ref_name }}`\nКоммит: `${{ github.sha }}`\nАвтор: *${{ github.actor }}*\n\nЗапустить сборку?"
+          APPROVAL_TEXT: "Запустить сборку BarkFluff.Configuration?"
           APPROVAL_BUTTON: "✅ Собрать"
           REJECT_BUTTON: "❌ Отменить"
           APPROVED_TEXT: "✅ Сборка Configuration одобрена"
@@ -779,7 +779,7 @@ jobs:
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "🐋 *BarkFluff\\.Beacon*\n\nВетка: `${{ github.ref_name }}`\nКоммит: `${{ github.sha }}`\nАвтор: *${{ github.actor }}*\n\nЗапустить сборку?"
+          APPROVAL_TEXT: "Запустить сборку BarkFluff.Beacon?"
           APPROVAL_BUTTON: "✅ Собрать"
           REJECT_BUTTON: "❌ Отменить"
           APPROVED_TEXT: "✅ Сборка Beacon одобрена"
@@ -863,7 +863,7 @@ jobs:
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "🐋 *BarkFluff\\.FastAuth*\n\nВетка: `${{ github.ref_name }}`\nКоммит: `${{ github.sha }}`\nАвтор: *${{ github.actor }}*\n\nЗапустить сборку?"
+          APPROVAL_TEXT: "Запустить сборку BarkFluff.FastAuth?"
           APPROVAL_BUTTON: "✅ Собрать"
           REJECT_BUTTON: "❌ Отменить"
           APPROVED_TEXT: "✅ Сборка FastAuth одобрена"
@@ -947,7 +947,7 @@ jobs:
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "🐋 *BarkFluff\\.Navigator*\n\nВетка: `${{ github.ref_name }}`\nКоммит: `${{ github.sha }}`\nАвтор: *${{ github.actor }}*\n\nЗапустить сборку?"
+          APPROVAL_TEXT: "Запустить сборку BarkFluff.Navigator?"
           APPROVAL_BUTTON: "✅ Собрать"
           REJECT_BUTTON: "❌ Отменить"
           APPROVED_TEXT: "✅ Сборка Navigator одобрена"
@@ -1031,7 +1031,7 @@ jobs:
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "🐋 *BarkFluff\\.Onliner*\n\nВетка: `${{ github.ref_name }}`\nКоммит: `${{ github.sha }}`\nАвтор: *${{ github.actor }}*\n\nЗапустить сборку?"
+          APPROVAL_TEXT: "Запустить сборку BarkFluff.Onliner?"
           APPROVAL_BUTTON: "✅ Собрать"
           REJECT_BUTTON: "❌ Отменить"
           APPROVED_TEXT: "✅ Сборка Onliner одобрена"
@@ -1115,7 +1115,7 @@ jobs:
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "🐋 *Barkfluff\\.CloudMessaging*\n\nВетка: `${{ github.ref_name }}`\nКоммит: `${{ github.sha }}`\nАвтор: *${{ github.actor }}*\n\nЗапустить сборку?"
+          APPROVAL_TEXT: "Запустить сборку Barkfluff.CloudMessaging?"
           APPROVAL_BUTTON: "✅ Собрать"
           REJECT_BUTTON: "❌ Отменить"
           APPROVED_TEXT: "✅ Сборка CloudMessaging одобрена"
@@ -1199,7 +1199,7 @@ jobs:
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "🐋 *Barkfluff\\.AdminPanel*\n\nВетка: `${{ github.ref_name }}`\nКоммит: `${{ github.sha }}`\nАвтор: *${{ github.actor }}*\n\nЗапустить сборку?"
+          APPROVAL_TEXT: "Запустить сборку Barkfluff.AdminPanel?"
           APPROVAL_BUTTON: "✅ Собрать"
           REJECT_BUTTON: "❌ Отменить"
           APPROVED_TEXT: "✅ Сборка AdminPanel одобрена"
@@ -1283,7 +1283,7 @@ jobs:
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "🐋 *BarkFluff\\.ClientStorage*\n\nВетка: `${{ github.ref_name }}`\nКоммит: `${{ github.sha }}`\nАвтор: *${{ github.actor }}*\n\nЗапустить сборку?"
+          APPROVAL_TEXT: "Запустить сборку BarkFluff.ClientStorage?"
           APPROVAL_BUTTON: "✅ Собрать"
           REJECT_BUTTON: "❌ Отменить"
           APPROVED_TEXT: "✅ Сборка ClientStorage одобрена"
@@ -1369,7 +1369,7 @@ jobs:
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "📦 *WPF Client*\n\nВетка: `${{ github.ref_name }}`\nКоммит: `${{ github.sha }}`\nАвтор: *${{ github.actor }}*\n\nЗапустить сборку клиента?"
+          APPROVAL_TEXT: "Запустить сборку WPF Client?"
           APPROVAL_BUTTON: "✅ Собрать"
           REJECT_BUTTON: "❌ Отменить"
           APPROVED_TEXT: "✅ Сборка WPF Client одобрена"
@@ -1424,12 +1424,8 @@ jobs:
             **Ветка:** `${{ github.ref_name }}`
             **Коммит:** `${{ github.sha }}`
             **Автор:** ${{ github.actor }}
-
-            ---
-
-            🔗 [Workflow запуск](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
           draft: false
-          prerelease: ${{ github.ref_name == 'dev' }}
+          prerelease: false
           files: wpf-build.zip
 
       - name: "\U00002705 Уведомление об успехе"
