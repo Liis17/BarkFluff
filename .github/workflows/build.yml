@@ -37,200 +37,101 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
       - name: Определение изменённых файлов
         id: changes
-        shell: bash
+        shell: pwsh
         run: |
-          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD)
-          echo "Changed files:"
-          echo "$CHANGED"
+          # Получаем список изменённых файлов
+          $changed = git diff --name-only HEAD~1 HEAD 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "HEAD~1 недоступен, берём все файлы текущего коммита"
+            $changed = git diff-tree --no-commit-id --name-only -r HEAD
+          }
+          Write-Host "Changed files:"
+          Write-Host $changed
 
-          check_paths() {
-            local name=$1
-            shift
-            for pattern in "$@"; do
-              if echo "$CHANGED" | grep -q "$pattern"; then
-                echo "${name}=true" >> $GITHUB_OUTPUT
-                return
-              fi
-            done
-            echo "${name}=false" >> $GITHUB_OUTPUT
+          $changedList = $changed -split "`n" | Where-Object { $_ -ne "" }
+
+          function Test-Path-Changed($pattern) {
+            return ($changedList | Where-Object { $_ -like "$pattern" }).Count -gt 0
           }
 
           # Backend trigger file перезапускает все бэкенд-сервисы
-          BACKEND_REBUILD=false
-          if echo "$CHANGED" | grep -q "Backend/rebuild.trigger"; then
-            BACKEND_REBUILD=true
-          fi
+          $backendRebuild = Test-Path-Changed "Backend/rebuild.trigger"
 
           # Shared libraries
-          GRPC_SERVER=false
-          SHARED_QUEUE=false
-          SHARED_IDENTITY=false
-          SHARED_EXCEPTIONS=false
-          SHARED_AUTH=false
-          SHARED_SECURITY=false
-          if echo "$CHANGED" | grep -q "Backend/BarkFluff.GrpcServer/"; then GRPC_SERVER=true; fi
-          if echo "$CHANGED" | grep -q "Shared/BarkFluff.Shared.Queue/"; then SHARED_QUEUE=true; fi
-          if echo "$CHANGED" | grep -q "Shared/BarkFluff.Shared.Identity/"; then SHARED_IDENTITY=true; fi
-          if echo "$CHANGED" | grep -q "Shared/BarkFluff.Shared.Exceptions/"; then SHARED_EXCEPTIONS=true; fi
-          if echo "$CHANGED" | grep -q "Shared/BarkFluff.Shared.Auth/"; then SHARED_AUTH=true; fi
-          if echo "$CHANGED" | grep -q "Shared/BarkFluff.Shared.SecurityUtilities/"; then SHARED_SECURITY=true; fi
+          $grpcServer       = Test-Path-Changed "Backend/BarkFluff.GrpcServer/*"
+          $sharedQueue      = Test-Path-Changed "Shared/BarkFluff.Shared.Queue/*"
+          $sharedIdentity   = Test-Path-Changed "Shared/BarkFluff.Shared.Identity/*"
+          $sharedExceptions = Test-Path-Changed "Shared/BarkFluff.Shared.Exceptions/*"
+          $sharedAuth       = Test-Path-Changed "Shared/BarkFluff.Shared.Auth/*"
+          $sharedSecurity   = Test-Path-Changed "Shared/BarkFluff.Shared.SecurityUtilities/*"
+          $identityChanged  = Test-Path-Changed "Backend/BarkFluff.Identity/*"
 
-          # Identity: own code + Queue + Identity shared + Exceptions + GrpcServer
-          if echo "$CHANGED" | grep -q "Backend/BarkFluff.Identity/" \
-             || [ "$SHARED_QUEUE" = "true" ] \
-             || [ "$SHARED_IDENTITY" = "true" ] \
-             || [ "$SHARED_EXCEPTIONS" = "true" ] \
-             || [ "$GRPC_SERVER" = "true" ] \
-             || [ "$BACKEND_REBUILD" = "true" ]; then
-            echo "identity=true" >> $GITHUB_OUTPUT
-          else
-            echo "identity=false" >> $GITHUB_OUTPUT
-          fi
+          # Identity
+          $val = (Test-Path-Changed "Backend/BarkFluff.Identity/*") -or $sharedQueue -or $sharedIdentity -or $sharedExceptions -or $grpcServer -or $backendRebuild
+          echo "identity=$($val.ToString().ToLower())" >> $env:GITHUB_OUTPUT
 
-          # Users: own code + Queue + Exceptions + GrpcServer
-          if echo "$CHANGED" | grep -q "Backend/BarkFluff.Users/" \
-             || [ "$SHARED_QUEUE" = "true" ] \
-             || [ "$SHARED_EXCEPTIONS" = "true" ] \
-             || [ "$GRPC_SERVER" = "true" ] \
-             || [ "$BACKEND_REBUILD" = "true" ]; then
-            echo "users=true" >> $GITHUB_OUTPUT
-          else
-            echo "users=false" >> $GITHUB_OUTPUT
-          fi
+          # Users
+          $val = (Test-Path-Changed "Backend/BarkFluff.Users/*") -or $sharedQueue -or $sharedExceptions -or $grpcServer -or $backendRebuild
+          echo "users=$($val.ToString().ToLower())" >> $env:GITHUB_OUTPUT
 
-          # Messages: own code + Queue + Auth + GrpcServer
-          if echo "$CHANGED" | grep -q "Backend/BarkFluff.Messages/" \
-             || [ "$SHARED_QUEUE" = "true" ] \
-             || [ "$SHARED_AUTH" = "true" ] \
-             || [ "$GRPC_SERVER" = "true" ] \
-             || [ "$BACKEND_REBUILD" = "true" ]; then
-            echo "messages=true" >> $GITHUB_OUTPUT
-          else
-            echo "messages=false" >> $GITHUB_OUTPUT
-          fi
+          # Messages
+          $val = (Test-Path-Changed "Backend/BarkFluff.Messages/*") -or $sharedQueue -or $sharedAuth -or $grpcServer -or $backendRebuild
+          echo "messages=$($val.ToString().ToLower())" >> $env:GITHUB_OUTPUT
 
-          # Files: own code + GrpcServer
-          if echo "$CHANGED" | grep -q "Backend/BarkFluff.Files/" \
-             || [ "$GRPC_SERVER" = "true" ] \
-             || [ "$BACKEND_REBUILD" = "true" ]; then
-            echo "files=true" >> $GITHUB_OUTPUT
-          else
-            echo "files=false" >> $GITHUB_OUTPUT
-          fi
+          # Files
+          $val = (Test-Path-Changed "Backend/BarkFluff.Files/*") -or $grpcServer -or $backendRebuild
+          echo "files=$($val.ToString().ToLower())" >> $env:GITHUB_OUTPUT
 
-          # Updates: own code + Queue + GrpcServer
-          if echo "$CHANGED" | grep -q "Backend/BarkFluff.Updates/" \
-             || [ "$SHARED_QUEUE" = "true" ] \
-             || [ "$GRPC_SERVER" = "true" ] \
-             || [ "$BACKEND_REBUILD" = "true" ]; then
-            echo "updates=true" >> $GITHUB_OUTPUT
-          else
-            echo "updates=false" >> $GITHUB_OUTPUT
-          fi
+          # Updates
+          $val = (Test-Path-Changed "Backend/BarkFluff.Updates/*") -or $sharedQueue -or $grpcServer -or $backendRebuild
+          echo "updates=$($val.ToString().ToLower())" >> $env:GITHUB_OUTPUT
 
-          # Notification: own code + Queue + GrpcServer
-          if echo "$CHANGED" | grep -q "Backend/BarkFluff.Notification/" \
-             || [ "$SHARED_QUEUE" = "true" ] \
-             || [ "$GRPC_SERVER" = "true" ] \
-             || [ "$BACKEND_REBUILD" = "true" ]; then
-            echo "notification=true" >> $GITHUB_OUTPUT
-          else
-            echo "notification=false" >> $GITHUB_OUTPUT
-          fi
+          # Notification
+          $val = (Test-Path-Changed "Backend/BarkFluff.Notification/*") -or $sharedQueue -or $grpcServer -or $backendRebuild
+          echo "notification=$($val.ToString().ToLower())" >> $env:GITHUB_OUTPUT
 
-          # Configuration: own code + Identity + GrpcServer
-          IDENTITY_CHANGED=false
-          if echo "$CHANGED" | grep -q "Backend/BarkFluff.Identity/"; then IDENTITY_CHANGED=true; fi
-          if echo "$CHANGED" | grep -q "Backend/BarkFluff.Configuration/" \
-             || [ "$IDENTITY_CHANGED" = "true" ] \
-             || [ "$GRPC_SERVER" = "true" ] \
-             || [ "$BACKEND_REBUILD" = "true" ]; then
-            echo "configuration=true" >> $GITHUB_OUTPUT
-          else
-            echo "configuration=false" >> $GITHUB_OUTPUT
-          fi
+          # Configuration
+          $val = (Test-Path-Changed "Backend/BarkFluff.Configuration/*") -or $identityChanged -or $grpcServer -or $backendRebuild
+          echo "configuration=$($val.ToString().ToLower())" >> $env:GITHUB_OUTPUT
 
-          # Beacon: own code + GrpcServer
-          if echo "$CHANGED" | grep -q "Backend/BarkFluff.Beacon/" \
-             || [ "$GRPC_SERVER" = "true" ] \
-             || [ "$BACKEND_REBUILD" = "true" ]; then
-            echo "beacon=true" >> $GITHUB_OUTPUT
-          else
-            echo "beacon=false" >> $GITHUB_OUTPUT
-          fi
+          # Beacon
+          $val = (Test-Path-Changed "Backend/BarkFluff.Beacon/*") -or $grpcServer -or $backendRebuild
+          echo "beacon=$($val.ToString().ToLower())" >> $env:GITHUB_OUTPUT
 
-          # FastAuth: own code + Identity + GrpcServer
-          if echo "$CHANGED" | grep -q "Backend/BarkFluff.FastAuth/" \
-             || [ "$IDENTITY_CHANGED" = "true" ] \
-             || [ "$GRPC_SERVER" = "true" ] \
-             || [ "$BACKEND_REBUILD" = "true" ]; then
-            echo "fast-auth=true" >> $GITHUB_OUTPUT
-          else
-            echo "fast-auth=false" >> $GITHUB_OUTPUT
-          fi
+          # FastAuth
+          $val = (Test-Path-Changed "Backend/BarkFluff.FastAuth/*") -or $identityChanged -or $grpcServer -or $backendRebuild
+          echo "fast-auth=$($val.ToString().ToLower())" >> $env:GITHUB_OUTPUT
 
-          # Navigator: own code + GrpcServer
-          if echo "$CHANGED" | grep -q "Backend/BarkFluff.Navigator/" \
-             || [ "$GRPC_SERVER" = "true" ] \
-             || [ "$BACKEND_REBUILD" = "true" ]; then
-            echo "navigator=true" >> $GITHUB_OUTPUT
-          else
-            echo "navigator=false" >> $GITHUB_OUTPUT
-          fi
+          # Navigator
+          $val = (Test-Path-Changed "Backend/BarkFluff.Navigator/*") -or $grpcServer -or $backendRebuild
+          echo "navigator=$($val.ToString().ToLower())" >> $env:GITHUB_OUTPUT
 
-          # Onliner: own code + GrpcServer
-          if echo "$CHANGED" | grep -q "Backend/BarkFluff.Onliner/" \
-             || [ "$GRPC_SERVER" = "true" ] \
-             || [ "$BACKEND_REBUILD" = "true" ]; then
-            echo "onliner=true" >> $GITHUB_OUTPUT
-          else
-            echo "onliner=false" >> $GITHUB_OUTPUT
-          fi
+          # Onliner
+          $val = (Test-Path-Changed "Backend/BarkFluff.Onliner/*") -or $grpcServer -or $backendRebuild
+          echo "onliner=$($val.ToString().ToLower())" >> $env:GITHUB_OUTPUT
 
-          # CloudMessaging: own code + Queue + Exceptions + Auth + GrpcServer
-          if echo "$CHANGED" | grep -q "Backend/Barkfluff.CloudMessaging/" \
-             || [ "$SHARED_QUEUE" = "true" ] \
-             || [ "$SHARED_EXCEPTIONS" = "true" ] \
-             || [ "$SHARED_AUTH" = "true" ] \
-             || [ "$GRPC_SERVER" = "true" ] \
-             || [ "$BACKEND_REBUILD" = "true" ]; then
-            echo "cloud-messaging=true" >> $GITHUB_OUTPUT
-          else
-            echo "cloud-messaging=false" >> $GITHUB_OUTPUT
-          fi
+          # CloudMessaging
+          $val = (Test-Path-Changed "Backend/Barkfluff.CloudMessaging/*") -or $sharedQueue -or $sharedExceptions -or $sharedAuth -or $grpcServer -or $backendRebuild
+          echo "cloud-messaging=$($val.ToString().ToLower())" >> $env:GITHUB_OUTPUT
 
-          # AdminPanel: own code
-          if echo "$CHANGED" | grep -q "Backend/Barkfluff.AdminPanel/" \
-             || [ "$BACKEND_REBUILD" = "true" ]; then
-            echo "admin-panel=true" >> $GITHUB_OUTPUT
-          else
-            echo "admin-panel=false" >> $GITHUB_OUTPUT
-          fi
+          # AdminPanel
+          $val = (Test-Path-Changed "Backend/Barkfluff.AdminPanel/*") -or $backendRebuild
+          echo "admin-panel=$($val.ToString().ToLower())" >> $env:GITHUB_OUTPUT
 
-          # ClientStorage: own code + GrpcServer
-          if echo "$CHANGED" | grep -q "Backend/BarkFluff.ClientStorage/" \
-             || [ "$GRPC_SERVER" = "true" ] \
-             || [ "$BACKEND_REBUILD" = "true" ]; then
-            echo "client-storage=true" >> $GITHUB_OUTPUT
-          else
-            echo "client-storage=false" >> $GITHUB_OUTPUT
-          fi
+          # ClientStorage
+          $val = (Test-Path-Changed "Backend/BarkFluff.ClientStorage/*") -or $grpcServer -or $backendRebuild
+          echo "client-storage=$($val.ToString().ToLower())" >> $env:GITHUB_OUTPUT
 
-          # WPF Client: own code + shared libs + trigger
-          if echo "$CHANGED" | grep -q "Windows/BarkFluff.Client.WPF/" \
-             || echo "$CHANGED" | grep -q "Windows/BarkFluff.WebApi.Core/" \
-             || echo "$CHANGED" | grep -q "Windows/client-rebuild.trigger" \
-             || [ "$SHARED_EXCEPTIONS" = "true" ] \
-             || [ "$SHARED_AUTH" = "true" ] \
-             || [ "$SHARED_SECURITY" = "true" ]; then
-            echo "wpf-client=true" >> $GITHUB_OUTPUT
-          else
-            echo "wpf-client=false" >> $GITHUB_OUTPUT
-          fi
+          # WPF Client
+          $val = (Test-Path-Changed "Windows/BarkFluff.Client.WPF/*") -or (Test-Path-Changed "Windows/BarkFluff.WebApi.Core/*") -or (Test-Path-Changed "Windows/client-rebuild.trigger") -or $sharedExceptions -or $sharedAuth -or $sharedSecurity
+          echo "wpf-client=$($val.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+
+          Write-Host "`nOutputs:"
+          Get-Content $env:GITHUB_OUTPUT
 
   # ═══════════════════════════════════════════════════════════════
   #  Backend Docker builds
