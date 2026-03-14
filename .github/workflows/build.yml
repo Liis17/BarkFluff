@@ -1377,11 +1377,6 @@ jobs:
           TIMEOUT_TEXT: "⏰ Время ожидания истекло"
           UPDATE_REQUESTS: 120
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-
       - name: Restore dependencies
         run: dotnet restore Windows/BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj
 
