@@ -1,5 +1,6 @@
 using BarkFluff.Proto.Users;
 using BarkFluff.Users.Persistence.Services;
+using BarkFluff.Users.Services;
 
 using MediatR;
 
@@ -8,11 +9,13 @@ namespace BarkFluff.Users.Features.CheckExistUsername;
 public class CheckExistUsernameQueryHandler : IRequestHandler<CheckExistUsernameQuery, CheckExistResponse>
 {
     private readonly UsersStorage _usersStorage;
+    private readonly ReservedUsernamesService _reservedUsernamesService;
     private readonly ILogger<CheckExistUsernameQueryHandler> _logger;
 
-    public CheckExistUsernameQueryHandler(UsersStorage usersStorage, ILogger<CheckExistUsernameQueryHandler> logger)
+    public CheckExistUsernameQueryHandler(UsersStorage usersStorage, ReservedUsernamesService reservedUsernamesService, ILogger<CheckExistUsernameQueryHandler> logger)
     {
         _usersStorage = usersStorage;
+        _reservedUsernamesService = reservedUsernamesService;
         _logger = logger;
     }
 
@@ -22,6 +25,12 @@ public class CheckExistUsernameQueryHandler : IRequestHandler<CheckExistUsername
         var username = request.Username?.Trim();
 
         _logger.LogDebug("Проверка существования username: {Username}", username);
+
+        if (_reservedUsernamesService.IsReserved(username))
+        {
+            _logger.LogDebug("Username {Username} является зарезервированным именем", username);
+            return new CheckExistResponse { Exist = true };
+        }
 
         var userByUsername = await _usersStorage.GetUserByUsername(username);
 
