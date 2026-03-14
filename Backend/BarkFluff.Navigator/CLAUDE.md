@@ -1,30 +1,68 @@
-# Микросервис Navigator
+# CLAUDE.md
 
-## Описание
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Микросервис `Navigator` управляет списком доступных серверов BarkFluff.
+## Микросервис Navigator
 
-## Механика работы
+Управляет реестром доступных серверов BarkFluff. Работает на порту `7010`. Публичный эндпоинт: `navigator.barkfluff.com:64646` (plaintext HTTP/2).
 
-Сервис предоставляет gRPC API для выполнения следующих операций:
+## Сборка и запуск
 
-*   **Список серверов:** Предоставляет список всех зарегистрированных серверов BarkFluff.
-*   **Регистрация сервера:** Позволяет серверу BarkFluff зарегистрировать себя в навигаторе.
+```bash
+# Сборка
+dotnet build BarkFluff.Navigator.csproj
 
-## Возможности
+# Запуск (порт из конфигурации)
+dotnet run
 
-*   Получение списка доступных серверов.
-*   Регистрация новых серверов.
+# Запуск с переопределением порта
+NAVIGATOR_PORT=7010 dotnet run
+# или
+RunSettings__Port=7010 dotnet run
+```
 
-## Технический стек
+## Архитектура
 
-*   **Фреймворк:** ASP.NET Core
-*   **API:** gRPC
-*   **База данных:** PostgreSQL (с использованием Npgsql.EntityFrameworkCore.PostgreSQL)
-*   **Кеширование:** In-Memory Cache
-*   **Другое:** MediatR
+Сервис реализует два gRPC-метода (`navigator_api.proto`):
 
-## Зависимости
+- `ListServers` — возвращает список активных серверов (без авторизации)
+- `RegisterServer` — регистрирует сервер; `AddedBy` = UserId если есть JWT, иначе `"Anonymous"`
 
-*   **PostgreSQL:** Используется для хранения списка зарегистрированных серверов.
-*   **Микросервис Configuration:** Используется для обнаружения других сервисов.
+Поток: `NavigatorApiService` (Host) → MediatR → `ListServersQueryHandler` / `RegisterServerCommandHandler` → `ServersStorage`
+
+### ServersStorage (Persistence/ServersStorage.cs)
+
+Единственное хранилище — **in-memory cache** (не PostgreSQL, несмотря на наличие пакета в csproj). Миграций нет, база не используется.
+
+Ключевые аспекты:
+- Ключ сервера: `"{Name}:{BeaconHost}:{BeaconPort}"`
+- Серверы хранятся в `ConcurrentDictionary` внутри `IMemoryCache` с приоритетом `NeverRemove`
+- Сервер считается активным, если `lastSeen` не старше `ServerRegistration:ActivePeriodMinutes` (по умолчанию 10 мин)
+- Throttling регистрации: повторная регистрация одного сервера не чаще `ServerRegistration:ThrottleMinutes` (по умолчанию 2 мин)
+
+### Конфигурация
+
+```json
+{
+  "ServerRegistration": {
+    "ActivePeriodMinutes": 10,
+    "ThrottleMinutes": 2
+  }
+}
+```
+
+### Proto-зависимости
+
+- `navigator_api.proto` — **Server** (реализует NavigatorApi)
+- `beacon_api.proto` — **Client** (используется для обнаружения Beacon-сервисов)
+
+### Авторизация
+
+`UseXAuth()` подключён, но методы не имеют атрибута `[Authorize]` — оба эндпоинта публичны. `UserContext` используется в `RegisterServer` для записи `AddedBy`.
+
+## Добавление нового поля в ServerInfo
+
+1. Добавить поле в `Domain/ServerInfo.cs`
+2. Добавить поле в `navigator_api.proto` (ServerInfo message)
+3. Обновить маппинг в `NavigatorApiService.cs` (request → domain)
+4. Обновить маппинг в `ListServersQueryHandler.cs` (domain → response)
