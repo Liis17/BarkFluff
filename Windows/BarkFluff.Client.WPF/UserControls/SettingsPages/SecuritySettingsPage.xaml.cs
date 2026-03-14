@@ -11,12 +11,66 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
     {
         public override string Title => "Защита";
 
+        private string? _resetId;
+
         public SecuritySettingsPage()
         {
             InitializeComponent();
         }
 
-        private async void ChangePassword_Click(object sender, RoutedEventArgs e)
+        #region Смена пароля (3-шаговый flow)
+
+        private async void RequestPasswordReset_Click(object sender, RoutedEventArgs e)
+        {
+            var gp = App.GParam;
+            if (gp == null) return;
+
+            StatusText.Text = "Отправка кода...";
+
+            var (error, resetId) = await App.ServerCommunication.ResetPassword(
+                gp.Email ?? "", gp.UserName ?? "", gp);
+
+            if (error.IsSuccess && !string.IsNullOrEmpty(resetId))
+            {
+                _resetId = resetId;
+                PasswordStep1.Visibility = Visibility.Collapsed;
+                PasswordStep2.Visibility = Visibility.Visible;
+                PasswordStepText.Text = "Введите 6-значный код, отправленный на вашу почту";
+                StatusText.Text = "Код отправлен на почту";
+            }
+            else
+            {
+                StatusText.Text = $"Ошибка: {error.ErrorMessage}";
+            }
+        }
+
+        private async void ConfirmResetCode_Click(object sender, RoutedEventArgs e)
+        {
+            var code = ResetCodeBox.Text?.Trim();
+            if (string.IsNullOrEmpty(code) || string.IsNullOrEmpty(_resetId))
+            {
+                StatusText.Text = "Введите код подтверждения";
+                return;
+            }
+
+            StatusText.Text = "Проверка кода...";
+            var (error, refreshToken) = await App.ServerCommunication.ConfirmResetCode(
+                _resetId, code, App.GParam);
+
+            if (error.IsSuccess)
+            {
+                PasswordStep2.Visibility = Visibility.Collapsed;
+                PasswordStep3.Visibility = Visibility.Visible;
+                PasswordStepText.Text = "Введите новый пароль";
+                StatusText.Text = "Код подтверждён. Введите новый пароль";
+            }
+            else
+            {
+                StatusText.Text = $"Ошибка: {error.ErrorMessage}";
+            }
+        }
+
+        private async void SetNewPassword_Click(object sender, RoutedEventArgs e)
         {
             var newPass = NewPasswordBox.Password;
             var confirmPass = ConfirmPasswordBox.Password;
@@ -40,12 +94,21 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
                 StatusText.Text = "Пароль успешно изменён";
                 NewPasswordBox.Clear();
                 ConfirmPasswordBox.Clear();
+                // Вернуть на шаг 1
+                PasswordStep3.Visibility = Visibility.Collapsed;
+                PasswordStep1.Visibility = Visibility.Visible;
+                PasswordStepText.Text = "Для смены пароля на вашу почту будет отправлен код подтверждения";
+                _resetId = null;
             }
             else
             {
                 StatusText.Text = $"Ошибка: {error.ErrorMessage}";
             }
         }
+
+        #endregion
+
+        #region 2FA
 
         private async void SetupTwoFa_Click(object sender, RoutedEventArgs e)
         {
@@ -115,6 +178,10 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
             }
         }
 
+        #endregion
+
+        #region PIN-код
+
         private void SavePin_Click(object sender, RoutedEventArgs e)
         {
             var pin = PinBox.Password?.Trim();
@@ -134,5 +201,7 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
                 StatusText.Text = "PIN-код сохранён";
             }
         }
+
+        #endregion
     }
 }
