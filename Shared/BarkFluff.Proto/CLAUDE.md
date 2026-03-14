@@ -61,3 +61,5 @@ dotnet build BarkFluff.Proto.csproj
 <!-- Только типы (без сервисного кода) -->
 <Protobuf Include="..\..\Shared\BarkFluff.Proto\shared.proto" GrpcServices="None" />
 ```
+
+## Саня блятьт!
