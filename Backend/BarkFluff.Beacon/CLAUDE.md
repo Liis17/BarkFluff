@@ -1,28 +1,44 @@
-# Микросервис Beacon
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Описание
 
-Микросервис `Beacon` действует как реестр служб и механизм обнаружения для системы BarkFluff. Он предоставляет клиентам необходимую информацию для подключения к различным внутренним службам.
+Микросервис `Beacon` (порт 7002) — точка входа для клиентов BarkFluff. Собирает адреса всех бизнес-сервисов из Configuration service и отдаёт клиентам единый `GetServerInfoResponse` с эндпоинтами, цветовой схемой и метаданными сервера. Также периодически (каждые 5 минут) регистрирует себя в Navigator.
 
-## Механика работы
+## Сборка и запуск
 
-Сервис предоставляет gRPC API для выполнения следующих операций:
+```bash
+dotnet build Backend/BarkFluff.Beacon/BarkFluff.Beacon.csproj
+```
 
-*   **Регистрация сервисов:** Другие микросервисы при запуске регистрируются в сервисе `Beacon`.
-*   **Обнаружение сервисов:** Клиенты могут запрашивать у сервиса `Beacon` информацию о доступных сервисах, включая их имена, адреса и состояние работоспособности.
+Порт задаётся через `BEACON_PORT` / `RunSettings__Port` env-переменные, либо из конфигурации Configuration service.
 
-## Возможности
+## Архитектура
 
-*   Регистрация и обнаружение микросервисов.
-*   Предоставление клиентам информации о доступных сервисах.
+Сервис не имеет собственной БД. Вся логика сводится к двум операциям:
 
-## Технический стек
+1. **GetServerInfo** (gRPC endpoint) — запрашивает конфигурации Identity, Users, Files, Messages, Updates, Onliner из Configuration service и собирает ответ с внешними эндпоинтами (ExternalEndpoint:Host, фолбэк на RunSettings:Host).
+2. **ServerRegistrationService** (BackgroundService) — каждые 5 минут отправляет `RegisterServerRequest` в Navigator с метаданными сервера.
 
-*   **Фреймворк:** ASP.NET Core
-*   **API:** gRPC
-*   **Другое:** MediatR
+CQRS через MediatR: `GetServerInfoCommand` → `GetServerInfoCommandHandler`.
 
-## Зависимости
+## Зависимости (gRPC-клиенты)
 
-*   **Микросервис Navigator:** Является клиентом микросервиса `Navigator`.
-*   **Микросервис Configuration:** Является клиентом микросервиса `Configuration`.
+- **Configuration** (`ConfigurationApi.ConfigurationApiClient`) — получение конфигураций сервисов по `ServiceId`
+- **Navigator** (`NavigatorApi.NavigatorApiClient`) — регистрация сервера в глобальном реестре
+
+## Конфигурация
+
+Настройки загружаются из Configuration service (`builder.LoadConfiguration(ServiceId.Beacon)`):
+
+- `ServerProps` → `ServerPropsSettings` (Name, Description, PublicName, Location)
+- `ServerColor` → `ServerColorSettings` (Lite, Main, Hard — hex-цвета)
+- `NavigatorUrl` — адрес Navigator service
+- `ConfigurationServiceAddr` — адрес Configuration service
+- `ExternalEndpoint:Host` — внешний адрес Beacon (через nginx), фолбэк на `RunSettings:Host`
+
+## Proto-файлы
+
+- `beacon_api.proto` — Server (реализация gRPC сервиса)
+- `navigator_api.proto` — Client (клиент для регистрации)
