@@ -1,6 +1,0 @@
-@BarkFluff.GithubActionsController_HostAddress = http://localhost:5090
-
-GET {{BarkFluff.GithubActionsController_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
