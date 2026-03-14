@@ -112,6 +112,11 @@
                         <input type="text" id="searchInput" placeholder="Поиск по username или ID..."
                             class="pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-72" />
                     </div>
+                    <button onclick="openReservedNamesModal()"
+                        class="flex items-center gap-2 px-3 py-2 text-slate-500 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 rounded-lg transition-colors text-sm">
+                        <i data-lucide="shield" class="w-4 h-4"></i>
+                        Зарезервированные
+                    </button>
                     <button onclick="handleLogout()"
                         class="flex items-center gap-2 text-slate-500 hover:text-red-600 transition-colors text-sm">
                         <i data-lucide="log-out" class="w-4 h-4"></i>
@@ -164,6 +169,30 @@
                 </button>
             </div>
             <div id="deviceModalContent" class="space-y-3 text-sm"></div>
+        </div>
+    </div>
+
+    <!-- MODAL: Зарезервированные юзернеймы -->
+    <div id="reservedNamesModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50" onclick="if(event.target===this)closeReservedNamesModal()">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col">
+            <div class="border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-slate-800">Зарезервированные юзернеймы</h3>
+                <button onclick="closeReservedNamesModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6 space-y-2" id="reservedNamesList">
+                <div class="flex justify-center py-8"><div class="spinner"></div></div>
+            </div>
+            <div class="border-t border-slate-200 px-6 py-4 flex items-center gap-2">
+                <input type="text" id="newReservedName" placeholder="Новое имя..."
+                    class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onkeydown="if(event.key==='Enter')addReservedName()" />
+                <button onclick="addReservedName()"
+                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
+                    Добавить
+                </button>
+            </div>
         </div>
     </div>
 
@@ -761,6 +790,123 @@
 
                 img.src = url;
             });
+        }
+
+        // ─── RESERVED NAMES ─────────────────────────────────────────────────────
+
+        let reservedNames = [];
+
+        function openReservedNamesModal() {
+            document.getElementById('reservedNamesModal').classList.remove('hidden');
+            document.getElementById('reservedNamesModal').classList.add('flex');
+            loadReservedNames();
+        }
+
+        function closeReservedNamesModal() {
+            document.getElementById('reservedNamesModal').classList.add('hidden');
+            document.getElementById('reservedNamesModal').classList.remove('flex');
+        }
+
+        async function loadReservedNames() {
+            document.getElementById('reservedNamesList').innerHTML = '<div class="flex justify-center py-8"><div class="spinner"></div></div>';
+            try {
+                const res = await fetch('/api/reserved-names');
+                if (!res.ok) throw new Error('Ошибка загрузки');
+                reservedNames = await res.json();
+                renderReservedNames();
+            } catch (e) {
+                document.getElementById('reservedNamesList').innerHTML = `<p class="text-red-500 text-center py-4">${e.message}</p>`;
+            }
+        }
+
+        function renderReservedNames() {
+            const list = document.getElementById('reservedNamesList');
+            if (reservedNames.length === 0) {
+                list.innerHTML = '<p class="text-sm text-slate-400 text-center py-4">Нет зарезервированных имён</p>';
+                return;
+            }
+            list.innerHTML = reservedNames.map(name => `
+                <div class="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg">
+                    <input type="text" value="${escapeHtml(name)}" data-original="${escapeHtml(name)}"
+                        class="flex-1 border border-transparent hover:border-slate-300 focus:border-blue-500 rounded px-2 py-1 text-sm bg-transparent focus:bg-white focus:outline-none transition-colors"
+                        onchange="showSaveBtn(this)" />
+                    <button onclick="updateReservedName(this)" class="hidden px-2 py-1 text-xs bg-green-100 text-green-700 hover:bg-green-200 rounded-md font-medium transition-colors flex-shrink-0">
+                        Сохранить
+                    </button>
+                    <button onclick="deleteReservedName('${escapeHtml(name)}')"
+                        class="px-2 py-1 text-xs bg-red-100 text-red-700 hover:bg-red-200 rounded-md font-medium transition-colors flex-shrink-0">
+                        Удалить
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function showSaveBtn(input) {
+            const saveBtn = input.nextElementSibling;
+            if (input.value.trim() !== input.dataset.original) {
+                saveBtn.classList.remove('hidden');
+            } else {
+                saveBtn.classList.add('hidden');
+            }
+        }
+
+        async function addReservedName() {
+            const input = document.getElementById('newReservedName');
+            const name = input.value.trim();
+            if (!name) return;
+
+            try {
+                const res = await fetch('/api/reserved-names', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+                if (!res.ok) {
+                    const data = await res.json();
+                    throw new Error(data.message || 'Ошибка');
+                }
+                input.value = '';
+                await loadReservedNames();
+            } catch (e) {
+                alert(`Ошибка: ${e.message}`);
+            }
+        }
+
+        async function updateReservedName(btn) {
+            const input = btn.previousElementSibling;
+            const oldName = input.dataset.original;
+            const newName = input.value.trim();
+            if (!newName || newName === oldName) return;
+
+            try {
+                const res = await fetch('/api/reserved-names', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ oldName, newName })
+                });
+                if (!res.ok) {
+                    const data = await res.json();
+                    throw new Error(data.message || 'Ошибка');
+                }
+                await loadReservedNames();
+            } catch (e) {
+                alert(`Ошибка: ${e.message}`);
+            }
+        }
+
+        async function deleteReservedName(name) {
+            if (!confirm(`Удалить "${name}" из зарезервированных?`)) return;
+
+            try {
+                const res = await fetch(`/api/reserved-names/${encodeURIComponent(name)}`, { method: 'DELETE' });
+                if (!res.ok) {
+                    const data = await res.json();
+                    throw new Error(data.message || 'Ошибка');
+                }
+                await loadReservedNames();
+            } catch (e) {
+                alert(`Ошибка: ${e.message}`);
+            }
         }
 
         // ─── INIT ────────────────────────────────────────────────────────────────
