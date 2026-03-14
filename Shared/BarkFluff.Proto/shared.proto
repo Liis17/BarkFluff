@@ -26,7 +26,7 @@ message Message {
 
   MessageContent content = 5; // Содержимое сообщения
 
-  MessageContentType type = 6; // Тип сообщения
+  MessageContentType type = 6; // Тип сообщения 
 }
 
 message MessageContent {
