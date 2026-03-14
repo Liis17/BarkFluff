@@ -1,0 +1,25 @@
+services:
+  clientstorage:
+    image: docker.barkfluff.com:5000/barkfluff-clientstorage:latest
+    restart: always
+    ports: [ "${CLIENTSTORAGE_PORT}:${CLIENTSTORAGE_PORT}" ]
+    volumes:
+      - clientstorage-data:/app/data
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: "http://+:${CLIENTSTORAGE_PORT}"
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_SERVICE_URL: ${S3_SERVICE_URL}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
+      UPLOAD_TOKEN: ${UPLOAD_TOKEN}
+      CLIENTSTORAGE_PORT: ${CLIENTSTORAGE_PORT}
+    networks:
+      - barkfluff-network
+
+volumes:
+  clientstorage-data:
+
+networks:
+  barkfluff-network:
+    driver: bridge
