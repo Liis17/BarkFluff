@@ -34,17 +34,13 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
             BuildImageGrid();
         }
 
-        private const int ROW_MIN_HEIGHT = 200;
-
         private void BuildImageGrid()
         {
             ImageStack.Children.Clear();
+            this.MinHeight = 0;
 
             var rowsDistribution = DetermineLayout(_attachments.Count);
             int imageIndex = 0;
-
-            // Резервируем минимальную высоту до загрузки изображений
-            this.MinHeight = rowsDistribution.Count * ROW_MIN_HEIGHT + (rowsDistribution.Count - 1) * IMAGE_SPACING;
 
             for (int rowIndex = 0; rowIndex < rowsDistribution.Count; rowIndex++)
             {
@@ -52,7 +48,7 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
                 var rowImages = _attachments.Skip(imageIndex).Take(imagesInRow).ToList();
 
                 var imageRow = new ImageRow();
-                imageRow.SetImages(rowImages, isFirstRow: rowIndex == 0);
+                imageRow.SetImages(rowImages, isFirstRow: rowIndex == 0, allAttachments: _attachments, globalOffset: imageIndex);
 
                 // Добавить отступ между рядами (2px)
                 if (rowIndex > 0)

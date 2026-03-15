@@ -18,6 +18,8 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
         private const int IMAGE_SPACING = 2;
 
         private List<AttachmentsModel> _attachments = new List<AttachmentsModel>();
+        private List<AttachmentsModel> _allAttachments = new List<AttachmentsModel>();
+        private int _globalOffset = 0;
         private bool _isFirstRow = false;
 
         public ImageRow()
@@ -30,9 +32,11 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
         /// </summary>
         /// <param name="images">List of attachments to display</param>
         /// <param name="isFirstRow">Whether this is the first row (for corner rounding)</param>
-        public void SetImages(List<AttachmentsModel> images, bool isFirstRow)
+        public void SetImages(List<AttachmentsModel> images, bool isFirstRow, List<AttachmentsModel> allAttachments = null, int globalOffset = 0)
         {
             _attachments = images ?? new List<AttachmentsModel>();
+            _allAttachments = allAttachments ?? _attachments;
+            _globalOffset = globalOffset;
             _isFirstRow = isFirstRow;
 
             // Очистить Grid
@@ -244,12 +248,12 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
         /// </summary>
         private void OnImageClick(AttachmentsModel clickedAttachment)
         {
-            // Найти индекс кликнутого вложения
-            var index = _attachments.IndexOf(clickedAttachment);
-            if (index < 0) return;
+            // Найти локальный индекс кликнутого вложения в ряду
+            var localIndex = _attachments.IndexOf(clickedAttachment);
+            if (localIndex < 0) return;
 
-            // Открыть ImageViewer со всеми картинками из ряда
-            OpenImageViewer(_attachments, index);
+            // Открыть ImageViewer со всеми картинками сообщения
+            OpenImageViewer(_allAttachments, _globalOffset + localIndex);
         }
 
         private void OpenImageViewer(List<AttachmentsModel> attachments, int currentIndex)
