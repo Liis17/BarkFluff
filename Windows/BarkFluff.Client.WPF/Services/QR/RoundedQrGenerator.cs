@@ -10,6 +10,97 @@ namespace BarkFluff.Client.WPF.Services.QR
 {
     public class RoundedQrGenerator
     {
+        // Fallback цвета (пурпурный → розовый)
+        private static readonly Color DefaultColorStart = Color.FromArgb(255, 63, 94, 251);
+        private static readonly Color DefaultColorEnd = Color.FromArgb(255, 252, 70, 107);
+
+        /// <summary>
+        /// Извлекает два доминантных цвета из изображения для градиента.
+        /// Возвращает средний насыщенный цвет и его hue-сдвинутый вариант.
+        /// </summary>
+        public static (Color colorStart, Color colorEnd) ExtractDominantColors(string imagePath)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(imagePath) || !File.Exists(imagePath))
+                    return (DefaultColorStart, DefaultColorEnd);
+
+                using (var original = Image.FromFile(imagePath))
+                using (var thumb = new Bitmap(50, 50, PixelFormat.Format32bppArgb))
+                using (var g = Graphics.FromImage(thumb))
+                {
+                    g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                    g.DrawImage(original, 0, 0, 50, 50);
+
+                    float totalH = 0, totalS = 0, totalB = 0;
+                    int count = 0;
+
+                    for (int y = 0; y < 50; y++)
+                    {
+                        for (int x = 0; x < 50; x++)
+                        {
+                            var pixel = thumb.GetPixel(x, y);
+
+                            // Пропускаем прозрачные, слишком тёмные, слишком светлые и ненасыщенные
+                            if (pixel.A < 128) continue;
+                            float brightness = pixel.GetBrightness();
+                            float saturation = pixel.GetSaturation();
+                            if (brightness < 0.15f || brightness > 0.85f) continue;
+                            if (saturation < 0.2f) continue;
+
+                            totalH += pixel.GetHue();
+                            totalS += saturation;
+                            totalB += brightness;
+                            count++;
+                        }
+                    }
+
+                    if (count < 50)
+                        return (DefaultColorStart, DefaultColorEnd);
+
+                    float avgH = totalH / count;
+                    float avgS = totalS / count;
+                    float avgB = totalB / count;
+
+                    // Делаем цвета более насыщенными и яркими для градиента
+                    float s1 = Math.Min(1f, avgS * 1.3f);
+                    float b1 = Math.Clamp(avgB * 1.1f, 0.45f, 0.85f);
+
+                    var colorStart = HslToColor(avgH, s1, b1);
+                    var colorEnd = HslToColor((avgH + 35f) % 360f, s1, Math.Clamp(b1 + 0.1f, 0.45f, 0.85f));
+
+                    return (colorStart, colorEnd);
+                }
+            }
+            catch
+            {
+                return (DefaultColorStart, DefaultColorEnd);
+            }
+        }
+
+        /// <summary>
+        /// Конвертирует HSL в System.Drawing.Color
+        /// </summary>
+        private static Color HslToColor(float hue, float saturation, float lightness)
+        {
+            float c = (1f - Math.Abs(2f * lightness - 1f)) * saturation;
+            float x = c * (1f - Math.Abs((hue / 60f) % 2f - 1f));
+            float m = lightness - c / 2f;
+
+            float r, g, b;
+            if (hue < 60) { r = c; g = x; b = 0; }
+            else if (hue < 120) { r = x; g = c; b = 0; }
+            else if (hue < 180) { r = 0; g = c; b = x; }
+            else if (hue < 240) { r = 0; g = x; b = c; }
+            else if (hue < 300) { r = x; g = 0; b = c; }
+            else { r = c; g = 0; b = x; }
+
+            return Color.FromArgb(255,
+                (int)Math.Clamp((r + m) * 255f, 0, 255),
+                (int)Math.Clamp((g + m) * 255f, 0, 255),
+                (int)Math.Clamp((b + m) * 255f, 0, 255));
+        }
+
         /// <summary>
         /// Генерирует QR код с градиентом, прозрачным фоном и скругленными модулями.
         /// </summary>

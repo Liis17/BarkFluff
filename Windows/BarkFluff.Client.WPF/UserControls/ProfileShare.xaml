@@ -1,4 +1,4 @@
-﻿<UserControl
+<UserControl
     x:Class="BarkFluff.Client.WPF.UserControls.ProfileShare"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -11,7 +11,6 @@
     mc:Ignorable="d">
 
     <UserControl.Resources>
-        <!--  Стиль для текста  -->
         <Style x:Key="TitleText" TargetType="TextBlock">
             <Setter Property="FontFamily" Value="Segoe UI Semibold" />
             <Setter Property="FontSize" Value="20" />
@@ -30,58 +29,164 @@
     <Grid Margin="10">
         <Border
             x:Name="CardBackground"
-            Background="#1f1f1f"
-            BorderBrush="#333333"
-            BorderThickness="1"
             CornerRadius="24">
+
+            <!--  Градиентный фон из цветов аватара (приглушённый)  -->
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Offset="0" Color="#1f1f1f" />
+                    <GradientStop Offset="1" Color="#1f1f1f" />
+                </LinearGradientBrush>
+            </Border.Background>
+
+            <!--  Градиентная обводка из цветов аватара  -->
+            <Border.BorderBrush>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Offset="0" Color="{Binding GradientStart, RelativeSource={RelativeSource AncestorType=local:ProfileShare}}" />
+                    <GradientStop Offset="1" Color="{Binding GradientEnd, RelativeSource={RelativeSource AncestorType=local:ProfileShare}}" />
+                </LinearGradientBrush>
+            </Border.BorderBrush>
+            <Border.BorderThickness>
+                <Thickness>1.5</Thickness>
+            </Border.BorderThickness>
+
             <Border.Effect>
                 <DropShadowEffect
-                    BlurRadius="20"
+                    BlurRadius="30"
                     Direction="270"
-                    Opacity="0.4"
-                    ShadowDepth="5"
+                    Opacity="0.5"
+                    ShadowDepth="8"
                     Color="Black" />
             </Border.Effect>
 
-            <Grid Margin="20">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <!--  QR Code  -->
-                    <RowDefinition Height="*" />
-                    <!--  User Info  -->
-                </Grid.RowDefinitions>
+            <Grid>
+                <!--  Заглушка: username отсутствует  -->
+                <StackPanel
+                    x:Name="NoUsernameOverlay"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Visibility="Collapsed">
 
-                <!--  1. Область QR Кода  -->
-                <!--  Белый фон обязателен для контраста QR кода, даже в темной теме  -->
-                <Border
-                    Grid.Row="0"
-                    Width="450"
-                    Height="450"
-                    Padding="10"
-                    Background="White"
-                    CornerRadius="18">
-                    <Image
-                        RenderOptions.BitmapScalingMode="HighQuality"
-                        Source="{Binding QrCodeSource, RelativeSource={RelativeSource AncestorType=local:ProfileShare}}"
-                        Stretch="Uniform" />
-                </Border>
-
-
-
-                <!--  2. Информация о пользователе  -->
-                <StackPanel Grid.Row="2" VerticalAlignment="Top">
-
-
-                    <!--  Username  -->
                     <TextBlock
-                        Margin="0,4,0,0"
                         HorizontalAlignment="Center"
-                        FontSize="20"
-                        FontWeight="Bold"
+                        FontFamily="Segoe MDL2 Assets"
+                        FontSize="36"
+                        Foreground="#555555"
+                        Text="&#xE711;" />
+
+                    <TextBlock
+                        Margin="0,16,0,0"
+                        HorizontalAlignment="Center"
+                        FontFamily="Segoe UI Semibold"
+                        FontSize="18"
                         Foreground="White"
-                        Opacity="0.8"
-                        Text="{Binding Username, RelativeSource={RelativeSource AncestorType=local:ProfileShare}, FallbackValue='@username'}" />
+                        TextAlignment="Center"
+                        Text="Не удалось поделиться профилем" />
+
+                    <TextBlock
+                        Margin="0,8,0,0"
+                        HorizontalAlignment="Center"
+                        FontSize="14"
+                        Foreground="#888888"
+                        TextAlignment="Center"
+                        Text="У вас не установлен username. Задайте его в настройках профиля." />
                 </StackPanel>
+
+                <!--  Основной контент с QR  -->
+                <Grid x:Name="QrContent">
+                    <!--  Декоративный градиентный оверлей (тонкий, ~12% opacity)  -->
+                    <Border CornerRadius="24" Opacity="0.12">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Offset="0" Color="{Binding GradientStart, RelativeSource={RelativeSource AncestorType=local:ProfileShare}}" />
+                                <GradientStop Offset="1" Color="{Binding GradientEnd, RelativeSource={RelativeSource AncestorType=local:ProfileShare}}" />
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
+
+                    <Grid Margin="24">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <!--  QR Code  -->
+                            <RowDefinition Height="Auto" />
+                            <!--  Разделитель  -->
+                            <RowDefinition Height="*" />
+                            <!--  User Info  -->
+                        </Grid.RowDefinitions>
+
+                        <!--  1. Область QR Кода  -->
+                        <Border
+                            Grid.Row="0"
+                            Width="450"
+                            Height="450"
+                            Padding="12"
+                            Background="White"
+                            CornerRadius="18">
+                            <Border.Effect>
+                                <DropShadowEffect
+                                    BlurRadius="12"
+                                    Direction="270"
+                                    Opacity="0.15"
+                                    ShadowDepth="2"
+                                    Color="Black" />
+                            </Border.Effect>
+                            <Image
+                                RenderOptions.BitmapScalingMode="HighQuality"
+                                Source="{Binding QrCodeSource, RelativeSource={RelativeSource AncestorType=local:ProfileShare}}"
+                                Stretch="Uniform" />
+                        </Border>
+
+                        <!--  2. Градиентный разделитель  -->
+                        <Border
+                            Grid.Row="1"
+                            Height="1.5"
+                            Margin="40,16,40,0"
+                            Opacity="0.4"
+                            CornerRadius="1">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                    <GradientStop Offset="0" Color="Transparent" />
+                                    <GradientStop Offset="0.3" Color="{Binding GradientStart, RelativeSource={RelativeSource AncestorType=local:ProfileShare}}" />
+                                    <GradientStop Offset="0.7" Color="{Binding GradientEnd, RelativeSource={RelativeSource AncestorType=local:ProfileShare}}" />
+                                    <GradientStop Offset="1" Color="Transparent" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                        </Border>
+
+                        <!--  3. Информация о пользователе  -->
+                        <StackPanel
+                            Grid.Row="2"
+                            Margin="0,12,0,4"
+                            VerticalAlignment="Top"
+                            HorizontalAlignment="Center">
+
+                            <!--  Username с @  -->
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                FontFamily="Segoe UI Semibold"
+                                FontSize="22"
+                                FontWeight="SemiBold"
+                                TextAlignment="Center">
+                                <TextBlock.Foreground>
+                                    <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                        <GradientStop Offset="0" Color="{Binding GradientStart, RelativeSource={RelativeSource AncestorType=local:ProfileShare}}" />
+                                        <GradientStop Offset="1" Color="{Binding GradientEnd, RelativeSource={RelativeSource AncestorType=local:ProfileShare}}" />
+                                    </LinearGradientBrush>
+                                </TextBlock.Foreground>
+                                <Run Text="@" /><Run Text="{Binding Username, RelativeSource={RelativeSource AncestorType=local:ProfileShare}, FallbackValue='username'}" />
+                            </TextBlock>
+
+                            <!--  Подпись  -->
+                            <TextBlock
+                                Margin="0,4,0,0"
+                                HorizontalAlignment="Center"
+                                FontSize="12"
+                                Foreground="#666666"
+                                TextAlignment="Center"
+                                Text="barkfluff.com" />
+                        </StackPanel>
+                    </Grid>
+                </Grid>
             </Grid>
         </Border>
     </Grid>

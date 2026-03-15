@@ -22,8 +22,12 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private async void ProfileShare_Loaded(object sender, RoutedEventArgs e)
         {
-            if (string.IsNullOrEmpty(Username))
+            if (string.IsNullOrWhiteSpace(Username))
+            {
+                NoUsernameOverlay.Visibility = Visibility.Visible;
+                QrContent.Visibility = Visibility.Collapsed;
                 return;
+            }
 
             // Формируем URL для QR кода
             string qrUrl = _barkflufffPrefix + Username;
@@ -34,10 +38,15 @@ namespace BarkFluff.Client.WPF.UserControls
             // Генерируем QR код
             try
             {
-                var color1 = System.Drawing.Color.FromArgb(255, 63, 94, 251); // Пурпурный
-                var color2 = System.Drawing.Color.FromArgb(255, 252, 70, 107); // Розовый
+                // Извлекаем цвета из аватара
+                var (color1, color2) = RoundedQrGenerator.ExtractDominantColors(logoPath);
+
                 var qrCodeBitmap = RoundedQrGenerator.GenerateRoundedQrBitmap(qrUrl, color1, color2, logoPath);
                 QrCodeSource = qrCodeBitmap;
+
+                // Конвертируем System.Drawing.Color → System.Windows.Media.Color для XAML
+                GradientStart = Color.FromArgb(color1.A, color1.R, color1.G, color1.B);
+                GradientEnd = Color.FromArgb(color2.A, color2.R, color2.G, color2.B);
             }
             catch (Exception ex)
             {
@@ -137,7 +146,6 @@ namespace BarkFluff.Client.WPF.UserControls
         }
 
         // 4. Свойство для картинки QR кода
-        // (Обычно QR генерируется в ViewModel и передается сюда как Bitmap/ImageSource)
         public static readonly DependencyProperty QrCodeSourceProperty =
             DependencyProperty.Register("QrCodeSource", typeof(ImageSource), typeof(ProfileShare), new PropertyMetadata(null));
 
@@ -145,6 +153,28 @@ namespace BarkFluff.Client.WPF.UserControls
         {
             get { return (ImageSource)GetValue(QrCodeSourceProperty); }
             set { SetValue(QrCodeSourceProperty, value); }
+        }
+
+        // 5. Начальный цвет градиента (извлечённый из аватара)
+        public static readonly DependencyProperty GradientStartProperty =
+            DependencyProperty.Register("GradientStart", typeof(Color), typeof(ProfileShare),
+                new PropertyMetadata(Color.FromRgb(63, 94, 251)));
+
+        public Color GradientStart
+        {
+            get { return (Color)GetValue(GradientStartProperty); }
+            set { SetValue(GradientStartProperty, value); }
+        }
+
+        // 6. Конечный цвет градиента (извлечённый из аватара)
+        public static readonly DependencyProperty GradientEndProperty =
+            DependencyProperty.Register("GradientEnd", typeof(Color), typeof(ProfileShare),
+                new PropertyMetadata(Color.FromRgb(252, 70, 107)));
+
+        public Color GradientEnd
+        {
+            get { return (Color)GetValue(GradientEndProperty); }
+            set { SetValue(GradientEndProperty, value); }
         }
 
         #endregion
