@@ -197,6 +197,7 @@
 
                     <!--  Кнопка бокового меню  -->
                     <Button
+                        x:Name="OpenSidePanel"
                         Grid.Column="0"
                         VerticalAlignment="Center"
                         Background="Transparent"
@@ -246,11 +247,11 @@
                             x:Name="AvatarTitleWindowButton"
                             Width="23"
                             Height="23"
-                            AvatarSize="VeryLittle"
                             HorizontalAlignment="Left"
                             VerticalAlignment="Center"
                             Panel.ZIndex="1"
-                            AvatarType="Image"
+                            AvatarSize="VeryLittle"
+                            AvatarType="UserWithoutAvatar"
                             CornerRadius="23"
                             Cursor="Hand"
                             EnableDynamicShadow="False"
@@ -522,7 +523,7 @@
                                             Height="35"
                                             Panel.ZIndex="1"
                                             AvatarSize="Little"
-                                            AvatarType="Image"
+                                            AvatarType="UserWithoutAvatar"
                                             CornerRadius="23"
                                             Cursor="Hand"
                                             EnableDynamicShadow="False"

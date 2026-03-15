@@ -268,15 +268,11 @@ namespace BarkFluff.Client.WPF.Pages
             {
                 if (fileId == _currentChatAvatarFileId)
                 {
-                    ChatAvatarButton.FileId = null;
-                    ChatAvatarButton.FileUrl = null;
-                    ChatAvatarButton.AvatarType = AvatarType.Image;
+                    ChatAvatarButton.Refresh();
                 }
                 if (fileId == _currentUserAvatarFileId)
                 {
-                    AvatarTitleWindowButton.FileId = null;
-                    AvatarTitleWindowButton.FileUrl = null;
-                    AvatarTitleWindowButton.AvatarType = AvatarType.Image;
+                    AvatarTitleWindowButton.Refresh();
                 }
             });
         }
@@ -773,7 +769,7 @@ namespace BarkFluff.Client.WPF.Pages
                 App.ErideMessage.AddMessage("API клиент успешно обновлён", new Erida { Type = MType.Debug });
             }
 
-            UserInfoUpdate();
+            await UserInfoUpdate();
             ChatUpdate();
             await Task.Run(() => ProcessMessages(App.GParam));
 
@@ -1363,17 +1359,8 @@ namespace BarkFluff.Client.WPF.Pages
 
                 ChatList.Children.Add(messageItem);
             }
-
-            // Загружаем аватар текущего пользователя через кеш-сервис
-            if (!string.IsNullOrEmpty(App.GParam.PictureUrl))
-            {
-                _currentUserAvatarFileId = FileCacheService.ExtractFileIdFromUrl(App.GParam.PictureUrl);
-                AvatarTitleWindowButton.FileId = _currentUserAvatarFileId;
-                AvatarTitleWindowButton.FileUrl = null;
-                AvatarTitleWindowButton.AvatarType = AvatarType.Image;
-            }
         }
-        public async void UserInfoUpdate()
+        public async Task UserInfoUpdate()
         {
             var response = await App.ServerCommunication.GetUserData(App.GParam);
             if (response.Error == null) { return; }
@@ -1394,7 +1381,33 @@ namespace BarkFluff.Client.WPF.Pages
             //App.GParam.PictureId = response.Data.PictureId; // славик переделай //хз зачем оно нужно
             MainWindow.SaveSettings();
 
-
+            // Обновляем аватар текущего пользователя в заголовке
+            if (!string.IsNullOrEmpty(App.GParam.PictureUrl))
+            {
+                _currentUserAvatarFileId = FileCacheService.ExtractFileIdFromUrl(App.GParam.PictureUrl);
+                if (!string.IsNullOrEmpty(_currentUserAvatarFileId))
+                {
+                    // Сбрасываем тип — LoadImage вернётся сразу (тип UserWithoutAvatar)
+                    AvatarTitleWindowButton.AvatarType = AvatarType.UserWithoutAvatar;
+                    // Устанавливаем URL и FileId пока тип UserWithoutAvatar (LoadImage вернётся сразу)
+                    AvatarTitleWindowButton.FileUrl = App.GParam.PictureUrl;
+                    AvatarTitleWindowButton.FileId = _currentUserAvatarFileId;
+                    // Переключаем тип — это запустит LoadImage с уже установленными FileId и FileUrl
+                    AvatarTitleWindowButton.AvatarType = AvatarType.Image;
+                }
+                else
+                {
+                    AvatarTitleWindowButton.FileId = null;
+                    AvatarTitleWindowButton.FileUrl = null;
+                    AvatarTitleWindowButton.AvatarType = AvatarType.UserWithoutAvatar;
+                }
+            }
+            else
+            {
+                AvatarTitleWindowButton.FileId = null;
+                AvatarTitleWindowButton.FileUrl = null;
+                AvatarTitleWindowButton.AvatarType = AvatarType.UserWithoutAvatar;
+            }
         }
         public void StartSlideDownAndFadeIn()
         {
@@ -1406,17 +1419,13 @@ namespace BarkFluff.Client.WPF.Pages
         {
             var response = await App.ServerCommunication.GetUserData(App.GParam, userId);
             var avatar = string.Empty;
-            if (!string.IsNullOrEmpty(response.Data.ProfilePictureUrl))
-            {
-                avatar = response.Data.ProfilePictureUrl;
-            }
             if (!string.IsNullOrEmpty(response.Data.ProfilePicturePreviewUrl))
             {
                 avatar = response.Data.ProfilePicturePreviewUrl;
             }
-            else
+            else if (!string.IsNullOrEmpty(response.Data.ProfilePictureUrl))
             {
-                avatar = FileCacheService.DefaultPlaceholder;
+                avatar = response.Data.ProfilePictureUrl;
             }
 
             if (App.GParam.UserId == response.Data.Id)
@@ -1434,11 +1443,17 @@ namespace BarkFluff.Client.WPF.Pages
                 _currentChatAvatarFileId = FileCacheService.ExtractFileIdFromUrl(avatar);
                 if (string.IsNullOrEmpty(_currentChatAvatarFileId))
                 {
+                    ChatAvatarButton.FileId = null;
+                    ChatAvatarButton.FileUrl = null;
                     ChatAvatarButton.AvatarType = AvatarType.UserWithoutAvatar;
                     return;
                 }
+                // Сбрасываем тип чтобы не вызвать LoadImage преждевременно
+                ChatAvatarButton.AvatarType = AvatarType.UserWithoutAvatar;
+                // Устанавливаем URL и FileId пока тип UserWithoutAvatar (LoadImage вернётся сразу)
+                ChatAvatarButton.FileUrl = avatar;
                 ChatAvatarButton.FileId = _currentChatAvatarFileId;
-                ChatAvatarButton.FileUrl = null;
+                // Переключаем тип — это запустит LoadImage с FileId и FileUrl
                 ChatAvatarButton.AvatarType = AvatarType.Image;
             }
 
@@ -1549,12 +1564,12 @@ namespace BarkFluff.Client.WPF.Pages
         #region боковая панель
 
         private bool isOpenPanel = false;
+        private SideBar? _sideBar;
         private readonly CubicEase easingPanel = new CubicEase { EasingMode = EasingMode.EaseInOut };
         private void SidePanel_Loaded(object sender, RoutedEventArgs e)
         {
-            SidePanel.Children.Clear();
-            var sideBar = new SideBar();
-            SidePanel.Children.Add(sideBar);
+            // SideBar создаётся лениво при первом открытии панели,
+            // чтобы данные пользователя (аватар, имя) уже были загружены
         }
         private void OpenPanelClick(object sender, RoutedEventArgs e)
         {
@@ -1572,6 +1587,19 @@ namespace BarkFluff.Client.WPF.Pages
         /// </summary>
         public void OpenPanel()
         {
+            // Создаём SideBar лениво при первом открытии
+            if (_sideBar == null)
+            {
+                _sideBar = new SideBar();
+                SidePanel.Children.Clear();
+                SidePanel.Children.Add(_sideBar);
+            }
+            else
+            {
+                // Обновляем данные при каждом открытии (аватар мог загрузиться)
+                _sideBar.RefreshUserData();
+            }
+
             var anim = new ThicknessAnimation
             {
                 From = new Thickness(-350, 0, 0, 0),
