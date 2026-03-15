@@ -1,5 +1,6 @@
 using LiteDB;
 
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Windows.Media;
@@ -271,6 +272,7 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
         /// </summary>
         private async Task<string?> DownloadAndCacheFileAsync(string fileId, FileType fileType, string? providedUrl, string? originalFileName = null)
         {
+            Debug.WriteLine($"[FileCacheService] DownloadAndCacheFileAsync started: fileId={fileId}, fileType={fileType}, providedUrl={providedUrl}");
             await _downloadSemaphore.WaitAsync();
             try
             {
@@ -280,6 +282,7 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
                     var cached = _files.FindOne(x => x.Hash == fileId);
                     if (cached != null && File.Exists(cached.Path))
                     {
+                        Debug.WriteLine($"[FileCacheService] File already cached at: {cached.Path}");
                         return cached.Path;
                     }
                 }
@@ -288,14 +291,17 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
                 if (!string.IsNullOrEmpty(providedUrl))
                 {
                     url = providedUrl;
+                    Debug.WriteLine($"[FileCacheService] Using provided URL: {url}");
                 }
                 else
                 {
+                    Debug.WriteLine($"[FileCacheService] No URL provided, calling GetFile API for fileId={fileId}");
                     // Получаем URL через API
                     var response = await WPF.App.ServerCommunication.GetFile(WPF.App.GParam, fileId);
                     if (!response.error.IsSuccess || string.IsNullOrEmpty(response.url))
                     {
                         var errorMessage = response.error.ErrorMessage ?? "Неизвестная ошибка";
+                        Debug.WriteLine($"[FileCacheService] GetFile API FAILED: {errorMessage}");
                         WPF.App.ErideMessage?.AddMessage(
                             $"Не удалось загрузить файл {fileId}: {errorMessage}",
                             new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });
@@ -303,6 +309,7 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
                         return null;
                     }
                     url = response.url;
+                    Debug.WriteLine($"[FileCacheService] GetFile API returned URL: {url}");
                 }
 
                 // Определяем расширение файла
@@ -311,9 +318,11 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
                 var cacheDir = GetCacheDirectory(fileType);
                 var filePath = Path.Combine(cacheDir, $"{fileId}{extension}");
 
+                Debug.WriteLine($"[FileCacheService] Downloading from: {url} to: {filePath}");
                 // Загружаем файл
                 var bytes = await _httpClient.GetByteArrayAsync(url);
                 await File.WriteAllBytesAsync(filePath, bytes);
+                Debug.WriteLine($"[FileCacheService] Downloaded {bytes.Length} bytes to: {filePath}");
 
                 // Сохраняем в базу данных используя Upsert
                 lock (_lock)
@@ -327,12 +336,14 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
                 }
 
                 // Вызываем событие
+                Debug.WriteLine($"[FileCacheService] Invoking FileCached event for fileId={fileId}, path={filePath}");
                 FileCached?.Invoke(fileId, filePath, fileType);
 
                 return filePath;
             }
             catch (Exception ex)
             {
+                Debug.WriteLine($"[FileCacheService] Download EXCEPTION for fileId={fileId}: {ex.Message}");
                 WPF.App.ErideMessage?.AddMessage(
                     $"Ошибка при загрузке файла {fileId}: {ex.Message}",
                     new Services.Erida.MessageType { Type = Services.Erida.MessageType.MessageTypeEnum.Error });

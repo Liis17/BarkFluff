@@ -29,6 +29,15 @@ namespace BarkFluff.Client.WPF.UserControls
 #endif
         }
 
+        /// <summary>
+        /// Обновляет данные пользователя (имя, аватар).
+        /// Вызывается при каждом открытии панели.
+        /// </summary>
+        public void RefreshUserData()
+        {
+            LoadCurrentUserData();
+        }
+
         private void LoadCurrentUserData()
         {
             if (App.GParam == null) return;
@@ -42,8 +51,16 @@ namespace BarkFluff.Client.WPF.UserControls
             if (!string.IsNullOrEmpty(App.GParam.PictureUrl))
             {
                 var fileId = FileCacheService.ExtractFileIdFromUrl(App.GParam.PictureUrl);
-                UserAvatarCached.FileId = fileId;
-                UserAvatarCached.FileUrl = App.GParam.PictureUrl;
+                if (!string.IsNullOrEmpty(fileId))
+                {
+                    // Сбрасываем тип чтобы последующие установки FileUrl/FileId не вызывали LoadImage
+                    UserAvatarCached.AvatarType = AvatarType.UserWithoutAvatar;
+                    // Устанавливаем данные пока AvatarType == UserWithoutAvatar (LoadImage вернётся сразу)
+                    UserAvatarCached.FileUrl = App.GParam.PictureUrl;
+                    UserAvatarCached.FileId = fileId;
+                    // Переключаем тип — запускает LoadImage с уже установленными FileId и FileUrl
+                    UserAvatarCached.AvatarType = AvatarType.Image;
+                }
 
                 // Также обновляем размытый фон (это остаётся отдельным)
                 SetBlurredBackground(App.GParam.PictureUrl);
