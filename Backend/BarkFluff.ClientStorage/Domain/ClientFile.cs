@@ -6,6 +6,8 @@ public class ClientFile
 
     public ClientType ClientType { get; set; }
 
+    public ReleaseChannel ReleaseChannel { get; set; }
+
     public string OriginalFileName { get; set; } = string.Empty;
 
     public string S3Key { get; set; } = string.Empty;

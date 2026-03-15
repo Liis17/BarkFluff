@@ -27,35 +27,77 @@ public class ClientStorageController : ControllerBase
     }
 
     [HttpGet("/get/barkfluffwindows")]
-    public async Task<IActionResult> GetWindows()
-    {
-        return await DownloadClient(ClientType.Windows);
-    }
+    public Task<IActionResult> GetWindows()
+        => DownloadClient(ClientType.Windows, ReleaseChannel.Release);
+
+    [HttpGet("/get/barkfluffwindows/{channel}")]
+    public Task<IActionResult> GetWindowsChannel(string channel)
+        => ParseChannelAndDownload(ClientType.Windows, channel);
 
     [HttpGet("/get/barkfluffkotlin")]
-    public async Task<IActionResult> GetKotlin()
-    {
-        return await DownloadClient(ClientType.Kotlin);
-    }
+    public Task<IActionResult> GetKotlin()
+        => DownloadClient(ClientType.Kotlin, ReleaseChannel.Release);
+
+    [HttpGet("/get/barkfluffkotlin/{channel}")]
+    public Task<IActionResult> GetKotlinChannel(string channel)
+        => ParseChannelAndDownload(ClientType.Kotlin, channel);
 
     [HttpPost("/set/barkfluffwindows")]
     [RequestSizeLimit(512 * 1024 * 1024)]
-    public async Task<IActionResult> SetWindows(IFormFile file)
-    {
-        return await UploadClient(file, ClientType.Windows);
-    }
+    public Task<IActionResult> SetWindows(IFormFile file)
+        => UploadClient(file, ClientType.Windows, ReleaseChannel.Release);
+
+    [HttpPost("/set/barkfluffwindows/{channel}")]
+    [RequestSizeLimit(512 * 1024 * 1024)]
+    public Task<IActionResult> SetWindowsChannel(IFormFile file, string channel)
+        => ParseChannelAndUpload(file, ClientType.Windows, channel);
 
     [HttpPost("/set/barkfluffkotlin")]
     [RequestSizeLimit(512 * 1024 * 1024)]
-    public async Task<IActionResult> SetKotlin(IFormFile file)
+    public Task<IActionResult> SetKotlin(IFormFile file)
+        => UploadClient(file, ClientType.Kotlin, ReleaseChannel.Release);
+
+    [HttpPost("/set/barkfluffkotlin/{channel}")]
+    [RequestSizeLimit(512 * 1024 * 1024)]
+    public Task<IActionResult> SetKotlinChannel(IFormFile file, string channel)
+        => ParseChannelAndUpload(file, ClientType.Kotlin, channel);
+
+    private bool TryParseChannel(string channel, out ReleaseChannel releaseChannel)
     {
-        return await UploadClient(file, ClientType.Kotlin);
+        switch (channel.ToLowerInvariant())
+        {
+            case "release":
+                releaseChannel = ReleaseChannel.Release;
+                return true;
+            case "beta":
+                releaseChannel = ReleaseChannel.Beta;
+                return true;
+            default:
+                releaseChannel = default;
+                return false;
+        }
     }
 
-    private async Task<IActionResult> DownloadClient(ClientType clientType)
+    private async Task<IActionResult> ParseChannelAndDownload(ClientType clientType, string channel)
+    {
+        if (!TryParseChannel(channel, out var releaseChannel))
+            return BadRequest(new { error = "Неизвестный канал. Допустимые значения: release, beta" });
+
+        return await DownloadClient(clientType, releaseChannel);
+    }
+
+    private async Task<IActionResult> ParseChannelAndUpload(IFormFile file, ClientType clientType, string channel)
+    {
+        if (!TryParseChannel(channel, out var releaseChannel))
+            return BadRequest(new { error = "Неизвестный канал. Допустимые значения: release, beta" });
+
+        return await UploadClient(file, clientType, releaseChannel);
+    }
+
+    private async Task<IActionResult> DownloadClient(ClientType clientType, ReleaseChannel releaseChannel)
     {
         var clientFile = await _db.ClientFiles
-            .Where(f => f.ClientType == clientType)
+            .Where(f => f.ClientType == clientType && f.ReleaseChannel == releaseChannel)
             .OrderByDescending(f => f.UploadedAt)
             .FirstOrDefaultAsync();
 
@@ -74,7 +116,7 @@ public class ClientStorageController : ControllerBase
         }
     }
 
-    private async Task<IActionResult> UploadClient(IFormFile? file, ClientType clientType)
+    private async Task<IActionResult> UploadClient(IFormFile? file, ClientType clientType, ReleaseChannel releaseChannel)
     {
         if (file == null || file.Length == 0)
             return BadRequest(new { error = "Файл не предоставлен" });
@@ -113,6 +155,7 @@ public class ClientStorageController : ControllerBase
             var clientFile = new ClientFile
             {
                 ClientType = clientType,
+                ReleaseChannel = releaseChannel,
                 OriginalFileName = file.FileName,
                 S3Key = s3Key,
                 ContentType = file.ContentType ?? "application/octet-stream",
