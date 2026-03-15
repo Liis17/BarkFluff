@@ -41,6 +41,9 @@ namespace BarkFluff.ClientStorage.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("ReleaseChannel")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("S3Key")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -50,7 +53,7 @@ namespace BarkFluff.ClientStorage.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ClientType");
+                    b.HasIndex("ClientType", "ReleaseChannel");
 
                     b.ToTable("ClientFiles");
                 });
