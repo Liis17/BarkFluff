@@ -1,6 +1,6 @@
 services:
   clientstorage-dev:
-    image: docker.barkfluff.com:5000/barkfluff-clientstorage-dev:latest
+    image: docker.barkfluff.com:5000/barkfluff-client-storage-dev:latest
     restart: always
     ports: [ "${CLIENTSTORAGE_PORT}:${CLIENTSTORAGE_PORT}" ]
     volumes:

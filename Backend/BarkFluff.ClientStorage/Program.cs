@@ -28,6 +28,9 @@ public class Program
 
         var app = builder.Build();
 
+        // Создаём директорию для SQLite, если она не существует
+        Directory.CreateDirectory("/app/data");
+
         // Применяем миграции и инициализируем S3 бакет
         using (var scope = app.Services.CreateScope())
         {
