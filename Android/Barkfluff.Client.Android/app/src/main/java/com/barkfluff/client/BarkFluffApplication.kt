@@ -26,6 +26,12 @@ class BarkFluffApplication : Application() {
     @Volatile
     var cameFromBackground: Boolean = false
 
+    /**
+     * Отложенный deep link URI, который будет обработан после инициализации gRPC в MainActivity.
+     */
+    @Volatile
+    var pendingDeepLink: android.net.Uri? = null
+
     override fun onCreate() {
         super.onCreate()
         // Apply Material You dynamic colors system-wide (Android 12+)
