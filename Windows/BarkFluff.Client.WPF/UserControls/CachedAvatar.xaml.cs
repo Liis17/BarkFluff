@@ -1,5 +1,6 @@
 using BarkFluff.Client.WPF.Services.App.Caching;
 
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -233,6 +234,8 @@ namespace BarkFluff.Client.WPF.UserControls
         /// </summary>
         private void LoadImage()
         {
+            Debug.WriteLine($"[CachedAvatar] LoadImage called. AvatarType={AvatarType}, FileId={FileId}, FileUrl={FileUrl}, PreviewFileId={PreviewFileId}, Name={Name}");
+
             // Обновляем видимость элементов в зависимости от типа аватара
             UpdateAvatarVisibility();
 
@@ -240,6 +243,7 @@ namespace BarkFluff.Client.WPF.UserControls
             if (AvatarType == UserControls.AvatarType.SavedChat ||
                 AvatarType == UserControls.AvatarType.UserWithoutAvatar)
             {
+                Debug.WriteLine($"[CachedAvatar] Skipping load — AvatarType={AvatarType}");
                 UnsubscribeFromFileCached();
                 return;
             }
@@ -254,27 +258,53 @@ namespace BarkFluff.Client.WPF.UserControls
             if (string.IsNullOrEmpty(effectiveFileId) && !string.IsNullOrEmpty(FileUrl))
             {
                 effectiveFileId = FileCacheService.ExtractFileIdFromUrl(FileUrl);
+                Debug.WriteLine($"[CachedAvatar] Extracted fileId from URL: {effectiveFileId}");
             }
 
             _fileId = effectiveFileId;
 
-            // Если fileId всё ещё пустой, показываем плейсхолдер
+            // Если fileId всё ещё пустой, показываем иконку пользователя без аватара
             if (string.IsNullOrEmpty(_fileId))
             {
+                Debug.WriteLine($"[CachedAvatar] No fileId available — showing placeholder icon");
                 SetPlaceholder();
                 return;
             }
 
-            // Получаем путь к файлу из кеша
+            Debug.WriteLine($"[CachedAvatar] Loading image for fileId={_fileId}, FileUrl={FileUrl}");
+
+            // Подписываемся ПЕРЕД запросом кеша, чтобы не пропустить событие
+            SubscribeToFileCached();
+
+            // Получаем путь к файлу из кеша (может запустить фоновую загрузку)
             var imagePath = App.FileCacheService.GetCachedFilePath(_fileId, FileType.Avatar, FileUrl);
 
-            // Загружаем изображение
-            SetImage(imagePath);
+            Debug.WriteLine($"[CachedAvatar] GetCachedFilePath returned: {imagePath}");
 
-            // Если это плейсхолдер, подписываемся на событие кеширования
-            if (FileCacheService.IsPlaceholder(imagePath))
+            if (!FileCacheService.IsPlaceholder(imagePath))
             {
-                SubscribeToFileCached();
+                // Файл уже в кеше — показываем реальное изображение
+                Debug.WriteLine($"[CachedAvatar] File found in cache — showing image from: {imagePath}");
+                UnsubscribeFromFileCached();
+                ShowImageFromPath(imagePath);
+            }
+            else
+            {
+                Debug.WriteLine($"[CachedAvatar] File NOT in cache — showing icon, waiting for download...");
+                // Показываем иконку пока файл загружается
+                ShowUserWithoutAvatarIcon();
+
+                // Повторная проверка: загрузка могла завершиться между GetCachedFilePath и подпиской
+                if (App.FileCacheService.IsFileCached(_fileId))
+                {
+                    var cachedPath = App.FileCacheService.GetCachedFilePath(_fileId, FileType.Avatar, FileUrl);
+                    if (!FileCacheService.IsPlaceholder(cachedPath))
+                    {
+                        Debug.WriteLine($"[CachedAvatar] File appeared in cache after re-check: {cachedPath}");
+                        UnsubscribeFromFileCached();
+                        ShowImageFromPath(cachedPath);
+                    }
+                }
             }
         }
 
@@ -286,11 +316,6 @@ namespace BarkFluff.Client.WPF.UserControls
             bool showImage = AvatarType == UserControls.AvatarType.Image;
             bool showSavedChat = AvatarType == UserControls.AvatarType.SavedChat;
             bool showUserWithoutAvatar = AvatarType == UserControls.AvatarType.UserWithoutAvatar;
-
-            if (showImage == true)
-            {
-
-            }
 
             AvatarBorder.Visibility = showImage ? Visibility.Visible : Visibility.Collapsed;
             SavedChatAvatar.Visibility = showSavedChat ? Visibility.Visible : Visibility.Collapsed;
@@ -322,9 +347,9 @@ namespace BarkFluff.Client.WPF.UserControls
         }
 
         /// <summary>
-        /// Устанавливает изображение по пути
+        /// Показывает реальное изображение из файла и переключает видимость на AvatarBorder
         /// </summary>
-        private void SetImage(string imagePath)
+        private void ShowImageFromPath(string imagePath)
         {
             try
             {
@@ -341,8 +366,13 @@ namespace BarkFluff.Client.WPF.UserControls
 
                 AvatarBrush.ImageSource = bitmapImage;
 
+                // Показываем Border с изображением, скрываем иконки
+                AvatarBorder.Visibility = Visibility.Visible;
+                UserWithoutAvatar.Visibility = Visibility.Collapsed;
+                SavedChatAvatar.Visibility = Visibility.Collapsed;
+
                 // Обновляем динамическую тень если включено
-                if (EnableDynamicShadow && !FileCacheService.IsPlaceholder(imagePath))
+                if (EnableDynamicShadow)
                 {
                     _ = UpdateDynamicShadow(imagePath);
                 }
@@ -354,20 +384,22 @@ namespace BarkFluff.Client.WPF.UserControls
         }
 
         /// <summary>
-        /// Устанавливает плейсхолдер
+        /// Показывает иконку пользователя без аватара (без изменения AvatarType)
+        /// </summary>
+        private void ShowUserWithoutAvatarIcon()
+        {
+            AvatarBorder.Visibility = Visibility.Collapsed;
+            SavedChatAvatar.Visibility = Visibility.Collapsed;
+            UserWithoutAvatar.Visibility = Visibility.Visible;
+            SetDefaultShadow();
+        }
+
+        /// <summary>
+        /// Устанавливает плейсхолдер — показывает иконку без аватара (без изменения AvatarType)
         /// </summary>
         private void SetPlaceholder()
         {
-            try
-            {
-                //AvatarBrush.ImageSource = new BitmapImage(new Uri(FileCacheService.DefaultPlaceholder, UriKind.RelativeOrAbsolute));
-                this.AvatarType = AvatarType.UserWithoutAvatar;
-                SetDefaultShadow();
-            }
-            catch
-            {
-                // Если не удалось загрузить даже плейсхолдер, оставляем пустым
-            }
+            ShowUserWithoutAvatarIcon();
         }
 
         /// <summary>
@@ -420,14 +452,17 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private void OnFileCached(string fileId, string filePath, FileType fileType)
         {
+            Debug.WriteLine($"[CachedAvatar] OnFileCached: fileId={fileId}, filePath={filePath}, fileType={fileType}, expected _fileId={_fileId}");
+
             if (fileId != _fileId || fileType != FileType.Avatar)
             {
                 return;
             }
 
+            Debug.WriteLine($"[CachedAvatar] File matched! Showing image from: {filePath}");
             Dispatcher.Invoke(() =>
             {
-                SetImage(filePath);
+                ShowImageFromPath(filePath);
                 UnsubscribeFromFileCached();
             });
         }
