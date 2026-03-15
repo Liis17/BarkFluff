@@ -55,6 +55,15 @@
         <item name="android:windowExitAnimation">@anim/bottom_sheet_slide_out</item>
     </style>
 
+    <!-- Прозрачная тема для DeepLinkActivity (без UI) -->
+    <style name="Theme.BarkfluffClientAndroid.Transparent" parent="Theme.BarkfluffClientAndroid">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
+
     <!-- Диалог без отступов для профиля чата -->
     <style name="Theme.BarkfluffClientAndroid.Dialog.NoPadding" parent="Theme.Material3.DayNight.Dialog.Alert">
         <item name="android:windowNoTitle">true</item>

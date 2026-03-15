@@ -6,14 +6,20 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
+import com.barkfluff.client.data.OpenChatManager
 import com.barkfluff.client.databinding.ActivityMainBinding
+import com.barkfluff.client.deeplink.DeepLinkCommand
+import com.barkfluff.client.deeplink.DeepLinkHandler
 import com.barkfluff.client.notifications.NotificationHelper
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
@@ -65,6 +71,7 @@ class MainActivity : AppCompatActivity() {
 
         setupBottomNavigation()
         handleChatIntent(intent)
+        handlePendingDeepLink()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -100,13 +107,67 @@ class MainActivity : AppCompatActivity() {
         }
 
         // gRPC готов — открываем ChatActivity
-        com.barkfluff.client.data.OpenChatManager.setOpenChat(chatId)
+        OpenChatManager.setOpenChat(chatId)
 
         val chatIntent = Intent(this, ChatActivity::class.java).apply {
             putExtra("chat_id", chatId)
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
         startActivity(chatIntent)
+    }
+
+    private fun handlePendingDeepLink() {
+        val app = applicationContext as BarkFluffApplication
+        val pendingLink = app.pendingDeepLink ?: return
+        app.pendingDeepLink = null
+
+        val command = DeepLinkHandler.parse(pendingLink)
+        if (command is DeepLinkCommand.OpenUserChat) {
+            resolveDeepLinkUser(command.username)
+        }
+    }
+
+    private fun resolveDeepLinkUser(username: String) {
+        val app = applicationContext as BarkFluffApplication
+        val grpcManager = app.grpcManager
+
+        lifecycleScope.launch {
+            val searchResult = grpcManager.searchUsers(username, size = 20)
+            if (searchResult.isFailure) {
+                Toast.makeText(this@MainActivity, "Ошибка поиска пользователя", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+
+            val users = searchResult.getOrNull() ?: emptyList()
+            val user = users.find { it.username.equals(username, ignoreCase = true) }
+
+            if (user == null) {
+                Toast.makeText(this@MainActivity, "Пользователь @$username не найден", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+
+            val chatResult = grpcManager.getPersonChatId(user.userId)
+            if (chatResult.isFailure) {
+                Toast.makeText(this@MainActivity, "Не удалось открыть чат", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+
+            val chatId = chatResult.getOrNull()!!
+            val displayName = "${user.firstName} ${user.lastName}".trim().ifBlank { user.username }
+            val avatarFileId = user.profilePicturePreviewFileId.ifBlank { user.profilePictureFileId }.ifBlank { null }
+
+            OpenChatManager.setOpenChat(chatId)
+
+            val chatIntent = Intent(this@MainActivity, ChatActivity::class.java).apply {
+                putExtra("chat_id", chatId)
+                putExtra("chat_title", displayName)
+                putExtra("chat_avatar_file_id", avatarFileId)
+                putExtra("is_group_chat", false)
+                putExtra("other_user_id", user.userId)
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
+            startActivity(chatIntent)
+        }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {

@@ -53,6 +53,26 @@
         </activity>
 
         <activity
+            android:name=".DeepLinkActivity"
+            android:exported="true"
+            android:theme="@style/Theme.BarkfluffClientAndroid.Transparent"
+            android:screenOrientation="portrait"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="bf" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="bfdev" />
+            </intent-filter>
+        </activity>
+
+        <activity
             android:name=".WelcomeActivity"
             android:exported="false"
             android:theme="@style/Theme.BarkfluffClientAndroid"
