@@ -883,12 +883,12 @@ namespace BarkFluff.Client.WPF.Pages
                         }
                         else
                         {
-                            App.ErideMessage.AddMessage("Обновление не найдено", new Erida { Type = MType.Warning });
+                            App.ErideMessage.AddMessage("Обновление не найдено", new Erida { Type = MType.Debug });
                         }
                     }
                     catch (Exception ex)
                     {
-                        App.ErideMessage.AddMessage($"Ошибка при запуске обновления: {ex.Message}", new Erida { Type = MType.Error });
+                        App.ErideMessage.AddMessage($"Ошибка при запуске обновления: {ex.Message}", new Erida { Type = MType.Debug });
                     }
                 }
 
@@ -896,7 +896,7 @@ namespace BarkFluff.Client.WPF.Pages
             catch (Exception ex)
             {
                 var a = ex.Message;
-                MessageBox.Show("Ошибка при выполнении задачи из протокола");
+                App.ErideMessage.AddMessage($"Ошибка при выполении задачи из протокола: {ex.Message}", new Erida { Type = MType.Error });
             }
         }
 
