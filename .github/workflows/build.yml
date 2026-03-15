@@ -34,6 +34,7 @@ jobs:
       admin-panel: ${{ steps.changes.outputs.admin-panel }}
       client-storage: ${{ steps.changes.outputs.client-storage }}
       wpf-client: ${{ steps.changes.outputs.wpf-client }}
+      android-client: ${{ steps.changes.outputs.android-client }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -167,6 +168,13 @@ jobs:
             echo "wpf-client=true" >> "$GITHUB_OUTPUT"
           else
             echo "wpf-client=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          # Android Client
+          if is_true "$(has_match 'Android/Barkfluff.Client.Android/')" "$(has_match 'Android/android-rebuild.trigger')"; then
+            echo "android-client=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "android-client=false" >> "$GITHUB_OUTPUT"
           fi
 
           echo ""
@@ -1786,6 +1794,18 @@ jobs:
           prerelease: false
           files: wpf-build.zip
 
+      - name: "\U0001F4E4 Загрузка на сервер обновлений"
+        if: steps.approval.outcome == 'success'
+        run: |
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            CHANNEL="beta"
+          else
+            CHANNEL="release"
+          fi
+          curl -f -X POST "${{ secrets.CLIENT_STORAGE_URL }}/set/barkfluffwindows/${CHANNEL}" \
+            -H "Authorization: Bearer ${{ secrets.CLIENT_STORAGE_TOKEN }}" \
+            -F "file=@wpf-build.zip"
+
       - name: "\U0001F6AB Сборка отменена"
         if: steps.approval.outcome == 'failure'
         env:
@@ -1833,6 +1853,123 @@ jobs:
             ❌ *Сборка провалена*
 
             📦 *WPF Client*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
+
+  # ═══════════════════════════════════════════════════════════════
+  #  Android Client — сборка + загрузка на сервер обновлений
+  # ═══════════════════════════════════════════════════════════════
+  build-android-client:
+    name: "\U0001F4F1 Android Client"
+    needs: detect-changes
+    if: needs.detect-changes.outputs.android-client == 'true'
+    runs-on: self-hosted
+    defaults:
+      run:
+        working-directory: Android/Barkfluff.Client.Android
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "\U0001F4F2 Запрос подтверждения сборки"
+        id: approval
+        continue-on-error: true
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "Запустить сборку Android Client?"
+          APPROVAL_BUTTON: "✅ Собрать"
+          REJECT_BUTTON: "❌ Отменить"
+          APPROVED_TEXT: "✅ Сборка Android Client одобрена"
+          REJECTED_TEXT: "❌ Сборка Android Client отклонена"
+          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Подготовка gradlew
+        if: steps.approval.outcome == 'success'
+        run: |
+          dos2unix gradlew
+          chmod +x gradlew
+
+      - name: Сборка APK
+        if: steps.approval.outcome == 'success'
+        env:
+          RELEASE_STORE_FILE: ${{ secrets.ANDROID_RELEASE_STORE_FILE }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
+        run: ./gradlew assembleRelease
+
+      - name: Поиск APK
+        if: steps.approval.outcome == 'success'
+        id: apk
+        run: |
+          APK_PATH=$(find app/build/outputs/apk/release -name '*.apk' | head -1)
+          echo "path=$APK_PATH" >> "$GITHUB_OUTPUT"
+          echo "Found APK: $APK_PATH"
+
+      - name: "\U0001F4E4 Загрузка на сервер обновлений"
+        if: steps.approval.outcome == 'success'
+        run: |
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            CHANNEL="beta"
+          else
+            CHANNEL="release"
+          fi
+          curl -f -X POST "${{ secrets.CLIENT_STORAGE_URL }}/set/barkfluffkotlin/${CHANNEL}" \
+            -H "Authorization: Bearer ${{ secrets.CLIENT_STORAGE_TOKEN }}" \
+            -F "file=@${{ steps.apk.outputs.path }}"
+
+      - name: "\U0001F6AB Сборка отменена"
+        if: steps.approval.outcome == 'failure'
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            🚫 *Сборка отменена*
+
+            📱 *Android Client*
+            📌 Ветка: `${{ github.ref_name }}`
+            👤 Автор: *${{ github.actor }}*
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
+
+      - name: "\U00002705 Уведомление об успехе"
+        if: success() && steps.approval.outcome == 'success'
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ✅ *Сборка успешна*
+
+            📱 *Android Client*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
+
+      - name: "\U0000274C Уведомление об ошибке"
+        if: failure() && steps.approval.outcome == 'success'
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ❌ *Сборка провалена*
+
+            📱 *Android Client*
             📌 Ветка: `${{ github.ref_name }}`
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
