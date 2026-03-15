@@ -10,6 +10,9 @@ COPY . .
 WORKDIR "/src/Backend/BarkFluff.ClientStorage"
 RUN dotnet publish "BarkFluff.ClientStorage.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 FROM base AS final
+USER root
+RUN mkdir -p /app/data && chown $APP_UID /app/data
+USER $APP_UID
 WORKDIR /app
 COPY --from=build /app/publish .
 ENTRYPOINT ["dotnet", "BarkFluff.ClientStorage.dll"]
