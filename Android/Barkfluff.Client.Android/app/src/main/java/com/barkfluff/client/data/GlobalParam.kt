@@ -254,10 +254,13 @@ class GlobalParam(private val context: Context) {
         }
 
         /**
-         * Получает имя устройства (модель для Android)
+         * Получает имя устройства
+         * Возвращает производителя и модель устройства
          */
         fun getDeviceName(): String {
-            return android.os.Build.MODEL
+            val manufacturer = android.os.Build.MANUFACTURER
+            val model = android.os.Build.MODEL
+            return "$manufacturer $model"
         }
 
         /**
@@ -271,7 +274,7 @@ class GlobalParam(private val context: Context) {
          * Получает имя приложения
          */
         fun getAppName(): String {
-            return "BarkFluff"
+            return "Barkfluff Kotlin"
         }
 
         /**

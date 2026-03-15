@@ -9,10 +9,10 @@ package barkfluff.users;
 
 service UsersApi {
 
-  
+
   // Получить информацию о пользователе
   rpc GetUser(GetUserRequest) returns(GetUserResponse);
-  
+
   // Установить аватарку
   rpc SetProfilePicture(SetProfilePictureRequest) returns(SetProfilePictureResponse);
 
@@ -21,16 +21,16 @@ service UsersApi {
 
   // Проверить существование емейла
   rpc CheckExistEmail(CheckExistEmailRequest) returns(CheckExistResponse);
-  
+
   // Изменить имя или фамилию
   rpc ChangeName(ChangeNameRequest) returns(ChangeNameResponse);
-  
+
   // Изменить юзернейм
   rpc ChangeUsername(ChangeUsernameRequest) returns(ChangeUsernameResponse);
-  
+
   // Изменить био
   rpc ChangeBio(ChangeBioRequest) returns(ChangeBioResponse);
-  
+
   // Найти пользователей по имени/фамилии/юзернейму
   rpc SearchUsers(SearchUsersRequest) returns(SearchUsersResponse);
 
@@ -51,7 +51,7 @@ service UsersApi {
 }
 
 service UsersServerApi {
-  
+
   // Найти по логину
   rpc FindByLogin(FindByLoginRequest) returns(FindByLoginResponse);
 
@@ -60,22 +60,22 @@ service UsersServerApi {
 
   // Проверить существование емейла
   rpc CheckExistEmail(CheckExistEmailRequest) returns(CheckExistResponse);
-  
+
   // Добавить черновик юзера
   rpc AddDraftUser(AddDraftUserRequest) returns(AddDraftUserResponse);
 
   // Переопределить черновик пользователя
   rpc OverrideDraftUser(AddDraftUserRequest) returns(AddDraftUserResponse);
-  
+
   // Подтвердить пользователя
   rpc ConfirmUser(ConfirmUserRequest) returns(ConfirmUserResponse);
-  
+
   // Получить пользователя по id
   rpc GetById(GetByIdRequest) returns(GetByIdResponse);
-  
+
   // Получить контакты пользователя по id
   rpc GetUserContacts(GetUserContactsRequest) returns(GetUserContactsResponse);
-  
+
   // Получить пользователей по id
   rpc ListByIds(ListByIdsRequest) returns(ListByIdsResponse);
 
@@ -94,6 +94,12 @@ service UsersServerApi {
   // Получить все баджи
   rpc GetAllBadges(GetAllBadgesRequest) returns(GetAllBadgesResponse);
 
+  // Обновить бадж
+  rpc UpdateBadge(UpdateBadgeRequest) returns(UpdateBadgeResponse);
+
+  // Удалить бадж
+  rpc DeleteBadge(DeleteBadgeRequest) returns(DeleteBadgeResponse);
+
   // Экспорт всех данных пользователя (для GDPR и других целей)
   rpc ExportData(ExportDataRequest) returns(ExportDataResponse);
 
@@ -108,6 +114,49 @@ service UsersServerApi {
 
   // Получить публичную информацию пользователя по юзернейму (для веб-сервера)
   rpc GetUserByUsername(GetUserByUsernameRequest) returns(GetUserByUsernameResponse);
+
+  // Поиск пользователей (для админ-панели)
+  rpc SearchUsersServer(SearchUsersServerRequest) returns(SearchUsersServerResponse);
+
+  // Обновить лимит хранилища пользователя
+  rpc UpdateStorageLimit(UpdateStorageLimitRequest) returns(UpdateStorageLimitResponse);
+
+  // Установить аватарку пользователю (для админ-панели)
+  rpc SetProfilePictureServer(SetProfilePictureServerRequest) returns(SetProfilePictureServerResponse);
+
+  // Получить устройства с Firebase токенами
+  rpc GetDevicesWithFirebaseTokens(GetDevicesWithFirebaseTokensRequest) returns(GetDevicesWithFirebaseTokensResponse);
+}
+
+// Установить аватарку (серверный)
+message SetProfilePictureServerRequest {
+  int64 user_id = 1;
+  string profile_picture_url = 2;         // ссылка на полное изображение
+  string profile_picture_preview_url = 3; // ссылка на превью
+}
+
+message SetProfilePictureServerResponse { }
+
+// Поиск пользователей (серверный)
+message SearchUsersServerRequest {
+  string query = 1;   // Поиск по username или user_id (пустой = все)
+  int32 offset = 2;
+  int32 size = 3;     // макс 50
+}
+
+message SearchUsersServerResponse {
+  repeated User users = 1;
+  int32 total_count = 2;
+}
+
+// Обновление лимита хранилища
+message UpdateStorageLimitRequest {
+  int64 user_id = 1;
+  int32 storage_limit_gb = 2; // 1-250
+}
+
+message UpdateStorageLimitResponse {
+  User user = 1;
 }
 
 message SearchUsersRequest {
@@ -126,7 +175,7 @@ message ChangeUserPasswordRequest {
   int64 user_id = 2; // идентификатор пользователя
 }
 
-message ChangeUserPasswordResponse { 
+message ChangeUserPasswordResponse {
   string password_hash = 1;
 }
 
@@ -141,7 +190,7 @@ message ChangeUsernameRequest {
 }
 
 message ChangeUsernameResponse {
-  
+
 }
 
 message ChangeNameRequest {
@@ -203,7 +252,7 @@ message ConfirmUserResponse { }
 
 
 message AddDraftUserRequest {
-  string first_name = 1; // имя 
+  string first_name = 1; // имя
   string last_name = 2; // фамилия
   string username = 3; // имя пользователя
   string email = 4; // почта
@@ -335,6 +384,30 @@ message GetAllBadgesResponse {
   repeated Badge badges = 1; // список всех баджей
 }
 
+// Запросы и ответы для обновления баджа
+
+message UpdateBadgeRequest {
+  int32 id = 1; // идентификатор баджа
+  string name = 2; // новое название баджа
+  string description = 3; // новое описание баджа
+  string image_url = 4; // новая ссылка на изображение баджа
+  bool is_active = 5; // активен ли бадж
+}
+
+message UpdateBadgeResponse {
+  Badge badge = 1; // обновлённый бадж
+}
+
+// Запросы и ответы для удаления баджа
+
+message DeleteBadgeRequest {
+  int32 id = 1; // идентификатор баджа
+}
+
+message DeleteBadgeResponse {
+  bool success = 1; // результат удаления
+}
+
 // Экспорт данных пользователя
 
 message ExportDataRequest {
@@ -444,4 +517,20 @@ message SetFirebaseTokenRequest {
 }
 
 message SetFirebaseTokenResponse { }
+
+// Запросы и ответы для получения устройств с Firebase токенами
+
+message GetDevicesWithFirebaseTokensRequest {
+  repeated int64 user_ids = 1; // идентификаторы пользователей
+}
+
+message GetDevicesWithFirebaseTokensResponse {
+  repeated DeviceFirebaseToken tokens = 1; // список токенов
+}
+
+message DeviceFirebaseToken {
+  int64 user_id = 1; // идентификатор пользователя
+  string device_id = 2; // идентификатор устройства
+  string firebase_token = 3; // Firebase токен
+}
 

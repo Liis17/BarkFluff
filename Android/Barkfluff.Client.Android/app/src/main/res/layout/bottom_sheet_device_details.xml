@@ -14,14 +14,24 @@
         android:layout_marginBottom="20dp"
         android:background="@drawable/bg_bottom_sheet_handle" />
 
-    <!-- Заголовок -->
+    <!-- Заголовок (кастомное имя) -->
     <TextView
         android:id="@+id/textDeviceTitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textAppearance="?attr/textAppearanceHeadlineSmall"
         android:textColor="?attr/colorOnSurface"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <!-- Оригинальное имя устройства -->
+    <TextView
+        android:id="@+id/textDeviceOriginalName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:visibility="gone" />
 
     <android.widget.Space
         android:layout_width="match_parent"
@@ -135,6 +145,21 @@
     <android.widget.Space
         android:layout_width="match_parent"
         android:layout_height="24dp" />
+
+    <!-- Кнопка переименования устройства -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/buttonRename"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:text="Переименовать устройство"
+        app:icon="@drawable/ic_edit"
+        app:iconGravity="textStart"
+        app:iconPadding="8dp"
+        style="@style/Widget.Material3.Button.OutlinedButton" />
+
+    <android.widget.Space
+        android:layout_width="match_parent"
+        android:layout_height="12dp" />
 
     <!-- Кнопка завершения сессии -->
     <com.google.android.material.button.MaterialButton

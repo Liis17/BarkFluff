@@ -60,6 +60,12 @@ class DevicesActivity : AppCompatActivity() {
             adapter = deviceAdapter
             isNestedScrollingEnabled = false
         }
+
+        // Обработчик клика на текущее устройство
+        binding.layoutCurrentDevice.setOnClickListener {
+            val currentSession = allSessions.find { it.deviceId == globalParam.deviceId }
+            currentSession?.let { showDeviceDetailsBottomSheet(it) }
+        }
     }
 
     private fun setupButtons() {
@@ -96,12 +102,22 @@ class DevicesActivity : AppCompatActivity() {
 
         // Заполняем текущее устройство
         if (currentSession != null) {
-            val deviceName = currentSession.customName.ifEmpty { currentSession.originalName }
-            binding.textCurrentDeviceName.text = deviceName.ifEmpty { "Неизвестное устройство" }
-            binding.textCurrentDeviceInfo.text = currentSession.appName
-            binding.cardCurrentDevice.visibility = View.VISIBLE
+            // Если есть кастомное имя - показываем его, иначе только оригинальное
+            if (currentSession.customName.isNotEmpty()) {
+                binding.textCurrentDeviceName.text = currentSession.customName
+                binding.textCurrentDeviceOriginalName.text = currentSession.originalName
+                binding.textCurrentDeviceOriginalName.visibility = android.view.View.VISIBLE
+            } else {
+                binding.textCurrentDeviceName.text = currentSession.originalName
+                binding.textCurrentDeviceOriginalName.visibility = android.view.View.GONE
+            }
+            // Показываем appName без версии
+            val appNameWithoutVersion = extractAppNameWithoutVersion(currentSession.appName)
+            binding.textCurrentDeviceApp.text = appNameWithoutVersion
+            binding.textCurrentDeviceApp.visibility = android.view.View.VISIBLE
+            binding.cardCurrentDevice.visibility = android.view.View.VISIBLE
         } else {
-            binding.cardCurrentDevice.visibility = View.GONE
+            binding.cardCurrentDevice.visibility = android.view.View.GONE
         }
 
         // Обновляем кнопку завершения всех сессий
@@ -109,11 +125,32 @@ class DevicesActivity : AppCompatActivity() {
 
         // Показываем список других устройств
         if (otherSessions.isNotEmpty()) {
-            binding.textOtherDevicesTitle.visibility = View.VISIBLE
+            binding.textOtherDevicesTitle.visibility = android.view.View.VISIBLE
             deviceAdapter.submitList(otherSessions)
         } else {
-            binding.textOtherDevicesTitle.visibility = View.GONE
+            binding.textOtherDevicesTitle.visibility = android.view.View.GONE
             deviceAdapter.submitList(emptyList())
+        }
+    }
+
+    /**
+     * Извлекает имя приложения без версии (первые 2 слова)
+     * Например: "BarkFluff Desktop 1.0.0" -> "BarkFluff Desktop"
+     */
+    private fun extractAppNameWithoutVersion(appName: String): String {
+        val words = appName.split(" ")
+        return if (words.size >= 2) {
+            // Проверяем, не является ли последнее слово версией (содержит цифры и точки)
+            val lastWord = words.last()
+            if (lastWord.matches(Regex("^[0-9.]+$"))) {
+                // Последнее слово - версия, убираем его
+                words.dropLast(1).joinToString(" ")
+            } else {
+                // Последнее слово не версия, берем первые 2 слова
+                words.take(2).joinToString(" ")
+            }
+        } else {
+            appName
         }
     }
 
@@ -122,13 +159,30 @@ class DevicesActivity : AppCompatActivity() {
         val sheetBinding = BottomSheetDeviceDetailsBinding.inflate(layoutInflater)
         bottomSheet.setContentView(sheetBinding.root)
 
-        val deviceName = session.customName.ifEmpty { session.originalName }.ifEmpty { "Неизвестное устройство" }
+        // Отображаем имена устройства
+        if (session.customName.isNotEmpty()) {
+            // Есть кастомное имя - показываем его в заголовке, оригинальное ниже
+            sheetBinding.textDeviceTitle.text = session.customName
+            sheetBinding.textDeviceTitle.visibility = android.view.View.VISIBLE
+            sheetBinding.textDeviceOriginalName.text = session.originalName
+            sheetBinding.textDeviceOriginalName.visibility = android.view.View.VISIBLE
+        } else {
+            // Нет кастомного имени - показываем только оригинальное в заголовке
+            sheetBinding.textDeviceTitle.text = session.originalName
+            sheetBinding.textDeviceTitle.visibility = android.view.View.VISIBLE
+            sheetBinding.textDeviceOriginalName.visibility = android.view.View.GONE
+        }
 
-        sheetBinding.textDeviceTitle.text = deviceName
         sheetBinding.textAppName.text = session.appName
         sheetBinding.textOS.text = session.os
         sheetBinding.textLocation.text = session.location.ifEmpty { "Неизвестно" }
         sheetBinding.textDeviceId.text = session.deviceId
+
+        // Кнопка переименования доступна для всех устройств
+        sheetBinding.buttonRename.setOnClickListener {
+            bottomSheet.dismiss()
+            showRenameDeviceDialog(session)
+        }
 
         sheetBinding.buttonTerminate.setOnClickListener {
             bottomSheet.dismiss()
@@ -136,6 +190,49 @@ class DevicesActivity : AppCompatActivity() {
         }
 
         bottomSheet.show()
+    }
+
+    private fun showRenameDeviceDialog(session: GrpcManager.SessionData) {
+        val builder = MaterialAlertDialogBuilder(this)
+        builder.setTitle("Переименовать устройство")
+
+        val input = android.widget.EditText(this)
+        input.hint = "Введите новое имя устройства"
+        input.setText(session.customName.ifEmpty { session.originalName })
+        builder.setView(input)
+
+        builder.setPositiveButton("Сохранить") { _, _ ->
+            val newCustomName = input.text.toString().trim()
+            if (newCustomName.isNotEmpty()) {
+                renameDevice(session.deviceId, newCustomName)
+            }
+        }
+        builder.setNegativeButton("Отмена", null)
+        builder.show()
+    }
+
+    private fun renameDevice(deviceId: String, customName: String) {
+        binding.progressLoading.visibility = View.VISIBLE
+
+        lifecycleScope.launch {
+            val result = grpcManager.renameDevice(deviceId, customName)
+            binding.progressLoading.visibility = View.GONE
+
+            if (result.isSuccess) {
+                // Обновляем локальный список сессий
+                allSessions = allSessions.map { session ->
+                    if (session.deviceId == deviceId) {
+                        session.copy(customName = customName)
+                    } else {
+                        session
+                    }
+                }
+                updateUI()
+                Toast.makeText(this@DevicesActivity, "Устройство переименовано", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this@DevicesActivity, "Ошибка: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun showRemoveSessionDialog(session: GrpcManager.SessionData) {
