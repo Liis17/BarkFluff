@@ -52,7 +52,7 @@
     <SolidColorBrush x:Key="TextHyperlink" Color="#FFF39E6D" />
 
     <!--  Сепараторы  -->
-    <SolidColorBrush x:Key="SeparatorBackground" Color="#333333" />
+    <SolidColorBrush x:Key="SeparatorBackground" Color="#888888" />
 
     <!--  Круг для отображения статуса действия  -->
     <SolidColorBrush x:Key="StepCircleBackground" Color="#df5000" />
