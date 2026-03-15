@@ -1,8 +1,19 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("com.google.protobuf") version "0.9.4"
     id("com.google.gms.google-services")
+}
+
+fun getSigningProp(envKey: String, propKey: String): String? {
+    return System.getenv(envKey) ?: run {
+        val f = rootProject.file("local.properties")
+        if (f.exists()) {
+            Properties().apply { load(f.inputStream()) }[propKey] as? String
+        } else null
+    }
 }
 
 android {
@@ -19,9 +30,22 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            val storeFilePath = getSigningProp("RELEASE_STORE_FILE", "RELEASE_STORE_FILE")
+            if (storeFilePath != null) {
+                storeFile = file(storeFilePath)
+                storePassword = getSigningProp("RELEASE_STORE_PASSWORD", "RELEASE_STORE_PASSWORD")
+                keyAlias = getSigningProp("RELEASE_KEY_ALIAS", "RELEASE_KEY_ALIAS")
+                keyPassword = getSigningProp("RELEASE_KEY_PASSWORD", "RELEASE_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
