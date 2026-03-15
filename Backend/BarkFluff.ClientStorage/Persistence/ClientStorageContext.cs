@@ -15,10 +15,11 @@ public class ClientStorageContext : DbContext
         modelBuilder.Entity<ClientFile>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.HasIndex(e => e.ClientType);
+            entity.HasIndex(e => new { e.ClientType, e.ReleaseChannel });
             entity.Property(e => e.OriginalFileName).IsRequired();
             entity.Property(e => e.S3Key).IsRequired();
             entity.Property(e => e.Checksum).IsRequired();
+            entity.Property(e => e.ReleaseChannel).IsRequired();
         });
     }
 }
