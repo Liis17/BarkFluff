@@ -5,11 +5,12 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="clr-namespace:BarkFluff.Client.WPF.UserControls.SettingsPages"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:controls="clr-namespace:BarkFluff.Client.WPF.UserControls"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     d:DesignHeight="550"
     d:DesignWidth="500"
     mc:Ignorable="d">
-    <Grid Background="{DynamicResource SettingsContentBackground}">
+    <Grid Background="Transparent">
         <StackPanel Margin="24,16,24,24">
             <!-- Заголовок страницы -->
             <TextBlock Style="{DynamicResource HeaderSettings}" Text="Облако" />
@@ -31,17 +32,9 @@
                         FontSize="12"
                         Margin="0,0,0,8"
                         Text="Загрузка..." />
-                    <Border
-                        Height="8"
-                        Background="{DynamicResource ButtonBackground}"
-                        CornerRadius="4">
-                        <Border
-                            x:Name="UsageBar"
-                            Width="0"
-                            HorizontalAlignment="Left"
-                            Background="#FF79AEDC"
-                            CornerRadius="4" />
-                    </Border>
+                    <controls:MultiSegmentProgressUserControl
+                        x:Name="StorageProgress"
+                        EmptyBrush="{DynamicResource ButtonBackground}" />
                     <TextBlock
                         x:Name="UsagePercentText"
                         Foreground="{DynamicResource DescriptionText}"
@@ -108,6 +101,46 @@
                         <TextBlock x:Name="DocumentsSize" Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,4,0,0" />
                     </StackPanel>
                     <ui:SymbolIcon Grid.Column="1" Foreground="#FFCA6D34" Symbol="Document24" />
+                </Grid>
+            </Border>
+
+            <Border
+                x:Name="AudioBorder"
+                Padding="16"
+                Background="{DynamicResource TextBackground}"
+                CornerRadius="8"
+                Margin="0,8"
+                Visibility="Collapsed">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Аудио" />
+                        <TextBlock x:Name="AudioSize" Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,4,0,0" />
+                    </StackPanel>
+                    <ui:SymbolIcon Grid.Column="1" Foreground="#FF9B59B6" Symbol="MusicNote124" />
+                </Grid>
+            </Border>
+
+            <Border
+                x:Name="VoiceBorder"
+                Padding="16"
+                Background="{DynamicResource TextBackground}"
+                CornerRadius="8"
+                Margin="0,8"
+                Visibility="Collapsed">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Голосовые" />
+                        <TextBlock x:Name="VoiceSize" Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,4,0,0" />
+                    </StackPanel>
+                    <ui:SymbolIcon Grid.Column="1" Foreground="#FF1ABC9C" Symbol="Mic24" />
                 </Grid>
             </Border>
         </StackPanel>

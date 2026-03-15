@@ -6,8 +6,8 @@
     xmlns:local="clr-namespace:BarkFluff.Client.WPF.UserControls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-    HorizontalAlignment="Stretch"
-    VerticalAlignment="Stretch"
+    Width="700"
+    Height="600"
     d:DesignHeight="700"
     d:DesignWidth="720"
     mc:Ignorable="d">
@@ -58,7 +58,7 @@
                                     Text="" />
                             </StackPanel>
                         </Grid>
-                        <Separator Style="{DynamicResource SettingsSidebarSeparator}" />
+                        <Separator Style="{DynamicResource SettingsSidebarSeparator}" IsHitTestVisible="False" Focusable="False" />
                     </StackPanel>
 
                     <!-- Version at bottom -->
@@ -86,7 +86,7 @@
                                 <TextBlock FontSize="13" Foreground="{DynamicResource TitleText}" Text="Чаты" />
                             </StackPanel>
                         </ListBoxItem>
-                        <Separator Style="{DynamicResource SettingsSidebarSeparator}" />
+                        <Separator Style="{DynamicResource SettingsSidebarSeparator}" IsHitTestVisible="False" Focusable="False" />
                         <ListBoxItem Style="{DynamicResource SettingsSidebarItem}" Tag="Notifications">
                             <StackPanel Orientation="Horizontal">
                                 <ui:SymbolIcon Margin="0,0,8,0" FontSize="16" Foreground="{DynamicResource TitleText}" Symbol="CommentNote24" />
@@ -99,7 +99,7 @@
                                 <TextBlock FontSize="13" Foreground="{DynamicResource TitleText}" Text="Язык" />
                             </StackPanel>
                         </ListBoxItem>
-                        <Separator Style="{DynamicResource SettingsSidebarSeparator}" />
+                        <Separator Style="{DynamicResource SettingsSidebarSeparator}" IsHitTestVisible="False" Focusable="False" />
                         <ListBoxItem Style="{DynamicResource SettingsSidebarItem}" Tag="Security">
                             <StackPanel Orientation="Horizontal">
                                 <ui:SymbolIcon Margin="0,0,8,0" FontSize="16" Foreground="{DynamicResource TitleText}" Symbol="LockClosed32" />
@@ -118,7 +118,7 @@
                                 <TextBlock FontSize="13" Foreground="{DynamicResource TitleText}" Text="Устройства" />
                             </StackPanel>
                         </ListBoxItem>
-                        <Separator Style="{DynamicResource SettingsSidebarSeparator}" />
+                        <Separator Style="{DynamicResource SettingsSidebarSeparator}" IsHitTestVisible="False" Focusable="False" />
                         <ListBoxItem Style="{DynamicResource SettingsSidebarItem}" Tag="Cloud">
                             <StackPanel Orientation="Horizontal">
                                 <ui:SymbolIcon Margin="0,0,8,0" FontSize="16" Foreground="{DynamicResource TitleText}" Symbol="Cloud24" />
@@ -139,6 +139,7 @@
             <Border
                 Grid.Column="1"
                 Background="{DynamicResource SettingsContentBackground}"
+                ClipToBounds="True"
                 CornerRadius="0,12,12,0">
                 <ScrollViewer
                     HorizontalScrollBarVisibility="Disabled"

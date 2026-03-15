@@ -13,13 +13,14 @@ namespace BarkFluff.Client.WPF.UserControls
     /// </summary>
     public partial class Settings : UserControl
     {
-        private readonly Dictionary<string, Func<BaseSettingsPage>> _pages;
+        private readonly Dictionary<string, Func<BaseSettingsPage>> _factories;
+        private readonly Dictionary<string, BaseSettingsPage> _pageCache = new();
 
         public Settings()
         {
             InitializeComponent();
 
-            _pages = new Dictionary<string, Func<BaseSettingsPage>>
+            _factories = new Dictionary<string, Func<BaseSettingsPage>>
             {
                 { "Profile", () => new ProfileSettingsPage() },
                 { "Chats", () => new ChatsSettingsPage() },
@@ -74,10 +75,15 @@ namespace BarkFluff.Client.WPF.UserControls
                 return;
 
             var pageKey = item.Tag as string;
-            if (string.IsNullOrEmpty(pageKey) || !_pages.TryGetValue(pageKey, out var factory))
+            if (string.IsNullOrEmpty(pageKey) || !_factories.TryGetValue(pageKey, out var factory))
                 return;
 
-            var page = factory();
+            if (!_pageCache.TryGetValue(pageKey, out var page))
+            {
+                page = factory();
+                _pageCache[pageKey] = page;
+            }
+
             page.OnNavigatedTo();
 
             // Fade-анимация при смене страницы

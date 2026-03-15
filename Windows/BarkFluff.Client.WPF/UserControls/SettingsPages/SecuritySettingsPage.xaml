@@ -9,7 +9,7 @@
     d:DesignHeight="650"
     d:DesignWidth="500"
     mc:Ignorable="d">
-    <Grid Background="{DynamicResource SettingsContentBackground}">
+    <Grid Background="Transparent">
         <StackPanel Margin="24,16,24,24">
             <!-- Заголовок страницы -->
             <TextBlock Style="{DynamicResource HeaderSettings}" Text="Защита" />
