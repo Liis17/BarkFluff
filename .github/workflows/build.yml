@@ -187,6 +187,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: "\U0001F4F2 Запрос подтверждения сборки"
+        id: approval
+        continue-on-error: true
         uses: powerdot/telegram-manual-approval@main
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
@@ -200,6 +202,7 @@ jobs:
           UPDATE_REQUESTS: 120
 
       - name: Login to Private Registry
+        if: steps.approval.outcome == 'success'
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com:5000
@@ -207,9 +210,11 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
+        if: steps.approval.outcome == 'success'
         uses: docker/setup-buildx-action@v2
 
       - name: Set tags
+        if: steps.approval.outcome == 'success'
         id: vars
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
@@ -219,6 +224,7 @@ jobs:
           fi
 
       - name: Build and Push
+        if: steps.approval.outcome == 'success'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -226,8 +232,25 @@ jobs:
           push: true
           tags: ${{ steps.vars.outputs.tags }}
 
+      - name: "\U0001F6AB Сборка отменена"
+        if: steps.approval.outcome == 'failure'
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            🚫 *Сборка отменена*
+
+            🐋 *BarkFluff\.Identity*
+            📌 Ветка: `${{ github.ref_name }}`
+            👤 Автор: *${{ github.actor }}*
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
+
       - name: "\U00002705 Уведомление об успехе"
-        if: success()
+        if: success() && steps.approval.outcome == 'success'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -246,7 +269,7 @@ jobs:
             --data-urlencode "text=${TG_MESSAGE}"
 
       - name: "\U0000274C Уведомление об ошибке"
-        if: failure()
+        if: failure() && steps.approval.outcome == 'success'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -273,6 +296,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: "\U0001F4F2 Запрос подтверждения сборки"
+        id: approval
+        continue-on-error: true
         uses: powerdot/telegram-manual-approval@main
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
@@ -286,6 +311,7 @@ jobs:
           UPDATE_REQUESTS: 120
 
       - name: Login to Private Registry
+        if: steps.approval.outcome == 'success'
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com:5000
@@ -293,9 +319,11 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
+        if: steps.approval.outcome == 'success'
         uses: docker/setup-buildx-action@v2
 
       - name: Set tags
+        if: steps.approval.outcome == 'success'
         id: vars
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
@@ -305,6 +333,7 @@ jobs:
           fi
 
       - name: Build and Push
+        if: steps.approval.outcome == 'success'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -312,8 +341,25 @@ jobs:
           push: true
           tags: ${{ steps.vars.outputs.tags }}
 
+      - name: "\U0001F6AB Сборка отменена"
+        if: steps.approval.outcome == 'failure'
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            🚫 *Сборка отменена*
+
+            🐋 *BarkFluff\.Users*
+            📌 Ветка: `${{ github.ref_name }}`
+            👤 Автор: *${{ github.actor }}*
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
+
       - name: "\U00002705 Уведомление об успехе"
-        if: success()
+        if: success() && steps.approval.outcome == 'success'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -332,7 +378,7 @@ jobs:
             --data-urlencode "text=${TG_MESSAGE}"
 
       - name: "\U0000274C Уведомление об ошибке"
-        if: failure()
+        if: failure() && steps.approval.outcome == 'success'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -359,6 +405,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: "\U0001F4F2 Запрос подтверждения сборки"
+        id: approval
+        continue-on-error: true
         uses: powerdot/telegram-manual-approval@main
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
@@ -372,6 +420,7 @@ jobs:
           UPDATE_REQUESTS: 120
 
       - name: Login to Private Registry
+        if: steps.approval.outcome == 'success'
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com:5000
@@ -379,9 +428,11 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
+        if: steps.approval.outcome == 'success'
         uses: docker/setup-buildx-action@v2
 
       - name: Set tags
+        if: steps.approval.outcome == 'success'
         id: vars
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
@@ -391,6 +442,7 @@ jobs:
           fi
 
       - name: Build and Push
+        if: steps.approval.outcome == 'success'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -398,8 +450,25 @@ jobs:
           push: true
           tags: ${{ steps.vars.outputs.tags }}
 
+      - name: "\U0001F6AB Сборка отменена"
+        if: steps.approval.outcome == 'failure'
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            🚫 *Сборка отменена*
+
+            🐋 *BarkFluff\.Messages*
+            📌 Ветка: `${{ github.ref_name }}`
+            👤 Автор: *${{ github.actor }}*
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
+
       - name: "\U00002705 Уведомление об успехе"
-        if: success()
+        if: success() && steps.approval.outcome == 'success'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -418,7 +487,7 @@ jobs:
             --data-urlencode "text=${TG_MESSAGE}"
 
       - name: "\U0000274C Уведомление об ошибке"
-        if: failure()
+        if: failure() && steps.approval.outcome == 'success'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -445,6 +514,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: "\U0001F4F2 Запрос подтверждения сборки"
+        id: approval
+        continue-on-error: true
         uses: powerdot/telegram-manual-approval@main
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
@@ -458,6 +529,7 @@ jobs:
           UPDATE_REQUESTS: 120
 
       - name: Login to Private Registry
+        if: steps.approval.outcome == 'success'
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com:5000
@@ -465,9 +537,11 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
+        if: steps.approval.outcome == 'success'
         uses: docker/setup-buildx-action@v2
 
       - name: Set tags
+        if: steps.approval.outcome == 'success'
         id: vars
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
@@ -477,6 +551,7 @@ jobs:
           fi
 
       - name: Build and Push
+        if: steps.approval.outcome == 'success'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -484,8 +559,25 @@ jobs:
           push: true
           tags: ${{ steps.vars.outputs.tags }}
 
+      - name: "\U0001F6AB Сборка отменена"
+        if: steps.approval.outcome == 'failure'
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            🚫 *Сборка отменена*
+
+            🐋 *BarkFluff\.Files*
+            📌 Ветка: `${{ github.ref_name }}`
+            👤 Автор: *${{ github.actor }}*
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
+
       - name: "\U00002705 Уведомление об успехе"
-        if: success()
+        if: success() && steps.approval.outcome == 'success'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -504,7 +596,7 @@ jobs:
             --data-urlencode "text=${TG_MESSAGE}"
 
       - name: "\U0000274C Уведомление об ошибке"
-        if: failure()
+        if: failure() && steps.approval.outcome == 'success'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -531,6 +623,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: "\U0001F4F2 Запрос подтверждения сборки"
+        id: approval
+        continue-on-error: true
         uses: powerdot/telegram-manual-approval@main
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
@@ -544,6 +638,7 @@ jobs:
           UPDATE_REQUESTS: 120
 
       - name: Login to Private Registry
+        if: steps.approval.outcome == 'success'
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com:5000
@@ -551,9 +646,11 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
+        if: steps.approval.outcome == 'success'
         uses: docker/setup-buildx-action@v2
 
       - name: Set tags
+        if: steps.approval.outcome == 'success'
         id: vars
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
@@ -563,6 +660,7 @@ jobs:
           fi
 
       - name: Build and Push
+        if: steps.approval.outcome == 'success'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -570,8 +668,25 @@ jobs:
           push: true
           tags: ${{ steps.vars.outputs.tags }}
 
+      - name: "\U0001F6AB Сборка отменена"
+        if: steps.approval.outcome == 'failure'
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            🚫 *Сборка отменена*
+
+            🐋 *BarkFluff\.Updates*
+            📌 Ветка: `${{ github.ref_name }}`
+            👤 Автор: *${{ github.actor }}*
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
+
       - name: "\U00002705 Уведомление об успехе"
-        if: success()
+        if: success() && steps.approval.outcome == 'success'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -590,7 +705,7 @@ jobs:
             --data-urlencode "text=${TG_MESSAGE}"
 
       - name: "\U0000274C Уведомление об ошибке"
-        if: failure()
+        if: failure() && steps.approval.outcome == 'success'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -617,6 +732,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: "\U0001F4F2 Запрос подтверждения сборки"
+        id: approval
+        continue-on-error: true
         uses: powerdot/telegram-manual-approval@main
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
@@ -630,6 +747,7 @@ jobs:
           UPDATE_REQUESTS: 120
 
       - name: Login to Private Registry
+        if: steps.approval.outcome == 'success'
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com:5000
@@ -637,9 +755,11 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
+        if: steps.approval.outcome == 'success'
         uses: docker/setup-buildx-action@v2
 
       - name: Set tags
+        if: steps.approval.outcome == 'success'
         id: vars
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
@@ -649,6 +769,7 @@ jobs:
           fi
 
       - name: Build and Push
+        if: steps.approval.outcome == 'success'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -656,8 +777,25 @@ jobs:
           push: true
           tags: ${{ steps.vars.outputs.tags }}
 
+      - name: "\U0001F6AB Сборка отменена"
+        if: steps.approval.outcome == 'failure'
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            🚫 *Сборка отменена*
+
+            🐋 *BarkFluff\.Notification*
+            📌 Ветка: `${{ github.ref_name }}`
+            👤 Автор: *${{ github.actor }}*
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
+
       - name: "\U00002705 Уведомление об успехе"
-        if: success()
+        if: success() && steps.approval.outcome == 'success'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -676,7 +814,7 @@ jobs:
             --data-urlencode "text=${TG_MESSAGE}"
 
       - name: "\U0000274C Уведомление об ошибке"
-        if: failure()
+        if: failure() && steps.approval.outcome == 'success'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -703,6 +841,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: "\U0001F4F2 Запрос подтверждения сборки"
+        id: approval
+        continue-on-error: true
         uses: powerdot/telegram-manual-approval@main
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
@@ -716,6 +856,7 @@ jobs:
           UPDATE_REQUESTS: 120
 
       - name: Login to Private Registry
+        if: steps.approval.outcome == 'success'
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com:5000
@@ -723,9 +864,11 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
+        if: steps.approval.outcome == 'success'
         uses: docker/setup-buildx-action@v2
 
       - name: Set tags
+        if: steps.approval.outcome == 'success'
         id: vars
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
@@ -735,6 +878,7 @@ jobs:
           fi
 
       - name: Build and Push
+        if: steps.approval.outcome == 'success'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -742,8 +886,25 @@ jobs:
           push: true
           tags: ${{ steps.vars.outputs.tags }}
 
+      - name: "\U0001F6AB Сборка отменена"
+        if: steps.approval.outcome == 'failure'
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            🚫 *Сборка отменена*
+
+            🐋 *BarkFluff\.Configuration*
+            📌 Ветка: `${{ github.ref_name }}`
+            👤 Автор: *${{ github.actor }}*
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
+
       - name: "\U00002705 Уведомление об успехе"
-        if: success()
+        if: success() && steps.approval.outcome == 'success'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -762,7 +923,7 @@ jobs:
             --data-urlencode "text=${TG_MESSAGE}"
 
       - name: "\U0000274C Уведомление об ошибке"
-        if: failure()
+        if: failure() && steps.approval.outcome == 'success'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -789,6 +950,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: "\U0001F4F2 Запрос подтверждения сборки"
+        id: approval
+        continue-on-error: true
         uses: powerdot/telegram-manual-approval@main
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
@@ -802,6 +965,7 @@ jobs:
           UPDATE_REQUESTS: 120
 
       - name: Login to Private Registry
+        if: steps.approval.outcome == 'success'
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com:5000
@@ -809,9 +973,11 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
+        if: steps.approval.outcome == 'success'
         uses: docker/setup-buildx-action@v2
 
       - name: Set tags
+        if: steps.approval.outcome == 'success'
         id: vars
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
@@ -821,6 +987,7 @@ jobs:
           fi
 
       - name: Build and Push
+        if: steps.approval.outcome == 'success'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -828,8 +995,25 @@ jobs:
           push: true
           tags: ${{ steps.vars.outputs.tags }}
 
+      - name: "\U0001F6AB Сборка отменена"
+        if: steps.approval.outcome == 'failure'
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            🚫 *Сборка отменена*
+
+            🐋 *BarkFluff\.Beacon*
+            📌 Ветка: `${{ github.ref_name }}`
+            👤 Автор: *${{ github.actor }}*
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
+
       - name: "\U00002705 Уведомление об успехе"
-        if: success()
+        if: success() && steps.approval.outcome == 'success'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -848,7 +1032,7 @@ jobs:
             --data-urlencode "text=${TG_MESSAGE}"
 
       - name: "\U0000274C Уведомление об ошибке"
-        if: failure()
+        if: failure() && steps.approval.outcome == 'success'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -875,6 +1059,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: "\U0001F4F2 Запрос подтверждения сборки"
+        id: approval
+        continue-on-error: true
         uses: powerdot/telegram-manual-approval@main
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
@@ -888,6 +1074,7 @@ jobs:
           UPDATE_REQUESTS: 120
 
       - name: Login to Private Registry
+        if: steps.approval.outcome == 'success'
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com:5000
@@ -895,9 +1082,11 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
+        if: steps.approval.outcome == 'success'
         uses: docker/setup-buildx-action@v2
 
       - name: Set tags
+        if: steps.approval.outcome == 'success'
         id: vars
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
@@ -907,6 +1096,7 @@ jobs:
           fi
 
       - name: Build and Push
+        if: steps.approval.outcome == 'success'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -914,8 +1104,25 @@ jobs:
           push: true
           tags: ${{ steps.vars.outputs.tags }}
 
+      - name: "\U0001F6AB Сборка отменена"
+        if: steps.approval.outcome == 'failure'
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            🚫 *Сборка отменена*
+
+            🐋 *BarkFluff\.FastAuth*
+            📌 Ветка: `${{ github.ref_name }}`
+            👤 Автор: *${{ github.actor }}*
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
+
       - name: "\U00002705 Уведомление об успехе"
-        if: success()
+        if: success() && steps.approval.outcome == 'success'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -934,7 +1141,7 @@ jobs:
             --data-urlencode "text=${TG_MESSAGE}"
 
       - name: "\U0000274C Уведомление об ошибке"
-        if: failure()
+        if: failure() && steps.approval.outcome == 'success'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -961,6 +1168,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: "\U0001F4F2 Запрос подтверждения сборки"
+        id: approval
+        continue-on-error: true
         uses: powerdot/telegram-manual-approval@main
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
@@ -974,6 +1183,7 @@ jobs:
           UPDATE_REQUESTS: 120
 
       - name: Login to Private Registry
+        if: steps.approval.outcome == 'success'
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com:5000
@@ -981,9 +1191,11 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
+        if: steps.approval.outcome == 'success'
         uses: docker/setup-buildx-action@v2
 
       - name: Set tags
+        if: steps.approval.outcome == 'success'
         id: vars
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
@@ -993,6 +1205,7 @@ jobs:
           fi
 
       - name: Build and Push
+        if: steps.approval.outcome == 'success'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -1000,8 +1213,25 @@ jobs:
           push: true
           tags: ${{ steps.vars.outputs.tags }}
 
+      - name: "\U0001F6AB Сборка отменена"
+        if: steps.approval.outcome == 'failure'
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            🚫 *Сборка отменена*
+
+            🐋 *BarkFluff\.Navigator*
+            📌 Ветка: `${{ github.ref_name }}`
+            👤 Автор: *${{ github.actor }}*
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
+
       - name: "\U00002705 Уведомление об успехе"
-        if: success()
+        if: success() && steps.approval.outcome == 'success'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1020,7 +1250,7 @@ jobs:
             --data-urlencode "text=${TG_MESSAGE}"
 
       - name: "\U0000274C Уведомление об ошибке"
-        if: failure()
+        if: failure() && steps.approval.outcome == 'success'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1047,6 +1277,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: "\U0001F4F2 Запрос подтверждения сборки"
+        id: approval
+        continue-on-error: true
         uses: powerdot/telegram-manual-approval@main
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
@@ -1060,6 +1292,7 @@ jobs:
           UPDATE_REQUESTS: 120
 
       - name: Login to Private Registry
+        if: steps.approval.outcome == 'success'
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com:5000
@@ -1067,9 +1300,11 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
+        if: steps.approval.outcome == 'success'
         uses: docker/setup-buildx-action@v2
 
       - name: Set tags
+        if: steps.approval.outcome == 'success'
         id: vars
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
@@ -1079,6 +1314,7 @@ jobs:
           fi
 
       - name: Build and Push
+        if: steps.approval.outcome == 'success'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -1086,8 +1322,25 @@ jobs:
           push: true
           tags: ${{ steps.vars.outputs.tags }}
 
+      - name: "\U0001F6AB Сборка отменена"
+        if: steps.approval.outcome == 'failure'
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            🚫 *Сборка отменена*
+
+            🐋 *BarkFluff\.Onliner*
+            📌 Ветка: `${{ github.ref_name }}`
+            👤 Автор: *${{ github.actor }}*
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
+
       - name: "\U00002705 Уведомление об успехе"
-        if: success()
+        if: success() && steps.approval.outcome == 'success'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1106,7 +1359,7 @@ jobs:
             --data-urlencode "text=${TG_MESSAGE}"
 
       - name: "\U0000274C Уведомление об ошибке"
-        if: failure()
+        if: failure() && steps.approval.outcome == 'success'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1133,6 +1386,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: "\U0001F4F2 Запрос подтверждения сборки"
+        id: approval
+        continue-on-error: true
         uses: powerdot/telegram-manual-approval@main
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
@@ -1146,6 +1401,7 @@ jobs:
           UPDATE_REQUESTS: 120
 
       - name: Login to Private Registry
+        if: steps.approval.outcome == 'success'
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com:5000
@@ -1153,9 +1409,11 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
+        if: steps.approval.outcome == 'success'
         uses: docker/setup-buildx-action@v2
 
       - name: Set tags
+        if: steps.approval.outcome == 'success'
         id: vars
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
@@ -1165,6 +1423,7 @@ jobs:
           fi
 
       - name: Build and Push
+        if: steps.approval.outcome == 'success'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -1172,8 +1431,25 @@ jobs:
           push: true
           tags: ${{ steps.vars.outputs.tags }}
 
+      - name: "\U0001F6AB Сборка отменена"
+        if: steps.approval.outcome == 'failure'
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            🚫 *Сборка отменена*
+
+            🐋 *Barkfluff\.CloudMessaging*
+            📌 Ветка: `${{ github.ref_name }}`
+            👤 Автор: *${{ github.actor }}*
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
+
       - name: "\U00002705 Уведомление об успехе"
-        if: success()
+        if: success() && steps.approval.outcome == 'success'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1192,7 +1468,7 @@ jobs:
             --data-urlencode "text=${TG_MESSAGE}"
 
       - name: "\U0000274C Уведомление об ошибке"
-        if: failure()
+        if: failure() && steps.approval.outcome == 'success'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1219,6 +1495,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: "\U0001F4F2 Запрос подтверждения сборки"
+        id: approval
+        continue-on-error: true
         uses: powerdot/telegram-manual-approval@main
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
@@ -1232,6 +1510,7 @@ jobs:
           UPDATE_REQUESTS: 120
 
       - name: Login to Private Registry
+        if: steps.approval.outcome == 'success'
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com:5000
@@ -1239,9 +1518,11 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
+        if: steps.approval.outcome == 'success'
         uses: docker/setup-buildx-action@v2
 
       - name: Set tags
+        if: steps.approval.outcome == 'success'
         id: vars
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
@@ -1251,6 +1532,7 @@ jobs:
           fi
 
       - name: Build and Push
+        if: steps.approval.outcome == 'success'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -1258,8 +1540,25 @@ jobs:
           push: true
           tags: ${{ steps.vars.outputs.tags }}
 
+      - name: "\U0001F6AB Сборка отменена"
+        if: steps.approval.outcome == 'failure'
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            🚫 *Сборка отменена*
+
+            🐋 *Barkfluff\.AdminPanel*
+            📌 Ветка: `${{ github.ref_name }}`
+            👤 Автор: *${{ github.actor }}*
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
+
       - name: "\U00002705 Уведомление об успехе"
-        if: success()
+        if: success() && steps.approval.outcome == 'success'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1278,7 +1577,7 @@ jobs:
             --data-urlencode "text=${TG_MESSAGE}"
 
       - name: "\U0000274C Уведомление об ошибке"
-        if: failure()
+        if: failure() && steps.approval.outcome == 'success'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1305,6 +1604,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: "\U0001F4F2 Запрос подтверждения сборки"
+        id: approval
+        continue-on-error: true
         uses: powerdot/telegram-manual-approval@main
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
@@ -1318,6 +1619,7 @@ jobs:
           UPDATE_REQUESTS: 120
 
       - name: Login to Private Registry
+        if: steps.approval.outcome == 'success'
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com:5000
@@ -1325,9 +1627,11 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
+        if: steps.approval.outcome == 'success'
         uses: docker/setup-buildx-action@v2
 
       - name: Set tags
+        if: steps.approval.outcome == 'success'
         id: vars
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
@@ -1337,6 +1641,7 @@ jobs:
           fi
 
       - name: Build and Push
+        if: steps.approval.outcome == 'success'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -1344,8 +1649,25 @@ jobs:
           push: true
           tags: ${{ steps.vars.outputs.tags }}
 
+      - name: "\U0001F6AB Сборка отменена"
+        if: steps.approval.outcome == 'failure'
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            🚫 *Сборка отменена*
+
+            🐋 *BarkFluff\.ClientStorage*
+            📌 Ветка: `${{ github.ref_name }}`
+            👤 Автор: *${{ github.actor }}*
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
+
       - name: "\U00002705 Уведомление об успехе"
-        if: success()
+        if: success() && steps.approval.outcome == 'success'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1364,7 +1686,7 @@ jobs:
             --data-urlencode "text=${TG_MESSAGE}"
 
       - name: "\U0000274C Уведомление об ошибке"
-        if: failure()
+        if: failure() && steps.approval.outcome == 'success'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1393,6 +1715,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: "\U0001F4F2 Запрос подтверждения сборки"
+        id: approval
+        continue-on-error: true
         uses: powerdot/telegram-manual-approval@main
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
@@ -1406,27 +1730,32 @@ jobs:
           UPDATE_REQUESTS: 120
 
       - name: Restore dependencies
+        if: steps.approval.outcome == 'success'
         env:
           EnableWindowsTargeting: true
         run: dotnet restore Windows/BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj
 
       - name: Build
+        if: steps.approval.outcome == 'success'
         env:
           EnableWindowsTargeting: true
         run: dotnet build Windows/BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj --no-restore --configuration Release
 
       - name: Publish
+        if: steps.approval.outcome == 'success'
         env:
           EnableWindowsTargeting: true
         run: dotnet publish Windows/BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj --configuration Release --runtime win-x64 --self-contained true --output ./publish
 
       - name: Zip build
+        if: steps.approval.outcome == 'success'
         uses: vimtor/action-zip@v1
         with:
           files: publish/
           dest: wpf-build.zip
 
       - name: Get version and tag
+        if: steps.approval.outcome == 'success'
         id: meta
         run: |
           VERSION=$(grep -oP 'Version\s*\{\s*get;\s*set;\s*\}\s*=\s*"\K[^"]+' Windows/BarkFluff.Client.WPF/Services/App/AppVersion.cs || echo "0.0.0")
@@ -1439,6 +1768,7 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - name: "\U0001F680 Создать релиз"
+        if: steps.approval.outcome == 'success'
         uses: softprops/action-gh-release@v2
         with:
           repository: ${{ secrets.OWNER_RELEASE_REPO }}/${{ secrets.RELEASE_REPO_NAME }}
@@ -1456,8 +1786,25 @@ jobs:
           prerelease: false
           files: wpf-build.zip
 
+      - name: "\U0001F6AB Сборка отменена"
+        if: steps.approval.outcome == 'failure'
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            🚫 *Сборка отменена*
+
+            📦 *WPF Client*
+            📌 Ветка: `${{ github.ref_name }}`
+            👤 Автор: *${{ github.actor }}*
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
+
       - name: "\U00002705 Уведомление об успехе"
-        if: success()
+        if: success() && steps.approval.outcome == 'success'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1478,7 +1825,7 @@ jobs:
             --data-urlencode "text=${TG_MESSAGE}"
 
       - name: "\U0000274C Уведомление об ошибке"
-        if: failure()
+        if: failure() && steps.approval.outcome == 'success'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
