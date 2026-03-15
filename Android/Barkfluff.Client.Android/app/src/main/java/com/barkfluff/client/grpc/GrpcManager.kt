@@ -530,6 +530,29 @@ class GrpcManager {
     }
 
     /**
+     * Переименовывает устройство
+     */
+    suspend fun renameDevice(deviceId: String, customName: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (usersClient == null) {
+                return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            }
+
+            val request = UsersApiOuterClass.RenameDeviceRequest.newBuilder()
+                .setDeviceId(deviceId)
+                .setCustomName(customName)
+                .build()
+
+            usersClient!!.renameDevice(request)
+            Log.d(TAG, "Устройство успешно переименовано")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка переименования устройства", e)
+            Result.failure(Exception("Ошибка переименования устройства: ${e.message}"))
+        }
+    }
+
+    /**
      * Получает список серверов из навигатора
      * Аналог GetServerList в WebApiServerManager
      */

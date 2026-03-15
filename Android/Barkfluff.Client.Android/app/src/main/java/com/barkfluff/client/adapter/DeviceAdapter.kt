@@ -27,15 +27,47 @@ class DeviceAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(session: GrpcManager.SessionData) {
-            val deviceName = session.customName.ifEmpty { session.originalName }
-            binding.textDeviceName.text = deviceName.ifEmpty { "Неизвестное устройство" }
-            binding.textDeviceInfo.text = session.appName
+            // Если есть кастомное имя - показываем его, иначе только оригинальное
+            if (session.customName.isNotEmpty()) {
+                binding.textDeviceName.text = session.customName
+                binding.textDeviceOriginalName.text = session.originalName
+                binding.textDeviceOriginalName.visibility = android.view.View.VISIBLE
+                // Показываем appName без версии (первые 2 слова)
+                val appNameWithoutVersion = extractAppNameWithoutVersion(session.appName)
+                binding.textAppVersion.text = appNameWithoutVersion
+                binding.textAppVersion.visibility = android.view.View.VISIBLE
+            } else {
+                binding.textDeviceName.text = session.originalName
+                binding.textDeviceOriginalName.visibility = android.view.View.GONE
+                binding.textAppVersion.visibility = android.view.View.GONE
+            }
 
             // Выбираем иконку в зависимости от типа устройства
             binding.imageDeviceIcon.setImageResource(getDeviceIcon(session))
 
             binding.root.setOnClickListener {
                 onItemClick(session)
+            }
+        }
+
+        /**
+         * Извлекает имя приложения без версии (первые 2 слова)
+         * Например: "BarkFluff Desktop 1.0.0" -> "BarkFluff Desktop"
+         */
+        private fun extractAppNameWithoutVersion(appName: String): String {
+            val words = appName.split(" ")
+            return if (words.size >= 2) {
+                // Проверяем, не является ли последнее слово версией (содержит цифры и точки)
+                val lastWord = words.last()
+                if (lastWord.matches(Regex("^[0-9.]+$"))) {
+                    // Последнее слово - версия, убираем его
+                    words.dropLast(1).joinToString(" ")
+                } else {
+                    // Последнее слово не версия, берем первые 2 слова
+                    words.take(2).joinToString(" ")
+                }
+            } else {
+                appName
             }
         }
     }

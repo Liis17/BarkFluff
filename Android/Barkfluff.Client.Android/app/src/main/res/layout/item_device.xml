@@ -11,7 +11,8 @@
     app:strokeWidth="1dp"
     android:checkable="true"
     android:clickable="true"
-    android:focusable="true">
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -43,7 +44,7 @@
                 android:textColor="?attr/colorOnSurface" />
 
             <TextView
-                android:id="@+id/textDeviceInfo"
+                android:id="@+id/textDeviceOriginalName"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
@@ -51,6 +52,16 @@
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
         </LinearLayout>
+
+        <!-- Версия приложения справа -->
+        <TextView
+            android:id="@+id/textAppVersion"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:visibility="gone" />
 
         <ImageView
             android:layout_width="20dp"
