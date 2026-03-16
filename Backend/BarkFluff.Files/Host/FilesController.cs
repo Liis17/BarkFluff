@@ -30,15 +30,12 @@ public class FilesController : Controller
             return BadRequest("Файл не выбран или пустой.");
         }
 
-        var memoryStream = new MemoryStream();
-        await file.CopyToAsync(memoryStream);
-        memoryStream.Position = 0; // Сбрасываем позицию в начало
-
-        var command = new UploadFileCommand()
+        using var command = new UploadFileCommand()
         {
             FileId = uploadId,
-            FileStream = memoryStream,
-            FileName = file.FileName
+            FileStream = file.OpenReadStream(),
+            FileName = file.FileName,
+            FileSize = file.Length
         };
 
         try
@@ -50,13 +47,7 @@ public class FilesController : Controller
         }
         catch (FileAlreadyUploadedException ex)
         {
-            await memoryStream.DisposeAsync();
             return BadRequest(ex.Message);
-        }
-        catch
-        {
-            await memoryStream.DisposeAsync();
-            throw;
         }
     }
 
