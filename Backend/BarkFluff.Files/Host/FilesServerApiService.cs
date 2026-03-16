@@ -1,6 +1,15 @@
+using BarkFluff.Files.Features.AddSticker;
+using BarkFluff.Files.Features.CreateStickerPack;
+using BarkFluff.Files.Features.DeleteStickerPack;
 using BarkFluff.Files.Features.GetFileData;
 using BarkFluff.Files.Features.GetFilesData;
+using BarkFluff.Files.Features.GetStickerPack;
+using BarkFluff.Files.Features.GetStickers;
 using BarkFluff.Files.Features.GetUserStorageInfoServer;
+using BarkFluff.Files.Features.ListStickerPacks;
+using BarkFluff.Files.Features.RemoveSticker;
+using BarkFluff.Files.Features.UpdateSticker;
+using BarkFluff.Files.Features.UpdateStickerPack;
 using BarkFluff.Files.Features.UploadAvatarServer;
 using BarkFluff.Files.Features.UploadBadgeImage;
 using BarkFluff.Proto.Files;
@@ -72,6 +81,109 @@ public class FilesServerApiService : FilesServerApi.FilesServerApiBase
             ImageData = request.ImageData.ToByteArray(),
             Filename = request.Filename,
             UserId = request.UserId
+        };
+
+        return _mediator.Send(command);
+    }
+
+    // --- Стикерпаки ---
+
+    public override Task<CreateStickerPackResponse> CreateStickerPack(CreateStickerPackRequest request, ServerCallContext context)
+    {
+        var command = new CreateStickerPackCommand
+        {
+            CreatorUserId = request.CreatorUserId,
+            Name = request.Name,
+            Description = request.Description
+        };
+
+        return _mediator.Send(command);
+    }
+
+    public override Task<UpdateStickerPackResponse> UpdateStickerPack(UpdateStickerPackRequest request, ServerCallContext context)
+    {
+        var command = new UpdateStickerPackCommand
+        {
+            PackId = Guid.Parse(request.PackId),
+            Name = request.Name,
+            Description = request.Description,
+            CoverStickerId = string.IsNullOrEmpty(request.CoverStickerId) ? null : Guid.Parse(request.CoverStickerId)
+        };
+
+        return _mediator.Send(command);
+    }
+
+    public override Task<DeleteStickerPackResponse> DeleteStickerPack(DeleteStickerPackRequest request, ServerCallContext context)
+    {
+        var command = new DeleteStickerPackCommand
+        {
+            PackId = Guid.Parse(request.PackId)
+        };
+
+        return _mediator.Send(command);
+    }
+
+    public override Task<ListStickerPacksResponse> ListStickerPacks(ListStickerPacksRequest request, ServerCallContext context)
+    {
+        var command = new ListStickerPacksCommand
+        {
+            Offset = request.Pagination?.Offset ?? 0,
+            Limit = request.Pagination?.Size ?? 20
+        };
+
+        return _mediator.Send(command);
+    }
+
+    public override Task<GetStickerPackResponse> GetStickerPack(GetStickerPackRequest request, ServerCallContext context)
+    {
+        var command = new GetStickerPackCommand
+        {
+            PackId = Guid.Parse(request.PackId)
+        };
+
+        return _mediator.Send(command);
+    }
+
+    // --- Стикеры ---
+
+    public override Task<AddStickerResponse> AddSticker(AddStickerRequest request, ServerCallContext context)
+    {
+        var command = new AddStickerCommand
+        {
+            PackId = Guid.Parse(request.PackId),
+            FileId = Guid.Parse(request.FileId),
+            Emoji = request.Emoji
+        };
+
+        return _mediator.Send(command);
+    }
+
+    public override Task<RemoveStickerResponse> RemoveSticker(RemoveStickerRequest request, ServerCallContext context)
+    {
+        var command = new RemoveStickerCommand
+        {
+            StickerId = Guid.Parse(request.StickerId)
+        };
+
+        return _mediator.Send(command);
+    }
+
+    public override Task<UpdateStickerResponse> UpdateSticker(UpdateStickerRequest request, ServerCallContext context)
+    {
+        var command = new UpdateStickerCommand
+        {
+            StickerId = Guid.Parse(request.StickerId),
+            Emoji = request.Emoji
+        };
+
+        return _mediator.Send(command);
+    }
+
+    public override Task<GetStickersResponse> GetStickers(GetStickersRequest request, ServerCallContext context)
+    {
+        var command = new GetStickersCommand
+        {
+            StickerIds = request.StickerIds.Select(Guid.Parse).ToList()
         };
 
         return _mediator.Send(command);
