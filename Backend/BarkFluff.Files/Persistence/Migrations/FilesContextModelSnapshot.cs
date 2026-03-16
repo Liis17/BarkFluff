@@ -68,6 +68,65 @@ namespace BarkFluff.Files.Persistence.Migrations
                     b.ToTable("FileHashes");
                 });
 
+            modelBuilder.Entity("BarkFluff.Files.Domain.Sticker", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AddedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Emoji")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("FileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("PreviewFileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("StickerPackId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StickerPackId");
+
+                    b.ToTable("Stickers");
+                });
+
+            modelBuilder.Entity("BarkFluff.Files.Domain.StickerPack", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CoverStickerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("CreatorUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatorUserId");
+
+                    b.ToTable("StickerPacks");
+                });
+
             modelBuilder.Entity("BarkFluff.Files.Domain.TempFile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -121,6 +180,22 @@ namespace BarkFluff.Files.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("UploadedFiles");
+                });
+
+            modelBuilder.Entity("BarkFluff.Files.Domain.Sticker", b =>
+                {
+                    b.HasOne("BarkFluff.Files.Domain.StickerPack", "StickerPack")
+                        .WithMany("Stickers")
+                        .HasForeignKey("StickerPackId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StickerPack");
+                });
+
+            modelBuilder.Entity("BarkFluff.Files.Domain.StickerPack", b =>
+                {
+                    b.Navigation("Stickers");
                 });
 #pragma warning restore 612, 618
         }

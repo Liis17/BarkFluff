@@ -17,6 +17,10 @@ public class FilesContext : DbContext
 
     public DbSet<BadgeImage> BadgeImages { get; set; }
 
+    public DbSet<StickerPack> StickerPacks { get; set; }
+
+    public DbSet<Sticker> Stickers { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<TempFile>()
@@ -25,5 +29,17 @@ public class FilesContext : DbContext
         // Configure FileHashes with index on Hash for fast lookups
         modelBuilder.Entity<FileHash>()
             .HasIndex(x => x.Hash);
+
+        modelBuilder.Entity<StickerPack>()
+            .HasIndex(x => x.CreatorUserId);
+
+        modelBuilder.Entity<Sticker>()
+            .HasIndex(x => x.StickerPackId);
+
+        modelBuilder.Entity<Sticker>()
+            .HasOne(s => s.StickerPack)
+            .WithMany(sp => sp.Stickers)
+            .HasForeignKey(s => s.StickerPackId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

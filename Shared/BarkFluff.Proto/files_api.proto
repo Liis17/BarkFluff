@@ -3,6 +3,7 @@ syntax = "proto3";
 option csharp_namespace = "BarkFluff.Proto.Files";
 
 import "google/protobuf/timestamp.proto";
+import "shared.proto";
 
 package barkfluff.files;
 
@@ -26,6 +27,19 @@ service FilesServerApi {
   rpc GetUserStorageInfoServer(GetUserStorageInfoServerRequest) returns(GetUserStorageInfoResponse); // Получить информацию о хранилище пользователя (для админ-панели)
 
   rpc UploadAvatarServer(UploadAvatarServerRequest) returns(UploadAvatarServerResponse); // Загрузить аватарку пользователя (для админ-панели)
+
+  // Стикерпаки
+  rpc CreateStickerPack(CreateStickerPackRequest) returns(CreateStickerPackResponse);
+  rpc UpdateStickerPack(UpdateStickerPackRequest) returns(UpdateStickerPackResponse);
+  rpc DeleteStickerPack(DeleteStickerPackRequest) returns(DeleteStickerPackResponse);
+  rpc ListStickerPacks(ListStickerPacksRequest) returns(ListStickerPacksResponse);
+  rpc GetStickerPack(GetStickerPackRequest) returns(GetStickerPackResponse);
+
+  // Стикеры
+  rpc AddSticker(AddStickerRequest) returns(AddStickerResponse);
+  rpc RemoveSticker(RemoveStickerRequest) returns(RemoveStickerResponse);
+  rpc UpdateSticker(UpdateStickerRequest) returns(UpdateStickerResponse);
+  rpc GetStickers(GetStickersRequest) returns(GetStickersResponse);
 }
 
 message GetTempDownloadUrlRequest {
@@ -151,4 +165,105 @@ message GetUserStorageInfoResponse {
   int64 total_used_storage = 1; // Общее занятое пространство в байтах
   int64 storage_limit = 2; // Лимит хранилища в байтах
   repeated StorageByType storage_by_types = 3; // Использованное пространство по типам файлов
+}
+
+// --- Стикерпаки ---
+
+message StickerPackInfo {
+  string id = 1;
+  int64 creator_user_id = 2;
+  string cover_sticker_id = 3;
+  string name = 4;
+  string description = 5;
+  google.protobuf.Timestamp created_at = 6;
+  int32 sticker_count = 7;
+}
+
+message StickerInfo {
+  string id = 1;
+  string sticker_pack_id = 2;
+  string file_id = 3;
+  string preview_file_id = 4;
+  string emoji = 5;
+  google.protobuf.Timestamp added_at = 6;
+  string file_url = 7;
+  string preview_url = 8;
+}
+
+message CreateStickerPackRequest {
+  int64 creator_user_id = 1;
+  string name = 2;
+  string description = 3;
+}
+
+message CreateStickerPackResponse {
+  StickerPackInfo pack = 1;
+}
+
+message UpdateStickerPackRequest {
+  string pack_id = 1;
+  string name = 2;
+  string description = 3;
+  string cover_sticker_id = 4;
+}
+
+message UpdateStickerPackResponse {
+  StickerPackInfo pack = 1;
+}
+
+message DeleteStickerPackRequest {
+  string pack_id = 1;
+}
+
+message DeleteStickerPackResponse {}
+
+message ListStickerPacksRequest {
+  barkfluff.shared.PageRequest pagination = 1;
+}
+
+message ListStickerPacksResponse {
+  repeated StickerPackInfo packs = 1;
+  int32 total_count = 2;
+}
+
+message GetStickerPackRequest {
+  string pack_id = 1;
+}
+
+message GetStickerPackResponse {
+  StickerPackInfo pack = 1;
+  repeated StickerInfo stickers = 2;
+}
+
+message AddStickerRequest {
+  string pack_id = 1;
+  string file_id = 2;
+  string emoji = 3;
+}
+
+message AddStickerResponse {
+  StickerInfo sticker = 1;
+}
+
+message RemoveStickerRequest {
+  string sticker_id = 1;
+}
+
+message RemoveStickerResponse {}
+
+message UpdateStickerRequest {
+  string sticker_id = 1;
+  string emoji = 2;
+}
+
+message UpdateStickerResponse {
+  StickerInfo sticker = 1;
+}
+
+message GetStickersRequest {
+  repeated string sticker_ids = 1;
+}
+
+message GetStickersResponse {
+  repeated StickerInfo stickers = 1;
 }
