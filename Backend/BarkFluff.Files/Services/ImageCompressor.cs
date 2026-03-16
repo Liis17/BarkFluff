@@ -1,5 +1,6 @@
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp.Formats.Webp;
 using SixLabors.ImageSharp.Processing;
 
 namespace BarkFluff.Files.Services;
@@ -79,5 +80,24 @@ public class ImageCompressor
         await image.SaveAsync(outputStream, encoder);
 
         return (outputStream.ToArray(), true);
+    }
+
+    /// <summary>
+    /// Генерация превью стикера (WebP, 64x64).
+    /// </summary>
+    public async Task<byte[]> GenerateStickerPreviewAsync(Stream inputStream, int size = 64)
+    {
+        using var image = await Image.LoadAsync(inputStream);
+
+        image.Mutate(x => x.Resize(new ResizeOptions
+        {
+            Mode = ResizeMode.Max,
+            Size = new Size(size, size)
+        }));
+
+        using var outputStream = new MemoryStream();
+        await image.SaveAsync(outputStream, new WebpEncoder());
+
+        return outputStream.ToArray();
     }
 }
