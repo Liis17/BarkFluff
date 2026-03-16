@@ -76,6 +76,12 @@ public class FileTypeDetector
                 return DetectedFileType.Gif;
             }
 
+            // Проверяем WebP (стикеры) — до проверки изображений
+            if (IsWebP(buffer))
+            {
+                return DetectedFileType.Sticker;
+            }
+
             // Проверяем изображения
             if (IsImage(buffer))
             {
@@ -124,14 +130,6 @@ public class FileTypeDetector
 
         // BMP
         if (StartsWith(buffer, BmpSignature))
-        {
-            return true;
-        }
-
-        // WebP: RIFF....WEBP
-        if (StartsWith(buffer, RiffSignature) &&
-            buffer.Length >= 12 &&
-            MatchesAt(buffer, WebpMarker, 8))
         {
             return true;
         }
@@ -238,6 +236,13 @@ public class FileTypeDetector
         return false;
     }
 
+    private static bool IsWebP(byte[] buffer)
+    {
+        return StartsWith(buffer, RiffSignature) &&
+               buffer.Length >= 12 &&
+               MatchesAt(buffer, WebpMarker, 8);
+    }
+
     private static bool StartsWith(byte[] buffer, byte[] signature)
     {
         if (buffer.Length < signature.Length)
@@ -286,5 +291,6 @@ public enum DetectedFileType
     Gif,
     Audio,
     Voice,  // OGG audio для голосовых сообщений
-    Document
+    Document,
+    Sticker, // WebP стикеры
 }
