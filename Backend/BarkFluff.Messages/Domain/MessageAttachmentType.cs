@@ -15,4 +15,6 @@ public enum MessageAttachmentType
     Audio = 5,
 
     Voice = 6,
+
+    Sticker = 7,
 }

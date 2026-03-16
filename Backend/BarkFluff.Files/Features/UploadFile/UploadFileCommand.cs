@@ -10,6 +10,8 @@ public class UploadFileCommand : IRequest<string>, IDisposable
 
     public string FileName { get; set; }
 
+    public long FileSize { get; set; }
+
     public void Dispose()
     {
         FileStream?.Dispose();

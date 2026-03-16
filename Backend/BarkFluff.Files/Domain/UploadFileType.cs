@@ -19,4 +19,6 @@ public enum UploadFileType
     MessageAttachmentAudio = 7,
 
     MessageAttachmentVoice = 8,
+
+    MessageAttachmentSticker = 9,
 }

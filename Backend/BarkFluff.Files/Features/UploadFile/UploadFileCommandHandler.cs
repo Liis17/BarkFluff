@@ -41,7 +41,9 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
         UploadFileType.MessageAttachmentVideo,
         UploadFileType.MessageAttachmentGif,
         UploadFileType.MessageAttachmentAudio,
-        UploadFileType.MessageAttachmentVoice
+        UploadFileType.MessageAttachmentVoice,
+        UploadFileType.MessageAttachmentDocument,
+        UploadFileType.MessageAttachmentSticker
     ];
 
     public UploadFileCommandHandler(
@@ -92,12 +94,34 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
         _logger.LogInformation("Загрузка файла {FileName} с типом {ContentType} в бакет {BucketName}",
             request.FileName, contentType, bucketName);
 
-        long fileSize = request.FileStream.Length;
+        long fileSize = request.FileSize > 0 ? request.FileSize : request.FileStream.Length;
 
-        var originalStream = new MemoryStream();
-        await request.FileStream.CopyToAsync(originalStream, cancellationToken);
+        var isImageType = file.Type is UploadFileType.UserAvatar
+            or UploadFileType.MessageAttachmentImage
+            or UploadFileType.ChatPicture
+            or UploadFileType.MessageAttachmentGif;
 
-        originalStream.Position = 0;
+        Stream originalStream;
+
+        if (!isImageType && fileSize > 100 * 1024 * 1024)
+        {
+            // Большие не-графические файлы — буферизация через временный файл на диске
+            _logger.LogInformation("Файл {FileId} ({Size} МБ) буферизуется через диск", request.FileId, fileSize / 1024 / 1024);
+            var tempStream = new FileStream(
+                Path.GetTempFileName(), FileMode.Create, FileAccess.ReadWrite,
+                FileShare.None, 81920, FileOptions.DeleteOnClose);
+            await request.FileStream.CopyToAsync(tempStream, cancellationToken);
+            tempStream.Position = 0;
+            originalStream = tempStream;
+        }
+        else
+        {
+            // Изображения и файлы до 100 МБ — в оперативной памяти для скорости
+            var memStream = new MemoryStream();
+            await request.FileStream.CopyToAsync(memStream, cancellationToken);
+            memStream.Position = 0;
+            originalStream = memStream;
+        }
 
         // Compute SHA256 hash of the file
         // TODO: For better performance with large files, consider computing hash during the initial stream copy
@@ -128,6 +152,20 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
                 // Пересчитываем bucketName для нового типа
                 bucketName = _bucketRegistry.GetBucketName(file.Type);
             }
+        }
+
+        // Валидация стикеров: макс. 12 МБ, макс. 1024px по любой оси, без сжатия
+        if (file.Type == UploadFileType.MessageAttachmentSticker)
+        {
+            if (fileSize > 12 * 1024 * 1024)
+                throw new StickerTooLargeException();
+
+            originalStream.Position = 0;
+            var imageInfo = await SixLabors.ImageSharp.Image.IdentifyAsync(originalStream, cancellationToken);
+            if (imageInfo is null || imageInfo.Width > 1024 || imageInfo.Height > 1024)
+                throw new StickerDimensionExceededException();
+
+            originalStream.Position = 0;
         }
 
         originalStream.Position = 0;
@@ -267,6 +305,7 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
             DetectedFileType.Gif => UploadFileType.MessageAttachmentGif,
             DetectedFileType.Audio => UploadFileType.MessageAttachmentAudio,
             DetectedFileType.Voice => UploadFileType.MessageAttachmentVoice,
+            DetectedFileType.Sticker => UploadFileType.MessageAttachmentSticker,
             DetectedFileType.Unknown => UploadFileType.MessageAttachmentDocument,
             DetectedFileType.Document => UploadFileType.MessageAttachmentDocument,
             _ => UploadFileType.MessageAttachmentDocument

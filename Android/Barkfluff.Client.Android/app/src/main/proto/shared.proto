@@ -69,6 +69,8 @@ enum MessageAttachmentType {
   AUDIO = 5; // Аудио
 
   VOICE = 6; // Голосовое сообщение
+
+  STICKER = 7; // Стикер (WebP)
 }
 
 enum MessageContentType {

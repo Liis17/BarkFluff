@@ -95,6 +95,8 @@ enum UploadFileType {
   MESSAGE_ATTACHMENT_AUDIO = 7; // Вложение сообщения - аудио
 
   MESSAGE_ATTACHMENT_VOICE = 8; // Вложение сообщения - голосовое сообщение
+
+  MESSAGE_ATTACHMENT_STICKER = 9; // Вложение сообщения - стикер (WebP)
 }
 
 message CheckFileHashRequest {
