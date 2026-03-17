@@ -48,6 +48,9 @@ service UsersApi {
 
   // Установить Firebase токен устройства
   rpc SetFirebaseToken(SetFirebaseTokenRequest) returns(SetFirebaseTokenResponse);
+
+  // Включить/выключить уведомления на текущем устройстве
+  rpc SetDeviceNotifications(SetDeviceNotificationsRequest) returns(SetDeviceNotificationsResponse);
 }
 
 service UsersServerApi {
@@ -434,6 +437,7 @@ message Device {
   string app_name = 6; // Имя приложения
   string operation_system = 7; // Операционная система
   string location = 8; // Страна/город
+  bool notifications_enabled = 9; // Уведомления включены на устройстве
 }
 
 // Запросы и ответы для получения списка устройств
@@ -527,6 +531,14 @@ message GetDevicesWithFirebaseTokensRequest {
 message GetDevicesWithFirebaseTokensResponse {
   repeated DeviceFirebaseToken tokens = 1; // список токенов
 }
+
+// Запросы и ответы для включения/выключения уведомлений на устройстве
+
+message SetDeviceNotificationsRequest {
+  bool enabled = 1; // Включить или выключить уведомления
+}
+
+message SetDeviceNotificationsResponse { }
 
 message DeviceFirebaseToken {
   int64 user_id = 1; // идентификатор пользователя

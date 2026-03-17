@@ -173,6 +173,9 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.Property<string>("Location")
                         .HasColumnType("text");
 
+                    b.Property<bool>("NotificationsEnabled")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("OperationSystem")
                         .HasColumnType("text");
 

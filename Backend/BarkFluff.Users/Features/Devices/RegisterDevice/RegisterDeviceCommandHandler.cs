@@ -41,7 +41,8 @@ public class RegisterDeviceCommandHandler(
                 AuthorizedAt = Timestamp.FromDateTime(device.AuthorizedAt),
                 AppName = device.AppName ?? "",
                 OperationSystem = device.OperationSystem ?? "",
-                Location = device.Location ?? ""
+                Location = device.Location ?? "",
+                NotificationsEnabled = device.NotificationsEnabled
             }
         };
     }

@@ -10,6 +10,7 @@ using BarkFluff.Users.Features.CheckExistUsername;
 using BarkFluff.Users.Features.Devices.GetCurrentDevice;
 using BarkFluff.Users.Features.Devices.GetDevices;
 using BarkFluff.Users.Features.Devices.RenameDevice;
+using BarkFluff.Users.Features.Devices.SetDeviceNotifications;
 using BarkFluff.Users.Features.Devices.SetFirebaseToken;
 using BarkFluff.Users.Features.GetUser;
 using BarkFluff.Users.Features.SetProfilePicture;
@@ -171,5 +172,17 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
         await _mediator.Send(command);
 
         return new SetFirebaseTokenResponse();
+    }
+
+    public override async Task<SetDeviceNotificationsResponse> SetDeviceNotifications(SetDeviceNotificationsRequest request, ServerCallContext context)
+    {
+        var command = new SetDeviceNotificationsCommand
+        {
+            Enabled = request.Enabled
+        };
+
+        await _mediator.Send(command);
+
+        return new SetDeviceNotificationsResponse();
     }
 }

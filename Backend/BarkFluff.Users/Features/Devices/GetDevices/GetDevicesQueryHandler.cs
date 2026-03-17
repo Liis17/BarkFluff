@@ -30,7 +30,8 @@ public class GetDevicesQueryHandler(
             AuthorizedAt = Timestamp.FromDateTime(d.AuthorizedAt),
             AppName = d.AppName ?? "",
             OperationSystem = d.OperationSystem ?? "",
-            Location = d.Location ?? ""
+            Location = d.Location ?? "",
+            NotificationsEnabled = d.NotificationsEnabled
         }));
 
         return response;
