@@ -38,6 +38,7 @@ public class ConfigurationDefaultsPopulator
         { ServiceId.Updates, "updates" },
         { ServiceId.Onliner, "onliner" },
         { ServiceId.CloudMessaging, "cloud-messaging" },
+        { ServiceId.Web, "web" },
     };
 
     /// <summary>
@@ -55,6 +56,7 @@ public class ConfigurationDefaultsPopulator
         { ServiceId.Updates, 7015 },
         { ServiceId.Onliner, 7009 },
         { ServiceId.CloudMessaging, 7011 },
+        { ServiceId.Web, 7016 },
     };
 
     /// <summary>
@@ -71,6 +73,7 @@ public class ConfigurationDefaultsPopulator
         { ServiceId.FastAuth, "fast-auth" },
         { ServiceId.Updates, "updates" },
         { ServiceId.Onliner, "onliner" },
+        { ServiceId.Web, "web" },
     };
 
     /// <summary>
