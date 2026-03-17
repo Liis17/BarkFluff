@@ -36,7 +36,8 @@ class AttachmentPreviewAdapter(
         return when (getItem(position).attachment.type) {
             Shared.MessageAttachmentType.IMAGE,
             Shared.MessageAttachmentType.GIF,
-            Shared.MessageAttachmentType.VIDEO -> VIEW_TYPE_MEDIA
+            Shared.MessageAttachmentType.VIDEO,
+            Shared.MessageAttachmentType.STICKER -> VIEW_TYPE_MEDIA
             else -> VIEW_TYPE_FILE
         }
     }
@@ -76,7 +77,8 @@ class AttachmentPreviewAdapter(
 
             when (attachment.type) {
                 Shared.MessageAttachmentType.IMAGE,
-                Shared.MessageAttachmentType.GIF -> {
+                Shared.MessageAttachmentType.GIF,
+                Shared.MessageAttachmentType.STICKER -> {
                     binding.previewImageView.visibility = View.VISIBLE
                     binding.fileIconContainer.visibility = View.GONE
                     binding.videoIndicator.visibility = View.GONE

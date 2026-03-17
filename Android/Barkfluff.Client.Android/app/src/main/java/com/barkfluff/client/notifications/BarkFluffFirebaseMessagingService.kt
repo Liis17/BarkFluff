@@ -28,6 +28,7 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
         private const val ATTACHMENT_TYPE_DOCUMENT = 4
         private const val ATTACHMENT_TYPE_AUDIO = 5
         private const val ATTACHMENT_TYPE_VOICE = 6
+        private const val ATTACHMENT_TYPE_STICKER = 7
     }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -90,6 +91,7 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
             ATTACHMENT_TYPE_DOCUMENT -> "\uD83D\uDCC4 Документ$countSuffix"
             ATTACHMENT_TYPE_AUDIO -> "\uD83C\uDFB5 Аудио$countSuffix"
             ATTACHMENT_TYPE_VOICE -> "\uD83C\uDFA4 Голосовое сообщение"
+            ATTACHMENT_TYPE_STICKER -> "Стикер"
             else -> messageText
         }
 

@@ -114,46 +114,78 @@ class MessageAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(item: MessageItem) {
-            if (item.text.isNotBlank()) {
-                binding.messageTextView.text = item.text
-                binding.messageTextView.visibility = View.VISIBLE
+            // Определяем, является ли сообщение «чистым стикером»
+            val isPureSticker = item.text.isBlank() &&
+                item.attachments.size == 1 &&
+                item.attachments[0].type == Shared.MessageAttachmentType.STICKER
+
+            if (isPureSticker) {
+                // Показать стикер без облачка
+                binding.messageCard.visibility = View.GONE
+                binding.stickerImageView.visibility = View.VISIBLE
+                binding.stickerTimeStatusLayout.visibility = View.VISIBLE
+
+                val attachment = item.attachments[0]
+                loadStickerImage(binding.stickerImageView, attachment)
+
+                binding.stickerTimeTextView.text = formatTime(item.timestamp)
+                when (item.readStatus) {
+                    ReadStatus.READ -> {
+                        binding.stickerReadStatusImageView.setImageResource(R.drawable.ic_double_check)
+                        binding.stickerReadStatusImageView.visibility = View.VISIBLE
+                    }
+                    ReadStatus.SENT -> {
+                        binding.stickerReadStatusImageView.setImageResource(R.drawable.ic_check)
+                        binding.stickerReadStatusImageView.visibility = View.VISIBLE
+                    }
+                    ReadStatus.NONE -> binding.stickerReadStatusImageView.visibility = View.GONE
+                }
             } else {
-                binding.messageTextView.visibility = View.GONE
-            }
+                // Обычное сообщение с облачком
+                binding.messageCard.visibility = View.VISIBLE
+                binding.stickerImageView.visibility = View.GONE
+                binding.stickerTimeStatusLayout.visibility = View.GONE
 
-            binding.timeTextView.text = formatTime(item.timestamp)
+                if (item.text.isNotBlank()) {
+                    binding.messageTextView.text = item.text
+                    binding.messageTextView.visibility = View.VISIBLE
+                } else {
+                    binding.messageTextView.visibility = View.GONE
+                }
 
-            when (item.readStatus) {
-                ReadStatus.READ -> {
-                    binding.readStatusImageView.setImageResource(R.drawable.ic_double_check)
-                    binding.readStatusImageView.visibility = View.VISIBLE
-                }
-                ReadStatus.SENT -> {
-                    binding.readStatusImageView.setImageResource(R.drawable.ic_check)
-                    binding.readStatusImageView.visibility = View.VISIBLE
-                }
-                ReadStatus.NONE -> binding.readStatusImageView.visibility = View.GONE
-            }
+                binding.timeTextView.text = formatTime(item.timestamp)
 
-            if (item.attachments.isNotEmpty()) {
-                val hasMedia = item.attachments.any {
-                    it.type == Shared.MessageAttachmentType.IMAGE ||
-                    it.type == Shared.MessageAttachmentType.GIF  ||
-                    it.type == Shared.MessageAttachmentType.VIDEO
+                when (item.readStatus) {
+                    ReadStatus.READ -> {
+                        binding.readStatusImageView.setImageResource(R.drawable.ic_double_check)
+                        binding.readStatusImageView.visibility = View.VISIBLE
+                    }
+                    ReadStatus.SENT -> {
+                        binding.readStatusImageView.setImageResource(R.drawable.ic_check)
+                        binding.readStatusImageView.visibility = View.VISIBLE
+                    }
+                    ReadStatus.NONE -> binding.readStatusImageView.visibility = View.GONE
                 }
-                val mediaWidthPx = if (hasMedia) calcMediaWidthPx(binding.root.context) else 0
-                // Устанавливаем ширину контейнеру вложений, чтобы FrameLayout с wrap_content работал корректно
-                binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
-                    it.width = if (mediaWidthPx > 0) mediaWidthPx else ViewGroup.LayoutParams.WRAP_CONTENT
+
+                if (item.attachments.isNotEmpty()) {
+                    val hasMedia = item.attachments.any {
+                        it.type == Shared.MessageAttachmentType.IMAGE ||
+                        it.type == Shared.MessageAttachmentType.GIF  ||
+                        it.type == Shared.MessageAttachmentType.VIDEO
+                    }
+                    val mediaWidthPx = if (hasMedia) calcMediaWidthPx(binding.root.context) else 0
+                    binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
+                        it.width = if (mediaWidthPx > 0) mediaWidthPx else ViewGroup.LayoutParams.WRAP_CONTENT
+                    }
+                    setupAttachmentsContainer(binding.attachmentsContainer, item.attachments, mediaWidthPx, isSentByMe = true)
+                    binding.attachmentsContainer.visibility = View.VISIBLE
+                } else {
+                    binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
+                        it.width = ViewGroup.LayoutParams.WRAP_CONTENT
+                    }
+                    binding.attachmentsContainer.visibility = View.GONE
+                    binding.attachmentsContainer.removeAllViews()
                 }
-                setupAttachmentsContainer(binding.attachmentsContainer, item.attachments, mediaWidthPx, isSentByMe = true)
-                binding.attachmentsContainer.visibility = View.VISIBLE
-            } else {
-                binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
-                    it.width = ViewGroup.LayoutParams.WRAP_CONTENT
-                }
-                binding.attachmentsContainer.visibility = View.GONE
-                binding.attachmentsContainer.removeAllViews()
             }
         }
     }
@@ -196,34 +228,55 @@ class MessageAdapter(
                 binding.senderInfoLayout.visibility = View.GONE
             }
 
-            if (item.text.isNotBlank()) {
-                binding.messageTextView.text = item.text
-                binding.messageTextView.visibility = View.VISIBLE
-            } else {
-                binding.messageTextView.visibility = View.GONE
-            }
+            // Определяем, является ли сообщение «чистым стикером»
+            val isPureSticker = item.text.isBlank() &&
+                item.attachments.size == 1 &&
+                item.attachments[0].type == Shared.MessageAttachmentType.STICKER
 
-            binding.timeTextView.text = formatTime(item.timestamp)
+            if (isPureSticker) {
+                // Показать стикер без облачка
+                binding.messageCard.visibility = View.GONE
+                binding.stickerImageView.visibility = View.VISIBLE
+                binding.stickerTimeTextView.visibility = View.VISIBLE
 
-            if (item.attachments.isNotEmpty()) {
-                val hasMedia = item.attachments.any {
-                    it.type == Shared.MessageAttachmentType.IMAGE ||
-                    it.type == Shared.MessageAttachmentType.GIF  ||
-                    it.type == Shared.MessageAttachmentType.VIDEO
-                }
-                val mediaWidthPx = if (hasMedia) calcMediaWidthPx(binding.root.context) else 0
-                // Устанавливаем ширину контейнеру вложений, чтобы FrameLayout с wrap_content работал корректно
-                binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
-                    it.width = if (mediaWidthPx > 0) mediaWidthPx else ViewGroup.LayoutParams.WRAP_CONTENT
-                }
-                setupAttachmentsContainer(binding.attachmentsContainer, item.attachments, mediaWidthPx)
-                binding.attachmentsContainer.visibility = View.VISIBLE
+                val attachment = item.attachments[0]
+                loadStickerImage(binding.stickerImageView, attachment)
+
+                binding.stickerTimeTextView.text = formatTime(item.timestamp)
             } else {
-                binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
-                    it.width = ViewGroup.LayoutParams.WRAP_CONTENT
+                // Обычное сообщение с облачком
+                binding.messageCard.visibility = View.VISIBLE
+                binding.stickerImageView.visibility = View.GONE
+                binding.stickerTimeTextView.visibility = View.GONE
+
+                if (item.text.isNotBlank()) {
+                    binding.messageTextView.text = item.text
+                    binding.messageTextView.visibility = View.VISIBLE
+                } else {
+                    binding.messageTextView.visibility = View.GONE
                 }
-                binding.attachmentsContainer.visibility = View.GONE
-                binding.attachmentsContainer.removeAllViews()
+
+                binding.timeTextView.text = formatTime(item.timestamp)
+
+                if (item.attachments.isNotEmpty()) {
+                    val hasMedia = item.attachments.any {
+                        it.type == Shared.MessageAttachmentType.IMAGE ||
+                        it.type == Shared.MessageAttachmentType.GIF  ||
+                        it.type == Shared.MessageAttachmentType.VIDEO
+                    }
+                    val mediaWidthPx = if (hasMedia) calcMediaWidthPx(binding.root.context) else 0
+                    binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
+                        it.width = if (mediaWidthPx > 0) mediaWidthPx else ViewGroup.LayoutParams.WRAP_CONTENT
+                    }
+                    setupAttachmentsContainer(binding.attachmentsContainer, item.attachments, mediaWidthPx)
+                    binding.attachmentsContainer.visibility = View.VISIBLE
+                } else {
+                    binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
+                        it.width = ViewGroup.LayoutParams.WRAP_CONTENT
+                    }
+                    binding.attachmentsContainer.visibility = View.GONE
+                    binding.attachmentsContainer.removeAllViews()
+                }
             }
         }
     }
@@ -240,6 +293,27 @@ class MessageAdapter(
         private val binding: ItemMessageDateSeparatorBinding
     ) : RecyclerView.ViewHolder(binding.root) {
         fun bind(item: MessageItem) { binding.dateTextView.text = item.dateText }
+    }
+
+    // ─── Sticker Helper ───────────────────────────────────────────────────────
+
+    private fun loadStickerImage(imageView: ImageView, attachment: Shared.MessageAttachment) {
+        val previewUrl = attachment.previewUrl
+        val fileId = if (attachment.previewFileId.isNotBlank()) attachment.previewFileId else attachment.fileId
+        scope.launch {
+            val url = if (previewUrl.isNotBlank()) {
+                previewUrl
+            } else {
+                withContext(Dispatchers.IO) { getFileUrl(fileId) }
+            }
+            if (url != null) {
+                withContext(Dispatchers.Main) {
+                    imageView.load(url) {
+                        crossfade(true)
+                    }
+                }
+            }
+        }
     }
 
     // ─── Color Helpers ─────────────────────────────────────────────────────────
@@ -307,6 +381,7 @@ class MessageAdapter(
             it.type == Shared.MessageAttachmentType.GIF  ||
             it.type == Shared.MessageAttachmentType.VIDEO
         }
+        val stickers = attachments.filter { it.type == Shared.MessageAttachmentType.STICKER }
         val audios = attachments.filter { it.type == Shared.MessageAttachmentType.AUDIO }
         val docs   = attachments.filter {
             it.type == Shared.MessageAttachmentType.DOCUMENT ||
@@ -326,6 +401,21 @@ class MessageAdapter(
         if (mediaItems.isNotEmpty() && mediaWidthPx > 0) {
             val mediaGrid = buildMediaGrid(context, mediaItems, mediaWidthPx)
             wrapper.addView(mediaGrid)
+        }
+
+        // Стикеры (внутри облачка, когда есть текст или другие вложения)
+        for (sticker in stickers) {
+            val dm = context.resources.displayMetrics
+            val stickerSizePx = (160 * dm.density + 0.5f).toInt()
+            val stickerView = ImageView(context).apply {
+                layoutParams = android.widget.LinearLayout.LayoutParams(stickerSizePx, stickerSizePx).apply {
+                    topMargin = (4 * dm.density + 0.5f).toInt()
+                    bottomMargin = (4 * dm.density + 0.5f).toInt()
+                }
+                scaleType = ImageView.ScaleType.FIT_CENTER
+            }
+            loadStickerImage(stickerView, sticker)
+            wrapper.addView(stickerView)
         }
 
         // Audio rows
