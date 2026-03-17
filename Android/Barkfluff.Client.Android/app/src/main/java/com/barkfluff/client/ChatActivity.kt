@@ -85,6 +85,7 @@ class ChatActivity : AppCompatActivity() {
 
     // Вставленные из буфера обмена изображения
     private val pendingPastedImages = mutableListOf<Uri>()
+    private val pendingStickerUris = mutableListOf<Uri>()
     private val pendingDocumentUris = mutableListOf<Uri>()
     private val pendingCropQueue = ArrayDeque<Uri>()
 
@@ -276,7 +277,7 @@ class ChatActivity : AppCompatActivity() {
     private fun setupMessageInput() {
         binding.sendButton.setOnClickListener {
             when {
-                pendingDocumentUris.isNotEmpty() || pendingPastedImages.isNotEmpty() ->
+                pendingDocumentUris.isNotEmpty() || pendingPastedImages.isNotEmpty() || pendingStickerUris.isNotEmpty() ->
                     sendMessageWithPendingAttachments()
                 else ->
                     sendMessage()
@@ -285,7 +286,7 @@ class ChatActivity : AppCompatActivity() {
 
         binding.messageEditText.setOnEditorActionListener { _, _, _ ->
             when {
-                pendingDocumentUris.isNotEmpty() || pendingPastedImages.isNotEmpty() ->
+                pendingDocumentUris.isNotEmpty() || pendingPastedImages.isNotEmpty() || pendingStickerUris.isNotEmpty() ->
                     sendMessageWithPendingAttachments()
                 else ->
                     sendMessage()
@@ -299,6 +300,7 @@ class ChatActivity : AppCompatActivity() {
 
         binding.clearAttachmentsButton.setOnClickListener {
             pendingPastedImages.clear()
+            pendingStickerUris.clear()
             pendingDocumentUris.clear()
             updateAttachmentPreview()
         }
@@ -312,8 +314,26 @@ class ChatActivity : AppCompatActivity() {
             val uriContent = split.first
             if (uriContent != null) {
                 val clip = uriContent.clip
+                val desc = clip.description
+                Log.d(TAG, "onReceiveContent: itemCount=${clip.itemCount}, mimeTypeCount=${desc?.mimeTypeCount}")
+                if (desc != null) {
+                    for (m in 0 until desc.mimeTypeCount) {
+                        Log.d(TAG, "onReceiveContent: clipMime[$m]=${desc.getMimeType(m)}")
+                    }
+                }
                 for (i in 0 until clip.itemCount) {
-                    clip.getItemAt(i).uri?.let { uri -> pendingCropQueue.addLast(uri) }
+                    clip.getItemAt(i).uri?.let { uri ->
+                        val resolverMime = contentResolver.getType(uri)
+                        Log.d(TAG, "onReceiveContent: uri=$uri, resolverMime=$resolverMime, path=${uri.path}")
+                        if (isStickerContent(uri, desc, i)) {
+                            Log.d(TAG, "onReceiveContent: detected sticker → skip cropper")
+                            pendingStickerUris.add(uri)
+                            updateAttachmentPreview()
+                        } else {
+                            Log.d(TAG, "onReceiveContent: not WebP → cropper")
+                            pendingCropQueue.addLast(uri)
+                        }
+                    }
                 }
                 processNextCropFromQueue()
             }
@@ -364,18 +384,21 @@ class ChatActivity : AppCompatActivity() {
                 ).show()
             }
 
-            // Определяем тип файла для загрузки
-            val uploadFileType = if (sendAsFile) {
-                barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_DOCUMENT
-            } else {
-                barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_IMAGE
-            }
-
             // Загружаем каждое изображение
             val fileIds = mutableListOf<String>()
             for ((index, uri) in selectedUris.withIndex()) {
                 try {
-                    val bytes = if (sendAsFile) {
+                    val mimeType = contentResolver.getType(uri)
+                    val isWebp = mimeType == "image/webp"
+
+                    // Определяем тип файла для загрузки
+                    val uploadFileType = when {
+                        sendAsFile -> barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_DOCUMENT
+                        isWebp -> barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_STICKER
+                        else -> barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_IMAGE
+                    }
+
+                    val bytes = if (sendAsFile || isWebp) {
                         // Без сжатия — читаем оригинальный файл
                         readBytesFromUri(uri)
                     } else {
@@ -427,6 +450,48 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
+    private fun isStickerContent(uri: Uri, clipDescription: android.content.ClipDescription?, index: Int): Boolean {
+        // 1. MIME-тип image/webp — однозначно стикер
+        val resolverMime = contentResolver.getType(uri)
+        if (resolverMime == "image/webp") return true
+
+        if (clipDescription != null && index < clipDescription.mimeTypeCount) {
+            val clipMime = clipDescription.getMimeType(index)
+            if (clipMime == "image/webp") return true
+        }
+
+        val path = uri.path ?: uri.toString()
+        if (path.endsWith(".webp", ignoreCase = true)) return true
+
+        // 2. Стикер от клавиатуры (Gboard и др.) — URI содержит /sticker/ в пути
+        //    и приходит от inputmethod file provider
+        val authority = uri.authority ?: ""
+        if (authority.contains("inputmethod") && path.contains("/sticker/", ignoreCase = true)) return true
+
+        return false
+    }
+
+    private suspend fun convertToWebp(uri: Uri): ByteArray? = withContext(Dispatchers.IO) {
+        try {
+            val mimeType = contentResolver.getType(uri)
+            // Уже WebP — просто читаем байты
+            if (mimeType == "image/webp") {
+                return@withContext contentResolver.openInputStream(uri)?.use { it.readBytes() }
+            }
+            // Декодируем и конвертируем в WebP (с прозрачностью)
+            val bitmap = contentResolver.openInputStream(uri)?.use {
+                android.graphics.BitmapFactory.decodeStream(it)
+            } ?: return@withContext null
+            val outputStream = java.io.ByteArrayOutputStream()
+            bitmap.compress(android.graphics.Bitmap.CompressFormat.WEBP_LOSSLESS, 100, outputStream)
+            bitmap.recycle()
+            outputStream.toByteArray()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error converting to WebP", e)
+            null
+        }
+    }
+
     private suspend fun readBytesFromUri(uri: Uri): ByteArray? = withContext(Dispatchers.IO) {
         try {
             contentResolver.openInputStream(uri)?.use { inputStream ->
@@ -461,7 +526,7 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun updateAttachmentPreview() {
-        val photosCount = pendingPastedImages.size
+        val photosCount = pendingPastedImages.size + pendingStickerUris.size
         val filesCount = pendingDocumentUris.size
 
         if (photosCount == 0 && filesCount == 0) {
@@ -482,8 +547,10 @@ class ChatActivity : AppCompatActivity() {
     private fun sendMessageWithPendingAttachments() {
         val text = binding.messageEditText.text.toString().trim()
         val photos = pendingPastedImages.toList()
+        val stickers = pendingStickerUris.toList()
         val documents = pendingDocumentUris.toList()
         pendingPastedImages.clear()
+        pendingStickerUris.clear()
         pendingDocumentUris.clear()
         updateAttachmentPreview()
         binding.messageEditText.text?.clear()
@@ -491,15 +558,33 @@ class ChatActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val fileIds = mutableListOf<String>()
 
+            // Загружаем стикеры (конвертируем в WebP)
+            for ((index, uri) in stickers.withIndex()) {
+                try {
+                    val bytes = convertToWebp(uri) ?: continue
+                    val uploadResult = chatRepository.uploadFile(
+                        bytes,
+                        barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_STICKER
+                    )
+                    if (uploadResult.isSuccess) {
+                        fileIds.add(uploadResult.getOrNull()!!)
+                    } else {
+                        Log.e(TAG, "Sticker ${index + 1}/${stickers.size} upload failed: ${uploadResult.exceptionOrNull()?.message}")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error processing sticker ${index + 1}/${stickers.size}", e)
+                }
+            }
+
             // Загружаем фото (со сжатием)
             for ((index, uri) in photos.withIndex()) {
                 try {
                     val bytes = ImageCompressor.compressImage(uri, this@ChatActivity).getOrNull()
                         ?: continue
-                    val uploadResult = chatRepository.uploadFile(
-                        bytes,
-                        barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_IMAGE
-                    )
+
+                    val uploadType = barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_IMAGE
+
+                    val uploadResult = chatRepository.uploadFile(bytes, uploadType)
                     if (uploadResult.isSuccess) {
                         fileIds.add(uploadResult.getOrNull()!!)
                     } else {
