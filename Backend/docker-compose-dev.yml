@@ -140,6 +140,17 @@ services:
     depends_on:
       - configuration
 
+  web:
+    image: docker.barkfluff.com:5000/barkfluff-web-dev:latest
+    container_name: web
+    restart: always
+    environment:
+      <<: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
+
   # === Панель администрирования ===
 
   admin-panel:

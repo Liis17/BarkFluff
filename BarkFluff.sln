@@ -68,6 +68,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Windows", "Windows", "{2025
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.ClientStorage", "Backend\BarkFluff.ClientStorage\BarkFluff.ClientStorage.csproj", "{6254967A-42E4-45D6-9470-141A275F546C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarkFluff.Web", "Backend\BarkFluff.Web\BarkFluff.Web.csproj", "{19535FBE-D7A2-455A-B88C-E33DEDF079A8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -390,6 +392,18 @@ Global
 		{6254967A-42E4-45D6-9470-141A275F546C}.Release|x64.Build.0 = Release|Any CPU
 		{6254967A-42E4-45D6-9470-141A275F546C}.Release|x86.ActiveCfg = Release|Any CPU
 		{6254967A-42E4-45D6-9470-141A275F546C}.Release|x86.Build.0 = Release|Any CPU
+		{19535FBE-D7A2-455A-B88C-E33DEDF079A8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{19535FBE-D7A2-455A-B88C-E33DEDF079A8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{19535FBE-D7A2-455A-B88C-E33DEDF079A8}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{19535FBE-D7A2-455A-B88C-E33DEDF079A8}.Debug|x64.Build.0 = Debug|Any CPU
+		{19535FBE-D7A2-455A-B88C-E33DEDF079A8}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{19535FBE-D7A2-455A-B88C-E33DEDF079A8}.Debug|x86.Build.0 = Debug|Any CPU
+		{19535FBE-D7A2-455A-B88C-E33DEDF079A8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{19535FBE-D7A2-455A-B88C-E33DEDF079A8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{19535FBE-D7A2-455A-B88C-E33DEDF079A8}.Release|x64.ActiveCfg = Release|Any CPU
+		{19535FBE-D7A2-455A-B88C-E33DEDF079A8}.Release|x64.Build.0 = Release|Any CPU
+		{19535FBE-D7A2-455A-B88C-E33DEDF079A8}.Release|x86.ActiveCfg = Release|Any CPU
+		{19535FBE-D7A2-455A-B88C-E33DEDF079A8}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -421,6 +435,7 @@ Global
 		{97712092-D590-55C6-1FBD-6D1A88049067} = {7E5A1AA1-A416-4D7E-B885-FC81F6CEBF07}
 		{9867C147-5584-4470-87BA-24F3FC64B212} = {7E5A1AA1-A416-4D7E-B885-FC81F6CEBF07}
 		{6254967A-42E4-45D6-9470-141A275F546C} = {7E5A1AA1-A416-4D7E-B885-FC81F6CEBF07}
+		{19535FBE-D7A2-455A-B88C-E33DEDF079A8} = {7E5A1AA1-A416-4D7E-B885-FC81F6CEBF07}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B07C171A-90A2-41DB-A618-37C992F8D403}
