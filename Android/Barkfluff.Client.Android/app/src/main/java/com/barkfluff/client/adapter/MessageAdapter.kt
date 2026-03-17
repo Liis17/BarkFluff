@@ -298,22 +298,20 @@ class MessageAdapter(
     // ─── Sticker Helper ───────────────────────────────────────────────────────
 
     private fun loadStickerImage(imageView: ImageView, attachment: Shared.MessageAttachment) {
-        val previewUrl = attachment.previewUrl
         val fileId = if (attachment.previewFileId.isNotBlank()) attachment.previewFileId else attachment.fileId
-        scope.launch {
-            val url = if (previewUrl.isNotBlank()) {
-                previewUrl
-            } else {
-                withContext(Dispatchers.IO) { getFileUrl(fileId) }
-            }
-            if (url != null) {
-                withContext(Dispatchers.Main) {
-                    imageView.load(url) {
-                        crossfade(true)
-                    }
-                }
-            }
+        val previewUrl = attachment.previewUrl
+
+        val getUrl: suspend () -> String? = if (previewUrl.isNotBlank()) {
+            { previewUrl }
+        } else {
+            { getFileUrl(fileId) }
         }
+
+        ImageLoadHelper.loadByFileId(
+            imageView = imageView,
+            fileId = fileId,
+            getUrlCallback = getUrl
+        )
     }
 
     // ─── Color Helpers ─────────────────────────────────────────────────────────
