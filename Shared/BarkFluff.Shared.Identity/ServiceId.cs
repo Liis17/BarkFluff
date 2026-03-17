@@ -24,4 +24,6 @@ public enum ServiceId
 
     CloudMessaging = 10,
 
+    Web = 11,
+
 }
