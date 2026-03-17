@@ -95,8 +95,20 @@ public class DevicesStorage(UsersContext context)
     public async Task<List<(long UserId, string DeviceId, string FirebaseToken)>> GetDevicesWithFirebaseTokens(List<long> userIds)
     {
         return await context.UserDevices
-            .Where(d => userIds.Contains(d.UserId) && d.FirebaseDeviceToken != null)
+            .Where(d => userIds.Contains(d.UserId) && d.FirebaseDeviceToken != null && d.NotificationsEnabled)
             .Select(d => new ValueTuple<long, string, string>(d.UserId, d.Id.ToString(), d.FirebaseDeviceToken!))
             .ToListAsync();
+    }
+
+    public async Task SetNotificationsEnabled(Guid deviceId, long userId, bool enabled)
+    {
+        var device = await context.UserDevices
+            .FirstOrDefaultAsync(d => d.Id == deviceId && d.UserId == userId);
+
+        if (device == null)
+            throw new InvalidOperationException("Устройство не найдено");
+
+        device.NotificationsEnabled = enabled;
+        await context.SaveChangesAsync();
     }
 }

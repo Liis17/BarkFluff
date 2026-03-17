@@ -24,4 +24,6 @@ public class UserDevice
     public string? Location { get; set; }
 
     public string? FirebaseDeviceToken { get; set; }
+
+    public bool NotificationsEnabled { get; set; } = true;
 }
