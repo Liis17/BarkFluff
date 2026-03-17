@@ -57,8 +57,9 @@
                     tools:text="Привет! Как дела?"
                     tools:visibility="visible" />
 
-                <!-- Время и статус -->
+                <!-- Время и статус (внутри облачка) -->
                 <LinearLayout
+                    android:id="@+id/timeStatusLayout"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="end"
@@ -93,6 +94,48 @@
             </LinearLayout>
 
         </com.google.android.material.card.MaterialCardView>
+
+        <!-- Стикер (без облачка) -->
+        <ImageView
+            android:id="@+id/stickerImageView"
+            android:layout_width="160dp"
+            android:layout_height="160dp"
+            android:layout_gravity="end"
+            android:scaleType="fitCenter"
+            android:visibility="gone"
+            tools:visibility="gone" />
+
+        <!-- Время и статус для стикера (вне облачка) -->
+        <LinearLayout
+            android:id="@+id/stickerTimeStatusLayout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:layout_marginTop="2dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/stickerTimeTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAppearance="?attr/textAppearanceLabelSmall"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:alpha="0.7"
+                tools:text="14:30" />
+
+            <ImageView
+                android:id="@+id/stickerReadStatusImageView"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginStart="4dp"
+                android:contentDescription="Статус прочтения"
+                android:visibility="gone"
+                app:tint="?attr/colorOnSurfaceVariant"
+                tools:src="@drawable/ic_double_check" />
+
+        </LinearLayout>
 
     </LinearLayout>
 

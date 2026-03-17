@@ -241,11 +241,21 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
             connection.connectTimeout = 30000
             connection.readTimeout = 60000
 
+            // Определяем filename и Content-Type по типу загрузки
+            val (uploadFileName, uploadContentType) = when (fileType) {
+                barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_STICKER -> "sticker.webp" to "image/webp"
+                barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_DOCUMENT -> "file" to "application/octet-stream"
+                barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_AUDIO -> "audio.mp3" to "audio/mpeg"
+                barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_VOICE -> "voice.ogg" to "audio/ogg"
+                barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_VIDEO -> "video.mp4" to "video/mp4"
+                else -> "file.jpg" to "image/jpeg"
+            }
+
             connection.outputStream.use { out ->
                 val writer = out.bufferedWriter()
                 writer.write("--$boundary\r\n")
-                writer.write("Content-Disposition: form-data; name=\"file\"; filename=\"file.jpg\"\r\n")
-                writer.write("Content-Type: image/jpeg\r\n")
+                writer.write("Content-Disposition: form-data; name=\"file\"; filename=\"$uploadFileName\"\r\n")
+                writer.write("Content-Type: $uploadContentType\r\n")
                 writer.write("\r\n")
                 writer.flush()
                 out.write(jpegImageBytes)
