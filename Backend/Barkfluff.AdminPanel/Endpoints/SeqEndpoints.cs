@@ -21,6 +21,7 @@ public static class SeqEndpoints
         "BarkFluff.FastAuth",
         "BarkFluff.Onliner",
         "BarkFluff.CloudMessaging",
+        "BarkFluff.Web",
         "BarkFluff.Configuration",
         // Инфраструктурные сервисы
         "Seq",
@@ -44,6 +45,7 @@ public static class SeqEndpoints
             { "BarkFluff.Updates",       "updates" },
             { "BarkFluff.Onliner",       "onliner" },
             { "BarkFluff.CloudMessaging","cloud-messaging" },
+            { "BarkFluff.Web",           "web" },
             { "Seq",                     "seq" },
             { "Minio",                   "minio" },
             { "RabbitMQ",                "rabbitmq" },

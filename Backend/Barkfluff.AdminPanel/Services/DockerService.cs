@@ -225,6 +225,7 @@ public class DockerService
             { "fast-auth", "fast-auth" },
             { "updates", "updates" },
             { "onliner", "onliner" },
+            { "web", "web" },
             { "seq", "seq" },
             { "minio", "minio" },
             { "rabbitmq", "rabbitmq" },
@@ -457,7 +458,8 @@ public class DockerService
         "users",
         "fast-auth",
         "updates",
-        "onliner"
+        "onliner",
+        "web"
     };
 
     /// <summary>
