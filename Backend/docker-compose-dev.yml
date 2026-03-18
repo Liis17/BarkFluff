@@ -146,6 +146,11 @@ services:
     restart: always
     environment:
       <<: *common-variables
+      MessagesService__Host: "http://messages:7007"
+      UsersService__Host: "http://users:7001"
+      FilesService__Host: "http://files:7005"
+      UpdatesService__Host: "http://updates:7015"
+      OnlinerService__Host: "http://onliner:7009"
     networks:
       - barkfluff-network
     depends_on:

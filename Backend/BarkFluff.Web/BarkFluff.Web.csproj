@@ -18,6 +18,11 @@
 
   <ItemGroup>
     <Protobuf Include="..\..\Shared\BarkFluff.Proto\identity_api.proto" GrpcServices="Client" />
+    <Protobuf Include="..\..\Shared\BarkFluff.Proto\messages_api.proto" GrpcServices="Client" />
+    <Protobuf Include="..\..\Shared\BarkFluff.Proto\users_api.proto" GrpcServices="Client" />
+    <Protobuf Include="..\..\Shared\BarkFluff.Proto\files_api.proto" GrpcServices="Client" />
+    <Protobuf Include="..\..\Shared\BarkFluff.Proto\updates_api.proto" GrpcServices="Client" />
+    <Protobuf Include="..\..\Shared\BarkFluff.Proto\onliner_api.proto" GrpcServices="Client" />
     <Protobuf Include="..\..\Shared\BarkFluff.Proto\shared.proto" GrpcServices="None" />
   </ItemGroup>
 
@@ -28,6 +33,9 @@
 
   <ItemGroup>
     <Content Update="wwwroot\index.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Update="wwwroot\messenger.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
