@@ -1,11 +1,10 @@
-using System.Collections.Concurrent;
-
-using Amazon;
 using Amazon.S3;
 using Amazon.S3.Model;
 
 using BarkFluff.Proto.Configuration;
 using BarkFluff.Shared.Identity;
+
+using System.Collections.Concurrent;
 
 namespace Barkfluff.AdminPanel.Services;
 
