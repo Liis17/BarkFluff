@@ -7,6 +7,22 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Google.Protobuf" Version="3.32.0" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.71.0" />
+    <PackageReference Include="Grpc.Net.ClientFactory" Version="2.71.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.72.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="..\..\Shared\BarkFluff.Proto\identity_api.proto" GrpcServices="Client" />
+    <Protobuf Include="..\..\Shared\BarkFluff.Proto\shared.proto" GrpcServices="None" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Shared\BarkFluff.Shared.Auth\BarkFluff.Shared.Auth.csproj" />
     <ProjectReference Include="..\BarkFluff.GrpcServer\BarkFluff.GrpcServer.csproj" />
   </ItemGroup>
 
