@@ -16,7 +16,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.LoadConfiguration(ServiceId.Web);
 builder.AddBarkFluffSerilog("BarkFluff.Web");
 
-var port = int.Parse(builder.Configuration["RunSettings:Port"]!);
+var port = int.TryParse(builder.Configuration["RunSettings:Port"], out var p) ? p : 7016;
 builder.WebHost.ConfigureKestrel(options =>
 {
     options.ListenAnyIP(port, listenOptions =>
