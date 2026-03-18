@@ -33,6 +33,7 @@ jobs:
       cloud-messaging: ${{ steps.changes.outputs.cloud-messaging }}
       admin-panel: ${{ steps.changes.outputs.admin-panel }}
       client-storage: ${{ steps.changes.outputs.client-storage }}
+      web: ${{ steps.changes.outputs.web }}
       wpf-client: ${{ steps.changes.outputs.wpf-client }}
       android-client: ${{ steps.changes.outputs.android-client }}
     steps:
@@ -161,6 +162,13 @@ jobs:
             echo "client-storage=true" >> "$GITHUB_OUTPUT"
           else
             echo "client-storage=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          # Web
+          if is_true "$(has_match 'Backend/BarkFluff.Web/')" "$GRPC_SERVER" "$BACKEND_REBUILD"; then
+            echo "web=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "web=false" >> "$GITHUB_OUTPUT"
           fi
 
           # WPF Client
@@ -1702,6 +1710,115 @@ jobs:
             ❌ *Сборка провалена*
 
             🐋 *BarkFluff\.ClientStorage*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
+
+  # --- Web ---
+  build-web:
+    name: "\U0001F433 Web"
+    needs: detect-changes
+    if: needs.detect-changes.outputs.web == 'true'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "\U0001F4F2 Запрос подтверждения сборки"
+        id: approval
+        continue-on-error: true
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "Запустить сборку BarkFluff.Web?"
+          APPROVAL_BUTTON: "✅ Собрать"
+          REJECT_BUTTON: "❌ Отменить"
+          APPROVED_TEXT: "✅ Сборка Web одобрена"
+          REJECTED_TEXT: "❌ Сборка Web отклонена"
+          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Login to Private Registry
+        if: steps.approval.outcome == 'success'
+        uses: docker/login-action@v2
+        with:
+          registry: docker.barkfluff.com:5000
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        if: steps.approval.outcome == 'success'
+        uses: docker/setup-buildx-action@v2
+
+      - name: Set tags
+        if: steps.approval.outcome == 'success'
+        id: vars
+        run: |
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            echo "tags=docker.barkfluff.com:5000/barkfluff-web-dev:latest,docker.barkfluff.com:5000/barkfluff-web-dev:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tags=docker.barkfluff.com:5000/barkfluff-web:latest,docker.barkfluff.com:5000/barkfluff-web:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build and Push
+        if: steps.approval.outcome == 'success'
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Backend/BarkFluff.Web/Dockerfile
+          push: true
+          tags: ${{ steps.vars.outputs.tags }}
+
+      - name: "\U0001F6AB Сборка отменена"
+        if: steps.approval.outcome == 'failure'
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            🚫 *Сборка отменена*
+
+            🐋 *BarkFluff\.Web*
+            📌 Ветка: `${{ github.ref_name }}`
+            👤 Автор: *${{ github.actor }}*
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
+
+      - name: "\U00002705 Уведомление об успехе"
+        if: success() && steps.approval.outcome == 'success'
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ✅ *Сборка успешна*
+
+            🐋 *BarkFluff\.Web*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Теги: `${{ steps.vars.outputs.tags }}`
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
+
+      - name: "\U0000274C Уведомление об ошибке"
+        if: failure() && steps.approval.outcome == 'success'
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ❌ *Сборка провалена*
+
+            🐋 *BarkFluff\.Web*
             📌 Ветка: `${{ github.ref_name }}`
             🔗 Коммит: `${{ github.sha }}`
             👤 Автор: *${{ github.actor }}*
