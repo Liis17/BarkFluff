@@ -99,7 +99,11 @@ app.MapPost("/api/auth/login", async (HttpContext httpCtx, IdentityApi.IdentityA
     }
     catch (RpcException ex)
     {
+        var logger = httpCtx.RequestServices.GetRequiredService<ILogger<Program>>();
         var errorCode = ex.Trailers.Get("x-error-code")?.Value;
+
+        logger.LogWarning("gRPC Auth ошибка: StatusCode={StatusCode}, ErrorCode={ErrorCode}, Detail={Detail}",
+            ex.StatusCode, errorCode ?? "none", ex.Status.Detail);
 
         if (errorCode == "C1576884-12D8-4722-A7EE-9F9789AD1265")
         {
@@ -116,7 +120,7 @@ app.MapPost("/api/auth/login", async (HttpContext httpCtx, IdentityApi.IdentityA
             "21BFB9B5-C377-45D1-9B15-6B7F3432B397" =>
                 Results.Json(new { error = "invalid_credentials" }, statusCode: 401),
             _ =>
-                Results.Json(new { error = "server_error" }, statusCode: 500)
+                Results.Json(new { error = "server_error", detail = ex.Status.Detail }, statusCode: 500)
         };
     }
 });
@@ -168,7 +172,7 @@ static Metadata BuildMetadata(HttpContext ctx, string? deviceId)
     {
         { "x-device-id", ToBase64(deviceId ?? Guid.NewGuid().ToString()) },
         { "x-device-name", ToBase64("Web Browser") },
-        { "x-os", ToBase64("Web") },
+        { "x-os-name", ToBase64("Web") },
         { "x-app-name", ToBase64("BarkFluff Web") },
         { "x-app-version", ToBase64("1.0.0") },
         { "x-ip-address", ToBase64(ip) },
