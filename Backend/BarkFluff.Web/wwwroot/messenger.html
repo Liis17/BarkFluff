@@ -720,6 +720,7 @@
 
     <div class="image-overlay" id="imageOverlay">
         <img id="overlayImage" src="" alt="">
+        <video id="overlayVideo" controls style="display:none;max-width:90vw;max-height:90vh;border-radius:8px;"></video>
     </div>
 
     <script>
@@ -747,6 +748,9 @@
             window.location.href = '/';
             return;
         }
+
+        // Clean URL: /messenger → /
+        history.replaceState(null, '', '/');
 
         // ========== HELPERS ==========
 
@@ -897,7 +901,7 @@
 
         const tokenPayload = parseJwtPayload(TokenStore.getAccessToken());
         if (tokenPayload) {
-            myUserId = Number(tokenPayload.sub || tokenPayload.nameid || tokenPayload.user_id);
+            myUserId = Number(tokenPayload['x-user-id']);
         }
 
         // ========== FILE URL CACHE ==========
@@ -972,6 +976,7 @@
 
             chatListTotal = data.totalCount;
             chats = reset ? data.chats : chats.concat(data.chats);
+            chats.sort((a, b) => (b.lastMessage?.sentAt || 0) - (a.lastMessage?.sentAt || 0));
             chatListOffset = chats.length;
             chatListLoading = false;
 
@@ -1035,13 +1040,13 @@
 
         function attachmentEmoji(type) {
             switch (type) {
-                case 'IMAGE': case 'GIF': return '&#128247; Фото';
-                case 'VIDEO': return '&#127909; Видео';
-                case 'AUDIO': return '&#127925; Аудио';
-                case 'VOICE': return '&#127908; Голосовое';
-                case 'DOCUMENT': return '&#128196; Документ';
-                case 'STICKER': return '&#129312; Стикер';
-                default: return '&#128206; Вложение';
+                case 'IMAGE': case 'GIF': return '\u{1F4F7} Фото';
+                case 'VIDEO': return '\u{1F3AC} Видео';
+                case 'AUDIO': return '\u{1F3B5} Аудио';
+                case 'VOICE': return '\u{1F3A4} Голосовое';
+                case 'DOCUMENT': return '\u{1F4C4} Документ';
+                case 'STICKER': return '\u{1F92A} Стикер';
+                default: return '\u{1F4CE} Вложение';
             }
         }
 
@@ -1176,7 +1181,8 @@
                                 img.className = 'attach-image';
                                 img.src = previewUrl || url;
                                 img.loading = 'lazy';
-                                img.addEventListener('click', () => showImageOverlay(url || img.src));
+                                img.onerror = () => { if (img.src !== url && url) img.src = url; };
+                                img.addEventListener('click', () => showMediaOverlay('image', url || img.src));
                                 attDiv.appendChild(img);
                                 break;
                             }
@@ -1186,6 +1192,7 @@
                                 vid.preload = 'metadata';
                                 if (previewUrl) vid.poster = previewUrl;
                                 vid.src = url;
+                                vid.addEventListener('click', (e) => { e.preventDefault(); showMediaOverlay('video', url); });
                                 attDiv.appendChild(vid);
                                 break;
                             }
@@ -1267,6 +1274,141 @@
             messagesArea.scrollTop = messagesArea.scrollHeight;
         }
 
+        async function appendMessageToView(msg) {
+            // Fetch file URLs if needed
+            const fileIds = (msg.content?.attachments || []).map(a => a.fileId).filter(id => id && !fileUrlCache.has(id));
+            if (fileIds.length > 0) await getFileUrls(fileIds);
+
+            // Date separator if needed
+            const msgDate = formatDate(msg.sentAt);
+            const lastGroup = messagesArea.lastElementChild;
+            const lastMsgDate = lastGroup?.dataset?.date;
+            if (msgDate !== lastMsgDate) {
+                const sep = document.createElement('div');
+                sep.className = 'msg-date-separator';
+                sep.dataset.date = msgDate;
+                sep.innerHTML = `<span>${escapeHtml(msgDate)}</span>`;
+                messagesArea.appendChild(sep);
+            }
+
+            const isOutgoing = msg.senderId === myUserId;
+            const direction = isOutgoing ? 'outgoing' : 'incoming';
+
+            const group = document.createElement('div');
+            group.className = `msg-group ${direction}`;
+            group.dataset.msgId = msg.id;
+            group.dataset.date = msgDate;
+
+            if (!isOutgoing && currentChatInfo?.isGroupChat) {
+                const sender = await getUser(msg.senderId);
+                if (sender) {
+                    const nameEl = document.createElement('div');
+                    nameEl.className = 'msg-sender';
+                    nameEl.textContent = `${sender.firstName} ${sender.lastName}`.trim() || sender.username;
+                    group.appendChild(nameEl);
+                }
+            }
+
+            const isSticker = msg.content?.attachments?.length === 1 && msg.content.attachments[0].type === 'STICKER';
+            const bubble = document.createElement('div');
+            bubble.className = `msg-bubble ${direction}${isSticker ? ' sticker' : ''}`;
+
+            const attachments = msg.content?.attachments || [];
+            if (attachments.length > 0) {
+                const attDiv = document.createElement('div');
+                attDiv.className = 'msg-attachments';
+                for (const a of attachments) {
+                    const fileData = fileUrlCache.get(a.fileId);
+                    const url = fileData?.url || '';
+                    const previewUrl = fileData?.previewUrl || a.previewUrl || '';
+                    switch (a.type) {
+                        case 'IMAGE': case 'GIF': {
+                            const img = document.createElement('img');
+                            img.className = 'attach-image';
+                            img.src = previewUrl || url;
+                            img.loading = 'lazy';
+                            img.onerror = () => { if (img.src !== url && url) img.src = url; };
+                            img.addEventListener('click', () => showMediaOverlay('image', url || img.src));
+                            attDiv.appendChild(img);
+                            break;
+                        }
+                        case 'VIDEO': {
+                            const vid = document.createElement('video');
+                            vid.controls = true;
+                            vid.preload = 'metadata';
+                            if (previewUrl) vid.poster = previewUrl;
+                            vid.src = url;
+                            vid.addEventListener('click', (e) => { e.preventDefault(); showMediaOverlay('video', url); });
+                            attDiv.appendChild(vid);
+                            break;
+                        }
+                        case 'AUDIO': case 'VOICE': {
+                            const aud = document.createElement('audio');
+                            aud.controls = true;
+                            aud.preload = 'metadata';
+                            aud.src = url;
+                            attDiv.appendChild(aud);
+                            break;
+                        }
+                        case 'STICKER': {
+                            const img = document.createElement('img');
+                            img.className = 'attach-sticker';
+                            img.src = url || previewUrl;
+                            img.loading = 'lazy';
+                            attDiv.appendChild(img);
+                            break;
+                        }
+                        default: {
+                            const link = document.createElement('a');
+                            link.className = 'attach-doc';
+                            link.href = url;
+                            link.target = '_blank';
+                            link.rel = 'noopener';
+                            link.innerHTML = `
+                                <span class="attach-doc-icon">\u{1F4C4}</span>
+                                <div class="attach-doc-info">
+                                    <div class="attach-doc-name">${escapeHtml(a.fileName || 'Файл')}</div>
+                                    <div class="attach-doc-size">${formatFileSize(a.attachmentSize || 0)}</div>
+                                </div>
+                            `;
+                            attDiv.appendChild(link);
+                            break;
+                        }
+                    }
+                }
+                bubble.appendChild(attDiv);
+            }
+
+            const text = msg.content?.text;
+            if (text) {
+                const textEl = document.createElement('div');
+                textEl.className = 'msg-text';
+                textEl.textContent = text;
+                bubble.appendChild(textEl);
+            }
+
+            if (!isSticker) {
+                const meta = document.createElement('div');
+                meta.className = 'msg-meta';
+                const timeEl = document.createElement('span');
+                timeEl.className = 'msg-time';
+                timeEl.textContent = formatTime(msg.sentAt);
+                meta.appendChild(timeEl);
+                if (isOutgoing) {
+                    const statusEl = document.createElement('span');
+                    statusEl.className = 'msg-status';
+                    statusEl.dataset.msgId = msg.id;
+                    const readCount = (msg.readBy || []).filter(id => id !== myUserId).length;
+                    statusEl.innerHTML = readCount > 0 ? '&#10003;&#10003;' : '&#10003;';
+                    meta.appendChild(statusEl);
+                }
+                bubble.appendChild(meta);
+            }
+
+            group.appendChild(bubble);
+            messagesArea.appendChild(group);
+        }
+
         // Lazy-load older messages
         messagesArea.addEventListener('scroll', async () => {
             if (messagesArea.scrollTop < 100 && !isLoadingOlder && !noMoreOlder && currentChatId && messages.length > 0) {
@@ -1317,7 +1459,8 @@
             }
 
             const body = { chatId: currentChatId, text: text || null, fileIds: fileIds.length > 0 ? fileIds : null };
-            await API.postJson('/api/chats/send', body);
+            const sentChatId = currentChatId;
+            const response = await API.postJson('/api/chats/send', body);
 
             messageInput.value = '';
             messageInput.style.height = 'auto';
@@ -1326,6 +1469,25 @@
             filePreviewBar.innerHTML = '';
             sendBtn.disabled = false;
             messageInput.focus();
+
+            // Add sent message to UI immediately
+            if (response?.message) {
+                const msg = response.message;
+                if (sentChatId === currentChatId && !messages.some(m => m.id === msg.id)) {
+                    messages.push(msg);
+                    await appendMessageToView(msg);
+                    scrollToBottom();
+                }
+                // Move chat to top and update lastMessage
+                const chatIdx = chats.findIndex(c => c.id === sentChatId);
+                if (chatIdx >= 0) {
+                    const chat = chats[chatIdx];
+                    chat.lastMessage = msg;
+                    chats.splice(chatIdx, 1);
+                    chats.unshift(chat);
+                    renderChatList();
+                }
+            }
         }
 
         sendBtn.addEventListener('click', sendMessage);
@@ -1469,6 +1631,9 @@
         // ========== SSE HANDLERS ==========
 
         function handleNewMessage(chatId, msg) {
+            // Dedup: skip if already in messages
+            if (chatId === currentChatId && messages.some(m => m.id === msg.id)) return;
+
             // Update chat in list
             const chatIdx = chats.findIndex(c => c.id === chatId);
             if (chatIdx >= 0) {
@@ -1486,11 +1651,11 @@
                 loadChats(true);
             }
 
-            // If current chat, append message
+            // If current chat, append single message
             if (chatId === currentChatId) {
                 const isAtBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 100;
                 messages.push(msg);
-                renderMessages().then(() => {
+                appendMessageToView(msg).then(() => {
                     if (isAtBottom) scrollToBottom();
                     scheduleMarkRead();
                 });
@@ -1630,16 +1795,30 @@
             }, 300);
         });
 
-        // ========== IMAGE OVERLAY ==========
+        // ========== MEDIA OVERLAY ==========
 
-        function showImageOverlay(url) {
-            overlayImage.src = url;
+        const overlayVideo = $('#overlayVideo');
+
+        function showMediaOverlay(type, url) {
+            if (type === 'video') {
+                overlayImage.style.display = 'none';
+                overlayVideo.style.display = 'block';
+                overlayVideo.src = url;
+                overlayVideo.play();
+            } else {
+                overlayVideo.style.display = 'none';
+                overlayImage.style.display = 'block';
+                overlayImage.src = url;
+            }
             imageOverlay.classList.add('visible');
         }
 
-        imageOverlay.addEventListener('click', () => {
+        imageOverlay.addEventListener('click', (e) => {
+            if (e.target === overlayVideo) return; // don't close when clicking video controls
             imageOverlay.classList.remove('visible');
             overlayImage.src = '';
+            overlayVideo.pause();
+            overlayVideo.src = '';
         });
 
         // ========== LOGOUT ==========
