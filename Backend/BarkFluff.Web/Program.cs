@@ -81,7 +81,7 @@ app.MapPost("/api/auth/login", async (HttpContext httpCtx, IdentityApi.IdentityA
     if (!string.IsNullOrEmpty(body.OtpCode))
         authRequest.OtpCode = body.OtpCode;
 
-    var metadata = BuildMetadata(httpCtx, body.DeviceId);
+    var metadata = BuildMetadata(httpCtx, body.DeviceId, body.BrowserName, body.OsName);
 
     try
     {
@@ -161,7 +161,7 @@ app.Run();
 
 // --- Утилиты ---
 
-static Metadata BuildMetadata(HttpContext ctx, string? deviceId)
+static Metadata BuildMetadata(HttpContext ctx, string? deviceId, string? browserName, string? osName)
 {
     var ip = ctx.Request.Headers["X-Forwarded-For"].FirstOrDefault()
              ?? ctx.Request.Headers["X-Real-IP"].FirstOrDefault()
@@ -171,8 +171,8 @@ static Metadata BuildMetadata(HttpContext ctx, string? deviceId)
     return new Metadata
     {
         { "x-device-id", ToBase64(deviceId ?? Guid.NewGuid().ToString()) },
-        { "x-device-name", ToBase64("Web Browser") },
-        { "x-os-name", ToBase64("Web") },
+        { "x-device-name", ToBase64(browserName ?? "Неизвестно") },
+        { "x-os-name", ToBase64(osName ?? "Неизвестно") },
         { "x-app-name", ToBase64("BarkFluff Web") },
         { "x-app-version", ToBase64("1.0.0") },
         { "x-ip-address", ToBase64(ip) },
@@ -184,7 +184,7 @@ static string ToBase64(string value) =>
 
 // --- DTO ---
 
-record LoginRequest(string? Login, string? Password, string? OtpCode, string? DeviceId);
+record LoginRequest(string? Login, string? Password, string? OtpCode, string? DeviceId, string? BrowserName, string? OsName);
 record RefreshRequest(string? RefreshToken);
 
 class TokenResponse
