@@ -718,7 +718,7 @@
 
                 // Успешный вход
                 TokenStore.save(data);
-                window.location.href = '/messenger.html';
+                window.location.href = '/messenger';
             } catch {
                 showError(passwordError, null, 'Не удалось подключиться к серверу');
             } finally {
@@ -781,7 +781,7 @@
                 }
 
                 TokenStore.save(data);
-                window.location.href = '/messenger.html';
+                window.location.href = '/messenger';
             } catch {
                 otpError.textContent = 'Не удалось подключиться к серверу';
                 otpError.classList.add('visible');
@@ -799,7 +799,7 @@
         // --- Проверка при загрузке ---
         if (TokenStore.get()) {
             getValidAccessToken().then(token => {
-                if (token) window.location.href = '/messenger.html';
+                if (token) window.location.href = '/messenger';
             });
         }
 

@@ -589,6 +589,8 @@ app.MapGet("/api/sse/online", async (HttpContext httpCtx, OnlinerApi.OnlinerApiC
     catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled) { }
 });
 
+app.MapGet("/messenger", () => Results.File("wwwroot/messenger.html", "text/html"));
+
 app.MapFallbackToFile("index.html");
 
 app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
