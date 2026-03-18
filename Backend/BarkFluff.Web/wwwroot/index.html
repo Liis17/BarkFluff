@@ -20,6 +20,7 @@
             --input-border: rgba(255, 255, 255, 0.12);
             --input-focus: rgba(59, 130, 246, 0.5);
             --error: #E74856;
+            --success: #10b981;
             --link: #60a5fa;
         }
 
@@ -189,11 +190,20 @@
             color: rgba(148, 163, 184, 0.5);
         }
 
+        .form-input.error {
+            border-color: var(--error);
+            box-shadow: 0 0 0 3px rgba(231, 72, 86, 0.2);
+        }
+
         .form-error {
             font-size: 12px;
             color: var(--error);
             margin-top: 6px;
             display: none;
+        }
+
+        .form-error.visible {
+            display: block;
         }
 
         .forgot-link {
@@ -230,13 +240,18 @@
             transition: transform 0.2s, box-shadow 0.2s;
         }
 
-        .btn-primary:hover {
+        .btn-primary:hover:not(:disabled) {
             transform: translateY(-1px);
             box-shadow: 0 12px 30px rgba(37, 99, 235, 0.5);
         }
 
-        .btn-primary:active {
+        .btn-primary:active:not(:disabled) {
             transform: translateY(0);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
         }
 
         .btn-primary .arrow {
@@ -244,7 +259,7 @@
             transition: transform 0.2s;
         }
 
-        .btn-primary:hover .arrow {
+        .btn-primary:hover:not(:disabled) .arrow {
             transform: translateX(3px);
         }
 
@@ -257,6 +272,10 @@
             animation: spin 0.6s linear infinite;
             display: none;
         }
+
+        .btn-primary.loading .spinner { display: block; }
+        .btn-primary.loading .btn-text,
+        .btn-primary.loading .arrow { display: none; }
 
         @keyframes spin {
             to { transform: rotate(360deg); }
@@ -315,9 +334,9 @@
             text-align: center;
         }
 
-        .otp-section {
-            display: none;
-        }
+        /* OTP секция */
+        .section { display: block; }
+        .section.hidden { display: none; }
 
         .otp-title {
             font-size: 18px;
@@ -359,12 +378,46 @@
             box-shadow: 0 0 0 3px var(--input-focus);
         }
 
-        .otp-error {
-            font-size: 12px;
-            color: var(--error);
+        .otp-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--link);
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: color 0.2s;
+            background: none;
+            border: none;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .otp-back:hover { color: #93c5fd; }
+
+        /* Авторизованное состояние */
+        .welcome-icon {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, var(--success), #059669);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin: 0 auto 16px;
+        }
+
+        .welcome-title {
+            font-size: 22px;
+            font-weight: 700;
             text-align: center;
-            margin-bottom: 12px;
-            display: none;
+            margin-bottom: 8px;
+        }
+
+        .welcome-subtitle {
+            font-size: 14px;
+            color: var(--text-sub);
+            text-align: center;
         }
     </style>
 </head>
@@ -381,15 +434,16 @@
         </div>
 
         <div class="card">
-            <div id="loginSection">
+            <!-- Секция логина -->
+            <div id="loginSection" class="section">
                 <h1 class="card-title">Добро пожаловать</h1>
                 <p class="card-subtitle">Войдите в свой аккаунт</p>
 
-                <form id="loginForm" onsubmit="return false;">
+                <form id="loginForm">
                     <div class="form-group">
                         <label class="form-label">Почта или username</label>
-                        <input type="text" class="form-input" id="usernameInput" placeholder="user@example.com" maxlength="50" autocomplete="username">
-                        <div class="form-error" id="usernameError"></div>
+                        <input type="text" class="form-input" id="loginInput" placeholder="user@example.com" maxlength="50" autocomplete="username">
+                        <div class="form-error" id="loginError"></div>
                     </div>
 
                     <div class="form-group">
@@ -408,19 +462,21 @@
                 </form>
             </div>
 
-            <div id="otpSection" class="otp-section">
-                <h2 class="otp-title">Введите код подтверждения</h2>
-                <p class="otp-subtitle">Введите 6-значный код подтверждения</p>
+            <!-- Секция OTP -->
+            <div id="otpSection" class="section hidden">
+                <button class="otp-back" id="otpBack">&larr; Назад</button>
+                <h2 class="otp-title">Код подтверждения</h2>
+                <p class="otp-subtitle">Введите 6-значный код из приложения-аутентификатора или письма</p>
 
-                <div class="otp-inputs">
-                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric" pattern="[0-9]">
-                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric" pattern="[0-9]">
-                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric" pattern="[0-9]">
-                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric" pattern="[0-9]">
-                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric" pattern="[0-9]">
-                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                <div class="otp-inputs" id="otpInputs">
+                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric">
+                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric">
+                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric">
+                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric">
+                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric">
+                    <input type="text" class="otp-input" maxlength="1" inputmode="numeric">
                 </div>
-                <div class="otp-error" id="otpError"></div>
+                <div class="form-error" id="otpError" style="text-align:center;margin-bottom:12px"></div>
 
                 <button type="button" class="btn-primary" id="otpSubmitBtn">
                     <span class="btn-text">Подтвердить</span>
@@ -429,9 +485,16 @@
                 </button>
             </div>
 
-            <div class="divider"></div>
+            <!-- Секция после входа -->
+            <div id="welcomeSection" class="section hidden">
+                <div class="welcome-icon">&#10003;</div>
+                <h2 class="welcome-title">Вы вошли в аккаунт</h2>
+                <p class="welcome-subtitle">Веб-версия мессенджера скоро будет доступна</p>
+            </div>
 
-            <div class="footer-section">
+            <div class="divider" id="divider"></div>
+
+            <div class="footer-section" id="footerSection">
                 <p>Еще нет аккаунта?</p>
                 <button class="btn-secondary">
                     Создать новый аккаунт
@@ -444,8 +507,202 @@
     </div>
 
     <script>
-        // OTP input navigation
+    (() => {
+        'use strict';
+
+        // --- Хранилище токенов (sessionStorage) ---
+        const TokenStore = {
+            _key: 'barkfluff_auth',
+
+            save(data) {
+                sessionStorage.setItem(this._key, JSON.stringify(data));
+            },
+
+            get() {
+                const raw = sessionStorage.getItem(this._key);
+                return raw ? JSON.parse(raw) : null;
+            },
+
+            clear() {
+                sessionStorage.removeItem(this._key);
+            },
+
+            getAccessToken() {
+                const data = this.get();
+                return data?.accessToken ?? null;
+            },
+
+            getRefreshToken() {
+                const data = this.get();
+                return data?.refreshToken ?? null;
+            },
+
+            isAccessExpired() {
+                const data = this.get();
+                if (!data?.accessTokenExpiration) return true;
+                return Date.now() >= data.accessTokenExpiration - 30000; // 30 сек запас
+            }
+        };
+
+        // --- Device ID (localStorage — переживает сессию) ---
+        function getDeviceId() {
+            let id = localStorage.getItem('barkfluff_device_id');
+            if (!id) {
+                id = crypto.randomUUID();
+                localStorage.setItem('barkfluff_device_id', id);
+            }
+            return id;
+        }
+
+        // --- API ---
+        async function apiLogin(login, password, otpCode) {
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    login,
+                    password,
+                    otpCode: otpCode || null,
+                    deviceId: getDeviceId()
+                })
+            });
+            return { status: res.status, data: await res.json() };
+        }
+
+        async function apiRefresh() {
+            const refreshToken = TokenStore.getRefreshToken();
+            if (!refreshToken) return null;
+
+            const res = await fetch('/api/auth/refresh', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refreshToken })
+            });
+
+            if (!res.ok) {
+                TokenStore.clear();
+                return null;
+            }
+
+            const data = await res.json();
+            const stored = TokenStore.get();
+            stored.accessToken = data.accessToken;
+            stored.accessTokenExpiration = data.expiration;
+            TokenStore.save(stored);
+            return data.accessToken;
+        }
+
+        // Получить валидный access token (с авто-обновлением)
+        async function getValidAccessToken() {
+            if (!TokenStore.isAccessExpired()) {
+                return TokenStore.getAccessToken();
+            }
+            return await apiRefresh();
+        }
+
+        // --- DOM ---
+        const $ = (sel) => document.querySelector(sel);
+        const loginSection = $('#loginSection');
+        const otpSection = $('#otpSection');
+        const welcomeSection = $('#welcomeSection');
+        const divider = $('#divider');
+        const footerSection = $('#footerSection');
+
+        const loginForm = $('#loginForm');
+        const loginInput = $('#loginInput');
+        const passwordInput = $('#passwordInput');
+        const loginError = $('#loginError');
+        const passwordError = $('#passwordError');
+        const signInBtn = $('#signInBtn');
+
         const otpInputs = document.querySelectorAll('.otp-input');
+        const otpError = $('#otpError');
+        const otpSubmitBtn = $('#otpSubmitBtn');
+        const otpBack = $('#otpBack');
+
+        let pendingLogin = '';
+        let pendingPassword = '';
+
+        // --- Переключение секций ---
+        function showSection(name) {
+            loginSection.classList.toggle('hidden', name !== 'login');
+            otpSection.classList.toggle('hidden', name !== 'otp');
+            welcomeSection.classList.toggle('hidden', name !== 'welcome');
+            divider.style.display = name === 'welcome' ? 'none' : '';
+            footerSection.style.display = name === 'welcome' ? 'none' : '';
+        }
+
+        function clearErrors() {
+            loginError.classList.remove('visible');
+            passwordError.classList.remove('visible');
+            otpError.classList.remove('visible');
+            loginInput.classList.remove('error');
+            passwordInput.classList.remove('error');
+        }
+
+        function showError(el, inputEl, msg) {
+            el.textContent = msg;
+            el.classList.add('visible');
+            if (inputEl) inputEl.classList.add('error');
+        }
+
+        function setLoading(btn, loading) {
+            btn.classList.toggle('loading', loading);
+            btn.disabled = loading;
+        }
+
+        // --- Обработка логина ---
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearErrors();
+
+            const login = loginInput.value.trim();
+            const password = passwordInput.value;
+
+            if (!login) {
+                showError(loginError, loginInput, 'Введите логин или email');
+                return;
+            }
+            if (!password) {
+                showError(passwordError, passwordInput, 'Введите пароль');
+                return;
+            }
+
+            pendingLogin = login;
+            pendingPassword = password;
+
+            setLoading(signInBtn, true);
+
+            try {
+                const { status, data } = await apiLogin(login, password);
+
+                if (data.error === 'otp_required') {
+                    showSection('otp');
+                    otpInputs[0].focus();
+                    return;
+                }
+
+                if (data.error === 'invalid_credentials') {
+                    showError(passwordError, passwordInput, 'Неверный логин или пароль');
+                    return;
+                }
+
+                if (data.error) {
+                    showError(passwordError, null, 'Ошибка сервера');
+                    return;
+                }
+
+                // Успешный вход
+                TokenStore.save(data);
+                showSection('welcome');
+            } catch {
+                showError(passwordError, null, 'Не удалось подключиться к серверу');
+            } finally {
+                setLoading(signInBtn, false);
+            }
+        });
+
+        // --- OTP ---
         otpInputs.forEach((input, index) => {
             input.addEventListener('input', (e) => {
                 const value = e.target.value.replace(/[^0-9]/g, '');
@@ -469,6 +726,62 @@
                 otpInputs[nextIndex].focus();
             });
         });
+
+        otpSubmitBtn.addEventListener('click', async () => {
+            clearErrors();
+            const code = Array.from(otpInputs).map(i => i.value).join('');
+
+            if (code.length !== 6) {
+                otpError.textContent = 'Введите все 6 цифр';
+                otpError.classList.add('visible');
+                return;
+            }
+
+            setLoading(otpSubmitBtn, true);
+
+            try {
+                const { status, data } = await apiLogin(pendingLogin, pendingPassword, code);
+
+                if (data.error === 'invalid_otp') {
+                    otpError.textContent = 'Неверный код подтверждения';
+                    otpError.classList.add('visible');
+                    otpInputs.forEach(i => i.value = '');
+                    otpInputs[0].focus();
+                    return;
+                }
+
+                if (data.error) {
+                    otpError.textContent = 'Ошибка сервера';
+                    otpError.classList.add('visible');
+                    return;
+                }
+
+                TokenStore.save(data);
+                showSection('welcome');
+            } catch {
+                otpError.textContent = 'Не удалось подключиться к серверу';
+                otpError.classList.add('visible');
+            } finally {
+                setLoading(otpSubmitBtn, false);
+            }
+        });
+
+        otpBack.addEventListener('click', () => {
+            clearErrors();
+            otpInputs.forEach(i => i.value = '');
+            showSection('login');
+        });
+
+        // --- Проверка при загрузке ---
+        if (TokenStore.get()) {
+            getValidAccessToken().then(token => {
+                if (token) showSection('welcome');
+            });
+        }
+
+        // Экспорт для будущего использования
+        window.BarkFluff = { getValidAccessToken, TokenStore };
+    })();
     </script>
 </body>
 </html>
