@@ -1600,8 +1600,11 @@
                 } catch {}
             });
 
-            sseUpdates.onerror = () => {
+            sseUpdates.onerror = async () => {
                 sseUpdates.close();
+                if (TokenStore.isAccessExpired()) {
+                    await API.get('/api/chats?offset=0&size=1');
+                }
                 setTimeout(connectSSE, 3000);
             };
         }
@@ -1622,8 +1625,11 @@
                 } catch {}
             });
 
-            sseOnline.onerror = () => {
+            sseOnline.onerror = async () => {
                 sseOnline.close();
+                if (TokenStore.isAccessExpired()) {
+                    await API.get('/api/chats?offset=0&size=1');
+                }
                 setTimeout(() => connectOnlineSSE(Array.from(onlineSubscribedUserIds)), 3000);
             };
         }
