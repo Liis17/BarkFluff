@@ -445,12 +445,44 @@
             margin-bottom: 4px;
         }
 
-        .msg-attachments img.attach-image {
-            max-width: 400px;
-            max-height: 300px;
+        /* Image grid */
+        .attach-image-grid {
+            display: grid;
+            gap: 3px;
             border-radius: 12px;
-            cursor: pointer;
+            overflow: hidden;
+            max-width: 400px;
+        }
+        .attach-image-grid.grid-1 { grid-template-columns: 1fr; }
+        .attach-image-grid.grid-2 { grid-template-columns: 1fr 1fr; }
+        .attach-image-grid.grid-3 { grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; }
+        .attach-image-grid.grid-3 img:first-child { grid-column: 1 / -1; }
+        .attach-image-grid.grid-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+        .attach-image-grid img {
+            width: 100%;
+            height: 100%;
             object-fit: cover;
+            cursor: pointer;
+            min-height: 80px;
+            max-height: 300px;
+            display: block;
+        }
+        .attach-image-grid.grid-1 img { max-height: 350px; }
+        .attach-image-grid .more-overlay {
+            position: relative;
+            cursor: pointer;
+        }
+        .attach-image-grid .more-overlay img { filter: brightness(0.5); }
+        .attach-image-grid .more-count {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 700;
+            color: white;
+            pointer-events: none;
         }
 
         .msg-attachments img.attach-sticker {
@@ -459,16 +491,84 @@
             object-fit: contain;
         }
 
-        .msg-attachments video {
+        /* Video */
+        .attach-video-wrap {
+            position: relative;
             max-width: 400px;
-            max-height: 300px;
             border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        .attach-video-wrap video {
+            width: 100%;
+            max-height: 300px;
+            display: block;
+        }
+        .video-play-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.25);
+            pointer-events: none;
+        }
+        .video-play-overlay span {
+            width: 48px; height: 48px;
+            background: rgba(0,0,0,0.6);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; color: white;
         }
 
-        .msg-attachments audio {
-            max-width: 300px;
+        /* Audio/Voice player */
+        .attach-audio {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            min-width: 240px;
+            max-width: 350px;
         }
+        .audio-play-btn {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            background: var(--primary);
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+            transition: background 0.2s;
+        }
+        .audio-play-btn:hover { background: var(--primary-hover); }
+        .audio-info { flex: 1; min-width: 0; }
+        .audio-progress {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 2px;
+            cursor: pointer;
+            overflow: hidden;
+        }
+        .audio-progress-fill {
+            height: 100%;
+            background: var(--primary);
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.1s;
+        }
+        .audio-meta {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 3px;
+        }
+        .audio-time { font-size: 11px; color: var(--text-sub); }
+        .audio-name { font-size: 11px; color: var(--text-sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+        /* Documents */
         .msg-attachments .attach-doc {
             display: flex;
             align-items: center;
@@ -1059,6 +1159,253 @@
 
         // ========== MESSAGES ==========
 
+        // --- Audio Player Singleton ---
+        const AudioPlayer = {
+            current: null,
+            play(item) {
+                if (this.current && this.current !== item) {
+                    this.current.audio.pause();
+                    this.current.playBtn.textContent = '\u25B6';
+                }
+                item.audio.play();
+                item.playBtn.textContent = '\u23F8';
+                this.current = item;
+            },
+            pause() {
+                if (!this.current) return;
+                this.current.audio.pause();
+                this.current.playBtn.textContent = '\u25B6';
+            },
+            toggle(item) {
+                if (this.current === item && !item.audio.paused) {
+                    this.pause();
+                } else {
+                    this.play(item);
+                }
+            }
+        };
+
+        function formatDuration(sec) {
+            if (!sec || isNaN(sec)) return '0:00';
+            const m = Math.floor(sec / 60);
+            const s = Math.floor(sec % 60);
+            return `${m}:${s.toString().padStart(2, '0')}`;
+        }
+
+        function docIcon(fileName) {
+            if (!fileName) return '\u{1F4C4}';
+            const ext = fileName.split('.').pop()?.toLowerCase();
+            if (['pdf'].includes(ext)) return '\u{1F4D1}';
+            if (['doc','docx'].includes(ext)) return '\u{1F4DD}';
+            if (['xls','xlsx'].includes(ext)) return '\u{1F4CA}';
+            if (['zip','rar','7z','tar','gz'].includes(ext)) return '\u{1F4E6}';
+            if (['apk'].includes(ext)) return '\u{1F4F1}';
+            return '\u{1F4C4}';
+        }
+
+        // --- Attachment rendering functions ---
+
+        function renderAttachments(attachments, bubble) {
+            if (attachments.length === 0) return;
+
+            const images = [];
+            const videos = [];
+            const audios = [];
+            const docs = [];
+
+            for (const a of attachments) {
+                switch (a.type) {
+                    case 'IMAGE': case 'GIF': images.push(a); break;
+                    case 'STICKER': images.push(a); break;
+                    case 'VIDEO': videos.push(a); break;
+                    case 'AUDIO': case 'VOICE': audios.push(a); break;
+                    case 'DOCUMENT': docs.push(a); break;
+                    default: docs.push(a); break;
+                }
+            }
+
+            const attDiv = document.createElement('div');
+            attDiv.className = 'msg-attachments';
+
+            if (images.length > 0) renderImageGrid(images, attDiv);
+            if (videos.length > 0) renderVideos(videos, attDiv);
+            if (audios.length > 0) renderAudios(audios, attDiv);
+            if (docs.length > 0) renderDocs(docs, attDiv);
+
+            bubble.appendChild(attDiv);
+        }
+
+        function renderImageGrid(images, container) {
+            const isSticker = images.length === 1 && images[0].type === 'STICKER';
+            if (isSticker) {
+                const a = images[0];
+                const fileData = fileUrlCache.get(a.fileId);
+                const url = fileData?.url || fileData?.previewUrl || a.previewUrl || '';
+                const img = document.createElement('img');
+                img.className = 'attach-sticker';
+                img.src = url;
+                img.loading = 'lazy';
+                container.appendChild(img);
+                return;
+            }
+
+            const grid = document.createElement('div');
+            const visibleCount = Math.min(images.length, 4);
+            grid.className = `attach-image-grid grid-${visibleCount}`;
+
+            for (let i = 0; i < visibleCount; i++) {
+                const a = images[i];
+                const fileData = fileUrlCache.get(a.fileId);
+                const url = fileData?.url || '';
+                const previewUrl = fileData?.previewUrl || a.previewUrl || '';
+
+                if (i === 3 && images.length > 4) {
+                    const wrap = document.createElement('div');
+                    wrap.className = 'more-overlay';
+                    const img = document.createElement('img');
+                    img.src = previewUrl || url;
+                    img.loading = 'lazy';
+                    img.onerror = () => { if (img.src !== url && url) img.src = url; };
+                    wrap.appendChild(img);
+                    const count = document.createElement('div');
+                    count.className = 'more-count';
+                    count.textContent = `+${images.length - 3}`;
+                    wrap.appendChild(count);
+                    wrap.addEventListener('click', () => showMediaOverlay('image', url || img.src));
+                    grid.appendChild(wrap);
+                } else {
+                    const img = document.createElement('img');
+                    img.src = previewUrl || url;
+                    img.loading = 'lazy';
+                    img.onerror = () => { if (img.src !== url && url) img.src = url; };
+                    img.addEventListener('click', () => showMediaOverlay('image', url || img.src));
+                    grid.appendChild(img);
+                }
+            }
+            container.appendChild(grid);
+        }
+
+        function renderVideos(videos, container) {
+            for (const a of videos) {
+                const fileData = fileUrlCache.get(a.fileId);
+                const url = fileData?.url || '';
+                const previewUrl = fileData?.previewUrl || a.previewUrl || '';
+
+                const wrap = document.createElement('div');
+                wrap.className = 'attach-video-wrap';
+
+                const vid = document.createElement('video');
+                vid.preload = 'metadata';
+                if (previewUrl) vid.poster = previewUrl;
+                vid.src = url;
+
+                const overlay = document.createElement('div');
+                overlay.className = 'video-play-overlay';
+                overlay.innerHTML = '<span>\u25B6</span>';
+
+                wrap.appendChild(vid);
+                wrap.appendChild(overlay);
+                wrap.addEventListener('click', () => showMediaOverlay('video', url));
+                container.appendChild(wrap);
+            }
+        }
+
+        function renderAudios(audioAttachments, container) {
+            for (const a of audioAttachments) {
+                const fileData = fileUrlCache.get(a.fileId);
+                const url = fileData?.url || '';
+                const isVoice = a.type === 'VOICE';
+
+                const wrap = document.createElement('div');
+                wrap.className = 'attach-audio';
+
+                const playBtn = document.createElement('button');
+                playBtn.className = 'audio-play-btn';
+                playBtn.textContent = '\u25B6';
+
+                const info = document.createElement('div');
+                info.className = 'audio-info';
+
+                const progress = document.createElement('div');
+                progress.className = 'audio-progress';
+                const progressFill = document.createElement('div');
+                progressFill.className = 'audio-progress-fill';
+                progress.appendChild(progressFill);
+
+                const meta = document.createElement('div');
+                meta.className = 'audio-meta';
+                const timeEl = document.createElement('span');
+                timeEl.className = 'audio-time';
+                timeEl.textContent = '0:00';
+                const nameEl = document.createElement('span');
+                nameEl.className = 'audio-name';
+                nameEl.textContent = isVoice ? '\u{1F3A4} Голосовое' : (a.fileName || 'Аудио');
+                meta.appendChild(timeEl);
+                meta.appendChild(nameEl);
+
+                info.appendChild(progress);
+                info.appendChild(meta);
+
+                wrap.appendChild(playBtn);
+                wrap.appendChild(info);
+
+                const audio = new Audio(url);
+                audio.preload = 'metadata';
+
+                const item = { audio, playBtn, progressFill, timeEl };
+
+                audio.addEventListener('loadedmetadata', () => {
+                    timeEl.textContent = formatDuration(audio.duration);
+                });
+
+                audio.addEventListener('timeupdate', () => {
+                    if (audio.duration) {
+                        progressFill.style.width = (audio.currentTime / audio.duration * 100) + '%';
+                        timeEl.textContent = formatDuration(audio.currentTime);
+                    }
+                });
+
+                audio.addEventListener('ended', () => {
+                    playBtn.textContent = '\u25B6';
+                    progressFill.style.width = '0%';
+                    timeEl.textContent = formatDuration(audio.duration);
+                    AudioPlayer.current = null;
+                });
+
+                progress.addEventListener('click', (e) => {
+                    const rect = progress.getBoundingClientRect();
+                    const ratio = (e.clientX - rect.left) / rect.width;
+                    if (audio.duration) audio.currentTime = ratio * audio.duration;
+                });
+
+                playBtn.addEventListener('click', () => AudioPlayer.toggle(item));
+
+                container.appendChild(wrap);
+            }
+        }
+
+        function renderDocs(docAttachments, container) {
+            for (const a of docAttachments) {
+                const fileData = fileUrlCache.get(a.fileId);
+                const url = fileData?.url || '';
+
+                const link = document.createElement('a');
+                link.className = 'attach-doc';
+                link.href = url;
+                link.target = '_blank';
+                link.rel = 'noopener';
+                link.download = a.fileName || '';
+                link.innerHTML = `
+                    <span class="attach-doc-icon">${docIcon(a.fileName)}</span>
+                    <div class="attach-doc-info">
+                        <div class="attach-doc-name">${escapeHtml(a.fileName || 'Файл')}</div>
+                        <div class="attach-doc-size">${formatFileSize(a.attachmentSize || 0)}</div>
+                    </div>
+                `;
+                container.appendChild(link);
+            }
+        }
+
         async function openChat(chatId) {
             if (chatId === currentChatId) return;
 
@@ -1166,72 +1513,7 @@
                 // Attachments
                 const attachments = msg.content?.attachments || [];
                 if (attachments.length > 0) {
-                    const attDiv = document.createElement('div');
-                    attDiv.className = 'msg-attachments';
-
-                    for (const a of attachments) {
-                        const fileData = fileUrlCache.get(a.fileId);
-                        const url = fileData?.url || '';
-                        const previewUrl = fileData?.previewUrl || a.previewUrl || '';
-
-                        switch (a.type) {
-                            case 'IMAGE':
-                            case 'GIF': {
-                                const img = document.createElement('img');
-                                img.className = 'attach-image';
-                                img.src = previewUrl || url;
-                                img.loading = 'lazy';
-                                img.onerror = () => { if (img.src !== url && url) img.src = url; };
-                                img.addEventListener('click', () => showMediaOverlay('image', url || img.src));
-                                attDiv.appendChild(img);
-                                break;
-                            }
-                            case 'VIDEO': {
-                                const vid = document.createElement('video');
-                                vid.controls = true;
-                                vid.preload = 'metadata';
-                                if (previewUrl) vid.poster = previewUrl;
-                                vid.src = url;
-                                vid.addEventListener('click', (e) => { e.preventDefault(); showMediaOverlay('video', url); });
-                                attDiv.appendChild(vid);
-                                break;
-                            }
-                            case 'AUDIO':
-                            case 'VOICE': {
-                                const aud = document.createElement('audio');
-                                aud.controls = true;
-                                aud.preload = 'metadata';
-                                aud.src = url;
-                                attDiv.appendChild(aud);
-                                break;
-                            }
-                            case 'STICKER': {
-                                const img = document.createElement('img');
-                                img.className = 'attach-sticker';
-                                img.src = url || previewUrl;
-                                img.loading = 'lazy';
-                                attDiv.appendChild(img);
-                                break;
-                            }
-                            default: {
-                                const link = document.createElement('a');
-                                link.className = 'attach-doc';
-                                link.href = url;
-                                link.target = '_blank';
-                                link.rel = 'noopener';
-                                link.innerHTML = `
-                                    <span class="attach-doc-icon">&#128196;</span>
-                                    <div class="attach-doc-info">
-                                        <div class="attach-doc-name">${escapeHtml(a.fileName || 'Файл')}</div>
-                                        <div class="attach-doc-size">${formatFileSize(a.attachmentSize || 0)}</div>
-                                    </div>
-                                `;
-                                attDiv.appendChild(link);
-                                break;
-                            }
-                        }
-                    }
-                    bubble.appendChild(attDiv);
+                    renderAttachments(attachments, bubble);
                 }
 
                 // Text
@@ -1315,68 +1597,7 @@
 
             const attachments = msg.content?.attachments || [];
             if (attachments.length > 0) {
-                const attDiv = document.createElement('div');
-                attDiv.className = 'msg-attachments';
-                for (const a of attachments) {
-                    const fileData = fileUrlCache.get(a.fileId);
-                    const url = fileData?.url || '';
-                    const previewUrl = fileData?.previewUrl || a.previewUrl || '';
-                    switch (a.type) {
-                        case 'IMAGE': case 'GIF': {
-                            const img = document.createElement('img');
-                            img.className = 'attach-image';
-                            img.src = previewUrl || url;
-                            img.loading = 'lazy';
-                            img.onerror = () => { if (img.src !== url && url) img.src = url; };
-                            img.addEventListener('click', () => showMediaOverlay('image', url || img.src));
-                            attDiv.appendChild(img);
-                            break;
-                        }
-                        case 'VIDEO': {
-                            const vid = document.createElement('video');
-                            vid.controls = true;
-                            vid.preload = 'metadata';
-                            if (previewUrl) vid.poster = previewUrl;
-                            vid.src = url;
-                            vid.addEventListener('click', (e) => { e.preventDefault(); showMediaOverlay('video', url); });
-                            attDiv.appendChild(vid);
-                            break;
-                        }
-                        case 'AUDIO': case 'VOICE': {
-                            const aud = document.createElement('audio');
-                            aud.controls = true;
-                            aud.preload = 'metadata';
-                            aud.src = url;
-                            attDiv.appendChild(aud);
-                            break;
-                        }
-                        case 'STICKER': {
-                            const img = document.createElement('img');
-                            img.className = 'attach-sticker';
-                            img.src = url || previewUrl;
-                            img.loading = 'lazy';
-                            attDiv.appendChild(img);
-                            break;
-                        }
-                        default: {
-                            const link = document.createElement('a');
-                            link.className = 'attach-doc';
-                            link.href = url;
-                            link.target = '_blank';
-                            link.rel = 'noopener';
-                            link.innerHTML = `
-                                <span class="attach-doc-icon">\u{1F4C4}</span>
-                                <div class="attach-doc-info">
-                                    <div class="attach-doc-name">${escapeHtml(a.fileName || 'Файл')}</div>
-                                    <div class="attach-doc-size">${formatFileSize(a.attachmentSize || 0)}</div>
-                                </div>
-                            `;
-                            attDiv.appendChild(link);
-                            break;
-                        }
-                    }
-                }
-                bubble.appendChild(attDiv);
+                renderAttachments(attachments, bubble);
             }
 
             const text = msg.content?.text;
