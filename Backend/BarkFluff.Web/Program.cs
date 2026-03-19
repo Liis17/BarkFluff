@@ -464,7 +464,7 @@ app.MapGet("/api/online/status", async (HttpContext httpCtx, OnlinerApi.OnlinerA
             statuses = response.UsersStatuses.Select(s => new
             {
                 userId = s.UserId,
-                status = s.Status.ToString(),
+                status = s.Status.ToString().ToUpperInvariant(),
                 lastSeen = s.LastSeen?.ToDateTimeOffset().ToUnixTimeMilliseconds()
             })
         });
@@ -583,7 +583,7 @@ app.MapGet("/api/sse/online", async (HttpContext httpCtx, OnlinerApi.OnlinerApiC
             var json = JsonSerializer.Serialize(new
             {
                 userId = evt.UserId,
-                status = evt.Status.ToString(),
+                status = evt.Status.ToString().ToUpperInvariant(),
                 lastSeen = evt.LastSeen?.ToDateTimeOffset().ToUnixTimeMilliseconds()
             }, JsonOpts);
 
@@ -690,14 +690,14 @@ static object MapMessage(Message m) => new
     senderId = m.SenderId,
     readBy = m.ReadBy.ToList(),
     sentAt = m.SentAt?.ToDateTimeOffset().ToUnixTimeMilliseconds(),
-    type = m.Type.ToString(),
+    type = m.Type.ToString().ToUpperInvariant(),
     content = new
     {
         text = m.Content?.Text ?? "",
         attachments = m.Content?.Attachments.Select(a => new
         {
             id = a.Id,
-            type = a.Type.ToString(),
+            type = a.Type.ToString().ToUpperInvariant(),
             fileId = a.FileId,
             previewUrl = a.PreviewUrl,
             attachmentSize = a.AttachmentSize,
