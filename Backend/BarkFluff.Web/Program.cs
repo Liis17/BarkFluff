@@ -503,48 +503,54 @@ app.MapGet("/api/sse/updates", async (HttpContext httpCtx, UpdatesApi.UpdatesApi
         finally { semaphore.Release(); }
     }
 
-    var newMsgStream = updatesClient.SubscribeNewMessages(
-        new SubscribeNewMessagesRequest(), new CallOptions(headers: metadata, cancellationToken: ct));
-
-    var readStream = updatesClient.SubscribeMessagesRead(
-        new SubscribeMessagesReadRequest(), new CallOptions(headers: metadata, cancellationToken: ct));
-
     var task1 = Task.Run(async () =>
     {
-        try
+        while (!ct.IsCancellationRequested)
         {
-            await foreach (var evt in newMsgStream.ResponseStream.ReadAllAsync(ct))
+            try
             {
-                await WriteSseEvent("new_message", new
+                var stream = updatesClient.SubscribeNewMessages(
+                    new SubscribeNewMessagesRequest(), new CallOptions(headers: metadata, cancellationToken: ct));
+                await foreach (var evt in stream.ResponseStream.ReadAllAsync(ct))
                 {
-                    chatId = evt.ChatId,
-                    message = MapMessage(evt.Message)
-                });
+                    await WriteSseEvent("new_message", new
+                    {
+                        chatId = evt.ChatId,
+                        message = MapMessage(evt.Message)
+                    });
+                }
             }
+            catch (OperationCanceledException) { break; }
+            catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled) { break; }
+            catch { await Task.Delay(3000, ct); }
         }
-        catch (OperationCanceledException) { }
-        catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled) { }
     }, ct);
 
     var task2 = Task.Run(async () =>
     {
-        try
+        while (!ct.IsCancellationRequested)
         {
-            await foreach (var evt in readStream.ResponseStream.ReadAllAsync(ct))
+            try
             {
-                await WriteSseEvent("message_read", new
+                var stream = updatesClient.SubscribeMessagesRead(
+                    new SubscribeMessagesReadRequest(), new CallOptions(headers: metadata, cancellationToken: ct));
+                await foreach (var evt in stream.ResponseStream.ReadAllAsync(ct))
                 {
-                    chatId = evt.ChatId,
-                    messageId = evt.MessageId,
-                    readBy = evt.NewReadBy.ToList()
-                });
+                    await WriteSseEvent("message_read", new
+                    {
+                        chatId = evt.ChatId,
+                        messageId = evt.MessageId,
+                        readBy = evt.NewReadBy.ToList()
+                    });
+                }
             }
+            catch (OperationCanceledException) { break; }
+            catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled) { break; }
+            catch { await Task.Delay(3000, ct); }
         }
-        catch (OperationCanceledException) { }
-        catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled) { }
     }, ct);
 
-    await Task.WhenAny(task1, task2);
+    await Task.WhenAll(task1, task2);
 });
 
 // GET /api/sse/online?userIds=1,2&token=X
@@ -589,7 +595,8 @@ app.MapGet("/api/sse/online", async (HttpContext httpCtx, OnlinerApi.OnlinerApiC
     catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled) { }
 });
 
-app.MapGet("/messenger", () => Results.File("wwwroot/messenger.html", "text/html"));
+app.MapGet("/messenger", (IWebHostEnvironment env) =>
+    Results.File(Path.Combine(env.WebRootPath, "messenger.html"), "text/html"));
 
 app.MapFallbackToFile("index.html");
 

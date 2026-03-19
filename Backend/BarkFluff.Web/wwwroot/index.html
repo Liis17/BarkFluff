@@ -798,8 +798,10 @@
 
         // --- Проверка при загрузке ---
         if (TokenStore.get()) {
+            document.body.style.visibility = 'hidden';
             getValidAccessToken().then(token => {
                 if (token) window.location.href = '/messenger';
+                else document.body.style.visibility = '';
             });
         }
 
