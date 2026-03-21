@@ -671,11 +671,33 @@ class GrpcManager {
     /**
      * Пересоздаёт все каналы принудительно.
      * Вызывается при возврате из фона, когда старые каналы могли сломаться (DNS resolution failure).
+     *
+     * Использует swap-then-close: сначала создаёт новые каналы, потом закрывает старые.
+     * Это исключает окно, в котором клиенты == null и IO-корутины падают с NPE.
      */
     fun recreateAllClients(context: Context, globalParam: GlobalParam) {
         Log.d(TAG, "Force-recreating all gRPC channels")
-        shutdown()
+
+        // 1. Сохраняем старые каналы для последующего закрытия
+        val oldChannels = listOfNotNull(
+            identityChannel, usersChannel, filesChannel,
+            messagesChannel, updatesChannel, onlinerChannel
+        )
+
+        // 2. Сбрасываем адреса, чтобы initAllClients не пропустил пересоздание (idempotency check)
+        identityAddress = null
+        usersAddress = null
+        filesAddress = null
+        messagesAddress = null
+        updatesAddress = null
+        onlinerAddress = null
+
+        // 3. Создаём новые каналы и клиенты — ссылки обновляются атомарно для каждого сервиса
         initAllClients(context, globalParam)
+
+        // 4. Закрываем старые каналы (in-flight RPC на старых каналах завершатся с ошибкой,
+        //    но новые запросы уже идут через новые каналы)
+        oldChannels.forEach { shutdownChannel(it) }
     }
 
     /**

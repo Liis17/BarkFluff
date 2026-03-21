@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="60"
+    android:viewportHeight="60">
+    <group
+        android:translateX="-24"
+        android:translateY="-24">
+        <!-- Barkfluff Logo - Triskelion (from ic_launcher_foreground, cropped to 24dp) -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M54,54m-2,0a2,2 0,1 1,4 0a2,2 0,1 1,-4 0" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M54,54c0,0 8,-20 20,-20c2,0 3,1 3,3c0,3 -5,5 -10,8c-8,5 -13,9 -13,9z" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M54,54c0,0 20,8 20,20c0,2 -1,3 -3,3c-3,0 -5,-5 -8,-10c-5,-8 -9,-13 -9,-13z" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M54,54c0,0 -8,20 -20,20c-2,0 -3,-1 -3,-3c0,-3 5,-5 10,-8c8,-5 13,-9 13,-9z" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M54,54c0,0 -20,-8 -20,-20c0,-2 1,-3 3,-3c3,0 5,5 8,10c5,8 9,13 9,13z" />
+    </group>
+</vector>

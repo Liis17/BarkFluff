@@ -795,7 +795,7 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadMessages() {
+    private fun loadMessages(isRetry: Boolean = false) {
         loadMessagesJob = lifecycleScope.launch {
             try {
                 val result = if (firstUnreadMessageId > 0) {
@@ -833,6 +833,13 @@ class ChatActivity : AppCompatActivity() {
                     // Отмечаем сообщения как прочитанные
                     markVisibleMessagesAsRead(messages)
                 } else {
+                    if (!isRetry) {
+                        // Первая попытка не удалась — каналы могли протухнуть после фона, retry
+                        Log.w(TAG, "Message load failed, retrying after channel refresh...")
+                        delay(300)
+                        loadMessages(isRetry = true)
+                        return@launch
+                    }
                     Toast.makeText(
                         this@ChatActivity,
                         "Ошибка загрузки сообщений",
@@ -841,6 +848,12 @@ class ChatActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading messages", e)
+                if (!isRetry) {
+                    Log.w(TAG, "Message load exception, retrying after channel refresh...")
+                    delay(300)
+                    loadMessages(isRetry = true)
+                    return@launch
+                }
             } finally {
                 isLoadingMessages = false
                 binding.loadingProgress.visibility = View.GONE
