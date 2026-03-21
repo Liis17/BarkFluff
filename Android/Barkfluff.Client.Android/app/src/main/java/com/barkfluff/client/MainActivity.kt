@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.OpenChatManager
 import com.barkfluff.client.databinding.ActivityMainBinding
 import com.barkfluff.client.deeplink.DeepLinkCommand
@@ -97,13 +98,24 @@ class MainActivity : AppCompatActivity() {
         // Проверяем инициализацию gRPC клиентов
         val app = applicationContext as BarkFluffApplication
         if (!app.grpcManager.isInitialized()) {
-            // Приложение было убито → gRPC не инициализирован.
-            // Сохраняем chatId и перенаправляем через SplashActivity для инициализации.
-            Log.d("MainActivity", "gRPC not initialized, redirecting through SplashActivity")
-            pendingChatId = chatId
-            startActivity(Intent(this, SplashActivity::class.java))
-            finish()
-            return
+            val globalParam = GlobalParam(this)
+            val hasToken = globalParam.accessToken != null
+            val tokenExpiration = globalParam.accessTokenExpiration
+            val bufferMs = 5 * 60 * 1000L
+            val isExpired = System.currentTimeMillis() + bufferMs >= tokenExpiration
+
+            if (hasToken && !isExpired) {
+                // Токен валиден — инициализируем gRPC на месте
+                Log.d("MainActivity", "Token valid, initializing gRPC in-place")
+                app.grpcManager.initAllClients(this, globalParam)
+            } else {
+                // Нужна авторизация через SplashActivity
+                Log.d("MainActivity", "gRPC not initialized, redirecting through SplashActivity")
+                pendingChatId = chatId
+                startActivity(Intent(this, SplashActivity::class.java))
+                finish()
+                return
+            }
         }
 
         // gRPC готов — открываем ChatActivity

@@ -194,7 +194,7 @@ object NotificationHelper {
                 .addMessage(displayText, System.currentTimeMillis(), senderPerson)
 
             val builder = NotificationCompat.Builder(context, CHANNEL_CHAT_MESSAGES)
-                .setSmallIcon(R.drawable.ic_chat_bubble)
+                .setSmallIcon(R.drawable.ic_notification)
                 .setLargeIcon(softBitmap)
                 .setColor(context.resources.getColor(R.color.primary, null))
                 .setAutoCancel(true)
@@ -234,7 +234,7 @@ object NotificationHelper {
     ) {
         try {
             val builder = NotificationCompat.Builder(context, CHANNEL_SYSTEM)
-                .setSmallIcon(R.drawable.ic_chat_bubble)
+                .setSmallIcon(R.drawable.ic_notification)
                 .setColor(context.resources.getColor(R.color.primary, null))
                 .setContentTitle(title)
                 .setContentText(text)

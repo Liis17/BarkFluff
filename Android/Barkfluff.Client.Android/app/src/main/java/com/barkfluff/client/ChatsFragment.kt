@@ -33,6 +33,7 @@ class ChatsFragment : Fragment() {
     private lateinit var grpcManager: GrpcManager
     private lateinit var chatAdapter: ChatAdapter
     private lateinit var realtimeService: RealtimeService
+    private var loadChatsJob: Job? = null
 
     companion object {
         private const val TAG = "ChatsFragment"
@@ -234,7 +235,8 @@ class ChatsFragment : Fragment() {
     }
 
     private fun loadChats() {
-        viewLifecycleOwner.lifecycleScope.launch {
+        loadChatsJob?.cancel()
+        loadChatsJob = viewLifecycleOwner.lifecycleScope.launch {
             showLoading(true)
 
             val result = grpcManager.getChats()

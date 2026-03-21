@@ -6,6 +6,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.notifications.NotificationHelper
 import kotlinx.coroutines.launch
 
 /**
@@ -192,7 +193,19 @@ class SplashActivity : AppCompatActivity() {
     }
 
     private fun navigateToChats() {
+        // Инициализируем app-level grpcManager до перехода в MainActivity
+        val app = applicationContext as BarkFluffApplication
+        if (!app.grpcManager.isInitialized()) {
+            app.grpcManager.initAllClients(this, globalParam)
+        }
+
         val intent = Intent(this, MainActivity::class.java)
+        // Пробрасываем chatId из уведомления, если есть
+        val chatId = MainActivity.pendingChatId
+        if (chatId != null) {
+            intent.putExtra(NotificationHelper.EXTRA_CHAT_ID, chatId)
+            MainActivity.pendingChatId = null
+        }
         startActivity(intent)
         finish()
     }
