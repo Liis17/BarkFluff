@@ -12,7 +12,6 @@
     d:DesignWidth="1280"
     Tag="MessengerPage - Главная страница мессенджера"
     mc:Ignorable="d">
-
     <UserControl.Resources>
         <Storyboard x:Key="SlideDownAndFadeIn">
             <DoubleAnimation
