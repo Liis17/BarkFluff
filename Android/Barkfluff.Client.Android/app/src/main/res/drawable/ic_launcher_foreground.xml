@@ -4,30 +4,39 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    
-    <!-- Barkfluff Logo - Three-armed spiral/triskelion shape -->
+
+    <!-- BarkFluff Logo - Four curved arms forming a pinwheel -->
+
+    <!-- Arm 1 - from upper-right to center -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,54m-2,0a2,2 0,1 1,4 0a2,2 0,1 1,-4 0" />
-    
-    <!-- Arm 1 - curves up and right -->
+        android:pathData="M66,20 C80,34 60,50 54,54"
+        android:strokeColor="#222222"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+
+    <!-- Arm 2 - from lower-right to center -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,54c0,0 8,-20 20,-20c2,0 3,1 3,3c0,3 -5,5 -10,8c-8,5 -13,9 -13,9z" />
-    
-    <!-- Arm 2 - curves down and right -->
+        android:pathData="M88,66 C74,80 58,60 54,54"
+        android:strokeColor="#222222"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+
+    <!-- Arm 3 - from lower-left to center -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,54c0,0 20,8 20,20c0,2 -1,3 -3,3c-3,0 -5,-5 -8,-10c-5,-8 -9,-13 -9,-13z" />
-    
-    <!-- Arm 3 - curves down and left -->
+        android:pathData="M42,88 C28,74 48,58 54,54"
+        android:strokeColor="#222222"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+
+    <!-- Arm 4 - from upper-left to center -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,54c0,0 -8,20 -20,20c-2,0 -3,-1 -3,-3c0,-3 5,-5 10,-8c8,-5 13,-9 13,-9z" />
-    
-    <!-- Arm 4 - curves up and left -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,54c0,0 -20,-8 -20,-20c0,-2 1,-3 3,-3c3,0 5,5 8,10c5,8 9,13 9,13z" />
-        
+        android:pathData="M20,42 C34,28 50,48 54,54"
+        android:strokeColor="#222222"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+
 </vector>
