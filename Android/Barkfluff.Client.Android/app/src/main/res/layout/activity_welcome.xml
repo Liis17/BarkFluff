@@ -42,7 +42,7 @@
                     android:layout_height="match_parent"
                     android:contentDescription="@string/app_name"
                     android:padding="28dp"
-                    android:src="@drawable/ic_launcher_foreground" />
+                    android:src="@mipmap/ic_launcher" />
 
             </com.google.android.material.card.MaterialCardView>
 
