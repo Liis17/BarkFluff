@@ -2017,6 +2017,9 @@ jobs:
     needs: detect-changes
     if: needs.detect-changes.outputs.android-client == 'true'
     runs-on: self-hosted
+    env:
+      ANDROID_HOME: /home/liis/android-sdk
+      ANDROID_SDK_ROOT: /home/liis/android-sdk
     defaults:
       run:
         working-directory: Android/Barkfluff.Client.Android
@@ -2043,6 +2046,13 @@ jobs:
         run: |
           dos2unix gradlew
           chmod +x gradlew
+
+      - name: Настройка Android SDK
+        if: steps.approval.outcome == 'success'
+        run: |
+          echo "sdk.dir=${ANDROID_HOME}" > local.properties
+          echo "ANDROID_HOME=${ANDROID_HOME}"
+          test -d "${ANDROID_HOME}"
 
       - name: Сборка APK
         if: steps.approval.outcome == 'success'
