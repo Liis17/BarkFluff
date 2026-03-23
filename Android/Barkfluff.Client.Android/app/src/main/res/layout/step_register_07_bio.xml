@@ -65,7 +65,7 @@
                         android:contentDescription="Avatar preview"
                         android:padding="0dp"
                         android:scaleType="centerCrop"
-                        android:src="@drawable/ic_launcher_foreground"
+                        android:src="@mipmap/ic_launcher"
                         app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
 
                 </com.google.android.material.card.MaterialCardView>

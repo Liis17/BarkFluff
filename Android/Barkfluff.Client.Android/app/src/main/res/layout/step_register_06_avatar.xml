@@ -69,7 +69,7 @@
                             android:contentDescription="Avatar placeholder"
                             android:padding="50dp"
                             android:scaleType="centerCrop"
-                            android:src="@drawable/ic_launcher_foreground" />
+                            android:src="@mipmap/ic_launcher" />
 
                         <!-- Cropped image preview (hidden initially) -->
                         <ImageView
