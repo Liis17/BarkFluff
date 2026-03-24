@@ -89,11 +89,17 @@ class DeviceAdapter(
                 combinedName.contains("steam deck") || combinedName.contains("steamdeck") -> R.drawable.ic_steam_deck
                 os.contains("steamos") || os.contains("steam os") -> R.drawable.ic_steam_deck
 
+                // VR-гарнитура
+                isVrDevice(os, combinedName) -> R.drawable.ic_vr_headset
+
                 // Google Pixel
                 originalName.contains("pixel") -> R.drawable.ic_pixel
 
                 // Samsung Galaxy Ultra
                 isSamsungUltra(originalName) -> R.drawable.ic_samsung_ultra
+
+                // iPhone
+                originalName.contains("iphone") -> R.drawable.ic_iphone
 
                 // Tablet / iPad
                 os.contains("ipad") || os.contains("tablet") -> R.drawable.ic_tablet
@@ -108,6 +114,13 @@ class DeviceAdapter(
                 // Smartphone (по умолчанию)
                 else -> R.drawable.ic_smartphone
             }
+        }
+
+        private fun isVrDevice(os: String, name: String): Boolean {
+            val vrKeywords = listOf("quest", "oculus", "pico", "vive", "valve index", "vision pro")
+            if (vrKeywords.any { name.contains(it) }) return true
+            if (os.contains("vr") || os.contains("xros") || os.contains("quest")) return true
+            return false
         }
 
         private fun isSamsungUltra(name: String): Boolean {
