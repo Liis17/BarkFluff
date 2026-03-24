@@ -1951,6 +1951,7 @@ jobs:
           fi
           curl -f -X POST "${{ secrets.CLIENT_STORAGE_URL }}/set/barkfluffwindows/${CHANNEL}" \
             -H "Authorization: Bearer ${{ secrets.CLIENT_STORAGE_TOKEN }}" \
+            -H "X-App-Version: ${{ steps.meta.outputs.version }}" \
             -F "file=@wpf-build.zip"
 
       - name: "\U0001F6AB Сборка отменена"
@@ -2071,6 +2072,14 @@ jobs:
           echo "path=$APK_PATH" >> "$GITHUB_OUTPUT"
           echo "Found APK: $APK_PATH"
 
+      - name: Get version
+        if: steps.approval.outcome == 'success'
+        id: meta
+        run: |
+          VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts || echo "0.0.0")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Version: $VERSION"
+
       - name: "\U0001F4E4 Загрузка на сервер обновлений"
         if: steps.approval.outcome == 'success'
         run: |
@@ -2081,6 +2090,7 @@ jobs:
           fi
           curl -f -X POST "${{ secrets.CLIENT_STORAGE_URL }}/set/barkfluffkotlin/${CHANNEL}" \
             -H "Authorization: Bearer ${{ secrets.CLIENT_STORAGE_TOKEN }}" \
+            -H "X-App-Version: ${{ steps.meta.outputs.version }}" \
             -F "file=@${{ steps.apk.outputs.path }}"
 
       - name: "\U0001F6AB Сборка отменена"
