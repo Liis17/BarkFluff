@@ -102,6 +102,9 @@ class DevicesActivity : AppCompatActivity() {
 
         // Заполняем текущее устройство
         if (currentSession != null) {
+            // Устанавливаем иконку устройства
+            binding.imageCurrentDeviceIcon.setImageResource(DeviceAdapter.getDeviceIcon(currentSession))
+
             // Если есть кастомное имя - показываем его, иначе только оригинальное
             if (currentSession.customName.isNotEmpty()) {
                 binding.textCurrentDeviceName.text = currentSession.customName
