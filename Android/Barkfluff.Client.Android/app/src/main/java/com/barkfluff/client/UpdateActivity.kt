@@ -5,9 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
@@ -41,6 +39,7 @@ class UpdateActivity : AppCompatActivity() {
 
     private var pendingDownloadChannel: String? = null
     private var downloadId: Long = -1
+    private var downloadFileName: String? = null
 
     companion object {
         private const val TAG = "UpdateActivity"
@@ -61,7 +60,8 @@ class UpdateActivity : AppCompatActivity() {
         override fun onReceive(context: Context, intent: Intent) {
             val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
             if (id == downloadId) {
-                onDownloadComplete()
+                // Резервный путь — если корутина трекинга не поймала завершение
+                installDownloadedApk()
             }
         }
     }
@@ -227,6 +227,7 @@ class UpdateActivity : AppCompatActivity() {
     private fun startDownload(channel: String) {
         val url = UpdateChecker.getDownloadUrl(channel)
         val fileName = "barkfluff_${channel}_update.apk"
+        downloadFileName = fileName
 
         // Удаляем старый файл если есть
         val file = File(
@@ -258,6 +259,7 @@ class UpdateActivity : AppCompatActivity() {
 
     private fun trackDownloadProgress(dm: DownloadManager) {
         lifecycleScope.launch {
+            var finalStatus = -1
             while (isActive) {
                 val query = DownloadManager.Query().setFilterById(downloadId)
                 val cursor = dm.query(query)
@@ -282,6 +284,7 @@ class UpdateActivity : AppCompatActivity() {
                     if (status == DownloadManager.STATUS_SUCCESSFUL ||
                         status == DownloadManager.STATUS_FAILED
                     ) {
+                        finalStatus = status
                         break
                     }
                 } else {
@@ -289,6 +292,19 @@ class UpdateActivity : AppCompatActivity() {
                     break
                 }
                 delay(300)
+            }
+
+            // Обрабатываем завершение прямо здесь
+            binding.buttonUpdateRelease.isEnabled = true
+            binding.buttonUpdateBeta.isEnabled = true
+
+            if (finalStatus == DownloadManager.STATUS_SUCCESSFUL) {
+                binding.textDownloadStatus.text = "Загрузка завершена"
+                binding.progressDownload.progress = 100
+                installDownloadedApk()
+            } else {
+                binding.textDownloadStatus.text = "Ошибка загрузки"
+                Toast.makeText(this@UpdateActivity, "Ошибка загрузки обновления", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -301,34 +317,20 @@ class UpdateActivity : AppCompatActivity() {
         }
     }
 
-    private fun onDownloadComplete() {
-        binding.textDownloadStatus.text = "Загрузка завершена"
-        binding.progressDownload.progress = 100
-        binding.buttonUpdateRelease.isEnabled = true
-        binding.buttonUpdateBeta.isEnabled = true
-
-        val dm = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
-        val query = DownloadManager.Query().setFilterById(downloadId)
-        val cursor = dm.query(query)
-        if (cursor != null && cursor.moveToFirst()) {
-            val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
-            if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                val localUri = cursor.getString(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_LOCAL_URI))
-                cursor.close()
-                installApk(Uri.parse(localUri))
-            } else {
-                cursor.close()
-                binding.textDownloadStatus.text = "Ошибка загрузки"
-                Toast.makeText(this, "Ошибка загрузки обновления", Toast.LENGTH_SHORT).show()
-            }
-        } else {
-            cursor?.close()
-        }
-    }
-
-    private fun installApk(fileUri: Uri) {
+    private fun installDownloadedApk() {
         try {
-            val file = File(fileUri.path!!)
+            val fileName = downloadFileName ?: return
+            val file = File(
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                fileName
+            )
+
+            if (!file.exists()) {
+                Log.e(TAG, "Downloaded APK not found: ${file.absolutePath}")
+                Toast.makeText(this, "Файл обновления не найден", Toast.LENGTH_SHORT).show()
+                return
+            }
+
             val contentUri = FileProvider.getUriForFile(
                 this,
                 "${packageName}.fileprovider",
