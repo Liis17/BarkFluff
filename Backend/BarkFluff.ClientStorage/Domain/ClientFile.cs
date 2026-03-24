@@ -19,4 +19,6 @@ public class ClientFile
     public string Checksum { get; set; } = string.Empty;
 
     public DateTime UploadedAt { get; set; }
+
+    public string? Version { get; set; }
 }
