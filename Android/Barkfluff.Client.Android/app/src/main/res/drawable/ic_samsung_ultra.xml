@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Samsung Galaxy Ultra вид сзади: корпус + вертикальные камеры-кружки -->
+    <!-- Корпус телефона (угловатый, как Ultra) -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M16,1H8C6.9,1 6,1.9 6,3v18c0,1.1 0.9,2 2,2h8c1.1,0 2,-0.9 2,-2V3C18,1.9 17.1,1 16,1zM16,21H8V3h8v18z"/>
+    <!-- Камера 1 (основная, большая) -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M10,5.5m-1.2,0a1.2,1.2 0,1 1,2.4 0a1.2,1.2 0,1 1,-2.4 0"/>
+    <!-- Камера 2 (ультраширик) -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M10,8.5m-1.0,0a1.0,1.0 0,1 1,2.0 0a1.0,1.0 0,1 1,-2.0 0"/>
+    <!-- Камера 3 (телефото) -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M10,11.3m-0.9,0a0.9,0.9 0,1 1,1.8 0a0.9,0.9 0,1 1,-1.8 0"/>
+    <!-- Камера 4 (перископ) -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M10,13.9m-0.7,0a0.7,0.7 0,1 1,1.4 0a0.7,0.7 0,1 1,-1.4 0"/>
+    <!-- Вспышка -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M13,5.5m-0.4,0a0.4,0.4 0,1 1,0.8 0a0.4,0.4 0,1 1,-0.8 0"/>
+</vector>

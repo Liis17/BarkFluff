@@ -43,7 +43,7 @@ class DeviceAdapter(
             }
 
             // Выбираем иконку в зависимости от типа устройства
-            binding.imageDeviceIcon.setImageResource(getDeviceIcon(session))
+            binding.imageDeviceIcon.setImageResource(DeviceAdapter.getDeviceIcon(session))
 
             binding.root.setOnClickListener {
                 onItemClick(session)
@@ -72,45 +72,62 @@ class DeviceAdapter(
         }
     }
 
-    /**
-     * Возвращает ID ресурса иконки в зависимости от типа устройства.
-     */
-    private fun getDeviceIcon(session: GrpcManager.SessionData): Int {
-        val os = session.os.lowercase()
-        val originalName = session.originalName.lowercase()
-        val customName = session.customName.lowercase()
-        val combinedName = "$originalName $customName"
+    companion object {
+        /**
+         * Возвращает ID ресурса иконки в зависимости от типа устройства.
+         * Доступен извне для использования в DevicesActivity (текущее устройство).
+         */
+        fun getDeviceIcon(session: GrpcManager.SessionData): Int {
+            val os = session.os.lowercase()
+            val originalName = session.originalName.lowercase()
+            val customName = session.customName.lowercase()
+            val appName = session.appName.lowercase()
+            val combinedName = "$originalName $customName"
 
-        return when {
-            // Steam Deck (проверяем первым, так как специфичнее)
-            combinedName.contains("steam deck") || combinedName.contains("steamdeck") -> R.drawable.ic_steam_deck
-            os.contains("steamos") || os.contains("steam os") -> R.drawable.ic_steam_deck
+            return when {
+                // Steam Deck
+                combinedName.contains("steam deck") || combinedName.contains("steamdeck") -> R.drawable.ic_steam_deck
+                os.contains("steamos") || os.contains("steam os") -> R.drawable.ic_steam_deck
 
-            // Tablet / iPad
-            os.contains("ipad") || os.contains("tablet") -> R.drawable.ic_tablet
-            combinedName.contains("tablet") || combinedName.contains("ipad") || combinedName.contains("планшет") -> R.drawable.ic_tablet
+                // Google Pixel
+                originalName.contains("pixel") -> R.drawable.ic_pixel
 
-            // Desktop / PC (проверяем имя и ОС)
-            isDesktop(os, combinedName) -> R.drawable.ic_desktop
+                // Samsung Galaxy Ultra
+                isSamsungUltra(originalName) -> R.drawable.ic_samsung_ultra
 
-            // Smartphone (по умолчанию для Android/iOS)
-            else -> R.drawable.ic_smartphone
+                // Tablet / iPad
+                os.contains("ipad") || os.contains("tablet") -> R.drawable.ic_tablet
+                combinedName.contains("tablet") || combinedName.contains("ipad") || combinedName.contains("планшет") -> R.drawable.ic_tablet
+
+                // Web-клиент
+                appName.contains("web") -> R.drawable.ic_web
+
+                // Desktop / PC (ноутбук)
+                isDesktop(os, combinedName) -> R.drawable.ic_desktop
+
+                // Smartphone (по умолчанию)
+                else -> R.drawable.ic_smartphone
+            }
         }
-    }
 
-    private fun isDesktop(os: String, name: String): Boolean {
-        // Проверка по ОС
-        val desktopOs = os.contains("windows") && !os.contains("phone") ||
-                os.contains("macos") || os.contains("mac os") ||
-                os.contains("linux") && !os.contains("android") ||
-                os.contains("ubuntu") || os.contains("fedora") || os.contains("debian")
+        private fun isSamsungUltra(name: String): Boolean {
+            if (name.contains("sm-s9")) return true
+            if (name.contains("galaxy") && name.contains("ultra")) return true
+            return false
+        }
 
-        // Проверка по имени устройства
-        val desktopName = name.contains("desktop") || name.contains(" pc") || name.contains("pc ") ||
-                name.contains("computer") || name.contains("windows") && !name.contains("phone") ||
-                name.contains("macbook") || name.contains("imac") || name.contains("macmini")
+        private fun isDesktop(os: String, name: String): Boolean {
+            val desktopOs = os.contains("windows") && !os.contains("phone") ||
+                    os.contains("macos") || os.contains("mac os") ||
+                    os.contains("linux") && !os.contains("android") ||
+                    os.contains("ubuntu") || os.contains("fedora") || os.contains("debian")
 
-        return desktopOs || desktopName
+            val desktopName = name.contains("desktop") || name.contains(" pc") || name.contains("pc ") ||
+                    name.contains("computer") || name.contains("windows") && !name.contains("phone") ||
+                    name.contains("macbook") || name.contains("imac") || name.contains("macmini")
+
+            return desktopOs || desktopName
+        }
     }
 
     class DeviceDiffCallback : DiffUtil.ItemCallback<GrpcManager.SessionData>() {
