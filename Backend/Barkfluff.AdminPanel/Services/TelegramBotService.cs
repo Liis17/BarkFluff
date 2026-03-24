@@ -2,6 +2,7 @@ using Barkfluff.AdminPanel.Models;
 
 using Microsoft.Extensions.Options;
 
+using System.Net;
 using System.Text;
 
 using Telegram.Bot;
@@ -38,12 +39,47 @@ public class TelegramBotService : IHostedService
                 "Telegram bot token is not configured. Please set 'Telegram:BotToken' in appsettings.json or via environment variable 'Telegram__BotToken'.");
         }
 
-        _botClient = new TelegramBotClient(settings.Value.BotToken);
+        _botClient = CreateBotClient(settings.Value);
+    }
+
+    private static ITelegramBotClient CreateBotClient(TelegramSettings settings)
+    {
+        if (string.IsNullOrWhiteSpace(settings.Proxy.Url))
+        {
+            return new TelegramBotClient(settings.BotToken);
+        }
+
+        if (!Uri.TryCreate(settings.Proxy.Url, UriKind.Absolute, out var proxyUri))
+        {
+            throw new InvalidOperationException(
+                "Telegram proxy URL is invalid. Please set 'Telegram:Proxy:Url' or environment variable 'Telegram__Proxy__Url' to a valid absolute URI.");
+        }
+
+        var proxy = new WebProxy(proxyUri);
+        if (!string.IsNullOrWhiteSpace(settings.Proxy.Username))
+        {
+            proxy.Credentials = new NetworkCredential(settings.Proxy.Username, settings.Proxy.Password);
+        }
+
+        var handler = new HttpClientHandler
+        {
+            UseProxy = true,
+            Proxy = proxy
+        };
+
+        var httpClient = new HttpClient(handler, disposeHandler: true);
+        return new TelegramBotClient(settings.BotToken, httpClient);
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Starting Telegram Bot Service...");
+
+        if (!string.IsNullOrWhiteSpace(_settings.Value.Proxy.Url) &&
+            Uri.TryCreate(_settings.Value.Proxy.Url, UriKind.Absolute, out var proxyUri))
+        {
+            _logger.LogInformation("Telegram bot proxy enabled: {Scheme}://{Host}:{Port}", proxyUri.Scheme, proxyUri.Host, proxyUri.Port);
+        }
 
         // Validate that admins are configured
         if (_settings.Value.ParsedAdmins.Count == 0)

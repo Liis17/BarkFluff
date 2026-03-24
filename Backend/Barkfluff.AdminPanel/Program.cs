@@ -235,6 +235,7 @@ public class TelegramSettings
 {
     public const string SectionName = "Telegram";
     public string BotToken { get; set; } = string.Empty;
+    public TelegramProxySettings Proxy { get; set; } = new();
 
     /// <summary>
     /// String containing admins in format "userId1:username1,userId2:username2"
@@ -251,6 +252,13 @@ public class TelegramSettings
     /// </summary>
     [Obsolete("Use ParsedAdmins instead")]
     public List<long> AdminUserIds => ParsedAdmins.Select(a => a.TelegramUserId).ToList();
+}
+
+public class TelegramProxySettings
+{
+    public string Url { get; set; } = string.Empty;
+    public string? Username { get; set; }
+    public string? Password { get; set; }
 }
 
 public class AdminUser
