@@ -39,20 +39,14 @@ public class TelegramBotService : IHostedService
                 "Telegram bot token is not configured. Please set 'Telegram:BotToken' in appsettings.json or via environment variable 'Telegram__BotToken'.");
         }
 
-        _botClient = CreateBotClient(settings.Value);
+        _botClient = CreateBotClient(settings.Value, logger);
     }
 
-    private static ITelegramBotClient CreateBotClient(TelegramSettings settings)
+    private static ITelegramBotClient CreateBotClient(TelegramSettings settings, ILogger logger)
     {
-        if (string.IsNullOrWhiteSpace(settings.Proxy.Url))
+        if (!TryGetProxyUri(settings.Proxy.Url, out var proxyUri))
         {
             return new TelegramBotClient(settings.BotToken);
-        }
-
-        if (!Uri.TryCreate(settings.Proxy.Url, UriKind.Absolute, out var proxyUri))
-        {
-            throw new InvalidOperationException(
-                "Telegram proxy URL is invalid. Please set 'Telegram:Proxy:Url' or environment variable 'Telegram__Proxy__Url' to a valid absolute URI.");
         }
 
         var proxy = new WebProxy(proxyUri);
@@ -68,7 +62,28 @@ public class TelegramBotService : IHostedService
         };
 
         var httpClient = new HttpClient(handler, disposeHandler: true);
+
+        logger.LogInformation("Telegram bot proxy enabled: {Scheme}://{Host}:{Port}", proxyUri.Scheme, proxyUri.Host, proxyUri.Port);
+
         return new TelegramBotClient(settings.BotToken, httpClient);
+    }
+
+    private static bool TryGetProxyUri(string? proxyUrl, out Uri proxyUri)
+    {
+        proxyUri = default!;
+
+        if (string.IsNullOrWhiteSpace(proxyUrl))
+        {
+            return false;
+        }
+
+        var normalizedProxyUrl = proxyUrl.Trim();
+        if (normalizedProxyUrl.StartsWith("socks://", StringComparison.OrdinalIgnoreCase))
+        {
+            normalizedProxyUrl = "socks5://" + normalizedProxyUrl[8..];
+        }
+
+        return Uri.TryCreate(normalizedProxyUrl, UriKind.Absolute, out proxyUri);
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -76,9 +91,9 @@ public class TelegramBotService : IHostedService
         _logger.LogInformation("Starting Telegram Bot Service...");
 
         if (!string.IsNullOrWhiteSpace(_settings.Value.Proxy.Url) &&
-            Uri.TryCreate(_settings.Value.Proxy.Url, UriKind.Absolute, out var proxyUri))
+            !TryGetProxyUri(_settings.Value.Proxy.Url, out _))
         {
-            _logger.LogInformation("Telegram bot proxy enabled: {Scheme}://{Host}:{Port}", proxyUri.Scheme, proxyUri.Host, proxyUri.Port);
+            _logger.LogWarning("Telegram proxy URL is invalid. The bot will start without a proxy. Configure 'Telegram:Proxy:Url' or 'Telegram__Proxy__Url' as a valid absolute URI.");
         }
 
         // Validate that admins are configured
