@@ -5,86 +5,64 @@
     android:viewportWidth="30"
     android:viewportHeight="20">
 
-    <!-- Основной корпус (скруглённый прямоугольник) -->
+    <!-- Корпус Steam Deck с грипами -->
     <path
         android:fillColor="@android:color/white"
         android:fillType="evenOdd"
         android:pathData="
-            M2,1
-            h26
-            q2,0 2,1.5
-            v15
-            q0,1.5 -2,1.5
-            H2
-            q-2,0 -2,-1.5
-            v-15
-            q0,-1.5 2,-1.5
+            M4,1
+            h22
+            q4,0 4,2.5
+            v13
+            q0,2.5 -4,2.5
+            H4
+            q-4,0 -4,-2.5
+            v-13
+            q0,-2.5 4,-2.5
             z
 
-            M11,4
-            h8
-            v12
-            h-8
-            V4
-            z
+            M10,3
+            h10
+            v13
+            H10
+            V3
+            z" />
 
-            M2,4
-            h4
-            v4
-            H2
-            V4
-            z
+    <!-- Левый стик -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M5,6.5
+            m-2,0
+            a2,2 0,1 1,4 0
+            a2,2 0,1 1,-4 0
+            M5,6.5
+            m-1,0
+            a1,1 0,1 0,2 0
+            a1,1 0,1 0,-2 0" />
 
-            M2,12
-            h4
-            v4
-            H2
-            v-4
-            z
+    <!-- Правый стик -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M25,12.5
+            m-2,0
+            a2,2 0,1 1,4 0
+            a2,2 0,1 1,-4 0
+            M25,12.5
+            m-1,0
+            a1,1 0,1 0,2 0
+            a1,1 0,1 0,-2 0" />
 
-            M3,9
-            h0.6
-            v0.5
-            h0.5
-            v0.6
-            h-0.5
-            v0.5
-            H3
-            v-0.5
-            H2.5
-            V9.5
-            H3
-            V9
-            z
+    <!-- D-pad (крестовина) -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M4,11.5h2v1H4v-1zM4.5,11h1v2h-1v-2z" />
 
-            M24,4
-            h4
-            v4
-            h-4
-            V4
-            z
-
-            M24,12
-            h4
-            v4
-            h-4
-            v-4
-            z
-
-            M25,9
-            h0.6
-            v0.5
-            h0.5
-            v0.6
-            h-0.5
-            v0.5
-            H25
-            v-0.5
-            h-0.5
-            V9.5
-            h0.5
-            V9
-            z
-        " />
-
+    <!-- Кнопки ABXY -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="
+            M25,5 m-0.6,0 a0.6,0.6 0,1 1,1.2 0 a0.6,0.6 0,1 1,-1.2 0
+            M23.5,6.5 m-0.6,0 a0.6,0.6 0,1 1,1.2 0 a0.6,0.6 0,1 1,-1.2 0
+            M26.5,6.5 m-0.6,0 a0.6,0.6 0,1 1,1.2 0 a0.6,0.6 0,1 1,-1.2 0
+            M25,8 m-0.6,0 a0.6,0.6 0,1 1,1.2 0 a0.6,0.6 0,1 1,-1.2 0" />
 </vector>
