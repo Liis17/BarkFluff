@@ -2055,6 +2055,11 @@ jobs:
           echo "ANDROID_HOME=${ANDROID_HOME}"
           test -d "${ANDROID_HOME}"
 
+      - name: Пометка beta-версии
+        if: steps.approval.outcome == 'success' && github.ref_name == 'dev'
+        run: |
+          sed -i 's/versionName\s*=\s*"\([^"]*\)"/versionName = "\1 beta"/' app/build.gradle.kts
+
       - name: Сборка APK
         if: steps.approval.outcome == 'success'
         env:
