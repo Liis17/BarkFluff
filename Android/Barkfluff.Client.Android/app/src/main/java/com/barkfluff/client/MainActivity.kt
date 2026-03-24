@@ -18,6 +18,7 @@ import com.barkfluff.client.databinding.ActivityMainBinding
 import com.barkfluff.client.deeplink.DeepLinkCommand
 import com.barkfluff.client.deeplink.DeepLinkHandler
 import com.barkfluff.client.notifications.NotificationHelper
+import com.barkfluff.client.utils.UpdateChecker
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
@@ -73,6 +74,7 @@ class MainActivity : AppCompatActivity() {
         setupBottomNavigation()
         handleChatIntent(intent)
         handlePendingDeepLink()
+        checkForUpdates()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -265,6 +267,24 @@ class MainActivity : AppCompatActivity() {
             R.id.navigation_chats -> TAB_CHATS
             R.id.navigation_profile -> TAB_PROFILE
             else -> TAB_CHATS
+        }
+    }
+
+    private fun checkForUpdates() {
+        lifecycleScope.launch {
+            try {
+                val currentVersion = GlobalParam.getAppVersion(this@MainActivity)
+                val hasUpdate = UpdateChecker.hasUpdate(currentVersion)
+                val badge = binding.bottomNavigation.getOrCreateBadge(R.id.navigation_profile)
+                if (hasUpdate) {
+                    badge.isVisible = true
+                    badge.backgroundColor = getColor(com.google.android.material.R.color.design_default_color_error)
+                } else {
+                    binding.bottomNavigation.removeBadge(R.id.navigation_profile)
+                }
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error checking for updates", e)
+            }
         }
     }
 

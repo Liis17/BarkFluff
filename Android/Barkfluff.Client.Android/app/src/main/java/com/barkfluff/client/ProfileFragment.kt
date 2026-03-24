@@ -63,6 +63,12 @@ class ProfileFragment : Fragment() {
         binding.itemNotifications.setOnClickListener {
             startActivity(Intent(requireContext(), NotificationSettingsActivity::class.java))
         }
+        binding.itemUpdate.setOnClickListener {
+            startActivity(Intent(requireContext(), UpdateActivity::class.java))
+        }
+        binding.itemAbout.setOnClickListener {
+            startActivity(Intent(requireContext(), AboutActivity::class.java))
+        }
     }
 
     private fun updateUI() {
