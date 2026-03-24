@@ -51,6 +51,9 @@ namespace BarkFluff.ClientStorage.Persistence.Migrations
                     b.Property<DateTime>("UploadedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Version")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ClientType", "ReleaseChannel");
