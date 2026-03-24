@@ -30,17 +30,33 @@ public class ClientStorageController : ControllerBase
     public Task<IActionResult> GetWindows()
         => DownloadClient(ClientType.Windows, ReleaseChannel.Release);
 
+    [HttpGet("/get/barkfluffwindows/version")]
+    public Task<IActionResult> GetWindowsVersion()
+        => GetVersion(ClientType.Windows, ReleaseChannel.Release);
+
     [HttpGet("/get/barkfluffwindows/{channel}")]
     public Task<IActionResult> GetWindowsChannel(string channel)
         => ParseChannelAndDownload(ClientType.Windows, channel);
+
+    [HttpGet("/get/barkfluffwindows/{channel}/version")]
+    public Task<IActionResult> GetWindowsChannelVersion(string channel)
+        => ParseChannelAndGetVersion(ClientType.Windows, channel);
 
     [HttpGet("/get/barkfluffkotlin")]
     public Task<IActionResult> GetKotlin()
         => DownloadClient(ClientType.Kotlin, ReleaseChannel.Release);
 
+    [HttpGet("/get/barkfluffkotlin/version")]
+    public Task<IActionResult> GetKotlinVersion()
+        => GetVersion(ClientType.Kotlin, ReleaseChannel.Release);
+
     [HttpGet("/get/barkfluffkotlin/{channel}")]
     public Task<IActionResult> GetKotlinChannel(string channel)
         => ParseChannelAndDownload(ClientType.Kotlin, channel);
+
+    [HttpGet("/get/barkfluffkotlin/{channel}/version")]
+    public Task<IActionResult> GetKotlinChannelVersion(string channel)
+        => ParseChannelAndGetVersion(ClientType.Kotlin, channel);
 
     [HttpPost("/set/barkfluffwindows")]
     [RequestSizeLimit(512 * 1024 * 1024)]
@@ -86,12 +102,38 @@ public class ClientStorageController : ControllerBase
         return await DownloadClient(clientType, releaseChannel);
     }
 
+    private async Task<IActionResult> ParseChannelAndGetVersion(ClientType clientType, string channel)
+    {
+        if (!TryParseChannel(channel, out var releaseChannel))
+            return BadRequest(new { error = "Неизвестный канал. Допустимые значения: release, beta" });
+
+        return await GetVersion(clientType, releaseChannel);
+    }
+
     private async Task<IActionResult> ParseChannelAndUpload(IFormFile file, ClientType clientType, string channel)
     {
         if (!TryParseChannel(channel, out var releaseChannel))
             return BadRequest(new { error = "Неизвестный канал. Допустимые значения: release, beta" });
 
         return await UploadClient(file, clientType, releaseChannel);
+    }
+
+    private async Task<IActionResult> GetVersion(ClientType clientType, ReleaseChannel releaseChannel)
+    {
+        var clientFile = await _db.ClientFiles
+            .Where(f => f.ClientType == clientType && f.ReleaseChannel == releaseChannel)
+            .OrderByDescending(f => f.UploadedAt)
+            .FirstOrDefaultAsync();
+
+        if (clientFile == null)
+            return NotFound(new { error = "Файл клиента не найден" });
+
+        return Ok(new
+        {
+            version = clientFile.Version,
+            uploadedAt = clientFile.UploadedAt,
+            fileName = clientFile.OriginalFileName
+        });
     }
 
     private async Task<IActionResult> DownloadClient(ClientType clientType, ReleaseChannel releaseChannel)
@@ -151,6 +193,9 @@ public class ClientStorageController : ControllerBase
                 "Файл {FileName} загружен в S3 как {S3Key}, checksum: {Checksum}",
                 file.FileName, s3Key, checksum);
 
+            // Считываем версию из заголовка (опционально)
+            var version = Request.Headers["X-App-Version"].FirstOrDefault();
+
             // Сохраняем запись в БД
             var clientFile = new ClientFile
             {
@@ -161,7 +206,8 @@ public class ClientStorageController : ControllerBase
                 ContentType = file.ContentType ?? "application/octet-stream",
                 FileSize = file.Length,
                 Checksum = checksum,
-                UploadedAt = DateTime.UtcNow
+                UploadedAt = DateTime.UtcNow,
+                Version = version
             };
 
             _db.ClientFiles.Add(clientFile);
