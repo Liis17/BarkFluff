@@ -4,28 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff — Мессенджер</title>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-dark: #0f172a;
-            --text-main: #ffffff;
-            --text-sub: #94a3b8;
-            --primary: #3b82f6;
-            --primary-hover: #2563eb;
-            --card-bg: rgba(30, 41, 59, 0.6);
-            --card-border: rgba(255, 255, 255, 0.1);
-            --input-bg: rgba(15, 23, 42, 0.6);
-            --input-border: rgba(255, 255, 255, 0.12);
-            --input-focus: rgba(59, 130, 246, 0.5);
-            --error: #E74856;
+            --bg-dark: #f5f5f5;
+            --text-main: #1a1a1a;
+            --text-sub: #6b7280;
+            --primary: #8c351c;
+            --primary-hover: #732c17;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --card-border: rgba(0, 0, 0, 0.08);
+            --input-bg: rgba(245, 245, 245, 0.8);
+            --input-border: rgba(0, 0, 0, 0.12);
+            --input-focus: rgba(140, 53, 28, 0.3);
+            --error: #dc2626;
             --success: #10b981;
-            --link: #60a5fa;
-            --msg-incoming-bg: linear-gradient(135deg, #3A3A3D, #2D2D30);
-            --msg-outgoing-bg: linear-gradient(135deg, #D49A7A, #C87E5B);
+            --link: #8c351c;
+            --msg-incoming-bg: linear-gradient(135deg, #e8e8e8, #dcdcdc);
+            --msg-outgoing-bg: linear-gradient(135deg, #f0c4a8, #e8a882);
             --online-color: #10b981;
-            --unread-badge-bg: #3b82f6;
+            --unread-badge-bg: #8c351c;
             --sidebar-width: 350px;
         }
 
@@ -58,8 +59,8 @@
             opacity: 0.3;
         }
 
-        .b1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: #4f46e5; }
-        .b2 { bottom: -10%; right: -10%; width: 40vw; height: 40vw; background: #0ea5e9; }
+        .b1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: #f0c4a8; }
+        .b2 { bottom: -10%; right: -10%; width: 40vw; height: 40vw; background: #fde8d0; }
 
         .app {
             position: relative;
@@ -73,7 +74,7 @@
         .sidebar {
             width: var(--sidebar-width);
             min-width: var(--sidebar-width);
-            background: rgba(15, 23, 42, 0.7);
+            background: rgba(255, 255, 255, 0.9);
             backdrop-filter: blur(24px);
             -webkit-backdrop-filter: blur(24px);
             border-right: 1px solid var(--card-border);
@@ -92,40 +93,44 @@
         .sidebar-header .logo-icon {
             width: 32px;
             height: 32px;
-            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
             border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            font-weight: 800;
-            color: white;
+            object-fit: cover;
             flex-shrink: 0;
         }
 
         .sidebar-header .logo-text {
             font-size: 18px;
             font-weight: 700;
-            background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+            background: linear-gradient(135deg, #1a1a1a 0%, #4a4a4a 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             flex: 1;
         }
 
-        .btn-logout {
-            background: none;
-            border: none;
-            color: var(--text-sub);
-            cursor: pointer;
-            padding: 6px;
-            border-radius: 6px;
-            transition: color 0.2s, background 0.2s;
-            font-size: 18px;
+        .sidebar-footer {
+            padding: 12px 16px;
+            border-top: 1px solid var(--card-border);
         }
 
-        .btn-logout:hover {
+        .btn-logout-sidebar {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            background: none;
+            border: none;
+            border-radius: 10px;
+            color: var(--text-sub);
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .btn-logout-sidebar:hover {
+            background: rgba(220, 38, 38, 0.08);
             color: var(--error);
-            background: rgba(231, 72, 86, 0.1);
         }
 
         .search-container {
@@ -150,7 +155,7 @@
             box-shadow: 0 0 0 3px var(--input-focus);
         }
 
-        .search-input::placeholder { color: rgba(148, 163, 184, 0.5); }
+        .search-input::placeholder { color: rgba(107, 114, 128, 0.6); }
 
         .search-wrapper {
             position: relative;
@@ -170,12 +175,12 @@
             flex: 1;
             overflow-y: auto;
             scrollbar-width: thin;
-            scrollbar-color: rgba(255,255,255,0.1) transparent;
+            scrollbar-color: rgba(0,0,0,0.1) transparent;
         }
 
         .chat-list::-webkit-scrollbar { width: 4px; }
         .chat-list::-webkit-scrollbar-track { background: transparent; }
-        .chat-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+        .chat-list::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 2px; }
 
         .chat-item {
             display: flex;
@@ -184,17 +189,17 @@
             padding: 12px 16px;
             cursor: pointer;
             transition: background 0.15s;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.04);
         }
 
-        .chat-item:hover { background: rgba(255, 255, 255, 0.05); }
-        .chat-item.active { background: rgba(59, 130, 246, 0.15); }
+        .chat-item:hover { background: rgba(0, 0, 0, 0.04); }
+        .chat-item.active { background: rgba(140, 53, 28, 0.08); }
 
         .chat-avatar {
             width: 50px;
             height: 50px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            background: linear-gradient(135deg, #c87e5b, #8c351c);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -220,7 +225,7 @@
             height: 12px;
             background: var(--online-color);
             border-radius: 50%;
-            border: 2px solid var(--bg-dark);
+            border: 2px solid #ffffff;
             display: none;
         }
 
@@ -287,7 +292,7 @@
             flex: 1;
             overflow-y: auto;
             scrollbar-width: thin;
-            scrollbar-color: rgba(255,255,255,0.1) transparent;
+            scrollbar-color: rgba(0,0,0,0.1) transparent;
         }
 
         .search-results.visible { display: block; }
@@ -302,7 +307,7 @@
             transition: background 0.15s;
         }
 
-        .search-result-item:hover { background: rgba(255, 255, 255, 0.05); }
+        .search-result-item:hover { background: rgba(0, 0, 0, 0.04); }
 
         .search-result-info .user-name { font-size: 15px; font-weight: 600; }
         .search-result-info .user-username { font-size: 13px; color: var(--text-sub); }
@@ -313,7 +318,7 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            background: rgba(15, 23, 42, 0.4);
+            background: rgba(255, 255, 255, 0.6);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
         }
@@ -341,6 +346,7 @@
         .chat-header {
             padding: 14px 20px;
             border-bottom: 1px solid var(--card-border);
+            background: rgba(255, 255, 255, 0.95);
             display: none;
             align-items: center;
             gap: 12px;
@@ -352,7 +358,8 @@
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            background: linear-gradient(135deg, #c87e5b, #8c351c);
+            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -370,7 +377,7 @@
         }
 
         .chat-header-info { flex: 1; }
-        .chat-header-name { font-size: 16px; font-weight: 600; }
+        .chat-header-name { font-size: 16px; font-weight: 600; cursor: pointer; }
         .chat-header-status { font-size: 12px; color: var(--text-sub); }
         .chat-header-status.online { color: var(--online-color); }
 
@@ -382,14 +389,14 @@
             flex-direction: column;
             gap: 4px;
             scrollbar-width: thin;
-            scrollbar-color: rgba(255,255,255,0.1) transparent;
+            scrollbar-color: rgba(0,0,0,0.1) transparent;
         }
 
         .messages-area.visible { display: flex; }
 
         .messages-area::-webkit-scrollbar { width: 4px; }
         .messages-area::-webkit-scrollbar-track { background: transparent; }
-        .messages-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+        .messages-area::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 2px; }
 
         .msg-group {
             display: flex;
@@ -527,7 +534,7 @@
             align-items: center;
             gap: 10px;
             padding: 8px 12px;
-            background: rgba(255, 255, 255, 0.08);
+            background: rgba(0, 0, 0, 0.05);
             border-radius: 10px;
             min-width: 240px;
             max-width: 350px;
@@ -548,7 +555,7 @@
         .audio-info { flex: 1; min-width: 0; }
         .audio-progress {
             height: 4px;
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(0, 0, 0, 0.1);
             border-radius: 2px;
             cursor: pointer;
             overflow: hidden;
@@ -574,14 +581,14 @@
             align-items: center;
             gap: 8px;
             padding: 8px 12px;
-            background: rgba(255, 255, 255, 0.08);
+            background: rgba(0, 0, 0, 0.05);
             border-radius: 8px;
             text-decoration: none;
             color: var(--text-main);
             font-size: 13px;
         }
 
-        .msg-attachments .attach-doc:hover { background: rgba(255, 255, 255, 0.12); }
+        .msg-attachments .attach-doc:hover { background: rgba(0, 0, 0, 0.08); }
         .attach-doc-icon { font-size: 20px; }
         .attach-doc-info { flex: 1; min-width: 0; }
         .attach-doc-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -597,17 +604,17 @@
 
         .msg-time {
             font-size: 11px;
-            color: rgba(255, 255, 255, 0.5);
+            color: rgba(0, 0, 0, 0.4);
         }
 
-        .msg-bubble.outgoing .msg-time { color: rgba(255, 255, 255, 0.7); }
+        .msg-bubble.outgoing .msg-time { color: rgba(0, 0, 0, 0.5); }
 
         .msg-status {
             font-size: 12px;
-            color: rgba(255, 255, 255, 0.5);
+            color: rgba(0, 0, 0, 0.4);
         }
 
-        .msg-bubble.outgoing .msg-status { color: rgba(255, 255, 255, 0.7); }
+        .msg-bubble.outgoing .msg-status { color: rgba(0, 0, 0, 0.5); }
 
         .msg-date-separator {
             text-align: center;
@@ -617,9 +624,10 @@
         .msg-date-separator span {
             font-size: 12px;
             color: var(--text-sub);
-            background: rgba(15, 23, 42, 0.6);
+            background: rgba(255, 255, 255, 0.9);
             padding: 4px 12px;
             border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
 
         .loading-messages {
@@ -637,6 +645,7 @@
         .input-bar {
             padding: 12px 20px;
             border-top: 1px solid var(--card-border);
+            background: rgba(255, 255, 255, 0.95);
             display: none;
             align-items: flex-end;
             gap: 10px;
@@ -658,7 +667,7 @@
 
         .btn-attach:hover {
             color: var(--primary);
-            background: rgba(59, 130, 246, 0.1);
+            background: rgba(140, 53, 28, 0.08);
         }
 
         .input-text {
@@ -684,10 +693,10 @@
             box-shadow: 0 0 0 3px var(--input-focus);
         }
 
-        .input-text::placeholder { color: rgba(148, 163, 184, 0.5); }
+        .input-text::placeholder { color: rgba(107, 114, 128, 0.6); }
 
         .btn-send {
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            background: linear-gradient(135deg, #8c351c, #a0442a);
             border: none;
             color: white;
             cursor: pointer;
@@ -705,7 +714,7 @@
 
         .btn-send:hover {
             transform: scale(1.05);
-            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+            box-shadow: 0 4px 15px rgba(140, 53, 28, 0.3);
         }
 
         .btn-send:disabled {
@@ -729,7 +738,7 @@
             display: flex;
             align-items: center;
             gap: 6px;
-            background: rgba(255, 255, 255, 0.08);
+            background: rgba(0, 0, 0, 0.05);
             padding: 4px 10px;
             border-radius: 8px;
             font-size: 12px;
@@ -764,6 +773,236 @@
             object-fit: contain;
             border-radius: 8px;
         }
+
+        /* Profile panel */
+        .profile-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 90;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .profile-overlay.visible { display: block; }
+
+        .profile-panel {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 380px;
+            height: 100%;
+            background: #ffffff;
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            animation: slideInRight 0.25s ease-out;
+        }
+
+        @keyframes slideInRight {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+
+        .profile-close {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--text-sub);
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            z-index: 1;
+        }
+
+        .profile-close:hover { background: rgba(0, 0, 0, 0.05); }
+
+        .profile-header {
+            padding: 32px 24px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .profile-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #c87e5b, #8c351c);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            font-weight: 700;
+            color: white;
+            overflow: hidden;
+        }
+
+        .profile-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .profile-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-main);
+            text-align: center;
+        }
+
+        .profile-username {
+            font-size: 14px;
+            color: var(--primary);
+            text-align: center;
+        }
+
+        .profile-status-line {
+            font-size: 13px;
+            color: var(--text-sub);
+        }
+
+        .profile-status-line.online { color: var(--online-color); }
+
+        .profile-bio {
+            font-size: 14px;
+            color: var(--text-main);
+            line-height: 1.5;
+            text-align: center;
+            max-width: 100%;
+            word-wrap: break-word;
+        }
+
+        .profile-info-section {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .profile-info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+        }
+
+        .profile-info-label {
+            font-size: 13px;
+            color: var(--text-sub);
+        }
+
+        .profile-info-value {
+            font-size: 13px;
+            color: var(--text-main);
+            font-weight: 500;
+        }
+
+        .profile-badges {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .profile-badge {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            background: rgba(140, 53, 28, 0.08);
+            border-radius: 12px;
+            font-size: 12px;
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        .profile-badge img {
+            width: 16px;
+            height: 16px;
+        }
+
+        .profile-media-section {
+            padding: 16px 24px;
+            flex: 1;
+        }
+
+        .profile-media-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 12px;
+            background: rgba(0, 0, 0, 0.04);
+            border-radius: 8px;
+            padding: 3px;
+        }
+
+        .profile-media-tab {
+            flex: 1;
+            padding: 8px 12px;
+            background: none;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            color: var(--text-sub);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .profile-media-tab.active {
+            background: #ffffff;
+            color: var(--primary);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+
+        .profile-media-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .profile-media-grid img {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: cover;
+            cursor: pointer;
+            transition: opacity 0.15s;
+        }
+
+        .profile-media-grid img:hover { opacity: 0.85; }
+
+        .profile-media-empty {
+            text-align: center;
+            color: var(--text-sub);
+            font-size: 13px;
+            padding: 24px 0;
+        }
+
+        .profile-file-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .profile-file-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            background: rgba(0, 0, 0, 0.03);
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--text-main);
+            font-size: 13px;
+            transition: background 0.15s;
+        }
+
+        .profile-file-item:hover { background: rgba(0, 0, 0, 0.06); }
     </style>
 </head>
 <body>
@@ -775,9 +1014,8 @@
     <div class="app">
         <div class="sidebar">
             <div class="sidebar-header">
-                <div class="logo-icon">B</div>
+                <img src="/favicon.ico" class="logo-icon" alt="BarkFluff">
                 <span class="logo-text">BarkFluff</span>
-                <button class="btn-logout" id="logoutBtn" title="Выйти">&#x2716;</button>
             </div>
 
             <div class="search-container">
@@ -789,6 +1027,11 @@
 
             <div class="search-results" id="searchResults"></div>
             <div class="chat-list" id="chatList"></div>
+            <div class="sidebar-footer">
+                <button class="btn-logout-sidebar" id="logoutBtn">
+                    <span>&#x1F6AA;</span> Выйти
+                </button>
+            </div>
         </div>
 
         <div class="chat-area">
@@ -821,6 +1064,35 @@
     <div class="image-overlay" id="imageOverlay">
         <img id="overlayImage" src="" alt="">
         <video id="overlayVideo" controls style="display:none;max-width:90vw;max-height:90vh;border-radius:8px;"></video>
+    </div>
+
+    <div class="profile-overlay" id="profileOverlay">
+        <div class="profile-panel">
+            <button class="profile-close" id="profileClose">&times;</button>
+            <div class="profile-header">
+                <div class="profile-avatar" id="profileAvatar"></div>
+                <div class="profile-name" id="profileName"></div>
+                <div class="profile-username" id="profileUsername"></div>
+                <div class="profile-status-line" id="profileStatus"></div>
+                <div class="profile-bio" id="profileBio"></div>
+                <div class="profile-badges" id="profileBadges"></div>
+            </div>
+            <div class="profile-info-section">
+                <div class="profile-info-item">
+                    <span class="profile-info-label">Регистрация</span>
+                    <span class="profile-info-value" id="profileRegDate"></span>
+                </div>
+            </div>
+            <div class="profile-media-section">
+                <div class="profile-media-tabs">
+                    <button class="profile-media-tab active" data-type="media">Медиа</button>
+                    <button class="profile-media-tab" data-type="files">Файлы</button>
+                </div>
+                <div id="profileMediaContent">
+                    <div class="profile-media-grid" id="profileMediaGrid"></div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -918,21 +1190,28 @@
 
         // ========== API LAYER ==========
 
+        let refreshPromise = null;
+
         async function apiRefresh() {
-            const refreshToken = TokenStore.getRefreshToken();
-            if (!refreshToken) return null;
-            const res = await fetch('/api/auth/refresh', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ refreshToken })
-            });
-            if (!res.ok) { TokenStore.clear(); return null; }
-            const data = await res.json();
-            const stored = TokenStore.get();
-            stored.accessToken = data.accessToken;
-            stored.accessTokenExpiration = data.expiration;
-            TokenStore.save(stored);
-            return data.accessToken;
+            if (refreshPromise) return refreshPromise;
+            refreshPromise = (async () => {
+                const refreshToken = TokenStore.getRefreshToken();
+                if (!refreshToken) return null;
+                const res = await fetch('/api/auth/refresh', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refreshToken })
+                });
+                if (!res.ok) { TokenStore.clear(); return null; }
+                const data = await res.json();
+                const stored = TokenStore.get();
+                stored.accessToken = data.accessToken;
+                stored.accessTokenExpiration = data.expiration;
+                TokenStore.save(stored);
+                return data.accessToken;
+            })();
+            try { return await refreshPromise; }
+            finally { refreshPromise = null; }
         }
 
         async function getValidAccessToken() {
@@ -952,6 +1231,11 @@
                     'X-Os-Name': getOsName(),
                     ...(opts.headers || {})
                 };
+
+                // Don't set Content-Type for FormData — browser sets it with boundary
+                if (opts.body instanceof FormData) {
+                    delete headers['Content-Type'];
+                }
 
                 let res = await fetch(path, { ...opts, headers });
 
@@ -1668,15 +1952,24 @@
 
             sendBtn.disabled = true;
 
-            // Upload pending files
+            // Upload pending files via proxy to Files service
             const fileIds = [];
             for (const pf of pendingFiles) {
                 try {
-                    await fetch(pf.uploadUrl, { method: 'PUT', body: pf.file });
-                    fileIds.push(pf.fileId);
+                    const formData = new FormData();
+                    formData.append('file', pf.file, pf.file.name);
+                    const uploadRes = await API.request(`/api/files/upload/${pf.fileId}`, { method: 'POST', body: formData });
+                    if (uploadRes?.fileId) fileIds.push(pf.fileId);
+                    else fileIds.push(pf.fileId); // assume success if no error thrown
                 } catch (e) {
                     console.error('File upload failed:', e);
                 }
+            }
+
+            // Guard: don't send empty message if all uploads failed
+            if (!text && fileIds.length === 0) {
+                sendBtn.disabled = false;
+                return;
             }
 
             const body = { chatId: currentChatId, text: text || null, fileIds: fileIds.length > 0 ? fileIds : null };
@@ -1737,9 +2030,9 @@
             for (const file of files) {
                 const fileType = getUploadFileType(file.type);
                 const data = await API.get(`/api/files/upload-url?fileType=${fileType}`);
-                if (!data?.url || !data?.fileId) continue;
+                if (!data?.fileId) continue;
 
-                pendingFiles.push({ file, fileId: data.fileId, uploadUrl: data.url });
+                pendingFiles.push({ file, fileId: data.fileId });
             }
 
             renderFilePreview();
@@ -1799,11 +2092,13 @@
 
         // ========== SSE ==========
 
-        function connectSSE() {
-            const token = TokenStore.getAccessToken();
+        let sseUpdatesBackoff = 1000;
+        let sseOnlineBackoff = 1000;
+
+        async function connectSSE() {
+            const token = await getValidAccessToken();
             if (!token) return;
 
-            // Updates stream
             if (sseUpdates) sseUpdates.close();
             sseUpdates = new EventSource(`/api/sse/updates?token=${encodeURIComponent(token)}`);
 
@@ -1821,19 +2116,20 @@
                 } catch {}
             });
 
+            sseUpdates.onopen = () => { sseUpdatesBackoff = 1000; };
+
             sseUpdates.onerror = async () => {
                 sseUpdates.close();
-                if (TokenStore.isAccessExpired()) {
-                    await API.get('/api/chats?offset=0&size=1');
-                }
-                setTimeout(connectSSE, 3000);
+                await getValidAccessToken();
+                setTimeout(connectSSE, sseUpdatesBackoff);
+                sseUpdatesBackoff = Math.min(sseUpdatesBackoff * 2, 30000);
             };
         }
 
-        function connectOnlineSSE(userIds) {
+        async function connectOnlineSSE(userIds) {
             if (userIds.length === 0) return;
 
-            const token = TokenStore.getAccessToken();
+            const token = await getValidAccessToken();
             if (!token) return;
 
             if (sseOnline) sseOnline.close();
@@ -1846,12 +2142,13 @@
                 } catch {}
             });
 
+            sseOnline.onopen = () => { sseOnlineBackoff = 1000; };
+
             sseOnline.onerror = async () => {
                 sseOnline.close();
-                if (TokenStore.isAccessExpired()) {
-                    await API.get('/api/chats?offset=0&size=1');
-                }
-                setTimeout(() => connectOnlineSSE(Array.from(onlineSubscribedUserIds)), 3000);
+                await getValidAccessToken();
+                setTimeout(() => connectOnlineSSE(Array.from(onlineSubscribedUserIds)), sseOnlineBackoff);
+                sseOnlineBackoff = Math.min(sseOnlineBackoff * 2, 30000);
             };
         }
 
@@ -1907,7 +2204,11 @@
             // Update unread badge in chat list
             const chat = chats.find(c => c.id === chatId);
             if (chat && readBy.includes(myUserId)) {
-                chat.countUnread = Math.max(0, (chat.countUnread || 0) - 1);
+                if (chatId === currentChatId) {
+                    chat.countUnread = 0;
+                } else {
+                    chat.countUnread = Math.max(0, (chat.countUnread || 0) - 1);
+                }
                 renderChatList();
             }
         }
@@ -2059,8 +2360,191 @@
 
         // ========== ONLINE KEEPALIVE ==========
 
-        setInterval(() => API.postJson('/api/online/ping', {}), 60000);
+        setInterval(() => API.postJson('/api/online/ping', {}), 30000);
         API.postJson('/api/online/ping', {});
+
+        // ========== PROACTIVE TOKEN REFRESH ==========
+
+        setInterval(async () => {
+            if (TokenStore.isAccessExpired()) {
+                const token = await apiRefresh();
+                if (token) {
+                    // Reconnect SSE with fresh token
+                    connectSSE();
+                    if (onlineSubscribedUserIds.size > 0) {
+                        connectOnlineSSE(Array.from(onlineSubscribedUserIds));
+                    }
+                }
+            }
+        }, 60000);
+
+        // ========== USER PROFILE ==========
+
+        const profileOverlay = $('#profileOverlay');
+        const profileClose = $('#profileClose');
+        const profileAvatar = $('#profileAvatar');
+        const profileName = $('#profileName');
+        const profileUsername = $('#profileUsername');
+        const profileStatus = $('#profileStatus');
+        const profileBio = $('#profileBio');
+        const profileBadges = $('#profileBadges');
+        const profileRegDate = $('#profileRegDate');
+        const profileMediaGrid = $('#profileMediaGrid');
+        const profileMediaContent = $('#profileMediaContent');
+        let currentProfileUserId = null;
+
+        async function openProfile(userId) {
+            if (!userId) return;
+            currentProfileUserId = userId;
+
+            const data = await API.get(`/api/users/${userId}`);
+            if (!data?.user) return;
+            const user = data.user;
+
+            // Avatar
+            const initial = (user.firstName || user.username || '?')[0].toUpperCase();
+            if (user.profilePicture) {
+                profileAvatar.innerHTML = `<img src="${user.profilePicture}" alt="">`;
+            } else {
+                profileAvatar.innerHTML = initial;
+            }
+
+            profileName.textContent = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.username;
+            profileUsername.textContent = user.username ? `@${user.username}` : '';
+            profileBio.textContent = user.bio || '';
+            profileBio.style.display = user.bio ? 'block' : 'none';
+
+            // Online status
+            const online = isUserOnline(userId);
+            profileStatus.textContent = online ? 'в сети' : 'не в сети';
+            profileStatus.className = 'profile-status-line' + (online ? ' online' : '');
+
+            // Registration date
+            if (user.registrationDate) {
+                const d = new Date(user.registrationDate);
+                profileRegDate.textContent = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+            } else {
+                profileRegDate.textContent = '—';
+            }
+
+            // Badges
+            profileBadges.innerHTML = '';
+            if (user.badges && user.badges.length > 0) {
+                for (const badge of user.badges) {
+                    const el = document.createElement('div');
+                    el.className = 'profile-badge';
+                    el.innerHTML = (badge.imageUrl ? `<img src="${badge.imageUrl}" alt="">` : '') + badge.name;
+                    profileBadges.appendChild(el);
+                }
+            }
+
+            // Load media tab by default
+            loadProfileMedia('media');
+
+            profileOverlay.classList.add('visible');
+        }
+
+        async function loadProfileMedia(type) {
+            profileMediaContent.innerHTML = '';
+
+            if (!currentChatId) return;
+
+            if (type === 'media') {
+                // Load images + videos
+                const data = await API.get(`/api/chats/${currentChatId}/attachments?type=1&offset=0&size=30`);
+                const videoData = await API.get(`/api/chats/${currentChatId}/attachments?type=2&offset=0&size=30`);
+
+                const allMedia = [...(data?.attachments || []), ...(videoData?.attachments || [])];
+                allMedia.sort((a, b) => (b.sentAt || 0) - (a.sentAt || 0));
+
+                if (allMedia.length === 0) {
+                    profileMediaContent.innerHTML = '<div class="profile-media-empty">Нет медиафайлов</div>';
+                    return;
+                }
+
+                const grid = document.createElement('div');
+                grid.className = 'profile-media-grid';
+
+                for (const item of allMedia) {
+                    const att = item.attachment;
+                    if (!att?.fileId) continue;
+
+                    let url = att.previewUrl || '';
+                    if (!url && att.fileId) {
+                        const urlData = await API.get(`/api/files/download-urls?fileIds=${att.fileId}`);
+                        if (urlData?.files?.[0]) url = urlData.files[0].previewUrl || urlData.files[0].url;
+                    }
+                    if (!url) continue;
+
+                    const img = document.createElement('img');
+                    img.src = url;
+                    img.loading = 'lazy';
+                    img.addEventListener('click', () => openMediaViewer(url, att.type === 'VIDEO'));
+                    grid.appendChild(img);
+                }
+
+                profileMediaContent.appendChild(grid);
+            } else {
+                // Load documents
+                const data = await API.get(`/api/chats/${currentChatId}/attachments?type=4&offset=0&size=30`);
+                const files = data?.attachments || [];
+
+                if (files.length === 0) {
+                    profileMediaContent.innerHTML = '<div class="profile-media-empty">Нет файлов</div>';
+                    return;
+                }
+
+                const list = document.createElement('div');
+                list.className = 'profile-file-list';
+
+                for (const item of files) {
+                    const att = item.attachment;
+                    if (!att?.fileId) continue;
+
+                    const urlData = await API.get(`/api/files/download-urls?fileIds=${att.fileId}`);
+                    const fileUrl = urlData?.files?.[0]?.url || '#';
+
+                    const el = document.createElement('a');
+                    el.className = 'profile-file-item';
+                    el.href = fileUrl;
+                    el.target = '_blank';
+                    el.innerHTML = `<span>&#128196;</span> ${att.fileName || 'Файл'}`;
+                    list.appendChild(el);
+                }
+
+                profileMediaContent.appendChild(list);
+            }
+        }
+
+        // Profile media tabs
+        document.querySelectorAll('.profile-media-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.profile-media-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                loadProfileMedia(tab.dataset.type);
+            });
+        });
+
+        // Chat header click → profile
+        chatHeaderAvatar.addEventListener('click', () => {
+            if (!currentChatInfo || currentChatInfo.isGroupChat) return;
+            const peerId = currentChatInfo.membersId?.find(id => id !== myUserId);
+            if (peerId) openProfile(peerId);
+        });
+
+        chatHeaderName.addEventListener('click', () => {
+            if (!currentChatInfo || currentChatInfo.isGroupChat) return;
+            const peerId = currentChatInfo.membersId?.find(id => id !== myUserId);
+            if (peerId) openProfile(peerId);
+        });
+
+        profileClose.addEventListener('click', () => {
+            profileOverlay.classList.remove('visible');
+        });
+
+        profileOverlay.addEventListener('click', (e) => {
+            if (e.target === profileOverlay) profileOverlay.classList.remove('visible');
+        });
 
         // ========== INIT ==========
 
