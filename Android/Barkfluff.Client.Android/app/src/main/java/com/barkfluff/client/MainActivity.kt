@@ -278,7 +278,7 @@ class MainActivity : AppCompatActivity() {
                 val badge = binding.bottomNavigation.getOrCreateBadge(R.id.navigation_profile)
                 if (hasUpdate) {
                     badge.isVisible = true
-                    badge.backgroundColor = getColor(com.google.android.material.R.color.design_default_color_error)
+                    badge.backgroundColor = android.graphics.Color.parseColor("#FF3D00")
                 } else {
                     binding.bottomNavigation.removeBadge(R.id.navigation_profile)
                 }
