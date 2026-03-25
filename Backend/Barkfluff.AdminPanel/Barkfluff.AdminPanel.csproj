@@ -14,6 +14,7 @@
     <None Remove="Pages\restarting.html" />
     <None Remove="Pages\s3-storage.html" />
     <None Remove="Pages\services.html" />
+    <None Remove="Pages\stickers.html" />
     <None Remove="Pages\updating.html" />
     <None Remove="Pages\s3-browser.html" />
     <None Remove="Pages\users.html" />
@@ -45,6 +46,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Pages\services.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\stickers.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Pages\updating.html">
