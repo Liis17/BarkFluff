@@ -6,6 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 AdminPanel — веб-дашборд администратора для платформы BarkFluff. ASP.NET Minimal APIs (.NET 10), vanilla HTML+JS+Tailwind фронтенд, LiteDB для хранения токенов и кеша метрик.
 
+
 ## Build & Run
 
 ```bash
