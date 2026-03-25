@@ -75,6 +75,7 @@ docker-compose -f docker-compose-dev.yml up -d messages
 | `ChatMember` | Составной индекс `(ChatId, UserId)`, каскадное удаление |
 | `Message` | `Content` — owned type, `ReadBy` — PostgreSQL array |
 | `MessageAttachment` | Owned collection в отдельной таблице `MessageAttachments` |
+| `MessageAttachmentType` | Unknown, Image, Video, Gif, Document, Audio, Voice, Sticker |
 | `GroupChatInfo` | Хранит создателя и список `UsersCanKick` (PostgreSQL array) |
 
 ## Конфигурация

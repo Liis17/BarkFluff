@@ -23,17 +23,22 @@ docker-compose -f docker-compose-dev.yml up -d configuration
 
 ## Архитектура
 
-CQRS через MediatR. gRPC API (`configuration_api.proto`) предоставляет два метода:
+CQRS через MediatR. gRPC API (`configuration_api.proto`) предоставляет методы:
 
+**Конфигурация:**
 - **GetConfiguration** — возвращает конфигурацию для `ServiceId`. Загружает записи с `ServiceId == запрошенный || ServiceId == Unknown`, при дублях по Section+Key приоритет у записи с конкретным ServiceId.
 - **UpdateConfiguration** — обновляет или создаёт запись конфигурации (upsert по Section+Key+ServiceId).
 
+**Reserved Names (зарезервированные имена пользователей):**
+- **GetReservedNames** / **AddReservedName** / **UpdateReservedName** / **DeleteReservedName** — CRUD для списка зарезервированных username. Хранится как одна строка в БД (`Section="ReservedNames"`, `Key="Usernames"`, Value — comma-separated). Имена нормализуются в lowercase.
+
 ### Ключевые компоненты
 
-- `Domain/ConfigurationItem` — сущность: Section, Key, Value, ServiceId, EditedAt/By/From
-- `Infrastructure/ConfigurationStorage` — доступ к БД (read/upsert)
+- `Domain/ConfigurationItem` — единственная сущность: Section, Key, Value, ServiceId, EditedAt/By/From
+- `Infrastructure/ConfigurationStorage` — доступ к БД (read/upsert конфигураций + CRUD reserved names)
 - `Infrastructure/ConfigurationDefaultsPopulator` — при старте заполняет пустые (`Value == ""`) конфигурации дефолтами (порты, JWT, RabbitMQ, Redis, S3, межсервисные токены). Генерирует JWT SecretKey и Service-токены автоматически.
 - `Infrastructure/ConfigurationContext` — EF Core DbContext, единственный DbSet: `Configurations`
+- `Host/ConfigurationApiService` — gRPC-сервис, делегирует в MediatR-команды, собирает метрики через `MetricsCollector`
 
 ### Миграции
 
@@ -44,12 +49,14 @@ CQRS через MediatR. gRPC API (`configuration_api.proto`) предостав
 dotnet ef migrations add MigrationName --project Backend/BarkFluff.Configuration
 ```
 
+Миграции-seed (например `SeedBeaconServerProps`, `SeedInitialConfigurationKeys`) добавляют начальные записи конфигурации напрямую через SQL в `Up()` — не через EF-модель.
+
 ## Proto
 
 Серверная сторона: `Shared/BarkFluff.Proto/configuration_api.proto` (`GrpcServices="Server"`).
 
 ## Зависимости
 
-- `BarkFluff.GrpcServer` — Serilog, Metrics, ServerExceptionInterceptor, SetRunningAddress
-- `BarkFluff.Shared.Identity` — `ServiceId` enum, `TokenType`, `IdentityClaims`
-- PostgreSQL (Npgsql), MediatR
+- `BarkFluff.GrpcServer` — Serilog, Metrics (`MetricsCollector`), `ServerExceptionInterceptor`, `SetRunningAddress`
+- `BarkFluff.Shared.Identity` — `ServiceId` enum
+- PostgreSQL (Npgsql), MediatR, Grpc.Tools

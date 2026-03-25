@@ -11,7 +11,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 dotnet build Barkfluff.WebServer.csproj
 dotnet run --project Barkfluff.WebServer.csproj
+
+# Публикация (linux-x64, self-contained)
+dotnet publish Barkfluff.WebServer.csproj -c Release -r linux-x64 --self-contained
 ```
+
+Тестов в проекте нет.
 
 ## Architecture
 
@@ -31,7 +36,7 @@ dotnet run --project Barkfluff.WebServer.csproj
 
 ### Services
 
-- **`UserProfileService`** — запрашивает профили у Users gRPC-сервиса, кеширует 30 мин (не найденных — 5 мин). Использует `IMemoryCache`.
+- **`UserProfileService`** — запрашивает профили у Users gRPC-сервиса, кеширует 30 мин (не найденных — 5 мин). Использует `IMemoryCache`. Класс `UserProfileData` определён в том же файле.
 - **`UserPageService`** — читает `html/userpage.html`, заменяет `%%username%%` на путь запроса.
 - **`LegalPageService`** — отдаёт файлы из `html/legal/` по имени страницы.
 - **`SupportChatService`** — in-memory хранилище сессий чата поддержки (`ConcurrentDictionary`), thread-safe.
@@ -40,7 +45,15 @@ dotnet run --project Barkfluff.WebServer.csproj
 ### External Dependencies
 
 - **Users gRPC-сервис** (`users_api.proto`, `GrpcServices="Client"`) — `GetUserByUsernameAsync`. Адрес и Service JWT-токен захардкожены в `Program.cs`.
-- **Telegram.Bot** — интеграция поддержки с Telegram.
+- **Telegram.Bot** (v22.8.1) — интеграция поддержки с Telegram.
+
+### gRPC Client Setup
+
+gRPC-клиент `UsersServerApiClient` создаётся вручную через `GrpcChannel.ForAddress` в `Program.cs` (не через `AddGrpcClient`). Авторизация — ручная передача `x-auth-token` в `Metadata` при каждом вызове (см. `UserProfileService`).
+
+Proto-файлы подключены из `Shared/BarkFluff.Proto/`:
+- `users_api.proto` → `GrpcServices="Client"`
+- `shared.proto` → `GrpcServices="None"` (только типы)
 
 ### Static Files
 

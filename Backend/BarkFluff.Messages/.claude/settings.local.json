@@ -1,0 +1,11 @@
+{
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "claude-flow"
+  ],
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)"
+    ]
+  }
+}
