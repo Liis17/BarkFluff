@@ -27,6 +27,7 @@ dotnet ef migrations add <Name> --project .
   - `GetTempDownloadUrl` — временные URL для скачивания (batch по списку FileIds)
   - `CheckFileHash` — проверка хеша для дедупликации
   - `GetUserStorageInfo` — информация о хранилище пользователя
+  - Стикеры: `CreateStickerPack`, `UpdateStickerPack`, `DeleteStickerPack`, `ListStickerPacks`, `GetStickerPack`, `GetStickers`, `AddSticker`, `UpdateSticker`, `RemoveSticker`
 
 - **FilesServerApiService** (`TokenType.Service`) — серверный API (межсервисные вызовы):
   - `GetFileData` / `GetFilesData` — метаданные файлов
@@ -64,6 +65,8 @@ dotnet ef migrations add <Name> --project .
 | `TempFile` | Временные файлы с `ExpiresAt`. Индекс по `OriginalFileId`. |
 | `FileHash` | SHA256-хеши файлов для дедупликации. Индекс по `Hash`. |
 | `BadgeImage` | Отдельная таблица для изображений бейджей (не `UploadFile`). Бакет `badge-images`. |
+| `StickerPack` | Пак стикеров. `CreatorUserId`, `CoverStickerId`, `Name`, `Description`. Связь 1:N со `Sticker`. |
+| `Sticker` | Стикер внутри пака. `FileId` (файл в S3), `PreviewFileId` (превью), `Emoji`. Ограничения: макс. 1024px, макс. 12 МБ. |
 
 ### Сервисы (Services/)
 
@@ -83,10 +86,21 @@ dotnet ef migrations add <Name> --project .
 - `GetUserStorageInfo` / `GetUserStorageInfoServer` — статистика хранилища
 - `UploadBadgeImage` — загрузка PNG бейджа без сжатия
 - `UploadAvatarServer` — загрузка аватара серверным вызовом
+- Стикеры: `CreateStickerPack`, `UpdateStickerPack`, `DeleteStickerPack`, `ListStickerPacks`, `GetStickerPack`, `GetStickers`, `AddSticker`, `UpdateSticker`, `RemoveSticker`
 
 ### Persistence (Storage-классы)
 
-Scoped-сервисы обёртки над `FilesContext`: `UploadedFilesStorage`, `TempFilesStorage`, `FileHashesStorage`, `BadgeImagesStorage`.
+Scoped-сервисы обёртки над `FilesContext`: `UploadedFilesStorage`, `TempFilesStorage`, `FileHashesStorage`, `BadgeImagesStorage`, `StickerPacksStorage`, `StickersStorage`.
+
+### Маппинг (Mapping/)
+
+- **UploadFileMapping** — конвертация `UploadFile` → gRPC `FileData`
+- **StickerPackMapping** — конвертация `StickerPack`/`Sticker` → gRPC `StickerPackInfo`/`StickerInfo`. URL стикеров формируются через `FileUrlHelper`.
+
+### Исключения (Exceptions/)
+
+- `FileAlreadyUploadedException`, `FileNotUploadedException` — ошибки загрузки/скачивания
+- `StickerDimensionExceededException` (макс. 1024px), `StickerTooLargeException` (макс. 12 МБ)
 
 ## Зависимости от других сервисов
 
