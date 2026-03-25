@@ -12,6 +12,7 @@ using BarkFluff.Files.Features.UpdateSticker;
 using BarkFluff.Files.Features.UpdateStickerPack;
 using BarkFluff.Files.Features.UploadAvatarServer;
 using BarkFluff.Files.Features.UploadBadgeImage;
+using BarkFluff.Files.Features.UploadStickerImage;
 using BarkFluff.Proto.Files;
 using BarkFluff.Shared.Identity;
 
@@ -184,6 +185,19 @@ public class FilesServerApiService : FilesServerApi.FilesServerApiBase
         var command = new GetStickersCommand
         {
             StickerIds = request.StickerIds.Select(Guid.Parse).ToList()
+        };
+
+        return _mediator.Send(command);
+    }
+
+    // --- Загрузка изображения стикера ---
+
+    public override Task<UploadStickerImageResponse> UploadStickerImage(UploadStickerImageRequest request, ServerCallContext context)
+    {
+        var command = new UploadStickerImageCommand
+        {
+            ImageData = request.ImageData.ToByteArray(),
+            Filename = request.Filename
         };
 
         return _mediator.Send(command);
