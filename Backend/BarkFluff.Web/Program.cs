@@ -335,6 +335,50 @@ app.MapPost("/api/chats/mark-read", async (HttpContext httpCtx, MessagesApi.Mess
     catch (RpcException ex) { return HandleGrpcError(ex); }
 });
 
+// GET /api/chats/{chatId}/attachments?type=0&offset=0&size=20
+app.MapGet("/api/chats/{chatId}/attachments", async (HttpContext httpCtx, MessagesApi.MessagesApiClient messagesClient,
+    string chatId, int type = 0, int offset = 0, int size = 20) =>
+{
+    var metadata = BuildAuthMetadata(httpCtx);
+    if (metadata == null) return Results.Json(new { error = "unauthorized" }, statusCode: 401);
+
+    try
+    {
+        var request = new ListChatAttachmentsRequest
+        {
+            ChatId = chatId,
+            Pagination = new PageRequest { Offset = offset, Size = Math.Min(size, 50) },
+            AttachmentType = (MessageAttachmentType)type,
+            SortDescending = true
+        };
+
+        var response = await messagesClient.ListChatAttachmentsAsync(request, new CallOptions(headers: metadata));
+
+        return Results.Ok(new
+        {
+            attachments = response.Attachments.Select(a => new
+            {
+                messageId = a.MessageId,
+                attachmentId = a.AttachmentId,
+                attachment = new
+                {
+                    id = a.Attachment.Id,
+                    type = a.Attachment.Type.ToString().ToUpperInvariant(),
+                    fileId = a.Attachment.FileId,
+                    previewUrl = a.Attachment.PreviewUrl,
+                    attachmentSize = a.Attachment.AttachmentSize,
+                    fileName = a.Attachment.FileName,
+                    previewFileId = a.Attachment.PreviewFileId
+                },
+                sentAt = a.SentAt?.ToDateTimeOffset().ToUnixTimeMilliseconds(),
+                senderId = a.SenderId
+            }),
+            totalCount = response.TotalCount
+        });
+    }
+    catch (RpcException ex) { return HandleGrpcError(ex); }
+});
+
 // ========== USERS ENDPOINTS ==========
 
 // GET /api/users/{userId}
@@ -427,6 +471,40 @@ app.MapGet("/api/files/upload-url", async (HttpContext httpCtx, FilesApi.FilesAp
     }
     catch (RpcException ex) { return HandleGrpcError(ex); }
 });
+
+// POST /api/files/upload/{fileId} — проксирует загрузку файла к Files сервису
+app.MapPost("/api/files/upload/{fileId}", async (HttpContext httpCtx, IConfiguration config, string fileId) =>
+{
+    var metadata = BuildAuthMetadata(httpCtx);
+    if (metadata == null) return Results.Json(new { error = "unauthorized" }, statusCode: 401);
+
+    try
+    {
+        var form = await httpCtx.Request.ReadFormAsync();
+        var file = form.Files.FirstOrDefault();
+        if (file == null) return Results.BadRequest(new { error = "no_file" });
+
+        var filesHost = config["FilesService:Host"] ?? "http://files:7005";
+
+        using var httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
+        using var content = new MultipartFormDataContent();
+        await using var fileStream = file.OpenReadStream();
+        var streamContent = new StreamContent(fileStream);
+        streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType ?? "application/octet-stream");
+        content.Add(streamContent, "file", file.FileName ?? "upload");
+
+        var response = await httpClient.PostAsync($"{filesHost}/upload/{fileId}", content);
+        var result = await response.Content.ReadAsStringAsync();
+
+        return Results.Content(result, "application/json", statusCode: (int)response.StatusCode);
+    }
+    catch (Exception ex)
+    {
+        var logger = httpCtx.RequestServices.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Ошибка загрузки файла {FileId}", fileId);
+        return Results.Json(new { error = "upload_failed" }, statusCode: 500);
+    }
+}).DisableAntiforgery();
 
 // ========== ONLINE ENDPOINTS ==========
 
@@ -716,6 +794,7 @@ static object MapUser(User u) => new
     profilePicture = u.ProfilePicture,
     profilePicturePreview = u.ProfilePicturePreview,
     bio = u.Bio,
+    registrationDate = u.RegistrationDate?.ToDateTimeOffset().ToUnixTimeMilliseconds(),
     badges = u.Badges.Select(b => new
     {
         name = b.Badge?.Name,

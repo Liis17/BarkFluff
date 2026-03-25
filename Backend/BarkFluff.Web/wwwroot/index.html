@@ -4,24 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff — Войти</title>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-dark: #0f172a;
-            --text-main: #ffffff;
-            --text-sub: #94a3b8;
-            --primary: #3b82f6;
-            --primary-hover: #2563eb;
-            --card-bg: rgba(30, 41, 59, 0.6);
-            --card-border: rgba(255, 255, 255, 0.1);
-            --input-bg: rgba(15, 23, 42, 0.6);
-            --input-border: rgba(255, 255, 255, 0.12);
-            --input-focus: rgba(59, 130, 246, 0.5);
-            --error: #E74856;
+            --bg-dark: #f5f5f5;
+            --text-main: #1a1a1a;
+            --text-sub: #6b7280;
+            --primary: #8c351c;
+            --primary-hover: #732c17;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --card-border: rgba(0, 0, 0, 0.08);
+            --input-bg: rgba(245, 245, 245, 0.8);
+            --input-border: rgba(0, 0, 0, 0.12);
+            --input-focus: rgba(140, 53, 28, 0.3);
+            --error: #dc2626;
             --success: #10b981;
-            --link: #60a5fa;
+            --link: #8c351c;
         }
 
         * {
@@ -65,7 +66,7 @@
             left: -10%;
             width: 50vw;
             height: 50vw;
-            background: #4f46e5;
+            background: #f0c4a8;
             animation-duration: 25s;
         }
 
@@ -74,7 +75,7 @@
             right: -10%;
             width: 40vw;
             height: 40vw;
-            background: #0ea5e9;
+            background: #fde8d0;
             animation-duration: 30s;
             animation-delay: -5s;
         }
@@ -110,20 +111,14 @@
         .logo-icon {
             width: 36px;
             height: 36px;
-            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
             border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            font-weight: 800;
-            color: white;
+            object-fit: cover;
         }
 
         .logo-text {
             font-size: 22px;
             font-weight: 700;
-            background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+            background: linear-gradient(135deg, #1a1a1a 0%, #4a4a4a 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
@@ -136,14 +131,14 @@
             padding: 36px 30px;
             border-radius: 24px;
             width: 100%;
-            box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6);
+            box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.1);
         }
 
         .card-title {
             font-size: 26px;
             font-weight: 800;
             margin-bottom: 6px;
-            background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+            background: linear-gradient(135deg, #1a1a1a 0%, #4a4a4a 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             letter-spacing: -0.5px;
@@ -187,7 +182,7 @@
         }
 
         .form-input::placeholder {
-            color: rgba(148, 163, 184, 0.5);
+            color: rgba(107, 114, 128, 0.6);
         }
 
         .form-input.error {
@@ -218,13 +213,13 @@
         }
 
         .forgot-link:hover {
-            color: #93c5fd;
+            color: #a0442a;
         }
 
         .btn-primary {
             width: 100%;
             padding: 14px;
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            background: linear-gradient(135deg, #8c351c, #a0442a);
             color: white;
             border: none;
             border-radius: 14px;
@@ -236,13 +231,13 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4);
+            box-shadow: 0 8px 25px rgba(140, 53, 28, 0.3);
             transition: transform 0.2s, box-shadow 0.2s;
         }
 
         .btn-primary:hover:not(:disabled) {
             transform: translateY(-1px);
-            box-shadow: 0 12px 30px rgba(37, 99, 235, 0.5);
+            box-shadow: 0 12px 30px rgba(140, 53, 28, 0.4);
         }
 
         .btn-primary:active:not(:disabled) {
@@ -302,7 +297,7 @@
             align-items: center;
             gap: 8px;
             padding: 12px 24px;
-            background: rgba(255, 255, 255, 0.06);
+            background: rgba(0, 0, 0, 0.04);
             border: 1px solid var(--card-border);
             border-radius: 12px;
             color: var(--text-main);
@@ -314,8 +309,8 @@
         }
 
         .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.2);
+            background: rgba(0, 0, 0, 0.08);
+            border-color: rgba(0, 0, 0, 0.15);
         }
 
         .btn-secondary .arrow {
@@ -392,7 +387,7 @@
             font-family: 'Inter', sans-serif;
         }
 
-        .otp-back:hover { color: #93c5fd; }
+        .otp-back:hover { color: #a0442a; }
 
         /* Авторизованное состояние */
         .welcome-icon {
@@ -429,7 +424,7 @@
 
     <div class="page">
         <div class="logo">
-            <div class="logo-icon">B</div>
+            <img src="/favicon.ico" class="logo-icon" alt="BarkFluff">
             <span class="logo-text">BarkFluff</span>
         </div>
 
