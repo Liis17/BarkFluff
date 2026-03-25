@@ -40,6 +40,9 @@ service FilesServerApi {
   rpc RemoveSticker(RemoveStickerRequest) returns(RemoveStickerResponse);
   rpc UpdateSticker(UpdateStickerRequest) returns(UpdateStickerResponse);
   rpc GetStickers(GetStickersRequest) returns(GetStickersResponse);
+
+  // Загрузка изображения стикера (для админ-панели)
+  rpc UploadStickerImage(UploadStickerImageRequest) returns(UploadStickerImageResponse);
 }
 
 message GetTempDownloadUrlRequest {
@@ -266,4 +269,14 @@ message GetStickersRequest {
 
 message GetStickersResponse {
   repeated StickerInfo stickers = 1;
+}
+
+message UploadStickerImageRequest {
+  bytes image_data = 1;
+  string filename = 2;
+}
+
+message UploadStickerImageResponse {
+  string file_id = 1;
+  string file_url = 2;
 }

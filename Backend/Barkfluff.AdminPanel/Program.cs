@@ -163,6 +163,9 @@ public class Program
         // Map Badges Endpoints
         app.MapBadgesEndpoints();
 
+        // Map Stickers Endpoints
+        app.MapStickersEndpoints();
+
         // Map Users Endpoints
         app.MapUsersEndpoints();
 
@@ -201,6 +204,7 @@ public class Program
         app.MapGet("/services", async context => await ServeHtmlFile(context, "services.html"));
         app.MapGet("/logs", async context => await ServeHtmlFile(context, "logs.html"));
         app.MapGet("/badges", async context => await ServeHtmlFile(context, "badges.html"));
+        app.MapGet("/stickers", async context => await ServeHtmlFile(context, "stickers.html"));
         app.MapGet("/users", async context => await ServeHtmlFile(context, "users.html"));
         app.MapGet("/s3-storage", async context => await ServeHtmlFile(context, "s3-storage.html"));
         app.MapGet("/s3-browser", async context => await ServeHtmlFile(context, "s3-browser.html"));
