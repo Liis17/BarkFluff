@@ -12,6 +12,7 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.FragmentProfileBinding
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.utils.AvatarLoader
+import com.barkfluff.client.utils.UpdateChecker
 import kotlinx.coroutines.launch
 
 class ProfileFragment : Fragment() {
@@ -40,6 +41,7 @@ class ProfileFragment : Fragment() {
 
         setupClickListeners()
         updateUI()
+        checkForUpdates()
     }
 
     override fun onResume() {
@@ -116,6 +118,20 @@ class ProfileFragment : Fragment() {
             Log.d(TAG, "loadAvatar: No URL or fileId, showing placeholder")
             AvatarLoader.showPlaceholder(binding.avatarPlaceholder, displayName, globalParam.userId)
             binding.avatarImage.visibility = View.GONE
+        }
+    }
+
+    private fun checkForUpdates() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val currentVersion = GlobalParam.getAppVersion(requireContext())
+                val hasUpdate = UpdateChecker.hasUpdate(currentVersion)
+                if (_binding != null) {
+                    binding.badgeUpdate.visibility = if (hasUpdate) View.VISIBLE else View.GONE
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error checking for updates", e)
+            }
         }
     }
 
