@@ -26,15 +26,22 @@ import com.barkfluff.client.databinding.ActivityChatBinding
 import com.barkfluff.client.databinding.DialogChatProfileBinding
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.grpc.RealtimeService
+import com.barkfluff.client.adapter.StickerPanelAdapter
+import com.barkfluff.client.adapter.StickerPanelItem
 import com.barkfluff.client.picker.ImagePickerBottomSheet
 import com.barkfluff.client.picker.ImagePickerResult
 import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.ImageCompressor
+import com.barkfluff.client.utils.KeyboardHeightTracker
 import com.barkfluff.client.utils.MessageItemAnimator
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.yalantis.ucrop.UCrop
+import androidx.activity.OnBackPressedCallback
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.recyclerview.widget.GridLayoutManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -88,6 +95,14 @@ class ChatActivity : AppCompatActivity() {
     private val pendingStickerUris = mutableListOf<Uri>()
     private val pendingDocumentUris = mutableListOf<Uri>()
     private val pendingCropQueue = ArrayDeque<Uri>()
+
+    // Inline стикер-панель
+    private enum class InputPanelState { NONE, KEYBOARD, STICKER_PANEL }
+    private var inputPanelState = InputPanelState.NONE
+    private var lastKnownKeyboardHeight = 0
+    private var isTransitioningToStickers = false
+    private var stickerDataLoaded = false
+    private lateinit var stickerPanelAdapter: StickerPanelAdapter
 
     private val pasteUCropLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -149,6 +164,8 @@ class ChatActivity : AppCompatActivity() {
         setupToolbar()
         setupMessagesRecyclerView()
         setupMessageInput()
+        setupStickerPanel()
+        setupKeyboardTracking()
         loadChatInfoAndMessages()
 
         // Устанавливаем этот чат как открытый
@@ -302,6 +319,14 @@ class ChatActivity : AppCompatActivity() {
             showStickerPicker()
         }
 
+        // При клике на поле ввода — закрыть стикер-панель и показать клавиатуру
+        binding.messageEditText.setOnClickListener {
+            if (inputPanelState == InputPanelState.STICKER_PANEL) {
+                hideStickerPanel()
+                WindowInsetsControllerCompat(window, binding.chatRootLayout).show(WindowInsetsCompat.Type.ime())
+            }
+        }
+
         binding.clearAttachmentsButton.setOnClickListener {
             pendingPastedImages.clear()
             pendingStickerUris.clear()
@@ -352,14 +377,146 @@ class ChatActivity : AppCompatActivity() {
         imagePicker.show(supportFragmentManager, "ImagePickerBottomSheet")
     }
 
-    private fun showStickerPicker() {
-        val stickerSheet = com.barkfluff.client.picker.StickerBottomSheet.newInstance { sticker ->
-            sendStickerMessage(sticker)
+    private fun setupKeyboardTracking() {
+        lastKnownKeyboardHeight = KeyboardHeightTracker.getLastKnownHeight(this)
+
+        KeyboardHeightTracker(binding.chatRootLayout, this) { height, isVisible ->
+            if (isVisible) {
+                lastKnownKeyboardHeight = height
+                if (isTransitioningToStickers) {
+                    // Клавиатура ещё не закрылась, ждём
+                    return@KeyboardHeightTracker
+                }
+                if (inputPanelState == InputPanelState.STICKER_PANEL) {
+                    hideStickerPanel()
+                }
+                inputPanelState = InputPanelState.KEYBOARD
+            } else {
+                if (isTransitioningToStickers) {
+                    isTransitioningToStickers = false
+                    showStickerPanelView()
+                } else if (inputPanelState == InputPanelState.KEYBOARD) {
+                    inputPanelState = InputPanelState.NONE
+                }
+            }
         }
-        stickerSheet.show(supportFragmentManager, "StickerBottomSheet")
+    }
+
+    private fun setupStickerPanel() {
+        stickerPanelAdapter = StickerPanelAdapter(
+            getFileUrl = { fileId -> chatRepository.getFileDownloadUrl(fileId).getOrNull() },
+            onStickerClick = { sticker ->
+                sendStickerMessage(sticker)
+            }
+        )
+
+        val gridLayoutManager = GridLayoutManager(this, 4)
+        gridLayoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+            override fun getSpanSize(position: Int): Int {
+                return when (stickerPanelAdapter.getItemViewType(position)) {
+                    StickerPanelAdapter.VIEW_TYPE_STICKER -> 1
+                    else -> 4 // PackHeader, Loading, Empty — full width
+                }
+            }
+        }
+
+        binding.stickerPanelRecyclerView.apply {
+            layoutManager = gridLayoutManager
+            adapter = stickerPanelAdapter
+            addItemDecoration(object : RecyclerView.ItemDecoration() {
+                override fun getItemOffsets(outRect: android.graphics.Rect, view: View, parent: RecyclerView, state: RecyclerView.State) {
+                    val position = parent.getChildAdapterPosition(view)
+                    if (position <= 0) return
+                    val item = stickerPanelAdapter.currentList.getOrNull(position) ?: return
+                    if (item is StickerPanelItem.PackHeader) {
+                        outRect.top = (15 * resources.displayMetrics.density).toInt()
+                    }
+                }
+            })
+        }
+
+        // Back press закрывает стикер-панель
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (inputPanelState == InputPanelState.STICKER_PANEL) {
+                    hideStickerPanel()
+                } else {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                    isEnabled = true
+                }
+            }
+        })
+    }
+
+    private fun showStickerPicker() {
+        if (inputPanelState == InputPanelState.STICKER_PANEL) {
+            hideStickerPanel()
+            return
+        }
+
+        if (inputPanelState == InputPanelState.KEYBOARD) {
+            isTransitioningToStickers = true
+            WindowInsetsControllerCompat(window, binding.chatRootLayout).hide(WindowInsetsCompat.Type.ime())
+        } else {
+            showStickerPanelView()
+        }
+    }
+
+    private fun showStickerPanelView() {
+        val panelHeight = if (lastKnownKeyboardHeight > 0) lastKnownKeyboardHeight
+            else (resources.displayMetrics.heightPixels * 0.4).toInt()
+
+        binding.stickerPanelContainer.layoutParams.height = panelHeight
+        binding.stickerPanelContainer.visibility = View.VISIBLE
+        binding.stickerPanelContainer.requestLayout()
+        inputPanelState = InputPanelState.STICKER_PANEL
+
+        if (!stickerDataLoaded) {
+            loadStickerPanelData()
+        }
+    }
+
+    private fun hideStickerPanel() {
+        binding.stickerPanelContainer.visibility = View.GONE
+        inputPanelState = InputPanelState.NONE
+    }
+
+    private fun loadStickerPanelData() {
+        stickerPanelAdapter.submitList(listOf(StickerPanelItem.Loading))
+
+        lifecycleScope.launch {
+            try {
+                val packs = withContext(Dispatchers.IO) { grpcManager.listStickerPacks() }
+                if (packs.isNullOrEmpty()) {
+                    stickerPanelAdapter.submitList(listOf(StickerPanelItem.Empty))
+                    return@launch
+                }
+
+                val allItems = mutableListOf<StickerPanelItem>()
+                for (pack in packs) {
+                    allItems.add(StickerPanelItem.PackHeader(
+                        packId = pack.id,
+                        packName = pack.name,
+                        stickerCount = pack.stickerCount,
+                        coverStickerId = pack.coverStickerId
+                    ))
+                    val stickers = withContext(Dispatchers.IO) { grpcManager.getStickerPack(pack.id) }
+                    if (stickers != null) {
+                        allItems.addAll(stickers.map { StickerPanelItem.Sticker(it, pack.id) })
+                    }
+                }
+                stickerPanelAdapter.submitList(allItems)
+                stickerDataLoaded = true
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading sticker panel data", e)
+                stickerPanelAdapter.submitList(listOf(StickerPanelItem.Empty))
+            }
+        }
     }
 
     private fun sendStickerMessage(sticker: barkfluff.files.FilesApiOuterClass.StickerInfo) {
+        hideStickerPanel()
         lifecycleScope.launch {
             try {
                 val fileId = sticker.fileId
