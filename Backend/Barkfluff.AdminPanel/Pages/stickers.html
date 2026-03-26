@@ -457,7 +457,7 @@
                     <!-- Обложка -->
                     <div class="flex items-center justify-center bg-slate-50 p-4">
                         ${pack.coverUrl
-                            ? `<img src="${pack.coverUrl}" alt="${escapeHtml(pack.name)}" class="pack-cover object-contain rounded-lg" />`
+                            ? `<img src="${pack.coverUrl}" alt="" class="pack-cover object-contain rounded-lg" />`
                             : `<div class="pack-cover rounded-lg bg-slate-200 flex items-center justify-center"><i data-lucide="smile" class="w-12 h-12 text-slate-400"></i></div>`
                         }
                     </div>
@@ -600,8 +600,8 @@
                         class="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs hover:bg-red-600">
                         &times;
                     </button>
-                    <img src="${s.previewUrl || s.fileUrl}" alt="${escapeHtml(s.emoji)}" class="sticker-img object-contain rounded" />
-                    <span class="text-lg mt-1 leading-none">${escapeHtml(s.emoji)}</span>
+                    <img src="${s.previewUrl || s.fileUrl}" alt="" class="sticker-img object-contain rounded" />
+                    <span class="text-sm mt-1 leading-none">${escapeHtml(s.emoji)}</span>
                 </div>
             `).join('');
 

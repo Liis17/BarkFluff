@@ -1,4 +1,5 @@
 using Barkfluff.AdminPanel.Models;
+using Barkfluff.AdminPanel.Services;
 
 using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Shared;
@@ -9,10 +10,36 @@ namespace Barkfluff.AdminPanel.Endpoints;
 
 public static class StickersEndpoints
 {
+    private const string StickerBucketId = "message-documents";
+
+    private static string ProxyUrl(string? fileId) =>
+        string.IsNullOrEmpty(fileId) ? "" : $"/api/stickers/file/{fileId}";
+
     public static void MapStickersEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/stickers")
             .WithTags("Stickers");
+
+        // GET /api/stickers/file/{fileId} — прокси скачивания файла через S3
+        group.MapGet("/file/{fileId}", async (
+            string fileId,
+            S3BrowserService s3Service,
+            HttpContext context) =>
+        {
+            if (context.Items["AuthToken"] is not AuthToken)
+                return Results.Unauthorized();
+
+            try
+            {
+                var presignedUrl = await s3Service.GetPresignedUrlAsync(StickerBucketId, fileId);
+                return Results.Redirect(presignedUrl);
+            }
+            catch (Exception)
+            {
+                return Results.NotFound();
+            }
+        })
+        .WithName("GetStickerFile");
 
         // GET /api/stickers/packs — список стикерпаков
         group.MapGet("/packs", async (
@@ -27,14 +54,14 @@ public static class StickersEndpoints
                 Pagination = new PageRequest { Offset = 0, Size = 200 }
             });
 
-            // Собираем cover sticker ids для batch-запроса URL обложек
+            // Собираем cover sticker ids для batch-запроса файловых ID обложек
             var coverStickerIds = response.Packs
                 .Where(p => !string.IsNullOrEmpty(p.CoverStickerId))
                 .Select(p => p.CoverStickerId)
                 .Distinct()
                 .ToList();
 
-            var coverStickers = new Dictionary<string, StickerInfo>();
+            var coverFileIds = new Dictionary<string, string>(); // stickerId → fileId
             if (coverStickerIds.Count > 0)
             {
                 var stickersResponse = await filesClient.GetStickersAsync(new GetStickersRequest
@@ -42,14 +69,14 @@ public static class StickersEndpoints
                     StickerIds = { coverStickerIds }
                 });
                 foreach (var s in stickersResponse.Stickers)
-                    coverStickers[s.Id] = s;
+                    coverFileIds[s.Id] = !string.IsNullOrEmpty(s.PreviewFileId) ? s.PreviewFileId : s.FileId;
             }
 
             var packs = response.Packs.Select(p =>
             {
                 string? coverUrl = null;
-                if (!string.IsNullOrEmpty(p.CoverStickerId) && coverStickers.TryGetValue(p.CoverStickerId, out var coverSticker))
-                    coverUrl = !string.IsNullOrEmpty(coverSticker.PreviewUrl) ? coverSticker.PreviewUrl : coverSticker.FileUrl;
+                if (!string.IsNullOrEmpty(p.CoverStickerId) && coverFileIds.TryGetValue(p.CoverStickerId, out var fileId))
+                    coverUrl = ProxyUrl(fileId);
 
                 return new
                 {
@@ -155,7 +182,10 @@ public static class StickersEndpoints
             {
                 var coverSticker = response.Stickers.FirstOrDefault(s => s.Id == pack.CoverStickerId);
                 if (coverSticker != null)
-                    coverUrl = !string.IsNullOrEmpty(coverSticker.PreviewUrl) ? coverSticker.PreviewUrl : coverSticker.FileUrl;
+                {
+                    var coverId = !string.IsNullOrEmpty(coverSticker.PreviewFileId) ? coverSticker.PreviewFileId : coverSticker.FileId;
+                    coverUrl = ProxyUrl(coverId);
+                }
             }
 
             return Results.Ok(new
@@ -170,8 +200,10 @@ public static class StickersEndpoints
                 stickers = response.Stickers.Select(s => new
                 {
                     id = s.Id,
-                    fileUrl = s.FileUrl,
-                    previewUrl = s.PreviewUrl,
+                    fileId = s.FileId,
+                    previewFileId = s.PreviewFileId,
+                    fileUrl = ProxyUrl(s.FileId),
+                    previewUrl = ProxyUrl(s.PreviewFileId),
                     emoji = s.Emoji,
                     addedAt = s.AddedAt?.ToDateTime()
                 })
@@ -257,7 +289,12 @@ public static class StickersEndpoints
                 CoverStickerId = addStickerResponse.Sticker.Id
             });
 
-            return Results.Ok(new { coverStickerId = addStickerResponse.Sticker.Id, fileUrl = addStickerResponse.Sticker.FileUrl });
+            var sticker = addStickerResponse.Sticker;
+            return Results.Ok(new
+            {
+                coverStickerId = sticker.Id,
+                fileUrl = ProxyUrl(sticker.FileId)
+            });
         })
         .WithName("UpdateStickerPackCover");
 
@@ -318,8 +355,8 @@ public static class StickersEndpoints
             return Results.Ok(new
             {
                 id = sticker.Id,
-                fileUrl = sticker.FileUrl,
-                previewUrl = sticker.PreviewUrl,
+                fileUrl = ProxyUrl(sticker.FileId),
+                previewUrl = ProxyUrl(sticker.PreviewFileId),
                 emoji = sticker.Emoji,
                 addedAt = sticker.AddedAt?.ToDateTime()
             });
