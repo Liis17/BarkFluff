@@ -14,8 +14,6 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 
-using BarkFluff.Client.WPF.Services.App;
-
 using Wpf.Ui.Appearance;
 
 namespace BarkFluff.Client.WPF

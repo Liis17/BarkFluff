@@ -52,7 +52,7 @@ public class Program
         builder.Services.AddScoped<StickerPacksStorage>();
         builder.Services.AddScoped<StickersStorage>();
         builder.Services.AddScoped<ImageCompressor>();
-        
+
         builder.Services.AddMinioS3(builder.Configuration);
         builder.Services.AddFileTypeDetection();
 

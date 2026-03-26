@@ -1,11 +1,11 @@
-using System.Security.Cryptography;
-
 using BarkFluff.ClientStorage.Domain;
 using BarkFluff.ClientStorage.Infrastructure;
 using BarkFluff.ClientStorage.Persistence;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+
+using System.Security.Cryptography;
 
 namespace BarkFluff.ClientStorage.Controllers;
 

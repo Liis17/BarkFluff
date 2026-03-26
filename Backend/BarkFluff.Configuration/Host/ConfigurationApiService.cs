@@ -39,7 +39,7 @@ public class ConfigurationApiService : BarkFluff.Proto.Configuration.Configurati
     public override async Task<UpdateConfigurationResponse> UpdateConfiguration(UpdateConfigurationRequest request, ServerCallContext context)
     {
         _metrics.Increment("config_update_requests");
-        
+
         var command = new UpdateConfigurationCommand
         {
             Section = request.Section,
