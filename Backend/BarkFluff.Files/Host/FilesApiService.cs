@@ -1,7 +1,9 @@
 using BarkFluff.Files.Features.CheckFileHash;
+using BarkFluff.Files.Features.GetStickerPack;
 using BarkFluff.Files.Features.GetTempDownloadUrl;
 using BarkFluff.Files.Features.GetUploadUrl;
 using BarkFluff.Files.Features.GetUserStorageInfo;
+using BarkFluff.Files.Features.ListStickerPacks;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Files;
 using BarkFluff.Shared.Identity;
@@ -67,5 +69,28 @@ public class FilesApiService : FilesApi.FilesApiBase
         var command = new GetUserStorageInfoCommand();
 
         return await _mediator.Send(command);
+    }
+
+    // --- Стикерпаки (только чтение) ---
+
+    public override Task<ListStickerPacksResponse> ListStickerPacks(ListStickerPacksRequest request, ServerCallContext context)
+    {
+        var command = new ListStickerPacksCommand
+        {
+            Offset = request.Pagination?.Offset ?? 0,
+            Limit = request.Pagination?.Size ?? 20
+        };
+
+        return _mediator.Send(command);
+    }
+
+    public override Task<GetStickerPackResponse> GetStickerPack(GetStickerPackRequest request, ServerCallContext context)
+    {
+        var command = new GetStickerPackCommand
+        {
+            PackId = Guid.Parse(request.PackId)
+        };
+
+        return _mediator.Send(command);
     }
 }
