@@ -1316,8 +1316,7 @@
                             Margin="0,2"
                             HorizontalAlignment="Left"
                             Background="#df5000"
-                            CornerRadius="2"
-                            ></Border>
+                            CornerRadius="2" />
                         <!--  Thumb  -->
                         <Border
                             x:Name="Thumb"
@@ -1434,9 +1433,7 @@
                             Background="#df5000"
                             CornerRadius="1"
                             Visibility="Collapsed" />
-                        <ContentPresenter
-                            Margin="{TemplateBinding Padding}"
-                            VerticalAlignment="Center" />
+                        <ContentPresenter Margin="{TemplateBinding Padding}" VerticalAlignment="Center" />
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
