@@ -2,13 +2,12 @@
 using BarkFluff.Client.WPF.Pages;
 using BarkFluff.Client.WPF.Pages.PinCode;
 using BarkFluff.Client.WPF.Pages.SetupPages;
+using BarkFluff.Client.WPF.Services.App;
 using BarkFluff.WebApi.Core.MessengerData;
 
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
-
-using BarkFluff.Client.WPF.Services.App;
 
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
