@@ -298,6 +298,10 @@ class ChatActivity : AppCompatActivity() {
             pickImages()
         }
 
+        binding.stickerButton.setOnClickListener {
+            showStickerPicker()
+        }
+
         binding.clearAttachmentsButton.setOnClickListener {
             pendingPastedImages.clear()
             pendingStickerUris.clear()
@@ -346,6 +350,29 @@ class ChatActivity : AppCompatActivity() {
             handleSelectedImages(result)
         }
         imagePicker.show(supportFragmentManager, "ImagePickerBottomSheet")
+    }
+
+    private fun showStickerPicker() {
+        val stickerSheet = com.barkfluff.client.picker.StickerBottomSheet.newInstance { sticker ->
+            sendStickerMessage(sticker)
+        }
+        stickerSheet.show(supportFragmentManager, "StickerBottomSheet")
+    }
+
+    private fun sendStickerMessage(sticker: barkfluff.files.FilesApiOuterClass.StickerInfo) {
+        lifecycleScope.launch {
+            try {
+                val fileId = sticker.fileId
+                if (fileId.isBlank()) {
+                    Toast.makeText(this@ChatActivity, "Ошибка: стикер без файла", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+                sendMessage(text = "", fileIds = listOf(fileId))
+            } catch (e: Exception) {
+                Log.e(TAG, "Error sending sticker", e)
+                Toast.makeText(this@ChatActivity, "Ошибка отправки стикера", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun handleSelectedImages(result: ImagePickerResult) {

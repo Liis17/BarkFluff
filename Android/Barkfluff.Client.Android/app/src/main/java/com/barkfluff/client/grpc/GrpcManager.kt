@@ -1934,4 +1934,55 @@ class GrpcManager {
             Result.failure(Exception("Ошибка установки пароля: ${e.message}"))
         }
     }
+
+    // --- Стикеры ---
+
+    /**
+     * Получает список стикерпаков с сервера.
+     */
+    suspend fun listStickerPacks(offset: Int = 0, size: Int = 50): List<FilesApiOuterClass.StickerPackInfo>? = withContext(Dispatchers.IO) {
+        try {
+            if (filesClient == null) {
+                Log.e(TAG, "listStickerPacks: Files клиент не создан")
+                return@withContext null
+            }
+
+            val pagination = barkfluff.shared.Shared.PageRequest.newBuilder()
+                .setOffset(offset)
+                .setSize(size)
+                .build()
+
+            val request = FilesApiOuterClass.ListStickerPacksRequest.newBuilder()
+                .setPagination(pagination)
+                .build()
+
+            val response = filesClient!!.listStickerPacks(request)
+            response.packsList
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка загрузки стикерпаков", e)
+            null
+        }
+    }
+
+    /**
+     * Получает стикерпак со всеми стикерами.
+     */
+    suspend fun getStickerPack(packId: String): List<FilesApiOuterClass.StickerInfo>? = withContext(Dispatchers.IO) {
+        try {
+            if (filesClient == null) {
+                Log.e(TAG, "getStickerPack: Files клиент не создан")
+                return@withContext null
+            }
+
+            val request = FilesApiOuterClass.GetStickerPackRequest.newBuilder()
+                .setPackId(packId)
+                .build()
+
+            val response = filesClient!!.getStickerPack(request)
+            response.stickersList
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка загрузки стикеров пака $packId", e)
+            null
+        }
+    }
 }
