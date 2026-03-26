@@ -44,7 +44,16 @@ jobs:
       - name: Определение изменённых файлов
         id: changes
         run: |
-          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff-tree --no-commit-id --name-only -r HEAD)
+          BEFORE="${{ github.event.before }}"
+          AFTER="${{ github.sha }}"
+
+          if [ "$BEFORE" = "0000000000000000000000000000000000000000" ] || [ -z "$BEFORE" ]; then
+            echo "Initial push or missing before — using HEAD~1 fallback"
+            CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff-tree --no-commit-id --name-only -r HEAD)
+          else
+            CHANGED=$(git diff --name-only "$BEFORE" "$AFTER" 2>/dev/null || git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff-tree --no-commit-id --name-only -r HEAD)
+          fi
+
           echo "Changed files:"
           echo "$CHANGED"
 
@@ -59,6 +68,7 @@ jobs:
           SHARED_EXCEPTIONS=$(has_match "Shared/BarkFluff.Shared.Exceptions/")
           SHARED_AUTH=$(has_match "Shared/BarkFluff.Shared.Auth/")
           SHARED_SECURITY=$(has_match "Shared/BarkFluff.Shared.SecurityUtilities/")
+          PROTO=$(has_match "Shared/BarkFluff.Proto/")
           IDENTITY_CHANGED=$(has_match "Backend/BarkFluff.Identity/")
 
           is_true() {
@@ -67,112 +77,112 @@ jobs:
           }
 
           # Identity
-          if is_true "$(has_match 'Backend/BarkFluff.Identity/')" "$SHARED_QUEUE" "$SHARED_IDENTITY" "$SHARED_EXCEPTIONS" "$GRPC_SERVER" "$BACKEND_REBUILD"; then
+          if is_true "$(has_match 'Backend/BarkFluff.Identity/')" "$SHARED_QUEUE" "$SHARED_IDENTITY" "$SHARED_EXCEPTIONS" "$GRPC_SERVER" "$PROTO" "$BACKEND_REBUILD"; then
             echo "identity=true" >> "$GITHUB_OUTPUT"
           else
             echo "identity=false" >> "$GITHUB_OUTPUT"
           fi
 
           # Users
-          if is_true "$(has_match 'Backend/BarkFluff.Users/')" "$SHARED_QUEUE" "$SHARED_EXCEPTIONS" "$GRPC_SERVER" "$BACKEND_REBUILD"; then
+          if is_true "$(has_match 'Backend/BarkFluff.Users/')" "$SHARED_QUEUE" "$SHARED_EXCEPTIONS" "$GRPC_SERVER" "$PROTO" "$BACKEND_REBUILD"; then
             echo "users=true" >> "$GITHUB_OUTPUT"
           else
             echo "users=false" >> "$GITHUB_OUTPUT"
           fi
 
           # Messages
-          if is_true "$(has_match 'Backend/BarkFluff.Messages/')" "$SHARED_QUEUE" "$SHARED_AUTH" "$GRPC_SERVER" "$BACKEND_REBUILD"; then
+          if is_true "$(has_match 'Backend/BarkFluff.Messages/')" "$SHARED_QUEUE" "$SHARED_AUTH" "$GRPC_SERVER" "$PROTO" "$BACKEND_REBUILD"; then
             echo "messages=true" >> "$GITHUB_OUTPUT"
           else
             echo "messages=false" >> "$GITHUB_OUTPUT"
           fi
 
           # Files
-          if is_true "$(has_match 'Backend/BarkFluff.Files/')" "$GRPC_SERVER" "$BACKEND_REBUILD"; then
+          if is_true "$(has_match 'Backend/BarkFluff.Files/')" "$GRPC_SERVER" "$PROTO" "$BACKEND_REBUILD"; then
             echo "files=true" >> "$GITHUB_OUTPUT"
           else
             echo "files=false" >> "$GITHUB_OUTPUT"
           fi
 
           # Updates
-          if is_true "$(has_match 'Backend/BarkFluff.Updates/')" "$SHARED_QUEUE" "$GRPC_SERVER" "$BACKEND_REBUILD"; then
+          if is_true "$(has_match 'Backend/BarkFluff.Updates/')" "$SHARED_QUEUE" "$GRPC_SERVER" "$PROTO" "$BACKEND_REBUILD"; then
             echo "updates=true" >> "$GITHUB_OUTPUT"
           else
             echo "updates=false" >> "$GITHUB_OUTPUT"
           fi
 
           # Notification
-          if is_true "$(has_match 'Backend/BarkFluff.Notification/')" "$SHARED_QUEUE" "$GRPC_SERVER" "$BACKEND_REBUILD"; then
+          if is_true "$(has_match 'Backend/BarkFluff.Notification/')" "$SHARED_QUEUE" "$GRPC_SERVER" "$PROTO" "$BACKEND_REBUILD"; then
             echo "notification=true" >> "$GITHUB_OUTPUT"
           else
             echo "notification=false" >> "$GITHUB_OUTPUT"
           fi
 
           # Configuration
-          if is_true "$(has_match 'Backend/BarkFluff.Configuration/')" "$IDENTITY_CHANGED" "$GRPC_SERVER" "$BACKEND_REBUILD"; then
+          if is_true "$(has_match 'Backend/BarkFluff.Configuration/')" "$IDENTITY_CHANGED" "$GRPC_SERVER" "$PROTO" "$BACKEND_REBUILD"; then
             echo "configuration=true" >> "$GITHUB_OUTPUT"
           else
             echo "configuration=false" >> "$GITHUB_OUTPUT"
           fi
 
           # Beacon
-          if is_true "$(has_match 'Backend/BarkFluff.Beacon/')" "$GRPC_SERVER" "$BACKEND_REBUILD"; then
+          if is_true "$(has_match 'Backend/BarkFluff.Beacon/')" "$GRPC_SERVER" "$PROTO" "$BACKEND_REBUILD"; then
             echo "beacon=true" >> "$GITHUB_OUTPUT"
           else
             echo "beacon=false" >> "$GITHUB_OUTPUT"
           fi
 
           # FastAuth
-          if is_true "$(has_match 'Backend/BarkFluff.FastAuth/')" "$IDENTITY_CHANGED" "$GRPC_SERVER" "$BACKEND_REBUILD"; then
+          if is_true "$(has_match 'Backend/BarkFluff.FastAuth/')" "$IDENTITY_CHANGED" "$GRPC_SERVER" "$PROTO" "$BACKEND_REBUILD"; then
             echo "fast-auth=true" >> "$GITHUB_OUTPUT"
           else
             echo "fast-auth=false" >> "$GITHUB_OUTPUT"
           fi
 
           # Navigator
-          if is_true "$(has_match 'Backend/BarkFluff.Navigator/')" "$GRPC_SERVER" "$BACKEND_REBUILD"; then
+          if is_true "$(has_match 'Backend/BarkFluff.Navigator/')" "$GRPC_SERVER" "$PROTO" "$BACKEND_REBUILD"; then
             echo "navigator=true" >> "$GITHUB_OUTPUT"
           else
             echo "navigator=false" >> "$GITHUB_OUTPUT"
           fi
 
           # Onliner
-          if is_true "$(has_match 'Backend/BarkFluff.Onliner/')" "$GRPC_SERVER" "$BACKEND_REBUILD"; then
+          if is_true "$(has_match 'Backend/BarkFluff.Onliner/')" "$GRPC_SERVER" "$PROTO" "$BACKEND_REBUILD"; then
             echo "onliner=true" >> "$GITHUB_OUTPUT"
           else
             echo "onliner=false" >> "$GITHUB_OUTPUT"
           fi
 
           # CloudMessaging
-          if is_true "$(has_match 'Backend/Barkfluff.CloudMessaging/')" "$SHARED_QUEUE" "$SHARED_EXCEPTIONS" "$SHARED_AUTH" "$GRPC_SERVER" "$BACKEND_REBUILD"; then
+          if is_true "$(has_match 'Backend/Barkfluff.CloudMessaging/')" "$SHARED_QUEUE" "$SHARED_EXCEPTIONS" "$SHARED_AUTH" "$GRPC_SERVER" "$PROTO" "$BACKEND_REBUILD"; then
             echo "cloud-messaging=true" >> "$GITHUB_OUTPUT"
           else
             echo "cloud-messaging=false" >> "$GITHUB_OUTPUT"
           fi
 
           # AdminPanel
-          if is_true "$(has_match 'Backend/Barkfluff.AdminPanel/')" "$BACKEND_REBUILD"; then
+          if is_true "$(has_match 'Backend/Barkfluff.AdminPanel/')" "$PROTO" "$BACKEND_REBUILD"; then
             echo "admin-panel=true" >> "$GITHUB_OUTPUT"
           else
             echo "admin-panel=false" >> "$GITHUB_OUTPUT"
           fi
 
           # ClientStorage
-          if is_true "$(has_match 'Backend/BarkFluff.ClientStorage/')" "$GRPC_SERVER" "$BACKEND_REBUILD"; then
+          if is_true "$(has_match 'Backend/BarkFluff.ClientStorage/')" "$GRPC_SERVER" "$PROTO" "$BACKEND_REBUILD"; then
             echo "client-storage=true" >> "$GITHUB_OUTPUT"
           else
             echo "client-storage=false" >> "$GITHUB_OUTPUT"
           fi
 
           # Web
-          if is_true "$(has_match 'Backend/BarkFluff.Web/')" "$GRPC_SERVER" "$BACKEND_REBUILD"; then
+          if is_true "$(has_match 'Backend/BarkFluff.Web/')" "$GRPC_SERVER" "$PROTO" "$BACKEND_REBUILD"; then
             echo "web=true" >> "$GITHUB_OUTPUT"
           else
             echo "web=false" >> "$GITHUB_OUTPUT"
           fi
 
           # WPF Client
-          if is_true "$(has_match 'Windows/BarkFluff.Client.WPF/')" "$(has_match 'Windows/BarkFluff.WebApi.Core/')" "$(has_match 'Windows/client-rebuild.trigger')" "$SHARED_EXCEPTIONS" "$SHARED_AUTH" "$SHARED_SECURITY"; then
+          if is_true "$(has_match 'Windows/BarkFluff.Client.WPF/')" "$(has_match 'Windows/BarkFluff.WebApi.Core/')" "$(has_match 'Windows/client-rebuild.trigger')" "$SHARED_EXCEPTIONS" "$SHARED_AUTH" "$SHARED_SECURITY" "$PROTO"; then
             echo "wpf-client=true" >> "$GITHUB_OUTPUT"
           else
             echo "wpf-client=false" >> "$GITHUB_OUTPUT"
@@ -190,35 +200,523 @@ jobs:
           cat "$GITHUB_OUTPUT"
 
   # ═══════════════════════════════════════════════════════════════
-  #  Backend Docker builds
+  #  Последовательный запрос подтверждений сборки
   # ═══════════════════════════════════════════════════════════════
-
-  # --- Identity ---
-  build-identity:
-    name: "\U0001F433 Identity"
+  request-approvals:
+    name: "\U0001F4F2 Запрос подтверждений"
     needs: detect-changes
-    if: needs.detect-changes.outputs.identity == 'true'
+    if: |
+      needs.detect-changes.outputs.identity == 'true' ||
+      needs.detect-changes.outputs.users == 'true' ||
+      needs.detect-changes.outputs.messages == 'true' ||
+      needs.detect-changes.outputs.files == 'true' ||
+      needs.detect-changes.outputs.updates == 'true' ||
+      needs.detect-changes.outputs.notification == 'true' ||
+      needs.detect-changes.outputs.configuration == 'true' ||
+      needs.detect-changes.outputs.beacon == 'true' ||
+      needs.detect-changes.outputs.fast-auth == 'true' ||
+      needs.detect-changes.outputs.navigator == 'true' ||
+      needs.detect-changes.outputs.onliner == 'true' ||
+      needs.detect-changes.outputs.cloud-messaging == 'true' ||
+      needs.detect-changes.outputs.admin-panel == 'true' ||
+      needs.detect-changes.outputs.client-storage == 'true' ||
+      needs.detect-changes.outputs.web == 'true' ||
+      needs.detect-changes.outputs.wpf-client == 'true' ||
+      needs.detect-changes.outputs.android-client == 'true'
     runs-on: self-hosted
+    outputs:
+      identity-approved: ${{ steps.result-identity.outputs.approved }}
+      users-approved: ${{ steps.result-users.outputs.approved }}
+      messages-approved: ${{ steps.result-messages.outputs.approved }}
+      files-approved: ${{ steps.result-files.outputs.approved }}
+      updates-approved: ${{ steps.result-updates.outputs.approved }}
+      notification-approved: ${{ steps.result-notification.outputs.approved }}
+      configuration-approved: ${{ steps.result-configuration.outputs.approved }}
+      beacon-approved: ${{ steps.result-beacon.outputs.approved }}
+      fast-auth-approved: ${{ steps.result-fast-auth.outputs.approved }}
+      navigator-approved: ${{ steps.result-navigator.outputs.approved }}
+      onliner-approved: ${{ steps.result-onliner.outputs.approved }}
+      cloud-messaging-approved: ${{ steps.result-cloud-messaging.outputs.approved }}
+      admin-panel-approved: ${{ steps.result-admin-panel.outputs.approved }}
+      client-storage-approved: ${{ steps.result-client-storage.outputs.approved }}
+      web-approved: ${{ steps.result-web.outputs.approved }}
+      wpf-client-approved: ${{ steps.result-wpf-client.outputs.approved }}
+      android-client-approved: ${{ steps.result-android-client.outputs.approved }}
     steps:
-      - uses: actions/checkout@v4
-
-      - name: "\U0001F4F2 Запрос подтверждения сборки"
-        id: approval
+      # --- Identity ---
+      - name: "\U0001F4F2 Identity"
+        if: needs.detect-changes.outputs.identity == 'true'
+        id: approval-identity
         continue-on-error: true
         uses: powerdot/telegram-manual-approval@main
         with:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
           APPROVAL_TEXT: "Запустить сборку BarkFluff.Identity?"
-          APPROVAL_BUTTON: "✅ Собрать"
-          REJECT_BUTTON: "❌ Отменить"
-          APPROVED_TEXT: "✅ Сборка Identity одобрена"
-          REJECTED_TEXT: "❌ Сборка Identity отклонена"
-          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
+          APPROVAL_BUTTON: "\u2705 Собрать"
+          REJECT_BUTTON: "\u274C Отменить"
+          APPROVED_TEXT: "\u2705 Сборка Identity одобрена"
+          REJECTED_TEXT: "\u274C Сборка Identity отклонена"
+          TIMEOUT_TEXT: "\u23F0 Время ожидания истекло"
           UPDATE_REQUESTS: 120
 
+      - name: Результат Identity
+        if: needs.detect-changes.outputs.identity == 'true'
+        id: result-identity
+        run: |
+          if [ "${{ steps.approval-identity.outcome }}" = "success" ]; then
+            echo "approved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "approved=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # --- Users ---
+      - name: "\U0001F4F2 Users"
+        if: needs.detect-changes.outputs.users == 'true'
+        id: approval-users
+        continue-on-error: true
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "Запустить сборку BarkFluff.Users?"
+          APPROVAL_BUTTON: "\u2705 Собрать"
+          REJECT_BUTTON: "\u274C Отменить"
+          APPROVED_TEXT: "\u2705 Сборка Users одобрена"
+          REJECTED_TEXT: "\u274C Сборка Users отклонена"
+          TIMEOUT_TEXT: "\u23F0 Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Результат Users
+        if: needs.detect-changes.outputs.users == 'true'
+        id: result-users
+        run: |
+          if [ "${{ steps.approval-users.outcome }}" = "success" ]; then
+            echo "approved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "approved=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # --- Messages ---
+      - name: "\U0001F4F2 Messages"
+        if: needs.detect-changes.outputs.messages == 'true'
+        id: approval-messages
+        continue-on-error: true
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "Запустить сборку BarkFluff.Messages?"
+          APPROVAL_BUTTON: "\u2705 Собрать"
+          REJECT_BUTTON: "\u274C Отменить"
+          APPROVED_TEXT: "\u2705 Сборка Messages одобрена"
+          REJECTED_TEXT: "\u274C Сборка Messages отклонена"
+          TIMEOUT_TEXT: "\u23F0 Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Результат Messages
+        if: needs.detect-changes.outputs.messages == 'true'
+        id: result-messages
+        run: |
+          if [ "${{ steps.approval-messages.outcome }}" = "success" ]; then
+            echo "approved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "approved=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # --- Files ---
+      - name: "\U0001F4F2 Files"
+        if: needs.detect-changes.outputs.files == 'true'
+        id: approval-files
+        continue-on-error: true
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "Запустить сборку BarkFluff.Files?"
+          APPROVAL_BUTTON: "\u2705 Собрать"
+          REJECT_BUTTON: "\u274C Отменить"
+          APPROVED_TEXT: "\u2705 Сборка Files одобрена"
+          REJECTED_TEXT: "\u274C Сборка Files отклонена"
+          TIMEOUT_TEXT: "\u23F0 Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Результат Files
+        if: needs.detect-changes.outputs.files == 'true'
+        id: result-files
+        run: |
+          if [ "${{ steps.approval-files.outcome }}" = "success" ]; then
+            echo "approved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "approved=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # --- Updates ---
+      - name: "\U0001F4F2 Updates"
+        if: needs.detect-changes.outputs.updates == 'true'
+        id: approval-updates
+        continue-on-error: true
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "Запустить сборку BarkFluff.Updates?"
+          APPROVAL_BUTTON: "\u2705 Собрать"
+          REJECT_BUTTON: "\u274C Отменить"
+          APPROVED_TEXT: "\u2705 Сборка Updates одобрена"
+          REJECTED_TEXT: "\u274C Сборка Updates отклонена"
+          TIMEOUT_TEXT: "\u23F0 Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Результат Updates
+        if: needs.detect-changes.outputs.updates == 'true'
+        id: result-updates
+        run: |
+          if [ "${{ steps.approval-updates.outcome }}" = "success" ]; then
+            echo "approved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "approved=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # --- Notification ---
+      - name: "\U0001F4F2 Notification"
+        if: needs.detect-changes.outputs.notification == 'true'
+        id: approval-notification
+        continue-on-error: true
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "Запустить сборку BarkFluff.Notification?"
+          APPROVAL_BUTTON: "\u2705 Собрать"
+          REJECT_BUTTON: "\u274C Отменить"
+          APPROVED_TEXT: "\u2705 Сборка Notification одобрена"
+          REJECTED_TEXT: "\u274C Сборка Notification отклонена"
+          TIMEOUT_TEXT: "\u23F0 Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Результат Notification
+        if: needs.detect-changes.outputs.notification == 'true'
+        id: result-notification
+        run: |
+          if [ "${{ steps.approval-notification.outcome }}" = "success" ]; then
+            echo "approved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "approved=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # --- Configuration ---
+      - name: "\U0001F4F2 Configuration"
+        if: needs.detect-changes.outputs.configuration == 'true'
+        id: approval-configuration
+        continue-on-error: true
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "Запустить сборку BarkFluff.Configuration?"
+          APPROVAL_BUTTON: "\u2705 Собрать"
+          REJECT_BUTTON: "\u274C Отменить"
+          APPROVED_TEXT: "\u2705 Сборка Configuration одобрена"
+          REJECTED_TEXT: "\u274C Сборка Configuration отклонена"
+          TIMEOUT_TEXT: "\u23F0 Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Результат Configuration
+        if: needs.detect-changes.outputs.configuration == 'true'
+        id: result-configuration
+        run: |
+          if [ "${{ steps.approval-configuration.outcome }}" = "success" ]; then
+            echo "approved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "approved=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # --- Beacon ---
+      - name: "\U0001F4F2 Beacon"
+        if: needs.detect-changes.outputs.beacon == 'true'
+        id: approval-beacon
+        continue-on-error: true
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "Запустить сборку BarkFluff.Beacon?"
+          APPROVAL_BUTTON: "\u2705 Собрать"
+          REJECT_BUTTON: "\u274C Отменить"
+          APPROVED_TEXT: "\u2705 Сборка Beacon одобрена"
+          REJECTED_TEXT: "\u274C Сборка Beacon отклонена"
+          TIMEOUT_TEXT: "\u23F0 Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Результат Beacon
+        if: needs.detect-changes.outputs.beacon == 'true'
+        id: result-beacon
+        run: |
+          if [ "${{ steps.approval-beacon.outcome }}" = "success" ]; then
+            echo "approved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "approved=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # --- FastAuth ---
+      - name: "\U0001F4F2 FastAuth"
+        if: needs.detect-changes.outputs.fast-auth == 'true'
+        id: approval-fast-auth
+        continue-on-error: true
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "Запустить сборку BarkFluff.FastAuth?"
+          APPROVAL_BUTTON: "\u2705 Собрать"
+          REJECT_BUTTON: "\u274C Отменить"
+          APPROVED_TEXT: "\u2705 Сборка FastAuth одобрена"
+          REJECTED_TEXT: "\u274C Сборка FastAuth отклонена"
+          TIMEOUT_TEXT: "\u23F0 Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Результат FastAuth
+        if: needs.detect-changes.outputs.fast-auth == 'true'
+        id: result-fast-auth
+        run: |
+          if [ "${{ steps.approval-fast-auth.outcome }}" = "success" ]; then
+            echo "approved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "approved=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # --- Navigator ---
+      - name: "\U0001F4F2 Navigator"
+        if: needs.detect-changes.outputs.navigator == 'true'
+        id: approval-navigator
+        continue-on-error: true
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "Запустить сборку BarkFluff.Navigator?"
+          APPROVAL_BUTTON: "\u2705 Собрать"
+          REJECT_BUTTON: "\u274C Отменить"
+          APPROVED_TEXT: "\u2705 Сборка Navigator одобрена"
+          REJECTED_TEXT: "\u274C Сборка Navigator отклонена"
+          TIMEOUT_TEXT: "\u23F0 Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Результат Navigator
+        if: needs.detect-changes.outputs.navigator == 'true'
+        id: result-navigator
+        run: |
+          if [ "${{ steps.approval-navigator.outcome }}" = "success" ]; then
+            echo "approved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "approved=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # --- Onliner ---
+      - name: "\U0001F4F2 Onliner"
+        if: needs.detect-changes.outputs.onliner == 'true'
+        id: approval-onliner
+        continue-on-error: true
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "Запустить сборку BarkFluff.Onliner?"
+          APPROVAL_BUTTON: "\u2705 Собрать"
+          REJECT_BUTTON: "\u274C Отменить"
+          APPROVED_TEXT: "\u2705 Сборка Onliner одобрена"
+          REJECTED_TEXT: "\u274C Сборка Onliner отклонена"
+          TIMEOUT_TEXT: "\u23F0 Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Результат Onliner
+        if: needs.detect-changes.outputs.onliner == 'true'
+        id: result-onliner
+        run: |
+          if [ "${{ steps.approval-onliner.outcome }}" = "success" ]; then
+            echo "approved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "approved=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # --- CloudMessaging ---
+      - name: "\U0001F4F2 CloudMessaging"
+        if: needs.detect-changes.outputs.cloud-messaging == 'true'
+        id: approval-cloud-messaging
+        continue-on-error: true
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "Запустить сборку Barkfluff.CloudMessaging?"
+          APPROVAL_BUTTON: "\u2705 Собрать"
+          REJECT_BUTTON: "\u274C Отменить"
+          APPROVED_TEXT: "\u2705 Сборка CloudMessaging одобрена"
+          REJECTED_TEXT: "\u274C Сборка CloudMessaging отклонена"
+          TIMEOUT_TEXT: "\u23F0 Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Результат CloudMessaging
+        if: needs.detect-changes.outputs.cloud-messaging == 'true'
+        id: result-cloud-messaging
+        run: |
+          if [ "${{ steps.approval-cloud-messaging.outcome }}" = "success" ]; then
+            echo "approved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "approved=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # --- AdminPanel ---
+      - name: "\U0001F4F2 AdminPanel"
+        if: needs.detect-changes.outputs.admin-panel == 'true'
+        id: approval-admin-panel
+        continue-on-error: true
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "Запустить сборку Barkfluff.AdminPanel?"
+          APPROVAL_BUTTON: "\u2705 Собрать"
+          REJECT_BUTTON: "\u274C Отменить"
+          APPROVED_TEXT: "\u2705 Сборка AdminPanel одобрена"
+          REJECTED_TEXT: "\u274C Сборка AdminPanel отклонена"
+          TIMEOUT_TEXT: "\u23F0 Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Результат AdminPanel
+        if: needs.detect-changes.outputs.admin-panel == 'true'
+        id: result-admin-panel
+        run: |
+          if [ "${{ steps.approval-admin-panel.outcome }}" = "success" ]; then
+            echo "approved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "approved=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # --- ClientStorage ---
+      - name: "\U0001F4F2 ClientStorage"
+        if: needs.detect-changes.outputs.client-storage == 'true'
+        id: approval-client-storage
+        continue-on-error: true
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "Запустить сборку BarkFluff.ClientStorage?"
+          APPROVAL_BUTTON: "\u2705 Собрать"
+          REJECT_BUTTON: "\u274C Отменить"
+          APPROVED_TEXT: "\u2705 Сборка ClientStorage одобрена"
+          REJECTED_TEXT: "\u274C Сборка ClientStorage отклонена"
+          TIMEOUT_TEXT: "\u23F0 Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Результат ClientStorage
+        if: needs.detect-changes.outputs.client-storage == 'true'
+        id: result-client-storage
+        run: |
+          if [ "${{ steps.approval-client-storage.outcome }}" = "success" ]; then
+            echo "approved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "approved=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # --- Web ---
+      - name: "\U0001F4F2 Web"
+        if: needs.detect-changes.outputs.web == 'true'
+        id: approval-web
+        continue-on-error: true
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "Запустить сборку BarkFluff.Web?"
+          APPROVAL_BUTTON: "\u2705 Собрать"
+          REJECT_BUTTON: "\u274C Отменить"
+          APPROVED_TEXT: "\u2705 Сборка Web одобрена"
+          REJECTED_TEXT: "\u274C Сборка Web отклонена"
+          TIMEOUT_TEXT: "\u23F0 Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Результат Web
+        if: needs.detect-changes.outputs.web == 'true'
+        id: result-web
+        run: |
+          if [ "${{ steps.approval-web.outcome }}" = "success" ]; then
+            echo "approved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "approved=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # --- WPF Client ---
+      - name: "\U0001F4F2 WPF Client"
+        if: needs.detect-changes.outputs.wpf-client == 'true'
+        id: approval-wpf-client
+        continue-on-error: true
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "Запустить сборку WPF Client?"
+          APPROVAL_BUTTON: "\u2705 Собрать"
+          REJECT_BUTTON: "\u274C Отменить"
+          APPROVED_TEXT: "\u2705 Сборка WPF Client одобрена"
+          REJECTED_TEXT: "\u274C Сборка WPF Client отклонена"
+          TIMEOUT_TEXT: "\u23F0 Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Результат WPF Client
+        if: needs.detect-changes.outputs.wpf-client == 'true'
+        id: result-wpf-client
+        run: |
+          if [ "${{ steps.approval-wpf-client.outcome }}" = "success" ]; then
+            echo "approved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "approved=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # --- Android Client ---
+      - name: "\U0001F4F2 Android Client"
+        if: needs.detect-changes.outputs.android-client == 'true'
+        id: approval-android-client
+        continue-on-error: true
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "Запустить сборку Android Client?"
+          APPROVAL_BUTTON: "\u2705 Собрать"
+          REJECT_BUTTON: "\u274C Отменить"
+          APPROVED_TEXT: "\u2705 Сборка Android Client одобрена"
+          REJECTED_TEXT: "\u274C Сборка Android Client отклонена"
+          TIMEOUT_TEXT: "\u23F0 Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Результат Android Client
+        if: needs.detect-changes.outputs.android-client == 'true'
+        id: result-android-client
+        run: |
+          if [ "${{ steps.approval-android-client.outcome }}" = "success" ]; then
+            echo "approved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "approved=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ═══════════════════════════════════════════════════════════════
+  #  Backend Docker builds
+  # ═══════════════════════════════════════════════════════════════
+
+  # --- Identity ---
+  build-identity:
+    name: "\U0001F433 Identity"
+    needs: [detect-changes, request-approvals]
+    if: needs.detect-changes.outputs.identity == 'true'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
       - name: Login to Private Registry
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.identity-approved == 'true'
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com:5000
@@ -226,11 +724,11 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.identity-approved == 'true'
         uses: docker/setup-buildx-action@v2
 
       - name: Set tags
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.identity-approved == 'true'
         id: vars
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
@@ -242,7 +740,7 @@ jobs:
           fi
 
       - name: Build and Push
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.identity-approved == 'true'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -251,7 +749,7 @@ jobs:
           tags: ${{ steps.vars.outputs.tags }}
 
       - name: "\U0001F6AB Сборка отменена"
-        if: steps.approval.outcome == 'failure'
+        if: needs.request-approvals.outputs.identity-approved != 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -267,8 +765,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U00002705 Уведомление об успехе"
-        if: success() && steps.approval.outcome == 'success'
+      - name: "\u2705 Уведомление об успехе"
+        if: success() && needs.request-approvals.outputs.identity-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -286,8 +784,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U0000274C Уведомление об ошибке"
-        if: failure() && steps.approval.outcome == 'success'
+      - name: "\u274C Уведомление об ошибке"
+        if: failure() && needs.request-approvals.outputs.identity-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -307,29 +805,14 @@ jobs:
   # --- Users ---
   build-users:
     name: "\U0001F433 Users"
-    needs: detect-changes
+    needs: [detect-changes, request-approvals]
     if: needs.detect-changes.outputs.users == 'true'
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
-      - name: "\U0001F4F2 Запрос подтверждения сборки"
-        id: approval
-        continue-on-error: true
-        uses: powerdot/telegram-manual-approval@main
-        with:
-          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "Запустить сборку BarkFluff.Users?"
-          APPROVAL_BUTTON: "✅ Собрать"
-          REJECT_BUTTON: "❌ Отменить"
-          APPROVED_TEXT: "✅ Сборка Users одобрена"
-          REJECTED_TEXT: "❌ Сборка Users отклонена"
-          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
-          UPDATE_REQUESTS: 120
-
       - name: Login to Private Registry
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.users-approved == 'true'
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com:5000
@@ -337,11 +820,11 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.users-approved == 'true'
         uses: docker/setup-buildx-action@v2
 
       - name: Set tags
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.users-approved == 'true'
         id: vars
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
@@ -353,7 +836,7 @@ jobs:
           fi
 
       - name: Build and Push
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.users-approved == 'true'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -362,7 +845,7 @@ jobs:
           tags: ${{ steps.vars.outputs.tags }}
 
       - name: "\U0001F6AB Сборка отменена"
-        if: steps.approval.outcome == 'failure'
+        if: needs.request-approvals.outputs.users-approved != 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -378,8 +861,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U00002705 Уведомление об успехе"
-        if: success() && steps.approval.outcome == 'success'
+      - name: "\u2705 Уведомление об успехе"
+        if: success() && needs.request-approvals.outputs.users-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -397,8 +880,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U0000274C Уведомление об ошибке"
-        if: failure() && steps.approval.outcome == 'success'
+      - name: "\u274C Уведомление об ошибке"
+        if: failure() && needs.request-approvals.outputs.users-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -418,29 +901,14 @@ jobs:
   # --- Messages ---
   build-messages:
     name: "\U0001F433 Messages"
-    needs: detect-changes
+    needs: [detect-changes, request-approvals]
     if: needs.detect-changes.outputs.messages == 'true'
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
-      - name: "\U0001F4F2 Запрос подтверждения сборки"
-        id: approval
-        continue-on-error: true
-        uses: powerdot/telegram-manual-approval@main
-        with:
-          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "Запустить сборку BarkFluff.Messages?"
-          APPROVAL_BUTTON: "✅ Собрать"
-          REJECT_BUTTON: "❌ Отменить"
-          APPROVED_TEXT: "✅ Сборка Messages одобрена"
-          REJECTED_TEXT: "❌ Сборка Messages отклонена"
-          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
-          UPDATE_REQUESTS: 120
-
       - name: Login to Private Registry
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.messages-approved == 'true'
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com:5000
@@ -448,11 +916,11 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.messages-approved == 'true'
         uses: docker/setup-buildx-action@v2
 
       - name: Set tags
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.messages-approved == 'true'
         id: vars
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
@@ -464,7 +932,7 @@ jobs:
           fi
 
       - name: Build and Push
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.messages-approved == 'true'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -473,7 +941,7 @@ jobs:
           tags: ${{ steps.vars.outputs.tags }}
 
       - name: "\U0001F6AB Сборка отменена"
-        if: steps.approval.outcome == 'failure'
+        if: needs.request-approvals.outputs.messages-approved != 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -489,8 +957,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U00002705 Уведомление об успехе"
-        if: success() && steps.approval.outcome == 'success'
+      - name: "\u2705 Уведомление об успехе"
+        if: success() && needs.request-approvals.outputs.messages-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -508,8 +976,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U0000274C Уведомление об ошибке"
-        if: failure() && steps.approval.outcome == 'success'
+      - name: "\u274C Уведомление об ошибке"
+        if: failure() && needs.request-approvals.outputs.messages-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -529,29 +997,14 @@ jobs:
   # --- Files ---
   build-files:
     name: "\U0001F433 Files"
-    needs: detect-changes
+    needs: [detect-changes, request-approvals]
     if: needs.detect-changes.outputs.files == 'true'
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
-      - name: "\U0001F4F2 Запрос подтверждения сборки"
-        id: approval
-        continue-on-error: true
-        uses: powerdot/telegram-manual-approval@main
-        with:
-          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "Запустить сборку BarkFluff.Files?"
-          APPROVAL_BUTTON: "✅ Собрать"
-          REJECT_BUTTON: "❌ Отменить"
-          APPROVED_TEXT: "✅ Сборка Files одобрена"
-          REJECTED_TEXT: "❌ Сборка Files отклонена"
-          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
-          UPDATE_REQUESTS: 120
-
       - name: Login to Private Registry
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.files-approved == 'true'
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com:5000
@@ -559,11 +1012,11 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.files-approved == 'true'
         uses: docker/setup-buildx-action@v2
 
       - name: Set tags
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.files-approved == 'true'
         id: vars
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
@@ -575,7 +1028,7 @@ jobs:
           fi
 
       - name: Build and Push
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.files-approved == 'true'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -584,7 +1037,7 @@ jobs:
           tags: ${{ steps.vars.outputs.tags }}
 
       - name: "\U0001F6AB Сборка отменена"
-        if: steps.approval.outcome == 'failure'
+        if: needs.request-approvals.outputs.files-approved != 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -600,8 +1053,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U00002705 Уведомление об успехе"
-        if: success() && steps.approval.outcome == 'success'
+      - name: "\u2705 Уведомление об успехе"
+        if: success() && needs.request-approvals.outputs.files-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -619,8 +1072,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U0000274C Уведомление об ошибке"
-        if: failure() && steps.approval.outcome == 'success'
+      - name: "\u274C Уведомление об ошибке"
+        if: failure() && needs.request-approvals.outputs.files-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -640,29 +1093,14 @@ jobs:
   # --- Updates ---
   build-updates:
     name: "\U0001F433 Updates"
-    needs: detect-changes
+    needs: [detect-changes, request-approvals]
     if: needs.detect-changes.outputs.updates == 'true'
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
-      - name: "\U0001F4F2 Запрос подтверждения сборки"
-        id: approval
-        continue-on-error: true
-        uses: powerdot/telegram-manual-approval@main
-        with:
-          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "Запустить сборку BarkFluff.Updates?"
-          APPROVAL_BUTTON: "✅ Собрать"
-          REJECT_BUTTON: "❌ Отменить"
-          APPROVED_TEXT: "✅ Сборка Updates одобрена"
-          REJECTED_TEXT: "❌ Сборка Updates отклонена"
-          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
-          UPDATE_REQUESTS: 120
-
       - name: Login to Private Registry
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.updates-approved == 'true'
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com:5000
@@ -670,11 +1108,11 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.updates-approved == 'true'
         uses: docker/setup-buildx-action@v2
 
       - name: Set tags
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.updates-approved == 'true'
         id: vars
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
@@ -686,7 +1124,7 @@ jobs:
           fi
 
       - name: Build and Push
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.updates-approved == 'true'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -695,7 +1133,7 @@ jobs:
           tags: ${{ steps.vars.outputs.tags }}
 
       - name: "\U0001F6AB Сборка отменена"
-        if: steps.approval.outcome == 'failure'
+        if: needs.request-approvals.outputs.updates-approved != 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -711,8 +1149,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U00002705 Уведомление об успехе"
-        if: success() && steps.approval.outcome == 'success'
+      - name: "\u2705 Уведомление об успехе"
+        if: success() && needs.request-approvals.outputs.updates-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -730,8 +1168,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U0000274C Уведомление об ошибке"
-        if: failure() && steps.approval.outcome == 'success'
+      - name: "\u274C Уведомление об ошибке"
+        if: failure() && needs.request-approvals.outputs.updates-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -751,29 +1189,14 @@ jobs:
   # --- Notification ---
   build-notification:
     name: "\U0001F433 Notification"
-    needs: detect-changes
+    needs: [detect-changes, request-approvals]
     if: needs.detect-changes.outputs.notification == 'true'
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
-      - name: "\U0001F4F2 Запрос подтверждения сборки"
-        id: approval
-        continue-on-error: true
-        uses: powerdot/telegram-manual-approval@main
-        with:
-          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "Запустить сборку BarkFluff.Notification?"
-          APPROVAL_BUTTON: "✅ Собрать"
-          REJECT_BUTTON: "❌ Отменить"
-          APPROVED_TEXT: "✅ Сборка Notification одобрена"
-          REJECTED_TEXT: "❌ Сборка Notification отклонена"
-          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
-          UPDATE_REQUESTS: 120
-
       - name: Login to Private Registry
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.notification-approved == 'true'
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com:5000
@@ -781,11 +1204,11 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.notification-approved == 'true'
         uses: docker/setup-buildx-action@v2
 
       - name: Set tags
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.notification-approved == 'true'
         id: vars
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
@@ -797,7 +1220,7 @@ jobs:
           fi
 
       - name: Build and Push
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.notification-approved == 'true'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -806,7 +1229,7 @@ jobs:
           tags: ${{ steps.vars.outputs.tags }}
 
       - name: "\U0001F6AB Сборка отменена"
-        if: steps.approval.outcome == 'failure'
+        if: needs.request-approvals.outputs.notification-approved != 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -822,8 +1245,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U00002705 Уведомление об успехе"
-        if: success() && steps.approval.outcome == 'success'
+      - name: "\u2705 Уведомление об успехе"
+        if: success() && needs.request-approvals.outputs.notification-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -841,8 +1264,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U0000274C Уведомление об ошибке"
-        if: failure() && steps.approval.outcome == 'success'
+      - name: "\u274C Уведомление об ошибке"
+        if: failure() && needs.request-approvals.outputs.notification-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -862,29 +1285,14 @@ jobs:
   # --- Configuration ---
   build-configuration:
     name: "\U0001F433 Configuration"
-    needs: detect-changes
+    needs: [detect-changes, request-approvals]
     if: needs.detect-changes.outputs.configuration == 'true'
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
-      - name: "\U0001F4F2 Запрос подтверждения сборки"
-        id: approval
-        continue-on-error: true
-        uses: powerdot/telegram-manual-approval@main
-        with:
-          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "Запустить сборку BarkFluff.Configuration?"
-          APPROVAL_BUTTON: "✅ Собрать"
-          REJECT_BUTTON: "❌ Отменить"
-          APPROVED_TEXT: "✅ Сборка Configuration одобрена"
-          REJECTED_TEXT: "❌ Сборка Configuration отклонена"
-          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
-          UPDATE_REQUESTS: 120
-
       - name: Login to Private Registry
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.configuration-approved == 'true'
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com:5000
@@ -892,11 +1300,11 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.configuration-approved == 'true'
         uses: docker/setup-buildx-action@v2
 
       - name: Set tags
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.configuration-approved == 'true'
         id: vars
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
@@ -908,7 +1316,7 @@ jobs:
           fi
 
       - name: Build and Push
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.configuration-approved == 'true'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -917,7 +1325,7 @@ jobs:
           tags: ${{ steps.vars.outputs.tags }}
 
       - name: "\U0001F6AB Сборка отменена"
-        if: steps.approval.outcome == 'failure'
+        if: needs.request-approvals.outputs.configuration-approved != 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -933,8 +1341,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U00002705 Уведомление об успехе"
-        if: success() && steps.approval.outcome == 'success'
+      - name: "\u2705 Уведомление об успехе"
+        if: success() && needs.request-approvals.outputs.configuration-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -952,8 +1360,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U0000274C Уведомление об ошибке"
-        if: failure() && steps.approval.outcome == 'success'
+      - name: "\u274C Уведомление об ошибке"
+        if: failure() && needs.request-approvals.outputs.configuration-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -973,29 +1381,14 @@ jobs:
   # --- Beacon ---
   build-beacon:
     name: "\U0001F433 Beacon"
-    needs: detect-changes
+    needs: [detect-changes, request-approvals]
     if: needs.detect-changes.outputs.beacon == 'true'
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
-      - name: "\U0001F4F2 Запрос подтверждения сборки"
-        id: approval
-        continue-on-error: true
-        uses: powerdot/telegram-manual-approval@main
-        with:
-          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "Запустить сборку BarkFluff.Beacon?"
-          APPROVAL_BUTTON: "✅ Собрать"
-          REJECT_BUTTON: "❌ Отменить"
-          APPROVED_TEXT: "✅ Сборка Beacon одобрена"
-          REJECTED_TEXT: "❌ Сборка Beacon отклонена"
-          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
-          UPDATE_REQUESTS: 120
-
       - name: Login to Private Registry
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.beacon-approved == 'true'
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com:5000
@@ -1003,11 +1396,11 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.beacon-approved == 'true'
         uses: docker/setup-buildx-action@v2
 
       - name: Set tags
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.beacon-approved == 'true'
         id: vars
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
@@ -1019,7 +1412,7 @@ jobs:
           fi
 
       - name: Build and Push
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.beacon-approved == 'true'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -1028,7 +1421,7 @@ jobs:
           tags: ${{ steps.vars.outputs.tags }}
 
       - name: "\U0001F6AB Сборка отменена"
-        if: steps.approval.outcome == 'failure'
+        if: needs.request-approvals.outputs.beacon-approved != 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1044,8 +1437,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U00002705 Уведомление об успехе"
-        if: success() && steps.approval.outcome == 'success'
+      - name: "\u2705 Уведомление об успехе"
+        if: success() && needs.request-approvals.outputs.beacon-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1063,8 +1456,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U0000274C Уведомление об ошибке"
-        if: failure() && steps.approval.outcome == 'success'
+      - name: "\u274C Уведомление об ошибке"
+        if: failure() && needs.request-approvals.outputs.beacon-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1084,29 +1477,14 @@ jobs:
   # --- FastAuth ---
   build-fast-auth:
     name: "\U0001F433 FastAuth"
-    needs: detect-changes
+    needs: [detect-changes, request-approvals]
     if: needs.detect-changes.outputs.fast-auth == 'true'
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
-      - name: "\U0001F4F2 Запрос подтверждения сборки"
-        id: approval
-        continue-on-error: true
-        uses: powerdot/telegram-manual-approval@main
-        with:
-          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "Запустить сборку BarkFluff.FastAuth?"
-          APPROVAL_BUTTON: "✅ Собрать"
-          REJECT_BUTTON: "❌ Отменить"
-          APPROVED_TEXT: "✅ Сборка FastAuth одобрена"
-          REJECTED_TEXT: "❌ Сборка FastAuth отклонена"
-          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
-          UPDATE_REQUESTS: 120
-
       - name: Login to Private Registry
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.fast-auth-approved == 'true'
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com:5000
@@ -1114,11 +1492,11 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.fast-auth-approved == 'true'
         uses: docker/setup-buildx-action@v2
 
       - name: Set tags
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.fast-auth-approved == 'true'
         id: vars
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
@@ -1130,7 +1508,7 @@ jobs:
           fi
 
       - name: Build and Push
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.fast-auth-approved == 'true'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -1139,7 +1517,7 @@ jobs:
           tags: ${{ steps.vars.outputs.tags }}
 
       - name: "\U0001F6AB Сборка отменена"
-        if: steps.approval.outcome == 'failure'
+        if: needs.request-approvals.outputs.fast-auth-approved != 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1155,8 +1533,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U00002705 Уведомление об успехе"
-        if: success() && steps.approval.outcome == 'success'
+      - name: "\u2705 Уведомление об успехе"
+        if: success() && needs.request-approvals.outputs.fast-auth-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1174,8 +1552,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U0000274C Уведомление об ошибке"
-        if: failure() && steps.approval.outcome == 'success'
+      - name: "\u274C Уведомление об ошибке"
+        if: failure() && needs.request-approvals.outputs.fast-auth-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1195,29 +1573,14 @@ jobs:
   # --- Navigator ---
   build-navigator:
     name: "\U0001F433 Navigator"
-    needs: detect-changes
+    needs: [detect-changes, request-approvals]
     if: needs.detect-changes.outputs.navigator == 'true'
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
-      - name: "\U0001F4F2 Запрос подтверждения сборки"
-        id: approval
-        continue-on-error: true
-        uses: powerdot/telegram-manual-approval@main
-        with:
-          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "Запустить сборку BarkFluff.Navigator?"
-          APPROVAL_BUTTON: "✅ Собрать"
-          REJECT_BUTTON: "❌ Отменить"
-          APPROVED_TEXT: "✅ Сборка Navigator одобрена"
-          REJECTED_TEXT: "❌ Сборка Navigator отклонена"
-          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
-          UPDATE_REQUESTS: 120
-
       - name: Login to Private Registry
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.navigator-approved == 'true'
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com:5000
@@ -1225,11 +1588,11 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.navigator-approved == 'true'
         uses: docker/setup-buildx-action@v2
 
       - name: Set tags
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.navigator-approved == 'true'
         id: vars
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
@@ -1241,7 +1604,7 @@ jobs:
           fi
 
       - name: Build and Push
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.navigator-approved == 'true'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -1250,7 +1613,7 @@ jobs:
           tags: ${{ steps.vars.outputs.tags }}
 
       - name: "\U0001F6AB Сборка отменена"
-        if: steps.approval.outcome == 'failure'
+        if: needs.request-approvals.outputs.navigator-approved != 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1266,8 +1629,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U00002705 Уведомление об успехе"
-        if: success() && steps.approval.outcome == 'success'
+      - name: "\u2705 Уведомление об успехе"
+        if: success() && needs.request-approvals.outputs.navigator-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1285,8 +1648,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U0000274C Уведомление об ошибке"
-        if: failure() && steps.approval.outcome == 'success'
+      - name: "\u274C Уведомление об ошибке"
+        if: failure() && needs.request-approvals.outputs.navigator-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1306,29 +1669,14 @@ jobs:
   # --- Onliner ---
   build-onliner:
     name: "\U0001F433 Onliner"
-    needs: detect-changes
+    needs: [detect-changes, request-approvals]
     if: needs.detect-changes.outputs.onliner == 'true'
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
-      - name: "\U0001F4F2 Запрос подтверждения сборки"
-        id: approval
-        continue-on-error: true
-        uses: powerdot/telegram-manual-approval@main
-        with:
-          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "Запустить сборку BarkFluff.Onliner?"
-          APPROVAL_BUTTON: "✅ Собрать"
-          REJECT_BUTTON: "❌ Отменить"
-          APPROVED_TEXT: "✅ Сборка Onliner одобрена"
-          REJECTED_TEXT: "❌ Сборка Onliner отклонена"
-          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
-          UPDATE_REQUESTS: 120
-
       - name: Login to Private Registry
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.onliner-approved == 'true'
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com:5000
@@ -1336,11 +1684,11 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.onliner-approved == 'true'
         uses: docker/setup-buildx-action@v2
 
       - name: Set tags
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.onliner-approved == 'true'
         id: vars
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
@@ -1352,7 +1700,7 @@ jobs:
           fi
 
       - name: Build and Push
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.onliner-approved == 'true'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -1361,7 +1709,7 @@ jobs:
           tags: ${{ steps.vars.outputs.tags }}
 
       - name: "\U0001F6AB Сборка отменена"
-        if: steps.approval.outcome == 'failure'
+        if: needs.request-approvals.outputs.onliner-approved != 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1377,8 +1725,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U00002705 Уведомление об успехе"
-        if: success() && steps.approval.outcome == 'success'
+      - name: "\u2705 Уведомление об успехе"
+        if: success() && needs.request-approvals.outputs.onliner-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1396,8 +1744,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U0000274C Уведомление об ошибке"
-        if: failure() && steps.approval.outcome == 'success'
+      - name: "\u274C Уведомление об ошибке"
+        if: failure() && needs.request-approvals.outputs.onliner-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1417,29 +1765,14 @@ jobs:
   # --- CloudMessaging ---
   build-cloud-messaging:
     name: "\U0001F433 CloudMessaging"
-    needs: detect-changes
+    needs: [detect-changes, request-approvals]
     if: needs.detect-changes.outputs.cloud-messaging == 'true'
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
-      - name: "\U0001F4F2 Запрос подтверждения сборки"
-        id: approval
-        continue-on-error: true
-        uses: powerdot/telegram-manual-approval@main
-        with:
-          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "Запустить сборку Barkfluff.CloudMessaging?"
-          APPROVAL_BUTTON: "✅ Собрать"
-          REJECT_BUTTON: "❌ Отменить"
-          APPROVED_TEXT: "✅ Сборка CloudMessaging одобрена"
-          REJECTED_TEXT: "❌ Сборка CloudMessaging отклонена"
-          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
-          UPDATE_REQUESTS: 120
-
       - name: Login to Private Registry
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.cloud-messaging-approved == 'true'
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com:5000
@@ -1447,11 +1780,11 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.cloud-messaging-approved == 'true'
         uses: docker/setup-buildx-action@v2
 
       - name: Set tags
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.cloud-messaging-approved == 'true'
         id: vars
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
@@ -1463,7 +1796,7 @@ jobs:
           fi
 
       - name: Build and Push
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.cloud-messaging-approved == 'true'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -1472,7 +1805,7 @@ jobs:
           tags: ${{ steps.vars.outputs.tags }}
 
       - name: "\U0001F6AB Сборка отменена"
-        if: steps.approval.outcome == 'failure'
+        if: needs.request-approvals.outputs.cloud-messaging-approved != 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1488,8 +1821,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U00002705 Уведомление об успехе"
-        if: success() && steps.approval.outcome == 'success'
+      - name: "\u2705 Уведомление об успехе"
+        if: success() && needs.request-approvals.outputs.cloud-messaging-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1507,8 +1840,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U0000274C Уведомление об ошибке"
-        if: failure() && steps.approval.outcome == 'success'
+      - name: "\u274C Уведомление об ошибке"
+        if: failure() && needs.request-approvals.outputs.cloud-messaging-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1528,29 +1861,14 @@ jobs:
   # --- AdminPanel ---
   build-admin-panel:
     name: "\U0001F433 AdminPanel"
-    needs: detect-changes
+    needs: [detect-changes, request-approvals]
     if: needs.detect-changes.outputs.admin-panel == 'true'
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
-      - name: "\U0001F4F2 Запрос подтверждения сборки"
-        id: approval
-        continue-on-error: true
-        uses: powerdot/telegram-manual-approval@main
-        with:
-          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "Запустить сборку Barkfluff.AdminPanel?"
-          APPROVAL_BUTTON: "✅ Собрать"
-          REJECT_BUTTON: "❌ Отменить"
-          APPROVED_TEXT: "✅ Сборка AdminPanel одобрена"
-          REJECTED_TEXT: "❌ Сборка AdminPanel отклонена"
-          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
-          UPDATE_REQUESTS: 120
-
       - name: Login to Private Registry
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.admin-panel-approved == 'true'
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com:5000
@@ -1558,11 +1876,11 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.admin-panel-approved == 'true'
         uses: docker/setup-buildx-action@v2
 
       - name: Set tags
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.admin-panel-approved == 'true'
         id: vars
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
@@ -1574,7 +1892,7 @@ jobs:
           fi
 
       - name: Build and Push
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.admin-panel-approved == 'true'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -1583,7 +1901,7 @@ jobs:
           tags: ${{ steps.vars.outputs.tags }}
 
       - name: "\U0001F6AB Сборка отменена"
-        if: steps.approval.outcome == 'failure'
+        if: needs.request-approvals.outputs.admin-panel-approved != 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1599,8 +1917,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U00002705 Уведомление об успехе"
-        if: success() && steps.approval.outcome == 'success'
+      - name: "\u2705 Уведомление об успехе"
+        if: success() && needs.request-approvals.outputs.admin-panel-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1618,8 +1936,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U0000274C Уведомление об ошибке"
-        if: failure() && steps.approval.outcome == 'success'
+      - name: "\u274C Уведомление об ошибке"
+        if: failure() && needs.request-approvals.outputs.admin-panel-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1639,29 +1957,14 @@ jobs:
   # --- ClientStorage ---
   build-client-storage:
     name: "\U0001F433 ClientStorage"
-    needs: detect-changes
+    needs: [detect-changes, request-approvals]
     if: needs.detect-changes.outputs.client-storage == 'true'
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
-      - name: "\U0001F4F2 Запрос подтверждения сборки"
-        id: approval
-        continue-on-error: true
-        uses: powerdot/telegram-manual-approval@main
-        with:
-          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "Запустить сборку BarkFluff.ClientStorage?"
-          APPROVAL_BUTTON: "✅ Собрать"
-          REJECT_BUTTON: "❌ Отменить"
-          APPROVED_TEXT: "✅ Сборка ClientStorage одобрена"
-          REJECTED_TEXT: "❌ Сборка ClientStorage отклонена"
-          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
-          UPDATE_REQUESTS: 120
-
       - name: Login to Private Registry
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.client-storage-approved == 'true'
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com:5000
@@ -1669,11 +1972,11 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.client-storage-approved == 'true'
         uses: docker/setup-buildx-action@v2
 
       - name: Set tags
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.client-storage-approved == 'true'
         id: vars
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
@@ -1685,7 +1988,7 @@ jobs:
           fi
 
       - name: Build and Push
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.client-storage-approved == 'true'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -1694,7 +1997,7 @@ jobs:
           tags: ${{ steps.vars.outputs.tags }}
 
       - name: "\U0001F6AB Сборка отменена"
-        if: steps.approval.outcome == 'failure'
+        if: needs.request-approvals.outputs.client-storage-approved != 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1710,8 +2013,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U00002705 Уведомление об успехе"
-        if: success() && steps.approval.outcome == 'success'
+      - name: "\u2705 Уведомление об успехе"
+        if: success() && needs.request-approvals.outputs.client-storage-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1729,8 +2032,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U0000274C Уведомление об ошибке"
-        if: failure() && steps.approval.outcome == 'success'
+      - name: "\u274C Уведомление об ошибке"
+        if: failure() && needs.request-approvals.outputs.client-storage-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1750,29 +2053,14 @@ jobs:
   # --- Web ---
   build-web:
     name: "\U0001F433 Web"
-    needs: detect-changes
+    needs: [detect-changes, request-approvals]
     if: needs.detect-changes.outputs.web == 'true'
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
-      - name: "\U0001F4F2 Запрос подтверждения сборки"
-        id: approval
-        continue-on-error: true
-        uses: powerdot/telegram-manual-approval@main
-        with:
-          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "Запустить сборку BarkFluff.Web?"
-          APPROVAL_BUTTON: "✅ Собрать"
-          REJECT_BUTTON: "❌ Отменить"
-          APPROVED_TEXT: "✅ Сборка Web одобрена"
-          REJECTED_TEXT: "❌ Сборка Web отклонена"
-          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
-          UPDATE_REQUESTS: 120
-
       - name: Login to Private Registry
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.web-approved == 'true'
         uses: docker/login-action@v2
         with:
           registry: docker.barkfluff.com:5000
@@ -1780,11 +2068,11 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.web-approved == 'true'
         uses: docker/setup-buildx-action@v2
 
       - name: Set tags
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.web-approved == 'true'
         id: vars
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
@@ -1796,7 +2084,7 @@ jobs:
           fi
 
       - name: Build and Push
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.web-approved == 'true'
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -1805,7 +2093,7 @@ jobs:
           tags: ${{ steps.vars.outputs.tags }}
 
       - name: "\U0001F6AB Сборка отменена"
-        if: steps.approval.outcome == 'failure'
+        if: needs.request-approvals.outputs.web-approved != 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1821,8 +2109,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U00002705 Уведомление об успехе"
-        if: success() && steps.approval.outcome == 'success'
+      - name: "\u2705 Уведомление об успехе"
+        if: success() && needs.request-approvals.outputs.web-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1840,8 +2128,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U0000274C Уведомление об ошибке"
-        if: failure() && steps.approval.outcome == 'success'
+      - name: "\u274C Уведомление об ошибке"
+        if: failure() && needs.request-approvals.outputs.web-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1863,54 +2151,39 @@ jobs:
   # ═══════════════════════════════════════════════════════════════
   build-wpf-client:
     name: "\U0001F4E6 WPF Client"
-    needs: detect-changes
+    needs: [detect-changes, request-approvals]
     if: needs.detect-changes.outputs.wpf-client == 'true'
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
-      - name: "\U0001F4F2 Запрос подтверждения сборки"
-        id: approval
-        continue-on-error: true
-        uses: powerdot/telegram-manual-approval@main
-        with:
-          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "Запустить сборку WPF Client?"
-          APPROVAL_BUTTON: "✅ Собрать"
-          REJECT_BUTTON: "❌ Отменить"
-          APPROVED_TEXT: "✅ Сборка WPF Client одобрена"
-          REJECTED_TEXT: "❌ Сборка WPF Client отклонена"
-          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
-          UPDATE_REQUESTS: 120
-
       - name: Restore dependencies
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.wpf-client-approved == 'true'
         env:
           EnableWindowsTargeting: true
         run: dotnet restore Windows/BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj
 
       - name: Build
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.wpf-client-approved == 'true'
         env:
           EnableWindowsTargeting: true
         run: dotnet build Windows/BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj --no-restore --configuration Release
 
       - name: Publish
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.wpf-client-approved == 'true'
         env:
           EnableWindowsTargeting: true
         run: dotnet publish Windows/BarkFluff.Client.WPF/BarkFluff.Client.WPF.csproj --configuration Release --runtime win-x64 --self-contained true --output ./publish
 
       - name: Zip build
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.wpf-client-approved == 'true'
         uses: vimtor/action-zip@v1
         with:
           files: publish/
           dest: wpf-build.zip
 
       - name: Get version and tag
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.wpf-client-approved == 'true'
         id: meta
         run: |
           VERSION=$(grep -oP 'Version\s*\{\s*get;\s*set;\s*\}\s*=\s*"\K[^"]+' Windows/BarkFluff.Client.WPF/Services/App/AppVersion.cs || echo "0.0.0")
@@ -1923,7 +2196,7 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - name: "\U0001F680 Создать релиз"
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.wpf-client-approved == 'true'
         uses: softprops/action-gh-release@v2
         with:
           repository: ${{ secrets.OWNER_RELEASE_REPO }}/${{ secrets.RELEASE_REPO_NAME }}
@@ -1942,7 +2215,7 @@ jobs:
           files: wpf-build.zip
 
       - name: "\U0001F4E4 Загрузка на сервер обновлений"
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.wpf-client-approved == 'true'
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
             CHANNEL="beta"
@@ -1955,7 +2228,7 @@ jobs:
             -F "file=@wpf-build.zip"
 
       - name: "\U0001F6AB Сборка отменена"
-        if: steps.approval.outcome == 'failure'
+        if: needs.request-approvals.outputs.wpf-client-approved != 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1971,8 +2244,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U00002705 Уведомление об успехе"
-        if: success() && steps.approval.outcome == 'success'
+      - name: "\u2705 Уведомление об успехе"
+        if: success() && needs.request-approvals.outputs.wpf-client-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -1992,8 +2265,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U0000274C Уведомление об ошибке"
-        if: failure() && steps.approval.outcome == 'success'
+      - name: "\u274C Уведомление об ошибке"
+        if: failure() && needs.request-approvals.outputs.wpf-client-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -2015,7 +2288,7 @@ jobs:
   # ═══════════════════════════════════════════════════════════════
   build-android-client:
     name: "\U0001F4F1 Android Client"
-    needs: detect-changes
+    needs: [detect-changes, request-approvals]
     if: needs.detect-changes.outputs.android-client == 'true'
     runs-on: self-hosted
     env:
@@ -2027,41 +2300,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: "\U0001F4F2 Запрос подтверждения сборки"
-        id: approval
-        continue-on-error: true
-        uses: powerdot/telegram-manual-approval@main
-        with:
-          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
-          APPROVAL_TEXT: "Запустить сборку Android Client?"
-          APPROVAL_BUTTON: "✅ Собрать"
-          REJECT_BUTTON: "❌ Отменить"
-          APPROVED_TEXT: "✅ Сборка Android Client одобрена"
-          REJECTED_TEXT: "❌ Сборка Android Client отклонена"
-          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
-          UPDATE_REQUESTS: 120
-
       - name: Подготовка gradlew
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.android-client-approved == 'true'
         run: |
           dos2unix gradlew
           chmod +x gradlew
 
       - name: Настройка Android SDK
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.android-client-approved == 'true'
         run: |
           echo "sdk.dir=${ANDROID_HOME}" > local.properties
           echo "ANDROID_HOME=${ANDROID_HOME}"
           test -d "${ANDROID_HOME}"
 
       - name: Пометка beta-версии
-        if: steps.approval.outcome == 'success' && github.ref_name == 'dev'
+        if: needs.request-approvals.outputs.android-client-approved == 'true' && github.ref_name == 'dev'
         run: |
           sed -i 's/versionName\s*=\s*"\([^"]*\)"/versionName = "\1 beta"/' app/build.gradle.kts
 
       - name: Сборка APK
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.android-client-approved == 'true'
         env:
           RELEASE_STORE_FILE: ${{ secrets.ANDROID_RELEASE_STORE_FILE }}
           RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
@@ -2070,7 +2328,7 @@ jobs:
         run: ./gradlew assembleRelease
 
       - name: Поиск APK
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.android-client-approved == 'true'
         id: apk
         run: |
           APK_PATH=$(find app/build/outputs/apk/release -name '*.apk' | head -1)
@@ -2078,7 +2336,7 @@ jobs:
           echo "Found APK: $APK_PATH"
 
       - name: Get version
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.android-client-approved == 'true'
         id: meta
         run: |
           VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts || echo "0.0.0")
@@ -2086,7 +2344,7 @@ jobs:
           echo "Version: $VERSION"
 
       - name: "\U0001F4E4 Загрузка на сервер обновлений"
-        if: steps.approval.outcome == 'success'
+        if: needs.request-approvals.outputs.android-client-approved == 'true'
         run: |
           if [ "${{ github.ref_name }}" = "dev" ]; then
             CHANNEL="beta"
@@ -2099,7 +2357,7 @@ jobs:
             -F "file=@${{ steps.apk.outputs.path }}"
 
       - name: "\U0001F6AB Сборка отменена"
-        if: steps.approval.outcome == 'failure'
+        if: needs.request-approvals.outputs.android-client-approved != 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -2115,8 +2373,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U00002705 Уведомление об успехе"
-        if: success() && steps.approval.outcome == 'success'
+      - name: "\u2705 Уведомление об успехе"
+        if: success() && needs.request-approvals.outputs.android-client-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
@@ -2133,8 +2391,8 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\U0000274C Уведомление об ошибке"
-        if: failure() && steps.approval.outcome == 'success'
+      - name: "\u274C Уведомление об ошибке"
+        if: failure() && needs.request-approvals.outputs.android-client-approved == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
