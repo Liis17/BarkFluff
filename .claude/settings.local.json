@@ -29,7 +29,10 @@
       "Bash(find /k/source/BarkFluff/Mac/Barkfluff -maxdepth 2 -type f \\\\\\( -name \"*.swift\" -o -name \"*.xcodeproj\" \\\\\\) 2>/dev/null | head -10)",
       "Bash(find /k/source/BarkFluff/iOS/Barkfluff -maxdepth 2 -type f \\\\\\( -name \"*.swift\" -o -name \"*.xcodeproj\" \\\\\\) 2>/dev/null | head -10)",
       "Bash(find Backend -type f -name \"*.cs\" -exec grep -l \"reserved\\\\|Reserved\\\\|blocked\\\\|Blocked\" {} \\\\; 2>/dev/null | head -20)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(ls -d K:/source/BarkFluff/Backend/BarkFluff.*/ K:/source/BarkFluff/Windows/*/ K:/source/BarkFluff/Android/*/ K:/source/BarkFluff/Shared/*/)",
+      "Bash(ls -d K:/source/BarkFluff/Backend/*/)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []
