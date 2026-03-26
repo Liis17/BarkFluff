@@ -261,6 +261,17 @@
 
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- Кнопка стикеров -->
+            <ImageButton
+                android:id="@+id/stickerButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Стикеры"
+                android:padding="12dp"
+                android:src="@drawable/ic_sticker"
+                app:tint="?attr/colorOnSurfaceVariant" />
+
             <!-- Кнопка отправки -->
             <ImageButton
                 android:id="@+id/sendButton"
