@@ -9,12 +9,16 @@ package barkfluff.files;
 
 service FilesApi {
   rpc GetUploadUrl(GetUploadUrlRequest) returns(GetUploadUrlResponse); // Получить ссылку для загрузки файла
-  
+
   rpc GetTempDownloadUrl(GetTempDownloadUrlRequest) returns(GetTempDownloadUrlResponse); // Получить ссылку для скачивания файла
-  
+
   rpc CheckFileHash(CheckFileHashRequest) returns(CheckFileHashResponse); // Проверить существует ли файл с таким хешем
-  
+
   rpc GetUserStorageInfo(GetUserStorageInfoRequest) returns(GetUserStorageInfoResponse); // Получить информацию о хранилище пользователя
+
+  // Стикерпаки (клиентский доступ, только чтение)
+  rpc ListStickerPacks(ListStickerPacksRequest) returns(ListStickerPacksResponse); // Список стикерпаков
+  rpc GetStickerPack(GetStickerPackRequest) returns(GetStickerPackResponse); // Получить стикерпак со стикерами
 }
 
 service FilesServerApi {
