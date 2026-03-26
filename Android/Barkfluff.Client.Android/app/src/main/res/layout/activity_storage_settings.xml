@@ -55,13 +55,22 @@
                         android:textAppearance="?attr/textAppearanceTitleMedium"
                         android:textColor="?attr/colorOnSurface" />
 
-                    <com.google.android.material.progressindicator.LinearProgressIndicator
-                        android:id="@+id/storageProgress"
+                    <!-- Сегментированный прогресс-бар хранилища -->
+                    <FrameLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:layout_height="12dp"
                         android:layout_marginTop="16dp"
-                        app:trackCornerRadius="4dp"
-                        app:trackThickness="8dp" />
+                        android:background="@drawable/storage_bar_background"
+                        android:clipToOutline="true"
+                        android:outlineProvider="background">
+
+                        <LinearLayout
+                            android:id="@+id/storageBarLayout"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:orientation="horizontal" />
+
+                    </FrameLayout>
 
                     <TextView
                         android:id="@+id/textStorageUsage"
@@ -70,6 +79,14 @@
                         android:layout_marginTop="8dp"
                         android:textAppearance="?attr/textAppearanceBodyMedium"
                         android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    <!-- Легенда по типам файлов -->
+                    <LinearLayout
+                        android:id="@+id/storageLegendLayout"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:orientation="vertical" />
 
                 </LinearLayout>
 

@@ -197,17 +197,37 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
 
     override fun onStart() {
         super.onStart()
-        // Устанавливаем высоту bottom sheet на 50% от высоты экрана
         val dialog = dialog as? com.google.android.material.bottomsheet.BottomSheetDialog ?: return
         val bottomSheet = dialog.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet) ?: return
         val behavior = BottomSheetBehavior.from(bottomSheet)
 
-        // Устанавливаем соотношение для полураскрытого состояния (50% экрана)
-        behavior.halfExpandedRatio = 0.5f
-        behavior.state = BottomSheetBehavior.STATE_HALF_EXPANDED
+        val screenHeight = resources.displayMetrics.heightPixels
+        val halfHeight = (screenHeight * 0.5f).toInt()
 
-        // Запрещаем полное раскрытие
-        behavior.isFitToContents = true
+        // Устанавливаем высоту bottom sheet явно, чтобы inputBar
+        // всегда был видим (не уходил за край экрана)
+        bottomSheet.layoutParams.height = halfHeight
+        bottomSheet.requestLayout()
+
+        behavior.peekHeight = halfHeight
+        behavior.state = BottomSheetBehavior.STATE_COLLAPSED
+        behavior.skipCollapsed = false
+
+        behavior.addBottomSheetCallback(object : BottomSheetBehavior.BottomSheetCallback() {
+            override fun onStateChanged(sheet: View, newState: Int) {
+                when (newState) {
+                    BottomSheetBehavior.STATE_EXPANDED -> {
+                        sheet.layoutParams.height = android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                        sheet.requestLayout()
+                    }
+                    BottomSheetBehavior.STATE_COLLAPSED -> {
+                        sheet.layoutParams.height = halfHeight
+                        sheet.requestLayout()
+                    }
+                }
+            }
+            override fun onSlide(sheet: View, slideOffset: Float) {}
+        })
     }
 
     private fun setupRecyclerView() {
