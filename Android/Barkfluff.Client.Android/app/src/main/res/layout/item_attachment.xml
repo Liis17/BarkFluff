@@ -22,7 +22,7 @@
             android:layout_height="match_parent"
             android:contentDescription="Вложение"
             android:scaleType="centerCrop"
-            tools:src="@drawable/ic_launcher_foreground" />
+            tools:src="@mipmap/ic_launcher" />
 
         <!-- Индикатор загрузки -->
         <com.google.android.material.progressindicator.CircularProgressIndicator
