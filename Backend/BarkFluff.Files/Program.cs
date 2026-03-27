@@ -27,6 +27,9 @@ public class Program
         builder.Services.AddGrpc(options =>
         {
             options.Interceptors.Add<ServerExceptionInterceptor>();
+            // Оригинальные файлы изображений от админ-панели могут быть больше дефолтных 4 МБ
+            options.MaxReceiveMessageSize = 20 * 1024 * 1024; // 20 МБ
+            options.MaxSendMessageSize = 20 * 1024 * 1024;    // 20 МБ
         });
         builder.Services.AddBarkFluffMetrics("BarkFluff.Files");
 
