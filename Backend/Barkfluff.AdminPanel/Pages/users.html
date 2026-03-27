@@ -715,6 +715,9 @@
         }
 
         // ─── AVATAR UPLOAD ─────────────────────────────────────────────────────
+        // Обработка изображения (ресайз, JPEG) выполняется на сервере через ImageSharp,
+        // который корректно обрабатывает ICC-профили и не даёт цветовой сдвиг.
+        // Canvas в браузере теряет цветовые профили → жёлто-оранжевый тон.
 
         async function handleAvatarUpload(input, userId) {
             const file = input.files[0];
@@ -726,11 +729,15 @@
                 return;
             }
 
-            try {
-                const compressed = await compressImage(file, 1500, 0.85);
+            if (file.size > 15 * 1024 * 1024) {
+                alert('Файл слишком большой (макс. 15 МБ)');
+                input.value = '';
+                return;
+            }
 
+            try {
                 const formData = new FormData();
-                formData.append('avatar', compressed, file.name.replace(/\.[^.]+$/, '.jpg'));
+                formData.append('avatar', file, file.name);
 
                 const res = await fetch(`/api/users/${userId}/avatar`, {
                     method: 'POST',
@@ -747,46 +754,6 @@
             } finally {
                 input.value = '';
             }
-        }
-
-        async function compressImage(file, maxSize, quality) {
-            const bitmap = await createImageBitmap(file, { colorSpaceConversion: 'none' });
-
-            let { width, height } = bitmap;
-
-            // Сжимаем если больше maxSize по любой стороне
-            if (width > maxSize || height > maxSize) {
-                if (width > height) {
-                    height = Math.round(height * (maxSize / width));
-                    width = maxSize;
-                } else {
-                    width = Math.round(width * (maxSize / height));
-                    height = maxSize;
-                }
-            }
-
-            const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
-
-            const ctx = canvas.getContext('2d');
-            // Белый фон — JPEG не поддерживает прозрачность,
-            // без заливки альфа-канал компонуется с чёрным и даёт цветовой сдвиг
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, width, height);
-            ctx.drawImage(bitmap, 0, 0, width, height);
-            bitmap.close();
-
-            return new Promise((resolve, reject) => {
-                canvas.toBlob(
-                    (blob) => {
-                        if (blob) resolve(blob);
-                        else reject(new Error('Не удалось сжать изображение'));
-                    },
-                    'image/jpeg',
-                    quality
-                );
-            });
         }
 
         // ─── RESERVED NAMES ─────────────────────────────────────────────────────

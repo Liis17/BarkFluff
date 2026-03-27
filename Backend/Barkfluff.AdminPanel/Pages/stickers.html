@@ -382,29 +382,19 @@
             return div.innerHTML;
         }
 
-        async function convertToWebP512(file) {
-            const bitmap = await createImageBitmap(file, { colorSpaceConversion: 'none' });
-
-            const canvas = document.createElement('canvas');
-            canvas.width = 512;
-            canvas.height = 512;
-            const ctx = canvas.getContext('2d');
-            // Прозрачный фон
-            ctx.clearRect(0, 0, 512, 512);
-            // Масштабируем с сохранением пропорций
-            const scale = Math.min(512 / bitmap.width, 512 / bitmap.height);
-            const w = bitmap.width * scale;
-            const h = bitmap.height * scale;
-            ctx.drawImage(bitmap, (512 - w) / 2, (512 - h) / 2, w, h);
-            bitmap.close();
-
-            return new Promise((resolve, reject) => {
-                canvas.toBlob(
-                    blob => blob ? resolve(blob) : reject('WebP conversion failed'),
-                    'image/webp',
-                    0.9
-                );
-            });
+        // Обработка изображений (ресайз, WebP) выполняется на сервере через ImageSharp,
+        // который корректно обрабатывает ICC-профили и не даёт цветовой сдвиг.
+        // Canvas в браузере теряет цветовые профили → жёлто-оранжевый тон.
+        function validateImageFile(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('Выберите изображение');
+                return false;
+            }
+            if (file.size > 15 * 1024 * 1024) {
+                alert('Файл слишком большой (макс. 15 МБ)');
+                return false;
+            }
+            return true;
         }
 
         // ---- PACKS LIST ----
@@ -528,8 +518,8 @@
 
                 const imageFile = document.getElementById('createCoverInput').files[0];
                 if (imageFile) {
-                    const webpBlob = await convertToWebP512(imageFile);
-                    formData.append('image', webpBlob, 'cover.webp');
+                    if (!validateImageFile(imageFile)) return;
+                    formData.append('image', imageFile, imageFile.name);
                 }
 
                 const res = await fetch('/api/stickers/packs', { method: 'POST', body: formData });
@@ -659,9 +649,9 @@
             if (!file || !currentPackId) return;
 
             try {
-                const webpBlob = await convertToWebP512(file);
+                if (!validateImageFile(file)) { input.value = ''; return; }
                 const formData = new FormData();
-                formData.append('image', webpBlob, 'cover.webp');
+                formData.append('image', file, file.name);
 
                 const res = await fetch(`/api/stickers/packs/${currentPackId}/cover`, {
                     method: 'PUT',
@@ -747,9 +737,9 @@
                     return;
                 }
 
-                const webpBlob = await convertToWebP512(imageFile);
+                if (!validateImageFile(imageFile)) return;
                 const formData = new FormData();
-                formData.append('image', webpBlob, 'sticker.webp');
+                formData.append('image', imageFile, imageFile.name);
                 formData.append('emoji', document.getElementById('stickerEmoji').value);
 
                 const res = await fetch(`/api/stickers/packs/${currentPackId}/stickers`, {

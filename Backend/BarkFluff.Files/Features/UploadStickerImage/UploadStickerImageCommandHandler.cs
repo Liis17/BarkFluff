@@ -2,6 +2,7 @@ using BarkFluff.Files.Extensions;
 using BarkFluff.Files.Helpers;
 using BarkFluff.Files.Infrastructure;
 using BarkFluff.Files.Persistence;
+using BarkFluff.Files.Services;
 using BarkFluff.GrpcServer.Settings;
 using BarkFluff.Proto.Files;
 
@@ -17,6 +18,7 @@ public class UploadStickerImageCommandHandler : IRequestHandler<UploadStickerIma
     private readonly UploadedFilesStorage _uploadedFilesStorage;
     private readonly S3Uploader _s3Uploader;
     private readonly S3BucketRegistry _bucketRegistry;
+    private readonly ImageCompressor _imageCompressor;
     private readonly IConfiguration _configuration;
     private readonly RunSettings _runSettings;
     private readonly ILogger<UploadStickerImageCommandHandler> _logger;
@@ -25,6 +27,7 @@ public class UploadStickerImageCommandHandler : IRequestHandler<UploadStickerIma
         UploadedFilesStorage uploadedFilesStorage,
         S3Uploader s3Uploader,
         S3BucketRegistry bucketRegistry,
+        ImageCompressor imageCompressor,
         IConfiguration configuration,
         RunSettings runSettings,
         ILogger<UploadStickerImageCommandHandler> logger)
@@ -32,6 +35,7 @@ public class UploadStickerImageCommandHandler : IRequestHandler<UploadStickerIma
         _uploadedFilesStorage = uploadedFilesStorage;
         _s3Uploader = s3Uploader;
         _bucketRegistry = bucketRegistry;
+        _imageCompressor = imageCompressor;
         _configuration = configuration;
         _runSettings = runSettings;
         _logger = logger;
@@ -45,10 +49,13 @@ public class UploadStickerImageCommandHandler : IRequestHandler<UploadStickerIma
 
         _logger.LogInformation("Загрузка изображения стикера {FileId} ({Filename})", fileId, request.Filename);
 
-        using var stream = new MemoryStream(request.ImageData);
-        var contentType = request.Filename.GetContentType();
+        // Обработка на сервере: ресайз 512×512 + WebP —
+        // вместо Canvas на клиенте, который теряет ICC-профили и даёт жёлтый тон
+        using var rawStream = new MemoryStream(request.ImageData);
+        var processedBytes = await _imageCompressor.ProcessStickerAsync(rawStream);
 
-        var etag = await _s3Uploader.UploadAsync(bucketName, $"{fileId}", stream, contentType);
+        using var stream = new MemoryStream(processedBytes);
+        var etag = await _s3Uploader.UploadAsync(bucketName, $"{fileId}", stream, "image/webp");
 
         var uploadFile = new DomainUploadFile
         {
@@ -58,8 +65,8 @@ public class UploadStickerImageCommandHandler : IRequestHandler<UploadStickerIma
             UploadedAt = DateTime.UtcNow,
             Etag = etag,
             Type = UploadFileType.MessageAttachmentSticker,
-            Filename = request.Filename,
-            Size = request.ImageData.Length
+            Filename = $"{fileId}.webp",
+            Size = processedBytes.Length
         };
 
         await _uploadedFilesStorage.AddToStorage(uploadFile);

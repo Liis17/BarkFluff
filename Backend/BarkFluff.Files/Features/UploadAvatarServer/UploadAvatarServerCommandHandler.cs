@@ -46,20 +46,22 @@ public class UploadAvatarServerCommandHandler : IRequestHandler<UploadAvatarServ
         var bucketName = _bucketRegistry.GetBucketName(UploadFileType.UserAvatar);
         var baseUrl = FileUrlHelper.GetPublicBaseUrl(_configuration, _runSettings);
 
-        // Загружаем основное изображение
+        // Обработка изображения на сервере (ресайз + JPEG) —
+        // вместо Canvas на клиенте, который теряет ICC-профили и даёт жёлтый тон
         var mainFileId = Guid.NewGuid();
 
         _logger.LogInformation("Загрузка аватара для пользователя {UserId}, fileId={FileId}", request.UserId, mainFileId);
 
-        using var mainStream = new MemoryStream(request.ImageData);
-        var contentType = request.Filename.GetContentType();
+        using var rawStream = new MemoryStream(request.ImageData);
+        var processedBytes = await _imageCompressor.ProcessAvatarAsync(rawStream);
 
-        var mainEtag = await _s3Uploader.UploadAsync(bucketName, $"{mainFileId}", mainStream, contentType);
+        using var mainStream = new MemoryStream(processedBytes);
+        var mainEtag = await _s3Uploader.UploadAsync(bucketName, $"{mainFileId}", mainStream, "image/jpeg");
 
         // Создаём превью (64px)
         var previewFileId = Guid.NewGuid();
 
-        using var previewInputStream = new MemoryStream(request.ImageData);
+        using var previewInputStream = new MemoryStream(processedBytes);
         var previewBytes = await _imageCompressor.CompressImageAsync(previewInputStream, 64);
 
         using var previewStream = new MemoryStream(previewBytes);
@@ -74,7 +76,7 @@ public class UploadAvatarServerCommandHandler : IRequestHandler<UploadAvatarServ
             UploadedAt = DateTime.UtcNow,
             Etag = previewEtag,
             Type = UploadFileType.UserAvatar,
-            Filename = $"preview_{request.Filename}",
+            Filename = $"preview_{mainFileId}.jpg",
             Size = previewBytes.Length
         };
         await _uploadedFilesStorage.AddToStorage(previewFile);
@@ -88,9 +90,9 @@ public class UploadAvatarServerCommandHandler : IRequestHandler<UploadAvatarServ
             UploadedAt = DateTime.UtcNow,
             Etag = mainEtag,
             Type = UploadFileType.UserAvatar,
-            Filename = request.Filename,
+            Filename = $"{mainFileId}.jpg",
             PreviewId = previewFileId,
-            Size = request.ImageData.Length
+            Size = processedBytes.Length
         };
         await _uploadedFilesStorage.AddToStorage(mainFile);
 
