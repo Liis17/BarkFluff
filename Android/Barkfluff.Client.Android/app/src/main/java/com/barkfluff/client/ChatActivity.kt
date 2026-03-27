@@ -35,6 +35,7 @@ import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.ImageCompressor
 import com.barkfluff.client.utils.KeyboardHeightTracker
+import com.barkfluff.client.utils.StickerCache
 import com.barkfluff.client.utils.MessageItemAnimator
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.yalantis.ucrop.UCrop
@@ -483,13 +484,23 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun loadStickerPanelData() {
+        val cached = StickerCache.loadPanelData()
+        if (cached != null) {
+            stickerPanelAdapter.submitList(cached)
+            stickerDataLoaded = true
+            refreshStickerDataFromServer()
+            return
+        }
         stickerPanelAdapter.submitList(listOf(StickerPanelItem.Loading))
+        refreshStickerDataFromServer()
+    }
 
+    private fun refreshStickerDataFromServer() {
         lifecycleScope.launch {
             try {
                 val packs = withContext(Dispatchers.IO) { grpcManager.listStickerPacks() }
                 if (packs.isNullOrEmpty()) {
-                    stickerPanelAdapter.submitList(listOf(StickerPanelItem.Empty))
+                    if (!stickerDataLoaded) stickerPanelAdapter.submitList(listOf(StickerPanelItem.Empty))
                     return@launch
                 }
 
@@ -508,9 +519,10 @@ class ChatActivity : AppCompatActivity() {
                 }
                 stickerPanelAdapter.submitList(allItems)
                 stickerDataLoaded = true
+                StickerCache.savePanelData(allItems)
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading sticker panel data", e)
-                stickerPanelAdapter.submitList(listOf(StickerPanelItem.Empty))
+                if (!stickerDataLoaded) stickerPanelAdapter.submitList(listOf(StickerPanelItem.Empty))
             }
         }
     }
