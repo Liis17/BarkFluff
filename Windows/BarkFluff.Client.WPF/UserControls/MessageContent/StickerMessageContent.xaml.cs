@@ -14,7 +14,7 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
 
         public StickerMessageContent(AttachmentsModel attachment) : this()
         {
-            if (attachment == null || string.IsNullOrEmpty(attachment.FileId))
+            if (string.IsNullOrEmpty(attachment.FileId))
                 return;
 
             StickerImage.FileId = attachment.FileId;
