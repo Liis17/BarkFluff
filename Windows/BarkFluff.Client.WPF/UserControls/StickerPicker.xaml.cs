@@ -1,3 +1,4 @@
+using BarkFluff.Client.WPF.Services.App.Caching;
 using BarkFluff.WebApi.Core.MessengerData;
 
 using System.Windows;
@@ -103,7 +104,7 @@ namespace BarkFluff.Client.WPF.UserControls
                         Margin = new Thickness(0, 0, 8, 0),
                         VerticalAlignment = VerticalAlignment.Center
                     };
-                    LoadImageFromUrl(coverImage, coverSticker.PreviewUrl);
+                    LoadStickerImage(coverImage, coverSticker.FileId);
                     header.Children.Add(coverImage);
                 }
             }
@@ -152,7 +153,7 @@ namespace BarkFluff.Client.WPF.UserControls
                 Stretch = Stretch.Uniform,
                 Margin = new Thickness(3)
             };
-            LoadImageFromUrl(image, sticker.PreviewUrl);
+            LoadStickerImage(image, sticker.FileId);
 
             var btn = new Button
             {
@@ -210,26 +211,38 @@ namespace BarkFluff.Client.WPF.UserControls
             return new ControlTemplate(typeof(Button)) { VisualTree = factory };
         }
 
-        private static void LoadImageFromUrl(Image image, string? url)
+        /// <summary>
+        /// Загружает изображение стикера через FileCacheService по FileId.
+        /// Превью-файлы не зарегистрированы в БД и недоступны по прямой ссылке,
+        /// поэтому используем оригинальный FileId с получением временной ссылки через gRPC.
+        /// </summary>
+        private static async void LoadStickerImage(System.Windows.Controls.Image image, string? fileId)
         {
-            if (string.IsNullOrEmpty(url))
+            if (string.IsNullOrEmpty(fileId))
                 return;
 
             try
             {
+                // FileCacheService сам получит временную ссылку через GetTempDownloadUrl,
+                // скачает файл, сконвертирует WebP→PNG и закеширует
+                var path = await App.FileCacheService.GetCachedFilePathAsync(fileId, FileType.Image);
+
+                if (FileCacheService.IsPlaceholder(path))
+                    return;
+
                 var bitmap = new BitmapImage();
                 bitmap.BeginInit();
-                bitmap.UriSource = new Uri(url, UriKind.Absolute);
+                bitmap.UriSource = new Uri(path, UriKind.RelativeOrAbsolute);
                 bitmap.CacheOption = BitmapCacheOption.OnLoad;
                 bitmap.EndInit();
                 if (bitmap.CanFreeze)
                     bitmap.Freeze();
-                image.Source = bitmap;
+
+                image.Dispatcher.Invoke(() => image.Source = bitmap);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"StickerPicker: Failed to load image from URL '{url}': {ex.Message}");
-                // Leave image empty if URL fails
+                System.Diagnostics.Debug.WriteLine($"StickerPicker: Failed to load sticker image '{fileId}': {ex.Message}");
             }
         }
 

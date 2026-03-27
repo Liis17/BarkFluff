@@ -1,5 +1,8 @@
 using LiteDB;
 
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Png;
+
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
@@ -316,11 +319,19 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
                 var extension = ResolveFileExtension(url, fileType, originalFileName);
 
                 var cacheDir = GetCacheDirectory(fileType);
-                var filePath = Path.Combine(cacheDir, $"{fileId}{extension}");
 
-                Debug.WriteLine($"[FileCacheService] Downloading from: {url} to: {filePath}");
+                Debug.WriteLine($"[FileCacheService] Downloading from: {url}");
                 // Загружаем файл
                 var bytes = await _httpClient.GetByteArrayAsync(url);
+
+                // Конвертируем WebP в PNG для совместимости с WPF (WPF не поддерживает WebP нативно)
+                if (IsWebPContent(bytes))
+                {
+                    bytes = ConvertWebPToPng(bytes);
+                    extension = ".png";
+                }
+
+                var filePath = Path.Combine(cacheDir, $"{fileId}{extension}");
                 await File.WriteAllBytesAsync(filePath, bytes);
                 Debug.WriteLine($"[FileCacheService] Downloaded {bytes.Length} bytes to: {filePath}");
 
@@ -393,14 +404,13 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
                 var extension = ResolveFileExtension(url, fileType, originalFileName);
 
                 var cacheDir = GetCacheDirectory(fileType);
-                var filePath = Path.Combine(cacheDir, $"{fileId}{extension}");
 
                 using var response2 = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
                 response2.EnsureSuccessStatusCode();
                 var totalBytes = response2.Content.Headers.ContentLength ?? -1;
 
                 await using var contentStream = await response2.Content.ReadAsStreamAsync();
-                await using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
+                using var memoryStream = new MemoryStream();
 
                 var buffer = new byte[8192];
                 long downloadedBytes = 0;
@@ -408,7 +418,7 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
 
                 while ((bytesRead = await contentStream.ReadAsync(buffer)) > 0)
                 {
-                    await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead));
+                    await memoryStream.WriteAsync(buffer.AsMemory(0, bytesRead));
                     downloadedBytes += bytesRead;
                     if (totalBytes > 0)
                     {
@@ -417,6 +427,18 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
                 }
 
                 progress.Report(1.0);
+
+                var bytes = memoryStream.ToArray();
+
+                // Конвертируем WebP в PNG для совместимости с WPF
+                if (IsWebPContent(bytes))
+                {
+                    bytes = ConvertWebPToPng(bytes);
+                    extension = ".png";
+                }
+
+                var filePath = Path.Combine(cacheDir, $"{fileId}{extension}");
+                await File.WriteAllBytesAsync(filePath, bytes);
 
                 lock (_lock)
                 {
@@ -475,6 +497,27 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
                 FileType.Audio => ".mp3",
                 _ => ".bin"
             };
+        }
+
+        /// <summary>
+        /// Проверяет, является ли содержимое файла форматом WebP (по magic bytes: RIFF....WEBP)
+        /// </summary>
+        private static bool IsWebPContent(byte[] data)
+        {
+            return data.Length > 12
+                && data[0] == 0x52 && data[1] == 0x49 && data[2] == 0x46 && data[3] == 0x46 // RIFF
+                && data[8] == 0x57 && data[9] == 0x45 && data[10] == 0x42 && data[11] == 0x50; // WEBP
+        }
+
+        /// <summary>
+        /// Конвертирует WebP-изображение в PNG с сохранением прозрачности
+        /// </summary>
+        private static byte[] ConvertWebPToPng(byte[] webpData)
+        {
+            using var image = SixLabors.ImageSharp.Image.Load(webpData);
+            using var ms = new MemoryStream();
+            image.SaveAsPng(ms);
+            return ms.ToArray();
         }
 
         /// <summary>

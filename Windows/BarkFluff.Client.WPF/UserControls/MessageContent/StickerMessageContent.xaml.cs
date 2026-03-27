@@ -17,8 +17,10 @@ namespace BarkFluff.Client.WPF.UserControls.MessageContent
             if (string.IsNullOrEmpty(attachment.FileId))
                 return;
 
+            // Используем только FileId — превью-файлы не зарегистрированы в БД
+            // и недоступны по прямой ссылке. FileCacheService сам получит
+            // временную ссылку через GetTempDownloadUrl gRPC.
             StickerImage.FileId = attachment.FileId;
-            StickerImage.FileUrl = attachment.PreviewUrl;
             StickerImage.FileType = FileType.Image;
         }
     }
