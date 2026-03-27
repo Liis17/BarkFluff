@@ -199,6 +199,8 @@ namespace BarkFluff.WebApi.Core
         public static async Task<string> ComputeFileHashAsync(string filePath) => await WebApiFileManager.ComputeFileHashAsync(filePath);
         public static string ComputeDataHash(byte[] data) => WebApiFileManager.ComputeDataHash(data);
         public async Task<(ErrorReturner error, string fileId)> CheckFileHashAsync(GlobalParam globalParam, string fileHash) => await FileManager.CheckFileHashAsync(globalParam, fileHash);
+        public async Task<(ErrorReturner error, List<Proto.Files.StickerPackInfo>? packs, int totalCount)> ListStickerPacksAsync(GlobalParam globalParam, int offset = 0, int size = 50) => await FileManager.ListStickerPacksAsync(globalParam, offset, size);
+        public async Task<(ErrorReturner error, Proto.Files.StickerPackInfo? pack, List<Proto.Files.StickerInfo>? stickers)> GetStickerPackAsync(GlobalParam globalParam, string packId) => await FileManager.GetStickerPackAsync(globalParam, packId);
         #endregion
 
         #region Реалтайм обновления (делегирование к UpdateManager)
