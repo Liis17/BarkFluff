@@ -54,7 +54,7 @@
                 <ui:SymbolIcon
                     FontSize="48"
                     Foreground="#FF555555"
-                    Symbol="Sticker16" />
+                    Symbol="Sticker20" />
                 <TextBlock
                     Margin="0,12,0,0"
                     HorizontalAlignment="Center"
