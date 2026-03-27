@@ -465,8 +465,7 @@ namespace BarkFluff.Client.WPF.UserControls
 
             this.MinWidth = 300;
 
-            // Hide the bottom row with time/read status inside the transparent border
-            // by overlaying it with a subtle semi-transparent label positioned under the sticker
+            // Make the timestamp label more subtle to blend with the transparent sticker background
             MessageTime.Foreground = new System.Windows.Media.SolidColorBrush(
                 System.Windows.Media.Color.FromArgb(0xCC, 0xFF, 0xFF, 0xFF));
         }

@@ -70,8 +70,9 @@ namespace BarkFluff.Client.WPF.UserControls
                 else
                     ShowEmpty();
             }
-            catch
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"StickerPicker: Failed to load sticker packs: {ex.Message}");
                 ShowEmpty();
             }
         }
@@ -225,8 +226,9 @@ namespace BarkFluff.Client.WPF.UserControls
                     bitmap.Freeze();
                 image.Source = bitmap;
             }
-            catch
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"StickerPicker: Failed to load image from URL '{url}': {ex.Message}");
                 // Leave image empty if URL fails
             }
         }

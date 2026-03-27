@@ -2265,10 +2265,10 @@ namespace BarkFluff.Client.WPF.Pages
             }
         }
 
-        private void OnStickerSelected(object? sender, UserControls.StickerSelectedEventArgs e)
+        private async void OnStickerSelected(object? sender, UserControls.StickerSelectedEventArgs e)
         {
             StickerPopup.IsOpen = false;
-            _ = SendStickerAsync(e);
+            await SendStickerAsync(e);
         }
 
         private async Task SendStickerAsync(UserControls.StickerSelectedEventArgs sticker)
