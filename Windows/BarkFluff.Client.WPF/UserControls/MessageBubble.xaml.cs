@@ -463,7 +463,7 @@ namespace BarkFluff.Client.WPF.UserControls
             MediaContentPresenter.Content = stickerContent;
             SetMediaContentMargin(false);
 
-            this.MinWidth = 300;
+            this.MinWidth = 200;
 
             // Make the timestamp label more subtle to blend with the transparent sticker background
             MessageTime.Foreground = new System.Windows.Media.SolidColorBrush(

@@ -2,6 +2,7 @@ using LiteDB;
 
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.PixelFormats;
 
 using System.Diagnostics;
 using System.IO;
@@ -249,6 +250,26 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
         {
             try
             {
+                // Конвертируем WebP в PNG на лету для корректного отображения прозрачности
+                if (!IsPlaceholder(path)
+                    && path.EndsWith(".webp", StringComparison.OrdinalIgnoreCase)
+                    && File.Exists(path))
+                {
+                    var webpBytes = File.ReadAllBytes(path);
+                    using var image = SixLabors.ImageSharp.Image.Load<Rgba32>(webpBytes);
+                    using var ms = new MemoryStream();
+                    image.SaveAsPng(ms);
+                    ms.Position = 0;
+
+                    var pngBitmap = new BitmapImage();
+                    pngBitmap.BeginInit();
+                    pngBitmap.StreamSource = ms;
+                    pngBitmap.CacheOption = BitmapCacheOption.OnLoad;
+                    pngBitmap.EndInit();
+                    pngBitmap.Freeze();
+                    return pngBitmap;
+                }
+
                 var bitmapImage = new BitmapImage();
                 bitmapImage.BeginInit();
                 bitmapImage.UriSource = new Uri(path, UriKind.RelativeOrAbsolute);
@@ -514,7 +535,7 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
         /// </summary>
         private static byte[] ConvertWebPToPng(byte[] webpData)
         {
-            using var image = SixLabors.ImageSharp.Image.Load(webpData);
+            using var image = SixLabors.ImageSharp.Image.Load<Rgba32>(webpData);
             using var ms = new MemoryStream();
             image.SaveAsPng(ms);
             return ms.ToArray();
