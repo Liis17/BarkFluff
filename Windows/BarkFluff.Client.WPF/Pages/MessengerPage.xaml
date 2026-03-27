@@ -740,7 +740,7 @@
                                         <ui:SymbolIcon
                                             FontSize="22"
                                             Foreground="#FF9E9E9E"
-                                            Symbol="Sticker16" />
+                                            Symbol="Sticker20" />
                                     </Button>
 
                                     <!--  Всплывающая панель стикеров  -->
