@@ -312,6 +312,52 @@ namespace BarkFluff.WebApi.Core.Managers
         }
 
         /// <summary>
+        /// Returns a paginated list of sticker packs.
+        /// </summary>
+        public async Task<(ErrorReturner error, List<Proto.Files.StickerPackInfo>? packs, int totalCount)> ListStickerPacksAsync(
+            GlobalParam globalParam, int offset = 0, int size = 50)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var response = await FilesAC!.ListStickerPacksAsync(new Proto.Files.ListStickerPacksRequest
+                    {
+                        Pagination = new Proto.Shared.PageRequest { Offset = offset, Size = size }
+                    });
+                    return (new ErrorReturner(true), response.Packs.ToList(), response.TotalCount);
+                }, globalParam);
+            }
+            catch (Exception ex)
+            {
+                return (new ErrorReturner(false, $"Ошибка получения стикерпаков: {ex.Message}"), null, 0);
+            }
+        }
+
+        /// <summary>
+        /// Returns a sticker pack with all its stickers.
+        /// </summary>
+        public async Task<(ErrorReturner error, Proto.Files.StickerPackInfo? pack, List<Proto.Files.StickerInfo>? stickers)> GetStickerPackAsync(
+            GlobalParam globalParam, string packId)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var response = await FilesAC!.GetStickerPackAsync(new Proto.Files.GetStickerPackRequest
+                    {
+                        PackId = packId
+                    });
+                    return (new ErrorReturner(true), response.Pack, response.Stickers.ToList());
+                }, globalParam);
+            }
+            catch (Exception ex)
+            {
+                return (new ErrorReturner(false, $"Ошибка получения стикерпака: {ex.Message}"), null, null);
+            }
+        }
+
+        /// <summary>
         /// Checks if a file with the given hash already exists on the server.
         /// </summary>
         public async Task<(ErrorReturner error, string fileId)> CheckFileHashAsync(GlobalParam globalParam, string fileHash)
