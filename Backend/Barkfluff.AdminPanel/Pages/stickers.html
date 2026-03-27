@@ -389,7 +389,7 @@
                     const canvas = document.createElement('canvas');
                     canvas.width = 512;
                     canvas.height = 512;
-                    const ctx = canvas.getContext('2d');
+                    const ctx = canvas.getContext('2d', { colorSpace: 'srgb' });
                     // Прозрачный фон
                     ctx.clearRect(0, 0, 512, 512);
                     // Масштабируем с сохранением пропорций
@@ -398,11 +398,13 @@
                     const h = img.height * scale;
                     ctx.drawImage(img, (512 - w) / 2, (512 - h) / 2, w, h);
                     canvas.toBlob(
-                        blob => blob ? resolve(blob) : reject('WebP conversion failed'),
+                        blob => {
+                            URL.revokeObjectURL(img.src);
+                            blob ? resolve(blob) : reject('WebP conversion failed');
+                        },
                         'image/webp',
                         0.9
                     );
-                    URL.revokeObjectURL(img.src);
                 };
                 img.onerror = () => { URL.revokeObjectURL(img.src); reject('Failed to load image'); };
                 img.src = URL.createObjectURL(file);
