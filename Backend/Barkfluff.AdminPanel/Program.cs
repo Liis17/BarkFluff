@@ -75,7 +75,14 @@ public class Program
         builder.Services.AddGrpcClient<FilesServerApi.FilesServerApiClient>(o =>
         {
             o.Address = new Uri(builder.Configuration["FilesService:Host"] ?? "http://files:7005");
-        }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["FilesService:Token"] ?? string.Empty));
+        })
+        .AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["FilesService:Token"] ?? string.Empty))
+        .ConfigureChannel(o =>
+        {
+            // Оригинальные файлы изображений могут быть больше дефолтных 4 МБ
+            o.MaxSendMessageSize = 20 * 1024 * 1024;    // 20 МБ
+            o.MaxReceiveMessageSize = 20 * 1024 * 1024;  // 20 МБ
+        });
 
         builder.Services.AddGrpcClient<IdentityServerApi.IdentityServerApiClient>(o =>
         {
