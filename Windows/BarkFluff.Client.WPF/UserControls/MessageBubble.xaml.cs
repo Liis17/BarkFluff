@@ -146,6 +146,9 @@ namespace BarkFluff.Client.WPF.UserControls
                     case MessageType.Voice:
                         SetupVoiceContent(message);
                         break;
+                    case MessageType.Sticker:
+                        SetupStickerContent(message);
+                        break;
                     case MessageType.Text:
                     default:
                         SetupTextContent(message);
@@ -445,6 +448,29 @@ namespace BarkFluff.Client.WPF.UserControls
             this.MinWidth = 250;
         }
 
+        private void SetupStickerContent(MessageModel message)
+        {
+            var attachment = message.Attachments?.FirstOrDefault();
+            if (attachment == null || string.IsNullOrEmpty(attachment.FileId))
+            {
+                SetupTextContent(message);
+                return;
+            }
+
+            TextContentPresenter.Content = null;
+
+            var stickerContent = new StickerMessageContent(attachment);
+            MediaContentPresenter.Content = stickerContent;
+            SetMediaContentMargin(false);
+
+            this.MinWidth = 300;
+
+            // Hide the bottom row with time/read status inside the transparent border
+            // by overlaying it with a subtle semi-transparent label positioned under the sticker
+            MessageTime.Foreground = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromArgb(0xCC, 0xFF, 0xFF, 0xFF));
+        }
+
         private bool IsVoiceType(AttachmentsModel attachment)
         {
             return attachment.Type == Proto.Shared.MessageAttachmentType.Voice;
@@ -628,7 +654,16 @@ namespace BarkFluff.Client.WPF.UserControls
 
         private void ThemedConfirm(MessageOwner owner)
         {
-            if (owner == MessageOwner.Me)
+            if (_messageType == MessageType.Sticker)
+            {
+                // Stickers have no bubble background
+                MessageBorder.Style = (Style)FindResource("StickerMessageStyle");
+                // Remove drop shadow for stickers
+                MessageBorder.Effect = null;
+                this.HorizontalAlignment = owner == MessageOwner.Me ? HorizontalAlignment.Right : HorizontalAlignment.Left;
+                MainGrid.HorizontalAlignment = owner == MessageOwner.Me ? HorizontalAlignment.Right : HorizontalAlignment.Left;
+            }
+            else if (owner == MessageOwner.Me)
             {
                 this.HorizontalAlignment = HorizontalAlignment.Right;
                 MainGrid.HorizontalAlignment = HorizontalAlignment.Right;
@@ -721,6 +756,7 @@ namespace BarkFluff.Client.WPF.UserControls
             Document,
             Audio,
             Voice,
+            Sticker,
         }
 
         public enum MessageOwner

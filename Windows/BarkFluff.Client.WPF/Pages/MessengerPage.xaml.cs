@@ -624,6 +624,7 @@ namespace BarkFluff.Client.WPF.Pages
                 MessageAttachmentType.Document => MessageBubble.MessageType.Document,
                 MessageAttachmentType.Audio => MessageBubble.MessageType.Audio,
                 MessageAttachmentType.Voice => MessageBubble.MessageType.Voice,
+                MessageAttachmentType.Sticker => MessageBubble.MessageType.Sticker,
                 _ => MessageBubble.MessageType.Text
             };
         }
@@ -2248,6 +2249,105 @@ namespace BarkFluff.Client.WPF.Pages
             }
         }
 
+        private void StickerButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!StickerPickerControl.IsEventSubscribed)
+            {
+                StickerPickerControl.StickerSelected += OnStickerSelected;
+                StickerPickerControl.MarkEventSubscribed();
+            }
+
+            StickerPopup.IsOpen = !StickerPopup.IsOpen;
+
+            if (StickerPopup.IsOpen)
+            {
+                _ = StickerPickerControl.LoadAsync(App.GParam);
+            }
+        }
+
+        private void OnStickerSelected(object? sender, UserControls.StickerSelectedEventArgs e)
+        {
+            StickerPopup.IsOpen = false;
+            _ = SendStickerAsync(e);
+        }
+
+        private async Task SendStickerAsync(UserControls.StickerSelectedEventArgs sticker)
+        {
+            if (string.IsNullOrEmpty(ChatId.Value) || string.IsNullOrEmpty(sticker.FileId))
+                return;
+
+            try
+            {
+                string recipientId;
+                bool isUserId;
+                if (IsOpenChatEmpty)
+                {
+                    recipientId = ChatIdbyUserId.Value.ToString();
+                    isUserId = true;
+                }
+                else
+                {
+                    recipientId = ChatId.Value;
+                    isUserId = false;
+                }
+
+                // Build a pending message for immediate UI display
+                var pendingMessage = new MessageModel
+                {
+                    ChatId = ChatId.Value,
+                    SenderId = App.GParam.UserId,
+                    SentAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(DateTime.UtcNow),
+                    Attachments = new List<AttachmentsModel>
+                    {
+                        new AttachmentsModel
+                        {
+                            Type = MessageAttachmentType.Sticker,
+                            FileId = sticker.FileId,
+                            PreviewUrl = !string.IsNullOrEmpty(sticker.PreviewUrl)
+                                ? sticker.PreviewUrl
+                                : sticker.FileUrl
+                        }
+                    }
+                };
+
+                AddDateSeparatorIfNeeded(DateTime.Now);
+                var messageControl = new MessageBubble(
+                    MessageBubble.MessageOwner.Me,
+                    MessageBubble.MessageType.Sticker,
+                    pendingMessage,
+                    IsGroup);
+                AddMessage(messageControl);
+
+                var letter = new ForwardingLetter { FilesId = new List<string> { sticker.FileId } };
+                (bool, string) type = new(isUserId, recipientId);
+                var response = await App.ServerCommunication.SendMessage(App.GParam, type, letter);
+
+                if (!response.error.IsSuccess)
+                {
+                    App.ErideMessage.AddMessage(
+                        $"Ошибка отправки стикера: {response.error.ErrorMessage}",
+                        new Erida { Type = MType.Error });
+                }
+                else if (response.message != null)
+                {
+                    messageControl.MessageId = response.message.MessageId.ToString();
+                    messageControl.MarkAsSent();
+
+                    App.CacheManager.SaveMessage(
+                        response.message.ChatId,
+                        TitleChat,
+                        response.message,
+                        MessageOperation.Added);
+
+                    UpdateChatWithMessage(response.message);
+                }
+            }
+            catch (Exception ex)
+            {
+                App.ErideMessage.AddMessage($"Ошибка отправки стикера: {ex.Message}", new Erida { Type = MType.Error });
+            }
+        }
+
         public void ShowAttachmentPreview(List<string> filePaths)
         {
             ShowAttachmentPreviewWithText(() =>
@@ -2486,6 +2586,7 @@ namespace BarkFluff.Client.WPF.Pages
                 Proto.Files.UploadFileType.MessageAttachmentGif => MessageAttachmentType.Gif,
                 Proto.Files.UploadFileType.MessageAttachmentDocument => MessageAttachmentType.Document,
                 Proto.Files.UploadFileType.MessageAttachmentAudio => MessageAttachmentType.Audio,
+                Proto.Files.UploadFileType.MessageAttachmentSticker => MessageAttachmentType.Sticker,
                 _ => MessageAttachmentType.Document
             };
         }
@@ -2499,6 +2600,7 @@ namespace BarkFluff.Client.WPF.Pages
                 Proto.Files.UploadFileType.MessageAttachmentGif => MessageBubble.MessageType.Gif,
                 Proto.Files.UploadFileType.MessageAttachmentDocument => MessageBubble.MessageType.Document,
                 Proto.Files.UploadFileType.MessageAttachmentAudio => MessageBubble.MessageType.Audio,
+                Proto.Files.UploadFileType.MessageAttachmentSticker => MessageBubble.MessageType.Sticker,
                 _ => MessageBubble.MessageType.Document
             };
         }

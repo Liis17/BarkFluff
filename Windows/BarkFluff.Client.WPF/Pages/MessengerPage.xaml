@@ -1,4 +1,4 @@
-﻿<UserControl
+<UserControl
     x:Class="BarkFluff.Client.WPF.Pages.MessengerPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -482,6 +482,7 @@
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="40" />
@@ -725,9 +726,37 @@
                                         Style="{StaticResource MessageInputTextBox}"
                                         VerticalScrollBarVisibility="Auto" />
 
+                                    <!--  Кнопка стикеров  -->
+                                    <Button
+                                        x:Name="StickerButton"
+                                        Grid.Column="2"
+                                        Width="40"
+                                        Height="40"
+                                        Margin="0,0,4,0"
+                                        Background="Transparent"
+                                        BorderThickness="0"
+                                        Click="StickerButton_Click"
+                                        Cursor="Hand">
+                                        <ui:SymbolIcon
+                                            FontSize="22"
+                                            Foreground="#FF9E9E9E"
+                                            Symbol="Sticker16" />
+                                    </Button>
+
+                                    <!--  Всплывающая панель стикеров  -->
+                                    <Popup
+                                        x:Name="StickerPopup"
+                                        AllowsTransparency="True"
+                                        Placement="Top"
+                                        PlacementTarget="{Binding ElementName=StickerButton}"
+                                        StaysOpen="False"
+                                        VerticalOffset="-8">
+                                        <uc:StickerPicker x:Name="StickerPickerControl" />
+                                    </Popup>
+
                                     <!--  Кнопка отправки  -->
                                     <Button
-                                        Grid.Column="2"
+                                        Grid.Column="3"
                                         Width="40"
                                         Height="40"
                                         Margin="12,0,15,0"
