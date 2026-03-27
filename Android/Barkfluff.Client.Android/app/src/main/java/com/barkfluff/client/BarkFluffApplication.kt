@@ -9,6 +9,7 @@ import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
+import com.barkfluff.client.utils.StickerCache
 import com.google.android.material.color.DynamicColors
 
 class BarkFluffApplication : Application() {
@@ -45,6 +46,9 @@ class BarkFluffApplication : Application() {
 
         // Инициализируем кэш медиафайлов
         FileCache.init(this)
+
+        // Инициализируем кэш стикеров
+        StickerCache.init(this)
 
         // Подписываемся на lifecycle всего приложения (foreground/background)
         // resume() вызывается когда ЛЮБАЯ activity приложения выходит на передний план
