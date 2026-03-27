@@ -1,5 +1,9 @@
 using BarkFluff.Client.WPF.Services.App.Caching;
 
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
+
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -201,9 +205,58 @@ namespace BarkFluff.Client.WPF.UserControls
         {
             try
             {
+                // WebP-файлы (старый кеш или внешние) конвертируем в PNG на лету,
+                // т.к. WPF BitmapImage через WIC может отображать WebP без прозрачности
+                if (!FileCacheService.IsPlaceholder(imagePath)
+                    && imagePath.EndsWith(".webp", StringComparison.OrdinalIgnoreCase)
+                    && File.Exists(imagePath))
+                {
+                    SetImageFromWebP(imagePath);
+                    return;
+                }
+
                 var bitmapImage = new BitmapImage();
                 bitmapImage.BeginInit();
                 bitmapImage.UriSource = new Uri(imagePath, UriKind.RelativeOrAbsolute);
+                bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+
+                if (DecodePixelWidth.HasValue && DecodePixelWidth.Value > 0)
+                {
+                    bitmapImage.DecodePixelWidth = DecodePixelWidth.Value;
+                }
+
+                bitmapImage.EndInit();
+
+                if (bitmapImage.CanFreeze)
+                {
+                    bitmapImage.Freeze();
+                }
+
+                ContentImage.Source = bitmapImage;
+            }
+            catch
+            {
+                SetPlaceholder();
+            }
+        }
+
+        /// <summary>
+        /// Загружает WebP-файл, конвертирует в PNG через ImageSharp (сохраняя прозрачность)
+        /// и устанавливает результат как источник изображения.
+        /// </summary>
+        private void SetImageFromWebP(string webpPath)
+        {
+            try
+            {
+                var webpBytes = File.ReadAllBytes(webpPath);
+                using var image = SixLabors.ImageSharp.Image.Load<Rgba32>(webpBytes);
+                using var ms = new MemoryStream();
+                image.SaveAsPng(ms);
+                ms.Position = 0;
+
+                var bitmapImage = new BitmapImage();
+                bitmapImage.BeginInit();
+                bitmapImage.StreamSource = ms;
                 bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
 
                 if (DecodePixelWidth.HasValue && DecodePixelWidth.Value > 0)
