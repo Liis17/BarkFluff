@@ -151,34 +151,28 @@ class StickerPanelAdapter(
             }
             countText.text = countStr
 
-            val coverFile = findCoverFile(header)
-            if (coverFile != null) {
-                val (fileId, directUrl) = coverFile
+            val coverFileId = findCoverFileId(header)
+            if (coverFileId != null) {
                 coverImage.visibility = View.VISIBLE
-                loadStickerImage(coverImage, fileId, directUrl, 64)
+                loadStickerImage(coverImage, coverFileId, "", 64)
             } else {
                 coverImage.visibility = View.GONE
             }
         }
 
-        private fun findCoverFile(header: StickerPanelItem.PackHeader): Pair<String, String>? {
+        private fun findCoverFileId(header: StickerPanelItem.PackHeader): String? {
             val items = currentList
             for (item in items) {
                 if (item is StickerPanelItem.Sticker && item.packId == header.packId) {
                     val sticker = item.stickerInfo
                     if (header.coverStickerId.isNotBlank() && sticker.id == header.coverStickerId) {
-                        val fileId = sticker.previewFileId.ifBlank { sticker.fileId }
-                        val url = sticker.previewUrl.ifBlank { sticker.fileUrl }
-                        return Pair(fileId, url)
+                        return sticker.fileId
                     }
                 }
             }
             for (item in items) {
                 if (item is StickerPanelItem.Sticker && item.packId == header.packId) {
-                    val sticker = item.stickerInfo
-                    val fileId = sticker.previewFileId.ifBlank { sticker.fileId }
-                    val url = sticker.previewUrl.ifBlank { sticker.fileUrl }
-                    return Pair(fileId, url)
+                    return item.stickerInfo.fileId
                 }
             }
             return null
@@ -190,12 +184,12 @@ class StickerPanelAdapter(
 
         fun bind(item: StickerPanelItem.Sticker) {
             val sticker = item.stickerInfo
-            val fileId = sticker.previewFileId.ifBlank { sticker.fileId }
-            val directUrl = sticker.previewUrl.ifBlank { sticker.fileUrl }
+            // Используем оригинальный fileId — превью не имеют записи в БД и не доступны
+            val fileId = sticker.fileId
 
-            Log.d(TAG, "StickerViewHolder.bind: id=${sticker.id}, fileId=${sticker.fileId}, previewFileId=${sticker.previewFileId}, fileUrl=${sticker.fileUrl}, previewUrl=${sticker.previewUrl}, resolvedFileId=$fileId, resolvedDirectUrl=$directUrl")
+            Log.d(TAG, "StickerViewHolder.bind: id=${sticker.id}, fileId=$fileId")
 
-            loadStickerImage(imageView, fileId, directUrl, 128)
+            loadStickerImage(imageView, fileId, "", 128)
 
             imageView.setOnClickListener {
                 onStickerClick(sticker)
