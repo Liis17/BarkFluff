@@ -74,6 +74,20 @@ public class AddStickerCommandHandler : IRequestHandler<AddStickerCommand, AddSt
         using var previewStream = new MemoryStream(previewBytes);
         await _s3Uploader.UploadAsync(bucketName, $"{previewId}", previewStream, "image/webp");
 
+        // Создаём запись UploadFile для превью, чтобы оно было доступно через GetTempDownloadUrl и /download/
+        var previewFile = new Domain.UploadFile
+        {
+            Id = previewId,
+            Uploaders = file.Uploaders.ToList(),
+            CreatedAt = DateTime.UtcNow,
+            UploadedAt = DateTime.UtcNow,
+            Etag = "sticker-preview",
+            Type = UploadFileType.MessageAttachmentSticker,
+            Filename = $"{previewId}.webp",
+            Size = previewBytes.Length
+        };
+        await _uploadedFilesStorage.AddToStorage(previewFile);
+
         _logger.LogInformation("Превью стикера {PreviewId} создано ({Size} байт)", previewId, previewBytes.Length);
 
         // Создаём запись стикера
