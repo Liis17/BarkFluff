@@ -11,14 +11,14 @@
 
     <style>
         :root {
-            --bg-dark: #0f172a;
+            --bg-dark: #1a0c08;
             --text-main: #ffffff;
             --text-sub: #94a3b8;
-            --primary: #3b82f6;
-            --primary-dark: #2563eb;
-            --card-bg: rgba(30, 41, 59, 0.6);
+            --primary: #da742e;
+            --primary-dark: #c0601a;
+            --card-bg: rgba(35, 18, 10, 0.7);
             --card-border: rgba(255, 255, 255, 0.1);
-            --code-bg: rgba(15, 23, 42, 0.6);
+            --code-bg: rgba(20, 10, 6, 0.6);
             --error-red: #ef4444;
         }
 
@@ -63,7 +63,7 @@
             left: -10%;
             width: 50vw;
             height: 50vw;
-            background: #4f46e5;
+            background: #613224;
             animation-duration: 25s;
         }
 
@@ -72,7 +72,7 @@
             right: -10%;
             width: 40vw;
             height: 40vw;
-            background: #0ea5e9;
+            background: #e7842f;
             animation-duration: 30s;
             animation-delay: -5s;
         }
@@ -145,7 +145,7 @@
             border-radius: 50%;
             object-fit: cover;
             border: 3px solid rgba(255,255,255,0.15);
-            background: #1e293b;
+            background: #2a1208;
             position: relative;
             z-index: 2;
         }
@@ -154,7 +154,7 @@
             position: absolute;
             inset: -6px;
             border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary), #8b5cf6);
+            background: linear-gradient(135deg, var(--primary), #613224);
             opacity: 0.3;
             z-index: 1;
             filter: blur(12px);
@@ -199,7 +199,7 @@
             gap: 10px;
             width: 100%;
             padding: 14px 20px;
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            background: linear-gradient(135deg, #e7842f, #c0601a);
             color: white;
             text-decoration: none;
             border-radius: 14px;
@@ -208,13 +208,13 @@
             font-weight: 600;
             font-family: 'Inter', sans-serif;
             cursor: pointer;
-            box-shadow: 0 4px 20px rgba(37, 99, 235, 0.4);
+            box-shadow: 0 4px 20px rgba(218, 116, 46, 0.4);
             transition: transform 0.2s, box-shadow 0.2s;
         }
 
         .btn-open:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(37, 99, 235, 0.6);
+            box-shadow: 0 8px 25px rgba(218, 116, 46, 0.6);
         }
 
         .btn-open:active {
@@ -329,7 +329,7 @@
         .error-code {
             font-size: 72px;
             font-weight: 800;
-            background: linear-gradient(135deg, var(--primary), #8b5cf6);
+            background: linear-gradient(135deg, var(--primary), #613224);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -432,16 +432,9 @@
                 <div class="downloads-inner">
                     <div class="dl-label">Нет приложения? Скачайте:</div>
 
-                    <a href="https://barkfluff.com/download/installer" class="btn-dl">
-                        <svg viewBox="0 0 24 24"><path d="M3 12V6.75L9 5.43V12H3ZM21 3V11.75H10.5V4.78L21 3ZM10.5 21.66V13.25H21V21L10.5 21.66ZM3 18.25V13.25H9V19.95L3 18.25Z"/></svg>
-                        <div class="btn-dl-text">
-                            <span class="btn-dl-top">Скачать для</span>
-                            <span class="btn-dl-bot">Windows</span>
-                        </div>
-                    </a>
-
                     <div class="sub-links">
-                        <a href="https://github.com/Liis17/BarkFluff.Releases/releases/" class="btn-sub">Portable (.zip)</a>
+                        <a href="https://storege.barkfluff.com/get/barkfluffwindows" class="btn-sub">Portable — Релиз</a>
+                        <a href="https://storege.barkfluff.com/get/barkfluffwindows/beta" class="btn-sub">Portable — Бета</a>
                     </div>
                 </div>
             </div>
