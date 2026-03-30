@@ -74,4 +74,12 @@
     <SolidColorBrush x:Key="SettingsSidebarItemSelected" Color="#333333" />
     <SolidColorBrush x:Key="SettingsContentBackground" Color="#1f1f1f" />
 
+    <!--  Список чатов  -->
+    <Color
+        x:Key="ChatItemMouseTrigger"
+        A="255"
+        B="50"
+        G="50"
+        R="50" />
+
 </ResourceDictionary>
