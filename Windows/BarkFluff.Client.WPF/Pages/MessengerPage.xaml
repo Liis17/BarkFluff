@@ -317,84 +317,105 @@
                 </Grid.ColumnDefinitions>
 
                 <!--  Панель списка чатов  -->
-
                 <Border
                     Grid.Column="0"
                     Padding="0"
                     HorizontalAlignment="Stretch"
-                    VerticalAlignment="Stretch"
-                    Background="{DynamicResource ChatListBackgroundColor}"
-                    BorderThickness="0,0,1,0"
-                    CornerRadius="0 15 0 0"
-                    Style="{DynamicResource MainStyleBorder}">
+                    VerticalAlignment="Stretch">
                     <Grid Margin="0,0,0,0">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
+
+
                         <!--  Панель поиска  -->
-                        <Border Grid.Row="0">
-                            <Border
-                                Margin="10,8"
-                                Background="Transparent"
-                                CornerRadius="8">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
 
+                        <Border
+                            Grid.Row="0"
+                            Padding="0"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            Panel.ZIndex="1"
+                            Background="{DynamicResource ChatListBackgroundColor}"
+                            BorderThickness="0,0,1,0"
+                            CornerRadius="0 15 15 0"
+                            Style="{DynamicResource MainStyleBorder}">
+                            <Border>
+                                <Border
+                                    Margin="10,8"
+                                    Background="Transparent"
+                                    CornerRadius="8">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
 
+                                        <ui:TextBox
+                                            x:Name="SearchTextBox"
+                                            Grid.Column="1"
+                                            VerticalAlignment="Center"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            FontFamily="{DynamicResource AdwaitaSans}"
+                                            FontSize="14"
+                                            Foreground="White"
+                                            GotFocus="SearchTextBox_GotFocus"
+                                            Icon="{ui:SymbolIcon ui:Symbol=Search48}"
+                                            LostFocus="SearchTextBox_LostFocus"
+                                            PlaceholderText="Поиск"
+                                            TextChanged="SearchTextBox_TextChanged" />
 
-                                    <ui:TextBox
-                                        x:Name="SearchTextBox"
-                                        Grid.Column="1"
-                                        VerticalAlignment="Center"
-                                        Background="Transparent"
-                                        BorderThickness="0"
-                                        FontFamily="{DynamicResource AdwaitaSans}"
-                                        FontSize="14"
-                                        Foreground="White"
-                                        GotFocus="SearchTextBox_GotFocus"
-                                        Icon="{ui:SymbolIcon ui:Symbol=Search48}"
-                                        LostFocus="SearchTextBox_LostFocus"
-                                        PlaceholderText="Поиск"
-                                        TextChanged="SearchTextBox_TextChanged" />
+                                        <TextBlock
+                                            Grid.Column="1"
+                                            VerticalAlignment="Center"
+                                            FontFamily="{DynamicResource AdwaitaSans}"
+                                            FontSize="14"
+                                            Foreground="#FF9E9E9E"
+                                            IsHitTestVisible="False"
+                                            Text="Поиск чатов...">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value="">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                    <Setter Property="Visibility" Value="Hidden" />
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Grid>
+                                </Border>
 
-                                    <TextBlock
-                                        Grid.Column="1"
-                                        VerticalAlignment="Center"
-                                        FontFamily="{DynamicResource AdwaitaSans}"
-                                        FontSize="14"
-                                        Foreground="#FF9E9E9E"
-                                        IsHitTestVisible="False"
-                                        Text="Поиск чатов...">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value="">
-                                                        <Setter Property="Visibility" Value="Visible" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                                <Setter Property="Visibility" Value="Hidden" />
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                </Grid>
                             </Border>
 
                         </Border>
 
+
                         <!--  Список чатов  -->
-                        <ScrollViewer
+                        <Border
                             Grid.Row="1"
+                            Margin="0,4,0,0"
+                            Padding="0"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
                             Panel.ZIndex="1"
-                            HorizontalScrollBarVisibility="Disabled"
-                            VerticalScrollBarVisibility="Auto">
-                            <StackPanel x:Name="ChatList" Orientation="Vertical">
-                                <!--  Тут будут появляться чаты  -->
-                            </StackPanel>
-                        </ScrollViewer>
+                            Background="{DynamicResource ChatListBackgroundColor}"
+                            BorderThickness="0,0,1,0"
+                            CornerRadius="0 15 0 0"
+                            Style="{DynamicResource MainStyleBorder}">
+                            <ScrollViewer
+                                Margin="0,8,0,0"
+                                HorizontalScrollBarVisibility="Disabled"
+                                VerticalScrollBarVisibility="Auto">
+                                <StackPanel x:Name="ChatList" Orientation="Vertical">
+                                    <!--  Тут будут появляться чаты  -->
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Border>
+
 
                     </Grid>
                 </Border>
