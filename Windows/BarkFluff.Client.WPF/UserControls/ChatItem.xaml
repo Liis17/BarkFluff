@@ -39,7 +39,7 @@
             <Style TargetType="Border">
                 <Setter Property="Background">
                     <Setter.Value>
-                        <SolidColorBrush Opacity="0" Color="#252526" />
+                        <SolidColorBrush Opacity="0" Color="{DynamicResource ChatItemMouseTrigger}" />
                     </Setter.Value>
                 </Setter>
                 <Style.Triggers>
@@ -47,28 +47,20 @@
                         <Trigger.EnterActions>
                             <BeginStoryboard>
                                 <Storyboard>
-                                    <ColorAnimation
-                                        Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
-                                        To="#373737"
-                                        Duration="0:0:0.1" />
                                     <DoubleAnimation
                                         Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Opacity)"
                                         To="1"
-                                        Duration="0:0:0.1" />
+                                        Duration="0:0:0.05" />
                                 </Storyboard>
                             </BeginStoryboard>
                         </Trigger.EnterActions>
                         <Trigger.ExitActions>
                             <BeginStoryboard>
                                 <Storyboard>
-                                    <ColorAnimation
-                                        Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
-                                        To="#252526"
-                                        Duration="0:0:0.1" />
                                     <DoubleAnimation
                                         Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Opacity)"
                                         To="0"
-                                        Duration="0:0:0.1" />
+                                        Duration="0:0:0.05" />
                                 </Storyboard>
                             </BeginStoryboard>
                         </Trigger.ExitActions>
@@ -135,9 +127,9 @@
                         FontFamily="{DynamicResource AdwaitaSans}"
                         FontWeight="Bold"
                         Opacity="0.9"
-                        TextWrapping="NoWrap"
                         Style="{DynamicResource LittleTitleTextStyle}"
-                        Text="#publicusername" />
+                        Text="#publicusername"
+                        TextWrapping="NoWrap" />
 
                     <!--  Последнее сообщение  -->
                     <TextBlock
