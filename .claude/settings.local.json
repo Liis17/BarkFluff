@@ -32,7 +32,10 @@
       "Bash(cd:*)",
       "Bash(ls -d K:/source/BarkFluff/Backend/BarkFluff.*/ K:/source/BarkFluff/Windows/*/ K:/source/BarkFluff/Android/*/ K:/source/BarkFluff/Shared/*/)",
       "Bash(ls -d K:/source/BarkFluff/Backend/*/)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "mcp__figma__whoami",
+      "mcp__figma__get_metadata",
+      "mcp__figma__use_figma"
     ],
     "deny": [],
     "ask": []
