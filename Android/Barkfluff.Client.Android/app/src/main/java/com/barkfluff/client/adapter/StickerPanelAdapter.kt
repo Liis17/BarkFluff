@@ -211,6 +211,8 @@ class StickerPanelAdapter(
                             onStickerLongPress?.invoke(sticker)
                         }
                         v.postDelayed(longPressRunnable!!, LONG_PRESS_DURATION_MS)
+                        v.isPressed = true
+                        v.parent?.requestDisallowInterceptTouchEvent(true)
                         true
                     }
                     MotionEvent.ACTION_UP -> {
@@ -220,12 +222,16 @@ class StickerPanelAdapter(
                             v.performClick()
                         }
                         longPressTriggered = false
+                        v.isPressed = false
+                        v.parent?.requestDisallowInterceptTouchEvent(false)
                         true
                     }
                     MotionEvent.ACTION_CANCEL -> {
                         longPressRunnable?.let { v.removeCallbacks(it) }
                         longPressRunnable = null
                         longPressTriggered = false
+                        v.isPressed = false
+                        v.parent?.requestDisallowInterceptTouchEvent(false)
                         true
                     }
                     else -> false
