@@ -308,4 +308,28 @@
 
     </FrameLayout>
 
+    <!-- Оверлей предпросмотра стикера (поверх всего) -->
+    <FrameLayout
+        android:id="@+id/stickerPreviewOverlay"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#80000000"
+        android:visibility="gone"
+        android:clickable="true"
+        android:focusable="true"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ImageView
+            android:id="@+id/stickerPreviewImage"
+            android:layout_width="260dp"
+            android:layout_height="260dp"
+            android:layout_gravity="center"
+            android:scaleType="fitCenter"
+            android:contentDescription="Предпросмотр стикера" />
+
+    </FrameLayout>
+
 </androidx.constraintlayout.widget.ConstraintLayout>
