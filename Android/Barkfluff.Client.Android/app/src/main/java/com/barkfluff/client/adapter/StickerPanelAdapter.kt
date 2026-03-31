@@ -1,7 +1,9 @@
 package com.barkfluff.client.adapter
 
 import android.util.Log
+import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
@@ -22,7 +24,8 @@ import kotlinx.coroutines.withContext
 
 class StickerPanelAdapter(
     private val getFileUrl: suspend (String) -> String?,
-    private val onStickerClick: (StickerInfo) -> Unit
+    private val onStickerClick: (StickerInfo) -> Unit,
+    private val onStickerLongPress: ((StickerInfo) -> Unit)? = null
 ) : ListAdapter<StickerPanelItem, RecyclerView.ViewHolder>(DiffCallback()) {
 
     companion object {
@@ -31,6 +34,7 @@ class StickerPanelAdapter(
         const val VIEW_TYPE_STICKER = 1
         const val VIEW_TYPE_LOADING = 2
         const val VIEW_TYPE_EMPTY = 3
+        private const val LONG_PRESS_DURATION_MS = 1500L
     }
 
     override fun getItemViewType(position: Int): Int {
@@ -181,6 +185,8 @@ class StickerPanelAdapter(
 
     inner class StickerViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val imageView: ImageView = itemView.findViewById(R.id.stickerImageView)
+        private var longPressRunnable: Runnable? = null
+        private var longPressTriggered = false
 
         fun bind(item: StickerPanelItem.Sticker) {
             val sticker = item.stickerInfo
@@ -191,8 +197,39 @@ class StickerPanelAdapter(
 
             loadStickerImage(imageView, fileId, "", 128)
 
-            imageView.setOnClickListener {
+            itemView.setOnClickListener {
                 onStickerClick(sticker)
+            }
+
+            itemView.setOnTouchListener { v, event ->
+                when (event.action) {
+                    MotionEvent.ACTION_DOWN -> {
+                        longPressTriggered = false
+                        longPressRunnable = Runnable {
+                            longPressTriggered = true
+                            v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                            onStickerLongPress?.invoke(sticker)
+                        }
+                        v.postDelayed(longPressRunnable!!, LONG_PRESS_DURATION_MS)
+                        true
+                    }
+                    MotionEvent.ACTION_UP -> {
+                        longPressRunnable?.let { v.removeCallbacks(it) }
+                        longPressRunnable = null
+                        if (!longPressTriggered) {
+                            v.performClick()
+                        }
+                        longPressTriggered = false
+                        true
+                    }
+                    MotionEvent.ACTION_CANCEL -> {
+                        longPressRunnable?.let { v.removeCallbacks(it) }
+                        longPressRunnable = null
+                        longPressTriggered = false
+                        true
+                    }
+                    else -> false
+                }
             }
         }
     }

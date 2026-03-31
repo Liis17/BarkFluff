@@ -50,6 +50,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import coil.load
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -408,8 +409,15 @@ class ChatActivity : AppCompatActivity() {
             getFileUrl = { fileId -> chatRepository.getFileDownloadUrl(fileId).getOrNull() },
             onStickerClick = { sticker ->
                 sendStickerMessage(sticker)
+            },
+            onStickerLongPress = { sticker ->
+                showStickerPreview(sticker)
             }
         )
+
+        binding.stickerPreviewOverlay.setOnClickListener {
+            hideStickerPreview()
+        }
 
         val gridLayoutManager = GridLayoutManager(this, 4)
         gridLayoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
@@ -436,10 +444,12 @@ class ChatActivity : AppCompatActivity() {
             })
         }
 
-        // Back press закрывает стикер-панель
+        // Back press закрывает стикер-панель или оверлей предпросмотра
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (inputPanelState == InputPanelState.STICKER_PANEL) {
+                if (binding.stickerPreviewOverlay.visibility == View.VISIBLE) {
+                    hideStickerPreview()
+                } else if (inputPanelState == InputPanelState.STICKER_PANEL) {
                     hideStickerPanel()
                 } else {
                     isEnabled = false
@@ -481,6 +491,36 @@ class ChatActivity : AppCompatActivity() {
     private fun hideStickerPanel() {
         binding.stickerPanelContainer.visibility = View.GONE
         inputPanelState = InputPanelState.NONE
+    }
+
+    private fun showStickerPreview(sticker: barkfluff.files.FilesApiOuterClass.StickerInfo) {
+        val fileId = sticker.fileId
+        if (fileId.isBlank()) return
+        binding.stickerPreviewOverlay.visibility = View.VISIBLE
+        val imageView = binding.stickerPreviewImage
+        imageView.setImageDrawable(null)
+        lifecycleScope.launch {
+            val url = try {
+                withContext(Dispatchers.IO) {
+                    chatRepository.getFileDownloadUrl(fileId).getOrNull()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading sticker preview url", e)
+                null
+            }
+            if (url.isNullOrBlank()) return@launch
+            val imageLoader = AvatarLoader.getImageLoader(this@ChatActivity)
+            imageView.load(url, imageLoader) {
+                memoryCacheKey(fileId)
+                diskCacheKey(fileId)
+                crossfade(200)
+            }
+        }
+    }
+
+    private fun hideStickerPreview() {
+        binding.stickerPreviewOverlay.visibility = View.GONE
+        binding.stickerPreviewImage.setImageDrawable(null)
     }
 
     private fun loadStickerPanelData() {
@@ -528,7 +568,6 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun sendStickerMessage(sticker: barkfluff.files.FilesApiOuterClass.StickerInfo) {
-        hideStickerPanel()
         lifecycleScope.launch {
             try {
                 val fileId = sticker.fileId
