@@ -48,15 +48,15 @@ object UpdateChecker {
 
     suspend fun hasUpdate(currentVersion: String): Boolean {
         val current = AppVersion.parse(currentVersion) ?: return false
-        val releaseInfo = getVersionInfo("release")
-        val betaInfo = getVersionInfo("beta")
-
-        val releaseVersion = AppVersion.parse(releaseInfo?.version)
-        val betaVersion = AppVersion.parse(betaInfo?.version)
-
-        if (releaseVersion != null && releaseVersion > current) return true
-        if (betaVersion != null && betaVersion > current) return true
-        return false
+        return if (current.isBeta) {
+            val betaInfo = getVersionInfo("beta")
+            val betaVersion = AppVersion.parse(betaInfo?.version)
+            betaVersion != null && betaVersion > current
+        } else {
+            val releaseInfo = getVersionInfo("release")
+            val releaseVersion = AppVersion.parse(releaseInfo?.version)
+            releaseVersion != null && releaseVersion > current
+        }
     }
 
     fun getDownloadUrl(channel: String): String {
