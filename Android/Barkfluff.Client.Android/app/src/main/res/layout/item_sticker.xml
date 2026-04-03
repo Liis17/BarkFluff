@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:padding="4dp"
@@ -7,10 +8,19 @@
     android:clickable="true"
     android:focusable="true">
 
-    <com.barkfluff.client.views.SquareImageView
-        android:id="@+id/stickerImageView"
+    <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:scaleType="fitCenter" />
+        app:cardCornerRadius="15dp"
+        app:cardElevation="0dp"
+        app:strokeWidth="0dp">
+
+        <com.barkfluff.client.views.SquareImageView
+            android:id="@+id/stickerImageView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:scaleType="fitCenter" />
+
+    </com.google.android.material.card.MaterialCardView>
 
 </FrameLayout>

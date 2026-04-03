@@ -28,6 +28,9 @@ import com.barkfluff.client.ImageViewerActivity
 import com.barkfluff.client.MediaViewerActivity
 import com.barkfluff.client.R
 import com.barkfluff.client.databinding.ItemAttachmentAudioBinding
+import com.google.android.material.imageview.ShapeableImageView
+import com.google.android.material.shape.CornerFamily
+import com.google.android.material.shape.ShapeAppearanceModel
 import com.barkfluff.client.databinding.ItemAttachmentDocumentBinding
 import com.barkfluff.client.databinding.ItemAttachmentVideoBinding
 import com.barkfluff.client.databinding.ItemMessageDateSeparatorBinding
@@ -405,12 +408,16 @@ class MessageAdapter(
         for (sticker in stickers) {
             val dm = context.resources.displayMetrics
             val stickerSizePx = (160 * dm.density + 0.5f).toInt()
-            val stickerView = ImageView(context).apply {
+            val cornerRadiusPx = 15 * dm.density
+            val stickerView = ShapeableImageView(context).apply {
                 layoutParams = android.widget.LinearLayout.LayoutParams(stickerSizePx, stickerSizePx).apply {
                     topMargin = (4 * dm.density + 0.5f).toInt()
                     bottomMargin = (4 * dm.density + 0.5f).toInt()
                 }
                 scaleType = ImageView.ScaleType.FIT_CENTER
+                shapeAppearanceModel = ShapeAppearanceModel.builder()
+                    .setAllCorners(CornerFamily.ROUNDED, cornerRadiusPx)
+                    .build()
             }
             loadStickerImage(stickerView, sticker)
             wrapper.addView(stickerView)
