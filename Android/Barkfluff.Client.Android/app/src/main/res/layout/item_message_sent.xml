@@ -96,13 +96,14 @@
         </com.google.android.material.card.MaterialCardView>
 
         <!-- Стикер (без облачка) -->
-        <ImageView
+        <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/stickerImageView"
             android:layout_width="160dp"
             android:layout_height="160dp"
             android:layout_gravity="end"
             android:scaleType="fitCenter"
             android:visibility="gone"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.App.Sticker"
             tools:visibility="gone" />
 
         <!-- Время и статус для стикера (вне облачка) -->
