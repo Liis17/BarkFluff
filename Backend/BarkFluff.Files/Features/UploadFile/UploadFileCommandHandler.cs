@@ -34,6 +34,8 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
 
     /// <summary>
     /// Типы файлов, для которых нужно проверять реальный тип по содержимому.
+    /// Если пользователь явно выбрал <see cref="UploadFileType.MessageAttachmentDocument"/>,
+    /// детекция не выполняется — документ остаётся документом независимо от содержимого.
     /// </summary>
     private static readonly HashSet<UploadFileType> TypesRequiringDetection =
     [
@@ -42,7 +44,6 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
         UploadFileType.MessageAttachmentGif,
         UploadFileType.MessageAttachmentAudio,
         UploadFileType.MessageAttachmentVoice,
-        UploadFileType.MessageAttachmentDocument,
         UploadFileType.MessageAttachmentSticker
     ];
 
