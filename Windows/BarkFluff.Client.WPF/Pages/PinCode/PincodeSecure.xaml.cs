@@ -205,8 +205,6 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
 
             StartSlideDownAndFadeOut(() =>
             {
-                // Код, который выполнится после завершения анимации
-                // Например, переход на следующую страницу
                 App.MessengerWindow.PincodeSuccess();
             });
         }
@@ -224,8 +222,9 @@ namespace BarkFluff.Client.WPF.Pages.PinCode
             string dir = Path.Combine(Path.GetDirectoryName(AppContext.BaseDirectory), "datas");
             if (File.Exists(filePath))
             {
+                App.FileCacheService = null;
                 File.Delete(filePath);
-                Directory.Delete(dir, true);
+                Directory.Delete(Path.Combine(dir, "cache"), true);
                 Application.Current.Shutdown();
             }
         }

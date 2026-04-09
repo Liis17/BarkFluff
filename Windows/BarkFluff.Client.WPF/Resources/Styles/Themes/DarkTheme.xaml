@@ -51,6 +51,9 @@
     <SolidColorBrush x:Key="TextIcon" Color="#FFF39E6D" />
     <SolidColorBrush x:Key="TextHyperlink" Color="#FFF39E6D" />
 
+    <SolidColorBrush x:Key="UserOnlineTime" Color="#43d62c" />
+    <SolidColorBrush x:Key="UserOfflineTime" Color="#B0B0B0" />
+
     <!--  Сепараторы  -->
     <SolidColorBrush x:Key="SeparatorBackground" Color="#888888" />
 

@@ -304,15 +304,13 @@ namespace BarkFluff.Client.WPF.Pages
             if (status.Status == BarkFluff.Proto.Onliner.StatusTypeId.StatusOnline)
             {
                 UserOnlineTime.Text = "В сети";
-                UserOnlineTime.Foreground = new System.Windows.Media.SolidColorBrush(
-                    System.Windows.Media.Color.FromRgb(68, 214, 44));
+                UserOnlineTime.Foreground = (System.Windows.Media.Brush)FindResource("UserOnlineTime");
             }
             else if (status.LastSeen != null)
             {
                 var lastSeen = status.LastSeen.ToDateTime();
                 UserOnlineTime.Text = FormatLastSeenForMessenger(lastSeen);
-                UserOnlineTime.Foreground = new System.Windows.Media.SolidColorBrush(
-                    System.Windows.Media.Color.FromArgb(128, 255, 255, 255));
+                UserOnlineTime.Foreground = (System.Windows.Media.Brush)FindResource("UserOfflineTime");
             }
             else
             {
