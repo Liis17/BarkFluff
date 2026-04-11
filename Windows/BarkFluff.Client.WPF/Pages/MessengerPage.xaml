@@ -361,7 +361,7 @@
                                             BorderThickness="0"
                                             FontFamily="{DynamicResource AdwaitaSans}"
                                             FontSize="14"
-                                            Foreground="White"
+                                            Foreground="{DynamicResource TextForeground}"
                                             GotFocus="SearchTextBox_GotFocus"
                                             Icon="{ui:SymbolIcon ui:Symbol=Search48}"
                                             LostFocus="SearchTextBox_LostFocus"
@@ -569,7 +569,7 @@
                                                         FontFamily="{DynamicResource AdwaitaSans}"
                                                         FontSize="13"
                                                         FontWeight="SemiBold"
-                                                        Foreground="{DynamicResource TextForegraund}"
+                                                        Foreground="{DynamicResource TextForeground}"
                                                         Text="" />
                                                     <TextBlock
                                                         x:Name="UserOnlineTime"

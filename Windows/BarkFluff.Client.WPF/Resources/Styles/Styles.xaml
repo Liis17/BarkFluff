@@ -1050,7 +1050,7 @@
         <Setter Property="Height" Value="64" />
         <Setter Property="Margin" Value="8" />
         <Setter Property="MaxLength" Value="1" />
-        <Setter Property="Foreground" Value="{DynamicResource TextForegraund}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextForeground}" />
         <Setter Property="FontFamily" Value="{DynamicResource AdwaitaSans}" />
         <Setter Property="FontSize" Value="26" />
         <Setter Property="FontWeight" Value="SemiBold" />
@@ -1120,7 +1120,7 @@
     <Style x:Key="InputTextBoxStyle" TargetType="{x:Type ui:TextBox}">
         <!--  Основные цвета (можно вынести в ресурсы, но здесь для наглядности)  -->
         <Setter Property="Background" Value="{DynamicResource TextBackground}" />
-        <Setter Property="Foreground" Value="{DynamicResource TextForegraund}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextForeground}" />
         <Setter Property="BorderBrush" Value="{DynamicResource TextBorderBrush}" />
         <Setter Property="CaretBrush" Value="{DynamicResource TextCaretBrush}" />
         <Setter Property="BorderThickness" Value="1" />
