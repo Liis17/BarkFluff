@@ -678,7 +678,7 @@ class MessageAdapter(
             binding.audioSeekBar.progressBackgroundTintList = onContainerVariantCsl
 
             // Download progress
-            binding.downloadProgressBar.progressTintList = onContainerCsl
+            binding.downloadProgressBar.setIndicatorColor(onContainer)
         }
 
         fun updateUiForCached(durationMs: Int = 0) {
@@ -989,7 +989,7 @@ class MessageAdapter(
             binding.docFileSize.setTextColor(onContainerVariant)
             binding.docDownloadButton.imageTintList = onContainerCsl
             binding.docOpenButton.imageTintList = onContainerCsl
-            binding.docDownloadProgress.progressTintList = onContainerCsl
+            binding.docDownloadProgress.setIndicatorColor(onContainer)
         }
 
         fun updateUiForCached() {

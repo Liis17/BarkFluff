@@ -12,7 +12,7 @@
     android:background="?attr/selectableItemBackground">
 
     <!-- Иконка файла -->
-    <androidx.cardview.widget.CardView
+    <com.google.android.material.card.MaterialCardView
         android:layout_width="48dp"
         android:layout_height="48dp"
         app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
@@ -28,7 +28,7 @@
             android:scaleType="center"
             app:tint="?attr/colorOnSurfaceVariant" />
 
-    </androidx.cardview.widget.CardView>
+    </com.google.android.material.card.MaterialCardView>
 
     <!-- Имя и размер файла -->
     <LinearLayout

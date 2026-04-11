@@ -13,6 +13,7 @@ import com.barkfluff.client.databinding.FragmentProfileBinding
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.UpdateChecker
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
 
 class ProfileFragment : Fragment() {
@@ -71,12 +72,27 @@ class ProfileFragment : Fragment() {
         binding.itemAbout.setOnClickListener {
             startActivity(Intent(requireContext(), AboutActivity::class.java))
         }
+        binding.buttonLogout.setOnClickListener {
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Выход")
+                .setMessage("Вы уверены, что хотите выйти из аккаунта?")
+                .setPositiveButton("Выйти") { _, _ ->
+                    globalParam.clearUserData()
+                    val intent = Intent(requireContext(), LoginActivity::class.java)
+                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    startActivity(intent)
+                    requireActivity().finishAffinity()
+                }
+                .setNegativeButton("Отмена", null)
+                .show()
+        }
     }
 
     private fun updateUI() {
         val fullName = "${globalParam.firstName} ${globalParam.lastName}".trim()
         binding.textFullName.text = fullName.ifEmpty { "Пользователь" }
         binding.textUsername.text = if (globalParam.userName.isNotEmpty()) "@${globalParam.userName}" else ""
+        binding.textAppVersion.text = "BarkFluff ${GlobalParam.getAppVersion(requireContext())}"
 
         loadAvatar()
     }

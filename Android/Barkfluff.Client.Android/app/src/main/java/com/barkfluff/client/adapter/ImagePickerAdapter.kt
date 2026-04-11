@@ -102,7 +102,7 @@ class ImagePickerAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind() {
-            binding.cardView.setOnClickListener {
+            binding.root.setOnClickListener {
                 onCameraClick()
             }
         }
@@ -113,7 +113,7 @@ class ImagePickerAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind() {
-            binding.cardView.setOnClickListener {
+            binding.root.setOnClickListener {
                 onFileClick()
             }
         }
