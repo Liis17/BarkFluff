@@ -2330,6 +2330,9 @@ jobs:
             SERVER_VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts || echo "0.0.0")
           fi
 
+          # Стрипаем любой нечисловой суффикс (например " beta")
+          SERVER_VERSION=$(echo "$SERVER_VERSION" | grep -oP '^\d+\.\d+\.\d+' || echo "0.0.0")
+
           echo "Server version: $SERVER_VERSION"
 
           MAJOR=$(echo "$SERVER_VERSION" | cut -d. -f1)
