@@ -94,7 +94,7 @@ class AccountSettingsActivity : AppCompatActivity() {
         }
 
         binding.itemLastName.setOnClickListener {
-            showEditDialog("Фамилия", globalParam.lastName) { newValue ->
+            showEditDialog("Фамилия", globalParam.lastName, allowEmpty = true) { newValue ->
                 lifecycleScope.launch {
                     val result = grpcManager.changeName(globalParam.firstName, newValue)
                     if (result.isSuccess) {
@@ -184,7 +184,7 @@ class AccountSettingsActivity : AppCompatActivity() {
         }
     }
 
-    private fun showEditDialog(title: String, currentValue: String, onSave: (String) -> Unit) {
+    private fun showEditDialog(title: String, currentValue: String, allowEmpty: Boolean = false, onSave: (String) -> Unit) {
         val inputLayout = TextInputLayout(this).apply {
             setPadding(
                 resources.getDimensionPixelSize(android.R.dimen.notification_large_icon_width) / 3,
@@ -203,7 +203,7 @@ class AccountSettingsActivity : AppCompatActivity() {
             .setView(inputLayout)
             .setPositiveButton("Сохранить") { _, _ ->
                 val newValue = editText.text?.toString()?.trim() ?: ""
-                if (newValue.isNotEmpty() && newValue != currentValue) {
+                if ((allowEmpty || newValue.isNotEmpty()) && newValue != currentValue) {
                     onSave(newValue)
                 }
             }
