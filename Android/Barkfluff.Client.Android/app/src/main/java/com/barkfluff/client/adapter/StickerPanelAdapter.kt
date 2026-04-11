@@ -5,6 +5,7 @@ import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
@@ -187,6 +188,9 @@ class StickerPanelAdapter(
         private val imageView: ImageView = itemView.findViewById(R.id.stickerImageView)
         private var longPressRunnable: Runnable? = null
         private var longPressTriggered = false
+        private var downX = 0f
+        private var downY = 0f
+        private var scrolling = false
 
         fun bind(item: StickerPanelItem.Sticker) {
             val sticker = item.stickerInfo
@@ -201,27 +205,46 @@ class StickerPanelAdapter(
                 onStickerClick(sticker)
             }
 
+            val touchSlop = ViewConfiguration.get(itemView.context).scaledTouchSlop
+
             itemView.setOnTouchListener { v, event ->
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
                         longPressTriggered = false
+                        scrolling = false
+                        downX = event.rawX
+                        downY = event.rawY
                         longPressRunnable = Runnable {
                             longPressTriggered = true
                             v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                            v.parent?.requestDisallowInterceptTouchEvent(true)
                             onStickerLongPress?.invoke(sticker)
                         }
                         v.postDelayed(longPressRunnable!!, LONG_PRESS_DURATION_MS)
                         v.isPressed = true
-                        v.parent?.requestDisallowInterceptTouchEvent(true)
-                        true
+                        false
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        if (!longPressTriggered && !scrolling) {
+                            val dx = event.rawX - downX
+                            val dy = event.rawY - downY
+                            if (dx * dx + dy * dy > touchSlop * touchSlop) {
+                                scrolling = true
+                                longPressRunnable?.let { v.removeCallbacks(it) }
+                                longPressRunnable = null
+                                v.isPressed = false
+                            }
+                        }
+                        false
                     }
                     MotionEvent.ACTION_UP -> {
                         longPressRunnable?.let { v.removeCallbacks(it) }
                         longPressRunnable = null
-                        if (!longPressTriggered) {
+                        if (!longPressTriggered && !scrolling) {
                             v.performClick()
                         }
                         longPressTriggered = false
+                        scrolling = false
                         v.isPressed = false
                         v.parent?.requestDisallowInterceptTouchEvent(false)
                         true
@@ -230,6 +253,7 @@ class StickerPanelAdapter(
                         longPressRunnable?.let { v.removeCallbacks(it) }
                         longPressRunnable = null
                         longPressTriggered = false
+                        scrolling = false
                         v.isPressed = false
                         v.parent?.requestDisallowInterceptTouchEvent(false)
                         true
