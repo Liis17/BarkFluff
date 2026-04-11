@@ -31,7 +31,7 @@ public class CreateTokenCommandHandler(RefreshTokensStorage refreshTokensStorage
 
         logger.LogDebug("Генерация access token для пользователя {UserId}", accessToken.UserId);
 
-        var token = jwtService.GenerateUserToken(accessToken.UserId);
+        var token = jwtService.GenerateUserToken(accessToken.UserId, accessToken.DeviceId);
 
         logger.LogInformation(
             "Access token успешно обновлен для пользователя {UserId}, устройство: {DeviceId}",

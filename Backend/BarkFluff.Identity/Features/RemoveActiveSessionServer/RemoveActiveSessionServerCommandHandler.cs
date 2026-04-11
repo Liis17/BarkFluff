@@ -1,8 +1,12 @@
 using BarkFluff.Identity.Persistence.Exceptions;
 using BarkFluff.Identity.Persistence.Services;
+using BarkFluff.Identity.Settings;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Identity;
+using BarkFluff.Shared.Queue.Identity;
+
+using MassTransit;
 
 using MediatR;
 
@@ -12,14 +16,19 @@ public class RemoveActiveSessionServerCommandHandler : IRequestHandler<RemoveAct
 {
     private readonly RefreshTokensStorage _refreshTokensStorage;
     private readonly UsersServerApi.UsersServerApiClient _usersClient;
+    private readonly IPublishEndpoint _publishEndpoint;
+    private readonly JwtSettings _jwtSettings;
     private readonly ILogger<RemoveActiveSessionServerCommandHandler> _logger;
 
     public RemoveActiveSessionServerCommandHandler(RefreshTokensStorage refreshTokensStorage,
-        UsersServerApi.UsersServerApiClient usersClient,
+        UsersServerApi.UsersServerApiClient usersClient, IPublishEndpoint publishEndpoint,
+        JwtSettings jwtSettings,
         ILogger<RemoveActiveSessionServerCommandHandler> logger)
     {
         _refreshTokensStorage = refreshTokensStorage;
         _usersClient = usersClient;
+        _publishEndpoint = publishEndpoint;
+        _jwtSettings = jwtSettings;
         _logger = logger;
     }
 
@@ -40,6 +49,14 @@ public class RemoveActiveSessionServerCommandHandler : IRequestHandler<RemoveAct
                 request.DeviceId, request.UserId);
             throw new SessionNotFoundException();
         }
+
+        // Публикуем событие отзыва сессии для инвалидации access токенов
+        await _publishEndpoint.Publish(new SessionRevokedEvent
+        {
+            UserId = request.UserId,
+            DeviceId = request.DeviceId,
+            AccessTokenExpiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpiryMinutes)
+        });
 
         try
         {

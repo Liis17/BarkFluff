@@ -10,6 +10,8 @@ public class UserContext
 
     public TokenType TokenType { get; }
 
+    public string? DeviceId { get; }
+
     public bool IsAuthenticated => UserId != 0 && TokenType != TokenType.Unknown;
 
     public UserContext(IHttpContextAccessor httpContextAccessor)
@@ -24,6 +26,8 @@ public class UserContext
 
             Enum.TryParse(tokenTypeValue, out TokenType type);
             TokenType = type;
+
+            DeviceId = principal.FindFirst(IdentityClaims.DeviceId)?.Value;
         }
     }
 }

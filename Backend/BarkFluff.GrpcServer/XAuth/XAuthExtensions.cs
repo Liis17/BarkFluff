@@ -14,6 +14,8 @@ public static class XAuthExtensions
 {
     public static IServiceCollection AddXAuth(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<TokenRevocationCache>();
+        services.AddHostedService<TokenRevocationCleanupService>();
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(cfg =>
@@ -37,6 +39,31 @@ public static class XAuthExtensions
                         if (context.Request.Headers.TryGetValue("x-auth-token", out var token))
                         {
                             context.Token = token;
+                        }
+
+                        return Task.CompletedTask;
+                    },
+                    OnTokenValidated = context =>
+                    {
+                        var principal = context.Principal;
+                        var tokenType = principal?.FindFirst(IdentityClaims.TokenType)?.Value;
+
+                        if (tokenType == TokenType.User.ToString())
+                        {
+                            var userIdStr = principal?.FindFirst(IdentityClaims.UserId)?.Value;
+                            var deviceId = principal?.FindFirst(IdentityClaims.DeviceId)?.Value;
+
+                            if (long.TryParse(userIdStr, out var userId)
+                                && !string.IsNullOrEmpty(deviceId))
+                            {
+                                var cache = context.HttpContext.RequestServices
+                                    .GetRequiredService<TokenRevocationCache>();
+
+                                if (cache.IsRevoked(userId, deviceId))
+                                {
+                                    context.Fail("Session has been revoked");
+                                }
+                            }
                         }
 
                         return Task.CompletedTask;
