@@ -35,7 +35,9 @@
       "Bash(ls:*)",
       "mcp__figma__whoami",
       "mcp__figma__get_metadata",
-      "mcp__figma__use_figma"
+      "mcp__figma__use_figma",
+      "Bash(awk 'NR>=782 && NR<=1193' \"K:/source/BarkFluff/Windows/BarkFluff.Client.WPF/Pages/MessengerPage.xaml.cs\")",
+      "Bash(wc:*)"
     ],
     "deny": [],
     "ask": []
