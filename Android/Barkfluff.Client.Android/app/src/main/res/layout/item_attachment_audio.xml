@@ -79,15 +79,15 @@
     </LinearLayout>
 
     <!-- Прогресс бар для скачивания -->
-    <ProgressBar
+    <com.google.android.material.progressindicator.LinearProgressIndicator
         android:id="@+id/downloadProgressBar"
-        style="@style/Widget.AppCompat.ProgressBar.Horizontal"
         android:layout_width="match_parent"
-        android:layout_height="6dp"
+        android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:max="100"
         android:progress="0"
         android:visibility="gone"
+        app:trackThickness="4dp"
         tools:visibility="visible" />
 
     <!-- Таймлайн воспроизведения (SeekBar) -->

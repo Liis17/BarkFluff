@@ -65,17 +65,18 @@ class ServerAdapter(
             }
 
             // Устанавливаем цветовой индикатор
+            val defaultColor = com.google.android.material.color.MaterialColors.getColor(
+                itemView, androidx.appcompat.R.attr.colorPrimary, Color.parseColor("#FF6B35")
+            )
             try {
                 if (server.hexColor.isNotBlank()) {
                     val color = Color.parseColor(if (server.hexColor.startsWith("#")) server.hexColor else "#${server.hexColor}")
                     colorIndicator.setBackgroundColor(color)
                 } else {
-                    // Цвет по умолчанию
-                    colorIndicator.setBackgroundColor(Color.parseColor("#FF6B35"))
+                    colorIndicator.setBackgroundColor(defaultColor)
                 }
             } catch (e: Exception) {
-                // Используем цвет по умолчанию при ошибке
-                colorIndicator.setBackgroundColor(Color.parseColor("#FF6B35"))
+                colorIndicator.setBackgroundColor(defaultColor)
             }
 
             // Обработчик клика
