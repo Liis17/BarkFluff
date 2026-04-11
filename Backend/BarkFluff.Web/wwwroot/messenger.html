@@ -1103,9 +1103,16 @@
 
         const TokenStore = {
             _key: 'barkfluff_auth',
-            save(data) { sessionStorage.setItem(this._key, JSON.stringify(data)); },
-            get() { const r = sessionStorage.getItem(this._key); return r ? JSON.parse(r) : null; },
-            clear() { sessionStorage.removeItem(this._key); },
+            _modeKey: 'barkfluff_temp',
+            _store() { return localStorage.getItem(this._modeKey) === '1' ? sessionStorage : localStorage; },
+            save(data) { this._store().setItem(this._key, JSON.stringify(data)); },
+            get() {
+                const r = this._store().getItem(this._key);
+                if (r) return JSON.parse(r);
+                const fb = sessionStorage.getItem(this._key) || localStorage.getItem(this._key);
+                return fb ? JSON.parse(fb) : null;
+            },
+            clear() { sessionStorage.removeItem(this._key); localStorage.removeItem(this._key); localStorage.removeItem(this._modeKey); },
             getAccessToken() { return this.get()?.accessToken ?? null; },
             getRefreshToken() { return this.get()?.refreshToken ?? null; },
             isAccessExpired() {
