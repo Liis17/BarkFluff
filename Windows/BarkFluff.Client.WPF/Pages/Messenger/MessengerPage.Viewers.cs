@@ -83,39 +83,9 @@ namespace BarkFluff.Client.WPF.Pages
 
                 if (task.StartsWith("launch-updater"))
                 {
-                    // Показать сообщение об обновлении
                     var message = "Доступно новое обновление Barkfluff!";
                     App.ErideMessage.AddMessage(message, new Erida { Type = MType.Warning });
-
-                    // Запустить Barkfluff.Updater.CLI.exe
-                    try
-                    {
-                        string appDirectory = AppDomain.CurrentDomain.BaseDirectory;
-                        string updaterPath = System.IO.Path.Combine(appDirectory, "Barkfluff.Updater.CLI.exe");
-
-                        if (System.IO.File.Exists(updaterPath))
-                        {
-                            // Запустить обновление в фоновом режиме
-                            Process.Start(new ProcessStartInfo
-                            {
-                                FileName = updaterPath,
-                                Arguments = "--noseamless", // Принудительное обновление без бесшовного режима
-                                CreateNoWindow = true, // Не показывать окно консоли
-                                WindowStyle = ProcessWindowStyle.Hidden,
-                                UseShellExecute = true // Использовать оболочку для запуска
-                            });
-
-                            App.ErideMessage.AddMessage("Запущено обновление Barkfluff", new Erida { Type = MType.Debug });
-                        }
-                        else
-                        {
-                            App.ErideMessage.AddMessage("Обновление не найдено", new Erida { Type = MType.Debug });
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        App.ErideMessage.AddMessage($"Ошибка при запуске обновления: {ex.Message}", new Erida { Type = MType.Debug });
-                    }
+                    LaunchUpdater();
                 }
 
             }
@@ -151,43 +121,164 @@ namespace BarkFluff.Client.WPF.Pages
         #region Updater Launch
 
         /// <summary>
-        /// Запускает программу обновления Barkfluff.Updater.CLI.exe
+        /// Генерирует PS1-скрипт обновления и запускает его отдельно от приложения
         /// </summary>
         private void LaunchUpdater()
         {
             try
             {
-                // Получаем путь к директории текущей программы
-                string currentDirectory = AppDomain.CurrentDomain.BaseDirectory;
-                string updaterPath = Path.Combine(currentDirectory, "Barkfluff.Updater.CLI.exe");
-
-                // Проверяем, существует ли файл
-                if (!File.Exists(updaterPath))
+                var downloadUrl = App.UpdateDownloadUrl;
+                if (string.IsNullOrEmpty(downloadUrl))
                 {
-                    App.ErideMessage.AddMessage($"Файл обновления не найден: {updaterPath}", new Erida { Type = MType.Error });
-                    MessageBox.Show("Программа обновления не найдена.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                    App.ErideMessage.AddMessage("URL для обновления не найден", new Erida { Type = MType.Error });
                     return;
                 }
 
-                // Создаем процесс для запуска обновления
+                string currentDirectory = AppDomain.CurrentDomain.BaseDirectory;
+                string appDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "BarkFluff");
+                bool isInstalledInAppData = currentDirectory.TrimEnd('\\', '/').Equals(appDataPath.TrimEnd('\\', '/'), StringComparison.OrdinalIgnoreCase);
+
+                string scriptContent = GenerateUpdateScript(downloadUrl, currentDirectory, isInstalledInAppData);
+                string scriptPath = Path.Combine(Path.GetTempPath(), "BarkFluff_update.ps1");
+                File.WriteAllText(scriptPath, scriptContent, System.Text.Encoding.UTF8);
+
                 var processInfo = new ProcessStartInfo
                 {
-                    FileName = updaterPath,
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
                     UseShellExecute = true,
-                    WorkingDirectory = currentDirectory
+                    WorkingDirectory = Path.GetTempPath()
                 };
 
                 Process.Start(processInfo);
-                App.ErideMessage.AddMessage("Программа обновления запущена", new Erida { Type = MType.Debug });
-
-                // Закрываем текущее приложение для применения обновления
+                App.ErideMessage.AddMessage("Запущено обновление BarkFluff", new Erida { Type = MType.Debug });
                 Application.Current.Shutdown();
             }
             catch (Exception ex)
             {
-                App.ErideMessage.AddMessage($"Ошибка при запуске программы обновления: {ex.Message}", new Erida { Type = MType.Error });
-                MessageBox.Show($"Не удалось запустить программу обновления: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                App.ErideMessage.AddMessage($"Ошибка при запуске обновления: {ex.Message}", new Erida { Type = MType.Error });
+                MessageBox.Show($"Не удалось запустить обновление: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private static string GenerateUpdateScript(string downloadUrl, string installPath, bool isInstalledInAppData)
+        {
+            string escapedInstallPath = installPath.TrimEnd('\\', '/').Replace("'", "''");
+            string escapedDownloadUrl = downloadUrl.Replace("'", "''");
+
+            string script = """
+                $ErrorActionPreference = "Stop"
+
+                $DownloadUrl = '%%DOWNLOAD_URL%%'
+                $TempZip     = Join-Path $env:TEMP "BarkFluff_update.zip"
+                $InstallPath = '%%INSTALL_PATH%%'
+                $ExePath     = Join-Path $InstallPath "Barkfluff.exe"
+                $IsInstalled = $%%IS_INSTALLED%%
+
+                Write-Host "Ожидание завершения BarkFluff..."
+                Start-Sleep -Seconds 2
+
+                # Завершить запущенные процессы BarkFluff
+                Get-Process -Name "Barkfluff" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+                Start-Sleep -Seconds 1
+
+                Write-Host "Скачивание обновления BarkFluff..."
+
+                if (Test-Path $TempZip) {
+                    Remove-Item $TempZip -Force
+                }
+
+                $Downloaded = $false
+
+                # 1. BITS
+                try {
+                    Write-Host "Загрузка через BITS..."
+                    Start-BitsTransfer -Source $DownloadUrl -Destination $TempZip
+                    $Downloaded = $true
+                    Write-Host "Загружено через BITS."
+                }
+                catch {
+                    Write-Warning "BITS не удался, переход на WebClient..."
+                }
+
+                # 2. WebClient fallback
+                if (-not $Downloaded) {
+                    $wc = New-Object System.Net.WebClient
+                    $wc.DownloadFile($DownloadUrl, $TempZip)
+                    Write-Host "Загружено через WebClient."
+                }
+
+                # 3. Распаковка
+                Write-Host "Распаковка в: $InstallPath"
+                if (-not (Test-Path $InstallPath)) {
+                    New-Item -ItemType Directory -Path $InstallPath | Out-Null
+                }
+                Expand-Archive -Path $TempZip -DestinationPath $InstallPath -Force
+                Remove-Item $TempZip -Force -ErrorAction SilentlyContinue
+                Write-Host "Распаковка завершена."
+
+                if ($IsInstalled) {
+                    # 4. Ярлык в меню Пуск
+                    $StartMenuPrograms = Join-Path ([Environment]::GetFolderPath('StartMenu')) "Programs"
+                    $ShortcutPath = Join-Path $StartMenuPrograms "BarkFluff.lnk"
+
+                    if (-not (Test-Path $ShortcutPath)) {
+                        Write-Host "Создание ярлыка в меню Пуск..."
+                        $wshell = New-Object -ComObject WScript.Shell
+                        $shortcut = $wshell.CreateShortcut($ShortcutPath)
+                        $shortcut.TargetPath = $ExePath
+                        $shortcut.WorkingDirectory = $InstallPath
+                        $shortcut.Description = "BarkFluff Messenger"
+                        $shortcut.Save()
+                        Write-Host "Ярлык создан: $ShortcutPath"
+                    }
+                    else {
+                        Write-Host "Ярлык в меню Пуск уже существует."
+                    }
+
+                    # 5. Регистрация протокола bf:// (требует права администратора)
+                    $ProtocolRegistered = Test-Path "Registry::HKEY_CLASSES_ROOT\bf"
+
+                    if (-not $ProtocolRegistered) {
+                        Write-Host "Регистрация протокола bf:// (требуются права администратора)..."
+
+                        $RegScript = @"
+                `$exePath = '$($ExePath -replace "'", "''")'
+                New-PSDrive -Name HKCR -PSProvider Registry -Root HKEY_CLASSES_ROOT -ErrorAction SilentlyContinue | Out-Null
+                New-Item -Path 'HKCR:\bf' -Force | Out-Null
+                Set-ItemProperty -Path 'HKCR:\bf' -Name '(Default)' -Value 'URL:BarkFluff Messenger Protocol'
+                Set-ItemProperty -Path 'HKCR:\bf' -Name 'URL Protocol' -Value ''
+                New-Item -Path 'HKCR:\bf\DefaultIcon' -Force | Out-Null
+                Set-ItemProperty -Path 'HKCR:\bf\DefaultIcon' -Name '(Default)' -Value ('"' + `$exePath + '",0')
+                New-Item -Path 'HKCR:\bf\shell\open\command' -Force | Out-Null
+                Set-ItemProperty -Path 'HKCR:\bf\shell\open\command' -Name '(Default)' -Value ('"' + `$exePath + '" "%1"')
+                "@
+
+                        $Bytes   = [System.Text.Encoding]::Unicode.GetBytes($RegScript)
+                        $Encoded = [Convert]::ToBase64String($Bytes)
+
+                        Start-Process powershell -Verb RunAs -ArgumentList "-NoProfile -NonInteractive -EncodedCommand $Encoded" -Wait
+                        Write-Host "Регистрация протокола завершена."
+                    }
+                    else {
+                        Write-Host "Протокол bf:// уже зарегистрирован."
+                    }
+                }
+
+                # 6. Запуск BarkFluff
+                if (Test-Path $ExePath) {
+                    Write-Host "Запуск BarkFluff..."
+                    Start-Process -FilePath $ExePath -WorkingDirectory $InstallPath -ArgumentList "--successfulupdate"
+                }
+                else {
+                    Write-Warning "Barkfluff.exe не найден: $ExePath"
+                    Read-Host "Нажмите Enter для выхода"
+                }
+                """;
+            script = script.Replace("%%DOWNLOAD_URL%%", escapedDownloadUrl);
+            script = script.Replace("%%INSTALL_PATH%%", escapedInstallPath);
+            script = script.Replace("%%IS_INSTALLED%%", isInstalledInAppData ? "true" : "false");
+            return script;
         }
 
         #endregion

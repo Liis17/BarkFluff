@@ -46,6 +46,7 @@ namespace BarkFluff.Client.WPF
         public static bool DeadTokenMode { get; set; } = false; // Режим, при котором приложение находится после получения недействительного токена, до повторной авторизации
 
         private static UpdateService updateService { get; set; } = null!;
+        public static string UpdateDownloadUrl { get; set; } = string.Empty;
         public App() { }
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -313,8 +314,9 @@ namespace BarkFluff.Client.WPF
             updateService.Start();
         }
 
-        private static void OnUpdateAvailable(string tagName, string version)
+        private static void OnUpdateAvailable(string version, string downloadUrl)
         {
+            UpdateDownloadUrl = downloadUrl;
             Application.Current.Dispatcher.Invoke(() =>
             {
                 if (Messenger != null)

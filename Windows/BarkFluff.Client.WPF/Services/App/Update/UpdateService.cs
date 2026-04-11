@@ -1,41 +1,41 @@
 ﻿using Newtonsoft.Json;
 
-using System.IO;
 using System.Net.Http;
 
 namespace BarkFluff.Client.WPF.Services.App.Update
 {
     public class UpdateService
     {
-        private readonly string _repoOwner = "Liis17";
-        private readonly string _repoName = "BarkFluff.Releases";
+        private const string BaseStorageUrl = "https://storage.barkfluff.com/get/barkfluffwindows";
         private readonly HttpClient _httpClient;
-        private System.Timers.Timer _timer;
-        private string _currentVersion;
-        private string _currentType;
-        private const string UpdaterFileName = "Barkfluff.Updater.CLI.exe";
-        private const string UpdaterDownloadUrl = "https://barkfluff.com/download/installer";
+        private readonly System.Timers.Timer _timer;
+        private readonly string _currentVersion;
+        private readonly string _currentType;
+
+        /// <summary>
+        /// URL для скачивания найденного обновления (zip-архив)
+        /// </summary>
+        public string LatestDownloadUrl { get; private set; }
+
+        /// <summary>
+        /// Версия найденного обновления
+        /// </summary>
+        public string LatestVersion { get; private set; }
 
         public UpdateService(string currentVersion, string currentType)
         {
             _httpClient = new HttpClient();
-            _httpClient.DefaultRequestHeaders.Add("User-Agent", "UpdateService");
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", "BarkFluff-UpdateService");
             _currentVersion = currentVersion;
             _currentType = currentType;
-            _timer = new System.Timers.Timer(7200000); // 2 hours = 7200000 ms
+            _timer = new System.Timers.Timer(7200000); // 2 часа
             _timer.Elapsed += async (sender, e) => await CheckForUpdatesAsync();
             _timer.AutoReset = true;
         }
 
         public async void Start()
         {
-            // Check for updater on startup
-            await EnsureUpdaterExistsAsync();
-
-            // Check for updates immediately on startup
             await CheckForUpdatesAsync();
-
-            // Start timer for periodic checks
             _timer.Start();
         }
 
@@ -44,58 +44,40 @@ namespace BarkFluff.Client.WPF.Services.App.Update
             _timer.Stop();
         }
 
-        private async Task EnsureUpdaterExistsAsync()
+        private string GetChannel()
         {
-            try
-            {
-                string appDirectory = AppContext.BaseDirectory;
-                string updaterPath = Path.Combine(appDirectory, UpdaterFileName);
-
-                if (!File.Exists(updaterPath))
-                {
-                    WPF.App.ErideMessage.AddMessage($"Загрузка средства обновления...", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Info });
-
-                    byte[] updaterBytes = await _httpClient.GetByteArrayAsync(UpdaterDownloadUrl);
-                    await File.WriteAllBytesAsync(updaterPath, updaterBytes);
-
-                    WPF.App.ErideMessage.AddMessage($"Средство обновления успешно загружено", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Info });
-                }
-            }
-            catch (Exception ex)
-            {
-                WPF.App.ErideMessage.AddMessage($"Ошибка загрузки {UpdaterFileName}: {ex.Message}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Error });
-            }
+            return string.Equals(_currentType, "Release", StringComparison.OrdinalIgnoreCase)
+                ? "release"
+                : "beta";
         }
 
         private async Task CheckForUpdatesAsync()
         {
             try
             {
-                string apiUrl = $"https://api.github.com/repos/{_repoOwner}/{_repoName}/releases";
-                string response = await _httpClient.GetStringAsync(apiUrl);
-                var releases = JsonConvert.DeserializeObject<List<Release>>(response);
-                Release latestSuitable = null;
-                Version currentVer = new Version(_currentVersion);
+                string channel = GetChannel();
+                string versionUrl = $"{BaseStorageUrl}/{channel}/version";
 
-                foreach (var release in releases)
+                string response = await _httpClient.GetStringAsync(versionUrl);
+                var versionInfo = JsonConvert.DeserializeObject<VersionResponse>(response);
+
+                if (versionInfo == null || string.IsNullOrEmpty(versionInfo.Version))
                 {
-                    if (ParseRelease(release.TagName, out string relType, out string relVersion))
-                    {
-                        // If current type is Release, skip Dev releases
-                        if (_currentType == "Release" && relType == "Dev") continue;
-
-                        Version relVer = new Version(relVersion);
-                        if (relVer > currentVer && (latestSuitable == null || relVer > new Version(latestSuitable.Version)))
-                        {
-                            latestSuitable = new Release { TagName = release.TagName, Version = relVersion, Type = relType, Assets = release.Assets };
-                        }
-                    }
+                    OnNoUpdateAvailable();
+                    return;
                 }
 
-                if (latestSuitable != null)
+                Version currentVer = new Version(_currentVersion);
+                Version remoteVer = new Version(versionInfo.Version);
+
+                if (remoteVer > currentVer)
                 {
-                    WPF.App.ErideMessage.AddMessage($"Доступно обновление: {latestSuitable.TagName}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Info });
-                    OnUpdateAvailable(latestSuitable.TagName, latestSuitable.Version);
+                    LatestVersion = versionInfo.Version;
+                    LatestDownloadUrl = $"{BaseStorageUrl}/{channel}/";
+
+                    WPF.App.ErideMessage.AddMessage($"Доступно обновление: {versionInfo.Version}",
+                        new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Info });
+                    OnUpdateAvailable(versionInfo.Version, LatestDownloadUrl);
                 }
                 else
                 {
@@ -104,56 +86,28 @@ namespace BarkFluff.Client.WPF.Services.App.Update
             }
             catch (Exception ex)
             {
-                WPF.App.ErideMessage.AddMessage($"Ошибка проверки обновлений: {ex.Message}", new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Error });
+                WPF.App.ErideMessage.AddMessage($"Ошибка проверки обновлений: {ex.Message}",
+                    new Erida.MessageType { Type = Erida.MessageType.MessageTypeEnum.Error });
             }
         }
 
-        private bool ParseRelease(string tag, out string type, out string version)
+        private class VersionResponse
         {
-            type = null;
-            version = null;
-            if (tag.StartsWith("v"))
-            {
-                string withoutV = tag.Substring(1);
-                var parts = withoutV.Split('-');
-                if (parts.Length == 2)
-                {
-                    version = parts[0];
-                    type = parts[1];
-                    // Нормализуем тип
-                    if (string.Equals(type, "dev", StringComparison.OrdinalIgnoreCase)) type = "Dev";
-                    else if (string.Equals(type, "release", StringComparison.OrdinalIgnoreCase)) type = "Release";
-                    return !string.IsNullOrEmpty(version) && !string.IsNullOrEmpty(type);
-                }
-            }
-            return false;
-        }
-
-        private class Release
-        {
-            [JsonProperty("tag_name")]
-            public string TagName { get; set; }
+            [JsonProperty("version")]
             public string Version { get; set; }
-            public string Type { get; set; }
-            [JsonProperty("assets")]
-            public List<Asset> Assets { get; set; }
-        }
 
-        private class Asset
-        {
-            [JsonProperty("name")]
-            public string Name { get; set; }
-            [JsonProperty("browser_download_url")]
-            public string BrowserDownloadUrl { get; set; }
-            [JsonProperty("digest")]
-            public string Digest { get; set; }
+            [JsonProperty("uploadedAt")]
+            public string UploadedAt { get; set; }
+
+            [JsonProperty("fileName")]
+            public string FileName { get; set; }
         }
 
         // Events for update notifications
         public event Action<string, string> UpdateAvailable;
         public event Action NoUpdateAvailable;
 
-        private void OnUpdateAvailable(string tagName, string version) => UpdateAvailable?.Invoke(tagName, version);
+        private void OnUpdateAvailable(string version, string downloadUrl) => UpdateAvailable?.Invoke(version, downloadUrl);
         private void OnNoUpdateAvailable() => NoUpdateAvailable?.Invoke();
     }
 }
