@@ -2,9 +2,7 @@ using BarkFluff.Client.WPF.Reactive;
 using BarkFluff.Client.WPF.Services.App.Caching;
 using BarkFluff.Client.WPF.UserControls;
 
-using System;
 using System.ComponentModel;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -26,7 +24,6 @@ namespace BarkFluff.Client.WPF.Pages.Messenger.Controllers
         private readonly TextBlock _chatTitleUsername;
         private readonly CachedAvatar _chatAvatarButton;
         private readonly FrameworkElement _openedChat;
-        private readonly FrameworkElement _noDialogMessage;
         private readonly ChatHistoryController _history;
         private readonly OnlineStatusController _onlineStatus;
 
@@ -43,7 +40,6 @@ namespace BarkFluff.Client.WPF.Pages.Messenger.Controllers
             TextBlock chatTitleUsername,
             CachedAvatar chatAvatarButton,
             FrameworkElement openedChat,
-            FrameworkElement noDialogMessage,
             ChatHistoryController history,
             OnlineStatusController onlineStatus)
         {
@@ -53,7 +49,6 @@ namespace BarkFluff.Client.WPF.Pages.Messenger.Controllers
             _chatTitleUsername = chatTitleUsername;
             _chatAvatarButton = chatAvatarButton;
             _openedChat = openedChat;
-            _noDialogMessage = noDialogMessage;
             _history = history;
             _onlineStatus = onlineStatus;
         }
@@ -185,8 +180,6 @@ namespace BarkFluff.Client.WPF.Pages.Messenger.Controllers
             // Очищаем уведомления этого чата из Action Center при открытии
             App.NotificationManager.ClearNotificationsForChat(chatId);
 
-            _noDialogMessage.Visibility = Visibility.Collapsed;
-
             _page.IsOpenChatEmpty = false;
             _page.IsOpenChat.Value = true;
             _page.TitleChat = title;
@@ -230,7 +223,6 @@ namespace BarkFluff.Client.WPF.Pages.Messenger.Controllers
             _page.ChatIdbyUserId.Dispose();
             _page.ChatIdbyUserId = new ReactiveLong(0);
             RebindChatIdbyUserId();
-            _noDialogMessage.Visibility = Visibility.Visible;
         }
 
         public async Task GetChatInfoAsync(long userId)
