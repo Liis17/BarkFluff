@@ -45,7 +45,7 @@
     <SolidColorBrush x:Key="TextCaretBrush" Color="#df5000" />
     <SolidColorBrush x:Key="TextGlowBrush" Color="#df5000" />
     <SolidColorBrush x:Key="TextBorderBrush" Color="#3D3D3D" />
-    <SolidColorBrush x:Key="TextForegraund" Color="#f1f1f1" />
+    <SolidColorBrush x:Key="TextForeground" Color="#f1f1f1" />
     <SolidColorBrush x:Key="TextBackground" Color="#2D2D2D" />
     <SolidColorBrush x:Key="TextPlaceholder" Color="#999999" />
     <SolidColorBrush x:Key="TextIcon" Color="#FFF39E6D" />
