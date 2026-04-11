@@ -82,18 +82,17 @@ class ProfileFragment : Fragment() {
     }
 
     private fun loadAvatar() {
-        val fileId = globalParam.picturePreviewFileId.ifEmpty { globalParam.pictureFileId }
+        val fileId = globalParam.pictureFileId
         val displayName = "${globalParam.firstName} ${globalParam.lastName}".trim()
 
         Log.d(TAG, "loadAvatar: displayName='$displayName', userId=${globalParam.userId}")
-        Log.d(TAG, "loadAvatar: picturePreviewUrl='${globalParam.picturePreviewUrl}', profilePictureUrl='${globalParam.profilePictureUrl}'")
-        Log.d(TAG, "loadAvatar: pictureFileId='$fileId', picturePreviewFileId='${globalParam.picturePreviewFileId}'")
+        Log.d(TAG, "loadAvatar: profilePictureUrl='${globalParam.profilePictureUrl}'")
+        Log.d(TAG, "loadAvatar: pictureFileId='$fileId'")
 
-        // Пробуем загрузить из URL напрямую если он есть
-        val urlToUse = globalParam.picturePreviewUrl.ifBlank { globalParam.profilePictureUrl }
+        val urlToUse = globalParam.profilePictureUrl
 
         if (urlToUse.isNotBlank()) {
-            Log.d(TAG, "loadAvatar: Loading from URL=$urlToUse")
+            Log.d(TAG, "loadAvatar: Loading full-size from URL=$urlToUse")
             AvatarLoader.load(
                 imageView = binding.avatarImage,
                 placeholderView = binding.avatarPlaceholder,
@@ -102,7 +101,7 @@ class ProfileFragment : Fragment() {
                 userId = globalParam.userId
             )
         } else if (fileId.isNotEmpty()) {
-            Log.d(TAG, "loadAvatar: Loading from fileId=$fileId")
+            Log.d(TAG, "loadAvatar: Loading full-size from fileId=$fileId")
             AvatarLoader.loadByFileId(
                 binding.avatarImage,
                 binding.avatarPlaceholder,

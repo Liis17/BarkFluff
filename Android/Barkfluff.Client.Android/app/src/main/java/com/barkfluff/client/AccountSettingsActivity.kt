@@ -152,8 +152,7 @@ class AccountSettingsActivity : AppCompatActivity() {
     private fun loadAvatar() {
         val displayName = "${globalParam.firstName} ${globalParam.lastName}".trim()
 
-        // Пробуем загрузить из URL напрямую если он есть
-        val urlToUse = globalParam.picturePreviewUrl.ifBlank { globalParam.profilePictureUrl }
+        val urlToUse = globalParam.profilePictureUrl
 
         if (urlToUse.isNotBlank()) {
             AvatarLoader.load(
@@ -164,7 +163,7 @@ class AccountSettingsActivity : AppCompatActivity() {
                 userId = globalParam.userId
             )
         } else {
-            val fileId = globalParam.picturePreviewFileId.ifEmpty { globalParam.pictureFileId }
+            val fileId = globalParam.pictureFileId
             if (fileId.isNotEmpty()) {
                 AvatarLoader.loadByFileId(
                     binding.avatarImage,
