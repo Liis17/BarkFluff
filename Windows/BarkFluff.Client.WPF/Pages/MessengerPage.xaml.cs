@@ -62,7 +62,7 @@ namespace BarkFluff.Client.WPF.Pages
             _chatListCtrl = new ChatListController(this, ChatList, AvatarTitleWindowButton);
             _send = new MessageSendController(this, TextForMessage, StickerPopup, StickerPickerControl, _history, _chatListCtrl);
             _attachments = new AttachmentController(this, AttachmentPreview, AttachmentOverlay, DragDropOverlay, TextForMessage, _history, _chatListCtrl);
-            _opening = new ChatOpeningController(this, MessageArea, ChatList, ChatTitleUsername, ChatAvatarButton, OpenedChat, NoDialogMessage, _history, _onlineStatus);
+            _opening = new ChatOpeningController(this, MessageArea, ChatList, ChatTitleUsername, ChatAvatarButton, OpenedChat, _history, _onlineStatus);
             _notifications = new NotificationController(this, ChatAvatarButton, AvatarTitleWindowButton, _chatListCtrl, _opening);
             _realtime = new RealtimeMessagesController(this, ChatList, MessageArea, ErrorConnection, _history, _chatListCtrl, _read, _notifications);
 
