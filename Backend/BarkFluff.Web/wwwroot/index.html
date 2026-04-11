@@ -322,6 +322,28 @@
             transform: translateX(3px);
         }
 
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary);
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .checkbox-group label {
+            font-size: 13px;
+            color: var(--text-sub);
+            cursor: pointer;
+            user-select: none;
+        }
+
         .copyright {
             margin-top: 16px;
             font-size: 12px;
@@ -449,6 +471,11 @@
 
                     <a class="forgot-link">Забыли пароль?</a>
 
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="tempLoginCheck">
+                        <label for="tempLoginCheck">Временный вход (выход при закрытии вкладки)</label>
+                    </div>
+
                     <button type="submit" class="btn-primary" id="signInBtn">
                         <span class="btn-text">Войти</span>
                         <span class="arrow">&rarr;</span>
@@ -487,39 +514,45 @@
                 <p class="welcome-subtitle">Веб-версия мессенджера скоро будет доступна</p>
             </div>
 
-            <div class="divider" id="divider"></div>
-
-            <div class="footer-section" id="footerSection">
-                <p>Еще нет аккаунта?</p>
-                <button class="btn-secondary">
-                    Создать новый аккаунт
-                    <span class="arrow">&rarr;</span>
-                </button>
             </div>
-        </div>
 
-        <p class="copyright">2025 BarkFluff. Никакие права не защищены.</p>
+            <p class="copyright">2026 BarkFluff. Никакие права не защищены.</p>
     </div>
 
     <script>
     (() => {
         'use strict';
 
-        // --- Хранилище токенов (sessionStorage) ---
+        // --- Хранилище токенов (sessionStorage / localStorage) ---
         const TokenStore = {
             _key: 'barkfluff_auth',
+            _modeKey: 'barkfluff_temp',
+
+            _store() {
+                return localStorage.getItem(this._modeKey) === '1' ? sessionStorage : localStorage;
+            },
+
+            setTempMode(isTemp) {
+                if (isTemp) localStorage.setItem(this._modeKey, '1');
+                else localStorage.removeItem(this._modeKey);
+            },
 
             save(data) {
-                sessionStorage.setItem(this._key, JSON.stringify(data));
+                this._store().setItem(this._key, JSON.stringify(data));
             },
 
             get() {
-                const raw = sessionStorage.getItem(this._key);
-                return raw ? JSON.parse(raw) : null;
+                const raw = this._store().getItem(this._key);
+                if (raw) return JSON.parse(raw);
+                // Проверяем оба хранилища при чтении
+                const fallback = sessionStorage.getItem(this._key) || localStorage.getItem(this._key);
+                return fallback ? JSON.parse(fallback) : null;
             },
 
             clear() {
                 sessionStorage.removeItem(this._key);
+                localStorage.removeItem(this._key);
+                localStorage.removeItem(this._modeKey);
             },
 
             getAccessToken() {
@@ -624,8 +657,7 @@
         const loginSection = $('#loginSection');
         const otpSection = $('#otpSection');
         const welcomeSection = $('#welcomeSection');
-        const divider = $('#divider');
-        const footerSection = $('#footerSection');
+
 
         const loginForm = $('#loginForm');
         const loginInput = $('#loginInput');
@@ -633,6 +665,7 @@
         const loginError = $('#loginError');
         const passwordError = $('#passwordError');
         const signInBtn = $('#signInBtn');
+        const tempLoginCheck = $('#tempLoginCheck');
 
         const otpInputs = document.querySelectorAll('.otp-input');
         const otpError = $('#otpError');
@@ -647,8 +680,6 @@
             loginSection.classList.toggle('hidden', name !== 'login');
             otpSection.classList.toggle('hidden', name !== 'otp');
             welcomeSection.classList.toggle('hidden', name !== 'welcome');
-            divider.style.display = name === 'welcome' ? 'none' : '';
-            footerSection.style.display = name === 'welcome' ? 'none' : '';
         }
 
         function clearErrors() {
@@ -712,6 +743,7 @@
                 }
 
                 // Успешный вход
+                TokenStore.setTempMode(tempLoginCheck.checked);
                 TokenStore.save(data);
                 window.location.href = '/messenger';
             } catch {
@@ -775,6 +807,7 @@
                     return;
                 }
 
+                TokenStore.setTempMode(tempLoginCheck.checked);
                 TokenStore.save(data);
                 window.location.href = '/messenger';
             } catch {
