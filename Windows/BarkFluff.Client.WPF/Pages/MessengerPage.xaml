@@ -533,12 +533,11 @@
                                                         Foreground="{DynamicResource ButtonText}"
                                                         Symbol="ChevronLeft12" />
                                                 </Border>
-
                                             </ui:Button>
                                         </Grid>
                                         <Border
                                             Grid.Column="1"
-                                            CornerRadius="23 15 15 23"
+                                            CornerRadius="23"
                                             Style="{DynamicResource ChatStyleBorder}">
 
                                             <StackPanel
@@ -586,9 +585,21 @@
                                         </Border>
                                         <Grid Grid.Column="2">
                                             <ui:Button
-                                                HorizontalAlignment="Stretch"
-                                                VerticalAlignment="Stretch"
-                                                Visibility="Collapsed" />
+                                                Width="35"
+                                                Height="35"
+                                                Padding="-5"
+                                                Background="Transparent"
+                                                BorderBrush="Transparent"
+                                                CornerRadius="30"
+                                                Focusable="False">
+                                                <Border Style="{DynamicResource ChatStyleBorder}">
+                                                    <ui:SymbolIcon
+                                                        Margin="7,10,10,10"
+                                                        FontSize="20"
+                                                        Foreground="{DynamicResource ButtonText}"
+                                                        Symbol="MoreVertical16" />
+                                                </Border>
+                                            </ui:Button>
                                         </Grid>
                                     </Grid>
 
@@ -815,7 +826,7 @@
                                 </Grid>
                             </Border>
                         </Grid>
-                        
+
                     </Grid>
                 </Border>
             </Grid>
