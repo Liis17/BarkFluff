@@ -314,6 +314,7 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:background="#80000000"
+        android:elevation="16dp"
         android:visibility="gone"
         android:clickable="true"
         android:focusable="true"
