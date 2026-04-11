@@ -124,14 +124,12 @@
         tools:visibility="visible" />
 
     <!-- Разделитель -->
-    <View
+    <com.google.android.material.divider.MaterialDivider
         android:layout_width="match_parent"
-        android:layout_height="1dp"
+        android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
         android:layout_marginEnd="8dp"
-        android:layout_marginBottom="8dp"
-        android:background="?attr/colorOutline"
-        android:alpha="0.3" />
+        android:layout_marginBottom="8dp" />
 
     <!-- Медиафайлы чата -->
     <TextView
