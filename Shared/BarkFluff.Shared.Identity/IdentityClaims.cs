@@ -7,4 +7,6 @@ public class IdentityClaims
     public const string TokenType = "x-token-type";
 
     public const string ServiceId = "x-service-id";
+
+    public const string DeviceId = "x-device-id";
 }

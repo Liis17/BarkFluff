@@ -1,3 +1,4 @@
+using BarkFluff.Files.Consumers;
 using BarkFluff.Files.Extensions;
 using BarkFluff.Files.Host;
 using BarkFluff.Files.Infrastructure;
@@ -6,6 +7,8 @@ using BarkFluff.Files.Services;
 using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Shared.Identity;
+
+using MassTransit;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -61,6 +64,25 @@ public class Program
 
         builder.Services.AddDbContext<FilesContext>(options =>
             options.UseNpgsql(builder.Configuration["FilesDb"]));
+
+        builder.Services.AddMassTransit(x =>
+        {
+            x.AddConsumer<SessionRevokedConsumer>();
+
+            x.UsingRabbitMq((context, cfg) =>
+            {
+                cfg.Host(builder.Configuration["RabbitMQ:Host"], "/", h =>
+                {
+                    h.Username(builder.Configuration["RabbitMQ:Username"]);
+                    h.Password(builder.Configuration["RabbitMQ:Password"]);
+                });
+
+                cfg.ReceiveEndpoint("session-revoked-files", e =>
+                {
+                    e.ConfigureConsumer<SessionRevokedConsumer>(context);
+                });
+            });
+        });
 
         var app = builder.Build();
 

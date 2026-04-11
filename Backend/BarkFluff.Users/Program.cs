@@ -5,6 +5,7 @@ using BarkFluff.Proto.Messages;
 using BarkFluff.Shared.Auth;
 using BarkFluff.Shared.Exceptions.Interceptors;
 using BarkFluff.Shared.Identity;
+using BarkFluff.Users.Consumers;
 using BarkFluff.Users.Host;
 using BarkFluff.Users.Infrastructure;
 using BarkFluff.Users.Persistence.Contexts;
@@ -64,12 +65,19 @@ public class Program
 
         builder.Services.AddMassTransit(x =>
         {
+            x.AddConsumer<SessionRevokedConsumer>();
+
             x.UsingRabbitMq((context, cfg) =>
             {
                 cfg.Host(builder.Configuration["RabbitMQ:Host"], "/", h =>
                 {
                     h.Username(builder.Configuration["RabbitMQ:Username"]);
                     h.Password(builder.Configuration["RabbitMQ:Password"]);
+                });
+
+                cfg.ReceiveEndpoint("session-revoked-users", e =>
+                {
+                    e.ConfigureConsumer<SessionRevokedConsumer>(context);
                 });
             });
         });
