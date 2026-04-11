@@ -1,5 +1,6 @@
 using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.XAuth;
+using BarkFluff.Identity.Consumers;
 using BarkFluff.Identity.Host;
 using BarkFluff.Identity.Infrastructure;
 using BarkFluff.Identity.Persistence.Contexts;
@@ -60,12 +61,19 @@ public class Program
 
         builder.Services.AddMassTransit(x =>
         {
+            x.AddConsumer<SessionRevokedConsumer>();
+
             x.UsingRabbitMq((context, cfg) =>
             {
                 cfg.Host(builder.Configuration["RabbitMQ:Host"], "/", h =>
                 {
                     h.Username(builder.Configuration["RabbitMQ:Username"]);
                     h.Password(builder.Configuration["RabbitMQ:Password"]);
+                });
+
+                cfg.ReceiveEndpoint("session-revoked-identity", e =>
+                {
+                    e.ConfigureConsumer<SessionRevokedConsumer>(context);
                 });
             });
         });

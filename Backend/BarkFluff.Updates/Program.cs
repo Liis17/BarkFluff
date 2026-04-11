@@ -32,6 +32,7 @@ builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<NewMessageConsumer>();
     x.AddConsumer<ReadByConsumer>();
+    x.AddConsumer<SessionRevokedConsumer>();
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -49,6 +50,11 @@ builder.Services.AddMassTransit(x =>
         cfg.ReceiveEndpoint("read-receipts-updates-handler", e =>
         {
             e.ConfigureConsumer<ReadByConsumer>(context);
+        });
+
+        cfg.ReceiveEndpoint("session-revoked-updates", e =>
+        {
+            e.ConfigureConsumer<SessionRevokedConsumer>(context);
         });
     });
 });

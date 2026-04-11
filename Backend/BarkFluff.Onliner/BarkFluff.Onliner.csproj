@@ -20,6 +20,7 @@
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
+        <PackageReference Include="MassTransit.RabbitMQ" Version="8.5.2" />
     </ItemGroup>
 
     <ItemGroup>
@@ -30,6 +31,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\BarkFluff.GrpcServer\BarkFluff.GrpcServer.csproj" />
+      <ProjectReference Include="..\..\Shared\BarkFluff.Shared.Queue\BarkFluff.Shared.Queue.csproj" />
     </ItemGroup>
 
     <ItemGroup>

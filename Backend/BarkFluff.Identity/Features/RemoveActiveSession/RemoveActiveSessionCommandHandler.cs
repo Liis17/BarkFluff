@@ -1,9 +1,13 @@
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Identity.Persistence.Exceptions;
 using BarkFluff.Identity.Persistence.Services;
+using BarkFluff.Identity.Settings;
 using BarkFluff.Proto.Identity;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Identity;
+using BarkFluff.Shared.Queue.Identity;
+
+using MassTransit;
 
 using MediatR;
 
@@ -14,15 +18,20 @@ public class RemoveActiveSessionCommandHandler : IRequestHandler<RemoveActiveSes
     private readonly RefreshTokensStorage _refreshTokensStorage;
     private readonly UserContext _userContext;
     private readonly UsersServerApi.UsersServerApiClient _usersClient;
+    private readonly IPublishEndpoint _publishEndpoint;
+    private readonly JwtSettings _jwtSettings;
     private readonly ILogger<RemoveActiveSessionCommandHandler> _logger;
 
     public RemoveActiveSessionCommandHandler(RefreshTokensStorage refreshTokensStorage, UserContext userContext,
-        UsersServerApi.UsersServerApiClient usersClient,
+        UsersServerApi.UsersServerApiClient usersClient, IPublishEndpoint publishEndpoint,
+        JwtSettings jwtSettings,
         ILogger<RemoveActiveSessionCommandHandler> logger)
     {
         _refreshTokensStorage = refreshTokensStorage;
         _userContext = userContext;
         _usersClient = usersClient;
+        _publishEndpoint = publishEndpoint;
+        _jwtSettings = jwtSettings;
         _logger = logger;
     }
 
@@ -54,6 +63,14 @@ public class RemoveActiveSessionCommandHandler : IRequestHandler<RemoveActiveSes
             );
             throw new SessionNotFoundException();
         }
+
+        // Публикуем событие отзыва сессии для инвалидации access токенов
+        await _publishEndpoint.Publish(new SessionRevokedEvent
+        {
+            UserId = _userContext.UserId,
+            DeviceId = request.DeviceId,
+            AccessTokenExpiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpiryMinutes)
+        });
 
         // Удаляем устройство из Users сервиса
         try

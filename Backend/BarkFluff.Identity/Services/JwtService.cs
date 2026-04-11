@@ -14,12 +14,13 @@ namespace BarkFluff.Identity.Services;
 
 public class JwtService(JwtSettings jwtSettings)
 {
-    public Token GenerateUserToken(long userId)
+    public Token GenerateUserToken(long userId, string deviceId)
     {
         var claims = new List<Claim>
         {
             new(IdentityClaims.UserId, userId.ToString()),
             new(IdentityClaims.TokenType, TokenType.User.ToString()),
+            new(IdentityClaims.DeviceId, deviceId),
         };
 
         var dateEnd = DateTime.UtcNow.AddMinutes(jwtSettings.ExpiryMinutes);

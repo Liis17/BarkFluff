@@ -24,6 +24,7 @@
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
+        <PackageReference Include="MassTransit.RabbitMQ" Version="8.5.2" />
         <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
     </ItemGroup>
 
@@ -42,6 +43,7 @@
     <ItemGroup>
       <ProjectReference Include="..\BarkFluff.GrpcServer\BarkFluff.GrpcServer.csproj" />
       <ProjectReference Include="..\..\Shared\BarkFluff.Proto\BarkFluff.Proto.csproj" />
+      <ProjectReference Include="..\..\Shared\BarkFluff.Shared.Queue\BarkFluff.Shared.Queue.csproj" />
     </ItemGroup>
 
     <ItemGroup>

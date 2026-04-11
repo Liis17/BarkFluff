@@ -71,7 +71,8 @@ public class Program
         builder.Services.AddMassTransit(x =>
         {
             x.AddConsumer<UserChangedAvatarConsumer>();
-            x.AddConsumer<UserChangedNameConsumer>();
+                    x.AddConsumer<UserChangedNameConsumer>();
+                    x.AddConsumer<SessionRevokedConsumer>();
 
             x.UsingRabbitMq((context, cfg) =>
             {
@@ -89,6 +90,11 @@ public class Program
                 cfg.ReceiveEndpoint("user-changed-avatar-messages", e =>
                 {
                     e.ConfigureConsumer<UserChangedAvatarConsumer>(context);
+                });
+
+                cfg.ReceiveEndpoint("session-revoked-messages", e =>
+                {
+                    e.ConfigureConsumer<SessionRevokedConsumer>(context);
                 });
             });
         });

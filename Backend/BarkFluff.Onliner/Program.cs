@@ -1,9 +1,12 @@
 using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.XAuth;
+using BarkFluff.Onliner.Consumers;
 using BarkFluff.Onliner.Features.SubscribeToOnlineStatus;
 using BarkFluff.Onliner.Host;
 using BarkFluff.Onliner.Persistence.Contexts;
 using BarkFluff.Shared.Identity;
+
+using MassTransit;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -41,6 +44,25 @@ public class Program
 
         // Регистрируем аутентификацию и авторизацию
         builder.Services.AddXAuth(builder.Configuration);
+
+        builder.Services.AddMassTransit(x =>
+        {
+            x.AddConsumer<SessionRevokedConsumer>();
+
+            x.UsingRabbitMq((context, cfg) =>
+            {
+                cfg.Host(builder.Configuration["RabbitMQ:Host"], "/", h =>
+                {
+                    h.Username(builder.Configuration["RabbitMQ:Username"]);
+                    h.Password(builder.Configuration["RabbitMQ:Password"]);
+                });
+
+                cfg.ReceiveEndpoint("session-revoked-onliner", e =>
+                {
+                    e.ConfigureConsumer<SessionRevokedConsumer>(context);
+                });
+            });
+        });
 
         var app = builder.Build();
 
