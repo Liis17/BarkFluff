@@ -40,7 +40,9 @@
       "Bash(wc:*)",
       "Bash(head -n 1110 messenger.html)",
       "Bash(tail -n +2562 messenger.html)",
-      "Bash(mv messenger_new.html messenger.html)"
+      "Bash(mv messenger_new.html messenger.html)",
+      "Bash(npm --version)",
+      "Bash(protoc --version)"
     ],
     "deny": [],
     "ask": []
