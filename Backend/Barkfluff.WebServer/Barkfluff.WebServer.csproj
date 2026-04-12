@@ -7,6 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="files\barkfluff.android.jpg" />
+    <None Remove="files\barkfluff.web.png" />
+    <None Remove="files\barkfluff.windows.png" />
     <None Remove="files\favicon.ico" />
     <None Remove="files\install.ps1" />
     <None Remove="html\legal\account-deletion.html" />
@@ -81,6 +84,18 @@
   <ItemGroup>
     <Protobuf Include="..\..\Shared\BarkFluff.Proto\users_api.proto" GrpcServices="Client" />
     <Protobuf Include="..\..\Shared\BarkFluff.Proto\shared.proto" GrpcServices="None" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="files\barkfluff.android.jpg">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="files\barkfluff.web.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="files\barkfluff.windows.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>
