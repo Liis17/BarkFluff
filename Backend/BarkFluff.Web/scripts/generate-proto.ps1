@@ -16,7 +16,7 @@
 
 $ErrorActionPreference = 'Stop'
 
-$PROTOC_VERSION       = '29.3'
+$PROTOC_VERSION       = '3.20.3'
 $GRPCWEB_VERSION      = '1.5.0'
 
 $scriptRoot  = Split-Path -Parent $PSCommandPath
