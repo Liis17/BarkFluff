@@ -31,14 +31,13 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.RequestPermission()
     ) { /* granted or denied — no special handling needed */ }
 
-    // Порядок табов: Контакты (0) | Чаты (1) | Профиль (2)
+    // Порядок табов: Чаты (0) | Профиль (1)
     private val fragments = mutableMapOf<Int, Fragment>()
     private var currentTabIndex = TAB_CHATS
 
     companion object {
-        private const val TAB_CONTACTS = 0
-        private const val TAB_CHATS = 1
-        private const val TAB_PROFILE = 2
+        private const val TAB_CHATS = 0
+        private const val TAB_PROFILE = 1
         private const val KEY_CURRENT_TAB = "current_tab"
 
         /**
@@ -63,7 +62,6 @@ class MainActivity : AppCompatActivity() {
         if (savedInstanceState != null) {
             currentTabIndex = savedInstanceState.getInt(KEY_CURRENT_TAB, TAB_CHATS)
             // Восстанавливаем ссылки на существующие фрагменты
-            supportFragmentManager.findFragmentByTag("tab_$TAB_CONTACTS")?.let { fragments[TAB_CONTACTS] = it }
             supportFragmentManager.findFragmentByTag("tab_$TAB_CHATS")?.let { fragments[TAB_CHATS] = it }
             supportFragmentManager.findFragmentByTag("tab_$TAB_PROFILE")?.let { fragments[TAB_PROFILE] = it }
         } else {
@@ -190,12 +188,28 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupBottomNavigation() {
+        // Убираем внутренние минимальные ширины item'ов, чтобы панель была компактной
+        compactifyBottomNav()
+
         binding.bottomNavigation.selectedItemId = tabIndexToMenuId(currentTabIndex)
         binding.bottomNavigation.setOnItemSelectedListener { item ->
             val newTabIndex = menuIdToTabIndex(item.itemId)
             if (newTabIndex == currentTabIndex) return@setOnItemSelectedListener true
             switchTab(newTabIndex)
             true
+        }
+    }
+
+    private fun compactifyBottomNav() {
+        val menuView = binding.bottomNavigation.getChildAt(0) as? android.view.ViewGroup ?: return
+        val itemWidthDp = 72
+        val density = resources.displayMetrics.density
+        val itemWidthPx = (itemWidthDp * density).toInt()
+        for (i in 0 until menuView.childCount) {
+            val item = menuView.getChildAt(i)
+            val params = item.layoutParams
+            params.width = itemWidthPx
+            item.layoutParams = params
         }
     }
 
@@ -245,7 +259,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun createFragment(tabIndex: Int): Fragment {
         return when (tabIndex) {
-            TAB_CONTACTS -> ContactsFragment()
             TAB_CHATS -> ChatsFragment()
             TAB_PROFILE -> ProfileFragment()
             else -> ChatsFragment()
@@ -254,7 +267,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun tabIndexToMenuId(tabIndex: Int): Int {
         return when (tabIndex) {
-            TAB_CONTACTS -> R.id.navigation_contacts
             TAB_CHATS -> R.id.navigation_chats
             TAB_PROFILE -> R.id.navigation_profile
             else -> R.id.navigation_chats
@@ -263,7 +275,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun menuIdToTabIndex(menuId: Int): Int {
         return when (menuId) {
-            R.id.navigation_contacts -> TAB_CONTACTS
             R.id.navigation_chats -> TAB_CHATS
             R.id.navigation_profile -> TAB_PROFILE
             else -> TAB_CHATS
