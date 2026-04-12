@@ -86,8 +86,8 @@ app.UseCors();
 // поэтому реализуем конвертацию вручную.
 //
 // Запрос: base64-декодируем тело, меняем Content-Type на application/grpc.
-// Ответ: буферизуем тело, строим trailer-frame из gRPC-трейлеров,
-//         конкатенируем DATA-фреймы + trailer-frame, base64-кодируем.
+// Ответ: каждый data-frame сразу кодируется и отправляется клиенту (поддержка
+//         server-streaming). Trailer-frame добавляется при завершении потока.
 app.Use(async (ctx, next) =>
 {
     var ct = ctx.Request.ContentType ?? "";
@@ -106,7 +106,6 @@ app.Use(async (ctx, next) =>
         using var reqMs = new MemoryStream();
         await ctx.Request.Body.CopyToAsync(reqMs);
         var b64 = Encoding.ASCII.GetString(reqMs.ToArray()).TrimEnd();
-        // Дополняем padding до кратности 4
         if (b64.Length % 4 != 0)
             b64 += new string('=', 4 - b64.Length % 4);
         var decoded = Convert.FromBase64String(b64);
@@ -115,13 +114,10 @@ app.Use(async (ctx, next) =>
     }
     ctx.Request.ContentType = "application/grpc";
 
-    // --- ОТВЕТ: буферизуем тело и перехватываем заголовки ---
+    // --- ОТВЕТ: потоковая конвертация gRPC → gRPC-Web ---
     var originalResponseBody = ctx.Response.Body;
-    var respBuffer = new MemoryStream();
-    ctx.Response.Body = respBuffer;
 
     // Перехватываем grpc-трейлеры, которые YARP продвигает в заголовки ответа
-    // (происходит для trailers-only ошибочных ответов gRPC).
     var promotedTrailers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     ctx.Response.OnStarting(() =>
     {
@@ -140,12 +136,21 @@ app.Use(async (ctx, next) =>
         return Task.CompletedTask;
     });
 
+    // Подменяем Response.Body на потоковый враппер, который каждый Write
+    // сразу кодирует в base64 (для grpc-web-text) и пишет в оригинальный поток.
+    // Это критично для server-streaming: данные приходят по частям.
+    await using var grpcWebStream = new GrpcWebResponseStream(originalResponseBody, isGrpcWebText);
+    ctx.Response.Body = grpcWebStream;
+
+    // Отключаем буферизацию ответа для потокового режима
+    var bufferingFeature = ctx.Features.Get<IHttpResponseBodyFeature>();
+    bufferingFeature?.DisableBuffering();
+
     await next();
 
     ctx.Response.Body = originalResponseBody;
 
-    // Собираем трейлеры: из IHttpResponseTrailersFeature (для успешных ответов)
-    // и из перехваченных заголовков (для ошибочных trailers-only ответов).
+    // Собираем трейлеры и отправляем trailer-frame
     var trailerHeaders = new Dictionary<string, string>(promotedTrailers, StringComparer.OrdinalIgnoreCase);
     var trailerFeature = ctx.Features.Get<IHttpResponseTrailersFeature>();
     if (trailerFeature?.Trailers != null)
@@ -154,7 +159,6 @@ app.Use(async (ctx, next) =>
             trailerHeaders[kvp.Key.ToString()] = kvp.Value.ToString();
     }
 
-    // Строим gRPC-Web trailer-frame: 0x80 | 4-byte-big-endian-len | header-bytes
     var trailerSb = new StringBuilder();
     foreach (var (k, v) in trailerHeaders)
         trailerSb.Append(k).Append(": ").Append(v).Append("\r\n");
@@ -166,17 +170,17 @@ app.Use(async (ctx, next) =>
     lenBuf.CopyTo(trailerFrame, 1);
     trailerData.CopyTo(trailerFrame, 5);
 
-    // Конкатенируем DATA-фреймы + trailer-frame, затем base64-кодируем
-    var respBytes = respBuffer.ToArray();
-    var combined = new byte[respBytes.Length + trailerFrame.Length];
-    respBytes.CopyTo(combined, 0);
-    trailerFrame.CopyTo(combined, respBytes.Length);
+    if (isGrpcWebText)
+    {
+        var b64Trailer = Encoding.ASCII.GetBytes(Convert.ToBase64String(trailerFrame));
+        await originalResponseBody.WriteAsync(b64Trailer);
+    }
+    else
+    {
+        await originalResponseBody.WriteAsync(trailerFrame);
+    }
 
-    var payload = isGrpcWebText
-        ? Encoding.ASCII.GetBytes(Convert.ToBase64String(combined))
-        : combined;
-
-    await originalResponseBody.WriteAsync(payload);
+    await originalResponseBody.FlushAsync();
 });
 
 app.UseStaticFiles();
@@ -290,4 +294,69 @@ static IReadOnlyList<ClusterConfig> BuildClusters(IConfiguration config)
     });
 
     return clusters;
+}
+
+/// <summary>
+/// Потоковый враппер для конвертации gRPC → gRPC-Web(-Text).
+/// Каждый Write немедленно кодируется (base64 для grpc-web-text) и записывается
+/// в нижележащий поток с flush — это обеспечивает работу server-streaming.
+/// </summary>
+sealed class GrpcWebResponseStream : Stream
+{
+    private readonly Stream _inner;
+    private readonly bool _base64;
+
+    public GrpcWebResponseStream(Stream inner, bool base64)
+    {
+        _inner = inner;
+        _base64 = base64;
+    }
+
+    public override bool CanRead => false;
+    public override bool CanSeek => false;
+    public override bool CanWrite => true;
+    public override long Length => throw new NotSupportedException();
+    public override long Position
+    {
+        get => throw new NotSupportedException();
+        set => throw new NotSupportedException();
+    }
+
+    public override void Flush() => _inner.Flush();
+    public override Task FlushAsync(CancellationToken cancellationToken) => _inner.FlushAsync(cancellationToken);
+
+    public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+    public override void SetLength(long value) => throw new NotSupportedException();
+
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        WriteAsync(buffer.AsMemory(offset, count)).AsTask().GetAwaiter().GetResult();
+    }
+
+    public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        await WriteAsync(buffer.AsMemory(offset, count), cancellationToken);
+    }
+
+    public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+    {
+        if (buffer.Length == 0) return;
+
+        if (_base64)
+        {
+            var b64 = Convert.ToBase64String(buffer.Span);
+            var bytes = Encoding.ASCII.GetBytes(b64);
+            await _inner.WriteAsync(bytes, cancellationToken);
+        }
+        else
+        {
+            await _inner.WriteAsync(buffer, cancellationToken);
+        }
+
+        await _inner.FlushAsync(cancellationToken);
+    }
+
+    protected override void Dispose(bool disposing) { /* не закрываем _inner */ }
+    public override ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }
