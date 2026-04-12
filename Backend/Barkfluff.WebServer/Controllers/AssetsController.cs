@@ -10,6 +10,7 @@ namespace Barkfluff.WebServer.Controllers
             { "barkfluff.windows.png", "image/png" },
             { "barkfluff.web.png", "image/png" },
             { "barkfluff.android.jpg", "image/jpeg" },
+            { "linkpreview.png", "image/png" },
         };
 
         [HttpGet("/assets/{filename}")]
