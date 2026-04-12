@@ -7,6 +7,10 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import com.barkfluff.client.databinding.FragmentContactsBinding
 
+/**
+ * [UNUSED] ContactsFragment — остаётся в проекте как неиспользуемый объект.
+ * Вкладка «Контакты» удалена из нижней навигации, развитие контактов не предвидится.
+ */
 class ContactsFragment : Fragment() {
 
     private var _binding: FragmentContactsBinding? = null

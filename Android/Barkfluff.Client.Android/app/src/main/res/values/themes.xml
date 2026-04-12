@@ -72,8 +72,8 @@
     <!-- Компактный стиль для плавающей навигации -->
     <style name="BottomNav.ActiveIndicator.Compact" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
         <item name="android:color">?attr/colorPrimaryContainer</item>
-        <item name="android:height">48dp</item>
-        <item name="android:width">64dp</item>
+        <item name="android:height">40dp</item>
+        <item name="android:width">56dp</item>
         <item name="shapeAppearance">@style/BottomNav.ActiveIndicator.Shape.Compact</item>
     </style>
 
@@ -82,7 +82,7 @@
     </style>
 
     <style name="BottomNav.ActiveIndicator.Shape.Compact" parent="ShapeAppearance.Material3.Corner.Full">
-        <item name="cornerSize">12dp</item>
+        <item name="cornerSize">14dp</item>
     </style>
 
     <!-- Круглая форма для аватаров -->
