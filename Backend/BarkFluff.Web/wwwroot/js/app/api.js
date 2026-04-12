@@ -112,8 +112,8 @@
     // --- API methods ---
 
     function listChats(offset, size) {
-        var req = new msgPb().ListChatsRequest();
-        var pg = new sharedPb().PageRequest();
+        var req = new (msgPb().ListChatsRequest)();
+        var pg = new (sharedPb().PageRequest)();
         pg.setOffset(offset || 0);
         pg.setSize(Math.min(size || 50, 50));
         req.setPagination(pg);
@@ -126,7 +126,7 @@
     }
 
     function getChatInfo(chatId) {
-        var req = new msgPb().GetChatInfoRequest();
+        var req = new (msgPb().GetChatInfoRequest)();
         req.setChatId(chatId);
         return c().authCall(messages().getChatInfo.bind(messages()), req).then(function (resp) {
             return {
@@ -142,7 +142,7 @@
     }
 
     function getPersonChatId(userId) {
-        var req = new msgPb().GetPersonChatIdRequest();
+        var req = new (msgPb().GetPersonChatIdRequest)();
         req.setUserId(userId);
         return c().authCall(messages().getPersonChatId.bind(messages()), req).then(function (resp) {
             return { chatId: resp.getChatId() };
@@ -150,7 +150,7 @@
     }
 
     function listMessages(chatId, fromMessageId, offsetBefore, offsetAfter) {
-        var req = new msgPb().ListMessagesRequest();
+        var req = new (msgPb().ListMessagesRequest)();
         req.setChatId(chatId);
         req.setFromMessageId(fromMessageId || 0);
         req.setOffsetBefore(Math.min(offsetBefore || 30, 50));
@@ -161,11 +161,11 @@
     }
 
     function sendMessage(opts) {
-        var req = new msgPb().SendMessageRequest();
+        var req = new (msgPb().SendMessageRequest)();
         if (opts.chatId) req.setChatId(opts.chatId);
         else if (opts.userId) req.setUserId(opts.userId);
 
-        var msg = new msgPb().OutgoingMessage();
+        var msg = new (msgPb().OutgoingMessage)();
         msg.setText(opts.text || '');
         if (opts.fileIds && opts.fileIds.length > 0) {
             msg.setFilesIdsList(opts.fileIds);
@@ -179,17 +179,17 @@
     }
 
     function markAsRead(messageIds) {
-        var req = new msgPb().MarkAsReadRequest();
+        var req = new (msgPb().MarkAsReadRequest)();
         req.setMessageIdsList(messageIds);
         return c().authCall(messages().markAsRead.bind(messages()), req);
     }
 
     function listChatAttachments(chatId, type, offset, size) {
-        var req = new msgPb().ListChatAttachmentsRequest();
+        var req = new (msgPb().ListChatAttachmentsRequest)();
         req.setChatId(chatId);
         req.setAttachmentType(type || 0);
         req.setSortDescending(true);
-        var pg = new sharedPb().PageRequest();
+        var pg = new (sharedPb().PageRequest)();
         pg.setOffset(offset || 0);
         pg.setSize(Math.min(size || 30, 50));
         req.setPagination(pg);
@@ -211,9 +211,9 @@
     }
 
     function searchUsers(query, offset, size) {
-        var req = new usrPb().SearchUsersRequest();
+        var req = new (usrPb().SearchUsersRequest)();
         req.setQuery(query || '');
-        var pg = new sharedPb().PageRequest();
+        var pg = new (sharedPb().PageRequest)();
         pg.setOffset(offset || 0);
         pg.setSize(Math.min(size || 20, 50));
         req.setPagination(pg);
@@ -226,7 +226,7 @@
     }
 
     function getUser(userId) {
-        var req = new usrPb().GetUserRequest();
+        var req = new (usrPb().GetUserRequest)();
         req.setUserId(userId);
         return c().authCall(users().getUser.bind(users()), req).then(function (resp) {
             var u = resp.getUser();
@@ -235,7 +235,7 @@
     }
 
     function getUploadUrl(fileType) {
-        var req = new filePb().GetUploadUrlRequest();
+        var req = new (filePb().GetUploadUrlRequest)();
         req.setFileType(fileType || 0);
         return c().authCall(files().getUploadUrl.bind(files()), req).then(function (resp) {
             return { url: resp.getUrl(), fileId: resp.getFileId() };
@@ -243,7 +243,7 @@
     }
 
     function getTempDownloadUrl(fileIds) {
-        var req = new filePb().GetTempDownloadUrlRequest();
+        var req = new (filePb().GetTempDownloadUrlRequest)();
         req.setFileIdsList(fileIds);
         return c().authCall(files().getTempDownloadUrl.bind(files()), req).then(function (resp) {
             return {
@@ -255,8 +255,8 @@
     }
 
     function listStickerPacks(offset, size) {
-        var req = new filePb().ListStickerPacksRequest();
-        var pg = new sharedPb().PageRequest();
+        var req = new (filePb().ListStickerPacksRequest)();
+        var pg = new (sharedPb().PageRequest)();
         pg.setOffset(offset || 0);
         pg.setSize(size || 50);
         req.setPagination(pg);
@@ -274,12 +274,12 @@
     }
 
     function setOnlineStatus() {
-        var req = new onlPb().SetOnlineStatusRequest();
+        var req = new (onlPb().SetOnlineStatusRequest)();
         return c().authCall(onliner().setOnlineStatus.bind(onliner()), req);
     }
 
     function getOnlineStatus(userIds) {
-        var req = new onlPb().GetOnlineStatusRequest();
+        var req = new (onlPb().GetOnlineStatusRequest)();
         req.setUserIdsList(userIds);
         return c().authCall(onliner().getOnlineStatus.bind(onliner()), req).then(function (resp) {
             return {
