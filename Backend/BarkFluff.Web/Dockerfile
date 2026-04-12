@@ -5,7 +5,8 @@
 # ──────────────────────────────────────────────────────────────────────────────
 FROM node:20-slim AS proto-build
 ARG DEBIAN_FRONTEND=noninteractive
-ARG PROTOC_VERSION=29.3
+# protoc 3.20.x — последняя версия со встроенным --js_out (без отдельного protoc-gen-js)
+ARG PROTOC_VERSION=3.20.3
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends curl ca-certificates unzip && \
