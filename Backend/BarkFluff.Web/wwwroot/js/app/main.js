@@ -185,7 +185,16 @@
 
             if (!info.isGroupChat && info.membersId && info.membersId.length > 0) {
                 var peerId = info.membersId.find(function (id) { return id !== myUserId; });
-                if (peerId) { updateChatHeaderOnline(peerId); subscribeOnlineForUsers([peerId]); }
+                if (peerId) {
+                    subscribeOnlineForUsers([peerId]);
+                    // Fetch current online status via unary RPC to show immediately
+                    BF.api.getOnlineStatus([peerId]).then(function (data) {
+                        if (data && data.statuses && data.statuses.length > 0) {
+                            var s = data.statuses[0];
+                            handleOnlineStatus(s.userId, s.status, s.lastSeen);
+                        }
+                    }).catch(function () {});
+                }
             } else {
                 chatHeaderStatus.textContent = (info.membersId ? info.membersId.length : 0) + ' участников';
                 chatHeaderStatus.classList.remove('online');
@@ -576,13 +585,14 @@
 
         // Update unread count in chat list
         var chat = chats.find(function (c) { return c.id === chatId; });
-        if (chat && readBy.includes(myUserId)) {
-            // If we're the reader and the chat is currently open — all visible are read
-            if (chatId === currentChatId) {
-                chat.countUnread = 0;
-            } else {
-                // Server confirmed we read a specific message — decrement
-                chat.countUnread = Math.max(0, (chat.countUnread || 0) - 1);
+        if (chat) {
+            if (readBy.includes(myUserId)) {
+                // We read a message — if this chat is open, all visible are read
+                if (chatId === currentChatId) {
+                    chat.countUnread = 0;
+                } else {
+                    chat.countUnread = Math.max(0, (chat.countUnread || 0) - 1);
+                }
             }
             renderChatList();
             updateTitleBadge();
@@ -590,11 +600,12 @@
     }
 
     function isUserOnline(userId) {
-        return BF.utils.isStatusOnline(onlineStatuses.get(userId));
+        var entry = onlineStatuses.get(userId);
+        return entry ? BF.utils.isStatusOnline(entry.status) : false;
     }
 
     function handleOnlineStatus(userId, status, lastSeen) {
-        onlineStatuses.set(userId, status);
+        onlineStatuses.set(userId, { status: status, lastSeen: lastSeen });
         var online = BF.utils.isStatusOnline(status);
         document.querySelectorAll('.online-dot[data-online-user="' + userId + '"]').forEach(function (dot) {
             dot.classList.toggle('visible', online);
@@ -606,8 +617,13 @@
     }
 
     function updateChatHeaderOnline(userId) {
-        var online = isUserOnline(userId);
-        chatHeaderStatus.textContent = online ? 'в сети' : 'не в сети';
+        var entry = onlineStatuses.get(userId);
+        var online = entry ? BF.utils.isStatusOnline(entry.status) : false;
+        if (online) {
+            chatHeaderStatus.textContent = 'в сети';
+        } else {
+            chatHeaderStatus.textContent = BF.utils.formatLastSeen(entry ? entry.lastSeen : null);
+        }
         chatHeaderStatus.classList.toggle('online', online);
     }
 
@@ -712,7 +728,8 @@
             profileBio.style.display = user.bio ? 'block' : 'none';
 
             var online = isUserOnline(userId);
-            profileStatus.textContent = online ? 'в сети' : 'не в сети';
+            var entry = onlineStatuses.get(userId);
+            profileStatus.textContent = online ? 'в сети' : BF.utils.formatLastSeen(entry ? entry.lastSeen : null);
             profileStatus.className = 'profile-status-line' + (online ? ' online' : '');
 
             if (user.registrationDate) {

@@ -85,6 +85,43 @@
         return status === 1 || status === 'STATUS_ONLINE';
     }
 
+    function formatLastSeen(lastSeenTs) {
+        if (!lastSeenTs) return 'не в сети';
+        var now = Date.now();
+        var diff = now - lastSeenTs;
+        if (diff < 0) diff = 0;
+
+        var seconds = Math.floor(diff / 1000);
+        var minutes = Math.floor(seconds / 60);
+        var hours = Math.floor(minutes / 60);
+        var days = Math.floor(hours / 24);
+
+        if (seconds < 60) return 'был(а) в сети только что';
+        if (minutes < 60) {
+            if (minutes === 1) return 'был(а) в сети 1 минуту назад';
+            if (minutes < 5) return 'был(а) в сети ' + minutes + ' минуты назад';
+            if (minutes < 21) return 'был(а) в сети ' + minutes + ' минут назад';
+            var m10 = minutes % 10;
+            if (m10 === 1) return 'был(а) в сети ' + minutes + ' минуту назад';
+            if (m10 >= 2 && m10 <= 4) return 'был(а) в сети ' + minutes + ' минуты назад';
+            return 'был(а) в сети ' + minutes + ' минут назад';
+        }
+        if (hours < 24) {
+            if (hours === 1) return 'был(а) в сети 1 час назад';
+            if (hours < 5) return 'был(а) в сети ' + hours + ' часа назад';
+            if (hours < 21) return 'был(а) в сети ' + hours + ' часов назад';
+            var h10 = hours % 10;
+            if (h10 === 1) return 'был(а) в сети ' + hours + ' час назад';
+            if (h10 >= 2 && h10 <= 4) return 'был(а) в сети ' + hours + ' часа назад';
+            return 'был(а) в сети ' + hours + ' часов назад';
+        }
+        if (days === 1) return 'был(а) в сети вчера';
+        if (days < 7) return 'был(а) в сети ' + days + ' дн. назад';
+
+        var d = new Date(lastSeenTs);
+        return 'был(а) в сети ' + d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+    }
+
     window.BF.utils = {
         formatTime: formatTime,
         formatDate: formatDate,
@@ -95,6 +132,7 @@
         attachmentEmoji: attachmentEmoji,
         docIcon: docIcon,
         parseJwtPayload: parseJwtPayload,
-        isStatusOnline: isStatusOnline
+        isStatusOnline: isStatusOnline,
+        formatLastSeen: formatLastSeen
     };
 })();
