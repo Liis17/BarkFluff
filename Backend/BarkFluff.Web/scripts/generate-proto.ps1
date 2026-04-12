@@ -3,11 +3,11 @@
     Генерирует JS-файлы gRPC-Web клиента из .proto файлов BarkFluff и бандлит их
     в один self-contained файл wwwroot/js/proto/barkfluff.bundle.js.
 
+    protoc и protoc-gen-grpc-web скачиваются автоматически, если не найдены в PATH.
+
 .PREREQUISITES
-    - protoc                     >= 25    (https://github.com/protocolbuffers/protobuf/releases)
-    - protoc-gen-grpc-web        >= 1.5   (https://github.com/grpc/grpc-web/releases — положить рядом с protoc)
-    - Node.js + npm              >= 18    (нужен только один раз для запуска esbuild)
-    - esbuild                    (устанавливается автоматически в scripts/node_modules)
+    - Node.js + npm >= 18 (обязательно)
+    - (опционально) protoc и protoc-gen-grpc-web в PATH — иначе скачиваются сами
 
 .EXAMPLE
     cd Backend/BarkFluff.Web
@@ -16,11 +16,56 @@
 
 $ErrorActionPreference = 'Stop'
 
+$PROTOC_VERSION       = '29.3'
+$GRPCWEB_VERSION      = '1.5.0'
+
 $scriptRoot  = Split-Path -Parent $PSCommandPath
 $projectRoot = Resolve-Path (Join-Path $scriptRoot '..')
 $protoDir    = Resolve-Path (Join-Path $projectRoot '..\..\Shared\BarkFluff.Proto')
 $tempDir     = Join-Path $scriptRoot '.proto-tmp'
 $outDir      = Join-Path $projectRoot 'wwwroot\js\proto'
+$toolsDir    = Join-Path $scriptRoot '.tools'
+
+# --- 0. Убедиться что Node.js есть ---
+if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+    throw "Node.js не найден. Установите с https://nodejs.org"
+}
+
+# --- 0a. Авто-загрузка protoc ---
+$protocExe = (Get-Command protoc -ErrorAction SilentlyContinue)?.Source
+if (-not $protocExe) {
+    Write-Host "protoc не найден — скачиваю protoc $PROTOC_VERSION..." -ForegroundColor Yellow
+    $protocDir = Join-Path $toolsDir "protoc-$PROTOC_VERSION"
+    if (-not (Test-Path $protocDir)) {
+        New-Item -ItemType Directory -Path $protocDir -Force | Out-Null
+        $arch = if ([System.Environment]::Is64BitOperatingSystem) { 'win64' } else { 'win32' }
+        $url  = "https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-$arch.zip"
+        $zip  = Join-Path $toolsDir "protoc.zip"
+        Invoke-WebRequest -Uri $url -OutFile $zip
+        Expand-Archive -Path $zip -DestinationPath $protocDir -Force
+        Remove-Item $zip
+    }
+    $protocExe = Join-Path $protocDir 'bin\protoc.exe'
+    Write-Host "  → $protocExe" -ForegroundColor Gray
+} else {
+    Write-Host "protoc найден: $protocExe" -ForegroundColor Gray
+}
+
+# --- 0b. Авто-загрузка protoc-gen-grpc-web ---
+$grpcwebExe = (Get-Command protoc-gen-grpc-web -ErrorAction SilentlyContinue)?.Source
+if (-not $grpcwebExe) {
+    Write-Host "protoc-gen-grpc-web не найден — скачиваю v$GRPCWEB_VERSION..." -ForegroundColor Yellow
+    $grpcwebDir = Join-Path $toolsDir "protoc-gen-grpc-web-$GRPCWEB_VERSION"
+    New-Item -ItemType Directory -Path $grpcwebDir -Force | Out-Null
+    $grpcwebExe = Join-Path $grpcwebDir 'protoc-gen-grpc-web.exe'
+    if (-not (Test-Path $grpcwebExe)) {
+        $url = "https://github.com/grpc/grpc-web/releases/download/$GRPCWEB_VERSION/protoc-gen-grpc-web-$GRPCWEB_VERSION-windows-x86_64.exe"
+        Invoke-WebRequest -Uri $url -OutFile $grpcwebExe
+    }
+    Write-Host "  → $grpcwebExe" -ForegroundColor Gray
+} else {
+    Write-Host "protoc-gen-grpc-web найден: $grpcwebExe" -ForegroundColor Gray
+}
 
 # --- 1. Подготовка каталогов ---
 if (Test-Path $tempDir) { Remove-Item -Recurse -Force $tempDir }
@@ -41,7 +86,9 @@ $protos = @(
 Write-Host "[1/3] protoc → $tempDir" -ForegroundColor Cyan
 Push-Location $protoDir
 try {
-    & protoc `
+    $pluginArg = "--plugin=protoc-gen-grpc-web=$grpcwebExe"
+    & $protocExe `
+        $pluginArg `
         --proto_path=. `
         --js_out="import_style=commonjs,binary:$tempDir" `
         --grpc-web_out="import_style=commonjs,mode=grpcwebtext:$tempDir" `
