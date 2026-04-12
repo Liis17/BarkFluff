@@ -139,7 +139,7 @@ app.Use(async (ctx, next) =>
     // Подменяем Response.Body на потоковый враппер, который каждый Write
     // сразу кодирует в base64 (для grpc-web-text) и пишет в оригинальный поток.
     // Это критично для server-streaming: данные приходят по частям.
-    await using var grpcWebStream = new GrpcWebResponseStream(originalResponseBody, isGrpcWebText);
+    var grpcWebStream = new GrpcWebResponseStream(originalResponseBody, isGrpcWebText);
     ctx.Response.Body = grpcWebStream;
 
     // Отключаем буферизацию ответа для потокового режима
@@ -149,6 +149,9 @@ app.Use(async (ctx, next) =>
     await next();
 
     ctx.Response.Body = originalResponseBody;
+
+    // Сбрасываем остаток base64-буфера (последние 1-2 байта, ожидавшие выравнивания)
+    await grpcWebStream.FlushFinalAsync();
 
     // Собираем трейлеры и отправляем trailer-frame
     var trailerHeaders = new Dictionary<string, string>(promotedTrailers, StringComparer.OrdinalIgnoreCase);
@@ -280,13 +283,20 @@ static IReadOnlyList<ClusterConfig> BuildClusters(IConfiguration config)
         });
     }
 
-    // Отдельный HTTP/1.1 cluster для файлового upload (обычный REST POST).
+    // Отдельный cluster для файлового upload (обычный REST POST).
+    // Бэкенд может слушать только HTTP/2 (основной порт) или HTTP/1 (Http1Port).
+    // Используем RequestVersionOrLower, чтобы YARP мог согласовать протокол.
     var filesHttpHost = config["FilesService:HttpHost"]
                         ?? config["FilesService:Host"]
                         ?? "http://files:7005";
     clusters.Add(new ClusterConfig
     {
         ClusterId = "files-http",
+        HttpRequest = new Yarp.ReverseProxy.Forwarder.ForwarderRequestConfig
+        {
+            Version = new Version(2, 0),
+            VersionPolicy = System.Net.Http.HttpVersionPolicy.RequestVersionOrLower
+        },
         Destinations = new Dictionary<string, DestinationConfig>
         {
             ["files-http-1"] = new DestinationConfig { Address = filesHttpHost }
@@ -298,13 +308,22 @@ static IReadOnlyList<ClusterConfig> BuildClusters(IConfiguration config)
 
 /// <summary>
 /// Потоковый враппер для конвертации gRPC → gRPC-Web(-Text).
-/// Каждый Write немедленно кодируется (base64 для grpc-web-text) и записывается
-/// в нижележащий поток с flush — это обеспечивает работу server-streaming.
+/// 
+/// Для grpc-web-text (base64) кодируем данные на лету.  Base64 кодирует каждые
+/// 3 байта в 4 символа.  Если Write получает данные, не кратные 3, остаток
+/// буферизуется до следующего вызова.  FlushFinalAsync() записывает оставшиеся
+/// байты с padding'ом — вызывается middleware перед trailer-frame.
+/// 
+/// Для grpc-web (бинарный) данные проходят насквозь.
 /// </summary>
 sealed class GrpcWebResponseStream : Stream
 {
     private readonly Stream _inner;
     private readonly bool _base64;
+
+    // Буфер для неполного base64-триплета (0-2 байта)
+    private readonly byte[] _remainder = new byte[2];
+    private int _remainderLen;
 
     public GrpcWebResponseStream(Stream inner, bool base64)
     {
@@ -343,17 +362,65 @@ sealed class GrpcWebResponseStream : Stream
     {
         if (buffer.Length == 0) return;
 
-        if (_base64)
+        if (!_base64)
         {
-            var b64 = Convert.ToBase64String(buffer.Span);
-            var bytes = Encoding.ASCII.GetBytes(b64);
-            await _inner.WriteAsync(bytes, cancellationToken);
+            await _inner.WriteAsync(buffer, cancellationToken);
+            await _inner.FlushAsync(cancellationToken);
+            return;
+        }
+
+        // Объединяем остаток от предыдущего Write с новыми данными
+        var span = buffer.Span;
+        int total = _remainderLen + span.Length;
+
+        byte[]? combined = null;
+        ReadOnlySpan<byte> source;
+
+        if (_remainderLen > 0)
+        {
+            combined = new byte[total];
+            _remainder.AsSpan(0, _remainderLen).CopyTo(combined);
+            span.CopyTo(combined.AsSpan(_remainderLen));
+            source = combined;
+            _remainderLen = 0;
         }
         else
         {
-            await _inner.WriteAsync(buffer, cancellationToken);
+            source = span;
         }
 
+        // Кодируем только полные тройки (кратное 3 количество байт)
+        int encodable = source.Length - (source.Length % 3);
+        int newRemainder = source.Length - encodable;
+
+        if (newRemainder > 0)
+        {
+            source.Slice(encodable).CopyTo(_remainder);
+            _remainderLen = newRemainder;
+        }
+
+        if (encodable > 0)
+        {
+            var b64 = Convert.ToBase64String(source.Slice(0, encodable));
+            // encodable кратно 3, поэтому b64 не содержит '=' padding
+            var bytes = Encoding.ASCII.GetBytes(b64);
+            await _inner.WriteAsync(bytes, cancellationToken);
+            await _inner.FlushAsync(cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// Записывает оставшиеся 1-2 байта с base64-padding.
+    /// Вызывается middleware после await next() перед отправкой trailer-frame.
+    /// </summary>
+    public async Task FlushFinalAsync(CancellationToken cancellationToken = default)
+    {
+        if (!_base64 || _remainderLen == 0) return;
+
+        var b64 = Convert.ToBase64String(_remainder, 0, _remainderLen);
+        _remainderLen = 0;
+        var bytes = Encoding.ASCII.GetBytes(b64);
+        await _inner.WriteAsync(bytes, cancellationToken);
         await _inner.FlushAsync(cancellationToken);
     }
 
