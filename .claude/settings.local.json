@@ -42,7 +42,9 @@
       "Bash(tail -n +2562 messenger.html)",
       "Bash(mv messenger_new.html messenger.html)",
       "Bash(npm --version)",
-      "Bash(protoc --version)"
+      "Bash(protoc --version)",
+      "Read(//c/Users/daske/.nuget/packages/grpc.aspnetcore.web/2.71.0/lib/net9.0/**)",
+      "Bash(dotnet-ildasm Grpc.AspNetCore.Web.dll)"
     ],
     "deny": [],
     "ask": []
