@@ -5,10 +5,18 @@
 # ──────────────────────────────────────────────────────────────────────────────
 FROM node:20-slim AS proto-build
 ARG DEBIAN_FRONTEND=noninteractive
+ARG PROTOC_VERSION=29.3
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends protobuf-compiler curl ca-certificates && \
+    apt-get install -y --no-install-recommends curl ca-certificates unzip && \
     rm -rf /var/lib/apt/lists/*
+
+# Official protoc release — includes bin/protoc + include/google/protobuf/*.proto
+RUN curl -sSL \
+    "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip" \
+    -o /tmp/protoc.zip && \
+    unzip /tmp/protoc.zip -d /usr/local && \
+    rm /tmp/protoc.zip
 
 RUN curl -sSL \
     https://github.com/grpc/grpc-web/releases/download/1.5.0/protoc-gen-grpc-web-1.5.0-linux-x86_64 \
