@@ -133,6 +133,9 @@ app.Use(async (ctx, next) =>
             ? "application/grpc-web-text+proto"
             : "application/grpc-web+proto";
         ctx.Response.Headers.Remove("Content-Length");
+        // Запрещаем nginx буферизировать ответ — критично для server-streaming
+        ctx.Response.Headers["X-Accel-Buffering"] = "no";
+        ctx.Response.Headers["Cache-Control"] = "no-cache";
         return Task.CompletedTask;
     });
 
@@ -264,17 +267,26 @@ static IReadOnlyList<ClusterConfig> BuildClusters(IConfiguration config)
         ("onliner",   "OnlinerService:Host",   "http://onliner:7009"),
     };
 
+    // Сервисы с server-streaming RPC: YARP не должен убивать долгоживущие соединения.
+    var streamingServices = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "updates", "onliner" };
+
     var clusters = new List<ClusterConfig>();
     foreach (var (clusterId, configKey, defaultHost) in grpcClusters)
     {
         var host = config[configKey] ?? defaultHost;
+        var isStreaming = streamingServices.Contains(clusterId);
         clusters.Add(new ClusterConfig
         {
             ClusterId = clusterId,
             HttpRequest = new Yarp.ReverseProxy.Forwarder.ForwarderRequestConfig
             {
                 Version = new Version(2, 0),
-                VersionPolicy = System.Net.Http.HttpVersionPolicy.RequestVersionExact
+                VersionPolicy = System.Net.Http.HttpVersionPolicy.RequestVersionExact,
+                // Для server-streaming: увеличиваем таймаут активности до 24 часов,
+                // иначе YARP убивает соединение через ~100с (дефолт).
+                ActivityTimeout = isStreaming
+                    ? TimeSpan.FromHours(24)
+                    : TimeSpan.FromSeconds(100)
             },
             Destinations = new Dictionary<string, DestinationConfig>
             {
