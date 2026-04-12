@@ -166,6 +166,13 @@
         inputBar.classList.add('visible');
         loadingMessages.classList.add('visible');
 
+        // Reset unread count for the opened chat
+        var openedChat = chats.find(function (c) { return c.id === chatId; });
+        if (openedChat && openedChat.countUnread > 0) {
+            openedChat.countUnread = 0;
+            updateTitleBadge();
+        }
+
         renderChatList();
 
         BF.api.getChatInfo(chatId).then(function (info) {
@@ -396,7 +403,107 @@
         BF.api.markAsRead(ids).catch(function () {});
     }
 
+    // ========== TITLE UNREAD BADGE ==========
+
+    var baseTitle = 'BarkFluff — Мессенджер';
+
+    function updateTitleBadge() {
+        var total = 0;
+        chats.forEach(function (c) { total += (c.countUnread || 0); });
+        document.title = total > 0 ? '(' + (total > 99 ? '99+' : total) + ') ' + baseTitle : baseTitle;
+    }
+
+    // ========== BROWSER NOTIFICATIONS ==========
+
+    var notificationsAllowed = false;
+
+    function requestNotificationPermission() {
+        if (!('Notification' in window)) return;
+        if (Notification.permission === 'granted') { notificationsAllowed = true; return; }
+        if (Notification.permission !== 'denied') {
+            Notification.requestPermission().then(function (perm) {
+                notificationsAllowed = (perm === 'granted');
+            });
+        }
+    }
+
+    function showNewMessageNotification(chatTitle, msg) {
+        if (!notificationsAllowed) return;
+        if (document.visibilityState === 'visible' && msg.chatId === currentChatId) return;
+
+        var body = '';
+        if (msg.content && msg.content.text) body = u.truncate(msg.content.text, 80);
+        else if (msg.content && msg.content.attachments && msg.content.attachments.length > 0) {
+            body = u.attachmentEmoji(msg.content.attachments[0].type);
+        }
+
+        try {
+            var n = new Notification(chatTitle || 'Новое сообщение', {
+                body: body,
+                tag: 'bf-msg-' + (msg.id || Date.now()),
+                renotify: true
+            });
+            n.onclick = function () { window.focus(); n.close(); };
+            setTimeout(function () { n.close(); }, 5000);
+        } catch (e) { /* ignore mobile/permission errors */ }
+    }
+
+    // ========== CONNECTION STATUS ==========
+
+    var connectionBanner = $('#connectionBanner');
+
+    BF.realtime.on('connection_status', function (data) {
+        if (connectionBanner) {
+            connectionBanner.classList.toggle('visible', !data.connected);
+        }
+    });
+
+    // ========== SCROLL-BASED MARK AS READ ==========
+
+    function markVisibleMessagesAsRead() {
+        if (!currentChatId) return;
+        var changed = false;
+        var areaRect = messagesArea.getBoundingClientRect();
+
+        messagesArea.querySelectorAll('.msg-bubble').forEach(function (el) {
+            var msgId = Number(el.dataset.msgId);
+            if (!msgId) return;
+            var msg = messages.find(function (m) { return m.id === msgId; });
+            if (!msg || msg.senderId === myUserId) return;
+            if ((msg.readBy || []).includes(myUserId)) return;
+
+            var rect = el.getBoundingClientRect();
+            // Consider the message visible if any part overlaps the messages area
+            if (rect.bottom > areaRect.top && rect.top < areaRect.bottom) {
+                markReadPending.add(msgId);
+                changed = true;
+            }
+        });
+
+        if (changed) {
+            if (markReadTimer) clearTimeout(markReadTimer);
+            markReadTimer = setTimeout(flushMarkRead, 500);
+        }
+    }
+
+    var _markReadScrollTimer = null;
+    messagesArea.addEventListener('scroll', function () {
+        if (_markReadScrollTimer) return;
+        _markReadScrollTimer = setTimeout(function () {
+            _markReadScrollTimer = null;
+            markVisibleMessagesAsRead();
+        }, 300);
+    });
+
+    // ========== TAB VISIBILITY — REFRESH ON RETURN ==========
+
+    BF.realtime.on('tab_visible', function () {
+        // Refresh chat list to sync any missed updates while tab was hidden
+        loadChats(true);
+    });
+
     // ========== REALTIME HANDLERS ==========
+
 
     BF.realtime.on('new_message', function (data) {
         handleNewMessage(data.chatId, data.message);
@@ -414,32 +521,51 @@
         if (chatId === currentChatId && messages.some(function (m) { return m.id === msg.id; })) return;
 
         var chatIdx = chats.findIndex(function (c) { return c.id === chatId; });
+        var chatTitle = '';
         if (chatIdx >= 0) {
             var chat = chats[chatIdx];
+            chatTitle = chat.title || '';
             chat.lastMessage = msg;
-            if (chatId !== currentChatId) chat.countUnread = (chat.countUnread || 0) + 1;
+            if (chatId !== currentChatId && msg.senderId !== myUserId) {
+                chat.countUnread = (chat.countUnread || 0) + 1;
+            }
             chats.splice(chatIdx, 1);
             chats.unshift(chat);
             renderChatList();
         } else {
+            // Unknown chat — reload the list to pick it up
             loadChats(true);
         }
+
+        // Browser notification for messages from others
+        if (msg.senderId !== myUserId) {
+            showNewMessageNotification(chatTitle, msg);
+        }
+
+        updateTitleBadge();
 
         if (chatId === currentChatId) {
             var isAtBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 100;
             messages.push(msg);
             appendMessageToView(msg).then(function () {
                 if (isAtBottom) scrollToBottom();
-                scheduleMarkRead();
+                // Auto-mark as read if message is visible (user is at bottom)
+                if (isAtBottom && msg.senderId !== myUserId) {
+                    markReadPending.add(msg.id);
+                    if (markReadTimer) clearTimeout(markReadTimer);
+                    markReadTimer = setTimeout(flushMarkRead, 500);
+                }
             });
         }
     }
 
     function handleMessageRead(chatId, messageId, readBy) {
+        // Update the message's readBy in the active chat view
         if (chatId === currentChatId) {
             var msg = messages.find(function (m) { return m.id === messageId; });
             if (msg) {
                 msg.readBy = readBy;
+                // Update check-mark indicator (single ✓ = sent, double ✓✓ = read by others)
                 var el = messagesArea.querySelector('.msg-status[data-msg-id="' + messageId + '"]');
                 if (el) {
                     var rc = readBy.filter(function (id) { return id !== myUserId; }).length;
@@ -447,11 +573,19 @@
                 }
             }
         }
+
+        // Update unread count in chat list
         var chat = chats.find(function (c) { return c.id === chatId; });
         if (chat && readBy.includes(myUserId)) {
-            if (chatId === currentChatId) chat.countUnread = 0;
-            else chat.countUnread = Math.max(0, (chat.countUnread || 0) - 1);
+            // If we're the reader and the chat is currently open — all visible are read
+            if (chatId === currentChatId) {
+                chat.countUnread = 0;
+            } else {
+                // Server confirmed we read a specific message — decrement
+                chat.countUnread = Math.max(0, (chat.countUnread || 0) - 1);
+            }
             renderChatList();
+            updateTitleBadge();
         }
     }
 
@@ -492,7 +626,7 @@
         userIds.forEach(function (id) {
             if (!onlineSubscribedUserIds.has(id)) { onlineSubscribedUserIds.add(id); changed = true; }
         });
-        if (changed) BF.realtime.subscribeOnline(Array.from(onlineSubscribedUserIds));
+        if (changed) BF.realtime.changeOnlineSubscription(Array.from(onlineSubscribedUserIds));
     }
 
     // ========== SEARCH ==========
@@ -704,7 +838,8 @@
 
     // ========== INIT ==========
 
-    loadChats(true);
+    requestNotificationPermission();
+    loadChats(true).then(updateTitleBadge);
     BF.realtime.startAll();
 
 })();
