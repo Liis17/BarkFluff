@@ -553,6 +553,51 @@ class GrpcManager {
     }
 
     /**
+     * Получает статус уведомлений для текущего устройства
+     */
+    suspend fun getNotificationsEnabled(): Result<Boolean> = withContext(Dispatchers.IO) {
+        try {
+            if (usersClient == null) {
+                return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            }
+
+            val request = UsersApiOuterClass.GetCurrentDeviceRequest.newBuilder().build()
+            val response = usersClient!!.getCurrentDevice(request)
+
+            if (response.hasDevice()) {
+                Result.success(response.device.notificationsEnabled)
+            } else {
+                Result.success(true)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка получения статуса уведомлений", e)
+            Result.failure(Exception("Ошибка получения статуса уведомлений: ${e.message}"))
+        }
+    }
+
+    /**
+     * Включает или выключает push-уведомления для текущего устройства
+     */
+    suspend fun setNotificationsEnabled(enabled: Boolean): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (usersClient == null) {
+                return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            }
+
+            val request = UsersApiOuterClass.SetNotificationsEnabledRequest.newBuilder()
+                .setEnabled(enabled)
+                .build()
+
+            usersClient!!.setNotificationsEnabled(request)
+            Log.d(TAG, "Статус уведомлений успешно обновлён: $enabled")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка обновления статуса уведомлений", e)
+            Result.failure(Exception("Ошибка обновления статуса уведомлений: ${e.message}"))
+        }
+    }
+
+    /**
      * Получает список серверов из навигатора
      * Аналог GetServerList в WebApiServerManager
      */
