@@ -1,22 +1,12 @@
 using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.Metrics;
-using BarkFluff.Proto.Files;
-using BarkFluff.Proto.Identity;
-using BarkFluff.Proto.Messages;
-using BarkFluff.Proto.Onliner;
-using BarkFluff.Proto.Shared;
-using BarkFluff.Proto.Updates;
-using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Identity;
-
-using Grpc.Core;
 
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 
 using Serilog;
 
-using System.Text;
-using System.Text.Json;
+using Yarp.ReverseProxy.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,43 +24,29 @@ builder.WebHost.ConfigureKestrel(options =>
 
 builder.Services.AddBarkFluffMetrics("BarkFluff.Web");
 
-// --- gRPC-клиенты ---
+// CORS — разрешаем обращения из настроенных origin'ов; также публикуем gRPC-Web-трейлеры
+var allowedOrigins = builder.Configuration.GetSection("Web:AllowedOrigins").Get<string[]>()
+                     ?? new[] { "http://localhost:7016" };
+builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
+    .WithOrigins(allowedOrigins)
+    .AllowAnyMethod()
+    .AllowAnyHeader()
+    .AllowCredentials()
+    .WithExposedHeaders(
+        "grpc-status",
+        "grpc-message",
+        "grpc-status-details-bin",
+        "x-error-code")));
 
-builder.Services.AddGrpcClient<IdentityApi.IdentityApiClient>(o =>
-{
-    o.Address = new Uri(builder.Configuration["IdentityService:Host"] ?? "http://identity:7000");
-});
-
-builder.Services.AddGrpcClient<MessagesApi.MessagesApiClient>(o =>
-{
-    o.Address = new Uri(builder.Configuration["MessagesService:Host"] ?? "http://messages:7007");
-});
-
-builder.Services.AddGrpcClient<UsersApi.UsersApiClient>(o =>
-{
-    o.Address = new Uri(builder.Configuration["UsersService:Host"] ?? "http://users:7001");
-});
-
-builder.Services.AddGrpcClient<FilesApi.FilesApiClient>(o =>
-{
-    o.Address = new Uri(builder.Configuration["FilesService:Host"] ?? "http://files:7005");
-});
-
-builder.Services.AddGrpcClient<UpdatesApi.UpdatesApiClient>(o =>
-{
-    o.Address = new Uri(builder.Configuration["UpdatesService:Host"] ?? "http://updates:7015");
-});
-
-builder.Services.AddGrpcClient<OnlinerApi.OnlinerApiClient>(o =>
-{
-    o.Address = new Uri(builder.Configuration["OnlinerService:Host"] ?? "http://onliner:7009");
-});
+// YARP reverse-proxy — по одному кластеру на каждый backend-сервис
+// gRPC-Web middleware (ниже) превращает входящий HTTP/1.1 gRPC-Web запрос
+// в обычный gRPC HTTP/2, после чего YARP форвардит его в соответствующий сервис.
+builder.Services.AddReverseProxy()
+    .LoadFromMemory(BuildRoutes(), BuildClusters(builder.Configuration));
 
 var app = builder.Build();
 
-var JsonOpts = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-
-// Middleware для логирования и метрик HTTP-запросов
+// Логирование и метрики HTTP-запросов
 app.Use(async (ctx, next) =>
 {
     var metrics = ctx.RequestServices.GetRequiredService<MetricsCollector>();
@@ -96,724 +72,113 @@ app.Use(async (ctx, next) =>
     }
 });
 
+app.UseCors();
+
+// gRPC-Web: transparently переупаковывает входящий HTTP/1.1 gRPC-Web в gRPC,
+// чтобы YARP мог форвардить как HTTP/2 gRPC во внутреннюю сеть.
+app.UseGrpcWeb(new GrpcWebOptions { DefaultEnabled = true });
+
 app.UseStaticFiles();
-
-// ========== AUTH ENDPOINTS ==========
-
-// POST /api/auth/login — проксирует авторизацию в Identity gRPC
-app.MapPost("/api/auth/login", async (HttpContext httpCtx, IdentityApi.IdentityApiClient identityClient, MetricsCollector metrics) =>
-{
-    metrics.Increment("auth_login_attempts");
-
-    var body = await httpCtx.Request.ReadFromJsonAsync<LoginRequest>();
-    if (body == null || string.IsNullOrWhiteSpace(body.Login) || string.IsNullOrWhiteSpace(body.Password))
-        return Results.BadRequest(new { error = "missing_fields" });
-
-    var authRequest = new AuthRequest { Password = body.Password };
-
-    if (body.Login.Contains('@'))
-        authRequest.Email = body.Login;
-    else
-        authRequest.Username = body.Login;
-
-    if (!string.IsNullOrEmpty(body.OtpCode))
-        authRequest.OtpCode = body.OtpCode;
-
-    var metadata = BuildMetadata(httpCtx, body.DeviceId, body.BrowserName, body.OsName);
-
-    try
-    {
-        var response = await identityClient.AuthAsync(authRequest, new CallOptions(headers: metadata));
-
-        metrics.Increment("auth_login_success");
-
-        return Results.Ok(new TokenResponse
-        {
-            AccessToken = response.AccessToken.Value,
-            AccessTokenExpiration = response.AccessToken.ExpirationDate.ToDateTimeOffset().ToUnixTimeMilliseconds(),
-            RefreshToken = response.RefreshToken.Value,
-            RefreshTokenExpiration = response.RefreshToken.ExpirationDate.ToDateTimeOffset().ToUnixTimeMilliseconds()
-        });
-    }
-    catch (RpcException ex)
-    {
-        var logger = httpCtx.RequestServices.GetRequiredService<ILogger<Program>>();
-        var errorCode = ex.Trailers.Get("x-error-code")?.Value;
-
-        logger.LogWarning("gRPC Auth ошибка: StatusCode={StatusCode}, ErrorCode={ErrorCode}, Detail={Detail}",
-            ex.StatusCode, errorCode ?? "none", ex.Status.Detail);
-
-        if (errorCode == "C1576884-12D8-4722-A7EE-9F9789AD1265")
-        {
-            metrics.Increment("auth_otp_required");
-            return Results.Json(new { error = "otp_required" }, statusCode: 200);
-        }
-
-        metrics.Increment("auth_login_failed");
-
-        return errorCode switch
-        {
-            "803B632C-4457-4B05-9435-9C3DD0F41E00" =>
-                Results.Json(new { error = "invalid_otp" }, statusCode: 401),
-            "21BFB9B5-C377-45D1-9B15-6B7F3432B397" =>
-                Results.Json(new { error = "invalid_credentials" }, statusCode: 401),
-            _ =>
-                Results.Json(new { error = "server_error", detail = ex.Status.Detail }, statusCode: 500)
-        };
-    }
-});
-
-// POST /api/auth/refresh — обновление access токена по refresh токену
-app.MapPost("/api/auth/refresh", async (HttpContext httpCtx, IdentityApi.IdentityApiClient identityClient, MetricsCollector metrics) =>
-{
-    metrics.Increment("auth_refresh_attempts");
-
-    var body = await httpCtx.Request.ReadFromJsonAsync<RefreshRequest>();
-    if (body == null || string.IsNullOrWhiteSpace(body.RefreshToken))
-        return Results.BadRequest(new { error = "missing_refresh_token" });
-
-    try
-    {
-        var response = await identityClient.CreateTokenAsync(
-            new CreateTokenRequest { RefreshToken = body.RefreshToken });
-
-        metrics.Increment("auth_refresh_success");
-
-        return Results.Ok(new
-        {
-            accessToken = response.AccessToken.Value,
-            expiration = response.AccessToken.ExpirationDate.ToDateTimeOffset().ToUnixTimeMilliseconds()
-        });
-    }
-    catch (RpcException)
-    {
-        metrics.Increment("auth_refresh_failed");
-        return Results.Json(new { error = "invalid_refresh_token" }, statusCode: 401);
-    }
-});
-
-// ========== CHATS ENDPOINTS ==========
-
-// GET /api/chats?offset=0&size=50
-app.MapGet("/api/chats", async (HttpContext httpCtx, MessagesApi.MessagesApiClient messagesClient, int offset = 0, int size = 50) =>
-{
-    var metadata = BuildAuthMetadata(httpCtx);
-    if (metadata == null) return Results.Json(new { error = "unauthorized" }, statusCode: 401);
-
-    try
-    {
-        var response = await messagesClient.ListChatsAsync(
-            new ListChatsRequest { Pagination = new PageRequest { Offset = offset, Size = Math.Min(size, 50) } },
-            new CallOptions(headers: metadata));
-
-        return Results.Ok(new
-        {
-            chats = response.Chats.Select(c => MapChat(c)),
-            totalCount = response.TotalCount
-        });
-    }
-    catch (RpcException ex) { return HandleGrpcError(ex); }
-});
-
-// GET /api/chats/{chatId}/messages?from=0&before=30&after=0
-app.MapGet("/api/chats/{chatId}/messages", async (HttpContext httpCtx, MessagesApi.MessagesApiClient messagesClient,
-    string chatId, long from = 0, int before = 30, int after = 0) =>
-{
-    var metadata = BuildAuthMetadata(httpCtx);
-    if (metadata == null) return Results.Json(new { error = "unauthorized" }, statusCode: 401);
-
-    try
-    {
-        var response = await messagesClient.ListMessagesAsync(
-            new ListMessagesRequest
-            {
-                ChatId = chatId,
-                FromMessageId = from,
-                OffsetBefore = Math.Min(before, 50),
-                OffsetAfter = Math.Min(after, 50)
-            },
-            new CallOptions(headers: metadata));
-
-        return Results.Ok(new { messages = response.Messages.Select(m => MapMessage(m)) });
-    }
-    catch (RpcException ex) { return HandleGrpcError(ex); }
-});
-
-// GET /api/chats/{chatId}/info
-app.MapGet("/api/chats/{chatId}/info", async (HttpContext httpCtx, MessagesApi.MessagesApiClient messagesClient, string chatId) =>
-{
-    var metadata = BuildAuthMetadata(httpCtx);
-    if (metadata == null) return Results.Json(new { error = "unauthorized" }, statusCode: 401);
-
-    try
-    {
-        var response = await messagesClient.GetChatInfoAsync(
-            new GetChatInfoRequest { ChatId = chatId },
-            new CallOptions(headers: metadata));
-
-        return Results.Ok(new
-        {
-            lastMessageId = response.LastMessageId,
-            firstUnreadMessageId = response.FirstUnreadMessageId,
-            title = response.Title,
-            picture = response.Picture,
-            isGroupChat = response.IsGroupChat,
-            countUnread = response.CountUnread,
-            membersId = response.MembersId.ToList()
-        });
-    }
-    catch (RpcException ex) { return HandleGrpcError(ex); }
-});
-
-// GET /api/chats/personal/{userId}
-app.MapGet("/api/chats/personal/{userId:long}", async (HttpContext httpCtx, MessagesApi.MessagesApiClient messagesClient, long userId) =>
-{
-    var metadata = BuildAuthMetadata(httpCtx);
-    if (metadata == null) return Results.Json(new { error = "unauthorized" }, statusCode: 401);
-
-    try
-    {
-        var response = await messagesClient.GetPersonChatIdAsync(
-            new GetPersonChatIdRequest { UserId = userId },
-            new CallOptions(headers: metadata));
-
-        return Results.Ok(new { chatId = response.ChatId });
-    }
-    catch (RpcException ex) { return HandleGrpcError(ex); }
-});
-
-// POST /api/chats/send
-app.MapPost("/api/chats/send", async (HttpContext httpCtx, MessagesApi.MessagesApiClient messagesClient) =>
-{
-    var metadata = BuildAuthMetadata(httpCtx);
-    if (metadata == null) return Results.Json(new { error = "unauthorized" }, statusCode: 401);
-
-    var body = await httpCtx.Request.ReadFromJsonAsync<SendMessageRequest>(JsonOpts);
-    if (body == null) return Results.BadRequest(new { error = "invalid_body" });
-
-    var request = new BarkFluff.Proto.Messages.SendMessageRequest
-    {
-        Message = new OutgoingMessage { Text = body.Text ?? "" }
-    };
-
-    if (!string.IsNullOrEmpty(body.ChatId))
-        request.ChatId = body.ChatId;
-    else if (body.UserId.HasValue)
-        request.UserId = body.UserId.Value;
-    else
-        return Results.BadRequest(new { error = "chatId_or_userId_required" });
-
-    if (body.FileIds is { Count: > 0 })
-        request.Message.FilesIds.AddRange(body.FileIds);
-
-    try
-    {
-        var response = await messagesClient.SendMessageAsync(request, new CallOptions(headers: metadata));
-        return Results.Ok(new { message = MapMessage(response.Message) });
-    }
-    catch (RpcException ex) { return HandleGrpcError(ex); }
-});
-
-// POST /api/chats/mark-read
-app.MapPost("/api/chats/mark-read", async (HttpContext httpCtx, MessagesApi.MessagesApiClient messagesClient) =>
-{
-    var metadata = BuildAuthMetadata(httpCtx);
-    if (metadata == null) return Results.Json(new { error = "unauthorized" }, statusCode: 401);
-
-    var body = await httpCtx.Request.ReadFromJsonAsync<MarkAsReadRequest>(JsonOpts);
-    if (body?.MessageIds == null || body.MessageIds.Count == 0)
-        return Results.BadRequest(new { error = "missing_message_ids" });
-
-    var request = new BarkFluff.Proto.Messages.MarkAsReadRequest();
-    request.MessageIds.AddRange(body.MessageIds);
-
-    try
-    {
-        await messagesClient.MarkAsReadAsync(request, new CallOptions(headers: metadata));
-        return Results.Ok(new { ok = true });
-    }
-    catch (RpcException ex) { return HandleGrpcError(ex); }
-});
-
-// GET /api/chats/{chatId}/attachments?type=0&offset=0&size=20
-app.MapGet("/api/chats/{chatId}/attachments", async (HttpContext httpCtx, MessagesApi.MessagesApiClient messagesClient,
-    string chatId, int type = 0, int offset = 0, int size = 20) =>
-{
-    var metadata = BuildAuthMetadata(httpCtx);
-    if (metadata == null) return Results.Json(new { error = "unauthorized" }, statusCode: 401);
-
-    try
-    {
-        var request = new ListChatAttachmentsRequest
-        {
-            ChatId = chatId,
-            Pagination = new PageRequest { Offset = offset, Size = Math.Min(size, 50) },
-            AttachmentType = (MessageAttachmentType)type,
-            SortDescending = true
-        };
-
-        var response = await messagesClient.ListChatAttachmentsAsync(request, new CallOptions(headers: metadata));
-
-        return Results.Ok(new
-        {
-            attachments = response.Attachments.Select(a => new
-            {
-                messageId = a.MessageId,
-                attachmentId = a.AttachmentId,
-                attachment = new
-                {
-                    id = a.Attachment.Id,
-                    type = a.Attachment.Type.ToString().ToUpperInvariant(),
-                    fileId = a.Attachment.FileId,
-                    previewUrl = a.Attachment.PreviewUrl,
-                    attachmentSize = a.Attachment.AttachmentSize,
-                    fileName = a.Attachment.FileName,
-                    previewFileId = a.Attachment.PreviewFileId
-                },
-                sentAt = a.SentAt?.ToDateTimeOffset().ToUnixTimeMilliseconds(),
-                senderId = a.SenderId
-            }),
-            totalCount = response.TotalCount
-        });
-    }
-    catch (RpcException ex) { return HandleGrpcError(ex); }
-});
-
-// ========== USERS ENDPOINTS ==========
-
-// GET /api/users/{userId}
-app.MapGet("/api/users/{userId:long}", async (HttpContext httpCtx, UsersApi.UsersApiClient usersClient, long userId) =>
-{
-    var metadata = BuildAuthMetadata(httpCtx);
-    if (metadata == null) return Results.Json(new { error = "unauthorized" }, statusCode: 401);
-
-    try
-    {
-        var response = await usersClient.GetUserAsync(
-            new GetUserRequest { UserId = userId },
-            new CallOptions(headers: metadata));
-
-        return Results.Ok(new { user = MapUser(response.User) });
-    }
-    catch (RpcException ex) { return HandleGrpcError(ex); }
-});
-
-// GET /api/users/search?query=X&offset=0&size=20
-app.MapGet("/api/users/search", async (HttpContext httpCtx, UsersApi.UsersApiClient usersClient,
-    string query = "", int offset = 0, int size = 20) =>
-{
-    var metadata = BuildAuthMetadata(httpCtx);
-    if (metadata == null) return Results.Json(new { error = "unauthorized" }, statusCode: 401);
-
-    try
-    {
-        var response = await usersClient.SearchUsersAsync(
-            new SearchUsersRequest
-            {
-                Query = query,
-                Pagination = new PageRequest { Offset = offset, Size = Math.Min(size, 50) }
-            },
-            new CallOptions(headers: metadata));
-
-        return Results.Ok(new
-        {
-            users = response.Users.Select(u => MapUser(u)),
-            totalCount = response.TotalCount
-        });
-    }
-    catch (RpcException ex) { return HandleGrpcError(ex); }
-});
-
-// ========== FILES ENDPOINTS ==========
-
-// GET /api/files/download-urls?fileIds=X,Y
-app.MapGet("/api/files/download-urls", async (HttpContext httpCtx, FilesApi.FilesApiClient filesClient, string fileIds = "") =>
-{
-    var metadata = BuildAuthMetadata(httpCtx);
-    if (metadata == null) return Results.Json(new { error = "unauthorized" }, statusCode: 401);
-
-    var ids = fileIds.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-    if (ids.Length == 0) return Results.BadRequest(new { error = "missing_file_ids" });
-
-    var request = new GetTempDownloadUrlRequest();
-    request.FileIds.AddRange(ids);
-
-    try
-    {
-        var response = await filesClient.GetTempDownloadUrlAsync(request, new CallOptions(headers: metadata));
-
-        return Results.Ok(new
-        {
-            files = response.FileUrls.Select(f => new
-            {
-                fileId = f.FileId,
-                url = f.Url,
-                previewUrl = f.PreviewUrl
-            })
-        });
-    }
-    catch (RpcException ex) { return HandleGrpcError(ex); }
-});
-
-// GET /api/files/upload-url?fileType=2
-app.MapGet("/api/files/upload-url", async (HttpContext httpCtx, FilesApi.FilesApiClient filesClient, int fileType = 0) =>
-{
-    var metadata = BuildAuthMetadata(httpCtx);
-    if (metadata == null) return Results.Json(new { error = "unauthorized" }, statusCode: 401);
-
-    try
-    {
-        var response = await filesClient.GetUploadUrlAsync(
-            new GetUploadUrlRequest { FileType = (UploadFileType)fileType },
-            new CallOptions(headers: metadata));
-
-        return Results.Ok(new { url = response.Url, fileId = response.FileId });
-    }
-    catch (RpcException ex) { return HandleGrpcError(ex); }
-});
-
-// POST /api/files/upload/{fileId} — проксирует загрузку файла к Files сервису
-app.MapPost("/api/files/upload/{fileId}", async (HttpContext httpCtx, IConfiguration config, string fileId) =>
-{
-    var metadata = BuildAuthMetadata(httpCtx);
-    if (metadata == null) return Results.Json(new { error = "unauthorized" }, statusCode: 401);
-
-    try
-    {
-        var form = await httpCtx.Request.ReadFormAsync();
-        var file = form.Files.FirstOrDefault();
-        if (file == null) return Results.BadRequest(new { error = "no_file" });
-
-        var filesHost = config["FilesService:Host"] ?? "http://files:7005";
-
-        using var httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
-        using var content = new MultipartFormDataContent();
-        await using var fileStream = file.OpenReadStream();
-        var streamContent = new StreamContent(fileStream);
-        streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType ?? "application/octet-stream");
-        content.Add(streamContent, "file", file.FileName ?? "upload");
-
-        var response = await httpClient.PostAsync($"{filesHost}/upload/{fileId}", content);
-        var result = await response.Content.ReadAsStringAsync();
-
-        return Results.Content(result, "application/json", statusCode: (int)response.StatusCode);
-    }
-    catch (Exception ex)
-    {
-        var logger = httpCtx.RequestServices.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Ошибка загрузки файла {FileId}", fileId);
-        return Results.Json(new { error = "upload_failed" }, statusCode: 500);
-    }
-}).DisableAntiforgery();
-
-// ========== ONLINE ENDPOINTS ==========
-
-// POST /api/online/ping
-app.MapPost("/api/online/ping", async (HttpContext httpCtx, OnlinerApi.OnlinerApiClient onlinerClient) =>
-{
-    var metadata = BuildAuthMetadata(httpCtx);
-    if (metadata == null) return Results.Json(new { error = "unauthorized" }, statusCode: 401);
-
-    try
-    {
-        await onlinerClient.SetOnlineStatusAsync(new SetOnlineStatusRequest(), new CallOptions(headers: metadata));
-        return Results.Ok(new { ok = true });
-    }
-    catch (RpcException ex) { return HandleGrpcError(ex); }
-});
-
-// GET /api/online/status?userIds=1,2
-app.MapGet("/api/online/status", async (HttpContext httpCtx, OnlinerApi.OnlinerApiClient onlinerClient, string userIds = "") =>
-{
-    var metadata = BuildAuthMetadata(httpCtx);
-    if (metadata == null) return Results.Json(new { error = "unauthorized" }, statusCode: 401);
-
-    var ids = userIds.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-    var request = new GetOnlineStatusRequest();
-    foreach (var id in ids)
-        if (long.TryParse(id, out var uid))
-            request.UserIds.Add(uid);
-
-    try
-    {
-        var response = await onlinerClient.GetOnlineStatusAsync(request, new CallOptions(headers: metadata));
-        return Results.Ok(new
-        {
-            statuses = response.UsersStatuses.Select(s => new
-            {
-                userId = s.UserId,
-                status = s.Status.ToString().ToUpperInvariant(),
-                lastSeen = s.LastSeen?.ToDateTimeOffset().ToUnixTimeMilliseconds()
-            })
-        });
-    }
-    catch (RpcException ex) { return HandleGrpcError(ex); }
-});
-
-// ========== SSE ENDPOINTS ==========
-
-// GET /api/sse/updates?token=X
-app.MapGet("/api/sse/updates", async (HttpContext httpCtx, UpdatesApi.UpdatesApiClient updatesClient, string token = "") =>
-{
-    if (string.IsNullOrEmpty(token))
-    {
-        httpCtx.Response.StatusCode = 401;
-        return;
-    }
-
-    httpCtx.Response.ContentType = "text/event-stream";
-    httpCtx.Response.Headers.CacheControl = "no-cache";
-    httpCtx.Response.Headers.Connection = "keep-alive";
-
-    var metadata = BuildAuthMetadataFromToken(httpCtx, token);
-    var ct = httpCtx.RequestAborted;
-    var semaphore = new SemaphoreSlim(1, 1);
-
-    async Task WriteSseEvent(string eventType, object data)
-    {
-        var json = JsonSerializer.Serialize(data, JsonOpts);
-        await semaphore.WaitAsync(ct);
-        try
-        {
-            await httpCtx.Response.WriteAsync($"event: {eventType}\ndata: {json}\n\n", ct);
-            await httpCtx.Response.Body.FlushAsync(ct);
-        }
-        finally { semaphore.Release(); }
-    }
-
-    var task1 = Task.Run(async () =>
-    {
-        while (!ct.IsCancellationRequested)
-        {
-            try
-            {
-                var stream = updatesClient.SubscribeNewMessages(
-                    new SubscribeNewMessagesRequest(), new CallOptions(headers: metadata, cancellationToken: ct));
-                await foreach (var evt in stream.ResponseStream.ReadAllAsync(ct))
-                {
-                    await WriteSseEvent("new_message", new
-                    {
-                        chatId = evt.ChatId,
-                        message = MapMessage(evt.Message)
-                    });
-                }
-            }
-            catch (OperationCanceledException) { break; }
-            catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled) { break; }
-            catch { await Task.Delay(3000, ct); }
-        }
-    }, ct);
-
-    var task2 = Task.Run(async () =>
-    {
-        while (!ct.IsCancellationRequested)
-        {
-            try
-            {
-                var stream = updatesClient.SubscribeMessagesRead(
-                    new SubscribeMessagesReadRequest(), new CallOptions(headers: metadata, cancellationToken: ct));
-                await foreach (var evt in stream.ResponseStream.ReadAllAsync(ct))
-                {
-                    await WriteSseEvent("message_read", new
-                    {
-                        chatId = evt.ChatId,
-                        messageId = evt.MessageId,
-                        readBy = evt.NewReadBy.ToList()
-                    });
-                }
-            }
-            catch (OperationCanceledException) { break; }
-            catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled) { break; }
-            catch { await Task.Delay(3000, ct); }
-        }
-    }, ct);
-
-    await Task.WhenAll(task1, task2);
-});
-
-// GET /api/sse/online?userIds=1,2&token=X
-app.MapGet("/api/sse/online", async (HttpContext httpCtx, OnlinerApi.OnlinerApiClient onlinerClient, string token = "", string userIds = "") =>
-{
-    if (string.IsNullOrEmpty(token))
-    {
-        httpCtx.Response.StatusCode = 401;
-        return;
-    }
-
-    httpCtx.Response.ContentType = "text/event-stream";
-    httpCtx.Response.Headers.CacheControl = "no-cache";
-    httpCtx.Response.Headers.Connection = "keep-alive";
-
-    var metadata = BuildAuthMetadataFromToken(httpCtx, token);
-    var ct = httpCtx.RequestAborted;
-
-    var request = new SubscribeToOnlineStatusRequest();
-    foreach (var id in userIds.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-        if (long.TryParse(id, out var uid))
-            request.UserIds.Add(uid);
-
-    var stream = onlinerClient.SubscribeToOnlineStatus(request, new CallOptions(headers: metadata, cancellationToken: ct));
-
-    try
-    {
-        await foreach (var evt in stream.ResponseStream.ReadAllAsync(ct))
-        {
-            var json = JsonSerializer.Serialize(new
-            {
-                userId = evt.UserId,
-                status = evt.Status.ToString().ToUpperInvariant(),
-                lastSeen = evt.LastSeen?.ToDateTimeOffset().ToUnixTimeMilliseconds()
-            }, JsonOpts);
-
-            await httpCtx.Response.WriteAsync($"event: online_status\ndata: {json}\n\n", ct);
-            await httpCtx.Response.Body.FlushAsync(ct);
-        }
-    }
-    catch (OperationCanceledException) { }
-    catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled) { }
-});
 
 app.MapGet("/messenger", (IWebHostEnvironment env) =>
     Results.File(Path.Combine(env.WebRootPath, "messenger.html"), "text/html"));
+
+app.MapReverseProxy();
 
 app.MapFallbackToFile("index.html");
 
 app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
 app.Run();
 
-// --- Утилиты ---
+// --- YARP routes / clusters ---
 
-static Metadata BuildMetadata(HttpContext ctx, string? deviceId, string? browserName, string? osName)
+static IReadOnlyList<RouteConfig> BuildRoutes()
 {
-    var ip = ctx.Request.Headers["X-Forwarded-For"].FirstOrDefault()
-             ?? ctx.Request.Headers["X-Real-IP"].FirstOrDefault()
-             ?? ctx.Connection.RemoteIpAddress?.ToString()
-             ?? "unknown";
-
-    return new Metadata
+    // Полные имена gRPC-сервисов из *_api.proto (package + service).
+    (string route, string cluster, string path)[] grpcRoutes =
     {
-        { "x-device-id", ToBase64(deviceId ?? Guid.NewGuid().ToString()) },
-        { "x-device-name", ToBase64(browserName ?? "Неизвестно") },
-        { "x-os-name", ToBase64(osName ?? "Неизвестно") },
-        { "x-app-name", ToBase64("BarkFluff Web") },
-        { "x-app-version", ToBase64("1.0.0") },
-        { "x-ip-address", ToBase64(ip) },
+        ("identity",  "identity",  "/barkfluff.identity.IdentityApi/{**catchall}"),
+        ("users",     "users",     "/barkfluff.users.UsersApi/{**catchall}"),
+        ("messages",  "messages",  "/barkfluff.messages.MessagesApi/{**catchall}"),
+        ("files",     "files",     "/barkfluff.files.FilesApi/{**catchall}"),
+        ("updates",   "updates",   "/barkfluff.updates.UpdatesApi/{**catchall}"),
+        ("onliner",   "onliner",   "/barkfluff.onliner.OnlinerApi/{**catchall}"),
     };
-}
 
-static Metadata? BuildAuthMetadata(HttpContext ctx)
-{
-    var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
-    if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
-        return null;
-
-    var token = authHeader["Bearer ".Length..];
-    return BuildAuthMetadataFromToken(ctx, token);
-}
-
-static Metadata BuildAuthMetadataFromToken(HttpContext ctx, string token)
-{
-    var ip = ctx.Request.Headers["X-Forwarded-For"].FirstOrDefault()
-             ?? ctx.Request.Headers["X-Real-IP"].FirstOrDefault()
-             ?? ctx.Connection.RemoteIpAddress?.ToString()
-             ?? "unknown";
-
-    var deviceId = ctx.Request.Headers["X-Device-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString();
-    var browserName = ctx.Request.Headers["X-Browser-Name"].FirstOrDefault() ?? "Неизвестно";
-    var osName = ctx.Request.Headers["X-Os-Name"].FirstOrDefault() ?? "Неизвестно";
-
-    return new Metadata
+    var routes = new List<RouteConfig>();
+    foreach (var (name, cluster, path) in grpcRoutes)
     {
-        { "x-auth-token", token },
-        { "x-device-id", ToBase64(deviceId) },
-        { "x-device-name", ToBase64(browserName) },
-        { "x-os-name", ToBase64(osName) },
-        { "x-app-name", ToBase64("BarkFluff Web") },
-        { "x-app-version", ToBase64("1.0.0") },
-        { "x-ip-address", ToBase64(ip) },
-    };
-}
-
-static IResult HandleGrpcError(RpcException ex)
-{
-    return ex.StatusCode switch
-    {
-        StatusCode.Unauthenticated => Results.Json(new { error = "unauthorized" }, statusCode: 401),
-        StatusCode.PermissionDenied => Results.Json(new { error = "forbidden" }, statusCode: 403),
-        StatusCode.NotFound => Results.Json(new { error = "not_found" }, statusCode: 404),
-        _ => Results.Json(new { error = "server_error", detail = ex.Status.Detail }, statusCode: 500)
-    };
-}
-
-static string ToBase64(string value) =>
-    Convert.ToBase64String(Encoding.UTF8.GetBytes(value));
-
-// --- Маппинг gRPC → JSON ---
-
-static object MapChat(Chat c) => new
-{
-    id = c.Id,
-    title = c.Title,
-    picture = c.Picture,
-    isGroupChat = c.IsGroupChat,
-    lastMessage = c.LastMessage != null ? MapMessage(c.LastMessage) : null,
-    members = c.Members.Select(m => new { userId = m.UserId }),
-    countUnread = c.CountUnread,
-    firstUnreadMessageId = c.FirstUnreadMessageId
-};
-
-static object MapMessage(Message m) => new
-{
-    id = m.Id,
-    senderId = m.SenderId,
-    readBy = m.ReadBy.ToList(),
-    sentAt = m.SentAt?.ToDateTimeOffset().ToUnixTimeMilliseconds(),
-    type = m.Type.ToString().ToUpperInvariant(),
-    content = new
-    {
-        text = m.Content?.Text ?? "",
-        attachments = m.Content?.Attachments.Select(a => new
+        routes.Add(new RouteConfig
         {
-            id = a.Id,
-            type = a.Type.ToString().ToUpperInvariant(),
-            fileId = a.FileId,
-            previewUrl = a.PreviewUrl,
-            attachmentSize = a.AttachmentSize,
-            previewFileId = a.PreviewFileId,
-            fileName = a.FileName
-        }) ?? Enumerable.Empty<object>()
+            RouteId = $"grpc-{name}",
+            ClusterId = cluster,
+            Match = new RouteMatch { Path = path }
+        });
     }
-};
 
-static object MapUser(User u) => new
-{
-    id = u.Id,
-    firstName = u.FirstName,
-    lastName = u.LastName,
-    username = u.Username,
-    profilePicture = u.ProfilePicture,
-    profilePicturePreview = u.ProfilePicturePreview,
-    bio = u.Bio,
-    registrationDate = u.RegistrationDate?.ToDateTimeOffset().ToUnixTimeMilliseconds(),
-    badges = u.Badges.Select(b => new
+    // HTTP upload — client-streaming недоступен в gRPC-Web, поэтому используем прямой HTTP POST.
+    routes.Add(new RouteConfig
     {
-        name = b.Badge?.Name,
-        imageUrl = b.Badge?.ImageUrl,
-        priority = b.Priority
-    })
-};
+        RouteId = "files-http-upload",
+        ClusterId = "files-http",
+        Match = new RouteMatch
+        {
+            Path = "/api/files/upload/{uploadId}",
+            Methods = new[] { "POST" }
+        },
+        Transforms = new[]
+        {
+            new Dictionary<string, string> { { "PathPattern", "/upload/{uploadId}" } }
+        }
+    });
 
-// --- DTO ---
+    return routes;
+}
 
-record LoginRequest(string? Login, string? Password, string? OtpCode, string? DeviceId, string? BrowserName, string? OsName);
-record RefreshRequest(string? RefreshToken);
-record SendMessageRequest(string? ChatId, long? UserId, string? Text, List<string>? FileIds);
-record MarkAsReadRequest(List<long>? MessageIds);
-
-class TokenResponse
+static IReadOnlyList<ClusterConfig> BuildClusters(IConfiguration config)
 {
-    public string AccessToken { get; init; } = "";
-    public long AccessTokenExpiration { get; init; }
-    public string RefreshToken { get; init; } = "";
-    public long RefreshTokenExpiration { get; init; }
+    // HTTP/2 (h2c) cluster для gRPC-вызовов — сервисы слушают gRPC на основном порту.
+    (string clusterId, string configKey, string defaultHost)[] grpcClusters =
+    {
+        ("identity",  "IdentityService:Host",  "http://identity:7000"),
+        ("users",     "UsersService:Host",     "http://users:7001"),
+        ("messages",  "MessagesService:Host",  "http://messages:7007"),
+        ("files",     "FilesService:Host",     "http://files:7005"),
+        ("updates",   "UpdatesService:Host",   "http://updates:7015"),
+        ("onliner",   "OnlinerService:Host",   "http://onliner:7009"),
+    };
+
+    var clusters = new List<ClusterConfig>();
+    foreach (var (clusterId, configKey, defaultHost) in grpcClusters)
+    {
+        var host = config[configKey] ?? defaultHost;
+        clusters.Add(new ClusterConfig
+        {
+            ClusterId = clusterId,
+            HttpRequest = new Yarp.ReverseProxy.Forwarder.ForwarderRequestConfig
+            {
+                Version = new Version(2, 0),
+                VersionPolicy = System.Net.Http.HttpVersionPolicy.RequestVersionExact
+            },
+            Destinations = new Dictionary<string, DestinationConfig>
+            {
+                [$"{clusterId}-1"] = new DestinationConfig { Address = host }
+            }
+        });
+    }
+
+    // Отдельный HTTP/1.1 cluster для файлового upload (обычный REST POST).
+    var filesHttpHost = config["FilesService:HttpHost"]
+                        ?? config["FilesService:Host"]
+                        ?? "http://files:7005";
+    clusters.Add(new ClusterConfig
+    {
+        ClusterId = "files-http",
+        Destinations = new Dictionary<string, DestinationConfig>
+        {
+            ["files-http-1"] = new DestinationConfig { Address = filesHttpHost }
+        }
+    });
+
+    return clusters;
 }
