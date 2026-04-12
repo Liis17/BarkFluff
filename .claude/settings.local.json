@@ -37,7 +37,10 @@
       "mcp__figma__get_metadata",
       "mcp__figma__use_figma",
       "Bash(awk 'NR>=782 && NR<=1193' \"K:/source/BarkFluff/Windows/BarkFluff.Client.WPF/Pages/MessengerPage.xaml.cs\")",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(head -n 1110 messenger.html)",
+      "Bash(tail -n +2562 messenger.html)",
+      "Bash(mv messenger_new.html messenger.html)"
     ],
     "deny": [],
     "ask": []
