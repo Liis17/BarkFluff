@@ -57,8 +57,8 @@ docker-compose -f docker-compose-dev.yml up web
 - `api.js` — BF.api: высокоуровневые обёртки (listChats, sendMessage и др.)
 - `files.js` — BF.files: кэш URL файлов, upload
 - `messages.js` — BF.messages: рендеринг пузырей, вложений, аудиоплеер
-- `realtime.js` — BF.realtime: server-streaming подписки (new_message, message_read, online_status)
-- `main.js` — bootstrap мессенджера: чаты, сообщения, поиск, профиль
+- `realtime.js` — BF.realtime: server-streaming подписки (new_message, message_read, online_status, connection_status, tab_visible)
+- `main.js` — bootstrap мессенджера: чаты, сообщения, поиск, профиль, title-badge, browser-notifications
 
 **Proto bundle** (`wwwroot/js/proto/barkfluff.bundle.js`):
 - Генерируется скриптом `scripts/generate-proto.ps1` (или `.sh`)
@@ -71,6 +71,35 @@ docker-compose -f docker-compose-dev.yml up web
 - `x-auth-token` — JWT (plain text), остальные заголовки — base64-encoded
 - Server-streaming (Updates, Onliner) использует режим `grpcwebtext`
 - Login через отдельный IdentityApiClient без auth interceptor
+
+## Real-time Subscriptions
+
+Реалтайм обновления реализованы в `realtime.js` (BF.realtime) + обработчики в `main.js`.
+
+**Потоки (server-streaming):**
+| Stream | Service | RPC | Назначение |
+|--------|---------|-----|------------|
+| updatesStream | UpdatesApi | SubscribeNewMessages | Новые сообщения во всех чатах |
+| readStream | UpdatesApi | SubscribeMessagesRead | Статусы прочтения (readBy) |
+| onlineStream | OnlinerApi | SubscribeToOnlineStatus | Онлайн/оффлайн пользователей |
+
+**События (BF.realtime.on):**
+| Событие | Данные | Обработчик в main.js |
+|---------|--------|---------------------|
+| `new_message` | `{ chatId, message }` | handleNewMessage — добавляет в чат, переносит чат наверх, обновляет badge, показывает Notification |
+| `message_read` | `{ chatId, messageId, readBy }` | handleMessageRead — обновляет ✓/✓✓, пересчитывает unread, обновляет title-badge |
+| `online_status` | `{ userId, status, lastSeen }` | handleOnlineStatus — обновляет online-dot и статус в шапке чата |
+| `connection_status` | `{ connected }` | Показывает/скрывает баннер «Подключение к серверу...» |
+| `tab_visible` | `{}` | Перезагружает список чатов для синхронизации пропущенных обновлений |
+
+**Механизмы:**
+- Exponential backoff (2 с → 30 с) при переподключении каждого потока
+- Page-visibility reconnection — при возврате в вкладку восстанавливает потоки и обновляет токен
+- Keep-alive ping (SetOnlineStatus каждые 30 с)
+- Tab title badge — `(N) BarkFluff — Мессенджер` с суммой непрочитанных
+- Browser Notification API — уведомление для сообщений от других пользователей когда чат не активен или вкладка не в фокусе
+- Scroll-based mark-as-read — видимые сообщения автоматически отмечаются прочитанными при прокрутке
+- ChangeUsersInSubscription — динамическое обновление списка подписки на онлайн-статусы без переоткрытия потока
 
 ## Dependencies
 
