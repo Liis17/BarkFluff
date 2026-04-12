@@ -16,16 +16,15 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Нижняя навигация (компактный плавающий стиль) -->
+    <!-- Нижняя навигация (компактный плавающий стиль, 2 элемента) -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/bottomNavCard"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="24dp"
-        android:layout_marginEnd="24dp"
-        android:layout_marginBottom="16dp"
+        android:layout_marginBottom="12dp"
+        app:layout_constraintWidth_max="180dp"
         app:cardBackgroundColor="?attr/colorSurfaceContainerHighest"
-        app:cardCornerRadius="16dp"
+        app:cardCornerRadius="28dp"
         app:cardElevation="0dp"
         app:strokeWidth="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -37,6 +36,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@android:color/transparent"
+            android:paddingStart="0dp"
+            android:paddingEnd="0dp"
             app:itemActiveIndicatorStyle="@style/BottomNav.ActiveIndicator.Compact"
             app:itemHorizontalTranslationEnabled="false"
             app:itemIconTint="@color/bottom_nav_item_color"
