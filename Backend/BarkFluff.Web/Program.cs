@@ -1,7 +1,10 @@
+using System.Text;
+
 using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Shared.Identity;
 
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 
 using Serilog;
@@ -74,9 +77,107 @@ app.Use(async (ctx, next) =>
 
 app.UseCors();
 
-// gRPC-Web: transparently переупаковывает входящий HTTP/1.1 gRPC-Web в gRPC,
-// чтобы YARP мог форвардить как HTTP/2 gRPC во внутреннюю сеть.
-app.UseGrpcWeb(new GrpcWebOptions { DefaultEnabled = true });
+// gRPC-Web ↔ gRPC конвертация для YARP.
+//
+// Браузер отправляет application/grpc-web-text (base64, HTTP/1.1).
+// YARP форвардит как application/grpc (бинарный, HTTP/2) в бэкенд-сервисы.
+//
+// Grpc.AspNetCore.Web не работает с YARP: middleware не декодирует тело запроса,
+// поэтому реализуем конвертацию вручную.
+//
+// Запрос: base64-декодируем тело, меняем Content-Type на application/grpc.
+// Ответ: буферизуем тело, строим trailer-frame из gRPC-трейлеров,
+//         конкатенируем DATA-фреймы + trailer-frame, base64-кодируем.
+app.Use(async (ctx, next) =>
+{
+    var ct = ctx.Request.ContentType ?? "";
+    var isGrpcWebText = ct.StartsWith("application/grpc-web-text", StringComparison.OrdinalIgnoreCase);
+    var isGrpcWeb = isGrpcWebText || ct.StartsWith("application/grpc-web", StringComparison.OrdinalIgnoreCase);
+
+    if (!isGrpcWeb)
+    {
+        await next();
+        return;
+    }
+
+    // --- ЗАПРОС: декодируем base64 тело ---
+    if (isGrpcWebText)
+    {
+        using var reqMs = new MemoryStream();
+        await ctx.Request.Body.CopyToAsync(reqMs);
+        var b64 = Encoding.ASCII.GetString(reqMs.ToArray()).TrimEnd();
+        // Дополняем padding до кратности 4
+        if (b64.Length % 4 != 0)
+            b64 += new string('=', 4 - b64.Length % 4);
+        var decoded = Convert.FromBase64String(b64);
+        ctx.Request.Body = new MemoryStream(decoded);
+        ctx.Request.ContentLength = decoded.Length;
+    }
+    ctx.Request.ContentType = "application/grpc";
+
+    // --- ОТВЕТ: буферизуем тело и перехватываем заголовки ---
+    var originalResponseBody = ctx.Response.Body;
+    var respBuffer = new MemoryStream();
+    ctx.Response.Body = respBuffer;
+
+    // Перехватываем grpc-трейлеры, которые YARP продвигает в заголовки ответа
+    // (происходит для trailers-only ошибочных ответов gRPC).
+    var promotedTrailers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    ctx.Response.OnStarting(() =>
+    {
+        foreach (var key in new[] { "grpc-status", "grpc-message", "grpc-status-details-bin", "x-error-code" })
+        {
+            if (ctx.Response.Headers.TryGetValue(key, out var val))
+            {
+                promotedTrailers[key] = val.ToString();
+                ctx.Response.Headers.Remove(key);
+            }
+        }
+        ctx.Response.Headers["Content-Type"] = isGrpcWebText
+            ? "application/grpc-web-text+proto"
+            : "application/grpc-web+proto";
+        ctx.Response.Headers.Remove("Content-Length");
+        return Task.CompletedTask;
+    });
+
+    await next();
+
+    ctx.Response.Body = originalResponseBody;
+
+    // Собираем трейлеры: из IHttpResponseTrailersFeature (для успешных ответов)
+    // и из перехваченных заголовков (для ошибочных trailers-only ответов).
+    var trailerHeaders = new Dictionary<string, string>(promotedTrailers, StringComparer.OrdinalIgnoreCase);
+    var trailerFeature = ctx.Features.Get<IHttpResponseTrailersFeature>();
+    if (trailerFeature?.Trailers != null)
+    {
+        foreach (var kvp in trailerFeature.Trailers)
+            trailerHeaders[kvp.Key.ToString()] = kvp.Value.ToString();
+    }
+
+    // Строим gRPC-Web trailer-frame: 0x80 | 4-byte-big-endian-len | header-bytes
+    var trailerSb = new StringBuilder();
+    foreach (var (k, v) in trailerHeaders)
+        trailerSb.Append(k).Append(": ").Append(v).Append("\r\n");
+    var trailerData = Encoding.UTF8.GetBytes(trailerSb.ToString());
+    var trailerFrame = new byte[5 + trailerData.Length];
+    trailerFrame[0] = 0x80;
+    var lenBuf = BitConverter.GetBytes((uint)trailerData.Length);
+    if (BitConverter.IsLittleEndian) Array.Reverse(lenBuf);
+    lenBuf.CopyTo(trailerFrame, 1);
+    trailerData.CopyTo(trailerFrame, 5);
+
+    // Конкатенируем DATA-фреймы + trailer-frame, затем base64-кодируем
+    var respBytes = respBuffer.ToArray();
+    var combined = new byte[respBytes.Length + trailerFrame.Length];
+    respBytes.CopyTo(combined, 0);
+    trailerFrame.CopyTo(combined, respBytes.Length);
+
+    var payload = isGrpcWebText
+        ? Encoding.ASCII.GetBytes(Convert.ToBase64String(combined))
+        : combined;
+
+    await originalResponseBody.WriteAsync(payload);
+});
 
 app.UseStaticFiles();
 
