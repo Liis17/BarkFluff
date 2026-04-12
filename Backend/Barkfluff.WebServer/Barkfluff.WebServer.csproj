@@ -12,6 +12,7 @@
     <None Remove="files\barkfluff.windows.png" />
     <None Remove="files\favicon.ico" />
     <None Remove="files\install.ps1" />
+    <None Remove="files\linkpreview.png" />
     <None Remove="html\legal\account-deletion.html" />
     <None Remove="html\legal\ACCOUNT_DELETION.md" />
     <None Remove="html\legal\encryption.html" />
@@ -30,6 +31,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="files\install.ps1">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="files\linkpreview.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="html\barkfluff.html">
