@@ -75,13 +75,8 @@
         }
 
         @keyframes float {
-            0% {
-                transform: translate(0, 0);
-            }
-
-            100% {
-                transform: translate(40px, -40px);
-            }
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(40px, -40px); }
         }
 
         .container {
@@ -93,7 +88,7 @@
             border-radius: 32px;
             text-align: center;
             width: 90%;
-            max-width: 440px;
+            max-width: 480px;
             box-shadow: 0 30px 60px -15px rgba(0,0,0,0.6);
             animation: fadeIn 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
             display: flex;
@@ -102,15 +97,8 @@
         }
 
         @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .header h1 {
@@ -129,54 +117,108 @@
             font-weight: 500;
         }
 
+        /* Platform tabs */
+        .platform-tabs {
+            display: flex;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--card-border);
+            border-radius: 0 0 14px 14px;
+            border-top: none;
+            padding: 4px;
+        }
+
+        .preview-with-tabs {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .platform-tab {
+            flex: 1;
+            padding: 9px 12px;
+            background: transparent;
+            border: none;
+            border-radius: 10px;
+            color: var(--text-sub);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .platform-tab:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .platform-tab.active {
+            background: linear-gradient(135deg, #e7842f, #c0601a);
+            color: white;
+            box-shadow: 0 4px 12px rgba(218, 116, 46, 0.35);
+        }
+
+        .platform-tab svg {
+            width: 15px;
+            height: 15px;
+            fill: currentColor;
+            flex-shrink: 0;
+        }
+
+        /* Preview image */
+        .platform-preview-wrap {
+            border-radius: 16px 16px 0 0;
+            overflow: hidden;
+            border: 1px solid var(--card-border);
+            border-bottom: none;
+            background: rgba(0,0,0,0.25);
+            line-height: 0;
+            position: relative;
+            height: 260px;
+        }
+
+        .platform-preview {
+            width: 100%;
+            height: 260px;
+            object-fit: cover;
+            object-position: top;
+            display: block;
+            transition: opacity 0.25s;
+        }
+
+        .platform-preview.fading {
+            opacity: 0;
+        }
+
+        .platform-preview-fade {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 30px;
+            background: linear-gradient(to bottom, transparent, #1e0e08);
+            pointer-events: none;
+        }
+
+        /* Platform sections */
+        .platform-section {
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .platform-section.active {
+            display: flex;
+        }
+
+        /* Buttons */
         .btn-group {
             display: flex;
             flex-direction: row;
             gap: 12px;
-        }
-
-        .btn-main {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 14px;
-            padding: 14px;
-            background: linear-gradient(135deg, #e7842f, #c0601a);
-            color: white;
-            text-decoration: none;
-            border-radius: 14px;
-            box-shadow: 0 8px 25px rgba(218, 116, 46, 0.4);
-            transition: transform 0.2s, box-shadow 0.2s;
-            border: none;
-        }
-
-            .btn-main:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 12px 30px rgba(218, 116, 46, 0.6);
-            }
-
-        .btn-text {
-            text-align: left;
-            line-height: 1.2;
-        }
-
-        .btn-small {
-            font-size: 10px;
-            opacity: 0.8;
-            text-transform: uppercase;
-            display: block;
-        }
-
-        .btn-big {
-            font-size: 16px;
-            font-weight: 700;
-            display: block;
-        }
-
-        .win-icon {
-            width: 24px;
-            height: 24px;
-            fill: white;
         }
 
         .btn-secondary {
@@ -193,12 +235,32 @@
             text-align: center;
         }
 
-            .btn-secondary:hover {
-                background: rgba(255,255,255,0.1);
-                color: white;
-                border-color: rgba(255,255,255,0.3);
-            }
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border-color: rgba(255,255,255,0.3);
+        }
 
+        .btn-primary-full {
+            display: block;
+            padding: 14px;
+            background: linear-gradient(135deg, #e7842f, #c0601a);
+            color: white;
+            text-decoration: none;
+            border-radius: 14px;
+            font-size: 15px;
+            font-weight: 700;
+            text-align: center;
+            box-shadow: 0 8px 25px rgba(218, 116, 46, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-primary-full:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(218, 116, 46, 0.6);
+        }
+
+        /* CLI section */
         .cli-section {
             text-align: left;
         }
@@ -224,9 +286,9 @@
             transition: border-color 0.2s;
         }
 
-            .code-box:hover {
-                border-color: rgba(255,255,255,0.3);
-            }
+        .code-box:hover {
+            border-color: rgba(255,255,255,0.3);
+        }
 
         .code-text {
             font-family: 'JetBrains Mono', monospace;
@@ -260,16 +322,17 @@
             margin-right: 2px;
         }
 
-            .copy-btn:hover {
-                background: rgba(255,255,255,0.1);
-                color: white;
-            }
+        .copy-btn:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
 
-            .copy-btn svg {
-                width: 16px;
-                height: 16px;
-            }
+        .copy-btn svg {
+            width: 16px;
+            height: 16px;
+        }
 
+        /* Contacts */
         .contacts {
             display: flex;
             justify-content: center;
@@ -289,16 +352,15 @@
             transition: 0.2s;
         }
 
-            .contact-link:hover {
-                color: var(--primary);
-            }
+        .contact-link:hover {
+            color: var(--primary);
+        }
 
-
-            .contact-link svg {
-                width: 16px;
-                height: 16px;
-                fill: currentColor;
-            }
+        .contact-link svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
 
         /* Support Chat Widget */
         .chat-support-btn {
@@ -429,14 +491,8 @@
             gap: 8px;
         }
 
-        .chat-messages::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        .chat-messages::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
+        .chat-messages::-webkit-scrollbar { width: 4px; }
+        .chat-messages::-webkit-scrollbar-track { background: transparent; }
         .chat-messages::-webkit-scrollbar-thumb {
             background: rgba(255, 255, 255, 0.15);
             border-radius: 4px;
@@ -495,13 +551,8 @@
             transition: border-color 0.2s;
         }
 
-        .chat-input-area input:focus {
-            border-color: var(--primary);
-        }
-
-        .chat-input-area input::placeholder {
-            color: #475569;
-        }
+        .chat-input-area input:focus { border-color: var(--primary); }
+        .chat-input-area input::placeholder { color: #475569; }
 
         .chat-send-btn {
             width: 40px;
@@ -544,6 +595,9 @@
                 bottom: 16px;
                 right: 16px;
             }
+            .platform-tab span {
+                display: none;
+            }
         }
     </style>
 </head>
@@ -561,27 +615,71 @@
             <p>Работает. И. Слава Богу.</p>
         </div>
 
-        <div class="btn-group">
-            <a href="https://storage.barkfluff.com/get/barkfluffwindows" class="btn-secondary">
-                Portable релиз
-            </a>
+        <!-- Preview + tabs (склеены в одну группу) -->
+        <div class="preview-with-tabs">
+            <div class="platform-preview-wrap">
+                <img id="platformPreview" class="platform-preview" src="/assets/barkfluff.windows.png" alt="Превью Barkfluff" />
+                <div class="platform-preview-fade"></div>
+            </div>
 
-            <a href="https://storage.barkfluff.com/get/barkfluffwindows/beta" class="btn-secondary">
-                Portable бета
-            </a>
+            <!-- Platform selector -->
+            <div class="platform-tabs" role="tablist">
+            <button class="platform-tab active" onclick="selectPlatform('windows')" id="tab-windows" role="tab">
+                <svg viewBox="0 0 24 24"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.551H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+                <span>Windows</span>
+            </button>
+            <button class="platform-tab" onclick="selectPlatform('android')" id="tab-android" role="tab">
+                <svg viewBox="0 0 24 24"><path d="M17.523 15.341a.9.9 0 0 1-.9-.9.9.9 0 0 1 .9-.9.9.9 0 0 1 .9.9.9.9 0 0 1-.9.9m-11.046 0a.9.9 0 0 1-.9-.9.9.9 0 0 1 .9-.9.9.9 0 0 1 .9.9.9.9 0 0 1-.9.9m11.405-6.023 1.762-3.054a.366.366 0 0 0-.134-.5.366.366 0 0 0-.5.134l-1.786 3.095a11.05 11.05 0 0 0-4.224-.838c-1.518 0-2.96.302-4.224.838L7.03 5.898a.366.366 0 0 0-.5-.134.366.366 0 0 0-.134.5l1.762 3.054C5.098 10.73 3.27 13.394 3 16.5h18c-.27-3.106-2.098-5.77-5.118-7.182"/></svg>
+                <span>Android</span>
+            </button>
+            <button class="platform-tab" onclick="selectPlatform('web')" id="tab-web" role="tab">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 2c1.025 0 2.007.19 2.916.537-.057.15-.12.3-.19.447-.33.693-.734 1.356-1.19 1.974C13.128 7.31 12.586 7.5 12 7.5s-1.128-.19-1.536-.542c-.456-.618-.86-1.281-1.19-1.974-.07-.147-.133-.297-.19-.447A9.961 9.961 0 0 1 12 4zm-3.84.95c.07.165.143.329.222.49.394.826.875 1.601 1.42 2.31C9.197 8.37 8.49 9.12 7.997 10H4.27A8.016 8.016 0 0 1 8.16 4.95zm7.68 0A8.016 8.016 0 0 1 19.73 10h-3.727c-.493-.88-1.2-1.63-1.805-2.25.545-.709 1.026-1.484 1.42-2.31.079-.161.152-.325.222-.49zM4.07 12h3.93a13.21 13.21 0 0 0 0 2H4.07A8.1 8.1 0 0 1 4 12c0-.337.024-.668.07-.997V12zm5.93 0h4a11.21 11.21 0 0 1 0 2H10a11.21 11.21 0 0 1 0-2zm6 0h3.93c.046.329.07.66.07.997V12a8.1 8.1 0 0 1-.07 1.003H16a13.21 13.21 0 0 0 0-2zM4.27 14h3.727c.493.88 1.2 1.63 1.805 2.25-.545.709-1.026 1.484-1.42 2.31-.079.161-.152.325-.222.49A8.016 8.016 0 0 1 4.27 14zm5.727 0h4c-.408.352-.95.542-1.536.542h-.928c-.586 0-1.128-.19-1.536-.542zm.003 0c.33.693.734 1.356 1.19 1.974.408.352.95.542 1.536.542h-.464c-.586 0-1.128-.19-1.536-.542-.456-.618-.86-1.281-1.19-1.974H10zm5.727 0h3.727a8.016 8.016 0 0 1-3.89 5.05c-.07-.165-.143-.329-.222-.49-.394-.826-.875-1.601-1.42-2.31.605-.62 1.312-1.37 1.805-2.25zM9.084 18.037c.057.15.12.3.19.447.33.693.734 1.356 1.19 1.974.408.352.95.542 1.536.542s1.128-.19 1.536-.542c.456-.618.86-1.281 1.19-1.974.07-.147.133-.297.19-.447A9.961 9.961 0 0 1 12 20a9.961 9.961 0 0 1-2.916-.963z"/></svg>
+                <span>Веб</span>
+            </button>
+        </div>
+        </div><!-- /preview-with-tabs -->
+
+        <!-- Windows section -->
+        <div class="platform-section active" id="platform-windows">
+            <div class="btn-group">
+                <a href="https://storage.barkfluff.com/get/barkfluffwindows" class="btn-secondary">
+                    Portable релиз
+                </a>
+                <a href="https://storage.barkfluff.com/get/barkfluffwindows/beta" class="btn-secondary">
+                    Portable бета
+                </a>
+            </div>
+            <div class="cli-section">
+                <span class="cli-label">Установка через powershell</span>
+                <div class="code-box">
+                    <div class="code-text" id="cmd-text">
+                        <span class="prompt">$</span>powershell -ExecutionPolicy Bypass -Command "iwr https://barkfluff.com/install.ps1 -UseBasicParsing | iex"
+                    </div>
+                    <button class="copy-btn" onclick="copyCmd()" title="Скопировать">
+                        <svg id="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        <svg id="icon-check" style="display:none; color: #10b981;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    </button>
+                </div>
+            </div>
         </div>
 
-        <div class="cli-section">
-            <span class="cli-label">Установка через powershell</span>
-            <div class="code-box">
-                <div class="code-text" id="cmd-text">
-                    <span class="prompt">$</span>powershell -ExecutionPolicy Bypass -Command "iwr https://barkfluff.com/install.ps1 -UseBasicParsing | iex"
-                </div>
-                <button class="copy-btn" onclick="copyCmd()" title="Скопировать">
-                    <svg id="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                    <svg id="icon-check" style="display:none; color: #10b981;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </button>
+        <!-- Android section -->
+        <div class="platform-section" id="platform-android">
+            <div class="btn-group">
+                <a href="https://storage.barkfluff.com/get/barkfluffkotlin/release" class="btn-secondary">
+                    Скачать релиз
+                </a>
+                <a href="https://storage.barkfluff.com/get/barkfluffkotlin/beta" class="btn-secondary">
+                    Скачать бету
+                </a>
             </div>
+        </div>
+
+        <!-- Web section -->
+        <div class="platform-section" id="platform-web">
+            <a href="https://web.barkfluff.com" target="_blank" class="btn-primary-full">
+                Открыть веб-версию →
+            </a>
         </div>
 
         <div class="contacts">
@@ -594,8 +692,6 @@
                 Email
             </a>
         </div>
-
-
     </main>
 
     <!-- Support Chat Widget -->
@@ -621,6 +717,34 @@
             </button>
         </div>
     </div>
+
+    <script>
+        // Platform switcher
+        var previewSrcs = {
+            windows: '/assets/barkfluff.windows.png',
+            android: '/assets/barkfluff.android.jpg',
+            web:     '/assets/barkfluff.web.png'
+        };
+
+        function selectPlatform(platform) {
+            document.querySelectorAll('.platform-section').forEach(function(el) {
+                el.classList.remove('active');
+            });
+            document.querySelectorAll('.platform-tab').forEach(function(el) {
+                el.classList.remove('active');
+            });
+
+            document.getElementById('platform-' + platform).classList.add('active');
+            document.getElementById('tab-' + platform).classList.add('active');
+
+            var img = document.getElementById('platformPreview');
+            img.classList.add('fading');
+            setTimeout(function() {
+                img.src = previewSrcs[platform];
+                img.classList.remove('fading');
+            }, 150);
+        }
+    </script>
 
     <script>
         // Support Chat
