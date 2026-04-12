@@ -106,13 +106,21 @@ static IReadOnlyList<RouteConfig> BuildRoutes()
     };
 
     var routes = new List<RouteConfig>();
+    // Content-Length из оригинального grpcwebtext запроса (base64-размер) не соответствует
+    // размеру декодированного бинарного тела — убираем, чтобы не было HTTP/2 protocol error на бэкенде.
+    var grpcTransforms = new[]
+    {
+        new Dictionary<string, string> { { "RequestHeaderRemove", "Content-Length" } }
+    };
+
     foreach (var (name, cluster, path) in grpcRoutes)
     {
         routes.Add(new RouteConfig
         {
             RouteId = $"grpc-{name}",
             ClusterId = cluster,
-            Match = new RouteMatch { Path = path }
+            Match = new RouteMatch { Path = path },
+            Transforms = grpcTransforms
         });
     }
 
