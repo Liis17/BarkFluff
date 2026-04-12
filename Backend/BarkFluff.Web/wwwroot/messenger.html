@@ -208,13 +208,14 @@
             color: white;
             flex-shrink: 0;
             position: relative;
-            overflow: hidden;
+            overflow: visible;
         }
 
         .chat-avatar img {
             width: 100%;
             height: 100%;
             object-fit: cover;
+            border-radius: 50%;
         }
 
         .online-dot {
@@ -227,6 +228,7 @@
             border-radius: 50%;
             border: 2px solid #ffffff;
             display: none;
+            z-index: 1;
         }
 
         .online-dot.visible { display: block; }
