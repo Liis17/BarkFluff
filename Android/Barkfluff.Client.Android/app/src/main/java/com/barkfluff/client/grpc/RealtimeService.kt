@@ -189,6 +189,11 @@ class RealtimeService(private val context: Context, private val grpcManager: Grp
         client.subscribeMessagesRead(request).collect { event ->
             Log.v(TAG, "Message read: chatId=${event.chatId}, msgId=${event.messageId}")
             _messagesRead.emit(event)
+            // Если текущий пользователь в списке прочитавших — убираем уведомление из шторки
+            val uid = globalParam.userId
+            if (uid > 0 && event.newReadByList.contains(uid)) {
+                NotificationHelper.dismissForChat(context, event.chatId)
+            }
         }
     }
 
