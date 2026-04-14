@@ -40,6 +40,7 @@ class UpdateActivity : AppCompatActivity() {
     private var pendingDownloadChannel: String? = null
     private var downloadId: Long = -1
     private var downloadFileName: String? = null
+    private var installTriggered = false
 
     companion object {
         private const val TAG = "UpdateActivity"
@@ -228,6 +229,7 @@ class UpdateActivity : AppCompatActivity() {
         val url = UpdateChecker.getDownloadUrl(channel)
         val fileName = "barkfluff_${channel}_update.apk"
         downloadFileName = fileName
+        installTriggered = false
 
         // Удаляем старый файл если есть
         val file = File(
@@ -318,23 +320,58 @@ class UpdateActivity : AppCompatActivity() {
     }
 
     private fun installDownloadedApk() {
-        try {
-            val fileName = downloadFileName ?: return
-            val file = File(
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                fileName
-            )
+        // Защита от двойного вызова (корутина + BroadcastReceiver)
+        if (installTriggered) return
+        installTriggered = true
 
-            if (!file.exists()) {
-                Log.e(TAG, "Downloaded APK not found: ${file.absolutePath}")
-                Toast.makeText(this, "Файл обновления не найден", Toast.LENGTH_SHORT).show()
+        try {
+            val dm = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
+
+            // Копируем APK из Downloads в internal cache через DownloadManager.openDownloadedFile().
+            // На Android 11+ (API 30+) requestLegacyExternalStorage игнорируется, и прямое чтение
+            // файла из публичного Downloads через FileInputStream может не сработать из-за scoped
+            // storage. openDownloadedFile() всегда работает, т.к. приложение владеет загрузкой.
+            val destFile = File(cacheDir, "update_pending.apk")
+            try {
+                dm.openDownloadedFile(downloadId).use { pfd ->
+                    java.io.FileInputStream(pfd.fileDescriptor).use { input ->
+                        destFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "openDownloadedFile failed, falling back to direct path", e)
+                // Запасной вариант: прямое чтение из Downloads (работает на Android 10-)
+                val fileName = downloadFileName ?: run {
+                    Toast.makeText(this, "Файл обновления не найден", Toast.LENGTH_SHORT).show()
+                    installTriggered = false
+                    return
+                }
+                val srcFile = File(
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                    fileName
+                )
+                if (!srcFile.exists()) {
+                    Log.e(TAG, "APK not found at: ${srcFile.absolutePath}")
+                    Toast.makeText(this, "Файл обновления не найден", Toast.LENGTH_SHORT).show()
+                    installTriggered = false
+                    return
+                }
+                srcFile.copyTo(destFile, overwrite = true)
+            }
+
+            if (!destFile.exists() || destFile.length() < 100_000L) {
+                Log.e(TAG, "APK invalid: size=${destFile.length()} — возможно сервер вернул не APK")
+                Toast.makeText(this, "Ошибка: загруженный файл повреждён", Toast.LENGTH_SHORT).show()
+                installTriggered = false
                 return
             }
 
             val contentUri = FileProvider.getUriForFile(
                 this,
                 "${packageName}.fileprovider",
-                file
+                destFile
             )
 
             val intent = Intent(Intent.ACTION_VIEW).apply {
@@ -346,6 +383,7 @@ class UpdateActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Log.e(TAG, "Error installing APK", e)
             Toast.makeText(this, "Ошибка установки: ${e.message}", Toast.LENGTH_SHORT).show()
+            installTriggered = false
         }
     }
 }
