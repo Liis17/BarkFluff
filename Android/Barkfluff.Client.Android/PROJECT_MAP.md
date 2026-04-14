@@ -1,4 +1,4 @@
-# BarkFluff Android Client — Карта проекта
+# BarkFluff Android Client - Карта проекта
 
 > Версия: 2026-04-11. Этот файл предназначен для агентов/AI-сессий — позволяет понять архитектуру без полного перечитывания исходников.
 
@@ -6,21 +6,21 @@
 
 ## Общая информация
 
-| Параметр | Значение |
-|---|---|
-| Пакет | `com.barkfluff.client` |
-| Язык | Kotlin 2.0.0 |
-| AGP | 8.9.1 |
-| Min SDK | 26 |
-| Target SDK | 35 |
-| gRPC | `grpc-okhttp` 1.60.0 (НЕ grpc-netty) |
-| Image loading | Coil |
-| Video | ExoPlayer (media3-exoplayer 1.3.1) |
-| Архитектура | Activity-based, ViewBinding, без MVVM/Hilt |
+| Параметр          | Значение                                                |
+| ----------------- | ------------------------------------------------------- |
+| Пакет             | `com.barkfluff.client`                                  |
+| Язык              | Kotlin 2.0.0                                            |
+| AGP               | 8.9.1                                                   |
+| Min SDK           | 26                                                      |
+| Target SDK        | 35                                                      |
+| gRPC              | `grpc-okhttp` 1.60.0 (НЕ grpc-netty)                    |
+| Image loading     | Coil                                                    |
+| Video             | ExoPlayer (media3-exoplayer 1.3.1)                      |
+| Архитектура       | Activity-based, ViewBinding, без MVVM/Hilt              |
 | Хранилище токенов | `EncryptedSharedPreferences` (`barkfluff_secure_prefs`) |
-| Обычное хранилище | `SharedPreferences` (`barkfluff_prefs`) |
-| FCM | Firebase Cloud Messaging (push-уведомления) |
-| Deep links | Схема `bf://` и `bfdev://` |
+| Обычное хранилище | `SharedPreferences` (`barkfluff_prefs`)                 |
+| FCM               | Firebase Cloud Messaging (push-уведомления)             |
+| Deep links        | Схема `bf://` и `bfdev://`                              |
 
 ---
 
@@ -62,10 +62,12 @@ DeepLinkActivity (перехват bf:// ссылок)
 ## Файлы — исходный код Kotlin
 
 ### `BarkFluffApplication.kt`
+
 **Расположение:** `java/com/barkfluff/client/`
 **Тип:** Application
 
 Точка старта всего процесса. Инициализирует:
+
 - `GrpcManager` (singleton на уровне app)
 - `RealtimeService` (singleton, стримы gRPC)
 - `AvatarLoader.initializeCache()` — URL-кэш аватаров
@@ -81,9 +83,11 @@ DeepLinkActivity (перехват bf:// ссылок)
 ---
 
 ### `SplashActivity.kt`
+
 **Тип:** AppCompatActivity — экран-заставка / роутер
 
 Логика при старте:
+
 1. Нет `socketBeacon` / `socketIdentity` → `WelcomeActivity`
 2. Нет `refreshToken` → `LoginActivity`
 3. Есть `refreshToken`, но access-токен просрочен → пробует обновить через `GrpcManager.refreshAccessToken()`
@@ -98,6 +102,7 @@ DeepLinkActivity (перехват bf:// ссылок)
 ---
 
 ### `WelcomeActivity.kt`
+
 **Тип:** AppCompatActivity
 
 Приветственный экран (первый запуск). Показывает логотип, кнопку "Начать" → `SelectServerActivity`. Запрашивает разрешения (хранилище, уведомления, медиа) для разных версий Android.
@@ -107,9 +112,11 @@ DeepLinkActivity (перехват bf:// ссылок)
 ---
 
 ### `SelectServerActivity.kt`
+
 **Тип:** AppCompatActivity
 
 Выбор сервера. Загружает список серверов через `GrpcManager.getServerList()` (Navigator API). При ручном вводе адреса — валидирует формат `host:port`. При выборе:
+
 1. Создаёт Beacon-клиент → запрашивает `getServerInfo()`
 2. Сохраняет все endpoint-адреса в `GlobalParam` (`socketIdentity`, `socketUsers`, `socketFiles`, `socketMessages`, `socketUpdates`, `socketOnliner`)
 3. → `LoginActivity`
@@ -119,11 +126,13 @@ DeepLinkActivity (перехват bf:// ссылок)
 ---
 
 ### `LoginActivity.kt`
+
 **Тип:** AppCompatActivity
 
 Авторизация. Поддерживает логин по username ИЛИ email (поле `oneof` в proto). Поддерживает 2FA (OTP) — при ответе `OtpRequired` переключается на режим ввода 6-значного кода (6 отдельных EditText, автопереход и автоотправка). После успешного входа сохраняет токены в `GlobalParam`, загружает данные юзера → `MainActivity`.
 
 Error codes (из gRPC trailer `x-error-code`):
+
 - `OtpCodeNeedException` → показывает OTP-форму
 - `NotValidOtpCodeException` → ошибка "неверный код"
 - `InvalidLoginOrPasswordException` → ошибка "неверный логин/пароль"
@@ -133,9 +142,11 @@ Error codes (из gRPC trailer `x-error-code`):
 ---
 
 ### `RegisterActivity.kt`
+
 **Тип:** AppCompatActivity
 
 Регистрация в 9 шагов (ViewFlipper / ручное переключение layouts):
+
 1. `step_register_01_name.xml` — имя и фамилия
 2. `step_register_02_username.xml` — логин (проверка занятости через gRPC)
 3. `step_register_03_email.xml` — email (создание аккаунта, отправка кода)
@@ -151,6 +162,7 @@ Error codes (из gRPC trailer `x-error-code`):
 ---
 
 ### `ResetPasswordActivity.kt`
+
 **Тип:** AppCompatActivity
 
 Сброс пароля через email (запрос кода, подтверждение, новый пароль).
@@ -160,9 +172,11 @@ Error codes (из gRPC trailer `x-error-code`):
 ---
 
 ### `MainActivity.kt`
+
 **Тип:** AppCompatActivity
 
 Главный экран с BottomNavigationView. 3 таба:
+
 - `TAB_CONTACTS = 0` → `ContactsFragment`
 - `TAB_CHATS = 1` → `ChatsFragment` (дефолтный)
 - `TAB_PROFILE = 2` → `ProfileFragment`
@@ -180,6 +194,7 @@ Error codes (из gRPC trailer `x-error-code`):
 ---
 
 ### `ChatsFragment.kt`
+
 **Тип:** Fragment
 
 Список чатов. Загружает чаты через `GrpcManager`. Подписывается на `RealtimeService.newMessages` → обновляет список при новом сообщении. Обрабатывает `cameFromBackground` — перезагружает список при возврате из фона. Регистрирует Firebase-токен для push-уведомлений. По клику на чат открывает `ChatActivity`.
@@ -189,6 +204,7 @@ Error codes (из gRPC trailer `x-error-code`):
 ---
 
 ### `ContactsFragment.kt`
+
 **Тип:** Fragment
 
 Список контактов (друзей/связей). Загружает через Users API. Открывает чат по клику.
@@ -198,9 +214,11 @@ Error codes (из gRPC trailer `x-error-code`):
 ---
 
 ### `ProfileFragment.kt`
+
 **Тип:** Fragment
 
 Профиль текущего пользователя + меню настроек. Показывает аватар, имя, username. Пункты меню:
+
 - Аккаунт → `AccountSettingsActivity`
 - Безопасность → `SecuritySettingsActivity`
 - Уведомления → `NotificationSettingsActivity`
@@ -217,9 +235,11 @@ Error codes (из gRPC trailer `x-error-code`):
 ---
 
 ### `ChatActivity.kt`
+
 **Тип:** AppCompatActivity (~1000 строк, основная логика)
 
 Экран переписки. Основные возможности:
+
 - Загрузка сообщений с **пагинацией** (подгрузка вверх/вниз по scroll)
 - Поддержка типов вложений: изображения, видео, аудио, документы, стикеры
 - **Inline sticker panel** (переключение keyboard ↔ стикер-панель с анимацией, KeyboardHeightTracker)
@@ -232,6 +252,7 @@ Error codes (из gRPC trailer `x-error-code`):
 - Контекстное меню сообщения (copy, save, forward)
 
 Хранит состояние:
+
 - `chatId`, `chatTitle`, `chatAvatarFileId`, `isGroupChat`, `otherUserId`
 - `firstVisibleMessageId` / `lastVisibleMessageId` для пагинации
 - `firstUnreadMessageId` — разделитель непрочитанных
@@ -242,6 +263,7 @@ Error codes (из gRPC trailer `x-error-code`):
 ---
 
 ### `ImageViewerActivity.kt`
+
 **Тип:** AppCompatActivity
 
 Просмотр одного изображения с поддержкой зума (PhotoView или аналог). Swipe-down для закрытия. Кнопка сохранить.
@@ -251,6 +273,7 @@ Error codes (из gRPC trailer `x-error-code`):
 ---
 
 ### `MediaViewerActivity.kt`
+
 **Тип:** AppCompatActivity
 
 Просмотр видео через ExoPlayer (media3). Non-fullscreen, swipe-down dismiss.
@@ -260,6 +283,7 @@ Error codes (из gRPC trailer `x-error-code`):
 ---
 
 ### `SearchActivity.kt`
+
 **Тип:** AppCompatActivity
 
 Поиск пользователей через Users API. По тапу на результат открывает чат.
@@ -269,6 +293,7 @@ Error codes (из gRPC trailer `x-error-code`):
 ---
 
 ### `DevicesActivity.kt`
+
 **Тип:** AppCompatActivity
 
 Список авторизованных устройств (сессий). Кнопка "завершить сессию" для каждого. Нижний диалог с деталями (`bottom_sheet_device_details.xml`).
@@ -278,6 +303,7 @@ Error codes (из gRPC trailer `x-error-code`):
 ---
 
 ### `AccountSettingsActivity.kt`
+
 **Тип:** AppCompatActivity
 
 Редактирование профиля: имя, фамилия, username, bio, email, аватар (uCrop). Сохранение через Users API.
@@ -287,6 +313,7 @@ Error codes (из gRPC trailer `x-error-code`):
 ---
 
 ### `SecuritySettingsActivity.kt`
+
 **Тип:** AppCompatActivity
 
 Смена пароля, управление 2FA.
@@ -296,6 +323,7 @@ Error codes (из gRPC trailer `x-error-code`):
 ---
 
 ### `NotificationSettingsActivity.kt`
+
 **Тип:** AppCompatActivity
 
 Toggle уведомлений, настройки каналов Android.
@@ -305,6 +333,7 @@ Toggle уведомлений, настройки каналов Android.
 ---
 
 ### `StorageSettingsActivity.kt`
+
 **Тип:** AppCompatActivity
 
 Просмотр и очистка кэша (`FileCache`, `StickerCache`, `ImageCache`). Показывает использование по категориям (легенда с цветными точками `item_storage_legend.xml`).
@@ -314,6 +343,7 @@ Toggle уведомлений, настройки каналов Android.
 ---
 
 ### `UpdateActivity.kt`
+
 **Тип:** AppCompatActivity
 
 Экран обновления приложения. Показывает текущую версию, changelog. Запускает скачивание APK.
@@ -323,6 +353,7 @@ Toggle уведомлений, настройки каналов Android.
 ---
 
 ### `AboutActivity.kt`
+
 **Тип:** AppCompatActivity
 
 "О приложении": версия, лицензии, ссылки.
@@ -332,6 +363,7 @@ Toggle уведомлений, настройки каналов Android.
 ---
 
 ### `DeepLinkActivity.kt`
+
 **Тип:** AppCompatActivity
 
 Перехватывает intent с deep link (`bf://` / `bfdev://`). Если приложение уже запущено — передаёт URI в `BarkFluffApplication.pendingDeepLink` и открывает `MainActivity`. Если нет — сохраняет URI и запускает `SplashActivity`.
@@ -343,9 +375,11 @@ Toggle уведомлений, настройки каналов Android.
 ## gRPC слой
 
 ### `grpc/GrpcManager.kt`
+
 Центральный менеджер всех gRPC-клиентов. **Аналог `WebApiClientManager` из WPF.**
 
 Хранит:
+
 - Каналы: `navigatorChannel`, `beaconChannel`, `identityChannel`, `usersChannel`, `filesChannel`, `messagesChannel`, `updatesChannel`, `onlinerChannel`
 - Корутинные stubs: аналогичный набор `*Client`
 
@@ -377,12 +411,14 @@ Toggle уведомлений, настройки каналов Android.
 | `ensureTokenValid(ctx)` | Проверить/обновить токен |
 
 Interceptors применяются при создании канала:
+
 - Всегда: `AuthInterceptor` (добавляет `x-auth-token`)
 - Если `includeDeviceInfo=true`: `DeviceInfoInterceptor` (добавляет `x-device-id`, `x-device-name`, `x-os-name`, `x-app-name`, `x-app-version`, `x-ip-address`)
 
 SSL: использует trust-all X509TrustManager (для серверов с самоподписанными сертификатами).
 
 Error codes из `x-error-code` gRPC trailer:
+
 ```
 ERROR_OTP_CODE_NEEDED      = "C1576884-12D8-4722-A7EE-9F9789AD1265"
 ERROR_NOT_VALID_OTP_CODE   = "803B632C-4457-4B05-9435-9C3DD0F41E00"
@@ -395,17 +431,20 @@ ERROR_INVALID_OLD_PASSWORD  = "A7E3F1B2-9C4D-4E8A-B5F6-2D1A3C7E9F04"
 ---
 
 ### `grpc/RealtimeService.kt`
+
 Сервис реального времени — подписывается на gRPC streaming. **Аналог `RealtimeUpdateService` + `OnlineStatusService` из WPF.**
 
 Хранится в `BarkFluffApplication`, управляется через `ProcessLifecycleOwner`.
 
 Публичные SharedFlow:
+
 - `newMessages: SharedFlow<NewMessageEvent>` — новые сообщения
 - `messagesRead: SharedFlow<MessageReadEvent>` — прочитанные сообщения
 - `onlineStatuses: SharedFlow<UserOnlineStatus>` — онлайн-статусы
 - `connectionState: StateFlow<ConnectionState>` — DISCONNECTED/CONNECTING/CONNECTED
 
 Методы:
+
 - `resume()` — пересоздаёт scope, запускает стримы (вызывается при возврате из фона)
 - `pause()` — отменяет scope (при уходе в фон)
 - `shutdown()` — полная остановка (при завершении)
@@ -413,6 +452,7 @@ ERROR_INVALID_OLD_PASSWORD  = "A7E3F1B2-9C4D-4E8A-B5F6-2D1A3C7E9F04"
 - `markAsRead(messageId)` — отметить прочитанным (из BroadcastReceiver)
 
 Внутренние loop'ы:
+
 - `streamWithReconnect` — wrapper с exponential backoff (2s→30s), после 3 ошибок форс-обновляет токен
 - `onlinePingLoop` — каждые 3сек шлёт `setOnlineStatus`
 - `notificationLoop` — подписывается на `newMessages`, показывает уведомления (кроме текущего открытого чата)
@@ -422,11 +462,13 @@ ERROR_INVALID_OLD_PASSWORD  = "A7E3F1B2-9C4D-4E8A-B5F6-2D1A3C7E9F04"
 ---
 
 ### `grpc/AuthInterceptor.kt`
+
 `ClientInterceptor`. Берёт `accessToken` из `GlobalParam` и добавляет заголовок `x-auth-token` к каждому gRPC запросу.
 
 ---
 
 ### `grpc/DeviceInfoInterceptor.kt`
+
 `ClientInterceptor`. Добавляет обязательные заголовки устройства (base64-encoded):
 `x-device-id`, `x-device-name`, `x-os-name`, `x-app-name`, `x-app-version`, `x-ip-address`
 
@@ -435,9 +477,11 @@ ERROR_INVALID_OLD_PASSWORD  = "A7E3F1B2-9C4D-4E8A-B5F6-2D1A3C7E9F04"
 ## Data слой
 
 ### `data/GlobalParam.kt`
+
 **Аналог `GlobalParam` из WPF.**
 
 Оболочка над двумя SharedPreferences:
+
 - `barkfluff_prefs` (обычные) — адреса серверов, данные пользователя, настройки
 - `barkfluff_secure_prefs` (`EncryptedSharedPreferences`) — access/refresh токены и их сроки
 
@@ -461,6 +505,7 @@ ERROR_INVALID_OLD_PASSWORD  = "A7E3F1B2-9C4D-4E8A-B5F6-2D1A3C7E9F04"
 ---
 
 ### `data/OpenChatManager.kt`
+
 Синглтон-объект (in-memory). Хранит `currentOpenChatId`. Используется для подавления уведомлений если данный чат уже открыт.
 
 Методы: `setOpenChat(id)`, `isOpen(id)`, `closeChat()`, `getCurrentChatId()`.
@@ -468,11 +513,13 @@ ERROR_INVALID_OLD_PASSWORD  = "A7E3F1B2-9C4D-4E8A-B5F6-2D1A3C7E9F04"
 ---
 
 ### `data/ServerDataElement.kt`
+
 Data class для элемента списка серверов (ip, title, description, userCount, publicName, location, hexColor).
 
 ---
 
 ### `data/ClientColors.kt`
+
 Data class: тема сервера (liteHex, mainHex, hardHex).
 
 ---
@@ -480,9 +527,11 @@ Data class: тема сервера (liteHex, mainHex, hardHex).
 ## Repository
 
 ### `repository/ChatRepository.kt`
+
 Инкапсулирует Messages API. Получает `GrpcManager` через конструктор.
 
 Методы:
+
 - `loadMessages(chatId, fromMessageId, offsetBefore, offsetAfter, count)` — пагинация (max 50)
 - `sendMessage(chatId, text, fileIds)` — отправка сообщения с вложениями
 - `downloadFile(fileId, progressCallback)` — скачивание файла через HTTP (URL из Files API), сохранение в `FileCache`
@@ -492,7 +541,9 @@ Data class: тема сервера (liteHex, mainHex, hardHex).
 ## Adapters
 
 ### `adapter/MessageAdapter.kt`
+
 `ListAdapter<MessageItem, RecyclerView.ViewHolder>`. 4 типа ViewHolder:
+
 - `VIEW_TYPE_SENT` — отправленное (`item_message_sent.xml`)
 - `VIEW_TYPE_RECEIVED` — полученное (`item_message_received.xml`)
 - `VIEW_TYPE_DATE_SEPARATOR` — разделитель даты (`item_message_date_separator.xml`)
@@ -507,51 +558,61 @@ Data class: тема сервера (liteHex, mainHex, hardHex).
 ---
 
 ### `adapter/ChatAdapter.kt`
+
 `ListAdapter<ChatDisplayItem, ChatViewHolder>`. Список чатов на главном экране. Показывает: название чата, последнее сообщение, время, счётчик непрочитанных. Аватар через `AvatarLoader`. Принимает `getFileUrl: suspend (String) -> String?`.
 
 ---
 
 ### `adapter/UserAdapter.kt`
+
 Список пользователей (контакты, результаты поиска). Показывает аватар, имя, username.
 
 ---
 
 ### `adapter/DeviceAdapter.kt`
+
 Список устройств/сессий. Показывает иконку типа устройства, имя, дату.
 
 ---
 
 ### `adapter/ServerAdapter.kt`
+
 Список серверов в `SelectServerActivity`. Показывает название, описание, кол-во пользователей, локацию.
 
 ---
 
 ### `adapter/ImageGridAdapter.kt`
+
 Сетка изображений в сообщении (квадратные ячейки). Использует `SquareImageView`. Тап → `ImageViewerActivity`.
 
 ---
 
 ### `adapter/ImagePagerAdapter.kt`
+
 ViewPager для просмотра нескольких изображений в `ImageViewerActivity`.
 
 ---
 
 ### `adapter/ImagePickerAdapter.kt`
+
 Адаптер для галереи в `ImagePickerBottomSheet`. Показывает миниатюры медиа из MediaStore.
 
 ---
 
 ### `adapter/AttachmentPreviewAdapter.kt`
+
 Горизонтальная прокрутка предварительного просмотра выбранных вложений в `ChatActivity` перед отправкой.
 
 ---
 
 ### `adapter/StickerPanelAdapter.kt`
+
 Адаптер для inline sticker panel в `ChatActivity`. Поддерживает типы: заголовок пака, стикер, состояния loading/empty.
 
 ---
 
 ### `adapter/StickerPanelItem.kt`
+
 Data class: элемент стикер-панели (тип + данные).
 
 ---
@@ -559,9 +620,11 @@ Data class: элемент стикер-панели (тип + данные).
 ## Утилиты (`utils/`)
 
 ### `utils/AvatarLoader.kt`
+
 Singleton. Загружает и кешируют аватары через Coil. Показывает инициалы на цветном круге если аватар недоступен.
 
 Ключевое:
+
 - `urlCache: ConcurrentHashMap<String, String>` — кэш `fileId → URL` (используется в `RealtimeService` для уведомлений)
 - `initializeCache(context)` — загружает `FileUrlCache` с диска
 - `getImageLoader(context): ImageLoader` — Coil ImageLoader с trust-all SSL
@@ -572,6 +635,7 @@ Singleton. Загружает и кешируют аватары через Coil
 ---
 
 ### `utils/FileCache.kt`
+
 Singleton. Дисковый кэш медиафайлов в `cacheDir/media_files/`.
 
 Методы: `init(ctx)`, `hasFile(fileId)`, `getFile(fileId)`, `saveFile(fileId, bytes/stream)`, `deleteFile(fileId)`.
@@ -579,61 +643,73 @@ Singleton. Дисковый кэш медиафайлов в `cacheDir/media_fil
 ---
 
 ### `utils/FileUrlCache.kt`
+
 Персистентный кэш `fileId → downloadUrl` на диске (JSON или SharedPreferences). Используется `AvatarLoader` для восстановления URL-кэша между сессиями.
 
 ---
 
 ### `utils/AudioPlayerHelper.kt`
+
 Singleton `MediaPlayer`. Гарантирует воспроизведение только одного аудио. Интерфейс `AudioCallbacks` (onProgress, onStateChanged, onError, onComplete). Методы: `play(fileId, file, callbacks)`, `pause()`, `resume()`, `stop()`, `seekTo(ms)`.
 
 ---
 
 ### `utils/StickerCache.kt`
+
 Singleton. Кэш стикеров (пакеты, изображения). Инициализируется в `BarkFluffApplication`.
 
 ---
 
 ### `utils/ImageCache.kt`
+
 In-memory LRU кэш битмапов (используется как дополнение к Coil).
 
 ---
 
 ### `utils/ImageLoadHelper.kt`
+
 Хелпер для загрузки изображений вложений (preview + full). Используется в `MessageAdapter`.
 
 ---
 
 ### `utils/ImageCompressor.kt`
+
 Сжимает изображения перед отправкой (уменьшает до max разрешения, перекодирует в JPEG).
 
 ---
 
 ### `utils/KeyboardHeightTracker.kt`
+
 Отслеживает высоту клавиатуры через `WindowInsetsCompat`. Используется в `ChatActivity` для корректной анимации sticker panel (подменяет высоту клавиатуры).
 
 ---
 
 ### `utils/MessageItemAnimator.kt`
+
 Кастомный `RecyclerView.ItemAnimator` для сообщений — плавное появление новых сообщений.
 
 ---
 
 ### `utils/NetworkUtils.kt`
+
 Получает внешний IP через HTTP-запрос (api.ipify.org или аналог).
 
 ---
 
 ### `utils/UpdateChecker.kt`
+
 Проверяет наличие обновлений (запрос к серверу/GitHub). Возвращает `Boolean`. Используется в `MainActivity` и `ProfileFragment`.
 
 ---
 
 ### `utils/AppVersionUtil.kt`
+
 Читает `versionName` из `PackageInfo`.
 
 ---
 
 ### `utils/FirebaseTokenHelper.kt`
+
 Получает FCM-токен и регистрирует на сервере через Identity/Users API.
 
 ---
@@ -641,11 +717,13 @@ In-memory LRU кэш битмапов (используется как допо�
 ## Views
 
 ### `view/AvatarView.kt`
+
 Кастомный View — круглый аватар с онлайн-индикатором. Использует `AvatarLoader`.
 
 ---
 
 ### `views/SquareImageView.kt`
+
 `AppCompatImageView` с `onMeasure` → `height = width`. Используется в `ImageGridAdapter`.
 
 ---
@@ -653,9 +731,11 @@ In-memory LRU кэш битмапов (используется как допо�
 ## Notifications (`notifications/`)
 
 ### `notifications/NotificationHelper.kt`
+
 Object. Создаёт каналы уведомлений Android и показывает уведомления.
 
 Каналы:
+
 - `chat_messages` (IMPORTANCE_HIGH) — новые сообщения
 - `system` (IMPORTANCE_DEFAULT) — системные
 - `other` (IMPORTANCE_LOW) — прочие
@@ -669,6 +749,7 @@ Object. Создаёт каналы уведомлений Android и показ
 ---
 
 ### `notifications/BarkFluffFirebaseMessagingService.kt`
+
 `FirebaseMessagingService`. Обрабатывает входящие push-уведомления (когда приложение убито). При новом `RemoteMessage` парсит `chatId`/`messageId` из data-payload, показывает уведомление через `NotificationHelper`. При обновлении FCM-токена → сохраняет в `GlobalParam`, регистрирует на сервере.
 
 **Связи:** `NotificationHelper`, `GlobalParam`, `GrpcManager`
@@ -676,6 +757,7 @@ Object. Создаёт каналы уведомлений Android и показ
 ---
 
 ### `notifications/MarkAsReadReceiver.kt`
+
 `BroadcastReceiver`. Обрабатывает action "Прочитано" из уведомления. Вызывает `RealtimeService.markAsRead(messageId)`.
 
 **Связи:** `RealtimeService`
@@ -685,9 +767,11 @@ Object. Создаёт каналы уведомлений Android и показ
 ## Deep Links
 
 ### `deeplink/DeepLinkHandler.kt`
+
 Парсит URI вида `bf://user-username=li_is` или `bfdev://user-username=li_is`.
 
 Возвращает `DeepLinkCommand`:
+
 - `OpenUserChat(username: String)` — открыть чат с юзером
 - `Unknown` — неизвестная команда
 
@@ -696,7 +780,9 @@ Object. Создаёт каналы уведомлений Android и показ
 ## Picker
 
 ### `picker/ImagePickerBottomSheet.kt`
+
 `BottomSheetDialogFragment`. Нижняя панель выбора медиа для `ChatActivity`. Показывает:
+
 - Сетку фото/видео из MediaStore (`ImagePickerAdapter`)
 - Кнопки: камера, файлы, документы
 - Множественный выбор (с отображением счётчика)
@@ -709,25 +795,26 @@ Object. Создаёт каналы уведомлений Android и показ
 
 ## Proto файлы (`app/src/main/proto/`)
 
-| Файл | Описание |
-|---|---|
-| `beacon_api.proto` | Информация о сервере (эндпоинты, название) |
-| `configuration_api.proto` | Централизованная конфигурация |
-| `fast_auth_api.proto` | QR-авторизация |
-| `files_api.proto` | Загрузка/скачивание файлов, preview, URL |
-| `identity_api.proto` | Auth, 2FA, сброс пароля, сессии, токены |
-| `messages_api.proto` | Сообщения, чаты, read receipts |
-| `navigator_api.proto` | Список публичных серверов |
-| `onliner_api.proto` | Online-статусы, ping, подписка |
-| `shared.proto` | Общие типы: `Message`, `MessageContent`, `MessageAttachmentType` (IMAGE=1,VIDEO=2,DOCUMENT=3,STICKER=4,AUDIO=5), `Attachment` |
-| `updates_api.proto` | Стриминг: `NewMessageEvent`, `MessageReadEvent` |
-| `users_api.proto` | Профили, поиск, связи, бейджи |
+| Файл                      | Описание                                                                                                                      |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `beacon_api.proto`        | Информация о сервере (эндпоинты, название)                                                                                    |
+| `configuration_api.proto` | Централизованная конфигурация                                                                                                 |
+| `fast_auth_api.proto`     | QR-авторизация                                                                                                                |
+| `files_api.proto`         | Загрузка/скачивание файлов, preview, URL                                                                                      |
+| `identity_api.proto`      | Auth, 2FA, сброс пароля, сессии, токены                                                                                       |
+| `messages_api.proto`      | Сообщения, чаты, read receipts                                                                                                |
+| `navigator_api.proto`     | Список публичных серверов                                                                                                     |
+| `onliner_api.proto`       | Online-статусы, ping, подписка                                                                                                |
+| `shared.proto`            | Общие типы: `Message`, `MessageContent`, `MessageAttachmentType` (IMAGE=1,VIDEO=2,DOCUMENT=3,STICKER=4,AUDIO=5), `Attachment` |
+| `updates_api.proto`       | Стриминг: `NewMessageEvent`, `MessageReadEvent`                                                                               |
+| `users_api.proto`         | Профили, поиск, связи, бейджи                                                                                                 |
 
 ---
 
 ## Ресурсы (краткий обзор)
 
 ### Layouts
+
 - `activity_*.xml` — экраны (1:1 к Activity)
 - `fragment_chats.xml`, `fragment_contacts.xml`, `fragment_profile.xml` — фрагменты
 - `item_message_sent.xml`, `item_message_received.xml` — пузыри сообщений
@@ -739,9 +826,11 @@ Object. Создаёт каналы уведомлений Android и показ
 - `bottom_sheet_image_picker.xml`, `bottom_sheet_device_details.xml`
 
 ### Animations (`res/anim/`)
+
 `slide_in_from_left/right`, `slide_out_to_left/right`, `slide_in_left/right`, `slide_out_left/right`, `slide_left/right`, `slide_stay`, `fade_out`, `bottom_sheet_slide_in/out`
 
 ### Themes
+
 - `values/themes.xml` — светлая тема (Material3)
 - `values-night/themes.xml` — тёмная тема
 - `values-v34/themes.xml` — Android 14+
