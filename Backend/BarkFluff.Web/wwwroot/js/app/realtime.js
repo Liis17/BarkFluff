@@ -29,6 +29,11 @@
 
     var INITIAL_BACKOFF = 2000;
     var MAX_BACKOFF = 30000;
+    var STREAM_MAX_AGE = 250000; // ms — превентивный реконнект до nginx 300s-таймаута
+
+    var updatesAgeTimer = null;
+    var readAgeTimer    = null;
+    var onlineAgeTimer  = null;
 
     // Currently subscribed online user IDs (for reconnection)
     var currentOnlineUserIds = [];
@@ -80,6 +85,10 @@
 
             if (updatesStream) { try { updatesStream.cancel(); } catch (e) {} }
             updatesStream = BF.clients.updates.subscribeNewMessages(req, meta);
+            if (updatesAgeTimer) clearTimeout(updatesAgeTimer);
+            updatesAgeTimer = setTimeout(function () {
+                if (_started) subscribeNewMessages();
+            }, STREAM_MAX_AGE);
 
             updatesStream.on('data', function (evt) {
                 updatesBackoff = INITIAL_BACKOFF;
@@ -130,6 +139,10 @@
 
             if (readStream) { try { readStream.cancel(); } catch (e) {} }
             readStream = BF.clients.updates.subscribeMessagesRead(req, meta);
+            if (readAgeTimer) clearTimeout(readAgeTimer);
+            readAgeTimer = setTimeout(function () {
+                if (_started) subscribeMessagesRead();
+            }, STREAM_MAX_AGE);
 
             readStream.on('data', function (evt) {
                 readBackoff = INITIAL_BACKOFF;
@@ -174,6 +187,10 @@
 
             if (onlineStream) { try { onlineStream.cancel(); } catch (e) {} }
             onlineStream = BF.clients.onliner.subscribeToOnlineStatus(req, meta);
+            if (onlineAgeTimer) clearTimeout(onlineAgeTimer);
+            onlineAgeTimer = setTimeout(function () {
+                if (_started && currentOnlineUserIds.length > 0) subscribeOnline(currentOnlineUserIds);
+            }, STREAM_MAX_AGE);
 
             onlineStream.on('data', function (evt) {
                 onlineBackoff = INITIAL_BACKOFF;
@@ -233,7 +250,7 @@
         BF.api.setOnlineStatus().catch(function () {});
         keepAliveTimer = setInterval(function () {
             BF.api.setOnlineStatus().catch(function () {});
-        }, 30000);
+        }, 3000);
     }
 
     function stopKeepAlive() {
@@ -277,6 +294,9 @@
         if (updatesStream) { try { updatesStream.cancel(); } catch (e) {} updatesStream = null; }
         if (readStream) { try { readStream.cancel(); } catch (e) {} readStream = null; }
         if (onlineStream) { try { onlineStream.cancel(); } catch (e) {} onlineStream = null; }
+        if (updatesAgeTimer) { clearTimeout(updatesAgeTimer); updatesAgeTimer = null; }
+        if (readAgeTimer)    { clearTimeout(readAgeTimer);    readAgeTimer    = null; }
+        if (onlineAgeTimer)  { clearTimeout(onlineAgeTimer);  onlineAgeTimer  = null; }
         updatesConnected = false;
         readConnected = false;
         _lastEmittedStatus = null;
