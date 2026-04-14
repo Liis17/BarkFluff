@@ -36,6 +36,7 @@ import com.barkfluff.client.utils.FileCache
 import com.barkfluff.client.utils.ImageCompressor
 import com.barkfluff.client.utils.KeyboardHeightTracker
 import com.barkfluff.client.utils.StickerCache
+import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.utils.MessageItemAnimator
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.yalantis.ucrop.UCrop
@@ -174,7 +175,7 @@ class ChatActivity : AppCompatActivity() {
         OpenChatManager.setOpenChat(chatId)
 
         // Убираем уведомление этого чата из шторки если оно висит
-        com.barkfluff.client.notifications.NotificationHelper.dismissForChat(applicationContext, chatId)
+        NotificationHelper.dismissForChat(applicationContext, chatId)
 
         // Подписываемся на обновления в реальном времени
         subscribeToRealtimeEvents()
