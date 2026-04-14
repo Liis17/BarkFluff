@@ -13,7 +13,7 @@ public static class MessageMapping
         return new Message
         {
             Id = message.Id,
-            SentAt = Timestamp.FromDateTime(message.SentAt),
+            SentAt = Timestamp.FromDateTime(DateTime.SpecifyKind(message.SentAt, DateTimeKind.Utc)),
             ReadBy = { message.ReadBy },
             SenderId = message.SenderId,
             Content = message.Content?.ToGrpc(),
@@ -26,7 +26,7 @@ public static class MessageMapping
         return new Message
         {
             Id = message.Id,
-            SentAt = Timestamp.FromDateTime(message.SentAt),
+            SentAt = Timestamp.FromDateTime(DateTime.SpecifyKind(message.SentAt, DateTimeKind.Utc)),
             ReadBy = { message.ReadBy },
             SenderId = message.SenderId,
             Content = message.Content?.ToGrpc(filesInfoMap),
