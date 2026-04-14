@@ -53,7 +53,8 @@
             return fetch('/api/files/upload/' + data.fileId, {
                 method: 'POST',
                 body: formData
-            }).then(function () {
+            }).then(function (resp) {
+                if (!resp.ok) return Promise.reject(new Error('upload_failed_' + resp.status));
                 return data.fileId;
             });
         });
