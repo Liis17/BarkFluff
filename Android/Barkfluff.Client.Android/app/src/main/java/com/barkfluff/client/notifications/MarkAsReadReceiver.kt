@@ -1,6 +1,5 @@
 package com.barkfluff.client.notifications
 
-import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -21,9 +20,8 @@ class MarkAsReadReceiver : BroadcastReceiver() {
 
         Log.d(TAG, "Mark as read: chatId=$chatId, messageId=$messageId")
 
-        // Dismiss the notification
-        val manager = context.getSystemService(NotificationManager::class.java)
-        manager.cancel(chatId.hashCode())
+        // Dismiss the notification (через NotificationHelper чтобы синхронизировать пул)
+        NotificationHelper.dismissForChat(context, chatId)
 
         // Mark the message as read via gRPC
         if (messageId > 0) {

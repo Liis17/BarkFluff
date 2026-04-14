@@ -173,6 +173,9 @@ class ChatActivity : AppCompatActivity() {
         // Устанавливаем этот чат как открытый
         OpenChatManager.setOpenChat(chatId)
 
+        // Убираем уведомление этого чата из шторки если оно висит
+        com.barkfluff.client.notifications.NotificationHelper.dismissForChat(applicationContext, chatId)
+
         // Подписываемся на обновления в реальном времени
         subscribeToRealtimeEvents()
 

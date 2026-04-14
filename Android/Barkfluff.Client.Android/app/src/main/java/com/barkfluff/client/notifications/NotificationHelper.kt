@@ -30,6 +30,10 @@ object NotificationHelper {
     val recentlyShownMessages = mutableSetOf<Long>()
     private const val DEDUP_MAX_SIZE = 100
 
+    // Пул активных уведомлений — chatId'ы у которых сейчас висит уведомление в шторке
+    val activeNotificationChats: MutableSet<String> =
+        java.util.Collections.newSetFromMap(java.util.concurrent.ConcurrentHashMap())
+
     // Группа
     private const val GROUP_ID = "barkfluff"
     private const val GROUP_NAME = "BarkFluff"
@@ -216,6 +220,7 @@ object NotificationHelper {
 
             try {
                 NotificationManagerCompat.from(context).notify(notificationId, builder.build())
+                activeNotificationChats.add(chatId)
             } catch (e: SecurityException) {
                 Log.w(TAG, "No notification permission", e)
             }
@@ -224,6 +229,12 @@ object NotificationHelper {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to show notification", e)
         }
+    }
+
+    fun dismissForChat(context: Context, chatId: String) {
+        if (!activeNotificationChats.remove(chatId)) return  // уведомления нет — выход
+        context.getSystemService(NotificationManager::class.java).cancel(chatId.hashCode())
+        Log.d(TAG, "Notification dismissed for chatId=$chatId")
     }
 
     fun showSystemNotification(
