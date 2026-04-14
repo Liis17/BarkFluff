@@ -114,6 +114,10 @@ class UpdateActivity : AppCompatActivity() {
         binding.buttonUpdateBeta.setOnClickListener {
             requestDownload("beta")
         }
+        binding.buttonOpenWebsite.setOnClickListener {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://barkfluff.com"))
+            startActivity(intent)
+        }
     }
 
     private fun checkUpdates() {
@@ -311,6 +315,14 @@ class UpdateActivity : AppCompatActivity() {
         }
     }
 
+    private fun scheduleInstallErrorHint() {
+        lifecycleScope.launch {
+            delay(5_000)
+            // Если мы здесь — значит процесс не был убит установщиком, скорее всего ошибка
+            binding.cardInstallError.visibility = View.VISIBLE
+        }
+    }
+
     private fun formatSize(bytes: Long): String {
         return when {
             bytes >= 1_048_576 -> String.format("%.1f МБ", bytes / 1_048_576.0)
@@ -380,6 +392,9 @@ class UpdateActivity : AppCompatActivity() {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             startActivity(intent)
+            // Если установка прошла успешно — процесс будет убит и корутина не выполнится.
+            // Если приложение продолжает работать (ошибка установки) — через 5 сек покажем подсказку.
+            scheduleInstallErrorHint()
         } catch (e: Exception) {
             Log.e(TAG, "Error installing APK", e)
             Toast.makeText(this, "Ошибка установки: ${e.message}", Toast.LENGTH_SHORT).show()
