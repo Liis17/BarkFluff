@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarkFluff — Мессенджер</title>
+    <script>(function(){if(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)){window.location.replace('/mobile.html');}})();</script>
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -412,9 +413,17 @@
             padding: 16px 20px;
             display: none;
             flex-direction: column;
-            gap: 4px;
             scrollbar-width: thin;
             scrollbar-color: rgba(0,0,0,0.1) transparent;
+        }
+
+        .messages-inner {
+            max-width: 800px;
+            width: 100%;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
         }
 
         .messages-area.visible { display: flex; }
@@ -456,7 +465,12 @@
 
         .msg-bubble.outgoing {
             background: var(--msg-outgoing-bg);
-            border-radius: 18px 18px 6px 18px;
+            border-radius: 14px 14px 6px 14px;
+            padding: 4px 12px;
+        }
+
+        .msg-bubble.outgoing.has-images {
+            padding: 2px;
         }
 
         .msg-bubble.sticker {
@@ -1078,7 +1092,9 @@
             </div>
 
             <div class="loading-messages" id="loadingMessages">Загрузка...</div>
-            <div class="messages-area" id="messagesArea"></div>
+            <div class="messages-area" id="messagesArea">
+                <div class="messages-inner" id="messagesInner"></div>
+            </div>
             <div class="file-preview-bar" id="filePreviewBar"></div>
 
             <div class="input-bar" id="inputBar">
