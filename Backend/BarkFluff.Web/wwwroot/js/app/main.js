@@ -54,6 +54,7 @@
     var chatHeaderStatus = $('#chatHeaderStatus');
     var chatEmpty = $('#chatEmpty');
     var messagesArea = $('#messagesArea');
+    var messagesInner = $('#messagesInner');
     var loadingMessages = $('#loadingMessages');
     var inputBar = $('#inputBar');
     var messageInput = $('#messageInput');
@@ -162,7 +163,7 @@
         chatEmpty.style.display = 'none';
         chatHeader.classList.add('visible');
         messagesArea.classList.add('visible');
-        messagesArea.innerHTML = '';
+        messagesInner.innerHTML = '';
         inputBar.classList.add('visible');
         loadingMessages.classList.add('visible');
 
@@ -215,7 +216,7 @@
     // ========== RENDER MESSAGES ==========
 
     function renderMessages() {
-        messagesArea.innerHTML = '';
+        messagesInner.innerHTML = '';
         var allFileIds = [];
         messages.forEach(function (msg) {
             ((msg.content && msg.content.attachments) || []).forEach(function (a) {
@@ -236,10 +237,10 @@
                         var sep = document.createElement('div');
                         sep.className = 'msg-date-separator';
                         sep.innerHTML = '<span>' + u.escapeHtml(msgDate) + '</span>';
-                        messagesArea.appendChild(sep);
+                        messagesInner.appendChild(sep);
                     }
                     return BF.messages.buildMessageElement(msg, myUserId, !!(currentChatInfo && currentChatInfo.isGroupChat), getUser, showMediaOverlay).then(function (el) {
-                        messagesArea.appendChild(el);
+                        messagesInner.appendChild(el);
                     });
                 });
             });
@@ -255,19 +256,19 @@
 
         return p.then(function () {
             var msgDate = u.formatDate(msg.sentAt);
-            var lastGroup = messagesArea.lastElementChild;
+            var lastGroup = messagesInner.lastElementChild;
             var lastMsgDate = lastGroup && lastGroup.dataset && lastGroup.dataset.date;
             if (msgDate !== lastMsgDate) {
                 var sep = document.createElement('div');
                 sep.className = 'msg-date-separator';
                 sep.dataset.date = msgDate;
                 sep.innerHTML = '<span>' + u.escapeHtml(msgDate) + '</span>';
-                messagesArea.appendChild(sep);
+                messagesInner.appendChild(sep);
             }
             return BF.messages.buildMessageElement(msg, myUserId, !!(currentChatInfo && currentChatInfo.isGroupChat), getUser, showMediaOverlay);
         }).then(function (el) {
             el.dataset.date = u.formatDate(msg.sentAt);
-            messagesArea.appendChild(el);
+            messagesInner.appendChild(el);
         });
     }
 

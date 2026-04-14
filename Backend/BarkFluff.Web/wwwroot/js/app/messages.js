@@ -244,9 +244,9 @@
 
         return promise.then(function () {
             var bubble = document.createElement('div');
-            bubble.className = 'msg-bubble ' + direction + (isSticker ? ' sticker' : '');
-
             var attachments = (msg.content && msg.content.attachments) || [];
+            var hasImages = isOutgoing && attachments.some(function (a) { return a.type === 'IMAGE' || a.type === 'GIF'; });
+            bubble.className = 'msg-bubble ' + direction + (isSticker ? ' sticker' : '') + (hasImages ? ' has-images' : '');
             if (attachments.length > 0) renderAttachments(attachments, bubble, onMediaClick);
 
             var text = msg.content && msg.content.text;
