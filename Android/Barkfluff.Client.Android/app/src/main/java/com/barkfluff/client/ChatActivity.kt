@@ -38,6 +38,7 @@ import com.barkfluff.client.utils.KeyboardHeightTracker
 import com.barkfluff.client.utils.StickerCache
 import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.utils.MessageItemAnimator
+import com.barkfluff.client.utils.MessageTimeSpacingDecoration
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.yalantis.ucrop.UCrop
 import androidx.activity.OnBackPressedCallback
@@ -251,6 +252,12 @@ class ChatActivity : AppCompatActivity() {
             }
             adapter = messageAdapter
             itemAnimator = MessageItemAnimator()
+            addItemDecoration(
+                MessageTimeSpacingDecoration(
+                    smallSpacingPx = (2 * resources.displayMetrics.density).toInt(),  // 2dp
+                    largeSpacingPx = (16 * resources.displayMetrics.density).toInt()  // 16dp
+                )
+            )
 
             // Обработчик скролла для пагинации и кнопки "вниз"
             addOnScrollListener(object : RecyclerView.OnScrollListener() {
