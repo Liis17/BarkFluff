@@ -242,6 +242,14 @@
         });
     }
 
+    function checkFileHash(fileHash) {
+        var req = new (filePb().CheckFileHashRequest)();
+        req.setFileHash(fileHash);
+        return c().authCall(files().checkFileHash.bind(files()), req).then(function (resp) {
+            return { fileId: resp.getFileId() };
+        });
+    }
+
     function getTempDownloadUrl(fileIds) {
         var req = new (filePb().GetTempDownloadUrlRequest)();
         req.setFileIdsList(fileIds);
@@ -305,6 +313,7 @@
         searchUsers: searchUsers,
         getUser: getUser,
         getUploadUrl: getUploadUrl,
+        checkFileHash: checkFileHash,
         getTempDownloadUrl: getTempDownloadUrl,
         listStickerPacks: listStickerPacks,
         setOnlineStatus: setOnlineStatus,
