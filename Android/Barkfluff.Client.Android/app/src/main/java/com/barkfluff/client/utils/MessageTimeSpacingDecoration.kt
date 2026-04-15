@@ -4,6 +4,7 @@ import android.graphics.Rect
 import android.view.View
 import androidx.recyclerview.widget.RecyclerView
 import com.barkfluff.client.adapter.MessageAdapter
+import com.barkfluff.client.adapter.MessageItem
 import com.barkfluff.client.adapter.MessageType
 
 /**
@@ -37,7 +38,7 @@ class MessageTimeSpacingDecoration(
         if (currentItem.type != MessageType.MESSAGE) return
 
         // Ищем предыдущее обычное сообщение (пропускаем разделители)
-        var prevMessageItem: com.barkfluff.client.adapter.MessageItem? = null
+        var prevMessageItem: MessageItem? = null
         for (i in position - 1 downTo 0) {
             val item = adapter.currentList.getOrNull(i)
             if (item != null && item.type == MessageType.MESSAGE) {
@@ -48,7 +49,7 @@ class MessageTimeSpacingDecoration(
 
         if (prevMessageItem == null) return
 
-        val timeDiff = kotlin.math.abs(currentItem.timestamp - prevMessageItem.timestamp)
+        val timeDiff = currentItem.timestamp - prevMessageItem.timestamp
         outRect.top = if (timeDiff > timeGapThresholdMs) largeSpacingPx else smallSpacingPx
     }
 }
