@@ -108,30 +108,54 @@
             flex: 1;
         }
 
-        .sidebar-footer {
-            padding: 12px 16px;
-            border-top: 1px solid var(--card-border);
+        /* === SIDEBAR NAV (floating) === */
+
+        .sidebar {
+            position: relative;
         }
 
-        .btn-logout-sidebar {
-            width: 100%;
+        .chat-list {
+            padding-bottom: 68px;
+        }
+
+        .sidebar-nav {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
             display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 14px;
-            background: none;
-            border: none;
-            border-radius: 10px;
-            color: var(--text-sub);
-            font-size: 14px;
-            font-family: 'Inter', sans-serif;
-            cursor: pointer;
-            transition: background 0.2s, color 0.2s;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-top: 1px solid var(--card-border);
+            z-index: 10;
         }
 
-        .btn-logout-sidebar:hover {
-            background: rgba(220, 38, 38, 0.08);
-            color: var(--error);
+        .nav-btn {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            border: none;
+            background: none;
+            font-family: 'Inter', sans-serif;
+            font-size: 11px;
+            color: var(--text-sub);
+            cursor: pointer;
+            padding: 6px;
+            transition: color 0.2s;
+        }
+
+        .nav-btn .nav-icon {
+            font-size: 20px;
+            line-height: 1;
+        }
+
+        .nav-btn.active {
+            color: var(--primary);
         }
 
         .search-container {
@@ -682,6 +706,7 @@
         /* === INPUT BAR === */
 
         .input-bar {
+            position: relative;
             padding: 12px 20px;
             border-top: 1px solid var(--card-border);
             background: rgba(255, 255, 255, 0.95);
@@ -1042,6 +1067,361 @@
         }
 
         .profile-file-item:hover { background: rgba(0, 0, 0, 0.06); }
+
+        /* === SETTINGS OVERLAY === */
+
+        .settings-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 90;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .settings-overlay.visible { display: block; }
+
+        .settings-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 420px;
+            background: #fff;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            animation: slideInLeft 0.25s ease-out;
+            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
+        }
+
+        @keyframes slideInLeft {
+            from { transform: translateX(-100%); }
+            to   { transform: translateX(0); }
+        }
+
+        .settings-header {
+            padding: 20px 20px 16px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .settings-close {
+            margin-left: auto;
+            background: none;
+            border: none;
+            font-size: 22px;
+            color: var(--text-sub);
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            flex-shrink: 0;
+        }
+
+        .settings-close:hover { background: rgba(0, 0, 0, 0.05); }
+
+        .settings-user-avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #c87e5b, #8c351c);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            font-weight: 700;
+            color: white;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .settings-user-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .settings-user-info { flex: 1; min-width: 0; }
+
+        .settings-user-name {
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--text-main);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .settings-user-username {
+            font-size: 13px;
+            color: var(--primary);
+        }
+
+        .settings-section {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .settings-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-sub);
+            padding: 8px 20px 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .settings-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: background 0.15s;
+            font-size: 14px;
+            color: var(--text-main);
+        }
+
+        .settings-item:hover { background: rgba(0, 0, 0, 0.04); }
+
+        .settings-item-icon {
+            font-size: 18px;
+            width: 24px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .settings-item-label { flex: 1; }
+
+        .settings-item-arrow {
+            color: var(--text-sub);
+            font-size: 16px;
+        }
+
+        .btn-logout-settings {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: calc(100% - 40px);
+            margin: 16px 20px;
+            padding: 12px 16px;
+            background: rgba(220, 38, 38, 0.06);
+            border: none;
+            border-radius: 10px;
+            color: var(--error);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-logout-settings:hover { background: rgba(220, 38, 38, 0.12); }
+
+        /* === LOGOUT CONFIRM DIALOG === */
+
+        .confirm-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            background: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .confirm-overlay.visible { display: flex; }
+
+        .confirm-dialog {
+            background: #fff;
+            border-radius: 16px;
+            padding: 24px 28px;
+            max-width: 340px;
+            width: 90%;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        .confirm-dialog h3 {
+            margin-bottom: 8px;
+            font-size: 17px;
+            font-weight: 700;
+        }
+
+        .confirm-dialog p {
+            font-size: 14px;
+            color: var(--text-sub);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .confirm-actions { display: flex; gap: 10px; }
+
+        .btn-confirm-cancel, .btn-confirm-ok {
+            flex: 1;
+            padding: 10px;
+            border-radius: 10px;
+            border: none;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: opacity 0.15s;
+        }
+
+        .btn-confirm-cancel { background: rgba(0, 0, 0, 0.07); color: var(--text-main); }
+        .btn-confirm-ok { background: var(--error); color: white; }
+        .btn-confirm-cancel:hover { opacity: 0.8; }
+        .btn-confirm-ok:hover { opacity: 0.85; }
+
+        /* === SCROLL-TO-BOTTOM BUTTON === */
+
+        .chat-area { position: relative; }
+
+        .scroll-to-bottom-btn {
+            position: absolute;
+            bottom: 80px;
+            right: 24px;
+            z-index: 20;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+            border: 1px solid var(--card-border);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 20px;
+            color: var(--text-main);
+            transition: box-shadow 0.2s, transform 0.15s;
+        }
+
+        .scroll-to-bottom-btn.visible { display: flex; }
+        .scroll-to-bottom-btn:hover { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.24); transform: scale(1.05); }
+
+        /* === STICKER BUTTON === */
+
+        .btn-sticker {
+            background: none;
+            border: none;
+            color: var(--text-sub);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            font-size: 20px;
+            transition: color 0.2s, background 0.2s;
+            flex-shrink: 0;
+        }
+
+        .btn-sticker:hover {
+            color: var(--primary);
+            background: rgba(140, 53, 28, 0.08);
+        }
+
+        .btn-sticker.active { color: var(--primary); }
+
+        /* === STICKER PICKER === */
+
+        .sticker-picker {
+            display: none;
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            right: 0;
+            height: 320px;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-top: 1px solid var(--card-border);
+            flex-direction: column;
+            z-index: 30;
+        }
+
+        .sticker-picker.visible { display: flex; }
+
+        .sticker-packs-bar {
+            display: flex;
+            gap: 6px;
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--card-border);
+            overflow-x: auto;
+            scrollbar-width: none;
+            flex-shrink: 0;
+        }
+
+        .sticker-packs-bar::-webkit-scrollbar { display: none; }
+
+        .sticker-pack-tab {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            overflow: hidden;
+            flex-shrink: 0;
+            background: rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-sub);
+            transition: border-color 0.15s;
+        }
+
+        .sticker-pack-tab.active { border-color: var(--primary); }
+
+        .sticker-pack-tab img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .sticker-pack-empty {
+            padding: 24px;
+            text-align: center;
+            color: var(--text-sub);
+            font-size: 14px;
+        }
+
+        .sticker-grid {
+            flex: 1;
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 4px;
+            padding: 8px 12px;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(0,0,0,0.1) transparent;
+        }
+
+        .sticker-grid::-webkit-scrollbar { width: 4px; }
+        .sticker-grid::-webkit-scrollbar-track { background: transparent; }
+        .sticker-grid::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 2px; }
+
+        .sticker-grid img {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: contain;
+            cursor: pointer;
+            border-radius: 12px;
+            padding: 4px;
+            transition: background 0.15s;
+        }
+
+        .sticker-grid img:hover { background: rgba(0, 0, 0, 0.06); }
+
+        /* === STICKER IN CHAT (fix) === */
+
+        .msg-attachments img.attach-sticker {
+            width: 140px;
+            height: 140px;
+            object-fit: contain;
+            border-radius: 16px;
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -1066,9 +1446,14 @@
 
             <div class="search-results" id="searchResults"></div>
             <div class="chat-list" id="chatList"></div>
-            <div class="sidebar-footer">
-                <button class="btn-logout-sidebar" id="logoutBtn">
-                    <span>&#x1F6AA;</span> Выйти
+            <div class="sidebar-nav" id="sidebarNav">
+                <button class="nav-btn active" id="navChats">
+                    <span class="nav-icon">&#128172;</span>
+                    <span>Чаты</span>
+                </button>
+                <button class="nav-btn" id="navSettings">
+                    <span class="nav-icon">&#9881;&#65039;</span>
+                    <span>Настройки</span>
                 </button>
             </div>
         </div>
@@ -1096,12 +1481,81 @@
                 <div class="messages-inner" id="messagesInner"></div>
             </div>
             <div class="file-preview-bar" id="filePreviewBar"></div>
+            <button class="scroll-to-bottom-btn" id="scrollToBottomBtn" title="К последнему сообщению">&#8595;</button>
 
             <div class="input-bar" id="inputBar">
+                <div class="sticker-picker" id="stickerPicker">
+                    <div class="sticker-packs-bar" id="stickerPacksBar"></div>
+                    <div class="sticker-grid" id="stickerGrid"></div>
+                </div>
                 <button class="btn-attach" id="attachBtn" title="Прикрепить файл">&#128206;</button>
                 <input type="file" id="fileInput" multiple style="display:none">
+                <button class="btn-sticker" id="stickerBtn" title="Стикеры">&#128578;</button>
                 <textarea class="input-text" id="messageInput" placeholder="Введите сообщение..." rows="1" maxlength="4096"></textarea>
                 <button class="btn-send" id="sendBtn" title="Отправить">&#10148;</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings overlay -->
+    <div class="settings-overlay" id="settingsOverlay">
+        <div class="settings-panel">
+            <div class="settings-header">
+                <div class="settings-user-avatar" id="settingsAvatar"></div>
+                <div class="settings-user-info">
+                    <div class="settings-user-name" id="settingsName"></div>
+                    <div class="settings-user-username" id="settingsUsername"></div>
+                </div>
+                <button class="settings-close" id="settingsClose">&times;</button>
+            </div>
+            <div class="settings-section">
+                <div class="settings-section-title">Аккаунт</div>
+                <div class="settings-item">
+                    <span class="settings-item-icon">&#128100;</span>
+                    <span class="settings-item-label">Профиль</span>
+                    <span class="settings-item-arrow">&#8250;</span>
+                </div>
+                <div class="settings-item">
+                    <span class="settings-item-icon">&#9997;&#65039;</span>
+                    <span class="settings-item-label">Имя и юзернейм</span>
+                    <span class="settings-item-arrow">&#8250;</span>
+                </div>
+            </div>
+            <div class="settings-section">
+                <div class="settings-section-title">Безопасность</div>
+                <div class="settings-item">
+                    <span class="settings-item-icon">&#128274;</span>
+                    <span class="settings-item-label">Пароль</span>
+                    <span class="settings-item-arrow">&#8250;</span>
+                </div>
+                <div class="settings-item">
+                    <span class="settings-item-icon">&#128737;&#65039;</span>
+                    <span class="settings-item-label">Двухфакторная аутентификация</span>
+                    <span class="settings-item-arrow">&#8250;</span>
+                </div>
+            </div>
+            <div class="settings-section">
+                <div class="settings-section-title">Устройства</div>
+                <div class="settings-item">
+                    <span class="settings-item-icon">&#128241;</span>
+                    <span class="settings-item-label">Активные сессии</span>
+                    <span class="settings-item-arrow">&#8250;</span>
+                </div>
+            </div>
+            <button class="btn-logout-settings" id="settingsLogoutBtn">
+                <span>&#x1F6AA;</span> Выйти из аккаунта
+            </button>
+        </div>
+    </div>
+
+    <!-- Logout confirmation dialog -->
+    <div class="confirm-overlay" id="confirmOverlay">
+        <div class="confirm-dialog">
+            <h3>Выйти из аккаунта?</h3>
+            <p>Вы будете перенаправлены на страницу входа.</p>
+            <div class="confirm-actions">
+                <button class="btn-confirm-cancel" id="confirmCancel">Отмена</button>
+                <button class="btn-confirm-ok" id="confirmOk">Выйти</button>
             </div>
         </div>
     </div>
