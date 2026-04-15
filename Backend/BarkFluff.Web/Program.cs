@@ -296,17 +296,16 @@ static IReadOnlyList<ClusterConfig> BuildClusters(IConfiguration config)
     }
 
     // Отдельный cluster для файлового upload (обычный REST POST).
-    // Бэкенд может слушать только HTTP/2 (основной порт) или HTTP/1 (Http1Port).
-    // Используем RequestVersionOrLower, чтобы YARP мог согласовать протокол.
-    var filesHttpHost = config["FilesService:HttpHost"]
-                        ?? config["FilesService:Host"]
-                        ?? "http://files:7005";
+    // HTTP/1.1-порт Files-сервиса (порт для REST-контроллера загрузки файлов).
+    // FilesService:Host — gRPC-порт (HTTP/2 only), не подходит для multipart upload.
+    // FilesService:HttpHost — явно заданный HTTP/1-порт (7006 по умолчанию).
+    var filesHttpHost = config["FilesService:HttpHost"] ?? "http://files:7006";
     clusters.Add(new ClusterConfig
     {
         ClusterId = "files-http",
         HttpRequest = new Yarp.ReverseProxy.Forwarder.ForwarderRequestConfig
         {
-            Version = new Version(2, 0),
+            Version = new Version(1, 1),
             VersionPolicy = System.Net.Http.HttpVersionPolicy.RequestVersionOrLower
         },
         Destinations = new Dictionary<string, DestinationConfig>
