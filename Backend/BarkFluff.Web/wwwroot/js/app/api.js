@@ -281,6 +281,26 @@
         });
     }
 
+    function getStickerPack(packId) {
+        var req = new (filePb().GetStickerPackRequest)();
+        req.setPackId(packId);
+        return c().authCall(files().getStickerPack.bind(files()), req).then(function (resp) {
+            var pack = resp.getPack();
+            return {
+                pack: pack ? { id: pack.getId(), name: pack.getName(), description: pack.getDescription() } : null,
+                stickers: resp.getStickersList().map(function (s) {
+                    return {
+                        id: s.getId(),
+                        fileId: s.getFileId(),
+                        emoji: s.getEmoji(),
+                        fileUrl: s.getFileUrl(),
+                        previewUrl: s.getPreviewUrl()
+                    };
+                })
+            };
+        });
+    }
+
     function setOnlineStatus() {
         var req = new (onlPb().SetOnlineStatusRequest)();
         return c().authCall(onliner().setOnlineStatus.bind(onliner()), req);
@@ -316,6 +336,7 @@
         checkFileHash: checkFileHash,
         getTempDownloadUrl: getTempDownloadUrl,
         listStickerPacks: listStickerPacks,
+        getStickerPack: getStickerPack,
         setOnlineStatus: setOnlineStatus,
         getOnlineStatus: getOnlineStatus,
         // Expose mapping helpers for realtime module

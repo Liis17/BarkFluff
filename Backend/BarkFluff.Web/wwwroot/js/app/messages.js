@@ -40,11 +40,15 @@
 
         var images = [], videos = [], audios = [], docs = [];
         attachments.forEach(function (a) {
-            switch (a.type) {
-                case 'IMAGE': case 'GIF': case 'STICKER': images.push(a); break;
-                case 'VIDEO': videos.push(a); break;
-                case 'AUDIO': case 'VOICE': audios.push(a); break;
-                default: docs.push(a); break;
+            // Нормализация числового значения типа стикера (7) на случай, если bundle
+            // вернул число вместо строки из enum MessageAttachmentType
+            var t = (a.type === 7 || a.type === '7') ? 'STICKER' : a.type;
+            var norm = (t !== a.type) ? Object.assign({}, a, { type: t }) : a;
+            switch (t) {
+                case 'IMAGE': case 'GIF': case 'STICKER': images.push(norm); break;
+                case 'VIDEO': videos.push(norm); break;
+                case 'AUDIO': case 'VOICE': audios.push(norm); break;
+                default: docs.push(norm); break;
             }
         });
 
@@ -223,7 +227,9 @@
     function buildMessageElement(msg, myUserId, isGroupChat, getUserFn, onMediaClick) {
         var isOutgoing = msg.senderId === myUserId;
         var direction = isOutgoing ? 'outgoing' : 'incoming';
-        var isSticker = msg.content && msg.content.attachments && msg.content.attachments.length === 1 && msg.content.attachments[0].type === 'STICKER';
+        var _firstAtt = msg.content && msg.content.attachments && msg.content.attachments[0];
+        var _firstAttType = _firstAtt ? ((_firstAtt.type === 7 || _firstAtt.type === '7') ? 'STICKER' : _firstAtt.type) : null;
+        var isSticker = msg.content && msg.content.attachments && msg.content.attachments.length === 1 && _firstAttType === 'STICKER';
 
         var group = document.createElement('div');
         group.className = 'msg-group ' + direction;

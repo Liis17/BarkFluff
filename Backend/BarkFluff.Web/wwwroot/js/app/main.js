@@ -66,6 +66,20 @@
     var overlayImage = $('#overlayImage');
     var overlayVideo = $('#overlayVideo');
 
+    // Scroll-to-bottom button
+    var scrollToBottomBtn = $('#scrollToBottomBtn');
+
+    // Settings elements
+    var settingsOverlay = $('#settingsOverlay');
+    var settingsLogoutBtn = $('#settingsLogoutBtn');
+    var confirmOverlay = $('#confirmOverlay');
+
+    // Sticker picker elements
+    var stickerBtn = $('#stickerBtn');
+    var stickerPicker = $('#stickerPicker');
+    var stickerPacksBar = $('#stickerPacksBar');
+    var stickerGrid = $('#stickerGrid');
+
     // Profile elements
     var profileOverlay = $('#profileOverlay');
     var profileClose = $('#profileClose');
@@ -160,6 +174,7 @@
         pendingFiles = [];
         filePreviewBar.classList.remove('visible');
         filePreviewBar.innerHTML = '';
+        if (scrollToBottomBtn) scrollToBottomBtn.classList.remove('visible');
         chatEmpty.style.display = 'none';
         chatHeader.classList.add('visible');
         messagesArea.classList.add('visible');
@@ -498,6 +513,10 @@
 
     var _markReadScrollTimer = null;
     messagesArea.addEventListener('scroll', function () {
+        // Показываем/скрываем кнопку прокрутки вниз
+        var distFromBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight;
+        if (scrollToBottomBtn) scrollToBottomBtn.classList.toggle('visible', distFromBottom > 300);
+
         if (_markReadScrollTimer) return;
         _markReadScrollTimer = setTimeout(function () {
             _markReadScrollTimer = null;
@@ -555,10 +574,15 @@
         updateTitleBadge();
 
         if (chatId === currentChatId) {
-            var isAtBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 100;
+            var isAtBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 300;
             messages.push(msg);
             appendMessageToView(msg).then(function () {
-                if (isAtBottom) scrollToBottom();
+                if (isAtBottom) {
+                    scrollToBottom();
+                    if (scrollToBottomBtn) scrollToBottomBtn.classList.remove('visible');
+                } else {
+                    if (scrollToBottomBtn) scrollToBottomBtn.classList.add('visible');
+                }
                 // Auto-mark as read if message is visible (user is at bottom)
                 if (isAtBottom && msg.senderId !== myUserId) {
                     markReadPending.add(msg.id);
@@ -836,13 +860,162 @@
     profileClose.addEventListener('click', function () { profileOverlay.classList.remove('visible'); });
     profileOverlay.addEventListener('click', function (e) { if (e.target === profileOverlay) profileOverlay.classList.remove('visible'); });
 
-    // ========== LOGOUT ==========
+    // ========== SCROLL TO BOTTOM BUTTON ==========
 
-    $('#logoutBtn').addEventListener('click', function () {
-        BF.realtime.stopAll();
-        BF.tokens.clear();
-        window.location.href = '/';
+    if (scrollToBottomBtn) {
+        scrollToBottomBtn.addEventListener('click', function () {
+            scrollToBottom();
+            scrollToBottomBtn.classList.remove('visible');
+        });
+    }
+
+    // ========== SETTINGS MODAL ==========
+
+    function openSettings() {
+        getUser(myUserId).then(function (user) {
+            if (!user) return;
+            var av = $('#settingsAvatar');
+            if (av) {
+                av.innerHTML = user.profilePicture
+                    ? '<img src="' + u.escapeHtml(user.profilePicture) + '" alt="">'
+                    : (user.firstName || user.username || '?')[0].toUpperCase();
+            }
+            var nameEl = $('#settingsName');
+            if (nameEl) nameEl.textContent = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.username || '';
+            var unEl = $('#settingsUsername');
+            if (unEl) unEl.textContent = user.username ? '@' + user.username : '';
+        });
+        if (settingsOverlay) settingsOverlay.classList.add('visible');
+    }
+
+    $('#navChats').addEventListener('click', function () { /* already on chats page */ });
+    $('#navSettings').addEventListener('click', openSettings);
+
+    if ($('#settingsClose')) {
+        $('#settingsClose').addEventListener('click', function () {
+            settingsOverlay.classList.remove('visible');
+        });
+    }
+
+    if (settingsOverlay) {
+        settingsOverlay.addEventListener('click', function (e) {
+            if (e.target === settingsOverlay) settingsOverlay.classList.remove('visible');
+        });
+    }
+
+    // ========== LOGOUT (с подтверждением) ==========
+
+    if (settingsLogoutBtn) {
+        settingsLogoutBtn.addEventListener('click', function () {
+            if (confirmOverlay) confirmOverlay.classList.add('visible');
+        });
+    }
+
+    if ($('#confirmCancel')) {
+        $('#confirmCancel').addEventListener('click', function () {
+            if (confirmOverlay) confirmOverlay.classList.remove('visible');
+        });
+    }
+
+    if ($('#confirmOk')) {
+        $('#confirmOk').addEventListener('click', function () {
+            BF.realtime.stopAll();
+            BF.tokens.clear();
+            window.location.href = '/';
+        });
+    }
+
+    // ========== STICKER PICKER ==========
+
+    var stickerPacksCache = null;
+    var currentStickerPackId = null;
+
+    if (stickerBtn) {
+        stickerBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var isOpen = stickerPicker.classList.contains('visible');
+            stickerPicker.classList.toggle('visible', !isOpen);
+            stickerBtn.classList.toggle('active', !isOpen);
+            if (!isOpen) loadStickerPacks();
+        });
+    }
+
+    document.addEventListener('click', function (e) {
+        if (!stickerPicker || !stickerPicker.classList.contains('visible')) return;
+        if (!stickerPicker.contains(e.target) && e.target !== stickerBtn) {
+            stickerPicker.classList.remove('visible');
+            stickerBtn.classList.remove('active');
+        }
     });
+
+    function loadStickerPacks() {
+        if (stickerPacksCache) {
+            renderStickerPackTabs();
+            return;
+        }
+        BF.api.listStickerPacks(0, 50).then(function (data) {
+            stickerPacksCache = data.packs || [];
+            renderStickerPackTabs();
+            if (stickerPacksCache.length > 0) {
+                loadStickerPackContent(stickerPacksCache[0].id);
+            } else if (stickerGrid) {
+                stickerGrid.innerHTML = '<div class="sticker-pack-empty">Стикерпаки не найдены</div>';
+            }
+        }).catch(function () {
+            if (stickerGrid) stickerGrid.innerHTML = '<div class="sticker-pack-empty">Ошибка загрузки</div>';
+        });
+    }
+
+    function renderStickerPackTabs() {
+        if (!stickerPacksBar) return;
+        stickerPacksBar.innerHTML = '';
+        stickerPacksCache.forEach(function (pack, i) {
+            var tab = document.createElement('div');
+            tab.className = 'sticker-pack-tab' + (pack.id === currentStickerPackId ? ' active' : '');
+            tab.title = pack.name || '';
+            tab.textContent = (pack.name || '?')[0].toUpperCase();
+            tab.addEventListener('click', function () { loadStickerPackContent(pack.id); });
+            stickerPacksBar.appendChild(tab);
+        });
+    }
+
+    function loadStickerPackContent(packId) {
+        currentStickerPackId = packId;
+        if (!stickerGrid) return;
+        stickerGrid.innerHTML = '';
+
+        // Обновляем активный таб
+        if (stickerPacksBar) {
+            stickerPacksBar.querySelectorAll('.sticker-pack-tab').forEach(function (tab, i) {
+                tab.classList.toggle('active', stickerPacksCache[i] && stickerPacksCache[i].id === packId);
+            });
+        }
+
+        BF.api.getStickerPack(packId).then(function (data) {
+            var stickers = data.stickers || [];
+            if (stickers.length === 0) {
+                stickerGrid.innerHTML = '<div class="sticker-pack-empty">В этом паке нет стикеров</div>';
+                return;
+            }
+            stickers.forEach(function (s) {
+                var img = document.createElement('img');
+                img.src = s.previewUrl || s.fileUrl || '';
+                img.title = s.emoji || '';
+                img.loading = 'lazy';
+                img.addEventListener('click', function () { sendSticker(s.fileId); });
+                stickerGrid.appendChild(img);
+            });
+        }).catch(function () {
+            stickerGrid.innerHTML = '<div class="sticker-pack-empty">Ошибка загрузки стикеров</div>';
+        });
+    }
+
+    function sendSticker(fileId) {
+        if (!currentChatId || !fileId) return;
+        stickerPicker.classList.remove('visible');
+        stickerBtn.classList.remove('active');
+        BF.api.sendMessage({ chatId: currentChatId, text: null, fileIds: [fileId] }).catch(function () {});
+    }
 
     // ========== PROACTIVE TOKEN REFRESH ==========
 
