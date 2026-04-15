@@ -30,6 +30,7 @@ public class ChatsStorage
             .Chats
             .Include(x => x.Members)
             .Where(x => x.Members!.Any(m => m.UserId == userId))
+            .OrderBy(x => x.Id)
             .Skip(skip)
             .Take(count)
             .Select(c => new Chat
@@ -102,6 +103,7 @@ public class ChatsStorage
         var members = await _context
             .ChatMembers
             .Where(x => x.ChatId == chatId)
+            .OrderBy(x => x.UserId)
             .Skip(skip)
             .Take(count)
             .ToListAsync();
