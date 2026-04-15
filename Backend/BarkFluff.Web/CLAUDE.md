@@ -36,7 +36,7 @@ docker-compose -f docker-compose-dev.yml up web
 | `/barkfluff.files.FilesApi/{**catch-all}` | Files (7005) | gRPC/HTTP2 |
 | `/barkfluff.updates.UpdatesApi/{**catch-all}` | Updates (7015) | gRPC/HTTP2 |
 | `/barkfluff.onliner.OnlinerApi/{**catch-all}` | Onliner (7009) | gRPC/HTTP2 |
-| `/api/files/upload/{uploadId}` | Files (7005) | HTTP/1.1 |
+| `/api/files/upload/{uploadId}` | Files (7006) | HTTP/1.1 |
 
 ## Frontend JS Modules
 
