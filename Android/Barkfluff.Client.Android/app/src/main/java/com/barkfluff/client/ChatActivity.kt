@@ -254,8 +254,8 @@ class ChatActivity : AppCompatActivity() {
             itemAnimator = MessageItemAnimator()
             addItemDecoration(
                 MessageTimeSpacingDecoration(
-                    smallSpacingPx = (2 * resources.displayMetrics.density).toInt(),  // 2dp
-                    largeSpacingPx = (16 * resources.displayMetrics.density).toInt()  // 16dp
+                    smallSpacingPx = (1 * resources.displayMetrics.density).toInt(),  // 1dp
+                    largeSpacingPx = (5 * resources.displayMetrics.density).toInt()   // 5dp
                 )
             )
 
