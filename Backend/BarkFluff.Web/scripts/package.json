@@ -2,10 +2,9 @@
   "name": "barkfluff-proto-bundle",
   "version": "1.0.0",
   "private": true,
-  "description": "Build-time dependency for generating gRPC-Web JS bundle",
   "dependencies": {
-    "esbuild": "0.24.0",
     "google-protobuf": "3.21.2",
-    "grpc-web": "1.5.0"
+    "grpc-web": "1.5.0",
+    "esbuild": "0.24.0"
   }
 }
