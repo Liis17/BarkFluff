@@ -345,7 +345,7 @@
 
         var uploadChain = files.reduce(function (chain, file) {
             return chain.then(function (ids) {
-                var t = BF.files.getUploadFileType(file.type, asDocuments);
+                var t = BF.files.getUploadFileType(file.type, asDocuments, file.name);
                 return BF.files.uploadFile(file, t)
                     .then(function (fid) { ids.push(fid); return ids; })
                     .catch(function () { return ids; });

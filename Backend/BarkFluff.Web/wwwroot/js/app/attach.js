@@ -20,11 +20,17 @@
         btnConfirm.addEventListener('click', submit);
     }
 
+    var IMAGE_EXTS = ['jpg','jpeg','png','gif','webp','bmp','avif','heic','heif','tiff','tif','svg','ico'];
+    function isImageFile(f) {
+        if (f.type && f.type.startsWith('image/')) return true;
+        var ext = (f.name || '').split('.').pop().toLowerCase();
+        return IMAGE_EXTS.indexOf(ext) !== -1;
+    }
+
     function open(files, onSend) {
         onSendCallback = onSend;
         currentFiles = Array.from(files).map(function (f) {
-            var isImage = f.type && f.type.startsWith('image/');
-            return { file: f, isImage: isImage, previewUrl: null };
+            return { file: f, isImage: isImageFile(f), previewUrl: null };
         });
         var hasNonImage = currentFiles.some(function (f) { return !f.isImage; });
         mode = hasNonImage ? 'docs' : 'images';
