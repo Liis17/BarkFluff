@@ -69,10 +69,7 @@
     // Scroll-to-bottom button
     var scrollToBottomBtn = $('#scrollToBottomBtn');
 
-    // Settings elements
-    var settingsOverlay = $('#settingsOverlay');
-    var settingsLogoutBtn = $('#settingsLogoutBtn');
-    var confirmOverlay = $('#confirmOverlay');
+    // Settings and confirm overlays are managed by BF.settings module
 
     // Sticker picker elements
     var stickerBtn = $('#stickerBtn');
@@ -382,17 +379,8 @@
     fileInput.addEventListener('change', function () {
         var files = Array.from(fileInput.files);
         fileInput.value = '';
-
-        var chain = Promise.resolve();
-        files.forEach(function (file) {
-            chain = chain.then(function () {
-                var ft = BF.files.getUploadFileType(file.type);
-                return BF.api.getUploadUrl(ft).then(function (data) {
-                    if (data && data.fileId) pendingFiles.push({ file: file, fileId: data.fileId });
-                });
-            });
-        });
-        chain.then(renderFilePreview);
+        files.forEach(function (file) { pendingFiles.push({ file: file }); });
+        renderFilePreview();
     });
 
     function renderFilePreview() {
@@ -871,59 +859,9 @@
 
     // ========== SETTINGS MODAL ==========
 
-    function openSettings() {
-        getUser(myUserId).then(function (user) {
-            if (!user) return;
-            var av = $('#settingsAvatar');
-            if (av) {
-                av.innerHTML = user.profilePicture
-                    ? '<img src="' + u.escapeHtml(user.profilePicture) + '" alt="">'
-                    : (user.firstName || user.username || '?')[0].toUpperCase();
-            }
-            var nameEl = $('#settingsName');
-            if (nameEl) nameEl.textContent = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.username || '';
-            var unEl = $('#settingsUsername');
-            if (unEl) unEl.textContent = user.username ? '@' + user.username : '';
-        });
-        if (settingsOverlay) settingsOverlay.classList.add('visible');
-    }
-
+    BF.settings.init({ myUserId: myUserId });
     $('#navChats').addEventListener('click', function () { /* already on chats page */ });
-    $('#navSettings').addEventListener('click', openSettings);
-
-    if ($('#settingsClose')) {
-        $('#settingsClose').addEventListener('click', function () {
-            settingsOverlay.classList.remove('visible');
-        });
-    }
-
-    if (settingsOverlay) {
-        settingsOverlay.addEventListener('click', function (e) {
-            if (e.target === settingsOverlay) settingsOverlay.classList.remove('visible');
-        });
-    }
-
-    // ========== LOGOUT (с подтверждением) ==========
-
-    if (settingsLogoutBtn) {
-        settingsLogoutBtn.addEventListener('click', function () {
-            if (confirmOverlay) confirmOverlay.classList.add('visible');
-        });
-    }
-
-    if ($('#confirmCancel')) {
-        $('#confirmCancel').addEventListener('click', function () {
-            if (confirmOverlay) confirmOverlay.classList.remove('visible');
-        });
-    }
-
-    if ($('#confirmOk')) {
-        $('#confirmOk').addEventListener('click', function () {
-            BF.realtime.stopAll();
-            BF.tokens.clear();
-            window.location.href = '/';
-        });
-    }
+    $('#navSettings').addEventListener('click', function () { BF.settings.open(); });
 
     // ========== STICKER PICKER ==========
 
@@ -997,13 +935,20 @@
                 stickerGrid.innerHTML = '<div class="sticker-pack-empty">В этом паке нет стикеров</div>';
                 return;
             }
-            stickers.forEach(function (s) {
-                var img = document.createElement('img');
-                img.src = s.previewUrl || s.fileUrl || '';
-                img.title = s.emoji || '';
-                img.loading = 'lazy';
-                img.addEventListener('click', function () { sendSticker(s.fileId); });
-                stickerGrid.appendChild(img);
+            // Получаем temp download URLs через сервер (избегаем CORS при прямых ссылках)
+            var fileIds = stickers.map(function (s) { return s.previewFileId || s.fileId; }).filter(Boolean);
+            BF.files.getFileUrls(fileIds).then(function () {
+                stickers.forEach(function (s) {
+                    var fid = s.previewFileId || s.fileId;
+                    var fd = fid ? BF.files.getCachedFileUrl(fid) : null;
+                    var url = (fd && (fd.previewUrl || fd.url)) || '';
+                    var img = document.createElement('img');
+                    img.src = url;
+                    img.title = s.emoji || '';
+                    img.loading = 'lazy';
+                    img.addEventListener('click', function () { sendSticker(s.fileId); });
+                    stickerGrid.appendChild(img);
+                });
             });
         }).catch(function () {
             stickerGrid.innerHTML = '<div class="sticker-pack-empty">Ошибка загрузки стикеров</div>';
