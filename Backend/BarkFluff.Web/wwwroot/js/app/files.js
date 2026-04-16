@@ -63,16 +63,25 @@
 
     /**
      * Map MIME type → UploadFileType enum value.
+     * Если MIME пустой или нераспознан (напр. application/octet-stream при drag-drop на Windows),
+     * используем расширение файла как fallback.
      * @param {string} mimeType
      * @param {boolean} [asDocument] — force DOCUMENT type
+     * @param {string} [fileName] — для fallback по расширению
      */
-    function getUploadFileType(mimeType, asDocument) {
+    function getUploadFileType(mimeType, asDocument, fileName) {
         if (asDocument) return 5;
-        if (mimeType.startsWith('image/gif')) return 4;  // GIF
-        if (mimeType.startsWith('image/')) return 2;     // IMAGE
-        if (mimeType.startsWith('video/')) return 3;     // VIDEO
-        if (mimeType.startsWith('audio/')) return 7;     // AUDIO
-        return 5; // DOCUMENT
+        var mime = mimeType || '';
+        if (mime.startsWith('image/gif')) return 4;
+        if (mime.startsWith('image/')) return 2;
+        if (mime.startsWith('video/')) return 3;
+        if (mime.startsWith('audio/')) return 7;
+        var ext = (fileName || '').split('.').pop().toLowerCase();
+        if (ext === 'gif') return 4;
+        if (['jpg','jpeg','png','webp','bmp','avif','heic','heif','tiff','tif','svg','ico'].indexOf(ext) !== -1) return 2;
+        if (['mp4','mov','avi','mkv','webm','m4v'].indexOf(ext) !== -1) return 3;
+        if (['mp3','ogg','wav','aac','flac','m4a'].indexOf(ext) !== -1) return 7;
+        return 5;
     }
 
     window.BF.files = {
