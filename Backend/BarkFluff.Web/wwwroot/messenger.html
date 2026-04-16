@@ -555,12 +555,6 @@
             pointer-events: none;
         }
 
-        .msg-attachments img.attach-sticker {
-            width: 150px;
-            height: 150px;
-            object-fit: contain;
-        }
-
         /* Video */
         .attach-video-wrap {
             position: relative;
@@ -711,11 +705,19 @@
             border-top: 1px solid var(--card-border);
             background: rgba(255, 255, 255, 0.95);
             display: none;
-            align-items: flex-end;
-            gap: 10px;
         }
 
-        .input-bar.visible { display: flex; }
+        .input-bar.visible { display: block; }
+
+        .input-bar-inner {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            max-width: 800px;
+            width: 100%;
+            margin: 0 auto;
+            position: relative;
+        }
 
         .btn-attach {
             background: none;
@@ -788,34 +790,43 @@
             box-shadow: none;
         }
 
-        .file-preview-bar {
-            display: none;
-            padding: 8px 20px;
-            border-top: 1px solid var(--card-border);
-            gap: 8px;
-            flex-wrap: wrap;
-        }
+        /* === ATTACH MODAL === */
 
-        .file-preview-bar.visible { display: flex; }
-
-        .file-preview-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            background: rgba(0, 0, 0, 0.05);
-            padding: 4px 10px;
-            border-radius: 8px;
-            font-size: 12px;
+        .attach-overlay {
+            display: none; position: fixed; inset: 0; z-index: 95;
+            background: rgba(0,0,0,0.45); align-items: center; justify-content: center;
         }
-
-        .file-preview-remove {
-            background: none;
-            border: none;
-            color: var(--error);
-            cursor: pointer;
-            font-size: 14px;
-            padding: 0 2px;
+        .attach-overlay.visible { display: flex; }
+        .attach-dialog {
+            background: #fff; border-radius: 20px; width: 560px; max-width: 95vw;
+            max-height: 85vh; display: flex; flex-direction: column; overflow: hidden;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.18); animation: fadeScaleIn 0.2s ease-out;
         }
+        .attach-dialog-header { display: flex; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--card-border); }
+        .attach-dialog-title { flex: 1; font-size: 17px; font-weight: 700; }
+        .attach-dialog-close { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text-sub); }
+        .attach-dialog-body { flex: 1; overflow-y: auto; padding: 16px 20px;
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 8px; min-height: 120px; }
+        .attach-preview-item { position: relative; aspect-ratio: 1;
+            border-radius: 10px; overflow: hidden; background: rgba(0,0,0,0.05); }
+        .attach-preview-item img { width: 100%; height: 100%; object-fit: cover; }
+        .attach-preview-item .attach-doc-label { padding: 8px; font-size: 12px; word-break: break-all; }
+        .attach-preview-item .attach-remove {
+            position: absolute; top: 4px; right: 4px;
+            width: 22px; height: 22px; border-radius: 50%;
+            background: rgba(0,0,0,0.6); color: white; border: none;
+            cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center;
+        }
+        .attach-dialog-footer { display: flex; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--card-border); justify-content: flex-end; }
+        .attach-dialog-footer .sd-btn.active { background: var(--primary); color: white; }
+
+        /* Drop overlay */
+        .drop-overlay { display: none; position: absolute; inset: 0; z-index: 50;
+            background: rgba(140,53,28,0.15); border: 3px dashed var(--primary);
+            border-radius: 12px; align-items: center; justify-content: center;
+            font-size: 18px; font-weight: 600; color: var(--primary); pointer-events: none; }
+        .chat-area.drag-over .drop-overlay { display: flex; }
 
         /* Image viewer overlay */
         .image-overlay {
@@ -1557,8 +1568,8 @@
             flex: 1;
             overflow-y: auto;
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 4px;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 2px;
             padding: 8px 12px;
             scrollbar-width: thin;
             scrollbar-color: rgba(0,0,0,0.1) transparent;
@@ -1573,8 +1584,8 @@
             aspect-ratio: 1;
             object-fit: contain;
             cursor: pointer;
-            border-radius: 12px;
-            padding: 4px;
+            border-radius: 10px;
+            padding: 2px;
             transition: background 0.15s;
         }
 
@@ -1583,10 +1594,10 @@
         /* === STICKER IN CHAT (fix) === */
 
         .msg-attachments img.attach-sticker {
-            width: 140px;
-            height: 140px;
+            width: 180px;
+            height: 180px;
             object-fit: contain;
-            border-radius: 16px;
+            border-radius: 18px;
             display: block;
         }
     </style>
@@ -1647,19 +1658,20 @@
             <div class="messages-area" id="messagesArea">
                 <div class="messages-inner" id="messagesInner"></div>
             </div>
-            <div class="file-preview-bar" id="filePreviewBar"></div>
             <button class="scroll-to-bottom-btn" id="scrollToBottomBtn" title="К последнему сообщению">&#8595;</button>
 
             <div class="input-bar" id="inputBar">
-                <div class="sticker-picker" id="stickerPicker">
-                    <div class="sticker-packs-bar" id="stickerPacksBar"></div>
-                    <div class="sticker-grid" id="stickerGrid"></div>
+                <div class="input-bar-inner">
+                    <div class="sticker-picker" id="stickerPicker">
+                        <div class="sticker-packs-bar" id="stickerPacksBar"></div>
+                        <div class="sticker-grid" id="stickerGrid"></div>
+                    </div>
+                    <button class="btn-attach" id="attachBtn" title="Прикрепить файл">&#128206;</button>
+                    <input type="file" id="fileInput" multiple style="display:none">
+                    <button class="btn-sticker" id="stickerBtn" title="Стикеры">&#128578;</button>
+                    <textarea class="input-text" id="messageInput" placeholder="Введите сообщение..." rows="1" maxlength="4096"></textarea>
+                    <button class="btn-send" id="sendBtn" title="Отправить">&#10148;</button>
                 </div>
-                <button class="btn-attach" id="attachBtn" title="Прикрепить файл">&#128206;</button>
-                <input type="file" id="fileInput" multiple style="display:none">
-                <button class="btn-sticker" id="stickerBtn" title="Стикеры">&#128578;</button>
-                <textarea class="input-text" id="messageInput" placeholder="Введите сообщение..." rows="1" maxlength="4096"></textarea>
-                <button class="btn-send" id="sendBtn" title="Отправить">&#10148;</button>
             </div>
         </div>
     </div>
@@ -1722,6 +1734,22 @@
         </div>
     </div>
 
+    <!-- Attach dialog -->
+    <div class="attach-overlay" id="attachOverlay">
+        <div class="attach-dialog">
+            <div class="attach-dialog-header">
+                <div class="attach-dialog-title">Отправить файлы</div>
+                <button class="attach-dialog-close" id="attachDialogClose">&times;</button>
+            </div>
+            <div class="attach-dialog-body" id="attachDialogBody"></div>
+            <div class="attach-dialog-footer">
+                <button class="sd-btn" id="attachAsImages">Как изображения</button>
+                <button class="sd-btn" id="attachAsDocs">Как документы</button>
+                <button class="sd-btn" id="attachConfirm">Отправить</button>
+            </div>
+        </div>
+    </div>
+
     <!-- gRPC-Web bundle -->
     <script src="/js/proto/barkfluff.bundle.js"></script>
     <!-- App modules -->
@@ -1735,6 +1763,7 @@
     <script src="/js/app/messages.js"></script>
     <script src="/js/app/realtime.js"></script>
     <script src="/js/app/settings.js"></script>
+    <script src="/js/app/attach.js"></script>
     <script src="/js/app/main.js"></script>
 </body>
 </html>

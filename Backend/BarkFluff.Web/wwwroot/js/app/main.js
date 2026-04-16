@@ -34,7 +34,6 @@
     var messages = [];
     var isLoadingOlder = false;
     var noMoreOlder = false;
-    var pendingFiles = [];
     var markReadTimer = null;
     var markReadPending = new Set();
     var onlineSubscribedUserIds = new Set();
@@ -61,7 +60,6 @@
     var sendBtn = $('#sendBtn');
     var attachBtn = $('#attachBtn');
     var fileInput = $('#fileInput');
-    var filePreviewBar = $('#filePreviewBar');
     var imageOverlay = $('#imageOverlay');
     var overlayImage = $('#overlayImage');
     var overlayVideo = $('#overlayVideo');
@@ -168,9 +166,6 @@
         currentChatId = chatId;
         messages = [];
         noMoreOlder = false;
-        pendingFiles = [];
-        filePreviewBar.classList.remove('visible');
-        filePreviewBar.innerHTML = '';
         if (scrollToBottomBtn) scrollToBottomBtn.classList.remove('visible');
         chatEmpty.style.display = 'none';
         chatHeader.classList.add('visible');
@@ -314,36 +309,60 @@
 
     function sendMessage() {
         var text = messageInput.value.trim();
-        if (!text && pendingFiles.length === 0) return;
-        if (!currentChatId) return;
+        if (!text || !currentChatId) return;
 
         sendBtn.disabled = true;
-
-        // Upload pending files
-        var uploadChain = Promise.resolve([]);
-        if (pendingFiles.length > 0) {
-            uploadChain = pendingFiles.reduce(function (chain, pf) {
-                return chain.then(function (ids) {
-                    return BF.files.uploadFile(pf.file, BF.files.getUploadFileType(pf.file.type))
-                        .then(function (fid) { ids.push(fid); return ids; })
-                        .catch(function () { return ids; });
-                });
-            }, Promise.resolve([]));
-        }
-
         var sentChatId = currentChatId;
-        uploadChain.then(function (fileIds) {
-            if (!text && fileIds.length === 0) { sendBtn.disabled = false; return; }
 
-            return BF.api.sendMessage({ chatId: sentChatId, text: text || null, fileIds: fileIds.length > 0 ? fileIds : null }).then(function (resp) {
+        BF.api.sendMessage({ chatId: sentChatId, text: text, fileIds: null }).then(function (resp) {
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            sendBtn.disabled = false;
+            messageInput.focus();
+
+            if (resp && resp.message) {
+                var msg = resp.message;
+                if (sentChatId === currentChatId && !messages.some(function (m) { return m.id === msg.id; })) {
+                    messages.push(msg);
+                    appendMessageToView(msg).then(scrollToBottom);
+                }
+                var chatIdx = chats.findIndex(function (c) { return c.id === sentChatId; });
+                if (chatIdx >= 0) {
+                    var chat = chats[chatIdx];
+                    chat.lastMessage = msg;
+                    chats.splice(chatIdx, 1);
+                    chats.unshift(chat);
+                    renderChatList();
+                }
+            }
+        }).catch(function () { sendBtn.disabled = false; });
+    }
+
+    function sendMessageWithFiles(files, asDocuments) {
+        var text = messageInput.value.trim();
+        var sentChatId = currentChatId;
+        sendBtn.disabled = true;
+
+        var uploadChain = files.reduce(function (chain, file) {
+            return chain.then(function (ids) {
+                var t = BF.files.getUploadFileType(file.type, asDocuments);
+                return BF.files.uploadFile(file, t)
+                    .then(function (fid) { ids.push(fid); return ids; })
+                    .catch(function () { return ids; });
+            });
+        }, Promise.resolve([]));
+
+        uploadChain.then(function (fileIds) {
+            if (fileIds.length === 0) { sendBtn.disabled = false; return; }
+            return BF.api.sendMessage({
+                chatId: sentChatId,
+                text: text || null,
+                fileIds: fileIds
+            }).then(function (resp) {
                 messageInput.value = '';
                 messageInput.style.height = 'auto';
-                pendingFiles = [];
-                filePreviewBar.classList.remove('visible');
-                filePreviewBar.innerHTML = '';
                 sendBtn.disabled = false;
                 messageInput.focus();
-
                 if (resp && resp.message) {
                     var msg = resp.message;
                     if (sentChatId === currentChatId && !messages.some(function (m) { return m.id === msg.id; })) {
@@ -363,6 +382,13 @@
         }).catch(function () { sendBtn.disabled = false; });
     }
 
+    function openAttachModal(files) {
+        if (!currentChatId) return;
+        BF.attach.open(files, function (outFiles, asDocuments) {
+            sendMessageWithFiles(outFiles, asDocuments);
+        });
+    }
+
     sendBtn.addEventListener('click', sendMessage);
     messageInput.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
@@ -379,22 +405,61 @@
     fileInput.addEventListener('change', function () {
         var files = Array.from(fileInput.files);
         fileInput.value = '';
-        files.forEach(function (file) { pendingFiles.push({ file: file }); });
-        renderFilePreview();
+        if (files.length === 0) return;
+        openAttachModal(files);
     });
 
-    function renderFilePreview() {
-        if (pendingFiles.length === 0) { filePreviewBar.classList.remove('visible'); filePreviewBar.innerHTML = ''; return; }
-        filePreviewBar.classList.add('visible');
-        filePreviewBar.innerHTML = pendingFiles.map(function (pf, i) {
-            return '<div class="file-preview-item"><span>' + u.escapeHtml(u.truncate(pf.file.name, 25)) + '</span>' +
-                '<button class="file-preview-remove" data-index="' + i + '">&#10005;</button></div>';
-        }).join('');
-        filePreviewBar.querySelectorAll('.file-preview-remove').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                pendingFiles.splice(Number(btn.dataset.index), 1);
-                renderFilePreview();
-            });
+    messageInput.addEventListener('paste', function (e) {
+        if (!currentChatId) return;
+        var items = e.clipboardData && e.clipboardData.items;
+        if (!items) return;
+        var files = [];
+        for (var i = 0; i < items.length; i++) {
+            if (items[i].kind === 'file') {
+                var f = items[i].getAsFile();
+                if (f) files.push(f);
+            }
+        }
+        if (files.length === 0) return;
+        e.preventDefault();
+        openAttachModal(files);
+    });
+
+    // Глобально блокируем дефолтное открытие файла в браузере при промахе мимо chat-area
+    ['dragover', 'drop'].forEach(function (ev) {
+        window.addEventListener(ev, function (e) { e.preventDefault(); });
+    });
+
+    var chatArea = document.querySelector('.chat-area');
+    if (chatArea) {
+        var dropOverlay = document.createElement('div');
+        dropOverlay.className = 'drop-overlay';
+        dropOverlay.textContent = 'Отпустите для отправки';
+        chatArea.appendChild(dropOverlay);
+
+        var dragCounter = 0;
+        function isFileDrag(e) {
+            return e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
+        }
+        chatArea.addEventListener('dragenter', function (e) {
+            if (!currentChatId || !isFileDrag(e)) return;
+            dragCounter++;
+            chatArea.classList.add('drag-over');
+        });
+        chatArea.addEventListener('dragover', function (e) {
+            if (!currentChatId || !isFileDrag(e)) return;
+            e.dataTransfer.dropEffect = 'copy';
+        });
+        chatArea.addEventListener('dragleave', function () {
+            dragCounter--;
+            if (dragCounter <= 0) { dragCounter = 0; chatArea.classList.remove('drag-over'); }
+        });
+        chatArea.addEventListener('drop', function (e) {
+            if (!currentChatId) return;
+            dragCounter = 0;
+            chatArea.classList.remove('drag-over');
+            var files = Array.from(e.dataTransfer.files || []);
+            if (files.length > 0) openAttachModal(files);
         });
     }
 
@@ -860,12 +925,14 @@
     // ========== SETTINGS MODAL ==========
 
     BF.settings.init({ myUserId: myUserId });
+    BF.attach.init();
     $('#navChats').addEventListener('click', function () { /* already on chats page */ });
     $('#navSettings').addEventListener('click', function () { BF.settings.open(); });
 
     // ========== STICKER PICKER ==========
 
     var stickerPacksCache = null;
+    var stickerPacksContentCache = {}; // packId → { stickers, coverFileId }
     var currentStickerPackId = null;
 
     if (stickerBtn) {
@@ -887,18 +954,35 @@
     });
 
     function loadStickerPacks() {
-        if (stickerPacksCache) {
-            renderStickerPackTabs();
-            return;
-        }
+        if (stickerPacksCache) { renderStickerPackTabs(); return; }
         BF.api.listStickerPacks(0, 50).then(function (data) {
             stickerPacksCache = data.packs || [];
-            renderStickerPackTabs();
-            if (stickerPacksCache.length > 0) {
-                loadStickerPackContent(stickerPacksCache[0].id);
-            } else if (stickerGrid) {
-                stickerGrid.innerHTML = '<div class="sticker-pack-empty">Стикерпаки не найдены</div>';
+            if (stickerPacksCache.length === 0) {
+                if (stickerGrid) stickerGrid.innerHTML = '<div class="sticker-pack-empty">Стикерпаки не найдены</div>';
+                return;
             }
+            // Prefetch всех паков для обложек и кэша контента
+            var loads = stickerPacksCache.map(function (p) {
+                return BF.api.getStickerPack(p.id).then(function (d) {
+                    var stickers = d.stickers || [];
+                    var cover = stickers.find(function (s) { return s.id === p.coverStickerId; }) || stickers[0];
+                    stickerPacksContentCache[p.id] = {
+                        stickers: stickers,
+                        coverFileId: cover ? (cover.previewFileId || cover.fileId) : null
+                    };
+                }).catch(function () {
+                    stickerPacksContentCache[p.id] = { stickers: [], coverFileId: null };
+                });
+            });
+            Promise.all(loads).then(function () {
+                var coverIds = stickerPacksCache
+                    .map(function (p) { return stickerPacksContentCache[p.id].coverFileId; })
+                    .filter(Boolean);
+                return coverIds.length > 0 ? BF.files.getFileUrls(coverIds) : Promise.resolve();
+            }).then(function () {
+                renderStickerPackTabs();
+                if (stickerPacksCache.length > 0) loadStickerPackContent(stickerPacksCache[0].id);
+            });
         }).catch(function () {
             if (stickerGrid) stickerGrid.innerHTML = '<div class="sticker-pack-empty">Ошибка загрузки</div>';
         });
@@ -907,11 +991,22 @@
     function renderStickerPackTabs() {
         if (!stickerPacksBar) return;
         stickerPacksBar.innerHTML = '';
-        stickerPacksCache.forEach(function (pack, i) {
+        stickerPacksCache.forEach(function (pack) {
             var tab = document.createElement('div');
             tab.className = 'sticker-pack-tab' + (pack.id === currentStickerPackId ? ' active' : '');
             tab.title = pack.name || '';
-            tab.textContent = (pack.name || '?')[0].toUpperCase();
+            var cached = stickerPacksContentCache[pack.id];
+            var coverFid = cached && cached.coverFileId;
+            var fd = coverFid ? BF.files.getCachedFileUrl(coverFid) : null;
+            var url = fd && (fd.previewUrl || fd.url);
+            if (url) {
+                var img = document.createElement('img');
+                img.src = url;
+                img.alt = pack.name || '';
+                tab.appendChild(img);
+            } else {
+                tab.textContent = (pack.name || '?')[0].toUpperCase();
+            }
             tab.addEventListener('click', function () { loadStickerPackContent(pack.id); });
             stickerPacksBar.appendChild(tab);
         });
@@ -922,36 +1017,32 @@
         if (!stickerGrid) return;
         stickerGrid.innerHTML = '';
 
-        // Обновляем активный таб
         if (stickerPacksBar) {
             stickerPacksBar.querySelectorAll('.sticker-pack-tab').forEach(function (tab, i) {
                 tab.classList.toggle('active', stickerPacksCache[i] && stickerPacksCache[i].id === packId);
             });
         }
 
-        BF.api.getStickerPack(packId).then(function (data) {
-            var stickers = data.stickers || [];
-            if (stickers.length === 0) {
-                stickerGrid.innerHTML = '<div class="sticker-pack-empty">В этом паке нет стикеров</div>';
-                return;
-            }
-            // Получаем temp download URLs через сервер (избегаем CORS при прямых ссылках)
-            var fileIds = stickers.map(function (s) { return s.previewFileId || s.fileId; }).filter(Boolean);
-            BF.files.getFileUrls(fileIds).then(function () {
-                stickers.forEach(function (s) {
-                    var fid = s.previewFileId || s.fileId;
-                    var fd = fid ? BF.files.getCachedFileUrl(fid) : null;
-                    var url = (fd && (fd.previewUrl || fd.url)) || '';
-                    var img = document.createElement('img');
-                    img.src = url;
-                    img.title = s.emoji || '';
-                    img.loading = 'lazy';
-                    img.addEventListener('click', function () { sendSticker(s.fileId); });
-                    stickerGrid.appendChild(img);
-                });
+        var cached = stickerPacksContentCache[packId];
+        var stickers = cached ? cached.stickers : [];
+        if (stickers.length === 0) {
+            stickerGrid.innerHTML = '<div class="sticker-pack-empty">В этом паке нет стикеров</div>';
+            return;
+        }
+        // Показываем full-версии стикеров (fileId, не preview)
+        var fileIds = stickers.map(function (s) { return s.fileId; }).filter(Boolean);
+        BF.files.getFileUrls(fileIds).then(function () {
+            stickers.forEach(function (s) {
+                var fd = BF.files.getCachedFileUrl(s.fileId);
+                var url = fd && fd.url;
+                if (!url) return;
+                var img = document.createElement('img');
+                img.src = url;
+                img.title = s.emoji || '';
+                img.loading = 'lazy';
+                img.addEventListener('click', function () { sendSticker(s.fileId); });
+                stickerGrid.appendChild(img);
             });
-        }).catch(function () {
-            stickerGrid.innerHTML = '<div class="sticker-pack-empty">Ошибка загрузки стикеров</div>';
         });
     }
 
