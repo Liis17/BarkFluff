@@ -23,7 +23,7 @@
     function open(files, onSend) {
         onSendCallback = onSend;
         currentFiles = Array.from(files).map(function (f) {
-            var isImage = f.type && f.type.startsWith('image/') && !f.type.startsWith('image/gif');
+            var isImage = f.type && f.type.startsWith('image/');
             return { file: f, isImage: isImage, previewUrl: null };
         });
         var hasNonImage = currentFiles.some(function (f) { return !f.isImage; });
@@ -70,7 +70,7 @@
                 currentFiles.splice(i, 1);
                 var hasNonImage = currentFiles.some(function (f) { return !f.isImage; });
                 if (hasNonImage) { mode = 'docs'; btnImages.style.display = 'none'; }
-                else { btnImages.style.display = ''; }
+                else { mode = 'images'; btnImages.style.display = ''; }
                 if (currentFiles.length === 0) { close(); return; }
                 render();
             });
