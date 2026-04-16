@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text;
 
 using BarkFluff.GrpcServer;
@@ -5,6 +6,7 @@ using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Shared.Identity;
 
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 
 using Serilog;
@@ -27,19 +29,47 @@ builder.WebHost.ConfigureKestrel(options =>
 
 builder.Services.AddBarkFluffMetrics("BarkFluff.Web");
 
-// CORS — разрешаем обращения из настроенных origin'ов; также публикуем gRPC-Web-трейлеры
+// CORS — разрешаем обращения из настроенных origin'ов; также публикуем gRPC-Web-трейлеры.
+// В проде список обязателен; localhost-fallback оставляем только для разработки.
 var allowedOrigins = builder.Configuration.GetSection("Web:AllowedOrigins").Get<string[]>()
-                     ?? new[] { "http://localhost:7016" };
+                     ?? Array.Empty<string>();
+if (allowedOrigins.Length == 0 && builder.Environment.IsDevelopment())
+    allowedOrigins = new[] { "http://localhost:7016" };
+
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
     .WithOrigins(allowedOrigins)
-    .AllowAnyMethod()
-    .AllowAnyHeader()
+    .WithMethods("GET", "POST", "OPTIONS")
+    .WithHeaders(
+        "content-type",
+        "x-grpc-web",
+        "x-user-agent",
+        "x-auth-token",
+        "x-device-id",
+        "x-device-name",
+        "x-ip",
+        "x-os",
+        "x-app-name",
+        "x-app-version")
     .AllowCredentials()
     .WithExposedHeaders(
         "grpc-status",
         "grpc-message",
         "grpc-status-details-bin",
         "x-error-code")));
+
+// Доверенные reverse-proxy (nginx, Docker internal networks) — источник X-Forwarded-For.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+    // Docker bridge / internal networks
+    options.KnownNetworks.Add(new Microsoft.AspNetCore.HttpOverrides.IPNetwork(IPAddress.Parse("172.16.0.0"), 12));
+    options.KnownNetworks.Add(new Microsoft.AspNetCore.HttpOverrides.IPNetwork(IPAddress.Parse("10.0.0.0"), 8));
+    options.KnownNetworks.Add(new Microsoft.AspNetCore.HttpOverrides.IPNetwork(IPAddress.Parse("192.168.0.0"), 16));
+    options.KnownProxies.Add(IPAddress.Loopback);
+    options.KnownProxies.Add(IPAddress.IPv6Loopback);
+});
 
 // YARP reverse-proxy — по одному кластеру на каждый backend-сервис
 // gRPC-Web middleware (ниже) превращает входящий HTTP/1.1 gRPC-Web запрос
@@ -49,6 +79,10 @@ builder.Services.AddReverseProxy()
 
 var app = builder.Build();
 
+// Применяем X-Forwarded-For/-Proto только от доверенных прокси (см. KnownNetworks выше).
+// После этого ctx.Connection.RemoteIpAddress = реальный IP клиента; подделать нельзя.
+app.UseForwardedHeaders();
+
 // Логирование и метрики HTTP-запросов
 app.Use(async (ctx, next) =>
 {
@@ -56,10 +90,7 @@ app.Use(async (ctx, next) =>
     metrics.Increment("http_requests_total");
 
     var logger = ctx.RequestServices.GetRequiredService<ILogger<Program>>();
-    var ip = ctx.Request.Headers["X-Forwarded-For"].FirstOrDefault()
-             ?? ctx.Request.Headers["X-Real-IP"].FirstOrDefault()
-             ?? ctx.Connection.RemoteIpAddress?.ToString()
-             ?? "unknown";
+    var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
     logger.LogDebug("HTTP {Method} {Path} от {IP}", ctx.Request.Method, ctx.Request.Path, ip);
 
@@ -77,6 +108,20 @@ app.Use(async (ctx, next) =>
 
 app.UseCors();
 
+// Стандартные security-заголовки для всех ответов.
+app.Use(async (ctx, next) =>
+{
+    ctx.Response.OnStarting(() =>
+    {
+        var h = ctx.Response.Headers;
+        if (!h.ContainsKey("X-Content-Type-Options")) h["X-Content-Type-Options"] = "nosniff";
+        if (!h.ContainsKey("Referrer-Policy")) h["Referrer-Policy"] = "same-origin";
+        if (!h.ContainsKey("X-Frame-Options")) h["X-Frame-Options"] = "DENY";
+        return Task.CompletedTask;
+    });
+    await next();
+});
+
 // gRPC-Web ↔ gRPC конвертация для YARP.
 //
 // Браузер отправляет application/grpc-web-text (base64, HTTP/1.1).
@@ -88,6 +133,9 @@ app.UseCors();
 // Запрос: base64-декодируем тело, меняем Content-Type на application/grpc.
 // Ответ: каждый data-frame сразу кодируется и отправляется клиенту (поддержка
 //         server-streaming). Trailer-frame добавляется при завершении потока.
+// Защита от гигантских grpc-web-text тел: 4 МБ с запасом на base64-оверхед.
+const long MAX_GRPC_WEB_REQUEST_BYTES = 4L * 1024 * 1024;
+
 app.Use(async (ctx, next) =>
 {
     var ct = ctx.Request.ContentType ?? "";
@@ -100,11 +148,22 @@ app.Use(async (ctx, next) =>
         return;
     }
 
+    if (ctx.Request.ContentLength.HasValue && ctx.Request.ContentLength.Value > MAX_GRPC_WEB_REQUEST_BYTES)
+    {
+        ctx.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
+        return;
+    }
+
     // --- ЗАПРОС: декодируем base64 тело ---
     if (isGrpcWebText)
     {
         using var reqMs = new MemoryStream();
         await ctx.Request.Body.CopyToAsync(reqMs);
+        if (reqMs.Length > MAX_GRPC_WEB_REQUEST_BYTES)
+        {
+            ctx.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
+            return;
+        }
         var b64 = Encoding.ASCII.GetString(reqMs.ToArray()).TrimEnd();
         if (b64.Length % 4 != 0)
             b64 += new string('=', 4 - b64.Length % 4);
