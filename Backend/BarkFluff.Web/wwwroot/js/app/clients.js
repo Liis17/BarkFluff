@@ -34,17 +34,17 @@
      */
     function refreshToken() {
         if (refreshPromise) return refreshPromise;
-        refreshPromise = new Promise(function (resolve) {
-            var rt = BF.tokens.getRefreshToken();
-            if (!rt) { resolve(null); refreshPromise = null; return; }
 
+        var rt = BF.tokens.getRefreshToken();
+        if (!rt) return Promise.resolve(null);
+
+        var p = new Promise(function (resolve) {
             var proto = window.proto.barkfluff.identity;
             var req = new proto.CreateTokenRequest();
             req.setRefreshToken(rt);
 
             var meta = BF.metadata.build();
             identityClient.createToken(req, meta, function (err, resp) {
-                refreshPromise = null;
                 if (err || !resp) {
                     BF.tokens.clear();
                     resolve(null);
@@ -60,6 +60,8 @@
                 resolve(at.getValue());
             });
         });
+
+        refreshPromise = p.finally(function () { refreshPromise = null; });
         return refreshPromise;
     }
 

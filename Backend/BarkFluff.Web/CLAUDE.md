@@ -95,7 +95,7 @@ docker-compose -f docker-compose-dev.yml up web
 **Механизмы:**
 - Exponential backoff (2 с → 30 с) при переподключении каждого потока
 - Page-visibility reconnection — при возврате в вкладку восстанавливает потоки и обновляет токен
-- Keep-alive ping (SetOnlineStatus каждые 30 с)
+- Keep-alive ping (SetOnlineStatus каждые 3 с)
 - Tab title badge — `(N) BarkFluff — Мессенджер` с суммой непрочитанных
 - Browser Notification API — уведомление для сообщений от других пользователей когда чат не активен или вкладка не в фокусе
 - Scroll-based mark-as-read — видимые сообщения автоматически отмечаются прочитанными при прокрутке

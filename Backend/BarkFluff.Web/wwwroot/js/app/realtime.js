@@ -30,10 +30,16 @@
     var INITIAL_BACKOFF = 2000;
     var MAX_BACKOFF = 30000;
     var STREAM_MAX_AGE = 250000; // ms — превентивный реконнект до nginx 300s-таймаута
+    // Если поток прожил больше этого порога, считаем закрытие «штатным» и не растим backoff.
+    var STABLE_STREAM_THRESHOLD = 10000;
 
     var updatesAgeTimer = null;
     var readAgeTimer    = null;
     var onlineAgeTimer  = null;
+
+    var updatesOpenedAt = 0;
+    var readOpenedAt    = 0;
+    var onlineOpenedAt  = 0;
 
     // Currently subscribed online user IDs (for reconnection)
     var currentOnlineUserIds = [];
@@ -85,6 +91,7 @@
 
             if (updatesStream) { try { updatesStream.cancel(); } catch (e) {} }
             updatesStream = BF.clients.updates.subscribeNewMessages(req, meta);
+            updatesOpenedAt = Date.now();
             if (updatesAgeTimer) clearTimeout(updatesAgeTimer);
             updatesAgeTimer = setTimeout(function () {
                 if (_started) subscribeNewMessages();
@@ -103,9 +110,9 @@
             });
 
             updatesStream.on('status', function (status) {
-                if (status && status.code === 0 && !updatesConnected) {
-                    updatesConnected = true;
-                    emitConnectionStatus();
+                if (status && status.code === 0) {
+                    updatesBackoff = INITIAL_BACKOFF;
+                    if (!updatesConnected) { updatesConnected = true; emitConnectionStatus(); }
                 }
             });
 
@@ -119,6 +126,10 @@
             updatesStream.on('end', function () {
                 updatesConnected = false;
                 emitConnectionStatus();
+                // Штатное закрытие после длительной сессии — backoff не растим.
+                if (Date.now() - updatesOpenedAt > STABLE_STREAM_THRESHOLD) {
+                    updatesBackoff = INITIAL_BACKOFF;
+                }
                 if (_started) setTimeout(subscribeNewMessages, updatesBackoff);
             });
 
@@ -139,6 +150,7 @@
 
             if (readStream) { try { readStream.cancel(); } catch (e) {} }
             readStream = BF.clients.updates.subscribeMessagesRead(req, meta);
+            readOpenedAt = Date.now();
             if (readAgeTimer) clearTimeout(readAgeTimer);
             readAgeTimer = setTimeout(function () {
                 if (_started) subscribeMessagesRead();
@@ -154,6 +166,13 @@
                 });
             });
 
+            readStream.on('status', function (status) {
+                if (status && status.code === 0) {
+                    readBackoff = INITIAL_BACKOFF;
+                    if (!readConnected) { readConnected = true; emitConnectionStatus(); }
+                }
+            });
+
             readStream.on('error', function () {
                 readConnected = false;
                 emitConnectionStatus();
@@ -164,6 +183,9 @@
             readStream.on('end', function () {
                 readConnected = false;
                 emitConnectionStatus();
+                if (Date.now() - readOpenedAt > STABLE_STREAM_THRESHOLD) {
+                    readBackoff = INITIAL_BACKOFF;
+                }
                 if (_started) setTimeout(subscribeMessagesRead, readBackoff);
             });
 
@@ -187,6 +209,7 @@
 
             if (onlineStream) { try { onlineStream.cancel(); } catch (e) {} }
             onlineStream = BF.clients.onliner.subscribeToOnlineStatus(req, meta);
+            onlineOpenedAt = Date.now();
             if (onlineAgeTimer) clearTimeout(onlineAgeTimer);
             onlineAgeTimer = setTimeout(function () {
                 if (_started && currentOnlineUserIds.length > 0) subscribeOnline(currentOnlineUserIds);
@@ -201,6 +224,10 @@
                 });
             });
 
+            onlineStream.on('status', function (status) {
+                if (status && status.code === 0) onlineBackoff = INITIAL_BACKOFF;
+            });
+
             onlineStream.on('error', function () {
                 if (_started && currentOnlineUserIds.length > 0) {
                     setTimeout(function () { subscribeOnline(currentOnlineUserIds); }, onlineBackoff);
@@ -209,6 +236,9 @@
             });
 
             onlineStream.on('end', function () {
+                if (Date.now() - onlineOpenedAt > STABLE_STREAM_THRESHOLD) {
+                    onlineBackoff = INITIAL_BACKOFF;
+                }
                 if (_started && currentOnlineUserIds.length > 0) {
                     setTimeout(function () { subscribeOnline(currentOnlineUserIds); }, onlineBackoff);
                 }
