@@ -80,31 +80,33 @@
         setMode(mode);
     }
 
-    // Конвертация в JPEG 85% через <img>+decode.
-    // Используем <img> + src=blob URL + onload: Firefox применяет color-management до drawImage,
-    // что позволяет избежать orange cast при обработке фото с ICC-профилем.
+    var MAX_DIM = 2000;
+
+    // createImageBitmap корректно применяет ICC-профиль при декодировании.
+    // canvas.getContext('2d') без явного colorSpace позволяет браузеру
+    // самостоятельно управлять цветовым пространством при drawImage —
+    // явный { colorSpace: 'srgb' } ломает этот pipeline в Chrome.
     function convertToJpeg(file) {
-        return new Promise(function (resolve, reject) {
-            var img = new Image();
-            var url = URL.createObjectURL(file);
-            img.onload = function () {
-                var canvas = document.createElement('canvas');
-                canvas.width = img.naturalWidth;
-                canvas.height = img.naturalHeight;
-                var ctx = canvas.getContext('2d', { colorSpace: 'srgb' });
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.drawImage(img, 0, 0);
-                URL.revokeObjectURL(url);
+        return createImageBitmap(file).then(function (bitmap) {
+            var w = bitmap.width;
+            var h = bitmap.height;
+            if (w > MAX_DIM || h > MAX_DIM) {
+                var scale = MAX_DIM / Math.max(w, h);
+                w = Math.round(w * scale);
+                h = Math.round(h * scale);
+            }
+            var canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h);
+            bitmap.close();
+            return new Promise(function (resolve, reject) {
                 canvas.toBlob(function (blob) {
                     if (!blob) { reject(new Error('blob_failed')); return; }
-                    var baseName = (file.name || 'image').replace(/\.[^.]+$/, '');
-                    var jpegFile = new File([blob], baseName + '.jpg', { type: 'image/jpeg' });
-                    resolve(jpegFile);
+                    var base = (file.name || 'image').replace(/\.[^.]+$/, '');
+                    resolve(new File([blob], base + '.jpg', { type: 'image/jpeg' }));
                 }, 'image/jpeg', 0.85);
-            };
-            img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('decode_failed')); };
-            img.src = url;
+            });
         });
     }
 
