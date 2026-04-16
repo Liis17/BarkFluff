@@ -77,6 +77,8 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 builder.Services.AddReverseProxy()
     .LoadFromMemory(BuildRoutes(), BuildClusters(builder.Configuration));
 
+builder.Services.AddHealthChecks();
+
 var app = builder.Build();
 
 // Применяем X-Forwarded-For/-Proto только от доверенных прокси (см. KnownNetworks выше).
@@ -250,12 +252,26 @@ app.Use(async (ctx, next) =>
 
 app.UseStaticFiles();
 
+app.MapHealthChecks("/health");
+
 app.MapGet("/messenger", (IWebHostEnvironment env) =>
     Results.File(Path.Combine(env.WebRootPath, "messenger.html"), "text/html"));
 
 app.MapReverseProxy();
 
-app.MapFallbackToFile("index.html");
+// Fallback: SPA отдаётся для любого URL, КРОМЕ /api/* и /health —
+// чтобы неверный HTTP-метод на upload/health не маскировался index.html.
+app.MapFallback(async (HttpContext ctx, IWebHostEnvironment env) =>
+{
+    var path = ctx.Request.Path.Value ?? string.Empty;
+    if (path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase)
+        || path.Equals("/health", StringComparison.OrdinalIgnoreCase))
+    {
+        ctx.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+    await Results.File(Path.Combine(env.WebRootPath, "index.html"), "text/html").ExecuteAsync(ctx);
+});
 
 app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
 app.Run();

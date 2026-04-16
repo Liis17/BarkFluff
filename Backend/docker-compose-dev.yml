@@ -155,6 +155,12 @@ services:
       - barkfluff-network
     depends_on:
       - configuration
+      - identity
+      - users
+      - messages
+      - files
+      - updates
+      - onliner
 
   # === Панель администрирования ===
 
