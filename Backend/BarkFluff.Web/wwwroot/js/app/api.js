@@ -21,6 +21,7 @@
     var usrPb = function () { return window.proto.barkfluff.users; };
     var filePb = function () { return window.proto.barkfluff.files; };
     var onlPb = function () { return window.proto.barkfluff.onliner; };
+    var identPb = function () { return window.proto.barkfluff.identity; };
 
     // --- Helpers to convert protobuf → plain JS ---
 
@@ -292,13 +293,111 @@
                     return {
                         id: s.getId(),
                         fileId: s.getFileId(),
-                        emoji: s.getEmoji(),
-                        fileUrl: s.getFileUrl(),
-                        previewUrl: s.getPreviewUrl()
+                        previewFileId: s.getPreviewFileId(),
+                        emoji: s.getEmoji()
                     };
                 })
             };
         });
+    }
+
+    // --- Users API ---
+
+    function changeName(firstName, lastName) {
+        var req = new (usrPb().ChangeNameRequest)();
+        req.setFirstName(firstName || '');
+        req.setLastName(lastName || '');
+        return c().authCall(users().changeName.bind(users()), req);
+    }
+
+    function changeUsername(username) {
+        var req = new (usrPb().ChangeUsernameRequest)();
+        req.setUsername(username);
+        return c().authCall(users().changeUsername.bind(users()), req);
+    }
+
+    function changeBio(bio) {
+        var req = new (usrPb().ChangeBioRequest)();
+        req.setBio(bio || '');
+        return c().authCall(users().changeBio.bind(users()), req);
+    }
+
+    function setProfilePicture(fileId) {
+        var req = new (usrPb().SetProfilePictureRequest)();
+        req.setFileId(fileId);
+        return c().authCall(users().setProfilePicture.bind(users()), req);
+    }
+
+    function checkExistUsername(username) {
+        var req = new (usrPb().CheckExistUsernameRequest)();
+        req.setUsername(username);
+        return c().authCall(users().checkExistUsername.bind(users()), req).then(function (resp) {
+            return { exist: resp.getExist() };
+        });
+    }
+
+    // --- Identity API ---
+
+    function getActiveSessions() {
+        var req = new (identPb().GetActiveSessionsRequest)();
+        return c().authCall(identity().getActiveSessions.bind(identity()), req).then(function (resp) {
+            return {
+                sessions: resp.getSessionsList().map(function (s) {
+                    return {
+                        id: s.getId(),
+                        deviceId: s.getDeviceId(),
+                        originalName: s.getOriginalName(),
+                        customName: s.getCustomName(),
+                        appName: s.getAppName(),
+                        operationSystem: s.getOperationSystem(),
+                        location: s.getLocation(),
+                        createdAt: tsToMs(s.getCreatedAt()),
+                        expirationAt: tsToMs(s.getExpirationAt())
+                    };
+                })
+            };
+        });
+    }
+
+    function removeActiveSession(deviceId) {
+        var req = new (identPb().RemoveActiveSessionRequest)();
+        req.setDeviceId(deviceId);
+        return c().authCall(identity().removeActiveSession.bind(identity()), req);
+    }
+
+    function listOtpVerification() {
+        var req = new (identPb().ListOtpVerificationRequest)();
+        return c().authCall(identity().listOtpVerification.bind(identity()), req).then(function (resp) {
+            return { authenticatorEnabled: resp.getAuthenticatorEnabled(), emailEnabled: resp.getEmailEnabled() };
+        });
+    }
+
+    function enableOtpVerification(otpType) {
+        var req = new (identPb().EnableOtpVerificationRequest)();
+        req.setOtpType(otpType);
+        return c().authCall(identity().enableOtpVerification.bind(identity()), req).then(function (resp) {
+            return { otpQr: resp.getOtpQr(), otpCode: resp.getOtpCode() };
+        });
+    }
+
+    function confirmOtpVerification(otpCode) {
+        var req = new (identPb().ConfirmOtpVerificationRequest)();
+        req.setOtpCode(otpCode);
+        return c().authCall(identity().confirmOtpVerification.bind(identity()), req);
+    }
+
+    function disableOtpVerification(otpType, otpCode) {
+        var req = new (identPb().DisableOtpVerificationRequest)();
+        req.setOtpType(otpType);
+        if (otpCode) req.setOtpCode(otpCode);
+        return c().authCall(identity().disableOtpVerification.bind(identity()), req);
+    }
+
+    function setPassword(password, oldPassword) {
+        var req = new (identPb().SetPasswordRequest)();
+        req.setPassword(password);
+        if (oldPassword) req.setOldPassword(oldPassword);
+        return c().authCall(identity().setPassword.bind(identity()), req);
     }
 
     function setOnlineStatus() {
@@ -339,6 +438,20 @@
         getStickerPack: getStickerPack,
         setOnlineStatus: setOnlineStatus,
         getOnlineStatus: getOnlineStatus,
+        // Users
+        changeName: changeName,
+        changeUsername: changeUsername,
+        changeBio: changeBio,
+        setProfilePicture: setProfilePicture,
+        checkExistUsername: checkExistUsername,
+        // Identity
+        getActiveSessions: getActiveSessions,
+        removeActiveSession: removeActiveSession,
+        listOtpVerification: listOtpVerification,
+        enableOtpVerification: enableOtpVerification,
+        confirmOtpVerification: confirmOtpVerification,
+        disableOtpVerification: disableOtpVerification,
+        setPassword: setPassword,
         // Expose mapping helpers for realtime module
         _mapMessage: mapMessage,
         _mapUser: mapUser

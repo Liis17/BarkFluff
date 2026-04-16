@@ -1070,135 +1070,148 @@
 
         /* === SETTINGS OVERLAY === */
 
+        /* === SETTINGS DIALOG (centered) === */
+
         .settings-overlay {
             display: none;
             position: fixed;
             inset: 0;
             z-index: 90;
-            background: rgba(0, 0, 0, 0.3);
+            background: rgba(0, 0, 0, 0.45);
+            align-items: center;
+            justify-content: center;
         }
 
-        .settings-overlay.visible { display: block; }
+        .settings-overlay.visible { display: flex; }
 
-        .settings-panel {
-            position: absolute;
-            top: 0;
-            left: 0;
-            bottom: 0;
-            width: 420px;
+        .settings-dialog {
             background: #fff;
-            overflow-y: auto;
+            border-radius: 20px;
+            width: 480px;
+            max-width: 95vw;
+            max-height: 85vh;
+            overflow: hidden;
             display: flex;
             flex-direction: column;
-            animation: slideInLeft 0.25s ease-out;
-            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.18);
+            animation: fadeScaleIn 0.2s ease-out;
         }
 
-        @keyframes slideInLeft {
-            from { transform: translateX(-100%); }
-            to   { transform: translateX(0); }
+        @keyframes fadeScaleIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to   { opacity: 1; transform: scale(1); }
         }
 
-        .settings-header {
-            padding: 20px 20px 16px;
+        .sd-header {
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 10px;
+            padding: 16px 20px;
             border-bottom: 1px solid var(--card-border);
-        }
-
-        .settings-close {
-            margin-left: auto;
-            background: none;
-            border: none;
-            font-size: 22px;
-            color: var(--text-sub);
-            cursor: pointer;
-            padding: 4px 8px;
-            border-radius: 6px;
             flex-shrink: 0;
         }
 
-        .settings-close:hover { background: rgba(0, 0, 0, 0.05); }
+        .sd-back {
+            background: none;
+            border: none;
+            color: var(--text-sub);
+            cursor: pointer;
+            font-size: 20px;
+            padding: 2px 6px;
+            border-radius: 6px;
+            display: none;
+        }
 
-        .settings-user-avatar {
-            width: 56px;
-            height: 56px;
+        .sd-back.visible { display: block; }
+        .sd-back:hover { background: rgba(0, 0, 0, 0.06); }
+
+        .sd-title {
+            flex: 1;
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .sd-close {
+            background: none;
+            border: none;
+            color: var(--text-sub);
+            cursor: pointer;
+            font-size: 22px;
+            padding: 2px 8px;
+            border-radius: 6px;
+        }
+
+        .sd-close:hover { background: rgba(0, 0, 0, 0.06); }
+
+        .sd-body {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        /* Profile block (avatar + name) at top of main menu */
+        .sd-profile-block {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 20px;
+            cursor: pointer;
+            transition: background 0.15s;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .sd-profile-block:hover { background: rgba(0, 0, 0, 0.04); }
+
+        .sd-avatar {
+            width: 52px;
+            height: 52px;
             border-radius: 50%;
             background: linear-gradient(135deg, #c87e5b, #8c351c);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 22px;
+            font-size: 20px;
             font-weight: 700;
             color: white;
             overflow: hidden;
             flex-shrink: 0;
         }
 
-        .settings-user-avatar img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
+        .sd-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
-        .settings-user-info { flex: 1; min-width: 0; }
+        .sd-user-name { font-size: 16px; font-weight: 700; color: var(--text-main); }
+        .sd-user-username { font-size: 13px; color: var(--primary); }
+        .sd-user-arrow { color: var(--text-sub); font-size: 18px; margin-left: auto; }
 
-        .settings-user-name {
-            font-size: 17px;
-            font-weight: 700;
-            color: var(--text-main);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
+        /* Sections */
+        .sd-section { padding: 8px 0; border-bottom: 1px solid var(--card-border); }
 
-        .settings-user-username {
-            font-size: 13px;
-            color: var(--primary);
-        }
-
-        .settings-section {
-            padding: 8px 0;
-            border-bottom: 1px solid var(--card-border);
-        }
-
-        .settings-section-title {
+        .sd-section-title {
             font-size: 11px;
             font-weight: 600;
             color: var(--text-sub);
-            padding: 8px 20px 4px;
+            padding: 6px 20px 2px;
             text-transform: uppercase;
             letter-spacing: 0.06em;
         }
 
-        .settings-item {
+        .sd-item {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 12px 20px;
+            gap: 14px;
+            padding: 13px 20px;
             cursor: pointer;
             transition: background 0.15s;
             font-size: 14px;
             color: var(--text-main);
         }
 
-        .settings-item:hover { background: rgba(0, 0, 0, 0.04); }
+        .sd-item:hover { background: rgba(0, 0, 0, 0.04); }
+        .sd-item-icon { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
+        .sd-item-label { flex: 1; }
+        .sd-item-arrow { color: var(--text-sub); font-size: 14px; }
 
-        .settings-item-icon {
-            font-size: 18px;
-            width: 24px;
-            text-align: center;
-            flex-shrink: 0;
-        }
-
-        .settings-item-label { flex: 1; }
-
-        .settings-item-arrow {
-            color: var(--text-sub);
-            font-size: 16px;
-        }
-
+        /* Logout button */
         .btn-logout-settings {
             display: flex;
             align-items: center;
@@ -1218,6 +1231,160 @@
         }
 
         .btn-logout-settings:hover { background: rgba(220, 38, 38, 0.12); }
+        .btn-logout-settings svg { flex-shrink: 0; }
+
+        /* Sub-view: form fields */
+        .sd-form { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+        .sd-field { display: flex; flex-direction: column; gap: 6px; }
+
+        .sd-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .sd-input {
+            padding: 10px 14px;
+            border: 1.5px solid var(--card-border);
+            border-radius: 10px;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            transition: border-color 0.2s;
+            color: var(--text-main);
+            background: #fff;
+        }
+
+        .sd-input:focus { outline: none; border-color: var(--primary); }
+        .sd-input.error { border-color: var(--error); }
+
+        .sd-hint { font-size: 12px; color: var(--text-sub); }
+        .sd-hint.error { color: var(--error); }
+
+        .sd-btn {
+            padding: 11px 20px;
+            border-radius: 10px;
+            border: none;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .sd-btn-primary { background: var(--primary); color: white; }
+        .sd-btn-primary:hover { filter: brightness(1.1); }
+        .sd-btn-primary:disabled { opacity: 0.5; cursor: default; }
+
+        /* 2FA view */
+        .twofa-status {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--card-border);
+            gap: 10px;
+        }
+
+        .twofa-type { font-size: 14px; font-weight: 500; flex: 1; }
+
+        .twofa-badge {
+            font-size: 12px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        .twofa-badge.on { background: rgba(34, 197, 94, 0.12); color: #15803d; }
+        .twofa-badge.off { background: rgba(0, 0, 0, 0.07); color: var(--text-sub); }
+
+        .twofa-toggle {
+            background: none;
+            border: none;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 8px;
+        }
+
+        .twofa-toggle.enable { color: var(--primary); }
+        .twofa-toggle.disable { color: var(--error); }
+
+        /* Sessions list */
+        .session-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .session-item.current { background: rgba(140, 53, 28, 0.04); }
+        .session-info { flex: 1; min-width: 0; }
+
+        .session-name {
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .session-meta { font-size: 12px; color: var(--text-sub); }
+
+        .session-terminate {
+            background: rgba(220, 38, 38, 0.07);
+            border: none;
+            border-radius: 8px;
+            color: var(--error);
+            font-size: 12px;
+            font-weight: 600;
+            padding: 6px 10px;
+            cursor: pointer;
+            transition: background 0.2s;
+            flex-shrink: 0;
+        }
+
+        .session-terminate:hover { background: rgba(220, 38, 38, 0.14); }
+
+        /* Avatar upload in profile view */
+        .sd-avatar-upload {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            padding: 24px 20px 0;
+        }
+
+        .sd-avatar-large {
+            width: 84px;
+            height: 84px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #c87e5b, #8c351c);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 34px;
+            font-weight: 700;
+            color: white;
+            overflow: hidden;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .sd-avatar-large img { width: 100%; height: 100%; object-fit: cover; }
+
+        .sd-avatar-large:hover::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.28);
+        }
+
+        .sd-avatar-hint { font-size: 12px; color: var(--text-sub); }
 
         /* === LOGOUT CONFIRM DIALOG === */
 
@@ -1497,54 +1664,15 @@
         </div>
     </div>
 
-    <!-- Settings overlay -->
+    <!-- Settings dialog (centered) -->
     <div class="settings-overlay" id="settingsOverlay">
-        <div class="settings-panel">
-            <div class="settings-header">
-                <div class="settings-user-avatar" id="settingsAvatar"></div>
-                <div class="settings-user-info">
-                    <div class="settings-user-name" id="settingsName"></div>
-                    <div class="settings-user-username" id="settingsUsername"></div>
-                </div>
-                <button class="settings-close" id="settingsClose">&times;</button>
+        <div class="settings-dialog" id="settingsDialog">
+            <div class="sd-header">
+                <button class="sd-back" id="sdBack">&#8592;</button>
+                <div class="sd-title" id="sdTitle">Настройки</div>
+                <button class="sd-close" id="sdClose">&times;</button>
             </div>
-            <div class="settings-section">
-                <div class="settings-section-title">Аккаунт</div>
-                <div class="settings-item">
-                    <span class="settings-item-icon">&#128100;</span>
-                    <span class="settings-item-label">Профиль</span>
-                    <span class="settings-item-arrow">&#8250;</span>
-                </div>
-                <div class="settings-item">
-                    <span class="settings-item-icon">&#9997;&#65039;</span>
-                    <span class="settings-item-label">Имя и юзернейм</span>
-                    <span class="settings-item-arrow">&#8250;</span>
-                </div>
-            </div>
-            <div class="settings-section">
-                <div class="settings-section-title">Безопасность</div>
-                <div class="settings-item">
-                    <span class="settings-item-icon">&#128274;</span>
-                    <span class="settings-item-label">Пароль</span>
-                    <span class="settings-item-arrow">&#8250;</span>
-                </div>
-                <div class="settings-item">
-                    <span class="settings-item-icon">&#128737;&#65039;</span>
-                    <span class="settings-item-label">Двухфакторная аутентификация</span>
-                    <span class="settings-item-arrow">&#8250;</span>
-                </div>
-            </div>
-            <div class="settings-section">
-                <div class="settings-section-title">Устройства</div>
-                <div class="settings-item">
-                    <span class="settings-item-icon">&#128241;</span>
-                    <span class="settings-item-label">Активные сессии</span>
-                    <span class="settings-item-arrow">&#8250;</span>
-                </div>
-            </div>
-            <button class="btn-logout-settings" id="settingsLogoutBtn">
-                <span>&#x1F6AA;</span> Выйти из аккаунта
-            </button>
+            <div class="sd-body" id="sdBody"></div>
         </div>
     </div>
 
@@ -1606,6 +1734,7 @@
     <script src="/js/app/files.js"></script>
     <script src="/js/app/messages.js"></script>
     <script src="/js/app/realtime.js"></script>
+    <script src="/js/app/settings.js"></script>
     <script src="/js/app/main.js"></script>
 </body>
 </html>
