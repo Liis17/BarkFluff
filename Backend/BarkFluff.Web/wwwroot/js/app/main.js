@@ -798,8 +798,14 @@
             var user = d.user;
 
             var initial = (user.firstName || user.username || '?')[0].toUpperCase();
-            profileAvatar.innerHTML = user.profilePicture
-                ? '<img src="' + user.profilePicture + '" alt="">' : initial;
+            if (user.profilePicture) {
+                var avImg = document.createElement('img');
+                avImg.src = user.profilePicture;
+                avImg.alt = '';
+                profileAvatar.replaceChildren(avImg);
+            } else {
+                profileAvatar.textContent = initial;
+            }
             profileName.textContent = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.username;
             profileUsername.textContent = user.username ? '@' + user.username : '';
             profileBio.textContent = user.bio || '';
@@ -819,7 +825,13 @@
                 user.badges.forEach(function (b) {
                     var el = document.createElement('div');
                     el.className = 'profile-badge';
-                    el.innerHTML = (b.imageUrl ? '<img src="' + b.imageUrl + '" alt="">' : '') + b.name;
+                    if (b.imageUrl) {
+                        var bImg = document.createElement('img');
+                        bImg.src = b.imageUrl;
+                        bImg.alt = '';
+                        el.appendChild(bImg);
+                    }
+                    el.appendChild(document.createTextNode(b.name || ''));
                     profileBadges.appendChild(el);
                 });
             }
@@ -880,7 +892,11 @@
                             var el = document.createElement('a');
                             el.className = 'profile-file-item';
                             el.href = fileUrl; el.target = '_blank';
-                            el.innerHTML = '<span>&#128196;</span> ' + (att.fileName || 'Файл');
+                            el.rel = 'noopener';
+                            var icon = document.createElement('span');
+                            icon.textContent = '\u{1F4C4}';
+                            el.appendChild(icon);
+                            el.appendChild(document.createTextNode(' ' + (att.fileName || 'Файл')));
                             list.appendChild(el);
                         });
                     });
