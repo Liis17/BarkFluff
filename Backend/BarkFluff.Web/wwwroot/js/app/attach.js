@@ -80,53 +80,16 @@
         setMode(mode);
     }
 
-    var MAX_DIM = 2000;
-
-    // createImageBitmap корректно применяет ICC-профиль при декодировании.
-    // canvas.getContext('2d') без явного colorSpace позволяет браузеру
-    // самостоятельно управлять цветовым пространством при drawImage —
-    // явный { colorSpace: 'srgb' } ломает этот pipeline в Chrome.
-    function convertToJpeg(file) {
-        return createImageBitmap(file).then(function (bitmap) {
-            var w = bitmap.width;
-            var h = bitmap.height;
-            if (w > MAX_DIM || h > MAX_DIM) {
-                var scale = MAX_DIM / Math.max(w, h);
-                w = Math.round(w * scale);
-                h = Math.round(h * scale);
-            }
-            var canvas = document.createElement('canvas');
-            canvas.width = w;
-            canvas.height = h;
-            canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h);
-            bitmap.close();
-            return new Promise(function (resolve, reject) {
-                canvas.toBlob(function (blob) {
-                    if (!blob) { reject(new Error('blob_failed')); return; }
-                    var base = (file.name || 'image').replace(/\.[^.]+$/, '');
-                    resolve(new File([blob], base + '.jpg', { type: 'image/jpeg' }));
-                }, 'image/jpeg', 0.85);
-            });
-        });
-    }
-
     function submit() {
         btnConfirm.disabled = true;
         var asDocuments = mode === 'docs';
-        var prepare;
-        if (asDocuments) {
-            prepare = Promise.resolve(currentFiles.map(function (item) { return item.file; }));
-        } else {
-            prepare = Promise.all(currentFiles.map(function (item) {
-                return item.isImage
-                    ? convertToJpeg(item.file).catch(function () { return item.file; })
-                    : Promise.resolve(item.file);
-            }));
-        }
-        prepare.then(function (outFiles) {
-            close();
-            if (onSendCallback) onSendCallback(outFiles, asDocuments);
-        }).finally(function () { btnConfirm.disabled = false; });
+        // Оригинальные файлы отправляются без клиентской конвертации:
+        // canvas.drawImage теряет ICC-профили → оранжевый/жёлтый сдвиг цвета.
+        // Конвертация (JPEG 85%, ресайз) выполняется сервером (ImageSharp), как в AdminPanel.
+        var outFiles = currentFiles.map(function (item) { return item.file; });
+        close();
+        btnConfirm.disabled = false;
+        if (onSendCallback) onSendCallback(outFiles, asDocuments);
     }
 
     window.BF.attach = { init: init, open: open };
