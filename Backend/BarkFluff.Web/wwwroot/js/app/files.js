@@ -63,8 +63,11 @@
 
     /**
      * Map MIME type → UploadFileType enum value.
+     * @param {string} mimeType
+     * @param {boolean} [asDocument] — force DOCUMENT type
      */
-    function getUploadFileType(mimeType) {
+    function getUploadFileType(mimeType, asDocument) {
+        if (asDocument) return 5;
         if (mimeType.startsWith('image/gif')) return 4;  // GIF
         if (mimeType.startsWith('image/')) return 2;     // IMAGE
         if (mimeType.startsWith('video/')) return 3;     // VIDEO
