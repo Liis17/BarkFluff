@@ -1050,7 +1050,24 @@
         if (!currentChatId || !fileId) return;
         stickerPicker.classList.remove('visible');
         stickerBtn.classList.remove('active');
-        BF.api.sendMessage({ chatId: currentChatId, text: null, fileIds: [fileId] }).catch(function () {});
+        var sentChatId = currentChatId;
+        BF.api.sendMessage({ chatId: sentChatId, text: null, fileIds: [fileId] }).then(function (resp) {
+            if (resp && resp.message) {
+                var msg = resp.message;
+                if (sentChatId === currentChatId && !messages.some(function (m) { return m.id === msg.id; })) {
+                    messages.push(msg);
+                    appendMessageToView(msg).then(scrollToBottom);
+                }
+                var chatIdx = chats.findIndex(function (c) { return c.id === sentChatId; });
+                if (chatIdx >= 0) {
+                    var chat = chats[chatIdx];
+                    chat.lastMessage = msg;
+                    chats.splice(chatIdx, 1);
+                    chats.unshift(chat);
+                    renderChatList();
+                }
+            }
+        }).catch(function () {});
     }
 
     // ========== PROACTIVE TOKEN REFRESH ==========
