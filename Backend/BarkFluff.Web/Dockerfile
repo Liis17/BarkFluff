@@ -81,7 +81,20 @@ RUN dotnet publish "BarkFluff.Web.csproj" -c $BUILD_CONFIGURATION -o /app/publis
 # Stage 3: Runtime image
 # ──────────────────────────────────────────────────────────────────────────────
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
+
+# curl нужен для HEALTHCHECK
+USER root
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*
+
 USER $APP_UID
 WORKDIR /app
 COPY --from=build /app/publish .
+
+EXPOSE 7016
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD curl -fsS http://localhost:7016/health || exit 1
+
 ENTRYPOINT ["dotnet", "BarkFluff.Web.dll"]
