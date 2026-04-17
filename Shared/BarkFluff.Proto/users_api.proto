@@ -51,6 +51,12 @@ service UsersApi {
 
   // Включить или выключить уведомления для текущего устройства
   rpc SetNotificationsEnabled(SetNotificationsEnabledRequest) returns(SetNotificationsEnabledResponse);
+
+  // Получить настройки приватности текущего пользователя
+  rpc GetPrivacySettings(GetPrivacySettingsRequest) returns(GetPrivacySettingsResponse);
+
+  // Обновить настройки приватности текущего пользователя
+  rpc UpdatePrivacySettings(UpdatePrivacySettingsRequest) returns(UpdatePrivacySettingsResponse);
 }
 
 service UsersServerApi {
@@ -129,6 +135,9 @@ service UsersServerApi {
 
   // Получить устройства с Firebase токенами
   rpc GetDevicesWithFirebaseTokens(GetDevicesWithFirebaseTokensRequest) returns(GetDevicesWithFirebaseTokensResponse);
+
+  // Получить настройки приватности пользователя (для других микросервисов, напр. Onliner)
+  rpc GetUserPrivacy(GetUserPrivacyRequest) returns(GetUserPrivacyResponse);
 }
 
 // Установить аватарку (серверный)
@@ -545,4 +554,46 @@ message SetNotificationsEnabledRequest {
 }
 
 message SetNotificationsEnabledResponse { }
+
+// Настройки приватности пользователя
+
+// Уровень видимости поля профиля:
+//  ALL     — видят все
+//  FRIENDS — видят только друзья (временно трактуется как NONE,
+//            пока в бэкенде нет системы отношений между пользователями)
+//  NONE    — скрыто ото всех
+enum ProfileFieldVisibility {
+  ALL = 0;
+  FRIENDS = 1;
+  NONE = 2;
+}
+
+message PrivacySettings {
+  bool profile_visible_on_site = 1;               // видимость публичной страницы barkfluff.com/{username}
+  ProfileFieldVisibility avatar_visibility = 2;   // видимость аватара
+  ProfileFieldVisibility bio_visibility = 3;      // видимость описания профиля (био)
+  ProfileFieldVisibility email_visibility = 4;    // видимость почты
+  bool search_visible = 5;                        // показывать ли пользователя в выдаче поиска
+  ProfileFieldVisibility online_visibility = 6;   // видимость онлайн-статуса
+}
+
+message GetPrivacySettingsRequest { }
+
+message GetPrivacySettingsResponse {
+  PrivacySettings settings = 1;
+}
+
+message UpdatePrivacySettingsRequest {
+  PrivacySettings settings = 1;
+}
+
+message UpdatePrivacySettingsResponse { }
+
+message GetUserPrivacyRequest {
+  int64 user_id = 1;
+}
+
+message GetUserPrivacyResponse {
+  PrivacySettings settings = 1;
+}
 
