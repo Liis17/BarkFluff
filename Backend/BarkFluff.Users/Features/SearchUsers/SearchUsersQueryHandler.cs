@@ -1,5 +1,7 @@
 namespace BarkFluff.Users.Features.SearchUsers;
 
+using BarkFluff.GrpcServer.XAuth;
+
 using Mapping;
 
 using MediatR;
@@ -13,11 +15,13 @@ using Proto.Users;
 public class SearchUsersQueryHandler : IRequestHandler<SearchUsersQuery, SearchUsersResponse>
 {
     private readonly UsersStorage _usersStorage;
+    private readonly UserContext _userContext;
     private readonly ILogger<SearchUsersQueryHandler> _logger;
 
-    public SearchUsersQueryHandler(UsersStorage usersStorage, ILogger<SearchUsersQueryHandler> logger)
+    public SearchUsersQueryHandler(UsersStorage usersStorage, UserContext userContext, ILogger<SearchUsersQueryHandler> logger)
     {
         this._usersStorage = usersStorage;
+        this._userContext = userContext;
         this._logger = logger;
     }
 
@@ -42,7 +46,13 @@ public class SearchUsersQueryHandler : IRequestHandler<SearchUsersQuery, SearchU
             request.Size = 50;
         }
 
-        var usersResult = await _usersStorage.SearchUsersByTrigram(request.Query, request.Skip, request.Size);
+        // Исключаем пользователей со скрытым SearchVisible, но всегда показываем текущего пользователя самому себе.
+        var usersResult = await _usersStorage.SearchUsersByTrigram(
+            request.Query,
+            request.Skip,
+            request.Size,
+            currentUserId: _userContext.UserId,
+            respectSearchVisibility: true);
 
         if (usersResult.TotalCount < 0)
         {

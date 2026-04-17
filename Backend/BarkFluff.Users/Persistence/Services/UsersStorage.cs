@@ -112,7 +112,7 @@ public class UsersStorage
     /// <param name="pageSize">Размер страницы</param>
     /// <param name="similarityThreshold">Порог схожести (от 0 до 1, рекомендуется 0.3)</param>
     /// <returns>Список пользователей и общее количество найденных пользователей</returns>
-    public async Task<(List<User> Users, int TotalCount)> SearchUsersByTrigram(string searchTerm, int skip = 0, int pageSize = 10, double similarityThreshold = 0.3)
+    public async Task<(List<User> Users, int TotalCount)> SearchUsersByTrigram(string searchTerm, int skip = 0, int pageSize = 10, double similarityThreshold = 0.3, long? currentUserId = null, bool respectSearchVisibility = true)
     {
         if (string.IsNullOrWhiteSpace(searchTerm))
         {
@@ -121,17 +121,25 @@ public class UsersStorage
 
         var normalizedSearchTerm = searchTerm.Trim();
 
+        // Фильтр приватности: пользователь, скрывший себя из поиска (Privacies.SearchVisible=false),
+        // должен исключаться из выдачи — но всегда видеть сам себя.
+        // Если строки Privacies ещё нет — считаем пользователя видимым (LEFT JOIN + IS NULL).
+        var privacyFilter = respectSearchVisibility
+            ? @" AND (p.""SearchVisible"" IS NULL OR p.""SearchVisible"" = true OR u.""Id"" = @currentUserId)"
+            : string.Empty;
+
         // SQL запрос для поиска с использованием триграмм
         var sql = @"
-            SELECT u.""Id"", u.""FirstName"", u.""LastName"", u.""Username"", u.""RegistrationDate"", 
+            SELECT u.""Id"", u.""FirstName"", u.""LastName"", u.""Username"", u.""RegistrationDate"",
                    u.""ProfilePicture"", u.""ProfilePicturePreviewUrl"", u.""Bio"", u.""IsDraft"", u.""StorageLimitGb"",
                    uc.""Email"", uc.""UserId""
             FROM ""Users"" u
             LEFT JOIN ""UserContacts"" uc ON u.""Id"" = uc.""UserId""
+            LEFT JOIN ""Privacies"" p ON u.""Id"" = p.""UserId""
             WHERE (similarity(u.""FirstName"", @searchTerm) > @threshold
                OR similarity(u.""LastName"", @searchTerm) > @threshold
                OR similarity(u.""Username"", @searchTerm) > @threshold)
-            AND u.""IsDraft"" = false
+            AND u.""IsDraft"" = false" + privacyFilter + @"
             ORDER BY GREATEST(
                 similarity(u.""FirstName"", @searchTerm),
                 similarity(u.""LastName"", @searchTerm),
@@ -144,7 +152,8 @@ public class UsersStorage
                 new NpgsqlParameter("@searchTerm", normalizedSearchTerm),
                 new NpgsqlParameter("@threshold", similarityThreshold),
                 new NpgsqlParameter("@pageSize", pageSize),
-                new NpgsqlParameter("@skip", skip))
+                new NpgsqlParameter("@skip", skip),
+                new NpgsqlParameter("@currentUserId", (object?)currentUserId ?? DBNull.Value))
             .Include(u => u.Contact)
             .ToListAsync();
 
@@ -152,14 +161,16 @@ public class UsersStorage
         var countSql = @"
             SELECT COUNT(*)
             FROM ""Users"" u
+            LEFT JOIN ""Privacies"" p ON u.""Id"" = p.""UserId""
             WHERE (similarity(u.""FirstName"", @searchTerm) > @threshold
                OR similarity(u.""LastName"", @searchTerm) > @threshold
                OR similarity(u.""Username"", @searchTerm) > @threshold)
-            AND u.""IsDraft"" = false";
+            AND u.""IsDraft"" = false" + privacyFilter;
 
         var totalCount = await _usersContext.Database.ExecuteSqlRawAsync(countSql,
             new NpgsqlParameter("@searchTerm", normalizedSearchTerm),
-            new NpgsqlParameter("@threshold", similarityThreshold));
+            new NpgsqlParameter("@threshold", similarityThreshold),
+            new NpgsqlParameter("@currentUserId", (object?)currentUserId ?? DBNull.Value));
 
         return (users, totalCount);
     }

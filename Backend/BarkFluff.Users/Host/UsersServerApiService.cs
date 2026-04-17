@@ -22,6 +22,7 @@ using BarkFluff.Users.Features.GetUser;
 using BarkFluff.Users.Features.GetUserContacts;
 using BarkFluff.Users.Features.ListByIds;
 using BarkFluff.Users.Features.OverrideDraftUser;
+using BarkFluff.Users.Features.Privacy.GetUserPrivacyServer;
 using BarkFluff.Users.Features.SearchUsersServer;
 using BarkFluff.Users.Features.SetProfilePictureServer;
 using BarkFluff.Users.Features.UpdateStorageLimit;
@@ -40,12 +41,14 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
 {
     private readonly IMediator _mediator;
     private readonly UsersStorage _usersStorage;
+    private readonly PrivacyStorage _privacyStorage;
     private readonly MetricsCollector _metrics;
 
-    public UsersServerApiService(IMediator mediator, UsersStorage usersStorage, MetricsCollector metrics)
+    public UsersServerApiService(IMediator mediator, UsersStorage usersStorage, PrivacyStorage privacyStorage, MetricsCollector metrics)
     {
         _mediator = mediator;
         _usersStorage = usersStorage;
+        _privacyStorage = privacyStorage;
         _metrics = metrics;
     }
 
@@ -274,15 +277,37 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
             return new GetUserByUsernameResponse { Found = false };
         }
 
+        // Применение настроек приватности к публичной странице профиля.
+        // FRIENDS пока трактуется как NONE — в бэкенде нет системы отношений между пользователями.
+        var privacy = await _privacyStorage.GetOrCreate(user.Id);
+
+        if (!privacy.ProfileVisibleOnSite)
+        {
+            return new GetUserByUsernameResponse { Found = false };
+        }
+
+        var bio = privacy.BioVisibility == Domain.ProfileFieldVisibility.All
+            ? (user.Bio ?? string.Empty)
+            : string.Empty;
+
+        var avatar = privacy.AvatarVisibility == Domain.ProfileFieldVisibility.All
+            ? (user.ProfilePicture ?? string.Empty)
+            : string.Empty;
+
         return new GetUserByUsernameResponse
         {
             Found = true,
             FirstName = user.FirstName,
             LastName = user.LastName,
             Username = user.Username,
-            Bio = user.Bio ?? string.Empty,
-            ProfilePicture = user.ProfilePicture ?? string.Empty,
+            Bio = bio,
+            ProfilePicture = avatar,
         };
+    }
+
+    public override Task<GetUserPrivacyResponse> GetUserPrivacy(GetUserPrivacyRequest request, ServerCallContext context)
+    {
+        return _mediator.Send(new GetUserPrivacyServerQuery { UserId = request.UserId });
     }
 
     // Поиск пользователей (для админ-панели)
