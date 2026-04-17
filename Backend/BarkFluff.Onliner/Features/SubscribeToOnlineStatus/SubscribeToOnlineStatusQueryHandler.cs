@@ -7,15 +7,18 @@ public class SubscribeToOnlineStatusQueryHandler
 {
     private readonly UserContext _userContext;
     private readonly OnlineStatusSubscriptionsManager _subscriptionsManager;
+    private readonly OnlineVisibilityFilter _visibilityFilter;
     private readonly ILogger<SubscribeToOnlineStatusQueryHandler> _logger;
 
     public SubscribeToOnlineStatusQueryHandler(
         UserContext userContext,
         OnlineStatusSubscriptionsManager subscriptionsManager,
+        OnlineVisibilityFilter visibilityFilter,
         ILogger<SubscribeToOnlineStatusQueryHandler> logger)
     {
         _userContext = userContext;
         _subscriptionsManager = subscriptionsManager;
+        _visibilityFilter = visibilityFilter;
         _logger = logger;
     }
 
@@ -27,10 +30,23 @@ public class SubscribeToOnlineStatusQueryHandler
             "User {UserId} subscribing to online status for {Count} users",
             userId, request.UserIds.Count);
 
+        // Отфильтровываем пользователей, скрывших онлайн-статус от подписчика.
+        var visibleIds = await _visibilityFilter.GetVisibleUserIdsAsync(
+            request.UserIds, userId, request.CancellationToken);
+
+        var filteredUserIds = request.UserIds.Where(visibleIds.Contains).ToList();
+
+        if (filteredUserIds.Count < request.UserIds.Count)
+        {
+            _logger.LogDebug(
+                "User {UserId} subscription filtered from {Requested} to {Visible} users by privacy",
+                userId, request.UserIds.Count, filteredUserIds.Count);
+        }
+
         // Регистрируем подписку
         var connectionId = _subscriptionsManager.RegisterSubscription(
             userId,
-            request.UserIds,
+            filteredUserIds,
             request.ResponseStream);
 
         try

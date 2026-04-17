@@ -12,6 +12,9 @@ public static class DependencyInjection
         services.AddSingleton<OnlineStatusSubscriptionsManager>();
         services.AddSingleton<OnlineStatusNotifier>();
 
+        // Фильтр видимости онлайн-статуса (использует gRPC-клиент UsersServerApi)
+        services.AddScoped<OnlineVisibilityFilter>();
+
         // Background Services
         services.AddHostedService<OfflineDetectionService>();
         services.AddHostedService<DatabasePersistenceService>();

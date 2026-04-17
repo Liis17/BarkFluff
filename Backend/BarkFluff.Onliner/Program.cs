@@ -4,6 +4,9 @@ using BarkFluff.Onliner.Consumers;
 using BarkFluff.Onliner.Features.SubscribeToOnlineStatus;
 using BarkFluff.Onliner.Host;
 using BarkFluff.Onliner.Persistence.Contexts;
+using BarkFluff.Proto.Users;
+using BarkFluff.Shared.Auth;
+using BarkFluff.Shared.Exceptions.Interceptors;
 using BarkFluff.Shared.Identity;
 
 using MassTransit;
@@ -44,6 +47,12 @@ public class Program
 
         // Регистрируем аутентификацию и авторизацию
         builder.Services.AddXAuth(builder.Configuration);
+
+        builder.Services.AddGrpcClient<UsersServerApi.UsersServerApiClient>(o =>
+            {
+                o.Address = new Uri(builder.Configuration["UsersService:Host"]);
+            }).AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["UsersService:Token"]))
+            .AddInterceptor(() => new ExceptionClientInterceptor());
 
         builder.Services.AddMassTransit(x =>
         {

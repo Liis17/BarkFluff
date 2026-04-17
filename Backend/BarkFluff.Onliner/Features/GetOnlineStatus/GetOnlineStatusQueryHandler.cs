@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Onliner.Persistence.Contexts;
 using BarkFluff.Onliner.Services;
 using BarkFluff.Proto.Onliner;
@@ -16,15 +17,21 @@ public class GetOnlineStatusQueryHandler : IRequestHandler<GetOnlineStatusQuery,
 {
     private readonly OnlineStatusStorage _storage;
     private readonly OnlineStatusContext _dbContext;
+    private readonly UserContext _userContext;
+    private readonly OnlineVisibilityFilter _visibilityFilter;
     private readonly ILogger<GetOnlineStatusQueryHandler> _logger;
 
     public GetOnlineStatusQueryHandler(
         OnlineStatusStorage storage,
         OnlineStatusContext dbContext,
+        UserContext userContext,
+        OnlineVisibilityFilter visibilityFilter,
         ILogger<GetOnlineStatusQueryHandler> logger)
     {
         _storage = storage;
         _dbContext = dbContext;
+        _userContext = userContext;
+        _visibilityFilter = visibilityFilter;
         _logger = logger;
     }
 
@@ -34,10 +41,20 @@ public class GetOnlineStatusQueryHandler : IRequestHandler<GetOnlineStatusQuery,
     {
         _logger.LogDebug("Getting online status for {Count} users", request.UserIds.Count);
 
+        var callerId = _userContext.UserId;
+        var visibleIds = await _visibilityFilter.GetVisibleUserIdsAsync(
+            request.UserIds, callerId, cancellationToken);
+
         var response = new GetOnlineStatusResponse();
 
         foreach (var userId in request.UserIds)
         {
+            if (!visibleIds.Contains(userId))
+            {
+                response.UsersStatuses.Add(BuildHiddenStatus(userId));
+                continue;
+            }
+
             var status = await GetUserStatusAsync(userId, cancellationToken);
             response.UsersStatuses.Add(status);
         }
@@ -69,6 +86,16 @@ public class GetOnlineStatusQueryHandler : IRequestHandler<GetOnlineStatusQuery,
         // Не найдено нигде - возвращаем Unknown
         _logger.LogTrace("User {UserId} status not found, returning Unknown", userId);
 
+        return new UserOnlineStatus
+        {
+            UserId = userId,
+            Status = ProtoStatusTypeId.Unknown,
+            LastSeen = Timestamp.FromDateTime(DateTime.MinValue.ToUniversalTime())
+        };
+    }
+
+    private static UserOnlineStatus BuildHiddenStatus(long userId)
+    {
         return new UserOnlineStatus
         {
             UserId = userId,

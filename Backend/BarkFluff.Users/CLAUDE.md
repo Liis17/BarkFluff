@@ -28,10 +28,10 @@ dotnet ef database update --project BarkFluff.Users.csproj
 
 ### Слои
 
-- `Domain/` — EF Core сущности (`User`, `UserContact`, `Badge`, `UserBadge`, `UserDevice`)
+- `Domain/` — EF Core сущности (`User`, `UserContact`, `Badge`, `UserBadge`, `UserDevice`, `Privacy`)
 - `Features/` — MediatR команды/запросы (CQRS), организованы по фичам
 - `Host/` — gRPC-сервисы, делегируют в MediatR
-- `Persistence/Services/` — `UsersStorage` и `DevicesStorage` (Transient), инкапсулируют запросы к БД
+- `Persistence/Services/` — `UsersStorage`, `DevicesStorage`, `PrivacyStorage` (Transient), инкапсулируют запросы к БД
 - `Infrastructure/` — `UserInfoQueueSender` для публикации RabbitMQ-событий
 - `Mapping/` — extension-методы для маппинга доменных объектов в protobuf
 
@@ -51,6 +51,20 @@ dotnet ef database update --project BarkFluff.Users.csproj
 **Бейджи.** Уникальное ограничение (UserId, BadgeId). `Priority` — целое число, меньше = выше приоритет (default 1000).
 
 **Устройства.** `RegisterDevice` — upsert по DeviceId (Guid). Хранит AppName, OS, Location, FirebaseDeviceToken.
+
+**Приватность.** Сущность `Privacy` (1:1 с `User`, FK cascade, unique index по `UserId`). Поля: `ProfileVisibleOnSite` (bool), `AvatarVisibility`, `BioVisibility`, `EmailVisibility`, `OnlineVisibility` (enum `ProfileFieldVisibility { All=0, Friends=1, None=2 }`), `SearchVisible` (bool). FRIENDS трактуется серверной логикой как NONE, пока нет сервиса отношений — TODO активировать при появлении.
+
+Запись создаётся автоматически в `ConfirmUser` (через `PrivacyStorage.GetOrCreate`). Дефолты: профиль виден всем, email скрыт (`None`), остальные поля — `All`.
+
+Эндпоинты:
+- `UsersApi.GetPrivacySettings` / `UpdatePrivacySettings` — клиентский доступ к собственным настройкам.
+- `UsersServerApi.GetUserPrivacy` — межсервисный запрос по `userId` (используется Onliner).
+
+Точки применения:
+- `UsersServerApi.GetUserByUsername` — если `!ProfileVisibleOnSite` → `found=false` (WebServer возвращает 404); `AvatarVisibility != All` → обнуляется `profile_picture`; `BioVisibility != All` → обнуляется `bio`.
+- `UsersApi.SearchUsers` — пользователи с `SearchVisible=false` исключаются из результатов, но видят себя сами (LEFT JOIN `Privacies` + условие `SearchVisible IS NULL OR SearchVisible OR u.Id = currentUserId`).
+- `UsersServerApi.SearchUsersServer` — админ-панели видимы все пользователи (privacy намеренно игнорируется, `respectSearchVisibility: false`).
+- `Onliner.GetOnlineStatus / SubscribeToOnlineStatus / ChangeUsersInSubscription` — фильтрация по `OnlineVisibility` (см. `BarkFluff.Onliner/Services/OnlineVisibilityFilter.cs`).
 
 ### RabbitMQ-события (публикуются)
 
@@ -77,6 +91,7 @@ dotnet ef database update --project BarkFluff.Users.csproj
 | `Persistence/Contexts/UsersContext.cs` | DbContext, конфигурация связей |
 | `Persistence/Services/UsersStorage.cs` | Основной слой данных для пользователей и бейджей |
 | `Persistence/Services/DevicesStorage.cs` | Слой данных для устройств |
+| `Persistence/Services/PrivacyStorage.cs` | Слой данных для настроек приватности (`Get`, `GetOrCreate`, `Update`) |
 | `Host/UsersApiService.cs` | Клиентский gRPC-сервис |
 | `Host/UsersServerApiService.cs` | Межсервисный gRPC-сервис |
 | `Infrastructure/UserInfoQueueSender.cs` | Публикация событий в RabbitMQ |

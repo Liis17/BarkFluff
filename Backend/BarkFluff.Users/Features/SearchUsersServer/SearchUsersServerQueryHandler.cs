@@ -48,7 +48,11 @@ public class SearchUsersServerQueryHandler : IRequestHandler<SearchUsersServerQu
         }
         else
         {
-            var usersResult = await _usersStorage.SearchUsersByTrigram(request.Query, request.Offset, request.Size);
+            // Админ-панели требуется полная видимость — настройки приватности (SearchVisible)
+            // здесь сознательно игнорируются.
+            var usersResult = await _usersStorage.SearchUsersByTrigram(
+                request.Query, request.Offset, request.Size,
+                respectSearchVisibility: false);
             users = usersResult.Users;
             totalCount = Math.Max(usersResult.TotalCount, 0);
         }

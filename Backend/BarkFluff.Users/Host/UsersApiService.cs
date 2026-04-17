@@ -13,6 +13,8 @@ using BarkFluff.Users.Features.Devices.RenameDevice;
 using BarkFluff.Users.Features.Devices.SetFirebaseToken;
 using BarkFluff.Users.Features.Devices.SetNotificationsEnabled;
 using BarkFluff.Users.Features.GetUser;
+using BarkFluff.Users.Features.Privacy.GetPrivacySettings;
+using BarkFluff.Users.Features.Privacy.UpdatePrivacySettings;
 using BarkFluff.Users.Features.SetProfilePicture;
 
 using Grpc.Core;
@@ -184,5 +186,16 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
         await _mediator.Send(command);
 
         return new SetNotificationsEnabledResponse();
+    }
+
+    public override Task<GetPrivacySettingsResponse> GetPrivacySettings(GetPrivacySettingsRequest request, ServerCallContext context)
+    {
+        return _mediator.Send(new GetPrivacySettingsQuery());
+    }
+
+    public override async Task<UpdatePrivacySettingsResponse> UpdatePrivacySettings(UpdatePrivacySettingsRequest request, ServerCallContext context)
+    {
+        await _mediator.Send(new UpdatePrivacySettingsCommand { Settings = request.Settings });
+        return new UpdatePrivacySettingsResponse();
     }
 }
