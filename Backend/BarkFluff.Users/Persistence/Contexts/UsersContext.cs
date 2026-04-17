@@ -18,6 +18,8 @@ public class UsersContext : DbContext
 
     public DbSet<UserDevice> UserDevices { get; set; }
 
+    public DbSet<Privacy> Privacies { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<User>()
@@ -50,6 +52,17 @@ public class UsersContext : DbContext
             .WithMany()
             .HasForeignKey(ud => ud.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Настройка связей для Privacy (1:1 с User, уникальный индекс UserId)
+        modelBuilder.Entity<Privacy>()
+            .HasOne(p => p.User)
+            .WithOne()
+            .HasForeignKey<Privacy>(p => p.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Privacy>()
+            .HasIndex(p => p.UserId)
+            .IsUnique();
 
         base.OnModelCreating(modelBuilder);
 

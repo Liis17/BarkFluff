@@ -13,15 +13,18 @@ public class ChangeUsersInSubscriptionCommandHandler
 {
     private readonly UserContext _userContext;
     private readonly OnlineStatusSubscriptionsManager _subscriptionsManager;
+    private readonly OnlineVisibilityFilter _visibilityFilter;
     private readonly ILogger<ChangeUsersInSubscriptionCommandHandler> _logger;
 
     public ChangeUsersInSubscriptionCommandHandler(
         UserContext userContext,
         OnlineStatusSubscriptionsManager subscriptionsManager,
+        OnlineVisibilityFilter visibilityFilter,
         ILogger<ChangeUsersInSubscriptionCommandHandler> logger)
     {
         _userContext = userContext;
         _subscriptionsManager = subscriptionsManager;
+        _visibilityFilter = visibilityFilter;
         _logger = logger;
     }
 
@@ -35,7 +38,12 @@ public class ChangeUsersInSubscriptionCommandHandler
             "Updating tracked users for user {UserId} subscriptions to {UserIdsCount} users",
             userId, request.UserIds.Count);
 
-        var updatedCount = _subscriptionsManager.UpdateAllSubscriptions(userId, request.UserIds);
+        var visibleIds = await _visibilityFilter.GetVisibleUserIdsAsync(
+            request.UserIds, userId, cancellationToken);
+
+        var filteredUserIds = request.UserIds.Where(visibleIds.Contains).ToList();
+
+        var updatedCount = _subscriptionsManager.UpdateAllSubscriptions(userId, filteredUserIds);
 
         if (updatedCount == 0)
         {

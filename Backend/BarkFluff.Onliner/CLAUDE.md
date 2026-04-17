@@ -39,6 +39,12 @@ Client → SetOnlineStatus (gRPC)
 | `OnlineStatusSubscriptionsManager` | Реестр gRPC-стримов: `ConcurrentDictionary<long, ConcurrentDictionary<Guid, SubscriptionData>>` |
 | `OnlineStatusNotifier` | Рассылает изменения статусов по всем стримам, отслеживающим пользователя |
 
+### Приватность онлайн-статуса
+
+`Services/OnlineVisibilityFilter` (Scoped) запрашивает у `UsersServerApi.GetUserPrivacy` значение `OnlineVisibility` по каждому целевому userId и пропускает только тех, у кого `All` (либо сам вызывающий). `FRIENDS` временно трактуется как `NONE`. Фильтр применяется в `GetOnlineStatusQueryHandler`, `SubscribeToOnlineStatusQueryHandler`, `ChangeUsersInSubscriptionCommandHandler`. Фильтрация происходит на входе: скрытые пользователи не субсрайбятся и возвращаются с `status=Unknown`.
+
+gRPC-клиент регистрируется в `Program.cs` как `UsersServerApi.UsersServerApiClient` через `UsersService:Host` / `UsersService:Token` с `JwtClientInterceptor` + `ExceptionClientInterceptor`.
+
 ### Фоновые сервисы
 
 - **`OfflineDetectionService`**: каждую секунду ищет пользователей без активности >5 секунд → устанавливает Offline
@@ -62,6 +68,7 @@ Client → SetOnlineStatus (gRPC)
 
 Ключи конфигурации (получаются из Configuration service при старте):
 - `OnlinerDb` — строка подключения к PostgreSQL
+- `UsersService:Host`, `UsersService:Token` — gRPC-клиент для `UsersServerApi` (проверка `OnlineVisibility`)
 
 ## База данных
 
