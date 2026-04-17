@@ -9,11 +9,13 @@ public class ConfirmUserCommandHandler : IRequestHandler<ConfirmUserCommand>
 {
 
     private readonly UsersStorage _usersStorage;
+    private readonly PrivacyStorage _privacyStorage;
     private readonly ILogger<ConfirmUserCommandHandler> _logger;
 
-    public ConfirmUserCommandHandler(UsersStorage usersStorage, ILogger<ConfirmUserCommandHandler> logger)
+    public ConfirmUserCommandHandler(UsersStorage usersStorage, PrivacyStorage privacyStorage, ILogger<ConfirmUserCommandHandler> logger)
     {
         _usersStorage = usersStorage;
+        _privacyStorage = privacyStorage;
         _logger = logger;
     }
 
@@ -33,6 +35,10 @@ public class ConfirmUserCommandHandler : IRequestHandler<ConfirmUserCommand>
         }
 
         await _usersStorage.ChangeDraftStatus(request.UserId, false);
+
+        // Создаём запись приватности с дефолтами сразу после подтверждения аккаунта.
+        // Если запись уже есть (повторный ConfirmUser) — GetOrCreate вернёт существующую.
+        await _privacyStorage.GetOrCreate(request.UserId);
 
         _logger.LogInformation(
             "Пользователь {UserId} ({Username}) успешно подтвержден",
