@@ -576,6 +576,45 @@ class GrpcManager {
     }
 
     /**
+     * Получает настройки приватности текущего пользователя
+     */
+    suspend fun getPrivacySettings(): Result<UsersApiOuterClass.PrivacySettings> = withContext(Dispatchers.IO) {
+        try {
+            if (usersClient == null) {
+                return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            }
+            val response = usersClient!!.getPrivacySettings(
+                UsersApiOuterClass.GetPrivacySettingsRequest.newBuilder().build()
+            )
+            Result.success(response.settings)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка получения настроек приватности", e)
+            Result.failure(Exception("Ошибка получения настроек приватности: ${e.message}"))
+        }
+    }
+
+    /**
+     * Обновляет настройки приватности текущего пользователя
+     */
+    suspend fun updatePrivacySettings(settings: UsersApiOuterClass.PrivacySettings): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (usersClient == null) {
+                return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            }
+            usersClient!!.updatePrivacySettings(
+                UsersApiOuterClass.UpdatePrivacySettingsRequest.newBuilder()
+                    .setSettings(settings)
+                    .build()
+            )
+            Log.d(TAG, "Настройки приватности успешно обновлены")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка обновления настроек приватности", e)
+            Result.failure(Exception("Ошибка обновления настроек приватности: ${e.message}"))
+        }
+    }
+
+    /**
      * Включает или выключает push-уведомления для текущего устройства
      */
     suspend fun setNotificationsEnabled(enabled: Boolean): Result<Unit> = withContext(Dispatchers.IO) {

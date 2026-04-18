@@ -5,34 +5,49 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- BarkFluff Logo - Notification icon (white, system-tinted) -->
+    <!--
+        BarkFluff logo — 4 arms along the cardinal axes, matching the sketch:
+          Up    → tip (56, 12)   slight rightward lean at base, curves straight up
+          Left  → tip (8,  54)   horizontal
+          Down  → tip (52, 96)   nearly vertical
+          Right → tip (100, 56)  horizontal, very slight downward drift
 
-    <path
-        android:pathData="M66,20 C80,34 60,50 54,54"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="3.5"
-        android:strokeLineCap="round"
-        android:fillColor="#00000000" />
+        Each arm is a closed filled tapered shape:
+          outer bezier edge → tip → inner bezier edge → Z
+        Base width ≈ 5.6 units, tapers to 0 at tip.
 
-    <path
-        android:pathData="M88,66 C74,80 58,60 54,54"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="3.5"
-        android:strokeLineCap="round"
-        android:fillColor="#00000000" />
+        Perpendicular offsets are ±2.8 units at the base, scaled to ±1.4 at the
+        first control point (half-way) so the taper follows the curve naturally.
+    -->
 
+    <!-- Arm UP: slight rightward tilt at base, tip almost directly above center -->
     <path
-        android:pathData="M42,88 C28,74 48,58 54,54"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="3.5"
-        android:strokeLineCap="round"
-        android:fillColor="#00000000" />
+        android:fillColor="#FFFFFF"
+        android:strokeWidth="0"
+        android:pathData="M57,55 C61,37 58,22 56,12 C56,22 55,35 51,53 Z" />
 
+    <!-- Arm LEFT: horizontal, almost no vertical drift -->
     <path
-        android:pathData="M20,42 C34,28 50,48 54,54"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="3.5"
-        android:strokeLineCap="round"
-        android:fillColor="#00000000" />
+        android:fillColor="#FFFFFF"
+        android:strokeWidth="0"
+        android:pathData="M54,51 C38,51 22,53 8,54 C22,55 38,57 54,57 Z" />
+
+    <!-- Arm DOWN: nearly vertical, very slight leftward lean -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeWidth="0"
+        android:pathData="M51,54 C50,68 51,82 52,96 C53,82 56,68 57,54 Z" />
+
+    <!-- Arm RIGHT: horizontal, slight downward drift at tip -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeWidth="0"
+        android:pathData="M54,57 C70,57 86,56 100,56 C86,54 70,51 54,51 Z" />
+
+    <!-- Center dot (r=3) — unifies all four arm bases at (54,54) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeWidth="0"
+        android:pathData="M54,51 A3,3,0,0,1,54,57 A3,3,0,0,1,54,51 Z" />
 
 </vector>
