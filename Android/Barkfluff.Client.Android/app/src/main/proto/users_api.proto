@@ -51,6 +51,12 @@ service UsersApi {
 
   // Включить или выключить уведомления для текущего устройства
   rpc SetNotificationsEnabled(SetNotificationsEnabledRequest) returns(SetNotificationsEnabledResponse);
+
+  // Получить настройки приватности текущего пользователя
+  rpc GetPrivacySettings(GetPrivacySettingsRequest) returns(GetPrivacySettingsResponse);
+
+  // Обновить настройки приватности текущего пользователя
+  rpc UpdatePrivacySettings(UpdatePrivacySettingsRequest) returns(UpdatePrivacySettingsResponse);
 }
 
 service UsersServerApi {
@@ -545,4 +551,26 @@ message SetNotificationsEnabledRequest {
 }
 
 message SetNotificationsEnabledResponse { }
+
+// Видимость поля профиля
+enum ProfileFieldVisibility {
+  ALL = 0;      // видят все
+  FRIENDS = 1;  // видят только друзья
+  NONE = 2;     // скрыто ото всех
+}
+
+// Настройки приватности пользователя
+message PrivacySettings {
+  bool profile_visible_on_site = 1;               // видимость публичной страницы barkfluff.com/{username}
+  ProfileFieldVisibility avatar_visibility = 2;   // видимость аватара
+  ProfileFieldVisibility bio_visibility = 3;       // видимость описания профиля
+  ProfileFieldVisibility email_visibility = 4;     // видимость почты
+  bool search_visible = 5;                         // показывать ли в поиске
+  ProfileFieldVisibility online_visibility = 6;    // видимость онлайн-статуса
+}
+
+message GetPrivacySettingsRequest { }
+message GetPrivacySettingsResponse { PrivacySettings settings = 1; }
+message UpdatePrivacySettingsRequest { PrivacySettings settings = 1; }
+message UpdatePrivacySettingsResponse { }
 

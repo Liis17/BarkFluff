@@ -57,6 +57,9 @@ class ProfileFragment : Fragment() {
         binding.itemSecurity.setOnClickListener {
             startActivity(Intent(requireContext(), SecuritySettingsActivity::class.java))
         }
+        binding.itemPrivacy.setOnClickListener {
+            startActivity(Intent(requireContext(), PrivacySettingsActivity::class.java))
+        }
         binding.itemStorage.setOnClickListener {
             startActivity(Intent(requireContext(), StorageSettingsActivity::class.java))
         }
