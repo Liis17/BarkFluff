@@ -168,8 +168,12 @@ namespace BarkFluff.WebApi.Core.Managers
             {
                 return await _webApi.TokenManager.SafeCallAsync(async () =>
                 {
-                    // TODO: Реализовать создание группового чата (Backend task)
-                    await Task.CompletedTask;
+                    var request = new Proto.Messages.CreateGroupChatRequest
+                    {
+                        Title = chatName
+                    };
+                    request.UserIds.AddRange(userIds);
+                    await MessagesAC!.CreateGroupChatAsync(request);
                     return (true, string.Empty);
                 }, globalParam);
             }
@@ -183,7 +187,7 @@ namespace BarkFluff.WebApi.Core.Managers
             }
             catch (Exception)
             {
-                return (false, "Ошибка создания Gruppового чата");
+                return (false, "Ошибка создания группового чата");
             }
         }
 
@@ -373,6 +377,103 @@ namespace BarkFluff.WebApi.Core.Managers
             catch (Exception ex)
             {
                 return (new ErrorReturner(false, "Ошибка получения идентификатора чата"), string.Empty);
+            }
+        }
+
+        public async Task<(ErrorReturner error, List<Proto.Messages.ListChatMembersResponse.Types.DetailedChatMemberInfo>? members, int totalCount)> ListChatMembers(
+            GlobalParam globalParam, string chatId, int offset = 0, int size = 50)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var response = await MessagesAC!.ListChatMembersAsync(new Proto.Messages.ListChatMembersRequest
+                    {
+                        ChatId = chatId,
+                        Pagination = new Proto.Shared.PageRequest { Offset = offset, Size = size }
+                    });
+                    return (new ErrorReturner(true), response.ChatMembers.ToList(), response.TotalCount);
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.ChatNotFoundException)
+            {
+                return (new ErrorReturner(false, "Чат не найден"), null, 0);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.NoAccessToChatException)
+            {
+                return (new ErrorReturner(false, "Нет доступа к чату"), null, 0);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка получения участников чата"), null, 0);
+            }
+        }
+
+        public async Task<(ErrorReturner error, List<Proto.Messages.ChatAttachmentInfo>? attachments, int totalCount)> ListChatAttachments(
+            GlobalParam globalParam,
+            string chatId,
+            Proto.Shared.MessageAttachmentType attachmentType = Proto.Shared.MessageAttachmentType.Unknown,
+            bool sortDescending = true,
+            int offset = 0,
+            int size = 50)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var response = await MessagesAC!.ListChatAttachmentsAsync(new Proto.Messages.ListChatAttachmentsRequest
+                    {
+                        ChatId = chatId,
+                        AttachmentType = attachmentType,
+                        SortDescending = sortDescending,
+                        Pagination = new Proto.Shared.PageRequest { Offset = offset, Size = size }
+                    });
+                    return (new ErrorReturner(true), response.Attachments.ToList(), response.TotalCount);
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.ChatNotFoundException)
+            {
+                return (new ErrorReturner(false, "Чат не найден"), null, 0);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.NoAccessToChatException)
+            {
+                return (new ErrorReturner(false, "Нет доступа к чату"), null, 0);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка получения вложений чата"), null, 0);
+            }
+        }
+
+        public async Task<ErrorReturner> KickUser(GlobalParam globalParam, string chatId, long userId)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    await MessagesAC!.KickUserAsync(new Proto.Messages.KickUserRequest
+                    {
+                        ChatId = chatId,
+                        UserId = userId
+                    });
+                    return new ErrorReturner(true);
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.ChatNotFoundException)
+            {
+                return new ErrorReturner(false, "Чат не найден");
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.NoAccessToChatException)
+            {
+                return new ErrorReturner(false, "Нет прав для исключения пользователя из чата");
+            }
+            catch (BarkFluff.Shared.Exceptions.Messages.UserNotMemberChatException)
+            {
+                return new ErrorReturner(false, "Пользователь не является участником чата");
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка исключения пользователя из чата");
             }
         }
     }
