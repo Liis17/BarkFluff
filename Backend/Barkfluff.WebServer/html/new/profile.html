@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>@li_is — Barkfluff</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="profile.css" />
+</head>
+<body>
+
+  <!-- Background -->
+  <div class="bg-mesh"></div>
+  <div class="grid-overlay"></div>
+  <div class="bg-grain"></div>
+
+  <section class="page active" data-screen-label="Profile li_is">
+    <div class="profile-page">
+
+      <!-- Mini nav -->
+      <div class="profile-nav">
+        <a href="Barkfluff Redesign.html" class="profile-nav-link">
+          <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+          barkfluff.com
+        </a>
+        <a href="#" class="profile-nav-link">
+          Поделиться
+          <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/></svg>
+        </a>
+      </div>
+
+      <!-- Profile card -->
+      <div class="profile-card" id="profileCard">
+        <div id="state-profile">
+          <div class="pc-cover"></div>
+          <div class="pc-body">
+            <div class="pc-avatar-wrap">
+              <div class="pc-avatar-ring"></div>
+              <img class="pc-avatar" id="profileAvatar" src="" alt="" />
+              <div class="pc-status-dot" id="profileStatusDot"></div>
+            </div>
+
+            <div class="pc-fullname" id="profileFullName">Li_is</div>
+            <div class="pc-username">@li_is</div>
+            <div class="pc-status-line" id="profileStatusLine">
+              <span class="s-dot"></span> в сети
+            </div>
+
+            <div class="pc-bio" id="profileBio">
+              собираю хорошие фотки и плохие мемы. пишите в бф, отвечаю медленно но с душой.
+            </div>
+
+            <div class="pc-meta">
+              <span class="pc-meta-chip">
+                <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                Санкт-Петербург
+              </span>
+              <span class="pc-meta-chip">
+                <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>
+                с апреля 2024
+              </span>
+              <span class="pc-meta-chip">
+                <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                Ранний юзер
+              </span>
+            </div>
+
+            <div class="pc-divider">Открыть переписку</div>
+
+            <div class="pc-open-status">
+              <button class="pc-open-btn" id="openProtocolBtn">
+                <svg viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zM8 15c0-1.66 1.34-3 3-3 .35 0 .69.07 1 .18V6h5v2h-3v7.03A3.003 3.003 0 0 1 11 18c-1.66 0-3-1.34-3-3z"/></svg>
+                Открыть в Barkfluff
+              </button>
+              <div class="pc-opening" id="openingIndicator" style="display: none;">
+                <span class="dots"><span></span><span></span><span></span></span>
+                <span>Запрашиваем приложение…</span>
+              </div>
+            </div>
+
+            <div class="pc-downloads" id="pcDownloads">
+              <div class="pc-downloads-inner">
+                <div class="pc-dl-label">Приложение не открылось? Скачайте:</div>
+                <div class="pc-dl-grid">
+                  <a href="#" class="btn btn-ghost">Windows</a>
+                  <a href="#" class="btn btn-ghost">Android</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================
+       TWEAKS PANEL
+       ========================================================= -->
+  <div class="tweaks-panel" id="tweaksPanel">
+    <h4>Настройки прототипа</h4>
+    <div class="tweaks-row">
+      <span class="label">Статус пользователя</span>
+      <div class="tweaks-seg" data-tweak="status">
+        <button data-value="online" class="active">В сети</button>
+        <button data-value="offline">Не в сети</button>
+      </div>
+    </div>
+    <div class="tweaks-row">
+      <span class="label">Аватар</span>
+      <div class="tweaks-seg" data-tweak="avatar">
+        <button data-value="photo" class="active">Фото</button>
+        <button data-value="initial">Инициал</button>
+      </div>
+    </div>
+    <div class="tweaks-row">
+      <span class="label">Акцентный цвет</span>
+      <div class="tweaks-seg" data-tweak="accent">
+        <button data-value="orange" class="active">Оранж</button>
+        <button data-value="amber">Янтарь</button>
+        <button data-value="rose">Роза</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "status": "online",
+      "avatar": "photo",
+      "accent": "orange"
+    }/*EDITMODE-END*/;
+
+    const state = { ...TWEAK_DEFAULTS };
+
+    /* Open protocol simulation */
+    function simulateOpen() {
+      const ind = document.getElementById('openingIndicator');
+      const btn = document.getElementById('openProtocolBtn');
+      const dl = document.getElementById('pcDownloads');
+      ind.style.display = 'flex';
+      btn.style.opacity = '0.7';
+      setTimeout(() => {
+        dl.classList.add('show');
+        ind.querySelector('span:last-child').textContent = 'Не удалось. Приложение не установлено?';
+      }, 3500);
+    }
+    document.getElementById('openProtocolBtn').addEventListener('click', (e) => {
+      e.preventDefault();
+      simulateOpen();
+    });
+
+    /* Avatar rendering */
+    function initialAvatarDataURI(letter, color1, color2) {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+        <defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0" stop-color="${color1}"/><stop offset="1" stop-color="${color2}"/>
+        </linearGradient></defs>
+        <rect width="120" height="120" rx="60" fill="url(#g)"/>
+        <text x="60" y="78" text-anchor="middle" font-family="Manrope, sans-serif" font-weight="800" font-size="56" fill="white">${letter}</text>
+      </svg>`;
+      return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+    }
+    function photoAvatarDataURI() {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+        <defs>
+          <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0" stop-color="#4a6fa5"/><stop offset="1" stop-color="#1e2a4a"/>
+          </linearGradient>
+          <radialGradient id="skin" cx="0.5" cy="0.55" r="0.5">
+            <stop offset="0" stop-color="#ffe0c7"/><stop offset="1" stop-color="#e8b896"/>
+          </radialGradient>
+        </defs>
+        <rect width="120" height="120" rx="60" fill="url(#bg)"/>
+        <path d="M25 55 C 25 30, 95 30, 95 55 L 95 95 L 25 95 Z" fill="#2a3f6a"/>
+        <ellipse cx="60" cy="65" rx="22" ry="26" fill="url(#skin)"/>
+        <path d="M38 92 L 52 84 L 60 92 L 68 84 L 82 92 L 82 120 L 38 120 Z" fill="#f4f4f4"/>
+        <path d="M56 86 L 60 100 L 64 86 Z" fill="#2a2a2a"/>
+        <path d="M35 55 Q 40 40, 60 42 Q 80 40, 85 55 Q 80 52, 65 55 Q 60 48, 55 55 Q 40 52, 35 55 Z" fill="#3a5280"/>
+        <ellipse cx="52" cy="64" rx="2.5" ry="3.5" fill="#2a2a2a"/>
+        <ellipse cx="68" cy="64" rx="2.5" ry="3.5" fill="#2a2a2a"/>
+        <path d="M56 76 Q 60 78, 64 76" stroke="#8a5a44" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+      </svg>`;
+      return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+    }
+
+    function applyAvatar() {
+      const el = document.getElementById('profileAvatar');
+      if (state.avatar === 'initial') {
+        const a = getAccent();
+        el.src = initialAvatarDataURI('L', a.c1, a.c2);
+      } else {
+        el.src = photoAvatarDataURI();
+      }
+    }
+
+    function applyStatus() {
+      const dot = document.getElementById('profileStatusDot');
+      const line = document.getElementById('profileStatusLine');
+      if (state.status === 'offline') {
+        dot.classList.add('offline');
+        line.classList.add('offline');
+        line.innerHTML = '<span class="s-dot"></span> был 2 часа назад';
+      } else {
+        dot.classList.remove('offline');
+        line.classList.remove('offline');
+        line.innerHTML = '<span class="s-dot"></span> в сети';
+      }
+    }
+
+    function getAccent() {
+      return {
+        orange: { c1: '#ff8a3c', c2: '#c23f07', brand: '#ff7a29', brand2: '#e25a12', glow: 'rgba(255,122,41,0.35)' },
+        amber:  { c1: '#fbbf24', c2: '#d97706', brand: '#f59e0b', brand2: '#b45309', glow: 'rgba(245,158,11,0.35)' },
+        rose:   { c1: '#fb7185', c2: '#be123c', brand: '#f43f5e', brand2: '#be123c', glow: 'rgba(244,63,94,0.35)' }
+      }[state.accent];
+    }
+
+    function applyAccent() {
+      const a = getAccent();
+      document.documentElement.style.setProperty('--brand', a.brand);
+      document.documentElement.style.setProperty('--brand-2', a.brand2);
+      document.documentElement.style.setProperty('--brand-glow', a.glow);
+      document.documentElement.style.setProperty('--shadow-brand', '0 12px 30px -8px ' + a.glow);
+      applyAvatar();
+    }
+
+    function applyAll() {
+      applyAccent();
+      applyStatus();
+      applyAvatar();
+    }
+    applyAll();
+
+    /* Tweaks wiring */
+    document.querySelectorAll('.tweaks-seg').forEach(seg => {
+      const key = seg.dataset.tweak;
+      seg.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          seg.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          state[key] = btn.dataset.value;
+          applyAll();
+          try {
+            window.parent.postMessage({ type: '__edit_mode_set_keys', edits: { [key]: btn.dataset.value } }, '*');
+          } catch (e) {}
+        });
+        b => b.classList.toggle('active', b.dataset.value === state[key]);
+      });
+      seg.querySelectorAll('button').forEach(b => {
+        b.classList.toggle('active', b.dataset.value === state[key]);
+      });
+    });
+
+    /* Edit mode protocol */
+    window.addEventListener('message', (e) => {
+      const d = e.data;
+      if (!d || !d.type) return;
+      if (d.type === '__activate_edit_mode') {
+        document.getElementById('tweaksPanel').classList.add('visible');
+      } else if (d.type === '__deactivate_edit_mode') {
+        document.getElementById('tweaksPanel').classList.remove('visible');
+      }
+    });
+    try { window.parent.postMessage({ type: '__edit_mode_available' }, '*'); } catch (e) {}
+  </script>
+</body>
+</html>

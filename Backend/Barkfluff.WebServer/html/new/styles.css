@@ -1,0 +1,384 @@
+/* =========================================================
+   Barkfluff redesign — shared styles
+   ========================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap');
+
+:root {
+  /* Base palette — warmer, richer than original */
+  --bg-0: #14070a;            /* deepest */
+  --bg-1: #1c0d0a;            /* page */
+  --bg-2: #241310;            /* card */
+  --bg-3: #2d1914;            /* raised */
+  --line: rgba(255, 240, 220, 0.08);
+  --line-strong: rgba(255, 240, 220, 0.14);
+
+  --ink: #fef6ea;
+  --ink-dim: #c9a893;
+  --ink-mute: #8a6a5b;
+
+  --brand: #ff7a29;            /* hotter orange */
+  --brand-2: #e25a12;
+  --brand-deep: #8a2e06;
+  --brand-glow: rgba(255, 122, 41, 0.35);
+
+  --accent-cream: #f4d4a8;
+
+  --radius-sm: 10px;
+  --radius: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+
+  --shadow-card: 0 30px 60px -20px rgba(0, 0, 0, 0.7);
+  --shadow-brand: 0 12px 30px -8px rgba(255, 122, 41, 0.45);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+}
+
+body {
+  background: var(--bg-1);
+  color: var(--ink);
+  font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* =========================================================
+   Background mesh — diagonal gradient + grain
+   ========================================================= */
+.bg-mesh {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(900px 600px at 85% 10%, rgba(255, 122, 41, 0.18), transparent 60%),
+    radial-gradient(700px 500px at 15% 90%, rgba(138, 46, 6, 0.28), transparent 60%),
+    radial-gradient(500px 400px at 50% 50%, rgba(255, 180, 100, 0.05), transparent 70%),
+    linear-gradient(180deg, #1c0d0a 0%, #14070a 100%);
+}
+
+.bg-grain {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.22;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* Subtle noise overlay pinned to scrollable content */
+.grid-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgba(255,240,220,0.025) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,240,220,0.025) 1px, transparent 1px);
+  background-size: 80px 80px;
+  mask-image: radial-gradient(1000px 700px at 50% 40%, #000 30%, transparent 80%);
+  -webkit-mask-image: radial-gradient(1000px 700px at 50% 40%, #000 30%, transparent 80%);
+}
+
+/* =========================================================
+   Text helpers
+   ========================================================= */
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: rgba(255, 240, 220, 0.03);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-dim);
+  letter-spacing: 0.02em;
+}
+
+.tag-pill .dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 8px #4ade80;
+}
+
+/* =========================================================
+   Buttons — system
+   ========================================================= */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 20px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.15s ease, background 0.2s, border-color 0.2s, box-shadow 0.2s;
+  white-space: nowrap;
+}
+
+.btn:active { transform: translateY(1px); }
+
+.btn-primary {
+  background: linear-gradient(180deg, #ff8a3c 0%, #e65c12 100%);
+  color: #fff;
+  box-shadow: var(--shadow-brand),
+              inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.btn-primary:hover {
+  box-shadow: 0 16px 40px -8px rgba(255, 122, 41, 0.6),
+              inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.btn-ghost {
+  background: rgba(255, 240, 220, 0.04);
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+.btn-ghost:hover {
+  background: rgba(255, 240, 220, 0.08);
+  border-color: rgba(255, 240, 220, 0.22);
+}
+
+.btn-soft {
+  background: rgba(255, 122, 41, 0.1);
+  border-color: rgba(255, 122, 41, 0.25);
+  color: #ffb47a;
+}
+.btn-soft:hover {
+  background: rgba(255, 122, 41, 0.16);
+  border-color: rgba(255, 122, 41, 0.4);
+  color: #ffc997;
+}
+
+.btn svg { width: 16px; height: 16px; }
+
+/* =========================================================
+   Cards
+   ========================================================= */
+.card {
+  background: linear-gradient(180deg, rgba(45, 25, 20, 0.7), rgba(28, 13, 10, 0.6));
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  position: relative;
+}
+
+/* =========================================================
+   Brand mark
+   ========================================================= */
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  text-decoration: none;
+}
+.brand-mark .glyph {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #ff8a3c, #c23f07);
+  display: grid;
+  place-items: center;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25),
+              0 4px 12px -4px rgba(255, 122, 41, 0.5);
+  position: relative;
+}
+.brand-mark .glyph::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+.brand-mark .glyph svg {
+  width: 16px; height: 16px;
+  fill: #fff;
+  filter: drop-shadow(0 1px 0 rgba(0,0,0,0.25));
+}
+
+/* =========================================================
+   Prototype frame chrome (top bar switcher)
+   ========================================================= */
+.proto-bar {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(20, 7, 10, 0.85);
+  backdrop-filter: blur(18px);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  box-shadow: 0 10px 30px -10px rgba(0,0,0,0.6);
+}
+.proto-bar button {
+  all: unset;
+  cursor: pointer;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ink-dim);
+  border-radius: 999px;
+  transition: background 0.2s, color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.proto-bar button:hover { color: var(--ink); }
+.proto-bar button.active {
+  background: linear-gradient(180deg, #ff8a3c 0%, #e65c12 100%);
+  color: #fff;
+  box-shadow: 0 4px 14px -4px rgba(255, 122, 41, 0.6);
+}
+.proto-bar .sep {
+  width: 1px;
+  height: 18px;
+  background: var(--line-strong);
+  margin: 0 4px;
+}
+
+.proto-bar .proto-mode {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: rgba(255, 240, 220, 0.04);
+  border-radius: 999px;
+  border: 1px solid var(--line);
+}
+.proto-bar .proto-mode button {
+  padding: 6px 12px;
+  font-size: 11px;
+}
+.proto-bar .proto-mode button.active {
+  background: rgba(255, 240, 220, 0.12);
+  color: var(--ink);
+  box-shadow: none;
+}
+
+/* Production view: hide all prototype helper UI */
+body.prod-mode .proto-bar > button[data-goto],
+body.prod-mode .proto-bar .sep,
+body.prod-mode .profile-state-switcher,
+body.prod-mode .pc-foot {
+  display: none !important;
+}
+body.prod-mode .proto-bar {
+  padding: 3px;
+}
+
+/* Page fade */
+.page {
+  display: none;
+  position: relative;
+  z-index: 2;
+  min-height: 100vh;
+}
+.page.active { display: block; animation: pageIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* =========================================================
+   Tweaks panel
+   ========================================================= */
+.tweaks-panel {
+  position: fixed;
+  bottom: 18px;
+  right: 18px;
+  z-index: 70;
+  width: 280px;
+  padding: 14px;
+  background: rgba(20, 7, 10, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  box-shadow: 0 20px 50px -10px rgba(0,0,0,0.7);
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 12px;
+}
+.tweaks-panel.visible { display: flex; }
+.tweaks-panel h4 {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  margin: 0;
+}
+.tweaks-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tweaks-row .label {
+  font-size: 12px;
+  color: var(--ink-dim);
+  font-weight: 500;
+}
+.tweaks-seg {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: rgba(255, 240, 220, 0.04);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.tweaks-seg button {
+  all: unset;
+  flex: 1;
+  text-align: center;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-dim);
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.tweaks-seg button:hover { color: var(--ink); }
+.tweaks-seg button.active {
+  background: rgba(255, 122, 41, 0.18);
+  color: #ffb47a;
+}
