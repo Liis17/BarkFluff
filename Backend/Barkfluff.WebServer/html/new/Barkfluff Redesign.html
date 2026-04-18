@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Barkfluff — Redesign</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="home.css?v=3" />
+</head>
+<body>
+
+  <!-- Background -->
+  <div class="bg-mesh"></div>
+  <div class="grid-overlay"></div>
+  <div class="bg-grain"></div>
+
+  <section class="page active" data-screen-label="Home">
+    <div class="home-page">
+
+      <!-- Top nav -->
+      <header class="home-nav">
+        <a href="#" class="brand-mark">
+          <span class="glyph">
+            <!-- Paw mark -->
+            <svg viewBox="0 0 24 24"><path d="M8.5 13.5c1.38 0 2.5-1.57 2.5-3.5s-1.12-3.5-2.5-3.5S6 8.07 6 10s1.12 3.5 2.5 3.5zm7 0c1.38 0 2.5-1.57 2.5-3.5s-1.12-3.5-2.5-3.5S13 8.07 13 10s1.12 3.5 2.5 3.5zM5 16.5c1.1 0 2-1.34 2-3s-.9-3-2-3-2 1.34-2 3 .9 3 2 3zm14 0c1.1 0 2-1.34 2-3s-.9-3-2-3-2 1.34-2 3 .9 3 2 3zm-7 4c3 0 6-2.5 6-5 0-2-2-3.5-4-3.5-1.2 0-1.5.5-2 .5s-.8-.5-2-.5c-2 0-4 1.5-4 3.5 0 2.5 3 5 6 5z"/></svg>
+          </span>
+          <span>barkfluff</span>
+        </a>
+        <div class="home-nav-right">
+          <a href="#" class="home-nav-link">Что умеет</a>
+          <a href="#" class="home-nav-link">Для разработчиков</a>
+          <a href="#" class="home-nav-link">Поддержка</a>
+          <a href="#" class="btn btn-ghost" style="padding: 10px 16px; font-size: 13px;">
+            Telegram
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9.04 15.2l-.4 5.66c.58 0 .83-.25 1.14-.55l2.74-2.61 5.68 4.16c1.04.57 1.78.27 2.06-.96l3.72-17.42c.33-1.53-.55-2.13-1.57-1.76L1.57 9.88c-1.5.58-1.48 1.42-.25 1.8l5.4 1.68L19.17 5.7c.59-.38 1.13-.17.69.22"/></svg>
+          </a>
+        </div>
+      </header>
+
+      <!-- Hero -->
+      <div class="hero">
+        <div class="hero-text">
+          <span class="hero-eyebrow"><span class="pulse"></span> v0.9.12 · стабильный релиз</span>
+          <h1 class="hero-title">
+            Лёгкий.<br>
+            Быстрый.<br>
+            <em class="accent">Пушистый.</em>
+          </h1>
+          <p class="hero-sub">
+            Мессенджер, который <b style="color: var(--ink);">работает</b>, <s>и слава богу</s>.<br>
+            <span style="color: #ffb47a;">Без рекламы, без трекинга</span>, без лишнего шума.<br>
+            Просто <span style="color: #ffb47a;">отправляй сообщения</span> — друзьям, себе, кому угодно.
+          </p>
+          <div class="hero-meta">
+            <span><b>Лёгкий</b>&nbsp;нативный&nbsp;клиент</span>
+            <span class="divider"></span>
+            <span><b>gRPC</b>&nbsp;+&nbsp;TLS&nbsp;шифрование</span>
+            <span class="divider"></span>
+            <span><b>Мультиплатформенность</b></span>
+          </div>
+        </div>
+
+        <!-- Preview stack -->
+        <div class="preview-stack" id="previewStack">
+          <div class="preview-frame peek-left" data-platform="android">
+            <img src="assets/barkfluff.android.jpg" alt="Android preview" />
+          </div>
+          <div class="preview-frame peek-right" data-platform="web">
+            <img src="assets/barkfluff.web.png" alt="Web preview" />
+          </div>
+          <div class="preview-frame is-active" data-platform="windows">
+            <div class="device-tag">
+              <svg viewBox="0 0 24 24"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.551H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+              Windows
+            </div>
+            <img src="assets/barkfluff.windows.png" alt="Windows preview" />
+          </div>
+          <div class="preview-caption">
+            Переключи платформу — нажимай <span class="kbd">←</span> <span class="kbd">→</span> или клик по карточке ниже
+          </div>
+        </div>
+      </div>
+
+      <!-- Downloads -->
+      <div class="downloads-section" id="downloadsSection">
+
+        <!-- Windows -->
+        <div class="platform-card is-active" data-platform="windows">
+          <div class="pc-header">
+            <div class="pc-icon">
+              <svg viewBox="0 0 24 24"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.551H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+            </div>
+            <span class="pc-badge">Рекомендуется</span>
+          </div>
+          <div class="pc-title">
+            Windows
+            <small>Portable · x64 · без установщика</small>
+          </div>
+          <div class="pc-actions">
+            <a href="#" class="btn btn-primary">Релиз</a>
+            <a href="#" class="btn btn-ghost">Бета</a>
+          </div>
+        </div>
+
+        <!-- Android -->
+        <div class="platform-card" data-platform="android">
+          <div class="pc-header">
+            <div class="pc-icon">
+              <svg viewBox="0 0 24 24"><path d="M17.523 15.341a.9.9 0 0 1-.9-.9.9.9 0 0 1 .9-.9.9.9 0 0 1 .9.9.9.9 0 0 1-.9.9m-11.046 0a.9.9 0 0 1-.9-.9.9.9 0 0 1 .9-.9.9.9 0 0 1 .9.9.9.9 0 0 1-.9.9m11.405-6.023 1.762-3.054a.366.366 0 0 0-.134-.5.366.366 0 0 0-.5.134l-1.786 3.095a11.05 11.05 0 0 0-4.224-.838c-1.518 0-2.96.302-4.224.838L7.03 5.898a.366.366 0 0 0-.5-.134.366.366 0 0 0-.134.5l1.762 3.054C5.098 10.73 3.27 13.394 3 16.5h18c-.27-3.106-2.098-5.77-5.118-7.182"/></svg>
+            </div>
+            <span class="pc-badge">APK</span>
+          </div>
+          <div class="pc-title">
+            Android
+            <small>7.0+ · arm64 + x86_64 · 18 МБ</small>
+          </div>
+          <div class="pc-actions">
+            <a href="#" class="btn btn-primary">Релиз</a>
+            <a href="#" class="btn btn-ghost">Бета</a>
+          </div>
+        </div>
+
+        <!-- Web -->
+        <div class="platform-card" data-platform="web">
+          <div class="pc-header">
+            <div class="pc-icon">
+              <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 2c.87 0 1.7.13 2.5.36-.9 1.8-1.5 2.6-2.5 2.6s-1.6-.8-2.5-2.6c.8-.23 1.63-.36 2.5-.36zm-5 1.5c.9 1.7 1.9 2.6 3 2.9V11H4.06A8 8 0 017 5.5zM17 5.5A8 8 0 0119.94 11H14V8.4c1.1-.3 2.1-1.2 3-2.9zM4.06 13H10v2.6c-1.1.3-2.1 1.2-3 2.9A8 8 0 014.06 13zm9.94 0h5.94a8 8 0 01-2.94 5.5c-.9-1.7-1.9-2.6-3-2.9V13zm-4 4.04c1 .16 1.6.96 2.5 2.6A8 8 0 019.5 19.04v-2z"/></svg>
+            </div>
+            <span class="pc-badge">PWA</span>
+          </div>
+          <div class="pc-title">
+            Веб
+            <small>Любой браузер · установка как PWA</small>
+          </div>
+          <div class="pc-actions">
+            <a href="#" class="btn btn-primary">Открыть →</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- CLI install -->
+      <div class="cli-block">
+        <div class="cli-head">
+          <span class="eyebrow">Установка одной строкой</span>
+          <div class="cli-os-pills" id="cliPills">
+            <button class="active" data-os="windows">PowerShell</button>
+            <button data-os="macos">macOS</button>
+            <button data-os="linux">Linux</button>
+          </div>
+        </div>
+        <div class="cli-line">
+          <span class="prompt">$</span>
+          <div class="cmd" id="cliCmd"><span class="hl">powershell</span> -ExecutionPolicy Bypass -Command "iwr https://barkfluff.com/install.ps1 -UseBasicParsing | iex"</div>
+          <button class="copy-btn" id="cliCopyBtn" title="Скопировать">
+            <svg class="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <svg class="icon-check" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Dev block -->
+      <div class="dev-block">
+        <div class="dev-block-icon">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/></svg>
+        </div>
+        <div class="dev-block-text">
+          <div class="dev-block-title">
+            <span class="eyebrow-mini">Для разработчиков</span>
+            <span>Создай свой клиент Barkfluff</span>
+          </div>
+          <div class="dev-block-sub">Открытые .proto-файлы, gRPC-скелеты и примеры интеграции.</div>
+        </div>
+        <a href="#" class="btn btn-soft dev-block-btn">
+          Центр разработчика
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M10 17l5-5-5-5v10z"/></svg>
+        </a>
+      </div>
+
+      <!-- Features strip -->
+      <div class="features-strip">
+        <div class="feature">
+          <div class="f-icon"><svg viewBox="0 0 24 24"><path d="M12 1l9 4v6c0 5.5-3.8 10.7-9 12-5.2-1.3-9-6.5-9-12V5l9-4z"/></svg></div>
+          <div class="f-title">gRPC + TLS</div>
+          <div class="f-body">Современный транспорт, шифрование на уровне соединения.</div>
+        </div>
+        <div class="feature">
+          <div class="f-icon"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18V4a8 8 0 010 16z"/></svg></div>
+          <div class="f-title">Светлая и тёмная</div>
+          <div class="f-body">Следит за системой или переключается по щелчку.</div>
+        </div>
+        <div class="feature">
+          <div class="f-icon"><svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zm0 10h6v6H4zm10-10h6v6h-6zm0 10h6v6h-6z"/></svg></div>
+          <div class="f-title">Один сервис — все платформы</div>
+          <div class="f-body">Нативные клиенты для Windows, Android и веба работают с одним бекендом.</div>
+        </div>
+        <div class="feature">
+          <div class="f-icon"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V8l8 5 8-5v10zm-8-7L4 6h16l-8 5z"/></svg></div>
+          <div class="f-title">Без рекламы и трекинга</div>
+          <div class="f-body">Никакой телеметрии, никаких баннеров. Просто переписка.</div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <footer class="home-footer">
+        <div>© 2026 Barkfluff · <span class="mono">build 0.9.12</span></div>
+        <div class="home-footer-links">
+          <a href="#">
+            <svg viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 000 12a12 12 0 0012 12 12 12 0 0012-12A12 12 0 0011.944 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 01.171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+            Поддержка
+          </a>
+          <a href="#">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            <span class="__cf_email__" data-cfemail="8af9fffafae5f8fecae8ebf8e1ece6ffececa4e9e5e7">[email&#160;protected]</span>
+          </a>
+          <a href="#">Конфиденциальность</a>
+        </div>
+      </footer>
+    </div>
+  </section>
+
+  <!-- =========================================================
+       TWEAKS PANEL
+       ========================================================= -->
+  <div class="tweaks-panel" id="tweaksPanel">
+    <h4>Настройки прототипа</h4>
+    <div class="tweaks-row">
+      <span class="label">Стиль главной</span>
+      <div class="tweaks-seg" data-tweak="homeLayout">
+        <button data-value="default" class="active">Спокойный</button>
+        <button data-value="editorial">Редакционный</button>
+      </div>
+    </div>
+    <div class="tweaks-row">
+      <span class="label">Акцентный цвет</span>
+      <div class="tweaks-seg" data-tweak="accent">
+        <button data-value="orange" class="active">Оранж</button>
+        <button data-value="amber">Янтарь</button>
+        <button data-value="rose">Роза</button>
+      </div>
+    </div>
+  </div>
+  <section class="page" id="page-profile" data-screen-label="02 Profile li_is">
+    <div class="profile-page">
+
+      <!-- Mini nav -->
+      <div class="profile-nav">
+        <a href="#" class="profile-nav-link" data-goto="home">
+          <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+          barkfluff.com
+        </a>
+        <a href="#" class="profile-nav-link">
+          Поделиться
+          <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/></svg>
+        </a>
+      </div>
+
+      <!-- Profile card -->
+      <div class="profile-card" id="profileCard">
+
+        <!-- Loading state -->
+        <div class="pc-loading" id="state-loading" style="display: none;">
+          <div class="pc-spinner"></div>
+          <div class="pc-loading-text">Загружаем профиль…</div>
+        </div>
+
+        <!-- Profile state -->
+        <div id="state-profile">
+          <div class="pc-cover"></div>
+          <div class="pc-body">
+            <div class="pc-avatar-wrap">
+              <div class="pc-avatar-ring"></div>
+              <img class="pc-avatar" id="profileAvatar" src="" alt="" />
+              <div class="pc-status-dot" id="profileStatusDot"></div>
+            </div>
+
+            <div class="pc-fullname" id="profileFullName">Li_is</div>
+            <div class="pc-username">@li_is</div>
+            <div class="pc-status-line" id="profileStatusLine">
+              <span class="s-dot"></span> в сети
+            </div>
+
+            <div class="pc-bio" id="profileBio">
+              собираю хорошие фотки и плохие мемы. пишите в бф, отвечаю медленно но с душой.
+            </div>
+
+            <div class="pc-meta">
+              <span class="pc-meta-chip">
+                <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                Санкт-Петербург
+              </span>
+              <span class="pc-meta-chip">
+                <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>
+                с апреля 2024
+              </span>
+              <span class="pc-meta-chip">
+                <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                Ранний юзер
+              </span>
+            </div>
+
+            <div class="pc-divider">Открыть переписку</div>
+
+            <div class="pc-open-status">
+              <button class="pc-open-btn" id="openProtocolBtn">
+                <svg viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zM8 15c0-1.66 1.34-3 3-3 .35 0 .69.07 1 .18V6h5v2h-3v7.03A3.003 3.003 0 0 1 11 18c-1.66 0-3-1.34-3-3z"/></svg>
+                Открыть в Barkfluff
+              </button>
+              <div class="pc-opening" id="openingIndicator" style="display: none;">
+                <span class="dots"><span></span><span></span><span></span></span>
+                <span>Запрашиваем приложение…</span>
+              </div>
+            </div>
+
+            <div class="pc-downloads" id="pcDownloads">
+              <div class="pc-downloads-inner">
+                <div class="pc-dl-label">Приложение не открылось? Скачайте:</div>
+                <div class="pc-dl-grid">
+                  <a href="#" class="btn btn-ghost">Windows</a>
+                  <a href="#" class="btn btn-ghost">Android</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 404 state -->
+        <div id="state-notfound" style="display:none;">
+          <div class="pc-404">
+            <div class="pc-404-glyph">
+              <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+            </div>
+            <div class="pc-404-title">Пользователь не найден</div>
+            <div class="pc-404-desc">
+              Пользователь <strong>@li_is</strong> не зарегистрирован в Barkfluff или удалил аккаунт.
+            </div>
+            <div class="pc-404-actions">
+              <a href="#" class="btn btn-ghost" data-goto="home">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+                На главную
+              </a>
+              <a href="#" class="btn btn-primary">Создать аккаунт</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- State switcher for prototype -->
+      <div class="profile-state-switcher" id="profileStateSwitcher">
+        <button data-state="state-profile" class="active">Найден</button>
+        <button data-state="state-loading">Загрузка</button>
+        <button data-state="state-notfound">404</button>
+      </div>
+
+      <div class="pc-foot">
+        barkfluff.com — это сайт знакомства людей с <a href="#">приложением</a>, а не соцсеть. Для общения скачайте клиент.
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================
+       TWEAKS PANEL
+       ========================================================= -->
+  <div class="tweaks-panel" id="tweaksPanel">
+    <h4>Настройки прототипа</h4>
+    <div class="tweaks-row">
+      <span class="label">Стиль главной</span>
+      <div class="tweaks-seg" data-tweak="homeLayout">
+        <button data-value="default" class="active">Спокойный</button>
+        <button data-value="editorial">Редакционный</button>
+      </div>
+    </div>
+    <div class="tweaks-row">
+      <span class="label">Статус пользователя</span>
+      <div class="tweaks-seg" data-tweak="status">
+        <button data-value="online" class="active">В сети</button>
+        <button data-value="offline">Не в сети</button>
+      </div>
+    </div>
+    <div class="tweaks-row">
+      <span class="label">Аватар</span>
+      <div class="tweaks-seg" data-tweak="avatar">
+        <button data-value="photo" class="active">Фото</button>
+        <button data-value="initial">Инициал</button>
+      </div>
+    </div>
+    <div class="tweaks-row">
+      <span class="label">Акцентный цвет</span>
+      <div class="tweaks-seg" data-tweak="accent">
+        <button data-value="orange" class="active">Оранж</button>
+        <button data-value="amber">Янтарь</button>
+        <button data-value="rose">Роза</button>
+      </div>
+    </div>
+  </div>
+
+  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js" defer></script><script>
+    /* =============================================================
+       Tweak defaults (persisted via EDITMODE block)
+       ============================================================= */
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "homeLayout": "default",
+      "status": "online",
+      "avatar": "initial",
+      "accent": "orange"
+    }/*EDITMODE-END*/;
+
+    const state = { ...TWEAK_DEFAULTS };
+
+    /* =============================================================
+       Page switcher
+       ============================================================= */
+    const LS_KEY_PAGE = 'barkfluff_proto_page';
+    function goto(page) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      const el = document.getElementById('page-' + page);
+      if (el) el.classList.add('active');
+      document.querySelectorAll('.proto-bar button[data-goto]').forEach(b => {
+        b.classList.toggle('active', b.dataset.goto === page);
+      });
+      try { localStorage.setItem(LS_KEY_PAGE, page); } catch (e) {}
+      window.scrollTo(0, 0);
+    }
+    document.querySelectorAll('[data-goto]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        goto(el.dataset.goto);
+      });
+    });
+
+    /* =============================================================
+       Production / Prototype mode
+       ============================================================= */
+    const LS_KEY_MODE = 'barkfluff_proto_mode';
+    function setMode(mode) {
+      document.body.classList.toggle('prod-mode', mode === 'prod');
+      document.querySelectorAll('.proto-mode button').forEach(b => {
+        b.classList.toggle('active', b.dataset.mode === mode);
+      });
+      try { localStorage.setItem(LS_KEY_MODE, mode); } catch (e) {}
+    }
+    document.querySelectorAll('.proto-mode button').forEach(b => {
+      b.addEventListener('click', () => setMode(b.dataset.mode));
+    });
+    try {
+      const savedMode = localStorage.getItem(LS_KEY_MODE);
+      if (savedMode === 'prod') setMode('prod');
+    } catch (e) {}
+
+    // Restore last page
+    try {
+      const last = localStorage.getItem(LS_KEY_PAGE);
+      if (last === 'profile') goto('profile');
+    } catch (e) {}
+
+    /* =============================================================
+       Home: preview stack switcher
+       ============================================================= */
+    const previewOrder = ['windows', 'android', 'web'];
+    let currentPlatform = 'windows';
+
+    function selectPlatform(platform) {
+      currentPlatform = platform;
+      const idx = previewOrder.indexOf(platform);
+      const peekLeftIdx = (idx - 1 + previewOrder.length) % previewOrder.length;
+      const peekRightIdx = (idx + 1) % previewOrder.length;
+
+      document.querySelectorAll('#previewStack .preview-frame').forEach(f => {
+        const p = f.dataset.platform;
+        f.classList.remove('is-active', 'peek-left', 'peek-right');
+        if (p === platform) f.classList.add('is-active');
+        else if (p === previewOrder[peekLeftIdx]) f.classList.add('peek-left');
+        else if (p === previewOrder[peekRightIdx]) f.classList.add('peek-right');
+      });
+
+      document.querySelectorAll('.platform-card').forEach(c => {
+        c.classList.toggle('is-active', c.dataset.platform === platform);
+      });
+
+      // Sync CLI OS if applicable
+      const osMap = { windows: 'windows', android: null, web: null };
+      if (osMap[platform]) setCliOs(osMap[platform]);
+    }
+
+    document.querySelectorAll('.platform-card').forEach(card => {
+      card.addEventListener('click', (e) => {
+        // Don't hijack link clicks inside the card
+        if (e.target.closest('a')) return;
+        selectPlatform(card.dataset.platform);
+      });
+    });
+
+    // Keyboard nav for preview
+    document.addEventListener('keydown', (e) => {
+      if (!document.getElementById('page-home').classList.contains('active')) return;
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      const idx = previewOrder.indexOf(currentPlatform);
+      if (e.key === 'ArrowLeft') {
+        selectPlatform(previewOrder[(idx - 1 + previewOrder.length) % previewOrder.length]);
+      } else if (e.key === 'ArrowRight') {
+        selectPlatform(previewOrder[(idx + 1) % previewOrder.length]);
+      }
+    });
+
+    /* =============================================================
+       CLI install line switcher
+       ============================================================= */
+    const cliCommands = {
+      windows: { prompt: '$', hl: 'powershell', rest: ' -ExecutionPolicy Bypass -Command "iwr https://barkfluff.com/install.ps1 -UseBasicParsing | iex"' },
+      macos:   { prompt: '#', hl: '',           rest: ' команда установки пока недоступна — скоро будет' },
+      linux:   { prompt: '#', hl: '',           rest: ' команда установки пока недоступна — скоро будет' }
+    };
+
+    function setCliOs(os) {
+      const c = cliCommands[os];
+      if (!c) return;
+      document.querySelectorAll('#cliPills button').forEach(b => {
+        b.classList.toggle('active', b.dataset.os === os);
+      });
+      const el = document.getElementById('cliCmd');
+      const promptEl = document.querySelector('.cli-line .prompt');
+      if (promptEl) promptEl.textContent = c.prompt;
+      if (c.hl) {
+        el.innerHTML = '<span class="hl">' + c.hl + '</span>' + c.rest.replace(/</g, '&lt;');
+      } else {
+        el.innerHTML = '<span style="color: var(--ink-mute); font-style: italic;">' + c.rest.trim().replace(/</g, '&lt;') + '</span>';
+      }
+    }
+    document.querySelectorAll('#cliPills button').forEach(b => {
+      b.addEventListener('click', () => setCliOs(b.dataset.os));
+    });
+
+    // Copy button
+    document.getElementById('cliCopyBtn').addEventListener('click', (e) => {
+      const text = document.getElementById('cliCmd').innerText;
+      navigator.clipboard.writeText(text).catch(() => {});
+      const btn = e.currentTarget;
+      btn.classList.add('copied');
+      btn.querySelector('.icon-copy').style.display = 'none';
+      btn.querySelector('.icon-check').style.display = 'block';
+      setTimeout(() => {
+        btn.classList.remove('copied');
+        btn.querySelector('.icon-copy').style.display = 'block';
+        btn.querySelector('.icon-check').style.display = 'none';
+      }, 1800);
+    });
+
+    /* =============================================================
+       Profile: "open protocol" simulation
+       ============================================================= */
+    function simulateOpen() {
+      const ind = document.getElementById('openingIndicator');
+      const btn = document.getElementById('openProtocolBtn');
+      const dl = document.getElementById('pcDownloads');
+
+      ind.style.display = 'flex';
+      btn.style.opacity = '0.7';
+      // After 3.5s, "fail" and show downloads
+      setTimeout(() => {
+        if (!document.getElementById('state-profile').offsetParent) return;
+        dl.classList.add('show');
+        ind.querySelector('span:last-child').textContent = 'Не удалось. Приложение не установлено?';
+      }, 3500);
+    }
+
+    document.getElementById('openProtocolBtn').addEventListener('click', (e) => {
+      e.preventDefault();
+      simulateOpen();
+    });
+
+    /* =============================================================
+       Profile state switcher
+       ============================================================= */
+    function showProfileState(id) {
+      ['state-loading','state-profile','state-notfound'].forEach(s => {
+        document.getElementById(s).style.display = 'none';
+      });
+      document.getElementById(id).style.display = (id === 'state-profile') ? 'block' : 'flex';
+      if (id === 'state-profile') document.getElementById(id).style.display = 'block';
+      document.querySelectorAll('#profileStateSwitcher button').forEach(b => {
+        b.classList.toggle('active', b.dataset.state === id);
+      });
+
+      // Reset any open download block
+      const dl = document.getElementById('pcDownloads');
+      if (dl) dl.classList.remove('show');
+      const ind = document.getElementById('openingIndicator');
+      if (ind) ind.style.display = 'none';
+    }
+    document.querySelectorAll('#profileStateSwitcher button').forEach(b => {
+      b.addEventListener('click', () => showProfileState(b.dataset.state));
+    });
+
+    /* =============================================================
+       Avatar rendering
+       ============================================================= */
+    // Generate a placeholder avatar with initials
+    function initialAvatarDataURI(letter, color1, color2) {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+        <defs>
+          <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0" stop-color="${color1}"/>
+            <stop offset="1" stop-color="${color2}"/>
+          </linearGradient>
+        </defs>
+        <rect width="120" height="120" rx="60" fill="url(#g)"/>
+        <text x="60" y="78" text-anchor="middle" font-family="Manrope, sans-serif" font-weight="800" font-size="56" fill="white">${letter}</text>
+      </svg>`;
+      return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+    }
+
+    // Photo avatar (from screenshots it's a blue-haired anime character). We'll use a styled SVG placeholder that matches li_is style.
+    function photoAvatarDataURI() {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+        <defs>
+          <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0" stop-color="#4a6fa5"/>
+            <stop offset="1" stop-color="#1e2a4a"/>
+          </linearGradient>
+          <radialGradient id="skin" cx="0.5" cy="0.55" r="0.5">
+            <stop offset="0" stop-color="#ffe0c7"/>
+            <stop offset="1" stop-color="#e8b896"/>
+          </radialGradient>
+        </defs>
+        <rect width="120" height="120" rx="60" fill="url(#bg)"/>
+        <!-- hair back -->
+        <path d="M25 55 C 25 30, 95 30, 95 55 L 95 95 L 25 95 Z" fill="#2a3f6a"/>
+        <!-- face -->
+        <ellipse cx="60" cy="65" rx="22" ry="26" fill="url(#skin)"/>
+        <!-- collar -->
+        <path d="M38 92 L 52 84 L 60 92 L 68 84 L 82 92 L 82 120 L 38 120 Z" fill="#f4f4f4"/>
+        <path d="M56 86 L 60 100 L 64 86 Z" fill="#2a2a2a"/>
+        <!-- hair front bangs -->
+        <path d="M35 55 Q 40 40, 60 42 Q 80 40, 85 55 Q 80 52, 65 55 Q 60 48, 55 55 Q 40 52, 35 55 Z" fill="#3a5280"/>
+        <!-- eyes -->
+        <ellipse cx="52" cy="64" rx="2.5" ry="3.5" fill="#2a2a2a"/>
+        <ellipse cx="68" cy="64" rx="2.5" ry="3.5" fill="#2a2a2a"/>
+        <!-- mouth -->
+        <path d="M56 76 Q 60 78, 64 76" stroke="#8a5a44" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+      </svg>`;
+      return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+    }
+
+    function applyAvatar() {
+      const el = document.getElementById('profileAvatar');
+      if (state.avatar === 'initial') {
+        const accent = getAccent();
+        el.src = initialAvatarDataURI('L', accent.c1, accent.c2);
+      } else {
+        el.src = photoAvatarDataURI();
+      }
+    }
+
+    function applyStatus() {
+      const dot = document.getElementById('profileStatusDot');
+      const line = document.getElementById('profileStatusLine');
+      if (state.status === 'offline') {
+        dot.classList.add('offline');
+        line.classList.add('offline');
+        line.innerHTML = '<span class="s-dot"></span> был 2 часа назад';
+      } else {
+        dot.classList.remove('offline');
+        line.classList.remove('offline');
+        line.innerHTML = '<span class="s-dot"></span> в сети';
+      }
+    }
+
+    function getAccent() {
+      return {
+        orange: { c1: '#ff8a3c', c2: '#c23f07', brand: '#ff7a29', brand2: '#e25a12', glow: 'rgba(255,122,41,0.35)' },
+        amber:  { c1: '#fbbf24', c2: '#d97706', brand: '#f59e0b', brand2: '#b45309', glow: 'rgba(245,158,11,0.35)' },
+        rose:   { c1: '#fb7185', c2: '#be123c', brand: '#f43f5e', brand2: '#be123c', glow: 'rgba(244,63,94,0.35)' }
+      }[state.accent];
+    }
+
+    function applyAccent() {
+      const a = getAccent();
+      document.documentElement.style.setProperty('--brand', a.brand);
+      document.documentElement.style.setProperty('--brand-2', a.brand2);
+      document.documentElement.style.setProperty('--brand-glow', a.glow);
+      document.documentElement.style.setProperty('--shadow-brand', '0 12px 30px -8px ' + a.glow);
+      applyAvatar();
+    }
+
+    function applyHomeLayout() {
+      const home = document.querySelector('.home-page');
+      home.classList.toggle('layout-editorial', state.homeLayout === 'editorial');
+    }
+
+    function applyAll() {
+      applyAccent();
+      applyStatus();
+      applyAvatar();
+      applyHomeLayout();
+    }
+    applyAll();
+
+    /* =============================================================
+       Tweaks wiring
+       ============================================================= */
+    document.querySelectorAll('.tweaks-seg').forEach(seg => {
+      const key = seg.dataset.tweak;
+      seg.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          seg.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          state[key] = btn.dataset.value;
+          applyAll();
+          // persist via host
+          try {
+            window.parent.postMessage({ type: '__edit_mode_set_keys', edits: { [key]: btn.dataset.value } }, '*');
+          } catch (e) {}
+        });
+      });
+      // Sync initial active state to state value
+      seg.querySelectorAll('button').forEach(b => {
+        b.classList.toggle('active', b.dataset.value === state[key]);
+      });
+    });
+
+    /* =============================================================
+       Edit mode protocol
+       ============================================================= */
+    window.addEventListener('message', (e) => {
+      const d = e.data;
+      if (!d || !d.type) return;
+      if (d.type === '__activate_edit_mode') {
+        document.getElementById('tweaksPanel').classList.add('visible');
+      } else if (d.type === '__deactivate_edit_mode') {
+        document.getElementById('tweaksPanel').classList.remove('visible');
+      }
+    });
+    try { window.parent.postMessage({ type: '__edit_mode_available' }, '*'); } catch (e) {}
+
+  </script>
+</body>
+</html>
