@@ -340,5 +340,99 @@ namespace BarkFluff.WebApi.Core.Managers
                 return (new ErrorReturner(false, $"Ошибка получения баджей пользователя: {ex.Message}"), null);
             }
         }
+
+        public async Task<ErrorReturner> ChangeName(string firstName, string lastName, GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    await UsersAC!.ChangeNameAsync(new Proto.Users.ChangeNameRequest
+                    {
+                        FirstName = firstName,
+                        LastName = lastName
+                    });
+                    return new ErrorReturner(true);
+                }, globalParam);
+            }
+            catch (BarkFluff.Shared.Exceptions.Users.UserIsDraftException)
+            {
+                return new ErrorReturner(false, "Пользователь не подтвержден. Вы не можете изменить имя до подтверждения аккаунта.");
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка изменения имени");
+            }
+        }
+
+        public async Task<(ErrorReturner error, List<Proto.Users.Device>? devices)> GetDevices(GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var response = await UsersAC!.GetDevicesAsync(new Proto.Users.GetDevicesRequest { });
+                    return (new ErrorReturner(true), response.Devices.ToList());
+                }, globalParam);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка получения списка устройств"), null);
+            }
+        }
+
+        public async Task<(ErrorReturner error, Proto.Users.PrivacySettings? settings)> GetPrivacySettings(GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var response = await UsersAC!.GetPrivacySettingsAsync(new Proto.Users.GetPrivacySettingsRequest { });
+                    return (new ErrorReturner(true), response.Settings);
+                }, globalParam);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка получения настроек приватности"), null);
+            }
+        }
+
+        public async Task<ErrorReturner> UpdatePrivacySettings(Proto.Users.PrivacySettings settings, GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    await UsersAC!.UpdatePrivacySettingsAsync(new Proto.Users.UpdatePrivacySettingsRequest
+                    {
+                        Settings = settings
+                    });
+                    return new ErrorReturner(true);
+                }, globalParam);
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка обновления настроек приватности");
+            }
+        }
+
+        public async Task<ErrorReturner> SetNotificationsEnabled(bool enabled, GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    await UsersAC!.SetNotificationsEnabledAsync(new Proto.Users.SetNotificationsEnabledRequest
+                    {
+                        Enabled = enabled
+                    });
+                    return new ErrorReturner(true);
+                }, globalParam);
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка изменения настроек уведомлений");
+            }
+        }
     }
 }

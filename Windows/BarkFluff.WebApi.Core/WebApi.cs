@@ -145,9 +145,11 @@ namespace BarkFluff.WebApi.Core
         #region Работа с пользователями (делегирование к UserManager)
         public async Task<ErrorReturner> ChangeBio(string bio, GlobalParam globalParam) => await UserManager.ChangeBio(bio, globalParam);
         public async Task<ErrorReturner> ChangeUsername(string username, GlobalParam globalParam) => await UserManager.ChangeUsername(username, globalParam);
+        public async Task<ErrorReturner> ChangeName(string firstName, string lastName, GlobalParam globalParam) => await UserManager.ChangeName(firstName, lastName, globalParam);
         public async Task<(ErrorReturner error, bool exists)> CheckEmail(string email, GlobalParam globalParam) => await UserManager.CheckEmail(email, globalParam);
         public async Task<(ErrorReturner error, bool exists)> CheckUsername(string username, GlobalParam globalParam) => await UserManager.CheckUsername(username, globalParam);
         public async Task<(ErrorReturner error, List<Proto.Identity.GetActiveSessionsResponse.Types.Session>? sessions)> GetDevicesList(GlobalParam globalParam) => await UserManager.GetDevicesList(globalParam);
+        public async Task<(ErrorReturner error, List<Proto.Users.Device>? devices)> GetDevices(GlobalParam globalParam) => await UserManager.GetDevices(globalParam);
         public async Task<(ErrorReturner error, Proto.Users.Device? device)> GetCurrentDevice(GlobalParam globalParam) => await UserManager.GetCurrentDevice(globalParam);
         public async Task<ErrorReturner> RenameDevice(string deviceId, string customName, GlobalParam globalParam) => await UserManager.RenameDevice(deviceId, customName, globalParam);
         public async Task<ErrorReturner> RemoveActiveSession(string deviceId, GlobalParam globalParam) => await UserManager.RemoveActiveSession(deviceId, globalParam);
@@ -155,11 +157,16 @@ namespace BarkFluff.WebApi.Core
         public async Task<(ErrorReturner Error, UserData? Data)> GetUserData(GlobalParam globalParam, long userId = 0) => await UserManager.GetUserData(globalParam, userId);
         public async Task<(ErrorReturner Error, Proto.Identity.Token? refreshToken, Proto.Identity.Token? accessToken, bool getMeOtpCode)> Authorizations(string _email, string _username, string _password, string _otpCode, GlobalParam global) => await UserManager.Authorizations(_email, _username, _password, _otpCode, global);
         public async Task<(ErrorReturner error, List<Proto.Users.UserBadge>? badges)> GetUserBadges(GlobalParam globalParam, long userId = 0, int? limit = null) => await UserManager.GetUserBadges(globalParam, userId, limit);
+        public async Task<(ErrorReturner error, Proto.Users.PrivacySettings? settings)> GetPrivacySettings(GlobalParam globalParam) => await UserManager.GetPrivacySettings(globalParam);
+        public async Task<ErrorReturner> UpdatePrivacySettings(Proto.Users.PrivacySettings settings, GlobalParam globalParam) => await UserManager.UpdatePrivacySettings(settings, globalParam);
+        public async Task<ErrorReturner> SetNotificationsEnabled(bool enabled, GlobalParam globalParam) => await UserManager.SetNotificationsEnabled(enabled, globalParam);
         #endregion
 
         #region Настройка двухфакторной аутентификации (делегирование к AuthManager)
         public async Task<(ErrorReturner error, string? qrBase64, string? justCode)> OtpReceipt(GlobalParam globalParam) => await AuthManager.OtpReceipt(globalParam);
         public async Task<ErrorReturner> OtpAccept(GlobalParam globalParam, string code) => await AuthManager.OtpAccept(globalParam, code);
+        public async Task<ErrorReturner> OtpDisable(GlobalParam globalParam) => await AuthManager.OtpDisable(globalParam);
+        public async Task<(ErrorReturner error, bool authenticatorEnabled, bool emailEnabled)> OtpStatus(GlobalParam globalParam) => await AuthManager.OtpStatus(globalParam);
         #endregion
 
         #region Регистрация (делегирование к RegistrationManager)
@@ -183,6 +190,9 @@ namespace BarkFluff.WebApi.Core
         public async Task<(ErrorReturner error, List<MessageModel>? messages)> GetMessagesWithOffset(GlobalParam globalParam, string chatId, long fromMessageId, int offsetBefore, int offsetAfter) => await MessageManager.GetMessagesWithOffset(globalParam, chatId, fromMessageId, offsetBefore, offsetAfter);
         public async Task<ErrorReturner> MarkMessageAsRead(GlobalParam globalParam, List<long> messageId) => await MessageManager.MarkMessageAsRead(globalParam, messageId);
         public async Task<(ErrorReturner error, string chatId)> GetPersonChatId(GlobalParam globalParam, long userId) => await MessageManager.GetPersonChatId(globalParam, userId);
+        public async Task<(ErrorReturner error, List<Proto.Messages.ListChatMembersResponse.Types.DetailedChatMemberInfo>? members, int totalCount)> ListChatMembers(GlobalParam globalParam, string chatId, int offset = 0, int size = 50) => await MessageManager.ListChatMembers(globalParam, chatId, offset, size);
+        public async Task<(ErrorReturner error, List<Proto.Messages.ChatAttachmentInfo>? attachments, int totalCount)> ListChatAttachments(GlobalParam globalParam, string chatId, Proto.Shared.MessageAttachmentType attachmentType = Proto.Shared.MessageAttachmentType.Unknown, bool sortDescending = true, int offset = 0, int size = 50) => await MessageManager.ListChatAttachments(globalParam, chatId, attachmentType, sortDescending, offset, size);
+        public async Task<ErrorReturner> KickUser(GlobalParam globalParam, string chatId, long userId) => await MessageManager.KickUser(globalParam, chatId, userId);
         #endregion
 
         #region Поиск (делегирование к SearchManager)

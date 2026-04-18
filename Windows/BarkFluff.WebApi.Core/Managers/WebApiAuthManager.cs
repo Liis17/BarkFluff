@@ -59,5 +59,40 @@ namespace BarkFluff.WebApi.Core.Managers
                 return new ErrorReturner(false, "Ошибка подтверждения двухфакторной аутентификации");
             }
         }
+
+        public async Task<ErrorReturner> OtpDisable(GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    await IdentityAC!.DisableOtpVerificationAsync(new Proto.Identity.DisableOtpVerificationRequest
+                    {
+                        OtpType = Proto.Identity.OtpTypeId.Authenticator
+                    });
+                    return new ErrorReturner(true);
+                }, globalParam);
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка отключения двухфакторной аутентификации");
+            }
+        }
+
+        public async Task<(ErrorReturner error, bool authenticatorEnabled, bool emailEnabled)> OtpStatus(GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var response = await IdentityAC!.ListOtpVerificationAsync(new Proto.Identity.ListOtpVerificationRequest { });
+                    return (new ErrorReturner(true), response.AuthenticatorEnabled, response.EmailEnabled);
+                }, globalParam);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка получения статуса двухфакторной аутентификации"), false, false);
+            }
+        }
     }
 }
