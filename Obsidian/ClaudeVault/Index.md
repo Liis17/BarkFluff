@@ -48,8 +48,10 @@
 | Файл | Платформа |
 |------|-----------|
 | [[Клиенты/Android]] | Kotlin + gRPC-OkHttp, Activity-based |
+| [[Клиенты/Android-ProjectMap]] | Карта всех файлов и классов Android-клиента |
 | [[Клиенты/Windows-WPF]] | WPF .NET 10, Code-behind + Reactive |
 | [[Клиенты/Windows-WebApiCore]] | gRPC-клиентская библиотека для WPF |
+| [[Клиенты/Windows-WebApiCore-ProjectMap]] | Карта всех файлов и менеджеров WebApi.Core |
 | [[Клиенты/Windows-DBEditor]] | Редактор конфигурации БД (WPF) |
 | [[Клиенты/Linux-Qt]] | Qt 6 / C++20, ранняя стадия |
 | [[Клиенты/macOS]] | SwiftUI + gRPC-Swift |

@@ -4,6 +4,8 @@ gRPC-клиентская библиотека для WPF-клиента. .NET 1
 
 Расположение: `Windows/BarkFluff.WebApi.Core/`
 
+> Полная карта файлов и внутреннего строения: [[Windows-WebApiCore-ProjectMap]]
+
 ## Сборка
 
 ```bash
