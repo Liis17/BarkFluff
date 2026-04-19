@@ -82,6 +82,7 @@ struct ProfileActionButton: View {
         chat: chat,
         viewModel: UserProfilePanelViewModel(
             chat: chat,
+            currentUserID: 0,
             userService: container.userService,
             chatService: container.chatService,
             sharedMediaService: container.sharedMediaService,

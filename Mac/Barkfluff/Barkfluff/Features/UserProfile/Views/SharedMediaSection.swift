@@ -95,6 +95,7 @@ struct SharedMediaSection: View {
 
     @Bindable var vm = UserProfilePanelViewModel(
         chat: chat,
+        currentUserID: 0,
         userService: container.userService,
         chatService: container.chatService,
         sharedMediaService: container.sharedMediaService,
