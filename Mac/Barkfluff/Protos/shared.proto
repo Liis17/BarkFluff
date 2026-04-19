@@ -26,8 +26,7 @@ message Message {
 
   MessageContent content = 5; // Содержимое сообщения
 
-  MessageContentType type = 6; // Тип сообщения
-
+  MessageContentType type = 6; // Тип сообщения 
 }
 
 message MessageContent {
@@ -56,7 +55,7 @@ message MessageAttachment {
 
 enum MessageAttachmentType {
 
-  MESSAGE_ATTACHMENT_TYPE_UNKNOWN = 0; // Неизвестно 
+  MESSAGE_ATTACHMENT_TYPE_UNKNOWN = 0; // Неизвестно
 
   IMAGE = 1; // Изображение
 
@@ -65,6 +64,12 @@ enum MessageAttachmentType {
   GIF = 3; // Гифка
 
   DOCUMENT = 4; // Документ
+
+  AUDIO = 5; // Аудио
+
+  VOICE = 6; // Голосовое сообщение
+
+  STICKER = 7; // Стикер (WebP)
 }
 
 enum MessageContentType {

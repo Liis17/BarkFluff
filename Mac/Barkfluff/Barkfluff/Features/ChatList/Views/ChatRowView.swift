@@ -22,6 +22,11 @@ struct ChatRowView: View {
                 showOnlineIndicator: !chat.isGroupChat
             )
 
+
+
+
+
+            
             VStack(alignment: .leading, spacing: 2) {
                 HStack {
                     Text(chat.title)
