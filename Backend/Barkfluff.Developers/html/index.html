@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BarkFluff Developer Portal</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0d0f14;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 24px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 56px;
+    }
+
+    .logo {
+      font-size: 2.4rem;
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: -0.5px;
+    }
+
+    .logo span { color: #6c8af5; }
+
+    .subtitle {
+      margin-top: 10px;
+      font-size: 1rem;
+      color: #718096;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      width: 100%;
+      max-width: 900px;
+    }
+
+    .card {
+      background: #161a24;
+      border: 1px solid #1e2535;
+      border-radius: 12px;
+      padding: 28px 24px;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .card:hover {
+      border-color: #6c8af5;
+      background: #1a1f2e;
+    }
+
+    .card-icon {
+      font-size: 1.8rem;
+      margin-bottom: 14px;
+    }
+
+    .card-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+
+    .card-desc {
+      font-size: 0.875rem;
+      color: #718096;
+      line-height: 1.55;
+    }
+
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #4a5568;
+      width: 100%;
+      max-width: 900px;
+      margin-bottom: 14px;
+    }
+
+    .section-label:not(:first-of-type) { margin-top: 36px; }
+
+    footer {
+      margin-top: 64px;
+      font-size: 0.8rem;
+      color: #4a5568;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo">Bark<span>Fluff</span> Developer Portal</div>
+    <p class="subtitle">Resources for client developers</p>
+  </header>
+
+  <div class="section-label">API Contracts</div>
+  <div class="grid">
+    <a class="card" href="/files/proto/beacon_api.proto">
+      <div class="card-icon">📡</div>
+      <div class="card-title">beacon_api.proto</div>
+      <div class="card-desc">Service discovery — get endpoints for all BarkFluff microservices.</div>
+    </a>
+    <a class="card" href="/files/proto/identity_api.proto">
+      <div class="card-icon">🔐</div>
+      <div class="card-title">identity_api.proto</div>
+      <div class="card-desc">Authentication, token management and 2FA flows.</div>
+    </a>
+    <a class="card" href="/files/proto/users_api.proto">
+      <div class="card-icon">👤</div>
+      <div class="card-title">users_api.proto</div>
+      <div class="card-desc">User profiles, badges, privacy settings and storage.</div>
+    </a>
+    <a class="card" href="/files/proto/messages_api.proto">
+      <div class="card-icon">💬</div>
+      <div class="card-title">messages_api.proto</div>
+      <div class="card-desc">Chats, messages, group chats and read receipts.</div>
+    </a>
+    <a class="card" href="/files/proto/files_api.proto">
+      <div class="card-icon">📎</div>
+      <div class="card-title">files_api.proto</div>
+      <div class="card-desc">File uploads, downloads, sticker packs and storage info.</div>
+    </a>
+    <a class="card" href="/files/proto/updates_api.proto">
+      <div class="card-icon">🔔</div>
+      <div class="card-title">updates_api.proto</div>
+      <div class="card-desc">Real-time updates — new messages and read status via gRPC streaming.</div>
+    </a>
+    <a class="card" href="/files/proto/onliner_api.proto">
+      <div class="card-icon">🟢</div>
+      <div class="card-title">onliner_api.proto</div>
+      <div class="card-desc">Online status tracking with streaming updates.</div>
+    </a>
+    <a class="card" href="/files/proto/fast_auth_api.proto">
+      <div class="card-icon">⚡</div>
+      <div class="card-title">fast_auth_api.proto</div>
+      <div class="card-desc">QR-based quick login between devices.</div>
+    </a>
+    <a class="card" href="/files/proto/navigator_api.proto">
+      <div class="card-icon">🗺️</div>
+      <div class="card-title">navigator_api.proto</div>
+      <div class="card-desc">BarkFluff server discovery and registration.</div>
+    </a>
+    <a class="card" href="/files/proto/shared.proto">
+      <div class="card-icon">📦</div>
+      <div class="card-title">shared.proto</div>
+      <div class="card-desc">Shared message types used across all APIs.</div>
+    </a>
+  </div>
+
+  <div class="section-label">Documentation</div>
+  <div class="grid">
+    <a class="card" href="/files/docs/authentication.md">
+      <div class="card-icon">📄</div>
+      <div class="card-title">Authentication Guide</div>
+      <div class="card-desc">XAuth protocol — required headers, connection flow, token refresh and 2FA.</div>
+    </a>
+  </div>
+
+  <footer>BarkFluff &copy; 2025</footer>
+
+</body>
+</html>
