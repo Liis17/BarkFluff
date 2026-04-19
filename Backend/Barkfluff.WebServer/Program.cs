@@ -40,6 +40,11 @@ namespace Barkfluff.WebServer
 
             builder.Services.AddSingleton<UserPageService>();
             builder.Services.AddSingleton<SupportChatService>();
+
+            // === Опрос версий приложений ===
+            builder.Services.AddHttpClient();
+            builder.Services.AddSingleton<VersionStore>();
+            builder.Services.AddHostedService<VersionPollingService>();
             builder.Services.AddSingleton<TelegramService>(sp =>
             {
                 var chatService = sp.GetRequiredService<SupportChatService>();
