@@ -74,6 +74,7 @@ struct UserProfilePanelView: View {
         .task {
             let vm = UserProfilePanelViewModel(
                 chat: chat,
+                currentUserID: container.currentUserID,
                 userService: container.userService,
                 chatService: container.chatService,
                 sharedMediaService: container.sharedMediaService,
@@ -92,6 +93,7 @@ struct UserProfilePanelView: View {
             Task {
                 let vm = UserProfilePanelViewModel(
                     chat: chat,
+                    currentUserID: container.currentUserID,
                     userService: container.userService,
                     chatService: container.chatService,
                     sharedMediaService: container.sharedMediaService,

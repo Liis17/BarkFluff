@@ -1,6 +1,6 @@
 //
 //  GlassButtonStyle.swift
-//  Barkfluff
+//  Barkfluff mac/ios
 //
 //  ButtonStyle в стиле Liquid Glass
 //

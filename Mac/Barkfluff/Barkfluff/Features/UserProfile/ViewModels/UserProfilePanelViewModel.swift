@@ -17,6 +17,7 @@ final class UserProfilePanelViewModel {
 
     let fileService: FileServiceProtocol
     private let chat: Chat
+    private let currentUserID: Int64
     private let userService: UserServiceProtocol
     private let chatService: ChatServiceProtocol
     private let sharedMediaService: SharedMediaServiceProtocol
@@ -113,6 +114,7 @@ final class UserProfilePanelViewModel {
 
     init(
         chat: Chat,
+        currentUserID: Int64,
         userService: UserServiceProtocol,
         chatService: ChatServiceProtocol,
         sharedMediaService: SharedMediaServiceProtocol,
@@ -120,6 +122,7 @@ final class UserProfilePanelViewModel {
         onlineStatusService: OnlineStatusServiceProtocol
     ) {
         self.chat = chat
+        self.currentUserID = currentUserID
         self.userService = userService
         self.chatService = chatService
         self.sharedMediaService = sharedMediaService
@@ -149,8 +152,8 @@ final class UserProfilePanelViewModel {
                 members = result.items
                 memberCount = Int(result.totalCount)
             } else {
-                // DM: определить ID собеседника из chat.members
-                guard let otherMember = chat.members.first else {
+                // DM: определить ID собеседника из chat.members (исключая текущего пользователя)
+                guard let otherMember = chat.members.first(where: { $0.userID != currentUserID }) else {
                     profileError = "Не удалось определить собеседника"
                     isLoadingProfile = false
                     return

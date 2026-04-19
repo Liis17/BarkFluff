@@ -105,6 +105,7 @@ struct ProfileHeaderSection: View {
     ProfileHeaderSection(
         viewModel: UserProfilePanelViewModel(
             chat: chat,
+            currentUserID: 0,
             userService: container.userService,
             chatService: container.chatService,
             sharedMediaService: container.sharedMediaService,

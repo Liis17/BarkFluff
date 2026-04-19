@@ -45,6 +45,12 @@ service UsersApi {
 
   // Переименовать устройство
   rpc RenameDevice(RenameDeviceRequest) returns(RenameDeviceResponse);
+
+  // Установить Firebase токен устройства
+  rpc SetFirebaseToken(SetFirebaseTokenRequest) returns(SetFirebaseTokenResponse);
+
+  // Включить или выключить уведомления для текущего устройства
+  rpc SetNotificationsEnabled(SetNotificationsEnabledRequest) returns(SetNotificationsEnabledResponse);
 }
 
 service UsersServerApi {
@@ -111,6 +117,49 @@ service UsersServerApi {
 
   // Получить публичную информацию пользователя по юзернейму (для веб-сервера)
   rpc GetUserByUsername(GetUserByUsernameRequest) returns(GetUserByUsernameResponse);
+
+  // Поиск пользователей (для админ-панели)
+  rpc SearchUsersServer(SearchUsersServerRequest) returns(SearchUsersServerResponse);
+
+  // Обновить лимит хранилища пользователя
+  rpc UpdateStorageLimit(UpdateStorageLimitRequest) returns(UpdateStorageLimitResponse);
+
+  // Установить аватарку пользователю (для админ-панели)
+  rpc SetProfilePictureServer(SetProfilePictureServerRequest) returns(SetProfilePictureServerResponse);
+
+  // Получить устройства с Firebase токенами
+  rpc GetDevicesWithFirebaseTokens(GetDevicesWithFirebaseTokensRequest) returns(GetDevicesWithFirebaseTokensResponse);
+}
+
+// Установить аватарку (серверный)
+message SetProfilePictureServerRequest {
+  int64 user_id = 1;
+  string profile_picture_url = 2;         // ссылка на полное изображение
+  string profile_picture_preview_url = 3; // ссылка на превью
+}
+
+message SetProfilePictureServerResponse { }
+
+// Поиск пользователей (серверный)
+message SearchUsersServerRequest {
+  string query = 1;   // Поиск по username или user_id (пустой = все)
+  int32 offset = 2;
+  int32 size = 3;     // макс 50
+}
+
+message SearchUsersServerResponse {
+  repeated User users = 1;
+  int32 total_count = 2;
+}
+
+// Обновление лимита хранилища
+message UpdateStorageLimitRequest {
+  int64 user_id = 1;
+  int32 storage_limit_gb = 2; // 1-250
+}
+
+message UpdateStorageLimitResponse {
+  User user = 1;
 }
 
 message SearchUsersRequest {
@@ -463,4 +512,36 @@ message GetUserByUsernameResponse {
   string bio = 5; // био
   string profile_picture = 6; // ссылка на аватарку
 }
+
+// Запросы и ответы для установки Firebase токена
+
+message SetFirebaseTokenRequest {
+  string firebase_token = 1; // Firebase токен устройства
+}
+
+message SetFirebaseTokenResponse { }
+
+// Запросы и ответы для получения устройств с Firebase токенами
+
+message GetDevicesWithFirebaseTokensRequest {
+  repeated int64 user_ids = 1; // идентификаторы пользователей
+}
+
+message GetDevicesWithFirebaseTokensResponse {
+  repeated DeviceFirebaseToken tokens = 1; // список токенов
+}
+
+message DeviceFirebaseToken {
+  int64 user_id = 1; // идентификатор пользователя
+  string device_id = 2; // идентификатор устройства
+  string firebase_token = 3; // Firebase токен
+}
+
+// Запросы и ответы для включения/выключения уведомлений на текущем устройстве
+
+message SetNotificationsEnabledRequest {
+  bool enabled = 1; // включить (true) или выключить (false) уведомления
+}
+
+message SetNotificationsEnabledResponse { }
 

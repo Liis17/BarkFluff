@@ -7,36 +7,94 @@ import "google/protobuf/timestamp.proto";
 package barkfluff.configuration;
 
 service ConfigurationApi {
-  
+
   // Получить настройки сервиса
-  rpc GetConfiguration(GetConfigurationRequest) returns(GetConfigurationResponse); 
+  rpc GetConfiguration(GetConfigurationRequest) returns(GetConfigurationResponse);
+  
+  // Обновить настройку
+  rpc UpdateConfiguration(UpdateConfigurationRequest) returns(UpdateConfigurationResponse);
+
+  // Зарезервированные юзернеймы
+  rpc GetReservedNames(GetReservedNamesRequest) returns(GetReservedNamesResponse);
+  rpc AddReservedName(AddReservedNameRequest) returns(AddReservedNameResponse);
+  rpc UpdateReservedName(UpdateReservedNameRequest) returns(UpdateReservedNameResponse);
+  rpc DeleteReservedName(DeleteReservedNameRequest) returns(DeleteReservedNameResponse);
 }
 
 message GetConfigurationRequest{
   int32 service_id = 1;
-  
+
 }
 
 message GetConfigurationResponse {
-  
+
   repeated ConfigurationItem configurations = 1;
-  
+
 }
 
 message ConfigurationItem {
-  
+
   string section = 1;
-  
+
   string key = 2;
-  
+
   string value = 3;
-  
+
   google.protobuf.Timestamp edited_at = 4;
-  
+
   string edited_by = 5;
-  
+
   string edited_from = 6;
-  
+
   int32 service_id = 7;
 }
 
+message UpdateConfigurationRequest {
+  string section = 1;
+  string key = 2;
+  string value = 3;
+  int32 service_id = 4;
+  string edited_by = 5;
+  string edited_from = 6;
+}
+
+message UpdateConfigurationResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// ─── Reserved Names ─────────────────────────────────────────────────────────
+
+message GetReservedNamesRequest {}
+
+message GetReservedNamesResponse {
+  repeated string names = 1;
+}
+
+message AddReservedNameRequest {
+  string name = 1;
+}
+
+message AddReservedNameResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message UpdateReservedNameRequest {
+  string old_name = 1;
+  string new_name = 2;
+}
+
+message UpdateReservedNameResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message DeleteReservedNameRequest {
+  string name = 1;
+}
+
+message DeleteReservedNameResponse {
+  bool success = 1;
+  string message = 2;
+}
