@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-BarkFluff.ClientStorage — автономный микросервис для хранения и раздачи клиентских приложений BarkFluff (Windows, Kotlin/Android). REST API на ASP.NET 9.0, файлы хранятся в S3-совместимом хранилище (Minio), метаданные — в SQLite.
+BarkFluff.ClientStorage — автономный микросервис для хранения и раздачи клиентских приложений BarkFluff (Windows, Kotlin/Android, macOS, iOS). REST API на ASP.NET 9.0, файлы хранятся в S3-совместимом хранилище (Minio), метаданные — в SQLite.
 
 **Не входит** в основную микросервисную инфраструктуру BarkFluff (нет gRPC, нет MassTransit, нет XAuth, нет Configuration service). Работает полностью изолированно.
 
@@ -54,11 +54,11 @@ Design-time factory: `Persistence/ClientStorageContextFactory.cs` (БД файл
 ## API Endpoints
 
 Download (публичные):
-- `GET /get/barkfluff{windows|kotlin}[/{channel}]` — скачать клиент
-- `GET /get/barkfluff{windows|kotlin}[/{channel}]/version` — получить версию
+- `GET /get/barkfluff{windows|kotlin|macos|ios}[/{channel}]` — скачать клиент
+- `GET /get/barkfluff{windows|kotlin|macos|ios}[/{channel}]/version` — получить версию
 
 Upload (требуют `Authorization: Bearer <UPLOAD_TOKEN>`, заголовок `X-App-Version` для версии):
-- `POST /set/barkfluff{windows|kotlin}[/{channel}]` — загрузить клиент (multipart form, поле `file`)
+- `POST /set/barkfluff{windows|kotlin|macos|ios}[/{channel}]` — загрузить клиент (multipart form, поле `file`)
 
 Каналы: `release` (default), `beta`. Лимит: 512 MB.
 

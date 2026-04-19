@@ -1,6 +1,32 @@
 @BarkFluff.ClientStorage_HostAddress = http://localhost:5099
+@UploadToken = your_upload_token_here
 
-GET {{BarkFluff.ClientStorage_HostAddress}}/weatherforecast/
+### Получить версию Windows клиента
+GET {{BarkFluff.ClientStorage_HostAddress}}/get/barkfluffwindows/version
 Accept: application/json
+
+### Получить версию macOS клиента
+GET {{BarkFluff.ClientStorage_HostAddress}}/get/barkfluffmacos/version
+Accept: application/json
+
+### Получить версию iOS клиента
+GET {{BarkFluff.ClientStorage_HostAddress}}/get/barkfluffios/version
+Accept: application/json
+
+### Получить версию Kotlin/Android клиента
+GET {{BarkFluff.ClientStorage_HostAddress}}/get/barkfluffkotlin/version
+Accept: application/json
+
+### Скачать Windows клиент (release)
+GET {{BarkFluff.ClientStorage_HostAddress}}/get/barkfluffwindows
+
+### Скачать macOS клиент (release)
+GET {{BarkFluff.ClientStorage_HostAddress}}/get/barkfluffmacos
+
+### Скачать iOS клиент (release)
+GET {{BarkFluff.ClientStorage_HostAddress}}/get/barkfluffios
+
+### Скачать Windows клиент (beta)
+GET {{BarkFluff.ClientStorage_HostAddress}}/get/barkfluffwindows/beta
 
 ###

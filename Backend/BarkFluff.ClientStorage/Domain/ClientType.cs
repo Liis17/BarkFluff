@@ -3,5 +3,7 @@ namespace BarkFluff.ClientStorage.Domain;
 public enum ClientType
 {
     Windows = 0,
-    Kotlin = 1
+    Kotlin = 1,
+    MacOS = 2,
+    iOS = 3
 }
