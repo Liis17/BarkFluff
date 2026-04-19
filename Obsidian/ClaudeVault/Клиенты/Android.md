@@ -1,0 +1,68 @@
+# BarkFluff.Client.Android
+
+Kotlin + gRPC-OkHttp клиент. Activity-based архитектура.
+
+Расположение: `Android/Barkfluff.Client.Android/`
+Package: `com.barkfluff.client`
+
+## Версии
+
+- Kotlin 2.0.0, AGP 8.9.1
+- gRPC-OkHttp 1.60.0 (NOT grpc-netty)
+- ViewBinding, без Hilt/MVVM
+
+## Архитектура
+
+- Activity-based
+- Локальное хранилище: SharedPreferences + EncryptedSharedPreferences для токенов
+- Навигация: Welcome → SelectServer → Login → Chats
+
+## gRPC
+
+- grpc-okhttp 1.60.0 (coroutine stubs)
+- `MetadataUtils.attachHeaders` не резолвится в grpc-okhttp 1.60.0 — использовать `ClientInterceptor` напрямую
+
+## Хранение токенов
+
+- EncryptedSharedPreferences (`barkfluff_secure_prefs`)
+- При создании gRPC-каналов добавлять `x-auth-token` через interceptor
+
+## Вложения и медиа
+
+- `MessageAttachmentType`: Unknown, Image, Video, Gif, Document, Audio(4), Voice, Sticker; **AUDIO=5** (добавлен в shared.proto)
+- `FileCache` (`utils/FileCache.kt`) — singleton disk cache, путь: `cacheDir/media_files/`
+- `AudioPlayerHelper` (`utils/AudioPlayerHelper.kt`) — MediaPlayer singleton, один аудио за раз
+- `ImageGridAdapter` (`adapter/ImageGridAdapter.kt`) — квадратная сетка с `SquareImageView`
+- `SquareImageView` (`views/SquareImageView.kt`) — `onMeasure` устанавливает height=width
+- `MediaViewerActivity` — ExoPlayer, не fullscreen, swipe-down dismiss
+- `ImageViewerActivity` — без fullscreen, swipe-down dismiss
+- `ChatRepository.downloadFile()` — HTTP download → FileCache
+
+## ExoPlayer
+
+```
+androidx.media3:media3-exoplayer:1.3.1
+androidx.media3:media3-ui:1.3.1
+```
+
+## gRPC Коды ошибок (из x-error-code trailer)
+
+| Исключение | ErrorCode |
+|-----------|-----------|
+| OtpCodeNeedException | `C1576884-12D8-4722-A7EE-9F9789AD1265` |
+| NotValidOtpCodeException | `803B632C-4457-4B05-9435-9C3DD0F41E00` |
+| InvalidLoginOrPasswordException | `21BFB9B5-C377-45D1-9B15-6B7F3432B397` |
+
+## Файловая структура
+
+- `gradle/libs.versions.toml` — все версии зависимостей
+- `app/src/main/proto/` — 11 proto файлов
+- `app/src/main/java/com/barkfluff/client/` — все исходники
+- `PROJECT_MAP.md` — полная карта Android-проекта
+
+## Сборка
+
+```bash
+cd Android/Barkfluff.Client.Android
+./gradlew assembleDebug
+```
