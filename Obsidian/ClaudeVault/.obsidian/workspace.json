@@ -11,10 +11,14 @@
             "id": "7f596fe4d7ff83c5",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Граф"
+              "type": "markdown",
+              "state": {
+                "file": "Клиенты/Linux-Qt.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Linux-Qt"
             }
           }
         ]
@@ -90,6 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
+                "file": "Клиенты/Linux-Qt.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -99,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Обратные ссылки"
+              "title": "Обратные ссылки для Linux-Qt"
             }
           },
           {
@@ -108,11 +113,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
+                "file": "Клиенты/Linux-Qt.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Исходящие ссылки"
+              "title": "Исходящие ссылки из Linux-Qt"
             }
           },
           {
@@ -136,12 +142,13 @@
             "state": {
               "type": "outline",
               "state": {
+                "file": "Клиенты/Linux-Qt.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Структура"
+              "title": "Структура Linux-Qt"
             }
           }
         ]
@@ -164,6 +171,7 @@
   },
   "active": "7f596fe4d7ff83c5",
   "lastOpenFiles": [
+    "Backend/ClientStorage.md",
     "Backend/Configuration.md",
     "Index.md",
     "Клиенты/iOS.md",
@@ -189,7 +197,6 @@
     "Shared/Exceptions.md.tmp.2296.1776618320212",
     "Shared/Auth.md",
     "Shared/Proto.md",
-    "Backend/ClientStorage.md",
     "Backend/Web.md",
     "Архитектура.md",
     "Backend/WebServer.md",
