@@ -58,6 +58,38 @@ public class ClientStorageController : ControllerBase
     public Task<IActionResult> GetKotlinChannelVersion(string channel)
         => ParseChannelAndGetVersion(ClientType.Kotlin, channel);
 
+    [HttpGet("/get/barkfluffmacos")]
+    public Task<IActionResult> GetMacOS()
+        => DownloadClient(ClientType.MacOS, ReleaseChannel.Release);
+
+    [HttpGet("/get/barkfluffmacos/version")]
+    public Task<IActionResult> GetMacOSVersion()
+        => GetVersion(ClientType.MacOS, ReleaseChannel.Release);
+
+    [HttpGet("/get/barkfluffmacos/{channel}")]
+    public Task<IActionResult> GetMacOSChannel(string channel)
+        => ParseChannelAndDownload(ClientType.MacOS, channel);
+
+    [HttpGet("/get/barkfluffmacos/{channel}/version")]
+    public Task<IActionResult> GetMacOSChannelVersion(string channel)
+        => ParseChannelAndGetVersion(ClientType.MacOS, channel);
+
+    [HttpGet("/get/barkfluffios")]
+    public Task<IActionResult> GetIOS()
+        => DownloadClient(ClientType.iOS, ReleaseChannel.Release);
+
+    [HttpGet("/get/barkfluffios/version")]
+    public Task<IActionResult> GetIOSVersion()
+        => GetVersion(ClientType.iOS, ReleaseChannel.Release);
+
+    [HttpGet("/get/barkfluffios/{channel}")]
+    public Task<IActionResult> GetIOSChannel(string channel)
+        => ParseChannelAndDownload(ClientType.iOS, channel);
+
+    [HttpGet("/get/barkfluffios/{channel}/version")]
+    public Task<IActionResult> GetIOSChannelVersion(string channel)
+        => ParseChannelAndGetVersion(ClientType.iOS, channel);
+
     [HttpPost("/set/barkfluffwindows")]
     [RequestSizeLimit(512 * 1024 * 1024)]
     public Task<IActionResult> SetWindows(IFormFile file)
@@ -77,6 +109,26 @@ public class ClientStorageController : ControllerBase
     [RequestSizeLimit(512 * 1024 * 1024)]
     public Task<IActionResult> SetKotlinChannel(IFormFile file, string channel)
         => ParseChannelAndUpload(file, ClientType.Kotlin, channel);
+
+    [HttpPost("/set/barkfluffmacos")]
+    [RequestSizeLimit(512 * 1024 * 1024)]
+    public Task<IActionResult> SetMacOS(IFormFile file)
+        => UploadClient(file, ClientType.MacOS, ReleaseChannel.Release);
+
+    [HttpPost("/set/barkfluffmacos/{channel}")]
+    [RequestSizeLimit(512 * 1024 * 1024)]
+    public Task<IActionResult> SetMacOSChannel(IFormFile file, string channel)
+        => ParseChannelAndUpload(file, ClientType.MacOS, channel);
+
+    [HttpPost("/set/barkfluffios")]
+    [RequestSizeLimit(512 * 1024 * 1024)]
+    public Task<IActionResult> SetIOS(IFormFile file)
+        => UploadClient(file, ClientType.iOS, ReleaseChannel.Release);
+
+    [HttpPost("/set/barkfluffios/{channel}")]
+    [RequestSizeLimit(512 * 1024 * 1024)]
+    public Task<IActionResult> SetIOSChannel(IFormFile file, string channel)
+        => ParseChannelAndUpload(file, ClientType.iOS, channel);
 
     private bool TryParseChannel(string channel, out ReleaseChannel releaseChannel)
     {
