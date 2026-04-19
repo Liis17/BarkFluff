@@ -2773,10 +2773,15 @@ jobs:
           xcodebuild -version
           swift --version
 
+      - name: Установить xcbeautify и create-dmg
+        if: needs.request-approvals.outputs.macos-client-approved == 'true'
+        run: brew install xcbeautify create-dmg
+
       - name: Archive (без подписи)
         if: needs.request-approvals.outputs.macos-client-approved == 'true'
         run: |
-          xcodebuild -project Barkfluff.xcodeproj \
+          set -o pipefail
+          NSUnbufferedIO=YES xcodebuild -project Barkfluff.xcodeproj \
             -scheme Barkfluff \
             -configuration Release \
             -destination 'generic/platform=macOS' \
@@ -2784,18 +2789,19 @@ jobs:
             CODE_SIGN_IDENTITY="-" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            archive
+            archive 2>&1 | xcbeautify --renderer github-actions
 
       - name: Export .app
         if: needs.request-approvals.outputs.macos-client-approved == 'true'
         run: |
-          xcodebuild -exportArchive \
+          set -o pipefail
+          NSUnbufferedIO=YES xcodebuild -exportArchive \
             -archivePath build/Barkfluff.xcarchive \
             -exportOptionsPlist ExportOptions.plist \
             -exportPath build/export \
             CODE_SIGN_IDENTITY="-" \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO 2>&1 | xcbeautify --renderer github-actions
 
       - name: Get version
         if: needs.request-approvals.outputs.macos-client-approved == 'true'
@@ -2805,10 +2811,6 @@ jobs:
             build/export/Barkfluff.app/Contents/Info.plist 2>/dev/null || echo "0.0.0")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Version: $VERSION"
-
-      - name: Установить create-dmg
-        if: needs.request-approvals.outputs.macos-client-approved == 'true'
-        run: brew install create-dmg
 
       - name: Собрать DMG
         if: needs.request-approvals.outputs.macos-client-approved == 'true'
