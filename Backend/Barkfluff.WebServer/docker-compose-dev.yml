@@ -1,0 +1,13 @@
+services:
+  webserver-dev:
+    container_name: webserver
+    image: docker.barkfluff.com:5000/barkfluff-webserver-dev:latest
+    restart: always
+    network_mode: host
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: "http://+:${WEBSERVER_PORT}"
+      WEBSERVER_PORT: ${WEBSERVER_PORT}
+      Telegram__BotToken: ${TELEGRAM_BOT_TOKEN}
+      UsersService__Host: ${USERS_SERVICE_HOST}
+      UsersService__Token: ${USERS_SERVICE_TOKEN}

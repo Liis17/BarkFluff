@@ -14,7 +14,8 @@ namespace Barkfluff.WebServer
 
             builder.WebHost.ConfigureKestrel(serverOptions =>
             {
-                serverOptions.ListenAnyIP(64641);
+                var port = int.Parse(builder.Configuration["WEBSERVER_PORT"] ?? "64641");
+                serverOptions.ListenAnyIP(port);
             });
 
             builder.Services.AddControllers();
@@ -23,8 +24,8 @@ namespace Barkfluff.WebServer
             builder.Services.AddSingleton<LegalPageService>();
 
             // === gRPC: подключение к Users-сервису бекенда ===
-            var usersServiceHost = "https://users.barkfluff.com";
-            var usersServiceToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ4LXRva2VuLXR5cGUiOiJTZXJ2aWNlIiwieC11c2VyLWlkIjoiMCIsInNlcnZpY2UtbmFtZSI6IlVzZXJzU2VydmljZUNsaWVudCIsImV4cCI6MjA4NjAxNDc5NiwiaXNzIjoiQmFya0ZsdWZmIiwiYXVkIjoiQmFya0ZsdWZmTWljcm9zZXJ2aWNlcyJ9.lRnigSSA4x8BL5Fxr4s3-Kc1MOt2Dqk_6Ozz_neTE_g";
+            var usersServiceHost = builder.Configuration["UsersService:Host"]!;
+            var usersServiceToken = builder.Configuration["UsersService:Token"]!;
 
             var usersChannel = GrpcChannel.ForAddress(usersServiceHost);
             builder.Services.AddSingleton(new UsersServerApi.UsersServerApiClient(usersChannel));
@@ -43,7 +44,7 @@ namespace Barkfluff.WebServer
             {
                 var chatService = sp.GetRequiredService<SupportChatService>();
                 var logger = sp.GetRequiredService<ILogger<TelegramService>>();
-                var token = "8190478937:AAHjtPACmQ5LcbC9Q2McDdnlJH-Sz3XQYJQ";
+                var token = builder.Configuration["Telegram:BotToken"]!;
                 return new TelegramService(token, chatService, logger);
             });
 
