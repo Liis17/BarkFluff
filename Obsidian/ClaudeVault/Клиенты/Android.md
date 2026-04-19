@@ -5,6 +5,8 @@ Kotlin + gRPC-OkHttp клиент. Activity-based архитектура.
 Расположение: `Android/Barkfluff.Client.Android/`
 Package: `com.barkfluff.client`
 
+> Полная карта файлов и внутреннего строения: [[Android-ProjectMap]]
+
 ## Версии
 
 - Kotlin 2.0.0, AGP 8.9.1
