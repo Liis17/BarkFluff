@@ -6,6 +6,18 @@
     <!--  Цвета для главной страници мессенджера  -->
     <SolidColorBrush x:Key="OverlayColor" Color="#80000000" />
     <SolidColorBrush x:Key="ChatListBackgroundColor" Color="#aaffffff" />
+    <Color
+        x:Key="GradientShading"
+        A="255"
+        B="255"
+        G="255"
+        R="255" />
+    <Color
+        x:Key="GradientShadingTransparent"
+        A="0"
+        B="255"
+        G="255"
+        R="255" />
 
     <!--  Заголовоки  -->
     <SolidColorBrush x:Key="SubtitleText" Color="#FFF39E6D" />

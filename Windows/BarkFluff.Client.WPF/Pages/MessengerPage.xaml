@@ -480,353 +480,372 @@
                 <!--  Область открытого диалога  -->
                 <Border Grid.Column="2" Background="Transparent">
 
-                    <Grid>
+                    <Grid
+                        x:Name="OpenedChat"
+                        HorizontalAlignment="Stretch"
+                        AllowDrop="True"
+                        DragEnter="OpenedChat_DragEnter"
+                        DragLeave="OpenedChat_DragLeave"
+                        DragOver="OpenedChat_DragOver"
+                        Drop="OpenedChat_Drop"
+                        Visibility="Visible">
 
-                        <Grid
-                            x:Name="OpenedChat"
-                            HorizontalAlignment="Stretch"
-                            AllowDrop="True"
-                            DragEnter="OpenedChat_DragEnter"
-                            DragLeave="OpenedChat_DragLeave"
-                            DragOver="OpenedChat_DragOver"
-                            Drop="OpenedChat_Drop"
-                            Visibility="Visible">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="50" />
-                                <RowDefinition Height="*" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
+                        <!--  Заголовок диалога  -->
+                        <Border>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="50" />
+                                </Grid.RowDefinitions>
 
-                            <!--  Заголовок диалога  -->
-                            <Border Grid.Row="0">
-                                <Grid>
+                                <Grid Grid.Column="1">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="40" />
                                         <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="40" />
                                     </Grid.ColumnDefinitions>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="50" />
-                                    </Grid.RowDefinitions>
-
-                                    <Grid Grid.Column="1">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="40" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="40" />
-                                        </Grid.ColumnDefinitions>
-                                        <Grid Grid.Column="0">
-                                            <ui:Button
-                                                Width="35"
-                                                Height="35"
-                                                Padding="-5"
-                                                Background="Transparent"
-                                                BorderBrush="Transparent"
-                                                Click="CloseChatButton"
-                                                CornerRadius="30"
-                                                Focusable="False">
-                                                <Border Style="{DynamicResource ChatStyleBorder}">
-                                                    <ui:SymbolIcon
-                                                        Margin="7,10,10,10"
-                                                        FontSize="20"
-                                                        Foreground="{DynamicResource ButtonText}"
-                                                        Symbol="ChevronLeft12" />
-                                                </Border>
-                                            </ui:Button>
-                                        </Grid>
-                                        <Border
-                                            Grid.Column="1"
-                                            CornerRadius="23"
-                                            Style="{DynamicResource ChatStyleBorder}">
-
-                                            <StackPanel
-                                                Grid.Column="1"
-                                                HorizontalAlignment="Center"
-                                                VerticalAlignment="Center"
-                                                Orientation="Horizontal">
-
-                                                <localcontrols:CachedAvatar
-                                                    x:Name="ChatAvatarButton"
-                                                    Panel.ZIndex="1"
-                                                    AvatarSize="Normal"
-                                                    AvatarType="UserWithoutAvatar"
-                                                    CornerRadius="23"
-                                                    Cursor="Hand"
-                                                    EnableDynamicShadow="False"
-                                                    Focusable="False"
-                                                    MouseLeftButtonUp="OpenCenterBlock"
-                                                    ShadowBlurRadius="12"
-                                                    ShadowOpacity="0.9"
-                                                    Tag="UserProfile"
-                                                    ToolTip="Открыть профиль" />
-                                                <StackPanel Orientation="Vertical">
-                                                    <TextBlock
-                                                        x:Name="ChatTitleUsername"
-                                                        Margin="15,10,15,0"
-                                                        VerticalAlignment="Center"
-                                                        Cursor=""
-                                                        FontFamily="{DynamicResource AdwaitaSans}"
-                                                        FontSize="13"
-                                                        FontWeight="SemiBold"
-                                                        Foreground="{DynamicResource TextForeground}"
-                                                        Text="" />
-                                                    <TextBlock
-                                                        x:Name="UserOnlineTime"
-                                                        Margin="15,0,15,0"
-                                                        VerticalAlignment="Center"
-                                                        FontFamily="{DynamicResource AdwaitaSans}"
-                                                        FontSize="12"
-                                                        Foreground="{DynamicResource DescriptionText}"
-                                                        Text="Неизвестно" />
-                                                </StackPanel>
-                                            </StackPanel>
-
-                                        </Border>
-                                        <Grid Grid.Column="2">
-                                            <ui:Button
-                                                Width="35"
-                                                Height="35"
-                                                Padding="-5"
-                                                Background="Transparent"
-                                                BorderBrush="Transparent"
-                                                CornerRadius="30"
-                                                Focusable="False">
-                                                <Border Style="{DynamicResource ChatStyleBorder}">
-                                                    <ui:SymbolIcon
-                                                        Margin="7,10,10,10"
-                                                        FontSize="20"
-                                                        Foreground="{DynamicResource ButtonText}"
-                                                        Symbol="MoreVertical16" />
-                                                </Border>
-                                            </ui:Button>
-                                        </Grid>
+                                    <Grid Grid.Column="0">
+                                        <ui:Button
+                                            Width="35"
+                                            Height="35"
+                                            Padding="-5"
+                                            Background="Transparent"
+                                            BorderBrush="Transparent"
+                                            Click="CloseChatButton"
+                                            CornerRadius="30"
+                                            Focusable="False">
+                                            <Border Style="{DynamicResource ChatStyleBorder}">
+                                                <ui:SymbolIcon
+                                                    Margin="7,10,10,10"
+                                                    FontSize="20"
+                                                    Foreground="{DynamicResource ButtonText}"
+                                                    Symbol="ChevronLeft12" />
+                                            </Border>
+                                        </ui:Button>
                                     </Grid>
-
-
-                                </Grid>
-                            </Border>
-
-                            <!--  Область сообщений  -->
-                            <ScrollViewer
-                                x:Name="MessageScrollViewer"
-                                Grid.Row="1"
-                                Padding="5,-45,15,0"
-                                HorizontalAlignment="Stretch"
-                                VerticalAlignment="Bottom"
-                                Panel.ZIndex="-1"
-                                HorizontalScrollBarVisibility="Disabled"
-                                VerticalScrollBarVisibility="Auto">
-                                <StackPanel
-                                    x:Name="MessageArea"
-                                    HorizontalAlignment="Stretch"
-                                    Orientation="Vertical">
-                                    <!--  Здесь будут добавляться элементы динамически  -->
-                                </StackPanel>
-                            </ScrollViewer>
-
-                            <!--  Drag and Drop area  -->
-                            <Grid
-                                x:Name="DragDropOverlay"
-                                Grid.Row="1"
-                                HorizontalAlignment="Stretch"
-                                VerticalAlignment="Stretch"
-                                Panel.ZIndex="2"
-                                Visibility="Collapsed">
-
-                                <!--  Центральный блок с информацией  -->
-                                <Border
-                                    MaxWidth="450"
-                                    MaxHeight="300"
-                                    Padding="40,30"
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Center"
-                                    Background="#FF2A2A2A"
-                                    BorderBrush="#FFCE6432"
-                                    BorderThickness="2"
-                                    CornerRadius="20">
-
-
-                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-
-                                        <!--  Иконка с анимацией  -->
-                                        <Border
-                                            Width="120"
-                                            Height="120"
-                                            Background="#FF3C3C3C"
-                                            CornerRadius="60">
-                                            <ui:SymbolIcon
-                                                FontSize="72"
-                                                Foreground="#FFCE6432"
-                                                Symbol="ArrowDownload24">
-                                                <ui:SymbolIcon.RenderTransform>
-                                                    <TranslateTransform x:Name="IconTransform" Y="0" />
-                                                </ui:SymbolIcon.RenderTransform>
-                                                <ui:SymbolIcon.Triggers>
-                                                    <EventTrigger RoutedEvent="Loaded">
-                                                        <BeginStoryboard>
-                                                            <Storyboard AutoReverse="True" RepeatBehavior="Forever">
-                                                                <DoubleAnimation
-                                                                    Storyboard.TargetName="IconTransform"
-                                                                    Storyboard.TargetProperty="Y"
-                                                                    From="-10"
-                                                                    To="10"
-                                                                    Duration="0:0:1">
-                                                                    <DoubleAnimation.EasingFunction>
-                                                                        <SineEase EasingMode="EaseInOut" />
-                                                                    </DoubleAnimation.EasingFunction>
-                                                                </DoubleAnimation>
-                                                            </Storyboard>
-                                                        </BeginStoryboard>
-                                                    </EventTrigger>
-                                                </ui:SymbolIcon.Triggers>
-                                            </ui:SymbolIcon>
-                                        </Border>
-
-                                        <!--  Основной текст  -->
-                                        <TextBlock
-                                            Margin="0,25,0,0"
-                                            HorizontalAlignment="Center"
-                                            FontFamily="{DynamicResource AdwaitaSans}"
-                                            FontSize="24"
-                                            FontWeight="SemiBold"
-                                            Foreground="White"
-                                            Text="Отпустите для добавления" />
-
-                                        <!--  Дополнительный текст  -->
-                                        <TextBlock
-                                            Margin="0,10,0,0"
-                                            HorizontalAlignment="Center"
-                                            FontFamily="{DynamicResource AdwaitaSans}"
-                                            FontSize="14"
-                                            Foreground="#FFAAAAAA"
-                                            Text="Файлы будут добавлены к сообщению"
-                                            TextAlignment="Center" />
-                                    </StackPanel>
-                                </Border>
-                            </Grid>
-
-                            <!--  Панель ввода сообщения  -->
-                            <Border
-                                x:Name="TFMBackground"
-                                Grid.Row="2"
-                                Margin="10,0,10,10"
-                                Background="#171717"
-                                CornerRadius="15"
-                                Opacity="0.8">
-
-
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <Rectangle>
-                                        <Rectangle.Fill>
-                                            <VisualBrush Visual="{Binding ElementName=BackgroundChatImage}" />
-                                        </Rectangle.Fill>
-                                        <Rectangle.Effect>
-                                            <BlurEffect Radius="10" />
-                                        </Rectangle.Effect>
-                                    </Rectangle>
-                                    <!--  Кнопка прикрепления  -->
-                                    <Button
-                                        x:Name="AttachFileButton"
-                                        Grid.Column="0"
-                                        Width="50"
-                                        Height="50"
-                                        Margin="5,0,12,0"
-                                        Padding="5"
-                                        Background="Transparent"
-                                        BorderThickness="0"
-                                        Click="AttachFileButton_Click">
-                                        <ui:SymbolIcon
-                                            FontSize="40"
-                                            Foreground="#FF9E9E9E"
-                                            Symbol="Attach16" />
-                                    </Button>
-
-                                    <!--  Поле ввода  -->
-                                    <ui:TextBox
-                                        x:Name="TextForMessage"
+                                    <Border
                                         Grid.Column="1"
-                                        MinHeight="45"
-                                        VerticalAlignment="Center"
-                                        AcceptsReturn="False"
-                                        AcceptsTab="True"
-                                        ClearButtonEnabled="False"
-                                        FontFamily="{DynamicResource AdwaitaSans}"
-                                        FontSize="15"
-                                        IsTabStop="True"
-                                        IsUndoEnabled="True"
-                                        KeyDown="TextBox_KeyDown"
-                                        KeyUp="TextForMessage_KeyUp"
-                                        LostFocus="TextForMessage_LostFocus"
-                                        PlaceholderEnabled="True"
-                                        PlaceholderText="Сообщение"
-                                        Style="{StaticResource MessageInputTextBox}"
-                                        VerticalScrollBarVisibility="Auto" />
+                                        CornerRadius="23"
+                                        Style="{DynamicResource ChatStyleBorder}">
 
-                                    <!--  Кнопка стикеров  -->
-                                    <Button
-                                        x:Name="StickerButton"
-                                        Grid.Column="2"
-                                        Width="40"
-                                        Height="40"
-                                        Margin="0,0,4,0"
-                                        Background="Transparent"
-                                        BorderThickness="0"
-                                        Click="StickerButton_Click"
-                                        Cursor="Hand">
-                                        <ui:SymbolIcon
-                                            FontSize="22"
-                                            Foreground="#FF9E9E9E"
-                                            Symbol="Sticker20" />
-                                    </Button>
+                                        <StackPanel
+                                            Grid.Column="1"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            Orientation="Horizontal">
 
-                                    <!--  Всплывающая панель стикеров  -->
-                                    <Popup
-                                        x:Name="StickerPopup"
-                                        AllowsTransparency="True"
-                                        Placement="Top"
-                                        PlacementTarget="{Binding ElementName=StickerButton}"
-                                        StaysOpen="False"
-                                        VerticalOffset="-8">
-                                        <uc:StickerPicker x:Name="StickerPickerControl" />
-                                    </Popup>
+                                            <localcontrols:CachedAvatar
+                                                x:Name="ChatAvatarButton"
+                                                Panel.ZIndex="1"
+                                                AvatarSize="Normal"
+                                                AvatarType="UserWithoutAvatar"
+                                                CornerRadius="23"
+                                                Cursor="Hand"
+                                                EnableDynamicShadow="False"
+                                                Focusable="False"
+                                                MouseLeftButtonUp="OpenCenterBlock"
+                                                ShadowBlurRadius="12"
+                                                ShadowOpacity="0.9"
+                                                Tag="UserProfile"
+                                                ToolTip="Открыть профиль" />
+                                            <StackPanel Orientation="Vertical">
+                                                <TextBlock
+                                                    x:Name="ChatTitleUsername"
+                                                    Margin="15,10,15,0"
+                                                    VerticalAlignment="Center"
+                                                    Cursor=""
+                                                    FontFamily="{DynamicResource AdwaitaSans}"
+                                                    FontSize="13"
+                                                    FontWeight="SemiBold"
+                                                    Foreground="{DynamicResource TextForeground}"
+                                                    Text="" />
+                                                <TextBlock
+                                                    x:Name="UserOnlineTime"
+                                                    Margin="15,0,15,0"
+                                                    VerticalAlignment="Center"
+                                                    FontFamily="{DynamicResource AdwaitaSans}"
+                                                    FontSize="12"
+                                                    Foreground="{DynamicResource DescriptionText}"
+                                                    Text="Неизвестно" />
+                                            </StackPanel>
+                                        </StackPanel>
 
-                                    <!--  Кнопка отправки  -->
-                                    <Button
-                                        Grid.Column="3"
-                                        Width="40"
-                                        Height="40"
-                                        Margin="12,0,15,0"
-                                        Background="#FFCE6432"
-                                        BorderThickness="0"
-                                        Click="SendMessage"
-                                        Cursor="Hand">
-                                        <Button.Template>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border Background="{TemplateBinding Background}" CornerRadius="20">
-                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                                </Border>
-                                                <ControlTemplate.Triggers>
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter Property="Background" Value="#FF5A64E6" />
-                                                    </Trigger>
-                                                </ControlTemplate.Triggers>
-                                            </ControlTemplate>
-                                        </Button.Template>
-                                        <ui:SymbolIcon
-                                            FontSize="20"
-                                            Foreground="White"
-                                            Symbol="Send16" />
-                                    </Button>
+                                    </Border>
+                                    <Grid Grid.Column="2">
+                                        <ui:Button
+                                            Width="35"
+                                            Height="35"
+                                            Padding="-5"
+                                            Background="Transparent"
+                                            BorderBrush="Transparent"
+                                            CornerRadius="30"
+                                            Focusable="False">
+                                            <Border Style="{DynamicResource ChatStyleBorder}">
+                                                <ui:SymbolIcon
+                                                    Margin="7,10,10,10"
+                                                    FontSize="20"
+                                                    Foreground="{DynamicResource ButtonText}"
+                                                    Symbol="MoreVertical16" />
+                                            </Border>
+                                        </ui:Button>
+                                    </Grid>
                                 </Grid>
+
+
+                            </Grid>
+                        </Border>
+
+                        <Border
+                            Height="75"
+                            Margin="5,-30,15,0"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Top"
+                            Panel.ZIndex="-1"
+                            IsHitTestVisible="False">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+                                    <GradientStop Color="{DynamicResource GradientShading}" />
+                                    <GradientStop Offset="1" Color="{DynamicResource GradientShadingTransparent}" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                        </Border>
+                        <Border
+                            Height="75"
+                            Margin="5,0,15,0"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Bottom"
+                            Panel.ZIndex="-1"
+                            IsHitTestVisible="False">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+                                    <GradientStop Color="{DynamicResource GradientShadingTransparent}" />
+                                    <GradientStop Offset="1" Color="{DynamicResource GradientShading}" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                        </Border>
+                        <!--  Область сообщений  -->
+                        <ScrollViewer
+                            x:Name="MessageScrollViewer"
+                            Padding="5,-30,15,0"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            Panel.ZIndex="-2"
+                            HorizontalScrollBarVisibility="Disabled"
+                            VerticalScrollBarVisibility="Auto">
+                            <StackPanel
+                                x:Name="MessageArea"
+                                HorizontalAlignment="Stretch"
+                                
+                                Orientation="Vertical">
+                                <!--  Здесь будут добавляться элементы динамически  -->
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <!--  Drag and Drop area  -->
+                        <Grid
+                            x:Name="DragDropOverlay"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            Panel.ZIndex="2"
+                            Visibility="Collapsed">
+
+                            <!--  Центральный блок с информацией  -->
+                            <Border
+                                MaxWidth="450"
+                                MaxHeight="300"
+                                Padding="40,30"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Background="#FF2A2A2A"
+                                BorderBrush="#FFCE6432"
+                                BorderThickness="2"
+                                CornerRadius="20">
+
+
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+
+                                    <!--  Иконка с анимацией  -->
+                                    <Border
+                                        Width="120"
+                                        Height="120"
+                                        Background="#FF3C3C3C"
+                                        CornerRadius="60">
+                                        <ui:SymbolIcon
+                                            FontSize="72"
+                                            Foreground="#FFCE6432"
+                                            Symbol="ArrowDownload24">
+                                            <ui:SymbolIcon.RenderTransform>
+                                                <TranslateTransform x:Name="IconTransform" Y="0" />
+                                            </ui:SymbolIcon.RenderTransform>
+                                            <ui:SymbolIcon.Triggers>
+                                                <EventTrigger RoutedEvent="Loaded">
+                                                    <BeginStoryboard>
+                                                        <Storyboard AutoReverse="True" RepeatBehavior="Forever">
+                                                            <DoubleAnimation
+                                                                Storyboard.TargetName="IconTransform"
+                                                                Storyboard.TargetProperty="Y"
+                                                                From="-10"
+                                                                To="10"
+                                                                Duration="0:0:1">
+                                                                <DoubleAnimation.EasingFunction>
+                                                                    <SineEase EasingMode="EaseInOut" />
+                                                                </DoubleAnimation.EasingFunction>
+                                                            </DoubleAnimation>
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </EventTrigger>
+                                            </ui:SymbolIcon.Triggers>
+                                        </ui:SymbolIcon>
+                                    </Border>
+
+                                    <!--  Основной текст  -->
+                                    <TextBlock
+                                        Margin="0,25,0,0"
+                                        HorizontalAlignment="Center"
+                                        FontFamily="{DynamicResource AdwaitaSans}"
+                                        FontSize="24"
+                                        FontWeight="SemiBold"
+                                        Foreground="White"
+                                        Text="Отпустите для добавления" />
+
+                                    <!--  Дополнительный текст  -->
+                                    <TextBlock
+                                        Margin="0,10,0,0"
+                                        HorizontalAlignment="Center"
+                                        FontFamily="{DynamicResource AdwaitaSans}"
+                                        FontSize="14"
+                                        Foreground="#FFAAAAAA"
+                                        Text="Файлы будут добавлены к сообщению"
+                                        TextAlignment="Center" />
+                                </StackPanel>
                             </Border>
                         </Grid>
 
+                        <!--  Панель ввода сообщения  -->
+                        <Border
+                            x:Name="TFMBackground"
+                            Margin="10,0,10,10"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Bottom"
+                            Background="#171717"
+                            CornerRadius="15"
+                            Opacity="0.8">
+
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Rectangle>
+                                    <Rectangle.Fill>
+                                        <VisualBrush Visual="{Binding ElementName=BackgroundChatImage}" />
+                                    </Rectangle.Fill>
+                                    <Rectangle.Effect>
+                                        <BlurEffect Radius="10" />
+                                    </Rectangle.Effect>
+                                </Rectangle>
+                                <!--  Кнопка прикрепления  -->
+                                <Button
+                                    x:Name="AttachFileButton"
+                                    Grid.Column="0"
+                                    Width="50"
+                                    Height="50"
+                                    Margin="5,0,12,0"
+                                    Padding="5"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Click="AttachFileButton_Click">
+                                    <ui:SymbolIcon
+                                        FontSize="40"
+                                        Foreground="#FF9E9E9E"
+                                        Symbol="Attach16" />
+                                </Button>
+
+                                <!--  Поле ввода  -->
+                                <ui:TextBox
+                                    x:Name="TextForMessage"
+                                    Grid.Column="1"
+                                    MinHeight="45"
+                                    VerticalAlignment="Center"
+                                    AcceptsReturn="False"
+                                    AcceptsTab="True"
+                                    ClearButtonEnabled="False"
+                                    FontFamily="{DynamicResource AdwaitaSans}"
+                                    FontSize="15"
+                                    IsTabStop="True"
+                                    IsUndoEnabled="True"
+                                    KeyDown="TextBox_KeyDown"
+                                    KeyUp="TextForMessage_KeyUp"
+                                    LostFocus="TextForMessage_LostFocus"
+                                    PlaceholderEnabled="True"
+                                    PlaceholderText="Сообщение"
+                                    Style="{StaticResource MessageInputTextBox}"
+                                    VerticalScrollBarVisibility="Auto" />
+
+                                <!--  Кнопка стикеров  -->
+                                <Button
+                                    x:Name="StickerButton"
+                                    Grid.Column="2"
+                                    Width="40"
+                                    Height="40"
+                                    Margin="0,0,4,0"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Click="StickerButton_Click"
+                                    Cursor="Hand">
+                                    <ui:SymbolIcon
+                                        FontSize="22"
+                                        Foreground="#FF9E9E9E"
+                                        Symbol="Sticker20" />
+                                </Button>
+
+                                <!--  Всплывающая панель стикеров  -->
+                                <Popup
+                                    x:Name="StickerPopup"
+                                    AllowsTransparency="True"
+                                    Placement="Top"
+                                    PlacementTarget="{Binding ElementName=StickerButton}"
+                                    StaysOpen="False"
+                                    VerticalOffset="-8">
+                                    <uc:StickerPicker x:Name="StickerPickerControl" />
+                                </Popup>
+
+                                <!--  Кнопка отправки  -->
+                                <Button
+                                    Grid.Column="3"
+                                    Width="40"
+                                    Height="40"
+                                    Margin="12,0,15,0"
+                                    Background="#FFCE6432"
+                                    BorderThickness="0"
+                                    Click="SendMessage"
+                                    Cursor="Hand">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{TemplateBinding Background}" CornerRadius="20">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Background" Value="#FF5A64E6" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                    <ui:SymbolIcon
+                                        FontSize="20"
+                                        Foreground="White"
+                                        Symbol="Send16" />
+                                </Button>
+                            </Grid>
+                        </Border>
                     </Grid>
                 </Border>
             </Grid>
