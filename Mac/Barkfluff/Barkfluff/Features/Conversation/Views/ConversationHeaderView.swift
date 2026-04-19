@@ -15,6 +15,7 @@ struct ConversationHeaderView: View {
     var onlineStatus: OnlineStatus = .unknown
 
     @Environment(AppCoordinator.self) private var coordinator
+    @Environment(DependencyContainer.self) private var container
 
     var body: some View {
         VStack(spacing: Theme.Spacing.xxs) {
@@ -60,8 +61,8 @@ struct ConversationHeaderView: View {
             } else {
                 // Для DM показываем статус вместо username
                 if case .unknown = onlineStatus {
-                    // Fallback: показываем username если статус неизвестен
-                    if let member = chat.members.first {
+                    // Fallback: показываем username собеседника если статус неизвестен
+                    if let member = chat.members.first(where: { $0.userID != container.currentUserID }) {
                         Text("@\(member.username)")
                             .font(.caption2)
                             .foregroundStyle(.secondary)

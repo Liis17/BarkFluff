@@ -49,8 +49,41 @@ service IdentityApi {
   // Подтвердить сброс пароля
   rpc ConfirmResetPassword(ConfirmResetPasswordRequest) returns(ConfirmResetPasswordResponse);
   
-  // Установить пароль 
+  // Установить пароль
   rpc SetPassword(SetPasswordRequest) returns(SetPasswordResponse);
+}
+
+// Серверное API для админ-панели
+service IdentityServerApi {
+  // Получить статус 2FA пользователя
+  rpc ListOtpVerificationServer(ListOtpVerificationServerRequest) returns(ListOtpVerificationResponse);
+
+  // Принудительно отключить 2FA пользователя
+  rpc DisableOtpVerificationServer(DisableOtpVerificationServerRequest) returns(DisableOtpVerificationResponse);
+
+  // Получить активные сессии пользователя
+  rpc GetActiveSessionsServer(GetActiveSessionsServerRequest) returns(GetActiveSessionsResponse);
+
+  // Удалить активную сессию пользователя
+  rpc RemoveActiveSessionServer(RemoveActiveSessionServerRequest) returns(RemoveActiveSessionResponse);
+}
+
+message ListOtpVerificationServerRequest {
+  int64 user_id = 1;
+}
+
+message DisableOtpVerificationServerRequest {
+  int64 user_id = 1;
+  OtpTypeId otp_type = 2;
+}
+
+message GetActiveSessionsServerRequest {
+  int64 user_id = 1;
+}
+
+message RemoveActiveSessionServerRequest {
+  int64 user_id = 1;
+  string device_id = 2;
 }
 
 message ConfirmResetPasswordRequest {
@@ -216,6 +249,7 @@ message Token {
 
 message SetPasswordRequest {
   string password = 1; // пароль
+  string old_password = 2; // старый пароль (обязателен если пароль уже установлен)
 }
 
 message SetPasswordResponse { }
