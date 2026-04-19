@@ -1,175 +1,1702 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BarkFluff Developer Portal</title>
+  <title>BarkFluff — Developer Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --bg-0: #14070a; --bg-1: #1c0d0a; --bg-2: #241310; --bg-3: #2d1914;
+      --line: rgba(255,240,220,0.08); --line-strong: rgba(255,240,220,0.14);
+      --ink: #fef6ea; --ink-dim: #c9a893; --ink-mute: #8a6a5b;
+      --brand: #ff7a29; --brand-2: #e25a12; --brand-deep: #8a2e06;
+      --brand-glow: rgba(255,122,41,0.35);
+      --radius-sm: 8px; --radius: 14px; --radius-lg: 20px;
+      --sidebar-w: 264px;
+      --header-h: 56px;
+    }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
+    html { scroll-behavior: smooth; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #0d0f14;
-      color: #e2e8f0;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 48px 24px;
+      font-family: 'Manrope', system-ui, sans-serif;
+      background: var(--bg-1); color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden; min-height: 100vh;
     }
 
-    header {
-      text-align: center;
-      margin-bottom: 56px;
+    /* ── Decorative backgrounds ── */
+    .bg-mesh {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(900px 600px at 80% 5%, rgba(255,122,41,0.14), transparent 55%),
+        radial-gradient(600px 500px at 10% 95%, rgba(138,46,6,0.22), transparent 55%),
+        linear-gradient(180deg, #1c0d0a 0%, #14070a 100%);
+    }
+    .bg-grain {
+      position: fixed; inset: 0; z-index: 1; pointer-events: none;
+      opacity: 0.18; mix-blend-mode: overlay;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    }
+    .grid-overlay {
+      position: fixed; inset: 0; z-index: 1; pointer-events: none;
+      background-image: linear-gradient(to right,rgba(255,240,220,0.02) 1px,transparent 1px),linear-gradient(to bottom,rgba(255,240,220,0.02) 1px,transparent 1px);
+      background-size: 80px 80px;
+      mask-image: radial-gradient(900px 600px at 50% 30%,#000 20%,transparent 75%);
+      -webkit-mask-image: radial-gradient(900px 600px at 50% 30%,#000 20%,transparent 75%);
     }
 
-    .logo {
-      font-size: 2.4rem;
-      font-weight: 700;
-      color: #ffffff;
-      letter-spacing: -0.5px;
+    /* ── Top header ── */
+    .site-header {
+      position: sticky; top: 0; z-index: 200; height: var(--header-h);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 24px; gap: 16px;
+      background: rgba(28,13,10,0.92); backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--line-strong);
+    }
+    .brand-mark {
+      display: inline-flex; align-items: center; gap: 10px;
+      font-weight: 800; font-size: 16px; letter-spacing: -0.01em;
+      color: var(--ink); text-decoration: none; flex-shrink: 0;
+    }
+    .brand-mark .glyph {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: linear-gradient(135deg,#ff8a3c,#c23f07);
+      display: grid; place-items: center;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.25),0 4px 12px -4px rgba(255,122,41,0.5);
+      position: relative; flex-shrink: 0;
+    }
+    .brand-mark .glyph::before {
+      content:""; position:absolute; inset:0; border-radius:8px;
+      border:1px solid rgba(255,255,255,0.18);
+    }
+    .brand-mark .glyph svg { width:16px; height:16px; fill:#fff; }
+    .header-badge {
+      font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
+      color: var(--ink-mute); padding:3px 8px; border-radius:6px;
+      background:rgba(255,240,220,0.05); border:1px solid var(--line);
+    }
+    .header-links { display:flex; align-items:center; gap:12px; }
+    .header-links a {
+      font-size:13px; font-weight:600; color:var(--ink-dim); text-decoration:none;
+      transition:color .2s; white-space:nowrap;
+    }
+    .header-links a:hover { color:var(--ink); }
+    .header-btn {
+      display:inline-flex; align-items:center; gap:6px; padding:7px 14px;
+      border-radius:10px; font-family:inherit; font-size:12px; font-weight:600;
+      cursor:pointer; text-decoration:none; border:1px solid var(--line-strong);
+      background:rgba(255,240,220,0.04); color:var(--ink); transition:.2s;
+    }
+    .header-btn:hover { background:rgba(255,240,220,0.09); border-color:rgba(255,240,220,0.22); }
+    .mobile-menu-btn {
+      display:none; background:none; border:none; color:var(--ink-dim);
+      cursor:pointer; padding:6px; border-radius:8px; transition:.15s;
+    }
+    .mobile-menu-btn:hover { background:rgba(255,240,220,0.08); color:var(--ink); }
+    .mobile-menu-btn svg { width:20px; height:20px; }
+
+    /* ── Layout ── */
+    .layout {
+      position: relative; z-index: 2;
+      display: flex; min-height: calc(100vh - var(--header-h));
     }
 
-    .logo span { color: #6c8af5; }
-
-    .subtitle {
-      margin-top: 10px;
-      font-size: 1rem;
-      color: #718096;
+    /* ── Sidebar ── */
+    .sidebar {
+      width: var(--sidebar-w); flex-shrink: 0;
+      position: sticky; top: var(--header-h);
+      height: calc(100vh - var(--header-h));
+      overflow-y: auto; overflow-x: hidden;
+      border-right: 1px solid var(--line);
+      background: rgba(20,7,10,0.6);
+      padding: 20px 0 40px;
+      scrollbar-width: thin; scrollbar-color: rgba(255,122,41,0.2) transparent;
     }
+    .sidebar::-webkit-scrollbar { width:4px; }
+    .sidebar::-webkit-scrollbar-thumb { background:rgba(255,122,41,0.2); border-radius:4px; }
 
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 20px;
-      width: 100%;
+    .nav-group { margin-bottom: 4px; }
+    .nav-group-toggle {
+      display:flex; align-items:center; justify-content:space-between;
+      width:100%; padding:8px 16px; background:none; border:none;
+      color:var(--ink-mute); cursor:pointer; font-family:inherit;
+      font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
+      transition:color .2s;
+    }
+    .nav-group-toggle:hover { color:var(--ink-dim); }
+    .nav-group-toggle .chevron { width:12px; height:12px; transition:transform .25s; flex-shrink:0; }
+    .nav-group.open .nav-group-toggle .chevron { transform:rotate(180deg); }
+    .nav-group-toggle .chevron path { stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+
+    .nav-items {
+      overflow:hidden; transition:max-height .3s ease;
+      max-height: 0;
+    }
+    .nav-group.open .nav-items { max-height: 1000px; }
+
+    .nav-link {
+      display:flex; align-items:center; gap:8px;
+      padding:6px 16px 6px 28px; font-size:13px; font-weight:500;
+      color:var(--ink-mute); text-decoration:none; transition:color .15s, background .15s;
+      border-left:2px solid transparent; margin-left:0; cursor:pointer;
+    }
+    .nav-link:hover { color:var(--ink-dim); background:rgba(255,240,220,0.03); }
+    .nav-link.active { color:var(--brand); border-left-color:var(--brand); background:rgba(255,122,41,0.06); }
+    .nav-link .dot {
+      width:5px; height:5px; border-radius:50%; background:currentColor; flex-shrink:0; opacity:.6;
+    }
+    .nav-separator { height:1px; background:var(--line); margin:10px 16px; }
+
+    /* ── Main content ── */
+    .main-content {
+      flex:1; min-width:0; padding:48px 56px 80px;
       max-width: 900px;
     }
 
-    .card {
-      background: #161a24;
-      border: 1px solid #1e2535;
-      border-radius: 12px;
-      padding: 28px 24px;
-      text-decoration: none;
-      color: inherit;
-      transition: border-color 0.2s, background 0.2s;
+    /* ── Section ── */
+    .doc-section { margin-bottom:72px; scroll-margin-top: calc(var(--header-h) + 24px); }
+    .section-eyebrow {
+      font-size:10px; font-weight:700; letter-spacing:0.18em; text-transform:uppercase;
+      color:var(--brand); margin-bottom:8px;
+    }
+    .section-title {
+      font-size:28px; font-weight:800; letter-spacing:-0.02em; color:var(--ink);
+      margin-bottom:12px; line-height:1.15;
+    }
+    .section-lead {
+      font-size:15px; line-height:1.65; color:var(--ink-dim); max-width:660px;
+      margin-bottom:28px;
     }
 
-    .card:hover {
-      border-color: #6c8af5;
-      background: #1a1f2e;
+    /* ── Hero ── */
+    .hero-block {
+      padding:40px; border-radius:var(--radius-lg);
+      border:1px solid var(--line-strong);
+      background:linear-gradient(135deg,rgba(45,25,20,0.6),rgba(20,7,10,0.6));
+      position:relative; overflow:hidden; margin-bottom:48px;
+    }
+    .hero-block::before {
+      content:''; position:absolute; top:0; left:0; right:0; height:2px;
+      background:linear-gradient(90deg,transparent,var(--brand),transparent);
+    }
+    .hero-title {
+      font-size:clamp(32px,4vw,52px); font-weight:800; letter-spacing:-0.03em;
+      line-height:1.05; color:var(--ink); margin-bottom:16px;
+    }
+    .hero-title .accent {
+      background:linear-gradient(120deg,#ffc997 10%,#ff7a29 50%,#b93d0a 95%);
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+    }
+    .hero-sub { font-size:16px; line-height:1.6; color:var(--ink-dim); max-width:520px; margin-bottom:28px; }
+    .hero-pills { display:flex; flex-wrap:wrap; gap:8px; }
+    .pill {
+      display:inline-flex; align-items:center; gap:6px;
+      padding:5px 12px; border-radius:99px; font-size:12px; font-weight:600;
+      background:rgba(255,122,41,0.1); border:1px solid rgba(255,122,41,0.22); color:#ffb47a;
     }
 
-    .card-icon {
-      font-size: 1.8rem;
-      margin-bottom: 14px;
+    /* ── Cards grid ── */
+    .cards-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; margin-bottom:36px; }
+    .feat-card {
+      padding:20px; border-radius:var(--radius); border:1px solid var(--line);
+      background:rgba(255,240,220,0.02); display:flex; flex-direction:column; gap:10px;
+      transition:border-color .2s, background .2s;
+    }
+    .feat-card:hover { border-color:rgba(255,122,41,0.25); background:rgba(255,122,41,0.04); }
+    .feat-card .f-icon {
+      width:32px; height:32px; border-radius:9px;
+      background:rgba(255,122,41,0.08); border:1px solid rgba(255,122,41,0.18);
+      color:#ffb47a; display:grid; place-items:center; flex-shrink:0;
+    }
+    .feat-card .f-icon svg { width:16px; height:16px; fill:currentColor; }
+    .feat-card .f-title { font-size:13px; font-weight:700; color:var(--ink); }
+    .feat-card .f-body { font-size:12px; line-height:1.5; color:var(--ink-mute); }
+
+    /* ── Steps ── */
+    .steps { display:flex; flex-direction:column; gap:0; }
+    .step {
+      display:flex; gap:20px; position:relative;
+      padding-bottom:28px;
+    }
+    .step:last-child { padding-bottom:0; }
+    .step-num {
+      flex-shrink:0; width:32px; height:32px; border-radius:50%;
+      background:rgba(255,122,41,0.12); border:1px solid rgba(255,122,41,0.3);
+      display:grid; place-items:center; font-size:12px; font-weight:800; color:var(--brand);
+      position:relative; z-index:1;
+    }
+    .step-line {
+      position:absolute; left:15px; top:32px; bottom:0; width:2px;
+      background:linear-gradient(to bottom,rgba(255,122,41,0.25),transparent);
+    }
+    .step:last-child .step-line { display:none; }
+    .step-body { padding-top:4px; }
+    .step-body h4 { font-size:14px; font-weight:700; color:var(--ink); margin-bottom:4px; }
+    .step-body p { font-size:13px; line-height:1.55; color:var(--ink-dim); }
+    .step-body code {
+      font-family:'JetBrains Mono',monospace; font-size:11px; color:#ffc997;
+      background:rgba(0,0,0,0.3); padding:2px 6px; border-radius:4px;
     }
 
-    .card-title {
-      font-size: 1.05rem;
-      font-weight: 600;
-      color: #ffffff;
-      margin-bottom: 8px;
+    /* ── Tables ── */
+    .doc-table-wrap { overflow-x:auto; margin:16px 0 24px; border-radius:var(--radius); border:1px solid var(--line); }
+    .doc-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .doc-table thead th {
+      background:rgba(255,240,220,0.04); padding:10px 14px; text-align:left;
+      font-size:10px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase;
+      color:var(--ink-mute); border-bottom:1px solid var(--line); white-space:nowrap;
+    }
+    .doc-table tbody td { padding:9px 14px; vertical-align:top; border-bottom:1px solid var(--line); color:var(--ink-dim); line-height:1.5; }
+    .doc-table tbody tr:last-child td { border-bottom:none; }
+    .doc-table tbody tr:hover td { background:rgba(255,240,220,0.02); }
+    .doc-table .td-name { font-family:'JetBrains Mono',monospace; font-size:12px; color:#ffc997; white-space:nowrap; }
+    .doc-table .td-type { font-family:'JetBrains Mono',monospace; font-size:11px; color:#a8e6cf; white-space:nowrap; }
+    .doc-table .td-rpc { font-family:'JetBrains Mono',monospace; font-size:12px; color:#ff8a3c; white-space:nowrap; }
+    .doc-table .td-badge {
+      display:inline-block; font-size:9px; font-weight:700; letter-spacing:0.06em;
+      text-transform:uppercase; padding:2px 6px; border-radius:4px;
+    }
+    .badge-stream { background:rgba(99,179,237,0.15); color:#63b3ed; border:1px solid rgba(99,179,237,0.3); }
+    .badge-unary  { background:rgba(154,230,180,0.15); color:#9ae6b4; border:1px solid rgba(154,230,180,0.3); }
+    .badge-server { background:rgba(255,240,220,0.08); color:var(--ink-mute); border:1px solid var(--line); }
+
+    /* ── Warning / info boxes ── */
+    .info-box {
+      display:flex; gap:12px; padding:14px 16px; border-radius:var(--radius-sm);
+      border:1px solid rgba(255,122,41,0.25); background:rgba(255,122,41,0.07);
+      font-size:13px; line-height:1.5; color:var(--ink-dim); margin:12px 0 20px;
+    }
+    .info-box svg { width:16px; height:16px; flex-shrink:0; fill:var(--brand); margin-top:1px; }
+    .warn-box {
+      display:flex; gap:12px; padding:14px 16px; border-radius:var(--radius-sm);
+      border:1px solid rgba(251,211,141,0.25); background:rgba(251,211,141,0.07);
+      font-size:13px; line-height:1.5; color:var(--ink-dim); margin:12px 0 20px;
+    }
+    .warn-box svg { width:16px; height:16px; flex-shrink:0; fill:#fbd08d; margin-top:1px; }
+
+    /* ── Proto viewer ── */
+    .proto-section { margin-bottom:56px; scroll-margin-top:calc(var(--header-h) + 24px); }
+    .proto-header {
+      display:flex; align-items:center; gap:12px; margin-bottom:20px; flex-wrap:wrap;
+    }
+    .proto-icon {
+      width:40px; height:40px; border-radius:11px; display:grid; place-items:center;
+      background:rgba(255,122,41,0.1); border:1px solid rgba(255,122,41,0.22); color:#ffb47a; flex-shrink:0;
+    }
+    .proto-icon svg { width:20px; height:20px; fill:currentColor; }
+    .proto-title-block { flex:1; min-width:0; }
+    .proto-filename {
+      font-family:'JetBrains Mono',monospace; font-size:16px; font-weight:600;
+      color:var(--ink); letter-spacing:-0.01em;
+    }
+    .proto-desc { font-size:13px; color:var(--ink-mute); margin-top:3px; }
+    .proto-actions { display:flex; gap:8px; flex-shrink:0; }
+    .proto-btn {
+      display:inline-flex; align-items:center; gap:6px; padding:7px 12px;
+      border-radius:9px; font-family:inherit; font-size:12px; font-weight:600;
+      cursor:pointer; border:1px solid var(--line-strong); color:var(--ink-dim);
+      background:rgba(255,240,220,0.04); transition:.15s; white-space:nowrap;
+    }
+    .proto-btn:hover { background:rgba(255,240,220,0.09); color:var(--ink); }
+    .proto-btn.copied { color:#4ade80; border-color:rgba(74,222,128,0.3); }
+    .proto-btn svg { width:13px; height:13px; }
+
+    .proto-code-wrap {
+      border-radius:var(--radius); border:1px solid var(--line-strong);
+      background:rgba(8,4,6,0.65); overflow:hidden; margin-bottom:24px;
+    }
+    .proto-code-bar {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:8px 14px; border-bottom:1px solid var(--line);
+      background:rgba(255,240,220,0.02);
+    }
+    .proto-code-bar-label {
+      font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-mute);
+      font-weight:500; display:flex; align-items:center; gap:8px;
+    }
+    .proto-code-bar-dots { display:flex; gap:5px; }
+    .proto-code-bar-dots span {
+      width:10px; height:10px; border-radius:50%;
+      background:var(--line-strong);
+    }
+    pre.proto-code {
+      margin:0; padding:20px; font-family:'JetBrains Mono',monospace; font-size:12.5px;
+      line-height:1.7; color:#d4c4b0; overflow-x:auto; white-space:pre;
+      scrollbar-width:thin; scrollbar-color:rgba(255,122,41,0.2) transparent;
+      max-height:520px; overflow-y:auto;
+    }
+    pre.proto-code::-webkit-scrollbar { width:5px; height:5px; }
+    pre.proto-code::-webkit-scrollbar-thumb { background:rgba(255,122,41,0.2); border-radius:4px; }
+
+    .proto-loading {
+      padding:32px; text-align:center; font-size:13px; color:var(--ink-mute);
+      font-family:'JetBrains Mono',monospace;
     }
 
-    .card-desc {
-      font-size: 0.875rem;
-      color: #718096;
-      line-height: 1.55;
+    /* Proto syntax colors */
+    .pk  { color:#ff8a3c; } /* keywords */
+    .pt  { color:#ffc997; } /* types */
+    .pc  { color:#8a6a5b; font-style:italic; } /* comments */
+    .ps  { color:#a8e6cf; } /* strings */
+    .pn  { color:#ffb3c1; } /* numbers */
+
+    /* ── Code blocks (implementation examples) ── */
+    .code-block {
+      border-radius:var(--radius); border:1px solid var(--line);
+      background:rgba(8,4,6,0.55); overflow:hidden; margin:16px 0;
+    }
+    .code-block-head {
+      padding:8px 14px; border-bottom:1px solid var(--line);
+      background:rgba(255,240,220,0.02);
+      font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-mute);
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    pre.code-sample {
+      margin:0; padding:18px 20px; font-family:'JetBrains Mono',monospace;
+      font-size:12px; line-height:1.7; color:#d4c4b0; overflow-x:auto;
+      white-space:pre;
+    }
+    .code-comment { color:#8a6a5b; font-style:italic; }
+    .code-kw { color:#ff8a3c; }
+    .code-str { color:#a8e6cf; }
+    .code-fn { color:#ffc997; }
+
+    /* ── Impl card ── */
+    .impl-cards { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:28px; }
+    .impl-card {
+      border-radius:var(--radius); border:1px solid var(--line);
+      background:linear-gradient(160deg,rgba(45,25,20,0.45),rgba(20,7,10,0.45));
+      overflow:hidden; transition:border-color .2s;
+    }
+    .impl-card:hover { border-color:rgba(255,122,41,0.3); }
+    .impl-card-head {
+      display:flex; align-items:center; gap:10px; padding:16px 18px;
+      border-bottom:1px solid var(--line);
+    }
+    .impl-card-icon {
+      width:34px; height:34px; border-radius:9px; display:grid; place-items:center;
+      background:rgba(255,122,41,0.1); border:1px solid rgba(255,122,41,0.22); color:#ffb47a; flex-shrink:0;
+    }
+    .impl-card-icon svg { width:16px; height:16px; fill:currentColor; }
+    .impl-card-title { font-size:13px; font-weight:700; color:var(--ink); }
+    .impl-card-sub { font-size:11.5px; color:var(--ink-mute); margin-top:2px; }
+    pre.impl-code {
+      margin:0; padding:14px 18px; font-family:'JetBrains Mono',monospace;
+      font-size:11.5px; line-height:1.65; color:#c4b4a0; overflow-x:auto; white-space:pre;
     }
 
-    .section-label {
-      font-size: 0.75rem;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: #4a5568;
-      width: 100%;
-      max-width: 900px;
-      margin-bottom: 14px;
+    /* ── Error codes table ── */
+    .error-table .guid { font-size:10.5px; }
+
+    /* ── Auth headers table ── */
+    .required-badge {
+      display:inline-block; font-size:9px; font-weight:700; padding:2px 5px;
+      border-radius:4px; text-transform:uppercase; letter-spacing:0.06em;
+      background:rgba(255,122,41,0.15); color:var(--brand); border:1px solid rgba(255,122,41,0.3);
     }
 
-    .section-label:not(:first-of-type) { margin-top: 36px; }
+    /* ── Sub-heading ── */
+    .sub-heading {
+      font-size:17px; font-weight:700; color:var(--ink); margin:28px 0 12px;
+      letter-spacing:-0.01em; display:flex; align-items:center; gap:8px;
+    }
+    .sub-heading::before {
+      content:''; display:inline-block; width:3px; height:16px; border-radius:2px;
+      background:var(--brand);
+    }
 
-    footer {
-      margin-top: 64px;
-      font-size: 0.8rem;
-      color: #4a5568;
+    /* ── Footer ── */
+    .site-footer {
+      position:relative; z-index:2; border-top:1px solid var(--line);
+      padding:24px 56px; display:flex; align-items:center; justify-content:space-between;
+      font-size:12px; color:var(--ink-mute); flex-wrap:wrap; gap:12px;
+    }
+    .site-footer a { color:var(--ink-dim); text-decoration:none; }
+    .site-footer a:hover { color:var(--ink); }
+
+    /* ── Scrollbar (main) ── */
+    ::-webkit-scrollbar { width:6px; height:6px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:rgba(255,122,41,0.2); border-radius:4px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .impl-cards { grid-template-columns:1fr; }
+      .main-content { padding:32px 24px 60px; }
+    }
+    @media (max-width: 768px) {
+      .sidebar {
+        position:fixed; left:-var(--sidebar-w); top:var(--header-h);
+        height:calc(100vh - var(--header-h)); z-index:100;
+        transform:translateX(calc(-1 * var(--sidebar-w)));
+        transition:transform .3s ease;
+        border-right:1px solid var(--line-strong);
+        background:rgba(20,7,10,0.97); backdrop-filter:blur(20px);
+      }
+      .sidebar.open { transform:translateX(0); }
+      .layout { display:block; }
+      .main-content { padding:28px 18px 60px; }
+      .mobile-menu-btn { display:flex; }
+      .hero-block { padding:26px 20px; }
+      .cards-grid { grid-template-columns:1fr 1fr; }
+      .header-links a { display:none; }
+    }
+    @media (max-width: 480px) {
+      .cards-grid { grid-template-columns:1fr; }
+      .proto-actions { width:100%; }
     }
   </style>
 </head>
 <body>
 
-  <header>
-    <div class="logo">Bark<span>Fluff</span> Developer Portal</div>
-    <p class="subtitle">Resources for client developers</p>
-  </header>
+<div class="bg-mesh"></div>
+<div class="bg-grain"></div>
+<div class="grid-overlay"></div>
 
-  <div class="section-label">API Contracts</div>
-  <div class="grid">
-    <a class="card" href="/files/proto/beacon_api.proto">
-      <div class="card-icon">📡</div>
-      <div class="card-title">beacon_api.proto</div>
-      <div class="card-desc">Service discovery — get endpoints for all BarkFluff microservices.</div>
+<!-- ══ HEADER ══ -->
+<header class="site-header">
+  <div style="display:flex;align-items:center;gap:12px;">
+    <button class="mobile-menu-btn" id="menuBtn" onclick="toggleSidebar()" title="Меню">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </button>
+    <a href="/" class="brand-mark">
+      <span class="glyph">
+        <svg viewBox="0 0 24 24"><path d="M8.5 13.5c1.38 0 2.5-1.57 2.5-3.5s-1.12-3.5-2.5-3.5S6 8.07 6 10s1.12 3.5 2.5 3.5zm7 0c1.38 0 2.5-1.57 2.5-3.5s-1.12-3.5-2.5-3.5S13 8.07 13 10s1.12 3.5 2.5 3.5zM5 16.5c1.1 0 2-1.34 2-3s-.9-3-2-3-2 1.34-2 3 .9 3 2 3zm14 0c1.1 0 2-1.34 2-3s-.9-3-2-3-2 1.34-2 3 .9 3 2 3zm-7 4c3 0 6-2.5 6-5 0-2-2-3.5-4-3.5-1.2 0-1.5.5-2 .5s-.8-.5-2-.5c-2 0-4 1.5-4 3.5 0 2.5 3 5 6 5z"/></svg>
+      </span>
+      <span>barkfluff</span>
     </a>
-    <a class="card" href="/files/proto/identity_api.proto">
-      <div class="card-icon">🔐</div>
-      <div class="card-title">identity_api.proto</div>
-      <div class="card-desc">Authentication, token management and 2FA flows.</div>
-    </a>
-    <a class="card" href="/files/proto/users_api.proto">
-      <div class="card-icon">👤</div>
-      <div class="card-title">users_api.proto</div>
-      <div class="card-desc">User profiles, badges, privacy settings and storage.</div>
-    </a>
-    <a class="card" href="/files/proto/messages_api.proto">
-      <div class="card-icon">💬</div>
-      <div class="card-title">messages_api.proto</div>
-      <div class="card-desc">Chats, messages, group chats and read receipts.</div>
-    </a>
-    <a class="card" href="/files/proto/files_api.proto">
-      <div class="card-icon">📎</div>
-      <div class="card-title">files_api.proto</div>
-      <div class="card-desc">File uploads, downloads, sticker packs and storage info.</div>
-    </a>
-    <a class="card" href="/files/proto/updates_api.proto">
-      <div class="card-icon">🔔</div>
-      <div class="card-title">updates_api.proto</div>
-      <div class="card-desc">Real-time updates — new messages and read status via gRPC streaming.</div>
-    </a>
-    <a class="card" href="/files/proto/onliner_api.proto">
-      <div class="card-icon">🟢</div>
-      <div class="card-title">onliner_api.proto</div>
-      <div class="card-desc">Online status tracking with streaming updates.</div>
-    </a>
-    <a class="card" href="/files/proto/fast_auth_api.proto">
-      <div class="card-icon">⚡</div>
-      <div class="card-title">fast_auth_api.proto</div>
-      <div class="card-desc">QR-based quick login between devices.</div>
-    </a>
-    <a class="card" href="/files/proto/navigator_api.proto">
-      <div class="card-icon">🗺️</div>
-      <div class="card-title">navigator_api.proto</div>
-      <div class="card-desc">BarkFluff server discovery and registration.</div>
-    </a>
-    <a class="card" href="/files/proto/shared.proto">
-      <div class="card-icon">📦</div>
-      <div class="card-title">shared.proto</div>
-      <div class="card-desc">Shared message types used across all APIs.</div>
+    <span class="header-badge">Dev Portal</span>
+  </div>
+  <div class="header-links">
+    <a href="https://barkfluff.com" target="_blank">barkfluff.com</a>
+    <a href="https://t.me/barkfluff" target="_blank" class="header-btn">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 11.944 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+      Поддержка
     </a>
   </div>
+</header>
 
-  <div class="section-label">Documentation</div>
-  <div class="grid">
-    <a class="card" href="/files/docs/authentication.md">
-      <div class="card-icon">📄</div>
-      <div class="card-title">Authentication Guide</div>
-      <div class="card-desc">XAuth protocol — required headers, connection flow, token refresh and 2FA.</div>
-    </a>
+<div class="layout">
+
+<!-- ══ SIDEBAR ══ -->
+<aside class="sidebar" id="sidebar">
+
+  <!-- Getting started -->
+  <div class="nav-group open" id="ng-start">
+    <button class="nav-group-toggle" onclick="toggleGroup('ng-start')">
+      Начало работы
+      <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="nav-items">
+      <a class="nav-link active" onclick="scrollTo('overview')"><span class="dot"></span>Обзор</a>
+      <a class="nav-link" onclick="scrollTo('quickstart')"><span class="dot"></span>Быстрый старт</a>
+      <a class="nav-link" onclick="scrollTo('implementation')"><span class="dot"></span>Реализация клиента</a>
+    </div>
   </div>
 
-  <footer>BarkFluff &copy; 2025</footer>
+  <!-- Auth -->
+  <div class="nav-group open" id="ng-auth">
+    <button class="nav-group-toggle" onclick="toggleGroup('ng-auth')">
+      Аутентификация
+      <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="nav-items">
+      <a class="nav-link" onclick="scrollTo('auth-headers')"><span class="dot"></span>XAuth заголовки</a>
+      <a class="nav-link" onclick="scrollTo('connection-flow')"><span class="dot"></span>Поток подключения</a>
+      <a class="nav-link" onclick="scrollTo('error-codes')"><span class="dot"></span>Коды ошибок</a>
+    </div>
+  </div>
 
+  <div class="nav-separator"></div>
+
+  <!-- API Reference -->
+  <div class="nav-group open" id="ng-api">
+    <button class="nav-group-toggle" onclick="toggleGroup('ng-api')">
+      API Reference
+      <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="nav-items">
+      <a class="nav-link" onclick="scrollTo('proto-shared')"><span class="dot"></span>shared.proto</a>
+      <a class="nav-link" onclick="scrollTo('proto-beacon')"><span class="dot"></span>beacon_api.proto</a>
+      <a class="nav-link" onclick="scrollTo('proto-identity')"><span class="dot"></span>identity_api.proto</a>
+      <a class="nav-link" onclick="scrollTo('proto-users')"><span class="dot"></span>users_api.proto</a>
+      <a class="nav-link" onclick="scrollTo('proto-messages')"><span class="dot"></span>messages_api.proto</a>
+      <a class="nav-link" onclick="scrollTo('proto-files')"><span class="dot"></span>files_api.proto</a>
+      <a class="nav-link" onclick="scrollTo('proto-updates')"><span class="dot"></span>updates_api.proto</a>
+      <a class="nav-link" onclick="scrollTo('proto-onliner')"><span class="dot"></span>onliner_api.proto</a>
+      <a class="nav-link" onclick="scrollTo('proto-fastauth')"><span class="dot"></span>fast_auth_api.proto</a>
+      <a class="nav-link" onclick="scrollTo('proto-navigator')"><span class="dot"></span>navigator_api.proto</a>
+    </div>
+  </div>
+
+</aside>
+
+<!-- ══ MAIN CONTENT ══ -->
+<main class="main-content" id="mainContent">
+</main>
+<!-- /.main-content -->
+
+</div><!-- /.layout -->
+
+<footer class="site-footer">
+  <span>© 2026 Barkfluff — Developer Portal</span>
+  <span><a href="https://barkfluff.com" target="_blank">barkfluff.com</a></span>
+</footer>
+
+<script>
+/* ── Navigation ── */
+function toggleGroup(id) {
+  document.getElementById(id).classList.toggle('open');
+}
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+function scrollTo(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // close sidebar on mobile
+  if (window.innerWidth <= 768)
+    document.getElementById('sidebar').classList.remove('open');
+  // load proto if needed
+  if (id.startsWith('proto-')) {
+    const fname = protoFileMap[id];
+    if (fname) loadProto(id, fname);
+  }
+}
+
+/* Close sidebar on outside click (mobile) */
+document.addEventListener('click', function(e) {
+  const sb = document.getElementById('sidebar');
+  const btn = document.getElementById('menuBtn');
+  if (window.innerWidth <= 768 && sb.classList.contains('open')
+      && !sb.contains(e.target) && !btn.contains(e.target)) {
+    sb.classList.remove('open');
+  }
+});
+
+/* ── Active nav link on scroll ── */
+const sections = [];
+function initObserver() {
+  document.querySelectorAll('[data-section]').forEach(el => {
+    sections.push({ id: el.dataset.section, el });
+  });
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        const link = document.querySelector(`.nav-link[data-target="${e.target.dataset.section}"]`);
+        if (link) link.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  sections.forEach(s => obs.observe(s.el));
+}
+
+/* ── Proto file cache & loader ── */
+const protoCache = {};
+const protoFileMap = {
+  'proto-shared':    'shared.proto',
+  'proto-beacon':    'beacon_api.proto',
+  'proto-identity':  'identity_api.proto',
+  'proto-users':     'users_api.proto',
+  'proto-messages':  'messages_api.proto',
+  'proto-files':     'files_api.proto',
+  'proto-updates':   'updates_api.proto',
+  'proto-onliner':   'onliner_api.proto',
+  'proto-fastauth':  'fast_auth_api.proto',
+  'proto-navigator': 'navigator_api.proto',
+};
+
+async function loadProto(sectionId, filename) {
+  if (protoCache[sectionId]) return;
+  const codeEl = document.getElementById('code-' + sectionId);
+  if (!codeEl) return;
+  if (codeEl.dataset.loaded) return;
+  codeEl.dataset.loaded = '1';
+  try {
+    const r = await fetch('/files/proto/' + filename);
+    const text = await r.text();
+    protoCache[sectionId] = text;
+    codeEl.innerHTML = highlightProto(text);
+  } catch(e) {
+    codeEl.innerHTML = '<span style="color:var(--ink-mute)">Ошибка загрузки файла</span>';
+  }
+}
+
+/* Load all protos on page load for better UX */
+async function loadAllProtos() {
+  for (const [sid, fname] of Object.entries(protoFileMap)) {
+    await loadProto(sid, fname);
+  }
+}
+
+/* ── Proto syntax highlighter ── */
+function highlightProto(raw) {
+  const escaped = raw
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;');
+
+  return escaped.replace(
+    /(\/\/[^\n]*)|(\"(?:[^\"\\]|\\.)*\")|(\b(?:syntax|service|rpc|message|enum|returns|stream|repeated|optional|oneof|import|package|option|map)\b)|(\b(?:string|int32|int64|uint32|uint64|sint32|sint64|fixed32|fixed64|sfixed32|sfixed64|bool|bytes|double|float)\b)|(\bgoogle\.protobuf\.\w+\b)|(\b\d+\b)/g,
+    (m, comment, str, kw, type, gtype, num) => {
+      if (comment) return `<span class="pc">${m}</span>`;
+      if (str)     return `<span class="ps">${m}</span>`;
+      if (kw)      return `<span class="pk">${m}</span>`;
+      if (type)    return `<span class="pt">${m}</span>`;
+      if (gtype)   return `<span class="pt">${m}</span>`;
+      if (num)     return `<span class="pn">${m}</span>`;
+      return m;
+    }
+  );
+}
+
+/* ── Copy proto ── */
+function copyProto(sectionId, btnEl) {
+  const text = protoCache[sectionId];
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => {
+    btnEl.classList.add('copied');
+    btnEl.innerHTML = svgCheck + ' Скопировано';
+    setTimeout(() => {
+      btnEl.classList.remove('copied');
+      btnEl.innerHTML = svgCopy + ' Копировать';
+    }, 2000);
+  }).catch(() => {});
+}
+
+/* ── Download proto ── */
+function downloadProto(sectionId) {
+  const text = protoCache[sectionId];
+  const fname = protoFileMap[sectionId];
+  if (!text || !fname) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+  a.download = fname;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+const svgCopy = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+const svgDown = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
+const svgCheck = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+/* Inject copy/download btn html after DOM ready */
+function makeCopyBtn(sid) {
+  return `<button class="proto-btn" onclick="copyProto('${sid}',this)">${svgCopy} Копировать</button>`;
+}
+function makeDownloadBtn(sid) {
+  return `<button class="proto-btn" onclick="downloadProto('${sid}')">${svgDown} Скачать</button>`;
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  buildContent();
+  initObserver();
+  loadAllProtos();
+});
+</script>
+<script>
+/* ═══════════════════════════════════════════════
+   CONTENT BUILDER — fills #mainContent
+   ═══════════════════════════════════════════════ */
+function buildContent() {
+  const mc = document.getElementById('mainContent');
+  mc.innerHTML = [
+    buildOverview(),
+    buildQuickstart(),
+    buildImplementation(),
+    buildAuthHeaders(),
+    buildConnectionFlow(),
+    buildErrorCodes(),
+    buildProtoShared(),
+    buildProtoBeacon(),
+    buildProtoIdentity(),
+    buildProtoUsers(),
+    buildProtoMessages(),
+    buildProtoFiles(),
+    buildProtoUpdates(),
+    buildProtoOnliner(),
+    buildProtoFastauth(),
+    buildProtoNavigator(),
+  ].join('');
+
+  /* inject copy/download buttons */
+  Object.keys(protoFileMap).forEach(sid => {
+    const actionsEl = document.getElementById('actions-' + sid);
+    if (actionsEl) {
+      actionsEl.innerHTML = makeCopyBtn(sid) + makeDownloadBtn(sid);
+    }
+  });
+
+  /* nav links data-target */
+  document.querySelectorAll('.nav-link[onclick]').forEach(l => {
+    const m = l.getAttribute('onclick').match(/scrollTo\('([^']+)'\)/);
+    if (m) l.dataset.target = m[1];
+  });
+}
+
+/* ── helpers ── */
+function protoCodeBlock(sid) {
+  return `
+  <div class="proto-code-wrap">
+    <div class="proto-code-bar">
+      <div class="proto-code-bar-label">
+        <div class="proto-code-bar-dots"><span></span><span></span><span></span></div>
+        ${protoFileMap[sid] || ''}
+      </div>
+    </div>
+    <pre class="proto-code" id="code-${sid}"><span style="color:var(--ink-mute);font-style:italic">Загрузка...</span></pre>
+  </div>`;
+}
+
+function rpcTable(rows) {
+  /* rows: [{name, req, resp, stream, desc}] */
+  return `
+  <div class="doc-table-wrap">
+    <table class="doc-table">
+      <thead><tr><th>Метод</th><th>Тип</th><th>Request</th><th>Response</th><th>Описание</th></tr></thead>
+      <tbody>
+        ${rows.map(r => `<tr>
+          <td class="td-rpc">${r.name}</td>
+          <td><span class="td-badge ${r.stream ? 'badge-stream' : 'badge-unary'}">${r.stream ? 'stream' : 'unary'}</span></td>
+          <td class="td-type">${r.req}</td>
+          <td class="td-type">${r.resp}</td>
+          <td>${r.desc}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+function fieldTable(rows) {
+  /* rows: [{name, type, desc}] */
+  return `
+  <div class="doc-table-wrap">
+    <table class="doc-table">
+      <thead><tr><th>Поле</th><th>Тип</th><th>Описание</th></tr></thead>
+      <tbody>
+        ${rows.map(r => `<tr>
+          <td class="td-name">${r.name}</td>
+          <td class="td-type">${r.type}</td>
+          <td>${r.desc}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+function enumTable(rows) {
+  return `
+  <div class="doc-table-wrap">
+    <table class="doc-table">
+      <thead><tr><th>Значение</th><th>Число</th><th>Описание</th></tr></thead>
+      <tbody>
+        ${rows.map(r => `<tr>
+          <td class="td-name">${r.name}</td>
+          <td class="td-type">${r.num}</td>
+          <td>${r.desc}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+/* ════════════════════════════════
+   SECTIONS
+   ════════════════════════════════ */
+
+function buildOverview() {
+  return `
+  <section class="doc-section" id="overview" data-section="overview">
+    <div class="hero-block">
+      <div class="section-eyebrow">Developer Portal</div>
+      <h1 class="hero-title">Создай свой<br><span class="accent">BarkFluff клиент</span></h1>
+      <p class="hero-sub">
+        Открытые gRPC-контракты, описание протоколов и примеры интеграции —
+        всё необходимое для разработки нативного клиента на любом языке программирования.
+      </p>
+      <div class="hero-pills">
+        <span class="pill">gRPC / proto3</span>
+        <span class="pill">TLS / XAuth</span>
+        <span class="pill">Real-time streaming</span>
+        <span class="pill">10 микросервисов</span>
+      </div>
+    </div>
+
+    <div class="cards-grid">
+      <div class="feat-card">
+        <div class="f-icon"><svg viewBox="0 0 24 24"><path d="M12 1l9 4v6c0 5.5-3.8 10.7-9 12-5.2-1.3-9-6.5-9-12V5l9-4z"/></svg></div>
+        <div class="f-title">gRPC + TLS</div>
+        <div class="f-body">Все сервисы работают по gRPC (HTTP/2). Шифрование на уровне соединения, поддержка streaming.</div>
+      </div>
+      <div class="feat-card">
+        <div class="f-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm8 4l2 2 4-4"/></svg></div>
+        <div class="f-title">XAuth</div>
+        <div class="f-body">JWT-токены в заголовке <code style="font-family:monospace;font-size:11px;color:#ffc997">x-auth-token</code>. Обязательные metadata-заголовки для идентификации клиента.</div>
+      </div>
+      <div class="feat-card">
+        <div class="f-icon"><svg viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>
+        <div class="f-title">Real-time</div>
+        <div class="f-body">Серверный стриминг новых сообщений, read-receipts и статусов онлайн через UpdatesApi и OnlinerApi.</div>
+      </div>
+      <div class="feat-card">
+        <div class="f-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+        <div class="f-title">Вложения</div>
+        <div class="f-body">Изображения, видео, аудио, документы, голосовые и стикеры. Дедупликация по SHA-256 хешу.</div>
+      </div>
+      <div class="feat-card">
+        <div class="f-icon"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="m8 21 4-4 4 4"/><path d="M2 14h20"/></svg></div>
+        <div class="f-title">Мультиплатформа</div>
+        <div class="f-body">Один backend — любой клиент: WPF, Android (Kotlin), iOS (Swift), веб, Linux (C++).</div>
+      </div>
+      <div class="feat-card">
+        <div class="f-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
+        <div class="f-title">Navigator</div>
+        <div class="f-body">Публичный реестр серверов. Клиент находит сервер через Navigator → Beacon, без хардкода адресов.</div>
+      </div>
+    </div>
+  </section>`;
+}
+
+function buildQuickstart() {
+  return `
+  <section class="doc-section" id="quickstart" data-section="quickstart">
+    <div class="section-eyebrow">Руководство</div>
+    <h2 class="section-title">Быстрый старт</h2>
+    <p class="section-lead">Минимальный путь от нуля до отправки первого сообщения. Всего 5 шагов — Navigator, Beacon, регистрация, авторизация, запросы.</p>
+
+    <div class="code-block">
+      <div class="code-block-head">Псевдокод · Полный поток подключения</div>
+<pre class="code-sample"><span class="code-comment">// 1. Получить список серверов (публичный endpoint без авторизации)</span>
+<span class="code-fn">metadata</span> = { <span class="code-str">"x-device-id"</span>: uuid, <span class="code-str">"x-device-name"</span>: <span class="code-str">"MyDevice"</span>,
+             <span class="code-str">"x-ip"</span>: <span class="code-str">"1.2.3.4"</span>, <span class="code-str">"x-os"</span>: <span class="code-str">"Android 14"</span>,
+             <span class="code-str">"x-app-name"</span>: <span class="code-str">"MyClient"</span>, <span class="code-str">"x-app-version"</span>: <span class="code-str">"1.0.0"</span> }
+
+<span class="code-fn">servers</span> = NavigatorApi.ListServers({}, metadata)
+<span class="code-fn">server</span>  = servers[0]  <span class="code-comment">// выбрать нужный</span>
+
+<span class="code-comment">// 2. Получить адреса микросервисов (Beacon)</span>
+<span class="code-fn">info</span> = BeaconApi.GetServerInfo({}, metadata)
+<span class="code-comment">//   info.identity.endpoint → "host:port" для IdentityApi</span>
+<span class="code-comment">//   info.users / files / messages / updates / onliner</span>
+
+<span class="code-comment">// 3. Создать аккаунт (если нет)</span>
+<span class="code-fn">resp</span> = IdentityApi.CreateAccount({ first_name, last_name, username, email }, metadata)
+IdentityApi.ConfirmAccount({ code_id: resp.code_id, code_value: emailCode }, metadata)
+
+<span class="code-comment">// 4. Авторизоваться</span>
+<span class="code-fn">auth</span> = IdentityApi.Auth({ username: <span class="code-str">"user"</span>, password: <span class="code-str">"pass"</span> }, metadata)
+<span class="code-comment">//   Если 2FA включена → ошибка x-error-code C1576884... → повторить с otp_code</span>
+<span class="code-fn">accessToken</span>  = auth.access_token.value
+<span class="code-fn">refreshToken</span> = auth.refresh_token.value
+
+<span class="code-comment">// 5. Использовать API (добавить x-auth-token)</span>
+metadata[<span class="code-str">"x-auth-token"</span>] = accessToken
+<span class="code-fn">chats</span> = MessagesApi.ListChats({ pagination: { offset: 0, size: 50 } }, metadata)
+
+<span class="code-comment">// 6. Обновить токен когда истечёт (access_token.expiration_date)</span>
+<span class="code-fn">newToken</span> = IdentityApi.CreateToken({ refresh_token: refreshToken }, metadata)</pre>
+    </div>
+
+    <div class="info-box">
+      <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm0 9v5m0-8v1"/></svg>
+      <div>Все metadata-заголовки (<code style="font-family:monospace;font-size:11px">x-device-id</code>, <code style="font-family:monospace;font-size:11px">x-app-name</code> и др.) обязательны для <strong style="color:var(--ink)">каждого</strong> gRPC-запроса, включая публичные (Navigator, Beacon). <code style="font-family:monospace;font-size:11px">x-device-id</code> должен сохраняться между сессиями — он идентифицирует устройство в системе сессий.</div>
+    </div>
+  </section>`;
+}
+
+function buildImplementation() {
+  return `
+  <section class="doc-section" id="implementation" data-section="implementation">
+    <div class="section-eyebrow">Руководство</div>
+    <h2 class="section-title">Реализация клиента</h2>
+    <p class="section-lead">Ключевые паттерны из официальных клиентов — WPF (C#) и Android (Kotlin). Адаптируй под свой язык.</p>
+
+    <div class="impl-cards">
+      <div class="impl-card">
+        <div class="impl-card-head">
+          <div class="impl-card-icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+          <div>
+            <div class="impl-card-title">Инициализация каналов</div>
+            <div class="impl-card-sub">Navigator → Beacon → создать gRPC каналы</div>
+          </div>
+        </div>
+<pre class="impl-code"><span class="code-comment">// Шаг 1: Navigator (plaintext, порт 443, TLS)</span>
+navigatorChannel = grpc.dial(<span class="code-str">"navigator.barkfluff.com:443"</span>, tls=true)
+servers = NavigatorApi.ListServers({})
+
+<span class="code-comment">// Шаг 2: Beacon нужного сервера</span>
+beaconChannel = grpc.dial(server.beacon_uri, tls=server.tls_enabled)
+info = BeaconApi.GetServerInfo({})
+
+<span class="code-comment">// Шаг 3: Все каналы</span>
+identityChannel = grpc.dial(info.identity.endpoint, tls=info.identity.tls_enabled)
+usersChannel    = grpc.dial(info.users.endpoint, ...)
+messagesChannel = grpc.dial(info.messages.endpoint, ...)
+filesChannel    = grpc.dial(info.files.endpoint, ...)
+updatesChannel  = grpc.dial(info.updates.endpoint, ...)
+onlinerChannel  = grpc.dial(info.onliner.endpoint, ...)</pre>
+      </div>
+
+      <div class="impl-card">
+        <div class="impl-card-head">
+          <div class="impl-card-icon"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+          <div>
+            <div class="impl-card-title">Управление токенами</div>
+            <div class="impl-card-sub">SafeCall с авторетраем при 401</div>
+          </div>
+        </div>
+<pre class="impl-code"><span class="code-comment">// Перед каждым запросом — проверить срок токена</span>
+<span class="code-kw">func</span> safeCall(fn):
+  <span class="code-kw">try</span>:
+    <span class="code-kw">if</span> isExpired(accessToken):
+      accessToken = refreshAccessToken()
+    <span class="code-kw">return</span> fn()
+  <span class="code-kw">catch</span> Unauthenticated:
+    accessToken = refreshAccessToken()
+    <span class="code-kw">return</span> fn()  <span class="code-comment">// одна повторная попытка</span>
+
+<span class="code-kw">func</span> refreshAccessToken():
+  resp = IdentityApi.CreateToken({ refresh_token })
+  <span class="code-kw">return</span> resp.access_token.value
+
+<span class="code-comment">// Использование</span>
+chats = safeCall(() -> MessagesApi.ListChats(...))</pre>
+      </div>
+
+      <div class="impl-card">
+        <div class="impl-card-head">
+          <div class="impl-card-icon"><svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8zm4-6v4M10 2v4M14 2v4"/></svg></div>
+          <div>
+            <div class="impl-card-title">Real-time стриминг</div>
+            <div class="impl-card-sub">Новые сообщения + read-receipts + онлайн</div>
+          </div>
+        </div>
+<pre class="impl-code"><span class="code-comment">// Подписка на новые сообщения</span>
+stream = UpdatesApi.SubscribeNewMessages({})
+<span class="code-kw">for</span> event <span class="code-kw">in</span> stream:
+  <span class="code-comment">// event.message, event.chat_id</span>
+  showNotification(event)
+
+<span class="code-comment">// Read-receipts (new_read_by = ПОЛНЫЙ список, не дельта!)</span>
+stream = UpdatesApi.SubscribeMessagesRead({})
+
+<span class="code-comment">// Онлайн-статусы</span>
+OnlinerApi.ChangeUsersInSubscription({ user_ids: [id1, id2] })
+stream = OnlinerApi.SubscribeToOnlineStatus({ user_ids })
+
+<span class="code-comment">// Keepalive — каждые 3 секунды</span>
+setInterval(() -> OnlinerApi.SetOnlineStatus({}), 3000)
+
+<span class="code-comment">// Reconnect с exponential backoff (2s → 30s)</span></pre>
+      </div>
+
+      <div class="impl-card">
+        <div class="impl-card-head">
+          <div class="impl-card-icon"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+          <div>
+            <div class="impl-card-title">Загрузка файлов</div>
+            <div class="impl-card-sub">Дедупликация → получить URL → POST</div>
+          </div>
+        </div>
+<pre class="impl-code"><span class="code-comment">// 1. Дедупликация по SHA-256</span>
+hash = sha256(fileBytes)
+check = FilesApi.CheckFileHash({ file_hash: hash })
+<span class="code-kw">if</span> check.file_id != <span class="code-str">""</span>:
+  <span class="code-kw">return</span> check.file_id  <span class="code-comment">// файл уже загружен</span>
+
+<span class="code-comment">// 2. Получить URL для загрузки</span>
+upload = FilesApi.GetUploadUrl({ file_type: IMAGE })
+<span class="code-comment">// upload.url — HTTP multipart POST</span>
+<span class="code-comment">// upload.file_id — сохранить для отправки</span>
+
+<span class="code-comment">// 3. HTTP POST на upload.url</span>
+http.post(upload.url, multipart({ file: bytes }))
+
+<span class="code-comment">// 4. Отправить сообщение с файлом</span>
+MessagesApi.SendMessage({ chat_id, message: {
+  files_ids: [upload.file_id]
+}})</pre>
+      </div>
+    </div>
+  </section>`;
+}
+</script>
+<script>
+function buildAuthHeaders() {
+  return `
+  <section class="doc-section" id="auth-headers" data-section="auth-headers">
+    <div class="section-eyebrow">Аутентификация</div>
+    <h2 class="section-title">XAuth заголовки</h2>
+    <p class="section-lead">Каждый gRPC-запрос должен содержать обязательные metadata-заголовки. Защищённые методы дополнительно требуют <code style="font-family:monospace;font-size:13px;color:#ffc997">x-auth-token</code>.</p>
+
+    <h3 class="sub-heading">Обязательные заголовки (все запросы)</h3>
+    <div class="doc-table-wrap">
+      <table class="doc-table">
+        <thead><tr><th>Заголовок</th><th>Тип</th><th>Описание</th><th>Пример</th></tr></thead>
+        <tbody>
+          <tr><td class="td-name">x-device-id</td><td class="td-type">string</td><td>UUID v4 устройства. Генерируется один раз при установке и сохраняется между сессиями. Идентифицирует устройство в системе сессий.</td><td class="td-type" style="font-size:10px">550e8400-e29b-41d4-a716-446655440000</td></tr>
+          <tr><td class="td-name">x-device-name</td><td class="td-type">string</td><td>Читаемое имя устройства.</td><td class="td-type">Samsung Galaxy S24</td></tr>
+          <tr><td class="td-name">x-ip</td><td class="td-type">string</td><td>Внешний IP-адрес клиента. Используется для геолокации сессий.</td><td class="td-type">192.168.1.10</td></tr>
+          <tr><td class="td-name">x-os</td><td class="td-type">string</td><td>Операционная система клиента.</td><td class="td-type">Android 14</td></tr>
+          <tr><td class="td-name">x-app-name</td><td class="td-type">string</td><td>Название вашего приложения.</td><td class="td-type">MyBarkFluffClient</td></tr>
+          <tr><td class="td-name">x-app-version</td><td class="td-type">string</td><td>Версия приложения.</td><td class="td-type">1.0.0</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="sub-heading">Заголовок авторизации (защищённые методы)</h3>
+    <div class="doc-table-wrap">
+      <table class="doc-table">
+        <thead><tr><th>Заголовок</th><th>Тип</th><th>Описание</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="td-name">x-auth-token</td>
+            <td class="td-type">string</td>
+            <td>Access-токен пользователя. Передаётся как строка без префикса <code style="font-family:monospace;font-size:11px">Bearer</code>. Получается через <code style="font-family:monospace;font-size:11px">Auth</code> или <code style="font-family:monospace;font-size:11px">CreateToken</code>. Истекает — смотри <code style="font-family:monospace;font-size:11px">access_token.expiration_date</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="info-box">
+      <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm0 9v5m0-8v1"/></svg>
+      <div>Сервисы <code style="font-family:monospace;font-size:11px">*ServerApi</code> (например <code style="font-family:monospace;font-size:11px">UsersServerApi</code>, <code style="font-family:monospace;font-size:11px">FilesServerApi</code>) предназначены для <strong style="color:var(--ink)">межсервисного взаимодействия</strong> внутри инфраструктуры. Они недоступны с пользовательским токеном — только с сервисным JWT.</div>
+    </div>
+  </section>`;
+}
+
+function buildConnectionFlow() {
+  return `
+  <section class="doc-section" id="connection-flow" data-section="connection-flow">
+    <div class="section-eyebrow">Аутентификация</div>
+    <h2 class="section-title">Поток подключения</h2>
+    <p class="section-lead">Стандартный сценарий первого запуска клиента от обнаружения сервера до полноценной работы.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-line"></div>
+        <div class="step-body">
+          <h4>Найти сервер — NavigatorApi</h4>
+          <p>Вызови <code>NavigatorApi.ListServers({})</code> по публичному адресу <code>navigator.barkfluff.com:443</code> (gRPC + TLS). Получи список серверов с <code>beacon_uri</code> каждого. Позволь пользователю выбрать сервер или используй первый из списка.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-line"></div>
+        <div class="step-body">
+          <h4>Получить адреса микросервисов — BeaconApi</h4>
+          <p>Подключись к <code>beacon_uri</code> выбранного сервера и вызови <code>BeaconApi.GetServerInfo({})</code>. Ответ содержит адреса (<code>host:port</code>) и флаги <code>tls_enabled</code> для каждого из 6 микросервисов: identity, users, files, messages, updates, onliner.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-line"></div>
+        <div class="step-body">
+          <h4>Зарегистрировать аккаунт — IdentityApi (опционально)</h4>
+          <p>Если у пользователя нет аккаунта: <code>CreateAccount(first_name, last_name, username, email)</code> → получить <code>code_id</code> → <code>ConfirmAccount(code_id, emailCode)</code> → получить <code>refresh_token</code>. Немедленно перейди к шагу 5 для получения access-токена.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-line"></div>
+        <div class="step-body">
+          <h4>Авторизоваться — IdentityApi</h4>
+          <p>Вызови <code>Auth({ username или email, password })</code>. При включённой 2FA запрос завершится с кодом ошибки <code>C1576884-12D8-4722-A7EE-9F9789AD1265</code> — повтори с <code>otp_code</code>. Сохрани <code>access_token.value</code> и <code>refresh_token.value</code>.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-line"></div>
+        <div class="step-body">
+          <h4>Обновлять access-токен — IdentityApi</h4>
+          <p>Когда истечёт <code>access_token.expiration_date</code> — вызови <code>CreateToken({ refresh_token })</code> для получения нового access-токена. Обновляй заголовок <code>x-auth-token</code> во всех последующих запросах.</p>
+        </div>
+      </div>
+    </div>
+  </section>`;
+}
+
+function buildErrorCodes() {
+  return `
+  <section class="doc-section" id="error-codes" data-section="error-codes">
+    <div class="section-eyebrow">Аутентификация</div>
+    <h2 class="section-title">Коды ошибок</h2>
+    <p class="section-lead">Бизнес-ошибки возвращаются через gRPC trailer-заголовок <code style="font-family:monospace;color:#ffc997">x-error-code</code>. Стандартные gRPC status codes (NOT_FOUND, INVALID_ARGUMENT и др.) используются для технических ошибок.</p>
+
+    <div class="doc-table-wrap error-table">
+      <table class="doc-table">
+        <thead><tr><th>GUID (x-error-code)</th><th>Исключение</th><th>Описание и обработка</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="td-type guid">C1576884-12D8-4722-A7EE-9F9789AD1265</td>
+            <td class="td-name">OtpCodeNeedException</td>
+            <td>Требуется код 2FA. Показать поле ввода OTP и повторить вызов <code style="font-family:monospace;font-size:11px">Auth</code> с заполненным <code style="font-family:monospace;font-size:11px">otp_code</code>.</td>
+          </tr>
+          <tr>
+            <td class="td-type guid">803B632C-4457-4B05-9435-9C3DD0F41E00</td>
+            <td class="td-name">NotValidOtpCodeException</td>
+            <td>Введён неверный OTP-код. Сообщить пользователю, дать возможность ввести повторно.</td>
+          </tr>
+          <tr>
+            <td class="td-type guid">21BFB9B5-C377-45D1-9B15-6B7F3432B397</td>
+            <td class="td-name">InvalidLoginOrPasswordException</td>
+            <td>Неверный логин или пароль. Показать ошибку авторизации.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="info-box">
+      <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm0 9v5m0-8v1"/></svg>
+      <div>Код читается из trailer-метаданных ответа. В grpc-okhttp (Android): перехватывай <code style="font-family:monospace;font-size:11px">StatusRuntimeException</code> и читай <code style="font-family:monospace;font-size:11px">trailers.get(Metadata.Key.of("x-error-code", ASCII_STRING_MARSHALLER))</code>.</div>
+    </div>
+  </section>`;
+}
+</script>
+<script>
+/* ═══════ PROTO SECTIONS ═══════ */
+
+function protoSectionHeader(sid, icon, filename, desc) {
+  return `
+  <div class="proto-header">
+    <div class="proto-icon">${icon}</div>
+    <div class="proto-title-block">
+      <div class="proto-filename">${filename}</div>
+      <div class="proto-desc">${desc}</div>
+    </div>
+    <div class="proto-actions" id="actions-${sid}"></div>
+  </div>`;
+}
+
+function buildProtoShared() {
+  return `
+  <section class="proto-section doc-section" id="proto-shared" data-section="proto-shared">
+    <div class="section-eyebrow">API Reference</div>
+    <h2 class="section-title">Общие типы</h2>
+    ${protoSectionHeader('proto-shared',
+      `<svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>`,
+      'shared.proto', 'Общие типы данных, используемые во всех API сервисах'
+    )}
+    ${protoCodeBlock('proto-shared')}
+
+    <h3 class="sub-heading">Message — структура сообщения</h3>
+    ${fieldTable([
+      {name:'id',       type:'int64',     desc:'Уникальный идентификатор сообщения'},
+      {name:'sender_id',type:'int64',     desc:'ID пользователя-отправителя'},
+      {name:'read_by',  type:'int64[]',   desc:'Список ID пользователей, прочитавших сообщение'},
+      {name:'sent_at',  type:'Timestamp', desc:'Дата и время отправки (UTC)'},
+      {name:'content',  type:'MessageContent', desc:'Содержимое: текст + вложения'},
+      {name:'type',     type:'MessageContentType', desc:'GENERIC — обычное, SYSTEM — системное (служебное)'},
+    ])}
+
+    <h3 class="sub-heading">MessageAttachment — вложение</h3>
+    ${fieldTable([
+      {name:'id',              type:'int64',  desc:'ID вложения'},
+      {name:'type',            type:'MessageAttachmentType', desc:'Тип файла (IMAGE, VIDEO, DOCUMENT, AUDIO и др.)'},
+      {name:'file_id',         type:'string', desc:'ID файла — передай в FilesApi.GetTempDownloadUrl для получения URL'},
+      {name:'preview_url',     type:'string', desc:'Прямой URL превью (может быть пустым)'},
+      {name:'attachment_size', type:'int64',  desc:'Размер файла в байтах'},
+      {name:'preview_file_id', type:'string', desc:'ID файла превью (для получения URL через FilesApi)'},
+      {name:'file_name',       type:'string', desc:'Оригинальное имя файла'},
+    ])}
+
+    <h3 class="sub-heading">MessageAttachmentType</h3>
+    ${enumTable([
+      {name:'MESSAGE_ATTACHMENT_TYPE_UNKNOWN', num:'0', desc:'Неизвестный тип'},
+      {name:'IMAGE',    num:'1', desc:'Изображение (JPEG, PNG, WebP и др.)'},
+      {name:'VIDEO',    num:'2', desc:'Видеофайл'},
+      {name:'GIF',      num:'3', desc:'Анимированная гифка'},
+      {name:'DOCUMENT', num:'4', desc:'Документ (PDF, ZIP, DOCX и др.)'},
+      {name:'AUDIO',    num:'5', desc:'Аудиофайл'},
+      {name:'VOICE',    num:'6', desc:'Голосовое сообщение'},
+      {name:'STICKER',  num:'7', desc:'Стикер в формате WebP'},
+    ])}
+
+    <h3 class="sub-heading">PageRequest — пагинация</h3>
+    ${fieldTable([
+      {name:'offset', type:'int32', desc:'Количество элементов для пропуска (с начала)'},
+      {name:'size',   type:'int32', desc:'Размер страницы. Максимум зависит от метода — обычно 50'},
+    ])}
+  </section>`;
+}
+
+function buildProtoBeacon() {
+  return `
+  <section class="proto-section doc-section" id="proto-beacon" data-section="proto-beacon">
+    <div class="section-eyebrow">API Reference</div>
+    <h2 class="section-title">Beacon — обнаружение сервисов</h2>
+    ${protoSectionHeader('proto-beacon',
+      `<svg viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></svg>`,
+      'beacon_api.proto', 'Получить адреса всех микросервисов выбранного сервера'
+    )}
+    ${protoCodeBlock('proto-beacon')}
+
+    <div class="info-box">
+      <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm0 9v5m0-8v1"/></svg>
+      <div>Beacon — <strong style="color:var(--ink)">первый вызов после выбора сервера</strong>. Адрес Beacon берётся из поля <code style="font-family:monospace;font-size:11px">beacon_uri</code> ответа NavigatorApi. Вызывать без авторизации.</div>
+    </div>
+
+    <h3 class="sub-heading">RPC методы</h3>
+    ${rpcTable([
+      {name:'GetServerInfo', req:'GetServerInfoRequest', resp:'GetServerInfoResponse', stream:false, desc:'Получить имя, описание, цвета сервера и адреса всех 6 микросервисов'}
+    ])}
+
+    <h3 class="sub-heading">GetServerInfoResponse</h3>
+    ${fieldTable([
+      {name:'name',        type:'string',      desc:'Отображаемое имя сервера'},
+      {name:'description', type:'string',      desc:'Описание сервера'},
+      {name:'color',       type:'ServerColor', desc:'Цветовая схема сервера (light/main/dark hex)'},
+      {name:'identity',    type:'Service',     desc:'Адрес IdentityApi'},
+      {name:'users',       type:'Service',     desc:'Адрес UsersApi'},
+      {name:'files',       type:'Service',     desc:'Адрес FilesApi'},
+      {name:'messages',    type:'Service',     desc:'Адрес MessagesApi'},
+      {name:'updates',     type:'Service',     desc:'Адрес UpdatesApi (streaming)'},
+      {name:'onliner',     type:'Service',     desc:'Адрес OnlinerApi'},
+    ])}
+
+    <h3 class="sub-heading">Service</h3>
+    ${fieldTable([
+      {name:'name',        type:'string',          desc:'Название микросервиса'},
+      {name:'endpoint',    type:'ServiceEndpoint', desc:'Хост и порт: { host, port }'},
+      {name:'tls_enabled', type:'bool',            desc:'Использовать TLS при подключении'},
+      {name:'status',      type:'ServiceStatus',   desc:'Текущее состояние сервиса'},
+    ])}
+
+    <h3 class="sub-heading">ServiceStatus</h3>
+    ${enumTable([
+      {name:'Unknown',   num:'0', desc:'Статус неизвестен'},
+      {name:'Healthy',   num:'1', desc:'Сервис работает нормально'},
+      {name:'Degraded',  num:'2', desc:'Сервис работает с отклонениями'},
+      {name:'Unhealthy', num:'3', desc:'Сервис нездоров — возможны ошибки'},
+      {name:'Offline',   num:'4', desc:'Сервис недоступен'},
+    ])}
+  </section>`;
+}
+
+function buildProtoIdentity() {
+  return `
+  <section class="proto-section doc-section" id="proto-identity" data-section="proto-identity">
+    <div class="section-eyebrow">API Reference</div>
+    <h2 class="section-title">Identity — авторизация</h2>
+    ${protoSectionHeader('proto-identity',
+      `<svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`,
+      'identity_api.proto', 'Регистрация, аутентификация, 2FA, управление сессиями и паролем'
+    )}
+    ${protoCodeBlock('proto-identity')}
+
+    <h3 class="sub-heading">RPC методы IdentityApi</h3>
+    ${rpcTable([
+      {name:'Auth',                   req:'AuthRequest',                resp:'AuthResponse',                stream:false, desc:'Авторизация по логину/email + пароль. При 2FA вернёт ошибку OtpCodeNeeded — повтори с otp_code'},
+      {name:'FastAuth',               req:'FastAuthRequest',            resp:'AuthResponse',                stream:false, desc:'Быстрый вход по fast_auth_id (QR-авторизация)'},
+      {name:'CreateToken',            req:'CreateTokenRequest',         resp:'CreateTokenResponse',         stream:false, desc:'Обменять refresh_token на новый access_token. Поле access_token имеет field_number=2'},
+      {name:'CreateAccount',          req:'CreateAccountRequest',       resp:'CreateAccountResponse',       stream:false, desc:'Создать черновик аккаунта. Вернёт code_id для подтверждения email'},
+      {name:'ConfirmAccount',         req:'ConfirmAccountRequest',      resp:'ConfirmAccountResponse',      stream:false, desc:'Подтвердить email кодом. Возвращает refresh_token'},
+      {name:'GetActiveSessions',      req:'GetActiveSessionsRequest',   resp:'GetActiveSessionsResponse',   stream:false, desc:'Список активных сессий (устройств) текущего пользователя'},
+      {name:'RemoveActiveSession',    req:'RemoveActiveSessionRequest', resp:'RemoveActiveSessionResponse', stream:false, desc:'Завершить сессию по device_id'},
+      {name:'EnableOtpVerification',  req:'EnableOtpVerificationRequest', resp:'EnableOtpVerificationResponse', stream:false, desc:'Включить 2FA. Возвращает QR-код и код для ручного ввода'},
+      {name:'ConfirmOtpVerification', req:'ConfirmOtpVerificationRequest', resp:'ConfirmOtpVerificationResponse', stream:false, desc:'Подтвердить включение 2FA кодом из приложения'},
+      {name:'DisableOtpVerification', req:'DisableOtpVerificationRequest', resp:'DisableOtpVerificationResponse', stream:false, desc:'Отключить метод 2FA. Для Authenticator нужен otp_code, для Email — нет'},
+      {name:'ListOtpVerification',    req:'ListOtpVerificationRequest', resp:'ListOtpVerificationResponse', stream:false, desc:'Статус 2FA: authenticator_enabled, email_enabled'},
+      {name:'ResetPassword',          req:'ResetPasswordRequest',       resp:'ResetPasswordResponse',       stream:false, desc:'Запросить сброс пароля. Вернёт reset_id'},
+      {name:'ConfirmResetPassword',   req:'ConfirmResetPasswordRequest',resp:'ConfirmResetPasswordResponse',stream:false, desc:'Подтвердить сброс кодом. Вернёт токены'},
+      {name:'SetPassword',            req:'SetPasswordRequest',         resp:'SetPasswordResponse',         stream:false, desc:'Установить/сменить пароль. old_password обязателен если пароль уже есть'},
+    ])}
+
+    <h3 class="sub-heading">AuthRequest</h3>
+    ${fieldTable([
+      {name:'login (oneof)',type:'',        desc:'Передать одно из двух: username или email — не оба одновременно'},
+      {name:'  username',  type:'string',  desc:'Имя пользователя'},
+      {name:'  email',     type:'string',  desc:'Электронная почта'},
+      {name:'password',    type:'string',  desc:'Пароль'},
+      {name:'otp_code',    type:'string',  desc:'Код 2FA (передавать только при получении OtpCodeNeedException)'},
+    ])}
+
+    <h3 class="sub-heading">Token</h3>
+    ${fieldTable([
+      {name:'value',           type:'string',    desc:'Строковое значение JWT токена'},
+      {name:'expiration_date', type:'Timestamp', desc:'Дата и время истечения. Проверяй перед каждым запросом'},
+    ])}
+
+    <h3 class="sub-heading">Session (GetActiveSessionsResponse)</h3>
+    ${fieldTable([
+      {name:'id',               type:'int64',     desc:'ID сессии'},
+      {name:'created_at',       type:'Timestamp', desc:'Первый вход с этого устройства'},
+      {name:'expiration_at',    type:'Timestamp', desc:'Когда сессия станет недействительной'},
+      {name:'device_id',        type:'string',    desc:'UUID устройства'},
+      {name:'original_name',    type:'string',    desc:'Оригинальное имя устройства'},
+      {name:'custom_name',      type:'string',    desc:'Имя заданное пользователем'},
+      {name:'app_name',         type:'string',    desc:'Название приложения'},
+      {name:'operation_system', type:'string',    desc:'ОС устройства'},
+      {name:'location',         type:'string',    desc:'Страна/город по IP'},
+    ])}
+
+    <h3 class="sub-heading">OtpTypeId</h3>
+    ${enumTable([
+      {name:'Unknown',       num:'0', desc:'Неизвестный тип'},
+      {name:'Authenticator', num:'1', desc:'Google Authenticator и совместимые приложения (TOTP)'},
+      {name:'Email',         num:'2', desc:'Код на email пользователя'},
+    ])}
+  </section>`;
+}
+</script>
+<script>
+function buildProtoUsers() {
+  return `
+  <section class="proto-section doc-section" id="proto-users" data-section="proto-users">
+    <div class="section-eyebrow">API Reference</div>
+    <h2 class="section-title">Users — профили пользователей</h2>
+    ${protoSectionHeader('proto-users',
+      `<svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg>`,
+      'users_api.proto', 'Профили, поиск, устройства, бейджи и настройки приватности'
+    )}
+    ${protoCodeBlock('proto-users')}
+
+    <h3 class="sub-heading">RPC методы UsersApi (клиентские)</h3>
+    ${rpcTable([
+      {name:'GetUser',               req:'GetUserRequest',               resp:'GetUserResponse',               stream:false, desc:'Получить профиль пользователя. user_id=0 — текущий пользователь'},
+      {name:'SetProfilePicture',     req:'SetProfilePictureRequest',     resp:'SetProfilePictureResponse',     stream:false, desc:'Установить аватар. file_id — ID файла загруженного через FilesApi (тип USER_AVATAR)'},
+      {name:'CheckExistUsername',    req:'CheckExistUsernameRequest',    resp:'CheckExistResponse',            stream:false, desc:'Проверить занятость username'},
+      {name:'CheckExistEmail',       req:'CheckExistEmailRequest',       resp:'CheckExistResponse',            stream:false, desc:'Проверить существование email'},
+      {name:'ChangeName',            req:'ChangeNameRequest',            resp:'ChangeNameResponse',            stream:false, desc:'Изменить имя и/или фамилию'},
+      {name:'ChangeUsername',        req:'ChangeUsernameRequest',        resp:'ChangeUsernameResponse',        stream:false, desc:'Изменить юзернейм'},
+      {name:'ChangeBio',             req:'ChangeBioRequest',             resp:'ChangeBioResponse',             stream:false, desc:'Изменить описание профиля'},
+      {name:'SearchUsers',           req:'SearchUsersRequest',           resp:'SearchUsersResponse',           stream:false, desc:'Поиск по username/имени/фамилии. Максимум 50 результатов'},
+      {name:'GetUserBadges',         req:'GetUserBadgesRequest',         resp:'GetUserBadgesResponse',         stream:false, desc:'Бейджи пользователя. limit: 1 для списков, 3 для профиля, null для всех'},
+      {name:'GetDevices',            req:'GetDevicesRequest',            resp:'GetDevicesResponse',            stream:false, desc:'Список авторизованных устройств текущего пользователя'},
+      {name:'GetCurrentDevice',      req:'GetCurrentDeviceRequest',      resp:'GetCurrentDeviceResponse',      stream:false, desc:'Информация о текущем устройстве'},
+      {name:'RenameDevice',          req:'RenameDeviceRequest',          resp:'RenameDeviceResponse',          stream:false, desc:'Задать пользовательское имя устройству'},
+      {name:'SetFirebaseToken',      req:'SetFirebaseTokenRequest',      resp:'SetFirebaseTokenResponse',      stream:false, desc:'Зарегистрировать FCM-токен для push-уведомлений (Android)'},
+      {name:'SetNotificationsEnabled',req:'SetNotificationsEnabledRequest',resp:'SetNotificationsEnabledResponse',stream:false,desc:'Включить/выключить push-уведомления для текущего устройства'},
+      {name:'GetPrivacySettings',    req:'GetPrivacySettingsRequest',    resp:'GetPrivacySettingsResponse',    stream:false, desc:'Получить настройки приватности профиля'},
+      {name:'UpdatePrivacySettings', req:'UpdatePrivacySettingsRequest', resp:'UpdatePrivacySettingsResponse', stream:false, desc:'Обновить настройки приватности'},
+    ])}
+
+    <h3 class="sub-heading">User</h3>
+    ${fieldTable([
+      {name:'id',                      type:'int64',        desc:'Уникальный ID пользователя'},
+      {name:'first_name',              type:'string',       desc:'Имя'},
+      {name:'last_name',               type:'string',       desc:'Фамилия'},
+      {name:'username',                type:'string',       desc:'Юзернейм (уникальный)'},
+      {name:'registration_date',       type:'Timestamp',    desc:'Дата регистрации'},
+      {name:'profile_picture',         type:'string',       desc:'URL аватара (полный размер)'},
+      {name:'bio',                     type:'string',       desc:'Описание профиля'},
+      {name:'profile_picture_preview', type:'string',       desc:'URL превью аватара (маленький)'},
+      {name:'badges',                  type:'UserBadge[]',  desc:'Бейджи пользователя, отсортированные по приоритету'},
+      {name:'storage_limit_gb',        type:'int32',        desc:'Лимит хранилища в ГБ'},
+    ])}
+
+    <h3 class="sub-heading">Device</h3>
+    ${fieldTable([
+      {name:'device_id',            type:'string',    desc:'UUID устройства (совпадает с x-device-id)'},
+      {name:'user_id',              type:'int64',     desc:'ID владельца'},
+      {name:'original_name',        type:'string',    desc:'Оригинальное имя от заголовка x-device-name'},
+      {name:'custom_name',          type:'string',    desc:'Имя заданное пользователем через RenameDevice'},
+      {name:'authorized_at',        type:'Timestamp', desc:'Дата авторизации'},
+      {name:'app_name',             type:'string',    desc:'Название приложения'},
+      {name:'operation_system',     type:'string',    desc:'ОС'},
+      {name:'location',             type:'string',    desc:'Страна/город определённые по IP'},
+      {name:'notifications_enabled',type:'bool',      desc:'Включены ли push-уведомления на этом устройстве'},
+    ])}
+
+    <h3 class="sub-heading">PrivacySettings</h3>
+    ${fieldTable([
+      {name:'profile_visible_on_site', type:'bool',                  desc:'Видимость публичной страницы barkfluff.com/{username}'},
+      {name:'avatar_visibility',       type:'ProfileFieldVisibility', desc:'Кто видит аватар'},
+      {name:'bio_visibility',          type:'ProfileFieldVisibility', desc:'Кто видит bio'},
+      {name:'email_visibility',        type:'ProfileFieldVisibility', desc:'Кто видит email'},
+      {name:'search_visible',          type:'bool',                  desc:'Показывать ли в результатах поиска'},
+      {name:'online_visibility',       type:'ProfileFieldVisibility', desc:'Кто видит онлайн-статус'},
+    ])}
+
+    <h3 class="sub-heading">ProfileFieldVisibility</h3>
+    ${enumTable([
+      {name:'ALL',     num:'0', desc:'Видят все'},
+      {name:'FRIENDS', num:'1', desc:'Временно трактуется как NONE (система отношений в разработке)'},
+      {name:'NONE',    num:'2', desc:'Скрыто ото всех'},
+    ])}
+  </section>`;
+}
+
+function buildProtoMessages() {
+  return `
+  <section class="proto-section doc-section" id="proto-messages" data-section="proto-messages">
+    <div class="section-eyebrow">API Reference</div>
+    <h2 class="section-title">Messages — чаты и сообщения</h2>
+    ${protoSectionHeader('proto-messages',
+      `<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
+      'messages_api.proto', 'Список чатов, отправка/получение сообщений, read receipts, участники групп'
+    )}
+    ${protoCodeBlock('proto-messages')}
+
+    <h3 class="sub-heading">RPC методы MessagesApi</h3>
+    ${rpcTable([
+      {name:'ListChats',           req:'ListChatsRequest',          resp:'ListChatsResponse',          stream:false, desc:'Список чатов пользователя с пагинацией. Максимум 50 за раз'},
+      {name:'ListMessages',        req:'ListMessagesRequest',       resp:'ListMessagesResponse',       stream:false, desc:'Сообщения чата. Использовать offset_before/offset_after для пагинации вокруг опорного сообщения'},
+      {name:'ListChatMembers',     req:'ListChatMembersRequest',    resp:'ListChatMembersResponse',    stream:false, desc:'Участники чата с именами. Пагинация, макс 50'},
+      {name:'SendMessage',         req:'SendMessageRequest',        resp:'SendMessageResponse',        stream:false, desc:'Отправить сообщение. source_id — oneof: chat_id или user_id (если chat_id неизвестен)'},
+      {name:'CreateGroupChat',     req:'CreateGroupChatRequest',    resp:'CreateGroupChatResponse',    stream:false, desc:'Создать групповой чат с участниками и названием'},
+      {name:'KickUser',            req:'KickUserRequest',           resp:'KickUserResponse',           stream:false, desc:'Удалить пользователя из группового чата'},
+      {name:'MarkAsRead',          req:'MarkAsReadRequest',         resp:'MarkAsReadResponse',         stream:false, desc:'Отметить сообщения прочитанными. Передавай список message_ids'},
+      {name:'ListChatAttachments', req:'ListChatAttachmentsRequest',resp:'ListChatAttachmentsResponse',stream:false, desc:'Вложения чата с фильтрацией по типу и сортировкой'},
+      {name:'GetPersonChatId',     req:'GetPersonChatIdRequest',    resp:'GetPersonChatIdResponse',    stream:false, desc:'Получить ID личного чата с пользователем'},
+      {name:'GetChatInfo',         req:'GetChatInfoRequest',        resp:'GetChatInfoResponse',        stream:false, desc:'Метаданные чата: last_message_id, first_unread_message_id, участники'},
+    ])}
+
+    <h3 class="sub-heading">Chat</h3>
+    ${fieldTable([
+      {name:'id',                    type:'string',   desc:'Идентификатор чата'},
+      {name:'title',                 type:'string',   desc:'Название чата'},
+      {name:'picture',               type:'string',   desc:'URL картинки чата'},
+      {name:'is_group_chat',         type:'bool',     desc:'true — групповой чат, false — личная переписка'},
+      {name:'last_message',          type:'Message',  desc:'Последнее сообщение (для отображения в списке)'},
+      {name:'members',               type:'ChatMember[]', desc:'Участники (только для ЛС, для групп — пустой)'},
+      {name:'count_unread',          type:'int64',    desc:'Количество непрочитанных сообщений'},
+      {name:'first_unread_message_id',type:'int64',   desc:'ID первого непрочитанного — для позиционирования разделителя'},
+    ])}
+
+    <h3 class="sub-heading">ListMessagesRequest — пагинация</h3>
+    ${fieldTable([
+      {name:'from_message_id', type:'int64', desc:'Опорное сообщение. 0 = начать с последних'},
+      {name:'chat_id',         type:'string', desc:'Идентификатор чата'},
+      {name:'offset_before',   type:'int32', desc:'Сколько сообщений ДО опорного (старее). Максимум 50'},
+      {name:'offset_after',    type:'int32', desc:'Сколько сообщений ПОСЛЕ опорного (новее). Максимум 50'},
+      {name:'count',           type:'int32', desc:'Устаревший параметр — используй offset_before'},
+    ])}
+
+    <h3 class="sub-heading">OutgoingMessage — отправляемое сообщение</h3>
+    ${fieldTable([
+      {name:'text',      type:'string',   desc:'Текст сообщения (может быть пустым если есть файлы)'},
+      {name:'files_ids', type:'string[]', desc:'ID файлов загруженных через FilesApi.GetUploadUrl + HTTP POST'},
+    ])}
+  </section>`;
+}
+
+function buildProtoFiles() {
+  return `
+  <section class="proto-section doc-section" id="proto-files" data-section="proto-files">
+    <div class="section-eyebrow">API Reference</div>
+    <h2 class="section-title">Files — файлы и хранилище</h2>
+    ${protoSectionHeader('proto-files',
+      `<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`,
+      'files_api.proto', 'Загрузка/скачивание файлов, дедупликация, стикерпаки, информация о хранилище'
+    )}
+    ${protoCodeBlock('proto-files')}
+
+    <h3 class="sub-heading">RPC методы FilesApi (клиентские)</h3>
+    ${rpcTable([
+      {name:'GetUploadUrl',        req:'GetUploadUrlRequest',       resp:'GetUploadUrlResponse',       stream:false, desc:'Получить одноразовый URL для HTTP multipart загрузки файла'},
+      {name:'GetTempDownloadUrl',  req:'GetTempDownloadUrlRequest', resp:'GetTempDownloadUrlResponse', stream:false, desc:'Получить временные ссылки на скачивание по списку file_ids'},
+      {name:'CheckFileHash',       req:'CheckFileHashRequest',      resp:'CheckFileHashResponse',      stream:false, desc:'Проверить существует ли файл с таким SHA-256 хешем. Дедупликация перед загрузкой'},
+      {name:'GetUserStorageInfo',  req:'GetUserStorageInfoRequest', resp:'GetUserStorageInfoResponse', stream:false, desc:'Статистика хранилища: использовано/лимит, разбивка по типам'},
+      {name:'ListStickerPacks',    req:'ListStickerPacksRequest',   resp:'ListStickerPacksResponse',   stream:false, desc:'Список доступных стикерпаков'},
+      {name:'GetStickerPack',      req:'GetStickerPackRequest',     resp:'GetStickerPackResponse',     stream:false, desc:'Стикерпак со всеми стикерами'},
+    ])}
+
+    <h3 class="sub-heading">Процесс загрузки файла</h3>
+    <div class="steps" style="margin:12px 0 24px;">
+      <div class="step">
+        <div class="step-num" style="font-size:10px">1</div>
+        <div class="step-line"></div>
+        <div class="step-body"><h4>Дедупликация</h4><p><code>CheckFileHash({ file_hash: sha256hex })</code> — если <code>file_id</code> не пустой, файл уже есть на сервере. Использовать этот file_id сразу.</p></div>
+      </div>
+      <div class="step">
+        <div class="step-num" style="font-size:10px">2</div>
+        <div class="step-line"></div>
+        <div class="step-body"><h4>Получить URL</h4><p><code>GetUploadUrl({ file_type })</code> — получить <code>url</code> (HTTP endpoint) и <code>file_id</code>.</p></div>
+      </div>
+      <div class="step">
+        <div class="step-num" style="font-size:10px">3</div>
+        <div class="step-line"></div>
+        <div class="step-body"><h4>HTTP POST</h4><p>Загрузить файл через обычный HTTP multipart/form-data POST на <code>url</code>.</p></div>
+      </div>
+      <div class="step">
+        <div class="step-num" style="font-size:10px">4</div>
+        <div class="step-line"></div>
+        <div class="step-body"><h4>Отправить сообщение</h4><p><code>MessagesApi.SendMessage({ message: { files_ids: [file_id] } })</code> — прикрепить файл к сообщению.</p></div>
+      </div>
+    </div>
+
+    <h3 class="sub-heading">UploadFileType</h3>
+    ${enumTable([
+      {name:'UPLOAD_FILE_TYPE_UNKNOWN',     num:'0', desc:'Неизвестный тип'},
+      {name:'USER_AVATAR',                  num:'1', desc:'Аватар пользователя'},
+      {name:'MESSAGE_ATTACHMENT_IMAGE',     num:'2', desc:'Изображение во вложении'},
+      {name:'MESSAGE_ATTACHMENT_VIDEO',     num:'3', desc:'Видео во вложении'},
+      {name:'MESSAGE_ATTACHMENT_GIF',       num:'4', desc:'GIF-анимация'},
+      {name:'MESSAGE_ATTACHMENT_DOCUMENT',  num:'5', desc:'Документ (PDF, ZIP, DOCX и др.)'},
+      {name:'CHAT_PICTURE',                 num:'6', desc:'Обложка группового чата'},
+      {name:'MESSAGE_ATTACHMENT_AUDIO',     num:'7', desc:'Аудиофайл'},
+      {name:'MESSAGE_ATTACHMENT_VOICE',     num:'8', desc:'Голосовое сообщение'},
+      {name:'MESSAGE_ATTACHMENT_STICKER',   num:'9', desc:'Стикер (WebP)'},
+    ])}
+
+    <h3 class="sub-heading">GetUserStorageInfoResponse</h3>
+    ${fieldTable([
+      {name:'total_used_storage', type:'int64',          desc:'Общий использованный объём в байтах'},
+      {name:'storage_limit',      type:'int64',          desc:'Лимит хранилища в байтах'},
+      {name:'storage_by_types',   type:'StorageByType[]',desc:'Разбивка по типам файлов: { file_type, used_storage }'},
+    ])}
+  </section>`;
+}
+
+function buildProtoUpdates() {
+  return `
+  <section class="proto-section doc-section" id="proto-updates" data-section="proto-updates">
+    <div class="section-eyebrow">API Reference</div>
+    <h2 class="section-title">Updates — реальное время</h2>
+    ${protoSectionHeader('proto-updates',
+      `<svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>`,
+      'updates_api.proto', 'Серверный стриминг новых сообщений и статусов прочтения'
+    )}
+    ${protoCodeBlock('proto-updates')}
+
+    <div class="warn-box">
+      <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"/></svg>
+      <div><strong style="color:var(--ink)">Важно:</strong> поле <code style="font-family:monospace;font-size:11px">new_read_by</code> в <code style="font-family:monospace;font-size:11px">MessageReadEvent</code> содержит <strong style="color:var(--ink)">полный список</strong> всех прочитавших сообщение, а не только новых. При обновлении UI заменяй список целиком.</div>
+    </div>
+
+    <h3 class="sub-heading">RPC методы UpdatesApi</h3>
+    ${rpcTable([
+      {name:'SubscribeNewMessages', req:'SubscribeNewMessagesRequest', resp:'stream NewMessageEvent', stream:true,  desc:'Серверный стрим новых сообщений во всех чатах пользователя'},
+      {name:'SubscribeMessagesRead',req:'SubscribeMessagesReadRequest',resp:'stream MessageReadEvent',stream:true,  desc:'Серверный стрим событий прочтения сообщений'},
+    ])}
+
+    <h3 class="sub-heading">NewMessageEvent</h3>
+    ${fieldTable([
+      {name:'message', type:'shared.Message', desc:'Полная структура нового сообщения'},
+      {name:'chat_id', type:'string',         desc:'ID чата, в который пришло сообщение'},
+    ])}
+
+    <h3 class="sub-heading">MessageReadEvent</h3>
+    ${fieldTable([
+      {name:'chat_id',     type:'string',  desc:'ID чата'},
+      {name:'message_id',  type:'int64',   desc:'ID прочитанного сообщения'},
+      {name:'new_read_by', type:'int64[]', desc:'ПОЛНЫЙ список ID пользователей прочитавших сообщение (не дельта!)'},
+    ])}
+
+    <div class="info-box">
+      <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm0 9v5m0-8v1"/></svg>
+      <div>Реализуй reconnect с exponential backoff: при обрыве стрима ожидай 2с → 4с → 8с → ... до 30с. После переподключения загрузи пропущенные сообщения через <code style="font-family:monospace;font-size:11px">MessagesApi.ListMessages</code> с <code style="font-family:monospace;font-size:11px">from_message_id</code> = последнее известное.</div>
+    </div>
+  </section>`;
+}
+
+function buildProtoOnliner() {
+  return `
+  <section class="proto-section doc-section" id="proto-onliner" data-section="proto-onliner">
+    <div class="section-eyebrow">API Reference</div>
+    <h2 class="section-title">Onliner — онлайн-статусы</h2>
+    ${protoSectionHeader('proto-onliner',
+      `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>`,
+      'onliner_api.proto', 'Трекинг онлайн-статусов пользователей в реальном времени'
+    )}
+    ${protoCodeBlock('proto-onliner')}
+
+    <h3 class="sub-heading">RPC методы OnlinerApi</h3>
+    ${rpcTable([
+      {name:'SubscribeToOnlineStatus',   req:'SubscribeToOnlineStatusRequest', resp:'stream UserOnlineStatus', stream:true,  desc:'Стрим изменений статуса для заданного списка пользователей'},
+      {name:'SetOnlineStatus',           req:'SetOnlineStatusRequest',         resp:'SetOnlineStatusResponse', stream:false, desc:'Обновить статус «В сети» для текущего пользователя. Вызывать каждые 3 секунды'},
+      {name:'GetOnlineStatus',           req:'GetOnlineStatusRequest',         resp:'GetOnlineStatusResponse', stream:false, desc:'Получить текущий статус списка пользователей'},
+      {name:'ChangeUsersInSubscription', req:'ChangeUsersInSubscriptionRequest',resp:'ChangeUsersInSubscriptionResponse',stream:false,desc:'Обновить список пользователей для активной подписки. Вызывать при открытии/закрытии чата'},
+    ])}
+
+    <h3 class="sub-heading">UserOnlineStatus</h3>
+    ${fieldTable([
+      {name:'user_id',   type:'int64',     desc:'ID пользователя'},
+      {name:'status',    type:'StatusTypeId', desc:'Текущий статус: ONLINE или OFFLINE'},
+      {name:'last_seen', type:'Timestamp', desc:'Время последнего изменения статуса'},
+    ])}
+
+    <h3 class="sub-heading">StatusTypeId</h3>
+    ${enumTable([
+      {name:'STATUS_TYPE_ID_UNKNOWN', num:'0', desc:'Неизвестен'},
+      {name:'STATUS_ONLINE',          num:'1', desc:'Пользователь онлайн'},
+      {name:'STATUS_OFFLINE',         num:'2', desc:'Пользователь офлайн'},
+    ])}
+
+    <div class="info-box">
+      <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm0 9v5m0-8v1"/></svg>
+      <div>Паттерн keepalive: вызывай <code style="font-family:monospace;font-size:11px">SetOnlineStatus({})</code> каждые <strong style="color:var(--ink)">3 секунды</strong> пока приложение активно. При уходе в фон — останови. При возврате — возобнови и перезагрузи данные.</div>
+    </div>
+  </section>`;
+}
+
+function buildProtoFastauth() {
+  return `
+  <section class="proto-section doc-section" id="proto-fastauth" data-section="proto-fastauth">
+    <div class="section-eyebrow">API Reference</div>
+    <h2 class="section-title">FastAuth — быстрая авторизация</h2>
+    ${protoSectionHeader('proto-fastauth',
+      `<svg viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>`,
+      'fast_auth_api.proto', 'QR-авторизация и подключение доверенных устройств'
+    )}
+    ${protoCodeBlock('proto-fastauth')}
+
+    <h3 class="sub-heading">RPC методы FastAuthApi</h3>
+    ${rpcTable([
+      {name:'GenerateConnectDeviceToken',  req:'GenerateConnectDeviceTokenRequest', resp:'GenerateConnectDeviceTokenResponse', stream:false, desc:'Создать токен для подключения нового доверенного устройства (на авторизованном устройстве)'},
+      {name:'ConnectDevice',              req:'ConnectDeviceRequest',              resp:'ConnectDeviceResponse',              stream:false, desc:'Подключить устройство используя токен (на новом устройстве)'},
+      {name:'AcceptConnectDevice',        req:'AcceptConnectDeviceRequest',        resp:'AcceptConnectDeviceResponse',        stream:false, desc:'Принять подключение устройства (подтверждение на авторизованном устройстве)'},
+      {name:'SubscribeConnectDeviceStatus',req:'SubscribeConnectDeviceStatusRequest',resp:'stream ConnectDeviceStatusEvent', stream:true,  desc:'Стрим статуса подключения устройства'},
+      {name:'GenerateFastAuthToken',      req:'GenerateFastAuthTokenRequest',      resp:'GenerateFastAuthTokenResponse',      stream:false, desc:'Создать токен быстрой авторизации (QR или текст) на авторизованном устройстве'},
+      {name:'CreateFastAuth',             req:'CreateFastAuthRequest',             resp:'CreateFastAuthResponse',             stream:false, desc:'Инициировать быстрый вход используя токен (на новом устройстве)'},
+      {name:'CheckFastAuth',              req:'CheckFastAuthRequest',              resp:'CheckFastAuthResponse',              stream:false, desc:'Проверить статус быстрой авторизации'},
+      {name:'AcceptFastAuth',             req:'AcceptFastAuthRequest',             resp:'AcceptFastAuthResponse',             stream:false, desc:'Принять запрос быстрой авторизации (на авторизованном устройстве)'},
+      {name:'SubscribeFastAuthRequests',  req:'SubscribeFastAuthRequestsRequest',  resp:'stream FastAuthRequest',             stream:true,  desc:'Стрим входящих запросов быстрой авторизации'},
+      {name:'SubscribeFastAuthResult',    req:'SubscribeFastAuthResultRequest',    resp:'stream FastAuthResult',              stream:true,  desc:'Стрим результата быстрой авторизации (на новом устройстве)'},
+      {name:'ListConnectedDevices',       req:'ListConnectedDevicesRequest',       resp:'ListConnectedDevicesResponse',       stream:false, desc:'Список устройств подключённых для быстрой авторизации'},
+      {name:'RemoveConnectedDevice',      req:'RemoveConnectedDeviceRequest',      resp:'RemoveConnectedDeviceResponse',      stream:false, desc:'Удалить доверенное устройство из списка'},
+    ])}
+
+    <div class="info-box">
+      <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm0 9v5m0-8v1"/></svg>
+      <div>FastAuth позволяет авторизоваться на новом устройстве отсканировав QR-код с уже авторизованного. Не требует вводить логин/пароль. После успешной FastAuth вызови <code style="font-family:monospace;font-size:11px">IdentityApi.FastAuth({ fast_auth_id })</code> для получения токенов.</div>
+    </div>
+  </section>`;
+}
+
+function buildProtoNavigator() {
+  return `
+  <section class="proto-section doc-section" id="proto-navigator" data-section="proto-navigator">
+    <div class="section-eyebrow">API Reference</div>
+    <h2 class="section-title">Navigator — реестр серверов</h2>
+    ${protoSectionHeader('proto-navigator',
+      `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" fill="currentColor"/></svg>`,
+      'navigator_api.proto', 'Публичный реестр серверов BarkFluff. Точка входа для клиента'
+    )}
+    ${protoCodeBlock('proto-navigator')}
+
+    <div class="info-box">
+      <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm0 9v5m0-8v1"/></svg>
+      <div>Публичный адрес: <code style="font-family:monospace;font-size:12px;color:#ffc997">navigator.barkfluff.com:443</code> — gRPC с TLS. Не требует авторизации. Это <strong style="color:var(--ink)">единственный захардкоженный адрес</strong> в клиенте — все остальные адреса получаются динамически через Beacon.</div>
+    </div>
+
+    <h3 class="sub-heading">RPC методы NavigatorApi</h3>
+    ${rpcTable([
+      {name:'ListServers',    req:'ListServersRequest',    resp:'ListServersResponse',    stream:false, desc:'Получить список всех зарегистрированных серверов с метаданными'},
+      {name:'RegisterServer', req:'RegisterServerRequest', resp:'RegisterServerResponse', stream:false, desc:'Зарегистрировать новый сервер в публичном реестре'},
+    ])}
+
+    <h3 class="sub-heading">ServerInfo</h3>
+    ${fieldTable([
+      {name:'name',               type:'string',          desc:'Отображаемое имя сервера'},
+      {name:'description',        type:'string',          desc:'Описание сервера'},
+      {name:'accounts_count',     type:'int64',           desc:'Количество зарегистрированных пользователей'},
+      {name:'beacon_uri',         type:'ServiceEndpoint', desc:'Адрес Beacon-сервиса { host, port }'},
+      {name:'server_public_name', type:'string',          desc:'Публичное имя (поддомен, slug и т.п.)'},
+      {name:'location',           type:'string',          desc:'Географическое расположение сервера'},
+      {name:'color',              type:'ServerColor',     desc:'Цветовая схема: lite_hex / main_hex / hard_hex'},
+    ])}
+  </section>`;
+}
+</script>
 </body>
 </html>
