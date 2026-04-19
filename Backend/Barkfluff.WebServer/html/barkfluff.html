@@ -454,6 +454,27 @@
       .chat-dialog { width: calc(100vw - 16px); right: 8px; bottom: 88px; max-height: 70vh; }
       .chat-support-btn { bottom: 16px; right: 16px; }
     }
+
+    /* ===== LANG TOGGLE ===== */
+    .lang-btn {
+      all: unset; font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+      color: var(--ink-mute); cursor: pointer; transition: color 0.2s;
+      text-transform: uppercase;
+    }
+    .lang-btn:hover { color: var(--ink); }
+
+    /* ===== VERSION BLOCK ===== */
+    .pc-version-block {
+      display: none; flex-direction: column; gap: 3px; align-items: flex-end;
+    }
+    .pc-version-block.visible { display: flex; }
+    .pc-version-row {
+      display: flex; align-items: center; gap: 4px;
+      font-size: 10px; font-weight: 600; color: #ffb47a;
+      font-family: 'JetBrains Mono', monospace; white-space: nowrap;
+    }
+    .pc-version-row svg { flex-shrink: 0; }
+    .pc-version-beta { color: var(--ink-mute); }
   </style>
 </head>
 <body>
@@ -466,15 +487,18 @@
     <div class="home-page">
 
       <header class="home-nav">
-        <a href="/" class="brand-mark">
-          <span class="glyph">
-            <svg viewBox="0 0 24 24"><path d="M8.5 13.5c1.38 0 2.5-1.57 2.5-3.5s-1.12-3.5-2.5-3.5S6 8.07 6 10s1.12 3.5 2.5 3.5zm7 0c1.38 0 2.5-1.57 2.5-3.5s-1.12-3.5-2.5-3.5S13 8.07 13 10s1.12 3.5 2.5 3.5zM5 16.5c1.1 0 2-1.34 2-3s-.9-3-2-3-2 1.34-2 3 .9 3 2 3zm14 0c1.1 0 2-1.34 2-3s-.9-3-2-3-2 1.34-2 3 .9 3 2 3zm-7 4c3 0 6-2.5 6-5 0-2-2-3.5-4-3.5-1.2 0-1.5.5-2 .5s-.8-.5-2-.5c-2 0-4 1.5-4 3.5 0 2.5 3 5 6 5z"/></svg>
-          </span>
-          <span>barkfluff</span>
-        </a>
+        <div style="display:flex;align-items:center;gap:14px;">
+          <a href="/" class="brand-mark">
+            <span class="glyph">
+              <svg viewBox="0 0 24 24"><path d="M8.5 13.5c1.38 0 2.5-1.57 2.5-3.5s-1.12-3.5-2.5-3.5S6 8.07 6 10s1.12 3.5 2.5 3.5zm7 0c1.38 0 2.5-1.57 2.5-3.5s-1.12-3.5-2.5-3.5S13 8.07 13 10s1.12 3.5 2.5 3.5zM5 16.5c1.1 0 2-1.34 2-3s-.9-3-2-3-2 1.34-2 3 .9 3 2 3zm14 0c1.1 0 2-1.34 2-3s-.9-3-2-3-2 1.34-2 3 .9 3 2 3zm-7 4c3 0 6-2.5 6-5 0-2-2-3.5-4-3.5-1.2 0-1.5.5-2 .5s-.8-.5-2-.5c-2 0-4 1.5-4 3.5 0 2.5 3 5 6 5z"/></svg>
+            </span>
+            <span>barkfluff</span>
+          </a>
+          <button class="lang-btn" id="langToggle" onclick="toggleLanguage()">EN</button>
+        </div>
         <div class="home-nav-right">
           <span class="home-nav-link" style="opacity:0.35;cursor:default;">Self-hosted</span>
-          <a href="https://developers.barkfluff.com" target="_blank" class="home-nav-link">Разработчикам</a>
+          <a href="https://developers.barkfluff.com" target="_blank" class="home-nav-link" id="navDev">Разработчикам</a>
           <a href="https://t.me/barkfluff?direct" target="_blank" class="btn btn-ghost" style="padding: 10px 16px; font-size: 13px;">
             Telegram
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9.04 15.2l-.4 5.66c.58 0 .83-.25 1.14-.55l2.74-2.61 5.68 4.16c1.04.57 1.78.27 2.06-.96l3.72-17.42c.33-1.53-.55-2.13-1.57-1.76L1.57 9.88c-1.5.58-1.48 1.42-.25 1.8l5.4 1.68L19.17 5.7c.59-.38 1.13-.17.69.22"/></svg>
@@ -484,23 +508,23 @@
 
       <div class="hero">
         <div class="hero-text">
-          <span class="hero-eyebrow"><span class="pulse"></span> Стабильный релиз</span>
+          <span class="hero-eyebrow"><span class="pulse"></span> <span id="heroEyebrowText">Стабильный релиз</span></span>
           <h1 class="hero-title">
-            Лёгкий.<br>
-            Быстрый.<br>
-            <em class="accent">Пушистый.</em>
+            <span id="heroTitle1">Лёгкий.</span><br>
+            <span id="heroTitle2">Быстрый.</span><br>
+            <em class="accent" id="heroTitle3">Пушистый.</em>
           </h1>
-          <p class="hero-sub">
+          <p class="hero-sub" id="heroSub">
             Мессенджер, который <b style="color: var(--ink);">работает</b>, <s>и слава богу</s>.<br>
             <span style="color: #ffb47a;">Без рекламы, без трекинга</span>, без лишнего шума.<br>
             Просто <span style="color: #ffb47a;">отправляй сообщения</span> — друзьям, себе, кому угодно.
           </p>
           <div class="hero-meta">
-            <span><b>Лёгкий</b>&nbsp;нативный&nbsp;клиент</span>
+            <span id="heroMeta1"><b>Лёгкий</b>&nbsp;нативный&nbsp;клиент</span>
             <span class="divider"></span>
-            <span><b>gRPC</b>&nbsp;+&nbsp;TLS&nbsp;шифрование</span>
+            <span id="heroMeta2"><b>gRPC</b>&nbsp;+&nbsp;TLS&nbsp;шифрование</span>
             <span class="divider"></span>
-            <span><b>Мультиплатформенность</b></span>
+            <span id="heroMeta3"><b>Мультиплатформенность</b></span>
           </div>
         </div>
 
@@ -526,7 +550,7 @@
             </div>
             <img src="/assets/barkfluff.windows.png" alt="Windows" />
           </div>
-          <div class="preview-caption">
+          <div class="preview-caption" id="previewCaption">
             Переключи платформу — нажимай <span class="kbd">←</span> <span class="kbd">→</span> или клик по карточке
           </div>
         </div>
@@ -539,14 +563,24 @@
             <div class="pc-icon">
               <svg viewBox="0 0 24 24"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.551H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
             </div>
+            <div class="pc-version-block" id="versionBlockWindows">
+              <div class="pc-version-row">
+                <svg viewBox="0 0 24 24" width="9" height="9" fill="currentColor"><path d="M12 1l9 4v6c0 5.5-3.8 10.7-9 12-5.2-1.3-9-6.5-9-12V5l9-4z"/></svg>
+                <span id="vBadgeWinRelease"></span>
+              </div>
+              <div class="pc-version-row pc-version-beta">
+                <svg viewBox="0 0 24 24" width="9" height="9" fill="currentColor"><path d="M6 2h12v2l-4 7v8l-4 2V11L6 4V2z"/></svg>
+                <span id="vBadgeWinBeta"></span>
+              </div>
             </div>
+          </div>
           <div class="pc-title">
             Windows
-            <small>Portable · x64 · без установщика</small>
+            <small id="winSubtitle">Portable · x64 · без установщика</small>
           </div>
           <div class="pc-actions">
-            <a href="https://storage.barkfluff.com/get/barkfluffwindows" class="btn btn-primary">Релиз</a>
-            <a href="https://storage.barkfluff.com/get/barkfluffwindows/beta" class="btn btn-ghost">Бета</a>
+            <a href="https://storage.barkfluff.com/get/barkfluffwindows" class="btn btn-primary" id="winRelBtn">Релиз</a>
+            <a href="https://storage.barkfluff.com/get/barkfluffwindows/beta" class="btn btn-ghost" id="winBetaBtn">Бета</a>
           </div>
         </div>
 
@@ -555,15 +589,26 @@
             <div class="pc-icon">
               <svg viewBox="0 0 24 24"><path d="M17.523 15.341a.9.9 0 0 1-.9-.9.9.9 0 0 1 .9-.9.9.9 0 0 1 .9.9.9.9 0 0 1-.9.9m-11.046 0a.9.9 0 0 1-.9-.9.9.9 0 0 1 .9-.9.9.9 0 0 1 .9.9.9.9 0 0 1-.9.9m11.405-6.023 1.762-3.054a.366.366 0 0 0-.134-.5.366.366 0 0 0-.5.134l-1.786 3.095a11.05 11.05 0 0 0-4.224-.838c-1.518 0-2.96.302-4.224.838L7.03 5.898a.366.366 0 0 0-.5-.134.366.366 0 0 0-.134.5l1.762 3.054C5.098 10.73 3.27 13.394 3 16.5h18c-.27-3.106-2.098-5.77-5.118-7.182"/></svg>
             </div>
-            <span class="pc-badge">APK</span>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+              <div class="pc-version-block" id="versionBlockAndroid">
+                <div class="pc-version-row">
+                  <svg viewBox="0 0 24 24" width="9" height="9" fill="currentColor"><path d="M12 1l9 4v6c0 5.5-3.8 10.7-9 12-5.2-1.3-9-6.5-9-12V5l9-4z"/></svg>
+                  <span id="vBadgeAndRelease"></span>
+                </div>
+                <div class="pc-version-row pc-version-beta">
+                  <svg viewBox="0 0 24 24" width="9" height="9" fill="currentColor"><path d="M6 2h12v2l-4 7v8l-4 2V11L6 4V2z"/></svg>
+                  <span id="vBadgeAndBeta"></span>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="pc-title">
             Android
-            <small>Android 12+ · arm64-v8a, armeabi-v7a, x86, x86_64</small>
+            <small id="andSubtitle">Android 12+ · arm64-v8a, armeabi-v7a, x86, x86_64</small>
           </div>
           <div class="pc-actions">
-            <a href="https://storage.barkfluff.com/get/barkfluffkotlin/release" class="btn btn-primary">Релиз</a>
-            <a href="https://storage.barkfluff.com/get/barkfluffkotlin/beta" class="btn btn-ghost">Бета</a>
+            <a href="https://storage.barkfluff.com/get/barkfluffkotlin/release" class="btn btn-primary" id="andRelBtn">Релиз</a>
+            <a href="https://storage.barkfluff.com/get/barkfluffkotlin/beta" class="btn btn-ghost" id="andBetaBtn">Бета</a>
           </div>
         </div>
 
@@ -575,10 +620,10 @@
           </div>
           <div class="pc-title">
             Веб
-            <small>Любой современный браузер</small>
+            <small id="webSubtitle">Любой современный браузер</small>
           </div>
           <div class="pc-actions">
-            <a href="https://web.barkfluff.com" target="_blank" class="btn btn-primary">Открыть →</a>
+            <a href="https://web.barkfluff.com" target="_blank" class="btn btn-primary" id="webOpenBtn">Открыть →</a>
           </div>
         </div>
 
@@ -591,10 +636,10 @@
           </div>
           <div class="pc-title">
             macOS
-            <small>В разработке</small>
+            <small id="macosSubtitle">В разработке</small>
           </div>
           <div class="pc-actions">
-            <span class="btn btn-ghost" style="opacity:0.5;">Недоступно</span>
+            <span class="btn btn-ghost" style="opacity:0.5;" id="macosUnavail">Недоступно</span>
           </div>
         </div>
 
@@ -607,10 +652,10 @@
           </div>
           <div class="pc-title">
             iOS
-            <small>В разработке</small>
+            <small id="iosSubtitle">В разработке</small>
           </div>
           <div class="pc-actions">
-            <span class="btn btn-ghost" style="opacity:0.5;">Недоступно</span>
+            <span class="btn btn-ghost" style="opacity:0.5;" id="iosUnavail">Недоступно</span>
           </div>
         </div>
 
@@ -623,10 +668,10 @@
           </div>
           <div class="pc-title">
             Linux
-            <small>В разработке</small>
+            <small id="linuxSubtitle">В разработке</small>
           </div>
           <div class="pc-actions">
-            <span class="btn btn-ghost" style="opacity:0.5;">Недоступно</span>
+            <span class="btn btn-ghost" style="opacity:0.5;" id="linuxUnavail">Недоступно</span>
           </div>
         </div>
 
@@ -635,8 +680,8 @@
       <div class="cli-block">
         <div class="cli-head">
           <div style="display:flex;align-items:center;gap:10px;">
-            <span class="eyebrow">Установка одной строкой</span>
-            <span class="pc-badge">Рекомендуется</span>
+            <span class="eyebrow" id="cliHeading">Установка одной строкой</span>
+            <span class="pc-badge" id="cliRecommended">Рекомендуется</span>
           </div>
           <div class="cli-os-pills" id="cliPills">
             <button class="active" data-os="windows">PowerShell</button>
@@ -660,12 +705,12 @@
         </div>
         <div class="dev-block-text">
           <div class="dev-block-title">
-            <span class="eyebrow-mini">Для разработчиков</span>
-            <span>Создай свой клиент Barkfluff</span>
+            <span class="eyebrow-mini" id="devLabel">Для разработчиков</span>
+            <span id="devTitle">Создай свой клиент Barkfluff</span>
           </div>
-          <div class="dev-block-sub">Открытые .proto-файлы, gRPC-скелеты и примеры интеграции.</div>
+          <div class="dev-block-sub" id="devSub">Открытые .proto-файлы, gRPC-скелеты и примеры интеграции.</div>
         </div>
-        <a href="https://developers.barkfluff.com" target="_blank" class="btn btn-soft dev-block-btn">
+        <a href="https://developers.barkfluff.com" target="_blank" class="btn btn-soft dev-block-btn" id="devBtn">
           Разработчикам
           <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M10 17l5-5-5-5v10z"/></svg>
         </a>
@@ -674,35 +719,35 @@
       <div class="features-strip">
         <div class="feature">
           <div class="f-icon"><svg viewBox="0 0 24 24"><path d="M12 1l9 4v6c0 5.5-3.8 10.7-9 12-5.2-1.3-9-6.5-9-12V5l9-4z"/></svg></div>
-          <div class="f-title">gRPC + TLS</div>
-          <div class="f-body">Современный транспорт, шифрование на уровне соединения.</div>
+          <div class="f-title" id="f1title">gRPC + TLS</div>
+          <div class="f-body" id="f1body">Современный транспорт, шифрование на уровне соединения.</div>
         </div>
         <div class="feature">
           <div class="f-icon"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18V4a8 8 0 010 16z"/></svg></div>
-          <div class="f-title">Светлая и тёмная</div>
-          <div class="f-body">Следит за системой или переключается по щелчку.</div>
+          <div class="f-title" id="f2title">Светлая и тёмная</div>
+          <div class="f-body" id="f2body">Следит за системой или переключается по щелчку.</div>
         </div>
         <div class="feature">
           <div class="f-icon"><svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zm0 10h6v6H4zm10-10h6v6h-6zm0 10h6v6h-6z"/></svg></div>
-          <div class="f-title">Один сервис — все платформы</div>
-          <div class="f-body">Нативные клиенты для Windows, Android и веба работают с одним бекендом.</div>
+          <div class="f-title" id="f3title">Один сервис — все платформы</div>
+          <div class="f-body" id="f3body">Нативные клиенты для Windows, Android и веба работают с одним бекендом.</div>
         </div>
         <div class="feature">
           <div class="f-icon"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V8l8 5 8-5v10zm-8-7L4 6h16l-8 5z"/></svg></div>
-          <div class="f-title">Без рекламы и трекинга</div>
-          <div class="f-body">Никакой телеметрии, никаких баннеров. Просто переписка.</div>
+          <div class="f-title" id="f4title">Без рекламы и трекинга</div>
+          <div class="f-body" id="f4body">Никакой телеметрии, никаких баннеров. Просто переписка.</div>
         </div>
       </div>
 
       <footer class="home-footer">
-        <div>© 2026 Barkfluff</div>
+        <div id="footerCopy">© 2026 Barkfluff</div>
         <div class="home-footer-links">
-          <a href="https://t.me/barkfluff?direct" target="_blank">
+          <a href="https://t.me/barkfluff?direct" target="_blank" id="footerSupport">
             <svg viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 11.944 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
             Поддержка
           </a>
           <a href="mailto:support@barkfluff.com">support@barkfluff.com</a>
-          <a href="/legal/privacy-policy">Конфиденциальность</a>
+          <a href="/legal/privacy-policy" id="footerPrivacy">Конфиденциальность</a>
         </div>
       </footer>
 
@@ -718,7 +763,7 @@
     <div class="chat-header">
       <div class="chat-header-title">
         <div class="chat-header-dot"></div>
-        <span>Поддержка Barkfluff</span>
+        <span id="chatTitle">Поддержка Barkfluff</span>
       </div>
       <button class="chat-close-btn" onclick="toggleChat()">&times;</button>
     </div>
@@ -777,8 +822,8 @@
     /* CLI switcher */
     const cliCommands = {
       windows: { prompt: '$', hl: 'powershell', rest: ' -ExecutionPolicy Bypass -Command "iwr https://barkfluff.com/install.ps1 -UseBasicParsing | iex"' },
-      macos:   { prompt: '#', hl: '', rest: ' команда установки пока недоступна — скоро будет' },
-      linux:   { prompt: '#', hl: '', rest: ' команда установки пока недоступна — скоро будет' }
+      macos:   { prompt: '#', hl: '', rest: null },
+      linux:   { prompt: '#', hl: '', rest: null }
     };
 
     function setCliOs(os) {
@@ -788,9 +833,11 @@
       const el = document.getElementById('cliCmd');
       const promptEl = document.querySelector('.cli-line .prompt');
       if (promptEl) promptEl.textContent = c.prompt;
+      const restText = c.rest !== null ? c.rest
+        : ' ' + ((window.__t && window.__t('cliUnavailable')) || 'команда установки пока недоступна — скоро будет');
       el.innerHTML = c.hl
-        ? '<span class="hl">' + c.hl + '</span>' + c.rest.replace(/</g, '&lt;')
-        : '<span style="color:var(--ink-mute);font-style:italic;">' + c.rest.trim().replace(/</g, '&lt;') + '</span>';
+        ? '<span class="hl">' + c.hl + '</span>' + restText.replace(/</g, '&lt;')
+        : '<span style="color:var(--ink-mute);font-style:italic;">' + restText.trim().replace(/</g, '&lt;') + '</span>';
     }
 
     document.querySelectorAll('#cliPills button').forEach(b => {
@@ -840,7 +887,8 @@
         if (chatOpen) {
           dialog.classList.add('chat-visible');
           btn.classList.add('chat-btn-active');
-          document.getElementById('chatMessages').innerHTML = '<div class="chat-msg chat-msg-system">Напишите нам, и мы ответим в ближайшее время</div>';
+          const sysMsg = (window.__t && window.__t('chatSystem')) || 'Напишите нам, и мы ответим в ближайшее время';
+          document.getElementById('chatMessages').innerHTML = '<div class="chat-msg chat-msg-system">' + sysMsg + '</div>';
           messageCount = 0; initialLoad = true;
           startPolling();
           document.getElementById('chatInput').focus();
@@ -893,6 +941,256 @@
       document.getElementById('chatInput').addEventListener('keydown', e => {
         if (e.key === 'Enter') window.sendChatMessage();
       });
+    })();
+  </script>
+
+  <script>
+    /* ===== i18n + Versions + Platform ===== */
+    (function () {
+
+      /* ── ВАЖНО: все let/const — до первого вызова функций ── */
+      let _ver = null;
+
+      /* ── String tables ──────────────────────────────── */
+      const S = {
+        ru: {
+          eyebrow:        'Стабильный релиз',
+          title1:         'Лёгкий.',
+          title2:         'Быстрый.',
+          title3:         'Пушистый.',
+          heroSub:        'Мессенджер, который <b style="color:var(--ink);">работает</b>, <s>и слава богу</s>.<br><span style="color:#ffb47a;">Без рекламы, без трекинга</span>, без лишнего шума.<br>Просто <span style="color:#ffb47a;">отправляй сообщения</span> — друзьям, себе, кому угодно.',
+          meta1:          '<b>Лёгкий</b>&nbsp;нативный&nbsp;клиент',
+          meta2:          '<b>gRPC</b>&nbsp;+&nbsp;TLS&nbsp;шифрование',
+          meta3:          '<b>Мультиплатформенность</b>',
+          prevCaption:    'Переключи платформу — нажимай <span class="kbd">←</span> <span class="kbd">→</span> или клик по карточке',
+          winSub:         'Portable · x64 · без установщика',
+          release:        'Релиз',
+          beta:           'Бета',
+          andSub:         'Android 12+ · arm64-v8a, armeabi-v7a, x86, x86_64',
+          webSub:         'Любой современный браузер',
+          webOpen:        'Открыть →',
+          macosSub:       'В разработке',
+          iosSub:         'В разработке',
+          linuxSub:       'В разработке',
+          unavailable:    'Недоступно',
+          cliHeading:     'Установка одной строкой',
+          cliRecommended: 'Рекомендуется',
+          cliUnavailable: 'команда установки пока недоступна — скоро будет',
+          devLabel:       'Для разработчиков',
+          devTitle:       'Создай свой клиент Barkfluff',
+          devSub:         'Открытые .proto-файлы, gRPC-скелеты и примеры интеграции.',
+          devBtn:         'Разработчикам',
+          f1title:        'gRPC + TLS',
+          f1body:         'Современный транспорт, шифрование на уровне соединения.',
+          f2title:        'Светлая и тёмная',
+          f2body:         'Следит за системой или переключается по щелчку.',
+          f3title:        'Один сервис — все платформы',
+          f3body:         'Нативные клиенты для Windows, Android и веба работают с одним бекендом.',
+          f4title:        'Без рекламы и трекинга',
+          f4body:         'Никакой телеметрии, никаких баннеров. Просто переписка.',
+          footerCopy:     '© 2026 Barkfluff',
+          footerSupport:  'Поддержка',
+          footerPrivacy:  'Конфиденциальность',
+          chatTitle:      'Поддержка Barkfluff',
+          chatSystem:     'Напишите нам, и мы ответим в ближайшее время',
+          chatPh:         'Напишите сообщение...',
+          navDev:         'Разработчикам',
+        },
+        en: {
+          eyebrow:        'Stable release',
+          title1:         'Lightweight.',
+          title2:         'Fast.',
+          title3:         'Fluffy.',
+          heroSub:        'A messenger that <b style="color:var(--ink);">works</b>, <s>thank god</s>.<br><span style="color:#ffb47a;">No ads, no tracking</span>, no extra noise.<br>Just <span style="color:#ffb47a;">send messages</span> — to friends, yourself, anyone.',
+          meta1:          '<b>Lightweight</b>&nbsp;native&nbsp;client',
+          meta2:          '<b>gRPC</b>&nbsp;+&nbsp;TLS&nbsp;encryption',
+          meta3:          '<b>Cross-platform</b>',
+          prevCaption:    'Switch platform — press <span class="kbd">←</span> <span class="kbd">→</span> or click a card',
+          winSub:         'Portable · x64 · no installer',
+          release:        'Release',
+          beta:           'Beta',
+          andSub:         'Android 12+ · arm64-v8a, armeabi-v7a, x86, x86_64',
+          webSub:         'Any modern browser',
+          webOpen:        'Open →',
+          macosSub:       'In development',
+          iosSub:         'In development',
+          linuxSub:       'In development',
+          unavailable:    'Unavailable',
+          cliHeading:     'Install in one line',
+          cliRecommended: 'Recommended',
+          cliUnavailable: 'install command not yet available — coming soon',
+          devLabel:       'For developers',
+          devTitle:       'Build your own Barkfluff client',
+          devSub:         'Open .proto files, gRPC skeletons and integration examples.',
+          devBtn:         'Developers',
+          f1title:        'gRPC + TLS',
+          f1body:         'Modern transport, connection-level encryption.',
+          f2title:        'Light & dark',
+          f2body:         'Follows system preference or switches on click.',
+          f3title:        'One backend — all platforms',
+          f3body:         'Native clients for Windows, Android and web share one backend.',
+          f4title:        'No ads or tracking',
+          f4body:         'No telemetry, no banners. Just messaging.',
+          footerCopy:     '© 2026 Barkfluff',
+          footerSupport:  'Support',
+          footerPrivacy:  'Privacy',
+          chatTitle:      'Barkfluff Support',
+          chatSystem:     'Write to us and we\'ll reply as soon as possible',
+          chatPh:         'Write a message...',
+          navDev:         'Developers',
+        }
+      };
+
+      /* ── Helpers ────────────────────────────────────── */
+      window.__t = function (key) { return S[window.__lang][key] || ''; };
+
+      function $e(id) { return document.getElementById(id); }
+      function txt(id, key) { const el = $e(id); if (el) el.textContent = S[window.__lang][key]; }
+      function htm(id, key) { const el = $e(id); if (el) el.innerHTML   = S[window.__lang][key]; }
+
+      function detectPlatform() {
+        const ua = navigator.userAgent;
+        if (/android/i.test(ua)) return 'android';
+        if (/win/i.test(navigator.platform || '') || /windows/i.test(ua)) return 'windows';
+        return 'other';
+      }
+
+      /* ── Version display ────────────────────────────── */
+      /* Вызывается как из applyLang (обновляет eyebrow + badges),
+         так и после loadVersions. _ver может быть null — тогда
+         показываем только базовый текст eyebrow без версии. */
+      function applyVersions() {
+        const platform = detectPlatform();
+        const base     = S[window.__lang].eyebrow;
+        let   suffix   = '';
+
+        if (_ver) {
+          const { android, windows } = _ver;
+
+          const wBlock = $e('versionBlockWindows');
+          if (wBlock && windows) {
+            if (windows.release) $e('vBadgeWinRelease').textContent = 'v' + windows.release;
+            if (windows.beta)    $e('vBadgeWinBeta').textContent    = 'v' + windows.beta;
+            if (windows.release || windows.beta) wBlock.classList.add('visible');
+          }
+
+          const aBlock = $e('versionBlockAndroid');
+          if (aBlock && android) {
+            if (android.release) $e('vBadgeAndRelease').textContent = 'v' + android.release;
+            if (android.beta)    $e('vBadgeAndBeta').textContent    = 'v' + android.beta;
+            if (android.release || android.beta) aBlock.classList.add('visible');
+          }
+
+          if (platform === 'windows' && windows && windows.release)
+            suffix = ' v' + windows.release;
+          else if (platform === 'android' && android && android.release)
+            suffix = ' v' + android.release;
+        }
+
+        const eyebrowEl = $e('heroEyebrowText');
+        if (eyebrowEl) eyebrowEl.textContent = base + suffix;
+      }
+
+      async function loadVersions() {
+        try {
+          const res = await fetch('/api/versions');
+          if (!res.ok) return;
+          _ver = await res.json();
+          applyVersions();
+        } catch (_) { /* сервер недоступен — оставляем старые значения */ }
+      }
+
+      /* ── i18n ───────────────────────────────────────── */
+      function applyLang(lang) {
+        window.__lang = lang;
+        document.documentElement.lang = lang;
+        localStorage.setItem('bf_lang', lang);
+        $e('langToggle').textContent = lang === 'ru' ? 'EN' : 'RU';
+
+        txt('navDev',         'navDev');
+        txt('heroTitle1',     'title1');
+        txt('heroTitle2',     'title2');
+        txt('heroTitle3',     'title3');
+        htm('heroSub',        'heroSub');
+        htm('heroMeta1',      'meta1');
+        htm('heroMeta2',      'meta2');
+        htm('heroMeta3',      'meta3');
+        htm('previewCaption', 'prevCaption');
+        txt('winSubtitle',    'winSub');
+        txt('winRelBtn',      'release');
+        txt('winBetaBtn',     'beta');
+        txt('andSubtitle',    'andSub');
+        txt('andRelBtn',      'release');
+        txt('andBetaBtn',     'beta');
+        txt('webSubtitle',    'webSub');
+        txt('webOpenBtn',     'webOpen');
+        txt('macosSubtitle',  'macosSub');
+        txt('macosUnavail',   'unavailable');
+        txt('iosSubtitle',    'iosSub');
+        txt('iosUnavail',     'unavailable');
+        txt('linuxSubtitle',  'linuxSub');
+        txt('linuxUnavail',   'unavailable');
+        txt('cliHeading',     'cliHeading');
+        txt('cliRecommended', 'cliRecommended');
+        txt('devLabel',       'devLabel');
+        txt('devTitle',       'devTitle');
+        txt('devSub',         'devSub');
+        txt('devBtn',         'devBtn');
+        txt('f1title', 'f1title'); txt('f1body', 'f1body');
+        txt('f2title', 'f2title'); txt('f2body', 'f2body');
+        txt('f3title', 'f3title'); txt('f3body', 'f3body');
+        txt('f4title', 'f4title'); txt('f4body', 'f4body');
+        txt('footerCopy',    'footerCopy');
+        txt('footerPrivacy', 'footerPrivacy');
+        txt('chatTitle',     'chatTitle');
+
+        /* Footer support — ссылка содержит SVG, меняем только текстовый узел */
+        const fsEl = $e('footerSupport');
+        if (fsEl) {
+          const tn = Array.from(fsEl.childNodes).find(n => n.nodeType === 3 && n.textContent.trim());
+          if (tn) tn.textContent = '\n            ' + S[lang].footerSupport + '\n          ';
+        }
+
+        const ci = $e('chatInput');
+        if (ci) ci.placeholder = S[lang].chatPh;
+
+        /* CLI: обновить текст если активен macOS/Linux pill */
+        const activePill = document.querySelector('#cliPills button.active');
+        if (activePill && activePill.dataset.os !== 'windows') setCliOs(activePill.dataset.os);
+
+        /* Eyebrow — всегда обновляем (базовый текст + суффикс версии если есть) */
+        applyVersions();
+      }
+
+      window.toggleLanguage = function () {
+        applyLang(window.__lang === 'ru' ? 'en' : 'ru');
+      };
+
+      /* ── Init ───────────────────────────────────────── */
+      const saved    = localStorage.getItem('bf_lang');
+      const detected = (navigator.language || '').startsWith('ru') ? 'ru' : 'en';
+      window.__lang  = saved || detected;
+      applyLang(window.__lang);
+      loadVersions();
+
+      /* ── Platform auto-detection ────────────────────── */
+      (function autoSelect() {
+        const p = detectPlatform();
+        if (p === 'windows') {
+          selectPlatform('windows');
+        } else if (p === 'android') {
+          selectPlatform('android');
+          const cli = document.querySelector('.cli-block');
+          if (cli) cli.style.display = 'none';
+        } else {
+          selectPlatform('web');
+          if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
+            const cli = document.querySelector('.cli-block');
+            if (cli) cli.style.display = 'none';
+          }
+        }
+      })();
+
     })();
   </script>
 
