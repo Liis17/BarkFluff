@@ -1,13 +1,9 @@
 using BarkFluff.Client.WPF.UserControls;
-using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
-using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Windows;
 
 using Erida = BarkFluff.Client.WPF.Services.Erida.MessageType;

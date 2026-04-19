@@ -1,6 +1,3 @@
-using System.Net;
-using System.Text;
-
 using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Shared.Identity;
@@ -10,6 +7,9 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 
 using Serilog;
+
+using System.Net;
+using System.Text;
 
 using Yarp.ReverseProxy.Configuration;
 

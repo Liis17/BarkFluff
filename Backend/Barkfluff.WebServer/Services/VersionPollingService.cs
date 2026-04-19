@@ -28,8 +28,8 @@ public class VersionPollingService : BackgroundService
         ILogger<VersionPollingService> logger)
     {
         _httpFactory = httpFactory;
-        _store       = store;
-        _logger      = logger;
+        _store = store;
+        _logger = logger;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

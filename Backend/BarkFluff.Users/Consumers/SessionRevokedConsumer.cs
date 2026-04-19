@@ -3,8 +3,6 @@ using BarkFluff.Shared.Queue.Identity;
 
 using MassTransit;
 
-using Microsoft.Extensions.Logging;
-
 namespace BarkFluff.Users.Consumers;
 
 public class SessionRevokedConsumer(TokenRevocationCache cache, ILogger<SessionRevokedConsumer> logger)

@@ -1,8 +1,3 @@
-using BarkFluff.Client.WPF.Services.Erida;
-
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using System.Windows.Controls;
 
 using Erida = BarkFluff.Client.WPF.Services.Erida.MessageType;

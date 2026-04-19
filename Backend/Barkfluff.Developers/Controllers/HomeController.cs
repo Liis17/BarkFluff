@@ -23,8 +23,8 @@ namespace Barkfluff.Developers.Controllers
             var contentType = ext switch
             {
                 ".proto" => "text/plain; charset=utf-8",
-                ".md"    => "text/plain; charset=utf-8",
-                _        => "application/octet-stream"
+                ".md" => "text/plain; charset=utf-8",
+                _ => "application/octet-stream"
             };
 
             return PhysicalFile(fullPath, contentType);

@@ -71,8 +71,8 @@ public class Program
         builder.Services.AddMassTransit(x =>
         {
             x.AddConsumer<UserChangedAvatarConsumer>();
-                    x.AddConsumer<UserChangedNameConsumer>();
-                    x.AddConsumer<SessionRevokedConsumer>();
+            x.AddConsumer<UserChangedNameConsumer>();
+            x.AddConsumer<SessionRevokedConsumer>();
 
             x.UsingRabbitMq((context, cfg) =>
             {
