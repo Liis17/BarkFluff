@@ -1,8 +1,5 @@
 using BarkFluff.Client.WPF.UserControls;
-using BarkFluff.WebApi.Core.MessengerData;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
-
-using System.Linq;
 
 using MessageAttachmentType = BarkFluff.Proto.Shared.MessageAttachmentType;
 

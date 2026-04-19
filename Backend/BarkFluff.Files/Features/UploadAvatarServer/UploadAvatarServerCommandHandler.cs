@@ -1,4 +1,3 @@
-using BarkFluff.Files.Extensions;
 using BarkFluff.Files.Helpers;
 using BarkFluff.Files.Infrastructure;
 using BarkFluff.Files.Persistence;

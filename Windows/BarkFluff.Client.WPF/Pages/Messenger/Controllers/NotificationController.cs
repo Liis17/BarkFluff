@@ -3,9 +3,6 @@ using BarkFluff.Client.WPF.Services.Notification;
 using BarkFluff.Client.WPF.UserControls;
 using BarkFluff.WebApi.Core.MessengerData.NonSavedData;
 
-using System;
-using System.Threading.Tasks;
-
 using Erida = BarkFluff.Client.WPF.Services.Erida.MessageType;
 using MType = BarkFluff.Client.WPF.Services.Erida.MessageType.MessageTypeEnum;
 
