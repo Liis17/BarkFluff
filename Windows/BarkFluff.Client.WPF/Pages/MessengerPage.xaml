@@ -84,6 +84,7 @@
     </UserControl.Resources>
 
     <Grid x:Name="Universe">
+
         <!--  Грид затенения боковой панели  -->
         <Grid
             x:Name="OverlayPanel"
@@ -602,7 +603,7 @@
 
                         <Border
                             Height="75"
-                            Margin="5,-30,15,0"
+                            Margin="0 -30 0 0"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Top"
                             Panel.ZIndex="-1"
@@ -616,7 +617,6 @@
                         </Border>
                         <Border
                             Height="75"
-                            Margin="5,0,15,0"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Bottom"
                             Panel.ZIndex="-1"
@@ -640,7 +640,6 @@
                             <StackPanel
                                 x:Name="MessageArea"
                                 HorizontalAlignment="Stretch"
-                                
                                 Orientation="Vertical">
                                 <!--  Здесь будут добавляться элементы динамически  -->
                             </StackPanel>
