@@ -1,22 +1,23 @@
 # BarkFluff
 
-Распределённая платформа обмена сообщениями в реальном времени (.NET 9, gRPC, RabbitMQ).
+Распределённая платформа обмена сообщениями в реальном времени (.NET 9 ( местами уже 10), gRPC, RabbitMQ).
 
 ## База знаний — Obsidian
 
 **Всегда** обращайся к хранилищу Obsidian за контекстом по проекту, описанием сервисов, паттернами и функциями. Читай только нужный файл, не весь Index.
 
-| Файл | Содержимое |
-|------|-----------|
-| `Obsidian/ClaudeVault/Index.md` | Оглавление, ссылки на все разделы |
-| `Obsidian/ClaudeVault/Архитектура.md` | Tech stack, порты, XAuth, CQRS, gRPC-клиент, RabbitMQ |
-| `Obsidian/ClaudeVault/Backend/{Сервис}.md` | Документация по каждому микросервису |
-| `Obsidian/ClaudeVault/Shared/{Библиотека}.md` | Shared-библиотеки (Proto, Auth, Exceptions, ...) |
-| `Obsidian/ClaudeVault/Клиенты/{Платформа}.md` | Android, Windows, macOS, iOS, Linux |
+| Файл                                          | Содержимое                                            |
+| --------------------------------------------- | ----------------------------------------------------- |
+| `Obsidian/ClaudeVault/Index.md`               | Оглавление, ссылки на все разделы                     |
+| `Obsidian/ClaudeVault/Архитектура.md`         | Tech stack, порты, XAuth, CQRS, gRPC-клиент, RabbitMQ |
+| `Obsidian/ClaudeVault/Backend/{Сервис}.md`    | Документация по каждому микросервису                  |
+| `Obsidian/ClaudeVault/Shared/{Библиотека}.md` | Shared-библиотеки (Proto, Auth, Exceptions, ...)      |
+| `Obsidian/ClaudeVault/Клиенты/{Платформа}.md` | Android, Windows, macOS, iOS, Linux                   |
 
 ## Правила обновления Obsidian
 
 При изменении архитектуры, добавлении функций или сервисов — обновляй соответствующий файл в хранилище.
+
 - Backend-сервис → `Backend/{ServiceName}.md`
 - Shared-библиотека → `Shared/{Name}.md`
 - Клиент → `Клиенты/{Platform}.md`
