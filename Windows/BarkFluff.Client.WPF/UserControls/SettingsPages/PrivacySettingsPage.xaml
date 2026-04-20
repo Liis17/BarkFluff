@@ -6,7 +6,7 @@
     xmlns:local="clr-namespace:BarkFluff.Client.WPF.UserControls.SettingsPages"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-    d:DesignHeight="550"
+    d:DesignHeight="700"
     d:DesignWidth="500"
     mc:Ignorable="d">
     <Grid Background="Transparent">
@@ -14,77 +14,196 @@
             <!-- Заголовок страницы -->
             <TextBlock Style="{DynamicResource HeaderSettings}" Text="Конфиденциальность" />
 
+            <!-- Загрузка / ошибка -->
+            <TextBlock
+                x:Name="StatusText"
+                Foreground="{DynamicResource DescriptionText}"
+                FontSize="12"
+                Margin="0,4,0,8"
+                Text="Загрузка настроек..." />
+
+            <!-- Группа: Профиль -->
+            <TextBlock
+                FontSize="11"
+                FontWeight="SemiBold"
+                Foreground="{DynamicResource DescriptionText}"
+                Margin="2,8,0,4"
+                Text="ПРОФИЛЬ" />
+
+            <!-- Публичная страница на сайте -->
             <Border
                 Padding="16"
                 Background="{DynamicResource TextBackground}"
                 CornerRadius="8"
-                Margin="0,8">
+                Margin="0,0,0,4">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Кто видит профиль" />
-                        <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,4,0,0" Text="Все пользователи" />
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Публичная страница" />
+                        <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,3,0,0" TextWrapping="Wrap"
+                                   Text="Показывать ваш профиль на barkfluff.com/username" />
                     </StackPanel>
-                    <ui:SymbolIcon Grid.Column="1" Foreground="#FF3FA29F" Symbol="Person24" />
+                    <ui:ToggleSwitch
+                        x:Name="ProfileVisibleSwitch"
+                        Grid.Column="1"
+                        VerticalAlignment="Center"
+                        Checked="ProfileVisibleSwitch_Changed"
+                        Unchecked="ProfileVisibleSwitch_Changed" />
                 </Grid>
             </Border>
 
+            <!-- Видимость в поиске -->
             <Border
                 Padding="16"
                 Background="{DynamicResource TextBackground}"
                 CornerRadius="8"
-                Margin="0,8">
+                Margin="0,0,0,4">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Последний онлайн" />
-                        <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,4,0,0" Text="Все пользователи" />
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Видимость в поиске" />
+                        <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,3,0,0" TextWrapping="Wrap"
+                                   Text="Показывать вас в результатах поиска пользователей" />
                     </StackPanel>
-                    <ui:SymbolIcon Grid.Column="1" Foreground="#FF3FA29F" Symbol="Clock24" />
+                    <ui:ToggleSwitch
+                        x:Name="SearchVisibleSwitch"
+                        Grid.Column="1"
+                        VerticalAlignment="Center"
+                        Checked="SearchVisibleSwitch_Changed"
+                        Unchecked="SearchVisibleSwitch_Changed" />
                 </Grid>
             </Border>
 
+            <!-- Группа: Кто видит -->
+            <TextBlock
+                FontSize="11"
+                FontWeight="SemiBold"
+                Foreground="{DynamicResource DescriptionText}"
+                Margin="2,12,0,4"
+                Text="КТО ВИДИТ" />
+
+            <!-- Онлайн-статус -->
             <Border
                 Padding="16"
                 Background="{DynamicResource TextBackground}"
                 CornerRadius="8"
-                Margin="0,8">
+                Margin="0,0,0,4">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Фотографии профиля" />
-                        <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,4,0,0" Text="Все пользователи" />
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Онлайн-статус" />
+                        <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,3,0,0" TextWrapping="Wrap"
+                                   Text="Кто видит, когда вы в сети" />
                     </StackPanel>
-                    <ui:SymbolIcon Grid.Column="1" Foreground="#FF3FA29F" Symbol="Image24" />
+                    <ComboBox
+                        x:Name="OnlineVisibilityCombo"
+                        Grid.Column="1"
+                        Width="130"
+                        VerticalAlignment="Center"
+                        SelectionChanged="OnlineVisibilityCombo_SelectionChanged">
+                        <ComboBoxItem Tag="0" Content="Все" />
+                        <ComboBoxItem Tag="1" Content="Друзья" />
+                        <ComboBoxItem Tag="2" Content="Никто" />
+                    </ComboBox>
                 </Grid>
             </Border>
 
+            <!-- Аватар -->
             <Border
                 Padding="16"
                 Background="{DynamicResource TextBackground}"
                 CornerRadius="8"
-                Margin="0,8">
+                Margin="0,0,0,4">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Пересылка" />
-                        <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,4,0,0" Text="Пересылка сообщений" />
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Фото профиля" />
+                        <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,3,0,0" TextWrapping="Wrap"
+                                   Text="Кто видит ваш аватар" />
                     </StackPanel>
-                    <ui:SymbolIcon Grid.Column="1" Foreground="#FF3FA29F" Symbol="ArrowForward24" />
+                    <ComboBox
+                        x:Name="AvatarVisibilityCombo"
+                        Grid.Column="1"
+                        Width="130"
+                        VerticalAlignment="Center"
+                        SelectionChanged="AvatarVisibilityCombo_SelectionChanged">
+                        <ComboBoxItem Tag="0" Content="Все" />
+                        <ComboBoxItem Tag="1" Content="Друзья" />
+                        <ComboBoxItem Tag="2" Content="Никто" />
+                    </ComboBox>
                 </Grid>
             </Border>
+
+            <!-- Описание профиля (Био) -->
+            <Border
+                Padding="16"
+                Background="{DynamicResource TextBackground}"
+                CornerRadius="8"
+                Margin="0,0,0,4">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="О себе (био)" />
+                        <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,3,0,0" TextWrapping="Wrap"
+                                   Text="Кто видит описание вашего профиля" />
+                    </StackPanel>
+                    <ComboBox
+                        x:Name="BioVisibilityCombo"
+                        Grid.Column="1"
+                        Width="130"
+                        VerticalAlignment="Center"
+                        SelectionChanged="BioVisibilityCombo_SelectionChanged">
+                        <ComboBoxItem Tag="0" Content="Все" />
+                        <ComboBoxItem Tag="1" Content="Друзья" />
+                        <ComboBoxItem Tag="2" Content="Никто" />
+                    </ComboBox>
+                </Grid>
+            </Border>
+
+            <!-- Почта -->
+            <Border
+                Padding="16"
+                Background="{DynamicResource TextBackground}"
+                CornerRadius="8"
+                Margin="0,0,0,4">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Адрес почты" />
+                        <TextBlock Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,3,0,0" TextWrapping="Wrap"
+                                   Text="Кто видит ваш email-адрес" />
+                    </StackPanel>
+                    <ComboBox
+                        x:Name="EmailVisibilityCombo"
+                        Grid.Column="1"
+                        Width="130"
+                        VerticalAlignment="Center"
+                        SelectionChanged="EmailVisibilityCombo_SelectionChanged">
+                        <ComboBoxItem Tag="0" Content="Все" />
+                        <ComboBoxItem Tag="1" Content="Друзья" />
+                        <ComboBoxItem Tag="2" Content="Никто" />
+                    </ComboBox>
+                </Grid>
+            </Border>
+
         </StackPanel>
     </Grid>
 </local:BaseSettingsPage>
