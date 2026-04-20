@@ -2,13 +2,11 @@ using BarkFluff.Proto.Files;
 
 using System.Globalization;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 
 namespace BarkFluff.Client.WPF.UserControls.SettingsPages
 {
-    /// <summary>
-    /// Логика взаимодействия для CloudSettingsPage.xaml
-    /// </summary>
     public partial class CloudSettingsPage : BaseSettingsPage
     {
         public override string Title => "Облако";
@@ -36,20 +34,22 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
                 double percent = totalBytes > 0 ? (double)usedBytes / totalBytes * 100 : 0;
                 UsagePercentText.Text = $"{percent:F1}% использовано";
 
-                // Разбивка по типам
-                long imageSize = 0, videoSize = 0, documentSize = 0, audioSize = 0, voiceSize = 0;
+                // Разбивка по всем типам из UploadFileType
+                long imageSize = 0, videoSize = 0, gifSize = 0, documentSize = 0,
+                     audioSize = 0, voiceSize = 0, stickerSize = 0, avatarSize = 0;
+
                 foreach (var st in userSize.storageByType)
                 {
                     switch (st.Key)
                     {
-                        case UploadFileType.UserAvatar:
                         case UploadFileType.MessageAttachmentImage:
-                        case UploadFileType.ChatPicture:
                             imageSize += st.Value;
                             break;
                         case UploadFileType.MessageAttachmentVideo:
-                        case UploadFileType.MessageAttachmentGif:
                             videoSize += st.Value;
+                            break;
+                        case UploadFileType.MessageAttachmentGif:
+                            gifSize += st.Value;
                             break;
                         case UploadFileType.MessageAttachmentDocument:
                             documentSize += st.Value;
@@ -60,24 +60,48 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
                         case UploadFileType.MessageAttachmentVoice:
                             voiceSize += st.Value;
                             break;
+                        case UploadFileType.MessageAttachmentSticker:
+                            stickerSize += st.Value;
+                            break;
+                        case UploadFileType.UserAvatar:
+                        case UploadFileType.ChatPicture:
+                            avatarSize += st.Value;
+                            break;
                     }
                 }
 
-                if (imageSize > 0) { ImagesSize.Text = FormatBytes(imageSize); ImagesBorder.Visibility = Visibility.Visible; }
-                if (videoSize > 0) { VideosSize.Text = FormatBytes(videoSize); VideosBorder.Visibility = Visibility.Visible; }
-                if (documentSize > 0) { DocumentsSize.Text = FormatBytes(documentSize); DocumentsBorder.Visibility = Visibility.Visible; }
-                if (audioSize > 0) { AudioSize.Text = FormatBytes(audioSize); AudioBorder.Visibility = Visibility.Visible; }
-                if (voiceSize > 0) { VoiceSize.Text = FormatBytes(voiceSize); VoiceBorder.Visibility = Visibility.Visible; }
+                bool anyType = imageSize > 0 || videoSize > 0 || gifSize > 0 || documentSize > 0
+                            || audioSize > 0 || voiceSize > 0 || stickerSize > 0 || avatarSize > 0;
 
-                // Обновить сегментный прогресс-бар
+                if (anyType) TypesGrid.Visibility = Visibility.Visible;
+
+                void ShowBlock(Border border, TextBlock label, long size)
+                {
+                    if (size > 0) { label.Text = FormatBytes(size); border.Visibility = Visibility.Visible; }
+                }
+
+                ShowBlock(ImagesBorder,   ImagesSize,   imageSize);
+                ShowBlock(VideosBorder,   VideosSize,   videoSize);
+                ShowBlock(GifBorder,      GifSize,      gifSize);
+                ShowBlock(DocumentsBorder,DocumentsSize,documentSize);
+                ShowBlock(AudioBorder,    AudioSize,    audioSize);
+                ShowBlock(VoiceBorder,    VoiceSize,    voiceSize);
+                ShowBlock(StickersBorder, StickersSize, stickerSize);
+                ShowBlock(AvatarsBorder,  AvatarsSize,  avatarSize);
+
+                // Прогресс-бар
                 Dispatcher.Invoke(() =>
                 {
                     StorageProgress.ClearSegments();
-                    if (imageSize > 0) StorageProgress.AddSegment(Math.Max(1, (int)(imageSize / 1024)), new SolidColorBrush(Color.FromRgb(0x57, 0xBB, 0x62)));
-                    if (videoSize > 0) StorageProgress.AddSegment(Math.Max(1, (int)(videoSize / 1024)), new SolidColorBrush(Color.FromRgb(0x3D, 0x50, 0xB7)));
-                    if (documentSize > 0) StorageProgress.AddSegment(Math.Max(1, (int)(documentSize / 1024)), new SolidColorBrush(Color.FromRgb(0xCA, 0x6D, 0x34)));
-                    if (audioSize > 0) StorageProgress.AddSegment(Math.Max(1, (int)(audioSize / 1024)), new SolidColorBrush(Color.FromRgb(0x9B, 0x59, 0xB6)));
-                    if (voiceSize > 0) StorageProgress.AddSegment(Math.Max(1, (int)(voiceSize / 1024)), new SolidColorBrush(Color.FromRgb(0x1A, 0xBC, 0x9C)));
+                    void AddSeg(long sz, Color c) { if (sz > 0) StorageProgress.AddSegment(Math.Max(1, (int)(sz / 1024)), new SolidColorBrush(c)); }
+                    AddSeg(imageSize,    Color.FromRgb(0x57, 0xBB, 0x62));
+                    AddSeg(videoSize,    Color.FromRgb(0x3D, 0x50, 0xB7));
+                    AddSeg(gifSize,      Color.FromRgb(0xE8, 0xA8, 0x38));
+                    AddSeg(documentSize, Color.FromRgb(0xCA, 0x6D, 0x34));
+                    AddSeg(audioSize,    Color.FromRgb(0x9B, 0x59, 0xB6));
+                    AddSeg(voiceSize,    Color.FromRgb(0x1A, 0xBC, 0x9C));
+                    AddSeg(stickerSize,  Color.FromRgb(0xEC, 0x63, 0x96));
+                    AddSeg(avatarSize,   Color.FromRgb(0x79, 0xAE, 0xDC));
                     long freeSpace = totalBytes - usedBytes;
                     if (freeSpace > 0) StorageProgress.AddSegment(Math.Max(1, (int)(freeSpace / 1024)), StorageProgress.EmptyBrush);
                     StorageProgress.AnimStart();

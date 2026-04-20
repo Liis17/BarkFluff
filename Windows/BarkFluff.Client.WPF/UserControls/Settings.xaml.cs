@@ -29,7 +29,8 @@ namespace BarkFluff.Client.WPF.UserControls
                 { "Privacy", () => new PrivacySettingsPage() },
                 { "Devices", () => new DevicesSettingsPage() },
                 { "Cloud", () => new CloudSettingsPage() },
-                { "Cache", () => new CacheSettingsPage() }
+                { "Cache", () => new CacheSettingsPage() },
+                { "About", () => new AboutSettingsPage() }
             };
 
             LoadSidebarProfile();
