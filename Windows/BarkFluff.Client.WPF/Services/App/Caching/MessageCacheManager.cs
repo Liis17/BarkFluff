@@ -187,5 +187,49 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
             _db.Dispose();
             _httpClient.Dispose();
         }
+
+        // ──────────────────────────────────────────────────────────────
+        // Очистка
+        // ──────────────────────────────────────────────────────────────
+
+        /// <summary>Удаляет все закешированные сообщения.</summary>
+        public void ClearMessages()
+        {
+            lock (_lock)
+            {
+                _messages.DeleteAll();
+            }
+        }
+
+        /// <summary>Удаляет все закешированные чаты.</summary>
+        public void ClearChats()
+        {
+            lock (_lock)
+            {
+                _chats.DeleteAll();
+            }
+        }
+
+        /// <summary>Удаляет файлы кеша сообщений (физические файлы + записи в БД).</summary>
+        public void ClearFileCache()
+        {
+            lock (_lock)
+            {
+                var cached = _files.FindAll().ToList();
+                foreach (var f in cached)
+                {
+                    try { if (File.Exists(f.Path)) File.Delete(f.Path); } catch { }
+                }
+                _files.DeleteAll();
+            }
+        }
+
+        /// <summary>Полная очистка: сообщения, чаты, файлы.</summary>
+        public void ClearAll()
+        {
+            ClearMessages();
+            ClearChats();
+            ClearFileCache();
+        }
     }
 }
