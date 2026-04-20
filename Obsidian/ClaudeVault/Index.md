@@ -27,6 +27,7 @@
 | [[Backend/Notification]] | Email-уведомления (RabbitMQ consumer) | 7004 |
 | [[Backend/FastAuth]] | QR-авторизация устройств | 7008 |
 | [[Backend/AdminPanel]] | Веб-дашборд администратора | 51888 |
+| [[Backend/AdminPanel-ProjectMap]] | Карта всех файлов и классов AdminPanel | — |
 | [[Backend/CloudMessaging]] | Push-уведомления (Firebase) | — |
 | [[Backend/Web]] | gRPC-Web прокси + статика | 7016 |
 | [[Backend/WebServer]] | Публичный HTTP-сервер | 64641 |
