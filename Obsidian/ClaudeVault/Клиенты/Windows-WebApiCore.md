@@ -42,6 +42,13 @@ WebApi (IDisposable, фасад)
 | `ErrorReturner` | `(bool IsSuccess, string? ErrorMessage, int ErrorCode)` |
 | `ImageProcessor` | JPEG, WebP, resize через SixLabors.ImageSharp |
 
+**События `WebApi`:**
+
+| Событие | Когда | Действие клиента |
+|---------|-------|------------------|
+| `TokenInvalidated` | refresh-токен мёртв | перенаправить на авторизацию |
+| `TokenRefreshed` | access-токен проактивно обновлён | пересоздать все gRPC-стримы |
+
 ## Паттерн добавления API-метода
 
 ```csharp
@@ -68,9 +75,33 @@ public async Task<ErrorReturner> MethodName(params..., GlobalParam globalParam)
 
 В `WebApiClientManager` подключаются interceptors из [[Shared/Auth]]: JWT, device ID, IP, OS, app version в metadata.
 
+## Авто-обновление токена (проактивный механизм)
+
+`WebApiTokenManager` содержит фоновый `PeriodicTimer` (тик каждые 30 сек), который следит за временем жизни access-токена.
+Когда до истечения остаётся **≤1 минуты** — автоматически вызывает `TokenUpdate`, переинициализирует gRPC-клиентов и стреляет событием `TokenRefreshed`.
+
+**Правило для клиентского кода:**
+1. При логине вызвать `webApi.StartAutoRefresh(globalParam)`
+2. Подписаться на `webApi.TokenRefreshed` — пересоздать все активные стримы
+3. При logout / Dispose окна вызвать `webApi.StopAutoRefresh()`
+
+```csharp
+_webApi.StartAutoRefresh(globalParam);
+_webApi.TokenRefreshed += async (_, _) =>
+{
+    _streamsCts?.Cancel();
+    _streamsCts = new CancellationTokenSource();
+    await ReconnectAllStreamsAsync(_streamsCts.Token);
+};
+```
+
+> `StopAutoRefresh()` вызывается автоматически в `WebApi.Dispose()`.
+
 ## Real-time Streaming
 
 `WebApiUpdateManager` и `WebApiOnlinerManager` — `IAsyncEnumerable` для серверного стриминга.
+
+> ⚠️ Все стримы **необходимо пересоздавать** после получения события `TokenRefreshed` — старый стрим открыт со старым токеном и будет отклонён сервером.
 
 ## Proto
 
