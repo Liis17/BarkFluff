@@ -43,106 +43,183 @@
                 </StackPanel>
             </Border>
 
-            <!-- Разбивка по типам -->
-            <Border
-                x:Name="ImagesBorder"
-                Padding="16"
-                Background="{DynamicResource TextBackground}"
-                CornerRadius="8"
-                Margin="0,8"
+            <!-- Разбивка по типам — 2 столбика -->
+            <UniformGrid
+                x:Name="TypesGrid"
+                Columns="2"
+                Margin="0,4,0,0"
                 Visibility="Collapsed">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Фото" />
-                        <TextBlock x:Name="ImagesSize" Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,4,0,0" />
-                    </StackPanel>
-                    <ui:SymbolIcon Grid.Column="1" Foreground="#FF57BB62" Symbol="Image24" />
-                </Grid>
-            </Border>
 
-            <Border
-                x:Name="VideosBorder"
-                Padding="16"
-                Background="{DynamicResource TextBackground}"
-                CornerRadius="8"
-                Margin="0,8"
-                Visibility="Collapsed">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Видео" />
-                        <TextBlock x:Name="VideosSize" Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,4,0,0" />
-                    </StackPanel>
-                    <ui:SymbolIcon Grid.Column="1" Foreground="#FF3D50B7" Symbol="Video24" />
-                </Grid>
-            </Border>
+                <!-- Фото -->
+                <Border
+                    x:Name="ImagesBorder"
+                    Padding="14"
+                    Background="{DynamicResource TextBackground}"
+                    CornerRadius="8"
+                    Margin="0,4,4,0"
+                    Visibility="Collapsed">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" FontWeight="Medium" Text="Фото" />
+                            <TextBlock x:Name="ImagesSize" Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,3,0,0" />
+                        </StackPanel>
+                        <ui:SymbolIcon Grid.Column="1" VerticalAlignment="Center" Foreground="#FF57BB62" Symbol="Image24" />
+                    </Grid>
+                </Border>
 
-            <Border
-                x:Name="DocumentsBorder"
-                Padding="16"
-                Background="{DynamicResource TextBackground}"
-                CornerRadius="8"
-                Margin="0,8"
-                Visibility="Collapsed">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Документы" />
-                        <TextBlock x:Name="DocumentsSize" Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,4,0,0" />
-                    </StackPanel>
-                    <ui:SymbolIcon Grid.Column="1" Foreground="#FFCA6D34" Symbol="Document24" />
-                </Grid>
-            </Border>
+                <!-- Видео -->
+                <Border
+                    x:Name="VideosBorder"
+                    Padding="14"
+                    Background="{DynamicResource TextBackground}"
+                    CornerRadius="8"
+                    Margin="4,4,0,0"
+                    Visibility="Collapsed">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" FontWeight="Medium" Text="Видео" />
+                            <TextBlock x:Name="VideosSize" Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,3,0,0" />
+                        </StackPanel>
+                        <ui:SymbolIcon Grid.Column="1" VerticalAlignment="Center" Foreground="#FF3D50B7" Symbol="Video24" />
+                    </Grid>
+                </Border>
 
-            <Border
-                x:Name="AudioBorder"
-                Padding="16"
-                Background="{DynamicResource TextBackground}"
-                CornerRadius="8"
-                Margin="0,8"
-                Visibility="Collapsed">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Аудио" />
-                        <TextBlock x:Name="AudioSize" Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,4,0,0" />
-                    </StackPanel>
-                    <ui:SymbolIcon Grid.Column="1" Foreground="#FF9B59B6" Symbol="MusicNote124" />
-                </Grid>
-            </Border>
+                <!-- Документы -->
+                <Border
+                    x:Name="DocumentsBorder"
+                    Padding="14"
+                    Background="{DynamicResource TextBackground}"
+                    CornerRadius="8"
+                    Margin="0,4,4,0"
+                    Visibility="Collapsed">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" FontWeight="Medium" Text="Документы" />
+                            <TextBlock x:Name="DocumentsSize" Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,3,0,0" />
+                        </StackPanel>
+                        <ui:SymbolIcon Grid.Column="1" VerticalAlignment="Center" Foreground="#FFCA6D34" Symbol="Document24" />
+                    </Grid>
+                </Border>
 
-            <Border
-                x:Name="VoiceBorder"
-                Padding="16"
-                Background="{DynamicResource TextBackground}"
-                CornerRadius="8"
-                Margin="0,8"
-                Visibility="Collapsed">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Foreground="{DynamicResource TitleText}" FontSize="14" FontWeight="Medium" Text="Голосовые" />
-                        <TextBlock x:Name="VoiceSize" Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,4,0,0" />
-                    </StackPanel>
-                    <ui:SymbolIcon Grid.Column="1" Foreground="#FF1ABC9C" Symbol="Mic24" />
-                </Grid>
-            </Border>
+                <!-- Аудио -->
+                <Border
+                    x:Name="AudioBorder"
+                    Padding="14"
+                    Background="{DynamicResource TextBackground}"
+                    CornerRadius="8"
+                    Margin="4,4,0,0"
+                    Visibility="Collapsed">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" FontWeight="Medium" Text="Аудио" />
+                            <TextBlock x:Name="AudioSize" Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,3,0,0" />
+                        </StackPanel>
+                        <ui:SymbolIcon Grid.Column="1" VerticalAlignment="Center" Foreground="#FF9B59B6" Symbol="MusicNote124" />
+                    </Grid>
+                </Border>
+
+                <!-- Голосовые -->
+                <Border
+                    x:Name="VoiceBorder"
+                    Padding="14"
+                    Background="{DynamicResource TextBackground}"
+                    CornerRadius="8"
+                    Margin="0,4,4,0"
+                    Visibility="Collapsed">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" FontWeight="Medium" Text="Голосовые" />
+                            <TextBlock x:Name="VoiceSize" Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,3,0,0" />
+                        </StackPanel>
+                        <ui:SymbolIcon Grid.Column="1" VerticalAlignment="Center" Foreground="#FF1ABC9C" Symbol="Mic24" />
+                    </Grid>
+                </Border>
+
+                <!-- GIF -->
+                <Border
+                    x:Name="GifBorder"
+                    Padding="14"
+                    Background="{DynamicResource TextBackground}"
+                    CornerRadius="8"
+                    Margin="4,4,0,0"
+                    Visibility="Collapsed">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" FontWeight="Medium" Text="GIF" />
+                            <TextBlock x:Name="GifSize" Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,3,0,0" />
+                        </StackPanel>
+                        <ui:SymbolIcon Grid.Column="1" VerticalAlignment="Center" Foreground="#FFE8A838" Symbol="Gif24" />
+                    </Grid>
+                </Border>
+
+                <!-- Стикеры -->
+                <Border
+                    x:Name="StickersBorder"
+                    Padding="14"
+                    Background="{DynamicResource TextBackground}"
+                    CornerRadius="8"
+                    Margin="0,4,4,0"
+                    Visibility="Collapsed">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" FontWeight="Medium" Text="Стикеры" />
+                            <TextBlock x:Name="StickersSize" Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,3,0,0" />
+                        </StackPanel>
+                        <ui:SymbolIcon Grid.Column="1" VerticalAlignment="Center" Foreground="#FFEC6396" Symbol="Sticker24" />
+                    </Grid>
+                </Border>
+
+                <!-- Аватары и обложки -->
+                <Border
+                    x:Name="AvatarsBorder"
+                    Padding="14"
+                    Background="{DynamicResource TextBackground}"
+                    CornerRadius="8"
+                    Margin="4,4,0,0"
+                    Visibility="Collapsed">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Foreground="{DynamicResource TitleText}" FontSize="13" FontWeight="Medium" Text="Аватары" />
+                            <TextBlock x:Name="AvatarsSize" Foreground="{DynamicResource DescriptionText}" FontSize="12" Margin="0,3,0,0" />
+                        </StackPanel>
+                        <ui:SymbolIcon Grid.Column="1" VerticalAlignment="Center" Foreground="#FF79AEDC" Symbol="Person24" />
+                    </Grid>
+                </Border>
+
+            </UniformGrid>
+
         </StackPanel>
     </Grid>
 </local:BaseSettingsPage>

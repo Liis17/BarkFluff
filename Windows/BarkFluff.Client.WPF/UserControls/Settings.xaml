@@ -131,6 +131,13 @@
                                 <TextBlock FontSize="13" Foreground="{DynamicResource TitleText}" Text="Кеш" />
                             </StackPanel>
                         </ListBoxItem>
+                        <Separator Style="{DynamicResource SettingsSidebarSeparator}" IsHitTestVisible="False" Focusable="False" />
+                        <ListBoxItem Style="{DynamicResource SettingsSidebarItem}" Tag="About">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon Margin="0,0,8,0" FontSize="16" Foreground="{DynamicResource TitleText}" Symbol="Info24" />
+                                <TextBlock FontSize="13" Foreground="{DynamicResource TitleText}" Text="О приложении" />
+                            </StackPanel>
+                        </ListBoxItem>
                     </ListBox>
                 </DockPanel>
             </Border>
