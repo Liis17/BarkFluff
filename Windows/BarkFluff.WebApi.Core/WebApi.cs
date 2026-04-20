@@ -21,6 +21,16 @@ namespace BarkFluff.WebApi.Core
             remove => TokenManager.TokenInvalidated -= value;
         }
 
+        /// <summary>
+        /// Событие вызывается после успешного проактивного обновления токена (каждые ~4 минуты).
+        /// Подписчики должны пересоздать все стриминговые gRPC-соединения (новые сообщения, read receipts, онлайн-статусы).
+        /// </summary>
+        public event EventHandler? TokenRefreshed
+        {
+            add => TokenManager.TokenRefreshed += value;
+            remove => TokenManager.TokenRefreshed -= value;
+        }
+
         #region ApiClients (internal для доступа менеджеров)
         internal BarkFluff.Proto.Users.UsersApi.UsersApiClient? UsersAC;
         internal BarkFluff.Proto.Beacon.BeaconApi.BeaconApiClient? BeaconAC;
@@ -89,6 +99,7 @@ namespace BarkFluff.WebApi.Core
             if (_disposed) return;
             if (disposing)
             {
+                TokenManager.StopAutoRefresh();
                 BeaconChannel?.Dispose();
                 UserChannel?.Dispose();
                 IdentityChannel?.Dispose();
@@ -123,6 +134,16 @@ namespace BarkFluff.WebApi.Core
         /// </summary>
         public async Task<ErrorReturner> ForceRefreshTokenAsync(GlobalParam globalParam)
             => await TokenManager.ForceRefreshTokenAsync(globalParam);
+        /// <summary>
+        /// Запускает фоновый авто-обновитель токена (обновляет за 1 минуту до истечения).
+        /// После успешного обновления вызывается событие <see cref="TokenRefreshed"/> —
+        /// подписчики должны пересоздать стриминговые gRPC-соединения.
+        /// </summary>
+        public void StartAutoRefresh(GlobalParam globalParam) => TokenManager.StartAutoRefresh(globalParam);
+        /// <summary>
+        /// Останавливает фоновый авто-обновитель токена.
+        /// </summary>
+        public void StopAutoRefresh() => TokenManager.StopAutoRefresh();
         #endregion
 
         #region Обслуживание
