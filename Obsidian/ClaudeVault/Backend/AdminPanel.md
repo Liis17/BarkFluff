@@ -66,6 +66,47 @@ dotnet run --project Barkfluff.AdminPanel.csproj
 - `users_api.proto`, `files_api.proto`, `identity_api.proto` — Client
 - `shared.proto` — None (`GrpcServices="None"`)
 
+## HTML-страницы (Pages/)
+
+| Файл | Назначение |
+|------|-----------|
+| `Login.html` | Форма входа: nickname → polling статуса |
+| `dashboard.html` | KPI, трафик, метрики сервисов из Seq |
+| `services.html` | Управление Docker-контейнерами |
+| `logs.html` | Просмотр логов Seq с фильтрацией |
+| `badges.html` | CRUD бейджей |
+| `stickers.html` | Управление стикерпаками |
+| `users.html` | Управление пользователями (поиск, профили, 2FA, сессии) |
+| `s3-storage.html` | Конфигурация S3/Minio бакетов |
+| `s3-browser.html` | Браузер S3-объектов с presigned URL |
+| `restarting.html` | Заглушка на время перезагрузки |
+| `updating.html` | Заглушка на время обновления |
+
+## Важные константы
+
+| Параметр | Значение |
+|----------|---------|
+| Порт | 51888 |
+| Token expiration | 3 дня |
+| Pending timeout | 10 минут |
+| Max gRPC file size | 20 МБ |
+| Metrics interval | 1 час |
+| HourlyStats retention | 24 часа |
+| HourlyServiceMetrics retention | 12 часов |
+| Sticker bucket | `message-documents` |
+
+## Безопасность
+
+Полный аудит в `SECURITY_AUDIT.md` (проект). Критические проблемы:
+- Docker socket монтируется в контейнер → полный контроль над хостом
+- Нет `HttpOnly` на cookie `auth_token`
+- Отключение 2FA пользователя без аудита
+- Нет разделения ролей
+
+## Карта проекта
+
+Детальный разбор всех файлов, классов и эндпоинтов → [[Backend/AdminPanel-ProjectMap]]
+
 ## Ключевые зависимости
 
 - `LiteDB 5.0.21` — embedded NoSQL
