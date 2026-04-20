@@ -17,9 +17,85 @@ namespace BarkFluff.WebApi.Core.Managers
         /// </summary>
         public event EventHandler? TokenInvalidated;
 
+        /// <summary>
+        /// Событие вызывается после успешного проактивного обновления токена.
+        /// Подписчики должны пересоздать стриминговые gRPC-соединения с новым токеном.
+        /// </summary>
+        public event EventHandler? TokenRefreshed;
+
+        private CancellationTokenSource? _autoRefreshCts;
+
         public WebApiTokenManager(WebApi webApi) : base(webApi)
         {
             _webApi = webApi;
+        }
+
+        /// <summary>
+        /// Запускает фоновый автоматический обновитель токена.
+        /// Токен обновляется за 1 минуту до истечения (при времени жизни 5 минут — раз в ~4 минуты).
+        /// После успешного обновления вызывается событие <see cref="TokenRefreshed"/>.
+        /// </summary>
+        /// <param name="globalParam">Глобальные параметры с токеном</param>
+        public void StartAutoRefresh(GlobalParam globalParam)
+        {
+            StopAutoRefresh();
+            _autoRefreshCts = new CancellationTokenSource();
+            var cts = _autoRefreshCts;
+
+            _ = Task.Run(async () =>
+            {
+                // Проверяем каждые 30 секунд — дёшево и точно ловим окно «за 1 минуту до»
+                using var timer = new PeriodicTimer(TimeSpan.FromSeconds(30));
+                try
+                {
+                    while (await timer.WaitForNextTickAsync(cts.Token))
+                    {
+                        if (globalParam?.AccessToken == null) continue;
+
+                        var expirationTime = globalParam.AccessToken.ExpirationDate?.ToDateTime();
+                        if (expirationTime == null) continue;
+
+                        // Если до истечения меньше 1 минуты — обновляем
+                        var timeLeft = expirationTime.Value - DateTime.UtcNow;
+                        if (timeLeft <= TimeSpan.FromMinutes(1))
+                        {
+                            var (result, _) = await TokenUpdate(globalParam);
+                            if (!result.IsSuccess)
+                            {
+                                // refresh-токен мёртв — уведомляем приложение
+                                TokenInvalidated?.Invoke(this, EventArgs.Empty);
+                                return;
+                            }
+
+                            // Переинициализируем gRPC-клиентов с новым access-токеном
+                            if (_webApi.ClientManager._initParams.HasValue)
+                            {
+                                var p = _webApi.ClientManager._initParams.Value;
+                                _webApi.ClientManager.AddInterceptor(
+                                    globalParam, p.DeviceName, p.Os, p.AppName, p.AppVersion, p.Ip);
+                            }
+
+                            // Уведомляем подписчиков — нужно пересоздать стримы
+                            TokenRefreshed?.Invoke(this, EventArgs.Empty);
+                        }
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    // Нормальная остановка через StopAutoRefresh()
+                }
+            }, cts.Token);
+        }
+
+        /// <summary>
+        /// Останавливает фоновый автоматический обновитель токена.
+        /// </summary>
+        public void StopAutoRefresh()
+        {
+            if (_autoRefreshCts == null) return;
+            _autoRefreshCts.Cancel();
+            _autoRefreshCts.Dispose();
+            _autoRefreshCts = null;
         }
 
         /// <summary>
