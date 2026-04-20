@@ -18,6 +18,11 @@ gRPC-клиентская библиотека для WPF-клиента. Еди
 - `bool ACisnull` — `true`, если основные клиенты не инициализированы
 - `bool BeaconIsnull` — `true`, если Beacon-клиент не инициализирован
 - `event EventHandler? TokenInvalidated` — срабатывает когда refresh-токен умер (перенаправить на авторизацию)
+- `event EventHandler? TokenRefreshed` — срабатывает после каждого **проактивного** обновления токена; подписчики **обязаны** пересоздать все стримы
+
+**Методы авто-обновления токена:**
+- `StartAutoRefresh(GlobalParam)` — запустить фоновый обновитель (вызвать при логине)
+- `StopAutoRefresh()` — остановить (автоматически вызывается в `Dispose`)
 
 ---
 
@@ -72,12 +77,26 @@ ErrorReturner
 
 ### `WebApiTokenManager.cs` — Токены
 
-| Метод | Сигнатура | Описание |
-|-------|-----------|----------|
+| Метод / Событие | Сигнатура | Описание |
+|-----------------|-----------|----------|
 | `TokenUpdate` | `(GlobalParam) → Task<(ErrorReturner, string)>` | Обновить access token через `IdentityApi.CreateToken` |
 | `SafeCallAsync<T>` | `(Func<Task<T>>, GlobalParam) → Task<T>` | Выполнить gRPC-вызов с авторетраем при 401 |
 | `EnsureTokenValidAsync` | `(GlobalParam, bufferMinutes=5) → Task<ErrorReturner>` | Проверить срок токена перед streaming |
 | `ForceRefreshTokenAsync` | `(GlobalParam) → Task<ErrorReturner>` | Принудительный рефреш + переинициализация клиентов |
+| `StartAutoRefresh` | `(GlobalParam) → void` | Запустить `PeriodicTimer` (тик 30 сек); обновляет токен когда `timeLeft ≤ 1 min`; после успеха → переинициализирует клиентов + вызывает `TokenRefreshed` |
+| `StopAutoRefresh` | `() → void` | Отменить и освободить `CancellationTokenSource` таймера |
+| `event TokenInvalidated` | `EventHandler?` | Если рефреш-токен умер во время авто-обновления |
+| `event TokenRefreshed` | `EventHandler?` | После каждого успешного проактивного обновления; клиент должен пересоздать стримы |
+
+**Логика авто-обновления:**
+```
+PeriodicTimer(30s)
+  → проверить ExpirationDate AccessToken
+  → если timeLeft ≤ 1 min:
+      TokenUpdate() → если ошибка → TokenInvalidated
+      AddInterceptor() (переинициализация клиентов)
+      TokenRefreshed.Invoke()
+```
 
 ---
 
