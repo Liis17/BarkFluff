@@ -57,6 +57,12 @@ service UsersApi {
 
   // Обновить настройки приватности текущего пользователя
   rpc UpdatePrivacySettings(UpdatePrivacySettingsRequest) returns(UpdatePrivacySettingsResponse);
+
+  // Получить персонализацию текущего пользователя
+  rpc GetPersonalization(GetPersonalizationRequest) returns(GetPersonalizationResponse);
+
+  // Обновить персонализацию текущего пользователя
+  rpc UpdatePersonalization(UpdatePersonalizationRequest) returns(UpdatePersonalizationResponse);
 }
 
 service UsersServerApi {
@@ -597,3 +603,21 @@ message GetUserPrivacyResponse {
   PrivacySettings settings = 1;
 }
 
+// Персонализация пользователя
+
+message UserPersonalizationData {
+  string profile_poster_file_id = 1;          // FileId файла-постера профиля (пусто если не задан)
+  repeated string chat_background_file_ids = 2; // FileId фоновых изображений чатов
+}
+
+message GetPersonalizationRequest { }
+
+message GetPersonalizationResponse {
+  UserPersonalizationData personalization = 1;
+}
+
+message UpdatePersonalizationRequest {
+  UserPersonalizationData personalization = 1;
+}
+
+message UpdatePersonalizationResponse { }

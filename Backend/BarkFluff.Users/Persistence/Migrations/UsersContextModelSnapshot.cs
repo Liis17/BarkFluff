@@ -230,6 +230,32 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.ToTable("Privacies");
                 });
 
+            modelBuilder.Entity("BarkFluff.Users.Domain.UserPersonalization", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ProfilePosterFileId")
+                        .HasColumnType("text");
+
+                    b.Property<string[]>("ChatBackgroundFileIds")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("UserPersonalizations");
+                });
+
             modelBuilder.Entity("BarkFluff.Users.Domain.UserBadge", b =>
                 {
                     b.HasOne("BarkFluff.Users.Domain.Badge", "Badge")
@@ -276,6 +302,17 @@ namespace BarkFluff.Users.Persistence.Migrations
                     b.HasOne("BarkFluff.Users.Domain.User", "User")
                         .WithOne()
                         .HasForeignKey("BarkFluff.Users.Domain.Privacy", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("BarkFluff.Users.Domain.UserPersonalization", b =>
+                {
+                    b.HasOne("BarkFluff.Users.Domain.User", "User")
+                        .WithOne()
+                        .HasForeignKey("BarkFluff.Users.Domain.UserPersonalization", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

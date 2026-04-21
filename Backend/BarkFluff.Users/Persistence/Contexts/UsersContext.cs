@@ -20,6 +20,8 @@ public class UsersContext : DbContext
 
     public DbSet<Privacy> Privacies { get; set; }
 
+    public DbSet<UserPersonalization> UserPersonalizations { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<User>()
@@ -61,6 +63,17 @@ public class UsersContext : DbContext
             .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Privacy>()
+            .HasIndex(p => p.UserId)
+            .IsUnique();
+
+        // Настройка связей для UserPersonalization (1:1 с User, уникальный индекс UserId)
+        modelBuilder.Entity<UserPersonalization>()
+            .HasOne(p => p.User)
+            .WithOne()
+            .HasForeignKey<UserPersonalization>(p => p.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<UserPersonalization>()
             .HasIndex(p => p.UserId)
             .IsUnique();
 

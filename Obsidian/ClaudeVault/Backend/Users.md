@@ -22,10 +22,10 @@ dotnet ef database update --project BarkFluff.Users.csproj
 
 ### Слои
 
-- `Domain/` — `User`, `UserContact`, `Badge`, `UserBadge`, `UserDevice`, `Privacy`
+- `Domain/` — `User`, `UserContact`, `Badge`, `UserBadge`, `UserDevice`, `Privacy`, `UserPersonalization`
 - `Features/` — MediatR команды/запросы (CQRS)
 - `Host/` — gRPC-сервисы
-- `Persistence/Services/` — `UsersStorage`, `DevicesStorage`, `PrivacyStorage` (Transient)
+- `Persistence/Services/` — `UsersStorage`, `DevicesStorage`, `PrivacyStorage`, `PersonalizationStorage` (Transient)
 - `Infrastructure/` — `UserInfoQueueSender` (RabbitMQ события)
 - `Mapping/` — extension-методы маппинга доменных объектов в protobuf
 
@@ -55,6 +55,21 @@ FRIENDS трактуется как NONE до появления сервиса 
 - `GetUserByUsername` — если `!ProfileVisibleOnSite` → found=false; видимость avatar/bio фильтруется
 - `SearchUsers` — `SearchVisible=false` исключает из поиска
 - [[Backend/Onliner]] — `OnlineVisibilityFilter` по `OnlineVisibility`
+
+### Персонализация
+
+`UserPersonalization` (1:1 с `User`). Поля:
+
+| Поле | Тип | Описание |
+|------|-----|---------|
+| `ProfilePosterFileId` | `string?` | FileId файла-постера профиля (обложка страницы пользователя) |
+| `ChatBackgroundFileIds` | `string[]` | Массив FileId фоновых изображений чатов, загруженных пользователем |
+
+Запись создаётся по требованию при первом обращении (`GetOrCreate`). Хранится в таблице `UserPersonalizations` (PostgreSQL `text[]` для массива).
+
+**gRPC-методы** (в `UsersApi`):
+- `GetPersonalization` — получить персонализацию текущего пользователя
+- `UpdatePersonalization` — обновить персонализацию (заменяет `ProfilePosterFileId` и весь массив `ChatBackgroundFileIds`)
 
 ### RabbitMQ-события
 
