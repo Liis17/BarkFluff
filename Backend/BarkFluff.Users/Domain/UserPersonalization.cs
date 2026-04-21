@@ -9,7 +9,7 @@ public class UserPersonalization
 
     public long UserId { get; set; }
 
-    public User User { get; set; }
+    public User? User { get; set; }
 
     /// <summary>
     /// FileId файла-постера профиля (аватар/обложка профиля).
