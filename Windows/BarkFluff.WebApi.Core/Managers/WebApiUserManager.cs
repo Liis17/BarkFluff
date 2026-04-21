@@ -434,5 +434,44 @@ namespace BarkFluff.WebApi.Core.Managers
                 return new ErrorReturner(false, "Ошибка изменения настроек уведомлений");
             }
         }
+
+        // ──────────────────────────────────────────────────────────────
+        // Персонализация
+        // ──────────────────────────────────────────────────────────────
+
+        public async Task<(ErrorReturner error, Proto.Users.UserPersonalizationData? data)> GetPersonalization(GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    var response = await UsersAC!.GetPersonalizationAsync(new Proto.Users.GetPersonalizationRequest());
+                    return (new ErrorReturner(true), response.Personalization);
+                }, globalParam);
+            }
+            catch (Exception)
+            {
+                return (new ErrorReturner(false, "Ошибка получения персонализации"), null);
+            }
+        }
+
+        public async Task<ErrorReturner> UpdatePersonalization(Proto.Users.UserPersonalizationData data, GlobalParam globalParam)
+        {
+            try
+            {
+                return await _webApi.TokenManager.SafeCallAsync(async () =>
+                {
+                    await UsersAC!.UpdatePersonalizationAsync(new Proto.Users.UpdatePersonalizationRequest
+                    {
+                        Personalization = data
+                    });
+                    return new ErrorReturner(true);
+                }, globalParam);
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка обновления персонализации");
+            }
+        }
     }
 }

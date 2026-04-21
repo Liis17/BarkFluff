@@ -56,6 +56,11 @@ namespace BarkFluff.WebApi.Core.MessengerData
         public string IpAddress { get; set; } = string.Empty;
         public NotificationDisplayMode NotificationMode { get; set; } = NotificationDisplayMode.FullWithPreview;
 
+        /// <summary>
+        /// Радиус скругления углов пузырьков сообщений (0–20). Локальная настройка.
+        /// </summary>
+        public int MessageBubbleCornerRadius { get; set; } = 12;
+
         #endregion
         #region Пользователь
         #region Токены пользователя
