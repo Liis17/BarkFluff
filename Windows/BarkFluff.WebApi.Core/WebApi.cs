@@ -183,6 +183,13 @@ namespace BarkFluff.WebApi.Core
         public async Task<ErrorReturner> SetNotificationsEnabled(bool enabled, GlobalParam globalParam) => await UserManager.SetNotificationsEnabled(enabled, globalParam);
         #endregion
 
+        #region Персонализация (делегирование к UserManager)
+        public async Task<(ErrorReturner error, Proto.Users.UserPersonalizationData? data)> GetPersonalization(GlobalParam globalParam)
+            => await UserManager.GetPersonalization(globalParam);
+        public async Task<ErrorReturner> UpdatePersonalization(Proto.Users.UserPersonalizationData data, GlobalParam globalParam)
+            => await UserManager.UpdatePersonalization(data, globalParam);
+        #endregion
+
         #region Настройка двухфакторной аутентификации (делегирование к AuthManager)
         public async Task<(ErrorReturner error, string? qrBase64, string? justCode)> OtpReceipt(GlobalParam globalParam) => await AuthManager.OtpReceipt(globalParam);
         public async Task<ErrorReturner> OtpAccept(GlobalParam globalParam, string code) => await AuthManager.OtpAccept(globalParam, code);
