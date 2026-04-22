@@ -1,25 +1,4 @@
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
-USER root
-WORKDIR /app
-
-# Install Docker CLI and Docker Compose
-RUN apt-get update && apt-get install -y \
-    curl \
-    gnupg \
-    && mkdir -p /etc/apt/keyrings \
-    && curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian bookworm stable" > /etc/apt/sources.list.d/docker.list \
-    && apt-get update \
-    && apt-get install -y docker-ce-cli docker-compose-plugin \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create docker group and add app user to it
-RUN getent group docker || groupadd -g 999 docker \
-    && usermod -aG docker app
-
-USER $APP_UID
-WORKDIR /app
-
+# syntax=docker/dockerfile:1
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
@@ -31,24 +10,13 @@ COPY . .
 WORKDIR "/src/Backend/Barkfluff.AdminPanel"
 RUN dotnet publish "./Barkfluff.AdminPanel.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS final
 USER root
 WORKDIR /app
 
-# Install Docker CLI and Docker Compose
-RUN apt-get update && apt-get install -y \
-    curl \
-    gnupg \
-    && mkdir -p /etc/apt/keyrings \
-    && curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian bookworm stable" > /etc/apt/sources.list.d/docker.list \
-    && apt-get update \
-    && apt-get install -y docker-ce-cli docker-compose-plugin \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create docker group and add app user to it
-RUN getent group docker || groupadd -g 999 docker \
-    && usermod -aG docker app
+RUN apk add --no-cache docker-cli docker-cli-compose \
+    && addgroup docker \
+    && adduser app docker
 
 COPY --from=build /app/publish .
 RUN mkdir -p /app/db && chown app:app /app/db
