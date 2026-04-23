@@ -166,6 +166,8 @@ services:
     image: docker.barkfluff.com:5000/barkfluff-developers-dev:latest
     container_name: developers
     restart: always
+    ports:
+      - "4425:4425"
     environment:
       <<: *common-variables
     networks:
