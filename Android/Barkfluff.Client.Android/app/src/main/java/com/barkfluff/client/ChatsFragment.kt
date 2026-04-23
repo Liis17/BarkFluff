@@ -398,7 +398,7 @@ class ChatsFragment : Fragment() {
 
     private fun onChatClicked(chat: GrpcManager.ChatData) {
         // Находим display item для получения дополнительной информации
-        val displayItem = chatAdapter.currentList.find { it.chatData.id == chat.id }
+        val displayItem = chatAdapter.currentList.find { !it.isFooter && it.chatData.id == chat.id }
 
         val intent = Intent(requireContext(), ChatActivity::class.java).apply {
             putExtra("chat_id", chat.id)

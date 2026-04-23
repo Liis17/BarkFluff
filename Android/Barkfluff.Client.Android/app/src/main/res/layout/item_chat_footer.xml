@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Прозрачный спейсер внизу списка чатов (1.5 × высоты элемента чата ≈ 126dp).
+     Гарантирует, что последний чат не перекрывается плавающей нижней навигацией. -->
+<View xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="126dp" />

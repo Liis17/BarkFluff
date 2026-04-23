@@ -18,7 +18,7 @@ import java.util.Locale
 class ChatAdapter(
     private val onChatClick: (GrpcManager.ChatData) -> Unit,
     private val getFileUrl: suspend (String) -> String?
-) : ListAdapter<ChatAdapter.ChatDisplayItem, ChatAdapter.ChatViewHolder>(ChatDiffCallback()) {
+) : ListAdapter<ChatAdapter.ChatDisplayItem, RecyclerView.ViewHolder>(ChatDiffCallback()) {
 
     var currentUserId: Long = 0
 
@@ -26,17 +26,69 @@ class ChatAdapter(
         val chatData: GrpcManager.ChatData,
         val displayTitle: String,
         val displayAvatarFileId: String?,
-        val otherUserId: Long = 0
+        val otherUserId: Long = 0,
+        val isFooter: Boolean = false
     )
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ChatViewHolder {
-        val binding = ItemChatBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return ChatViewHolder(binding)
+    companion object {
+        private const val VIEW_TYPE_CHAT = 0
+        private const val VIEW_TYPE_FOOTER = 1
+
+        /** Прозрачный спейсер, всегда находящийся в конце списка. */
+        private val FOOTER_ITEM = ChatDisplayItem(
+            chatData = GrpcManager.ChatData(
+                id = "__footer__",
+                title = "",
+                picture = "",
+                isGroupChat = false,
+                lastMessage = null,
+                memberIds = emptyList(),
+                countUnread = 0,
+                firstUnreadMessageId = 0
+            ),
+            displayTitle = "",
+            displayAvatarFileId = null,
+            isFooter = true
+        )
     }
 
-    override fun onBindViewHolder(holder: ChatViewHolder, position: Int) {
-        holder.bind(getItem(position))
+    /**
+     * Удаляет все footer-элементы из списка (в любом месте) и добавляет один в конец.
+     * Вызывается перед каждым submitList, чтобы footer всегда был в самом низу.
+     */
+    private fun MutableList<ChatDisplayItem>.ensureFooter() {
+        removeAll { it.isFooter }
+        add(FOOTER_ITEM)
     }
+
+    /** Переопределяем submitList, чтобы footer автоматически добавлялся/фиксировался в конце. */
+    override fun submitList(list: List<ChatDisplayItem>?) {
+        val mutable = (list ?: emptyList()).toMutableList().also { it.ensureFooter() }
+        super.submitList(mutable)
+    }
+
+    override fun getItemViewType(position: Int): Int {
+        return if (getItem(position).isFooter) VIEW_TYPE_FOOTER else VIEW_TYPE_CHAT
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        return if (viewType == VIEW_TYPE_FOOTER) {
+            val view = LayoutInflater.from(parent.context).inflate(R.layout.item_chat_footer, parent, false)
+            FooterViewHolder(view)
+        } else {
+            val binding = ItemChatBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+            ChatViewHolder(binding)
+        }
+    }
+
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        if (holder is ChatViewHolder) {
+            holder.bind(getItem(position))
+        }
+    }
+
+    /** ViewHolder для прозрачного спейсера — не требует биндинга. */
+    class FooterViewHolder(view: View) : RecyclerView.ViewHolder(view)
 
     inner class ChatViewHolder(
         private val binding: ItemChatBinding
@@ -144,7 +196,7 @@ class ChatAdapter(
      */
     fun updateChatWithNewMessage(chatId: String, senderId: Long, messageId: Long, text: String, sentAt: Long, currentUserId: Long): Boolean {
         val list = currentList.toMutableList()
-        val index = list.indexOfFirst { it.chatData.id == chatId }
+        val index = list.indexOfFirst { !it.isFooter && it.chatData.id == chatId }
         if (index < 0) return false
 
         val item = list[index]
@@ -179,7 +231,7 @@ class ChatAdapter(
      */
     fun updateReadStatus(chatId: String, messageId: Long, newReadBy: List<Long>, currentUserId: Long) {
         val list = currentList.toMutableList()
-        val index = list.indexOfFirst { it.chatData.id == chatId }
+        val index = list.indexOfFirst { !it.isFooter && it.chatData.id == chatId }
         if (index < 0) return
 
         val item = list[index]
@@ -201,10 +253,13 @@ class ChatAdapter(
 
     class ChatDiffCallback : DiffUtil.ItemCallback<ChatDisplayItem>() {
         override fun areItemsTheSame(oldItem: ChatDisplayItem, newItem: ChatDisplayItem): Boolean {
+            if (oldItem.isFooter && newItem.isFooter) return true
+            if (oldItem.isFooter || newItem.isFooter) return false
             return oldItem.chatData.id == newItem.chatData.id
         }
 
         override fun areContentsTheSame(oldItem: ChatDisplayItem, newItem: ChatDisplayItem): Boolean {
+            if (oldItem.isFooter && newItem.isFooter) return true
             return oldItem == newItem
         }
     }

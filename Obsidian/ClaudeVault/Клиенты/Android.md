@@ -19,7 +19,16 @@ Package: `com.barkfluff.client`
 - Локальное хранилище: SharedPreferences + EncryptedSharedPreferences для токенов
 - Навигация: Welcome → SelectServer → Login → Chats
 
-## gRPC
+## UI — Экран списка чатов (MainActivity + ChatsFragment)
+
+- `activity_main.xml`: `fragmentContainer` растянут на весь экран (`toBottomOf="parent"`), нижняя навигация (`bottomNavCard`) — плавающий элемент поверх, рисуется позже в XML → автоматически выше по z-order.
+- `fragment_chats.xml`: `RecyclerView` (`chatRecyclerView`) занимает всё пространство фрагмента.
+- `ChatAdapter` добавляет прозрачный **footer-спейсер** (126dp = 1.5 × высота элемента чата ≈ 84dp) в конец списка:
+  - `VIEW_TYPE_FOOTER` / `FooterViewHolder` — не требует биндинга.
+  - `submitList()` переопределён: `ensureFooter()` удаляет все footer-элементы из списка и добавляет один в конец перед каждой отправкой в DiffUtil.
+  - Все методы изменения списка (`updateChatWithNewMessage`, `addNewChat`, `updateReadStatus`) фильтруют footer через `!it.isFooter`.
+  - `ChatDiffCallback` корректно сравнивает footer-элементы.
+  - Layout: `res/layout/item_chat_footer.xml` — прозрачная `View` высотой 126dp.
 
 - grpc-okhttp 1.60.0 (coroutine stubs)
 - `MetadataUtils.attachHeaders` не резолвится в grpc-okhttp 1.60.0 — использовать `ClientInterceptor` напрямую
