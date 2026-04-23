@@ -12,7 +12,6 @@ using Google.Protobuf.WellKnownTypes;
 
 using MediatR;
 
-using System.Globalization;
 
 namespace BarkFluff.Identity.Features.ConfirmAccount;
 
@@ -103,7 +102,7 @@ public class ConfirmAccountCommandHandler(ConfirmationCodesStorage confirmationC
                 {"os", requestContext.OperationSystem ?? string.Empty},
                 {"location", locationInfo},
                 {"appname", $"{requestContext.AppName} v.{requestContext.AppVersion}"},
-                {"datetime", DateTime.UtcNow.ToString("G", CultureInfo.GetCultureInfo("ru-RU"))}
+                {"datetime", DateTime.UtcNow.ToString("dd.MM.yyyy HH:mm:ss")}
             },
             ServiceId = ServiceId.Identity,
             Title = "Успешная регистрация",

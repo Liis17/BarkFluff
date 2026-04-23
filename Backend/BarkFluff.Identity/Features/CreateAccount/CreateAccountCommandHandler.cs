@@ -12,7 +12,6 @@ using BarkFluff.Shared.Queue.Notifications;
 
 using MediatR;
 
-using System.Globalization;
 
 namespace BarkFluff.Identity.Features.CreateAccount;
 
@@ -105,7 +104,7 @@ public class CreateAccountCommandHandler(UsersServerApi.UsersServerApiClient use
             {"os", requestContext.OperationSystem},
             {"location", locationInfo},
             {"appname", $"{requestContext.AppName} v.{requestContext.AppVersion}"},
-            {"datetime", DateTime.UtcNow.ToString("G", CultureInfo.GetCultureInfo("ru-RU"))}
+            {"datetime", DateTime.UtcNow.ToString("dd.MM.yyyy HH:mm:ss")}
         };
 
         logger.LogDebug(

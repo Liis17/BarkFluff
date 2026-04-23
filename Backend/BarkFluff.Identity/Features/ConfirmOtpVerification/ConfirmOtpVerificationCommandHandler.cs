@@ -12,7 +12,6 @@ using MediatR;
 
 using OtpNet;
 
-using System.Globalization;
 
 using OtpNotCreatedException = BarkFluff.Identity.Persistence.Exceptions.OtpNotCreatedException;
 using OtpType = BarkFluff.Identity.Domain.OtpType;
@@ -166,7 +165,7 @@ public class ConfirmOtpVerificationCommandHandler : IRequestHandler<ConfirmOtpVe
                     {"devicename", _requestContext.DeviceName ?? string.Empty},
                     {"os", _requestContext.OperationSystem ?? string.Empty},
                     {"location", locationInfo},
-                    {"datetime", DateTime.UtcNow.ToString("G", CultureInfo.GetCultureInfo("ru-RU"))}
+                    {"datetime", DateTime.UtcNow.ToString("dd.MM.yyyy HH:mm:ss")}
                 },
                 ServiceId = ServiceId.Identity,
                 Title = "Изменен метод двухфакторной аутентификации",

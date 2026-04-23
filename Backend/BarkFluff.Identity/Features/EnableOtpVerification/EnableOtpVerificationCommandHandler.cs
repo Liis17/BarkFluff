@@ -15,7 +15,6 @@ using OtpNet;
 
 using QRCoder;
 
-using System.Globalization;
 
 namespace BarkFluff.Identity.Features.EnableOtpVerification;
 
@@ -160,7 +159,7 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
                     {"os", _requestContext.OperationSystem},
                     {"location", locationInfo},
                     {"appname", $"{_requestContext.AppName} v.{_requestContext.AppVersion}"},
-                    {"datetime", DateTime.UtcNow.ToString("G", CultureInfo.GetCultureInfo("ru-RU"))}
+                    {"datetime", DateTime.UtcNow.ToString("dd.MM.yyyy HH:mm:ss")}
                 },
                 ServiceId = ServiceId.Identity,
                 Title = "Код подтверждения для привязки",
