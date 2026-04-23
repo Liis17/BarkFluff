@@ -23,8 +23,6 @@ service IdentityApi {
   // Подтвердить создания аккаунта
   rpc ConfirmAccount(ConfirmAccountRequest) returns(ConfirmAccountResponse);
   
-  rpc GenerateTestToken(GenerateTestTokenRequest) returns(GenerateTestTokenResponse);
-  
   // Получить активные сессии
   rpc GetActiveSessions(GetActiveSessionsRequest) returns(GetActiveSessionsResponse);
   
