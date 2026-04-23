@@ -32,6 +32,7 @@
 | [[Backend/Web]] | gRPC-Web прокси + статика | 7016 |
 | [[Backend/WebServer]] | Публичный HTTP-сервер | 64641 |
 | [[Backend/ClientStorage]] | Хранилище клиентских приложений | — |
+| [[Backend/Developers]] | Портал документации для разработчиков | 7020 |
 
 ### Shared-библиотеки
 
@@ -57,6 +58,7 @@
 | [[Клиенты/Linux-Qt]] | Qt 6 / C++20, ранняя стадия |
 | [[Клиенты/macOS]] | SwiftUI + gRPC-Swift |
 | [[Клиенты/iOS]] | SwiftUI + gRPC-Swift (на базе macOS-клиента) |
+| [[Клиенты/Developers-Web]] | React + Vite + TS, портал документации |
 
 ---
 
