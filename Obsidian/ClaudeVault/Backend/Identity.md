@@ -58,6 +58,14 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 
 Бросать исключения из `BarkFluff.Shared.Exceptions` — `ServerExceptionInterceptor` упакует в gRPC trailer `x-error-code`.
 
+## gRPC-Web
+
+`IdentityApiService` включает gRPC-Web для поддержки браузерных клиентов:
+- NuGet: `Grpc.AspNetCore.Web 2.76.0`
+- `app.UseGrpcWeb()` + `MapGrpcService<IdentityApiService>().EnableGrpcWeb()`
+- CORS политика `IdentityCors` с exposed headers: `grpc-status`, `grpc-message`, `x-error-code`
+- Браузер отправляет `Content-Type: application/grpc-web+proto`, nginx прокидывает через `grpc_pass`
+
 ## Proto
 
 - `identity_api.proto` — `GrpcServices="Server"`
