@@ -94,13 +94,6 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
         return _mediator.Send(command);
     }
 
-    public override async Task<GenerateTestTokenResponse> GenerateTestToken(GenerateTestTokenRequest request, ServerCallContext context)
-    {
-        var token = _jwtService.GenerateServerToken(ServiceId.Users);
-
-        return new GenerateTestTokenResponse() { Token = token };
-    }
-
     [Authorize(Policy = nameof(TokenType.User))]
     public override Task<GetActiveSessionsResponse> GetActiveSessions(GetActiveSessionsRequest request, ServerCallContext context)
     {
