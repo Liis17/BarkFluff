@@ -1,4 +1,3 @@
-using System.Globalization;
 
 namespace BarkFluff.Identity.Features.SetPassword;
 
@@ -99,7 +98,7 @@ public class SetPasswordCommandHandler : IRequestHandler<SetPasswordCommand>
                     {"os", _requestContext.OperationSystem ?? string.Empty},
                     {"location", locationInfo},
                     {"appname", $"{_requestContext.AppName} v.{_requestContext.AppVersion}"},
-                    {"datetime", DateTime.UtcNow.ToString("G", CultureInfo.GetCultureInfo("ru-RU"))}
+                    {"datetime", DateTime.UtcNow.ToString("dd.MM.yyyy HH:mm:ss")}
 
                 },
                 ServiceId = ServiceId.Identity,
