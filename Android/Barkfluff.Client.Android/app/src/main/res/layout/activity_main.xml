@@ -6,13 +6,13 @@
     android:background="?android:attr/colorBackground"
     android:fitsSystemWindows="true">
 
-    <!-- Контейнер для фрагментов (под навигацией) -->
+    <!-- Контейнер для фрагментов (расширяется до нижнего края экрана, под плавающей навигацией) -->
     <FrameLayout
         android:id="@+id/fragmentContainer"
         android:layout_width="0dp"
         android:layout_height="0dp"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/bottomNavCard"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
