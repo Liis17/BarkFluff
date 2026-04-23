@@ -27,6 +27,7 @@ dotnet build BarkFluff.Proto.csproj
 | `beacon_api.proto` | `BarkFluff.Proto.Beacon` | Описание сервера и адреса микросервисов |
 | `navigator_api.proto` | `BarkFluff.Proto.Navigator` | Глобальный реестр серверов |
 | `configuration_api.proto` | `BarkFluff.Proto.Configuration` | Централизованная конфигурация |
+| `developers_api.proto` | `BarkFluff.Proto.Developers` | Секции документации, proto-файлы, коды ошибок |
 
 ## Service Pairs Pattern
 

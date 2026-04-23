@@ -162,6 +162,17 @@ services:
       - updates
       - onliner
 
+  developers:
+    image: docker.barkfluff.com:5000/barkfluff-developers-dev:latest
+    container_name: developers
+    restart: always
+    environment:
+      <<: *common-variables
+    networks:
+      - barkfluff-network
+    depends_on:
+      - configuration
+
   # === Панель администрирования ===
 
   admin-panel:
