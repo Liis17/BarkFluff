@@ -202,8 +202,9 @@ PublishScripts/
 !**/[Pp]ackages/build/
 # except Swift Packages in macOS app
 !Mac/Barkfluff/Packages/
+!Mac/Barkfluff/Packages/**
 # but ignore Swift build cache
-Mac/Barkfluff/Packages/*/.build/
+Mac/barkfluff/Packages/*/.build/
 # Uncomment if necessary however generally it will be regenerated when needed
 #!**/[Pp]ackages/repositories.config
 # NuGet v3's project.json files produces more ignorable files
@@ -289,6 +290,9 @@ FakesAssemblies/
 .ntvs_analysis.dat
 node_modules/
 
+# Frontend build output
+Frontend/Developers/dist/
+
 # Visual Studio 6 build log
 *.plg
 
@@ -373,5 +377,20 @@ FodyWeavers.xsd
 
 #Билды линуха
 /Linux/build/
+
+# Xcode (Mac / iOS)
+**/xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+DerivedData/
+.swiftpm/
+Package.resolved
+build/
 
 .playwright-mcp

@@ -122,10 +122,12 @@ extension View {
             .frame(width: 200, height: 100)
             .glassCard()
 
+        
         Text("Glass Panel")
             .frame(width: 200, height: 60)
             .glassPanel()
 
+        
         Text("Hover Me")
             .frame(width: 150, height: 50)
             .glassEffect(material: .thinMaterial)
