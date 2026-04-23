@@ -9,11 +9,10 @@ COPY . .
 WORKDIR "/src/Backend/BarkFluff.ClientStorage"
 RUN --mount=type=cache,target=/root/.nuget/packages,sharing=locked \
     dotnet publish "BarkFluff.ClientStorage.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN mkdir -p /app/publish/data
 
-FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine AS final
-USER root
-RUN mkdir -p /app/data && chown $APP_UID /app/data
+FROM mcr.microsoft.com/dotnet/aspnet:9.0-noble-chiseled AS final
 WORKDIR /app
-COPY --from=build /app/publish .
+COPY --chown=1654:1654 --from=build /app/publish .
 USER $APP_UID
 ENTRYPOINT ["dotnet", "BarkFluff.ClientStorage.dll"]

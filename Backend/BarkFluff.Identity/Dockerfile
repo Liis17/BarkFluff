@@ -14,9 +14,10 @@ COPY . .
 WORKDIR "/src/Backend/BarkFluff.Identity"
 RUN --mount=type=cache,target=/root/.nuget/packages,sharing=locked \
     dotnet publish "BarkFluff.Identity.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN mkdir -p /app/publish/logs
 
-FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine AS final
+FROM mcr.microsoft.com/dotnet/aspnet:9.0-noble-chiseled AS final
 WORKDIR /app
-COPY --from=build /app/publish .
+COPY --chown=1654:1654 --from=build /app/publish .
 USER $APP_UID
 ENTRYPOINT ["dotnet", "BarkFluff.Identity.dll"]

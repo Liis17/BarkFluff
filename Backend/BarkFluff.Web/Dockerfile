@@ -66,9 +66,11 @@ WORKDIR "/src/Backend/BarkFluff.Web"
 RUN --mount=type=cache,target=/root/.nuget/packages,sharing=locked \
     dotnet publish "BarkFluff.Web.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
+# Web остаётся на Alpine: healthcheck требует wget (busybox), которого нет в chiseled
 FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine AS final
 WORKDIR /app
 COPY --from=build /app/publish .
+RUN mkdir -p /app/logs && chown $APP_UID /app/logs
 USER $APP_UID
 EXPOSE 7016
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
