@@ -1,6 +1,6 @@
 version: v2
 plugins:
-  - protoc_builtin: es
+  - local: protoc-gen-es
     out: src/gen
     opt: target=ts
   - local: protoc-gen-connect-es

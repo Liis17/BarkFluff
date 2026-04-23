@@ -43,6 +43,14 @@ public class Program
 
         builder.Services.AddXAuth(builder.Configuration);
 
+        builder.Services.AddCors(o => o.AddPolicy("IdentityCors", p =>
+        {
+            p.AllowAnyOrigin()
+             .AllowAnyMethod()
+             .AllowAnyHeader()
+             .WithExposedHeaders("grpc-status", "grpc-message", "grpc-status-details-bin", "x-error-code");
+        }));
+
         builder.Services.AddGrpcClient<UsersServerApi.UsersServerApiClient>(o =>
             {
                 o.Address = new Uri(builder.Configuration["UsersService:Host"]);
@@ -87,11 +95,13 @@ public class Program
         }
 
         app.MapGrpcReflectionService();
+        app.UseCors("IdentityCors");
+        app.UseGrpcWeb();
         app.UseRouting();
 
         app.UseXAuth();
 
-        app.MapGrpcService<IdentityApiService>();
+        app.MapGrpcService<IdentityApiService>().EnableGrpcWeb();
         app.MapGrpcService<IdentityServerApiService>();
 
         app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
