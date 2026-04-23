@@ -11,7 +11,6 @@ using BarkFluff.Shared.Queue.Notifications;
 
 using MediatR;
 
-using System.Globalization;
 
 namespace BarkFluff.Identity.Features.ResetPassword;
 
@@ -178,7 +177,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
                 {"os", _requestContext.OperationSystem},
                 {"location", locationInfo},
                 {"appname", $"{_requestContext.AppName} v.{_requestContext.AppVersion}"},
-                {"datetime", DateTime.UtcNow.ToString("G", CultureInfo.GetCultureInfo("ru-RU"))}
+                {"datetime", DateTime.UtcNow.ToString("dd.MM.yyyy HH:mm:ss")}
             },
             ServiceId = ServiceId.Identity,
             Title = "Код подтверждения для сброса пароля",

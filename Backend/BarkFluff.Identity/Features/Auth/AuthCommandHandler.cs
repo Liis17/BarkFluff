@@ -15,7 +15,6 @@ using MediatR;
 
 using OtpNet;
 
-using System.Globalization;
 
 namespace BarkFluff.Identity.Features.Auth;
 
@@ -140,7 +139,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                         {"os", requestContext.OperationSystem},
                         {"location", locationInfo},
                         {"appname", $"{requestContext.AppName} v.{requestContext.AppVersion}"},
-                        {"datetime", DateTime.UtcNow.ToString("G", CultureInfo.GetCultureInfo("ru-RU"))}
+                        {"datetime", DateTime.UtcNow.ToString("dd.MM.yyyy HH:mm:ss")}
                     },
                     ServiceId = ServiceId.Identity,
                     Title = "Код подтверждения для входа",
@@ -234,7 +233,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                     {"os", requestContext.OperationSystem},
                     {"location", locationInfo},
                     {"appname", $"{requestContext.AppName} v.{requestContext.AppVersion}"},
-                    {"datetime", DateTime.UtcNow.ToString("G", CultureInfo.GetCultureInfo("ru-RU"))}
+                    {"datetime", DateTime.UtcNow.ToString("dd.MM.yyyy HH:mm:ss")}
                 },
                 ServiceId = ServiceId.Identity,
                 Title = "Неуспешная попытка входа в аккаунт",
@@ -309,7 +308,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                 {"os", requestContext.OperationSystem},
                 {"location", successLocationInfo},
                 {"appname", $"{requestContext.AppName} v.{requestContext.AppVersion}"},
-                {"datetime", DateTime.UtcNow.ToString("G", CultureInfo.GetCultureInfo("ru-RU"))}
+                {"datetime", DateTime.UtcNow.ToString("dd.MM.yyyy HH:mm:ss")}
             },
             ServiceId = ServiceId.Identity,
             Title = "Успешный вход в аккаунт",
