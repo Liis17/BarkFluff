@@ -1,6 +1,16 @@
+import { createClient } from '@connectrpc/connect';
+import { createGrpcWebTransport } from '@connectrpc/connect-web';
+import { DevelopersApi } from '../gen/developers_api_connect';
+import {
+  GetDocumentationSectionsRequest,
+  GetProtoFilesRequest,
+  GetProtoFileContentRequest,
+  GetErrorCodesRequest,
+} from '../gen/developers_api_pb';
 import { getDeviceId } from '../App';
 
-const API_BASE = '/grpc';
+const developerTransport = createGrpcWebTransport({ baseUrl: '/grpc' });
+const developerClient = createClient(DevelopersApi, developerTransport);
 
 function getBrowserName(): string {
   const ua = navigator.userAgent;
@@ -22,10 +32,8 @@ function getOsName(): string {
   return 'Unknown';
 }
 
-function buildHeaders(token: string): Record<string, string> {
-  return {
-    'Content-Type': 'application/json',
-    'Connect-Protocol-Version': '1',
+function buildHeaders(token: string): Headers {
+  return new Headers({
     'x-auth-token': token,
     'x-device-id': btoa(getDeviceId()),
     'x-device-name': btoa(getBrowserName()),
@@ -33,7 +41,7 @@ function buildHeaders(token: string): Record<string, string> {
     'x-app-name': btoa('BarkFluff Developers'),
     'x-app-version': btoa('1.0.0'),
     'x-ip-address': btoa('0.0.0.0'),
-  };
+  });
 }
 
 export interface DocSection {
@@ -59,56 +67,60 @@ export interface ErrorCode {
   domain: string;
 }
 
-async function grpcCall<T>(service: string, method: string, body: unknown, token: string): Promise<T> {
-  const resp = await fetch(`${API_BASE}/${service}/${method}`, {
-    method: 'POST',
-    headers: buildHeaders(token),
-    body: JSON.stringify(body),
-  });
-
-  if (!resp.ok) {
-    const errorCode = resp.headers.get('x-error-code');
-    throw new Error(errorCode ?? `gRPC call failed: ${resp.status}`);
-  }
-
-  return resp.json();
-}
-
 export async function getDocumentationSections(token: string): Promise<DocSection[]> {
-  const data = await grpcCall<{ sections: DocSection[] }>(
-    'barkfluff.developers.DevelopersApi',
-    'GetDocumentationSections',
-    {},
-    token,
+  const resp = await developerClient.getDocumentationSections(
+    new GetDocumentationSectionsRequest(),
+    { headers: buildHeaders(token) },
   );
-  return data.sections ?? [];
+  return resp.sections.map(s => ({
+    key: s.key,
+    title: s.title,
+    type: s.type,
+    order: s.order,
+    content: s.content,
+  }));
 }
 
 export async function getProtoFiles(token: string): Promise<ProtoFile[]> {
-  const data = await grpcCall<{ files: ProtoFile[] }>(
-    'barkfluff.developers.DevelopersApi',
-    'GetProtoFiles',
-    {},
-    token,
+  const resp = await developerClient.getProtoFiles(
+    new GetProtoFilesRequest(),
+    { headers: buildHeaders(token) },
   );
-  return data.files ?? [];
+  return resp.files.map(f => ({
+    fileName: f.fileName,
+    displayName: f.displayName,
+    slug: f.slug,
+    order: f.order,
+    rpcDescriptions: f.rpcDescriptions,
+  }));
 }
 
 export async function getProtoFileContent(token: string, fileName: string): Promise<{ content: string; metadata?: ProtoFile }> {
-  return grpcCall(
-    'barkfluff.developers.DevelopersApi',
-    'GetProtoFileContent',
-    { fileName },
-    token,
+  const resp = await developerClient.getProtoFileContent(
+    new GetProtoFileContentRequest({ fileName }),
+    { headers: buildHeaders(token) },
   );
+  return {
+    content: resp.content,
+    metadata: resp.metadata ? {
+      fileName: resp.metadata.fileName,
+      displayName: resp.metadata.displayName,
+      slug: resp.metadata.slug,
+      order: resp.metadata.order,
+      rpcDescriptions: resp.metadata.rpcDescriptions,
+    } : undefined,
+  };
 }
 
 export async function getErrorCodes(token: string): Promise<ErrorCode[]> {
-  const data = await grpcCall<{ errorCodes: ErrorCode[] }>(
-    'barkfluff.developers.DevelopersApi',
-    'GetErrorCodes',
-    {},
-    token,
+  const resp = await developerClient.getErrorCodes(
+    new GetErrorCodesRequest(),
+    { headers: buildHeaders(token) },
   );
-  return data.errorCodes ?? [];
+  return resp.errorCodes.map(e => ({
+    code: e.code,
+    exceptionName: e.exceptionName,
+    description: e.description,
+    domain: e.domain,
+  }));
 }

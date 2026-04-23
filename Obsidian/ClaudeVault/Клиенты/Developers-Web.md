@@ -29,13 +29,15 @@ npm run dev       # → http://localhost:5173
 ### Авторизация
 
 - `LoginPage` — форма логина + 2FA (OTP)
-- Auth flow через `IdentityApi.Auth` по JSON-over-gRPC-Web (`Content-Type: application/json`, `Connect-Protocol-Version: 1`)
+- Auth flow через `IdentityApi.Auth` с транспортом `createGrpcWebTransport` (`Content-Type: application/grpc-web+proto`)
+- Типизированный клиент: `createClient(IdentityApi, identityTransport)` из `src/gen/identity_api_connect`
+- OTP ошибка детектируется через `ConnectError.metadata.get('x-error-code')`
 - Токен JWT хранится в `AuthContext`, передаётся во все API-вызовы через заголовок `x-auth-token`
 
 ### API клиент (`src/api/client.ts`)
 
-- gRPC-Web вызовы через `@connectrpc/connect-web` (fetch-based transport)
-- `buildHeaders(token)` — формирует все XAuth заголовки: `x-auth-token` + device metadata (base64)
+- gRPC-Web вызовы через `createClient(DevelopersApi, developerTransport)` (typed, `@connectrpc/connect-web`)
+- `buildHeaders(token)` — формирует XAuth заголовки: `x-auth-token` + device metadata (base64); без `Content-Type`/`Connect-Protocol-Version`
 - Прокси в dev: Vite proxy `/grpc` → `http://localhost:7020`
 
 ### Структура компонентов
@@ -79,13 +81,14 @@ src/
 
 ## Proto-генерация
 
-Конфигурация: `buf.gen.yaml`. Генерирует TypeScript-клиенты из `.proto` файлов.
+Конфигурация: `buf.gen.yaml` + `buf.yaml`. Генерирует TypeScript-клиенты из `.proto` файлов.
 
 ```bash
-npx buf generate
+npm run generate   # = buf generate
 ```
 
 Proto-файлы скопированы в `Frontend/Developers/proto/`.
+Сгенерированные файлы: `src/gen/` (identity_api_pb.ts, identity_api_connect.ts, developers_api_pb.ts, developers_api_connect.ts).
 
 ## Деплой
 

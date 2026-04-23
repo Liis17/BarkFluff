@@ -44,7 +44,9 @@
       "Bash(npm --version)",
       "Bash(protoc --version)",
       "Read(//c/Users/daske/.nuget/packages/grpc.aspnetcore.web/2.71.0/lib/net9.0/**)",
-      "Bash(dotnet-ildasm Grpc.AspNetCore.Web.dll)"
+      "Bash(dotnet-ildasm Grpc.AspNetCore.Web.dll)",
+      "Bash(npm run *)",
+      "Bash(npx buf *)"
     ],
     "deny": [],
     "ask": []

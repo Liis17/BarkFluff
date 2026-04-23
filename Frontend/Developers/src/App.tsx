@@ -1,4 +1,8 @@
 import { useState, createContext, useContext, useCallback, useEffect } from 'react';
+import { createClient, ConnectError } from '@connectrpc/connect';
+import { createGrpcWebTransport } from '@connectrpc/connect-web';
+import { IdentityApi } from './gen/identity_api_connect';
+import { AuthRequest } from './gen/identity_api_pb';
 import { LoginPage } from './auth/LoginPage';
 import { DocsPage } from './components/DocsPage';
 
@@ -18,6 +22,10 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const AUTH_KEY = 'barkfluff_dev_auth';
+const OTP_NEEDED_CODE = 'C1576884-12D8-4722-A7EE-9F9789AD1265';
+
+const identityTransport = createGrpcWebTransport({ baseUrl: '/grpc' });
+const identityClient = createClient(IdentityApi, identityTransport);
 
 function loadAuth(): AuthState | null {
   try {
@@ -44,8 +52,6 @@ function saveAuth(auth: AuthState | null) {
   }
 }
 
-const OTP_NEEDED_CODE = 'C1576884-12D8-4722-A7EE-9F9789AD1265';
-
 export function App() {
   const [auth, setAuth] = useState<AuthState | null>(loadAuth);
 
@@ -54,7 +60,7 @@ export function App() {
   }, [auth]);
 
   const login = useCallback(async (loginValue: string, password: string, otpCode?: string) => {
-    const metadata: Record<string, string> = {
+    const metadata = {
       'x-device-id': btoa(getDeviceId()),
       'x-device-name': btoa(getBrowserName()),
       'x-os-name': btoa(getOsName()),
@@ -63,50 +69,34 @@ export function App() {
       'x-ip-address': btoa('0.0.0.0'),
     };
 
-    const req: Record<string, unknown> = { password };
-    if (loginValue.includes('@')) {
-      req.email = loginValue;
-    } else {
-      req.username = loginValue;
-    }
-    if (otpCode) {
-      req.otpCode = otpCode;
-    }
+    const request = new AuthRequest({
+      login: loginValue.includes('@')
+        ? { case: 'email', value: loginValue }
+        : { case: 'username', value: loginValue },
+      password,
+      otpCode: otpCode ?? '',
+    });
 
     try {
-      const resp = await fetch('/grpc/barkfluff.identity.IdentityApi/Auth', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Connect-Protocol-Version': '1',
-          ...metadata,
-        },
-        body: JSON.stringify(req),
-      });
-
-      if (!resp.ok) {
-        const errorCode = resp.headers.get('x-error-code');
-        if (errorCode === OTP_NEEDED_CODE) {
-          return { needOtp: true };
-        }
-        throw new Error(`Auth failed: ${resp.status}`);
-      }
-
-      const data = await resp.json();
+      const resp = await identityClient.auth(request, { headers: new Headers(metadata) });
       const newAuth: AuthState = {
-        accessToken: data.accessToken?.value ?? '',
-        refreshToken: data.refreshToken?.value ?? '',
-        accessTokenExpiration: data.accessToken?.expirationDate
-          ? new Date(data.accessToken.expirationDate).getTime()
-          : Date.now() + 3600_000,
-        refreshTokenExpiration: data.refreshToken?.expirationDate
-          ? new Date(data.refreshToken.expirationDate).getTime()
-          : Date.now() + 86400_000 * 9999,
+        accessToken: resp.accessToken?.value ?? '',
+        refreshToken: resp.refreshToken?.value ?? '',
+        accessTokenExpiration: resp.accessToken?.expirationDate
+          ? Number(resp.accessToken.expirationDate.seconds) * 1000
+          : Date.now() + 3_600_000,
+        refreshTokenExpiration: resp.refreshToken?.expirationDate
+          ? Number(resp.refreshToken.expirationDate.seconds) * 1000
+          : Date.now() + 86_400_000 * 9999,
       };
       setAuth(newAuth);
       return { needOtp: false };
-    } catch (e) {
-      throw e;
+    } catch (err) {
+      if (err instanceof ConnectError) {
+        const errorCode = err.metadata.get('x-error-code');
+        if (errorCode === OTP_NEEDED_CODE) return { needOtp: true };
+      }
+      throw err;
     }
   }, []);
 
