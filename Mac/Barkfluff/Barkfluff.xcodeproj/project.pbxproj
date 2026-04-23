@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		7DF1B9222F3E7001007C1466 /* NukeUI in Frameworks */ = {isa = PBXBuildFile; productRef = 7DF1B9212F3E7001007C1466 /* NukeUI */; };
 		7DF1B9452F3E65B0007C1466 /* BFCore in Frameworks */ = {isa = PBXBuildFile; productRef = 7DF1B91D2F3E7000007C1466 /* BFCore */; };
+		7DF1B9462F3E65B0007C1466 /* BFNetworking in Frameworks */ = {isa = PBXBuildFile; productRef = 7DF1B91E2F3E7000007C1466 /* BFNetworking */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -32,6 +33,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7DF1B9452F3E65B0007C1466 /* BFCore in Frameworks */,
+				7DF1B9462F3E65B0007C1466 /* BFNetworking in Frameworks */,
 				7DF1B9222F3E7001007C1466 /* NukeUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -114,6 +116,7 @@
 			name = Barkfluff;
 			packageProductDependencies = (
 				7DF1B91D2F3E7000007C1466 /* BFCore */,
+				7DF1B91E2F3E7000007C1466 /* BFNetworking */,
 				7DF1B9212F3E7001007C1466 /* NukeUI */,
 			);
 			productName = Barkfluff;
@@ -423,6 +426,10 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 7DF1B9202F3E7001007C1466 /* XCRemoteSwiftPackageReference "Nuke" */;
 			productName = NukeUI;
+		};
+		7DF1B91E2F3E7000007C1466 /* BFNetworking */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = BFNetworking;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

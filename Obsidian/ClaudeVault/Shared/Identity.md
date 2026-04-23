@@ -6,7 +6,7 @@
 
 ## Содержимое (три файла)
 
-- **`ServiceId.cs`** — enum с ID каждого микросервиса (Identity=1, Users=2, Beacon=3, ...). При добавлении нового сервиса — добавить сюда.
+- **`ServiceId.cs`** — enum с ID каждого микросервиса (Identity=1, Users=2, Beacon=3, ..., Developers=12). При добавлении нового сервиса — добавить сюда.
 - **`TokenType.cs`** — enum: `User`, `Service`, `FastAuth`.
 - **`IdentityClaims.cs`** — строковые константы для JWT claims и gRPC metadata: `x-user-id`, `x-token-type`, `x-service-id`.
 

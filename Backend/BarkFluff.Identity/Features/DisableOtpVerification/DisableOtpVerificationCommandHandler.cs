@@ -12,7 +12,6 @@ using MediatR;
 
 using OtpNet;
 
-using System.Globalization;
 
 using OtpNotCreatedException = BarkFluff.Identity.Persistence.Exceptions.OtpNotCreatedException;
 
@@ -132,7 +131,7 @@ public class DisableOtpVerificationCommandHandler : IRequestHandler<DisableOtpVe
                 {"os", _requestContext.OperationSystem ?? string.Empty},
                 {"location", locationInfo},
                 {"appname", $"{_requestContext.AppName} v.{_requestContext.AppVersion}"},
-                {"datetime", DateTime.UtcNow.ToString("G", CultureInfo.GetCultureInfo("ru-RU"))}
+                {"datetime", DateTime.UtcNow.ToString("dd.MM.yyyy HH:mm:ss")}
 
             },
             ServiceId = ServiceId.Identity,

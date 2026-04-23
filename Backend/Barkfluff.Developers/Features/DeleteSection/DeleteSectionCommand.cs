@@ -1,0 +1,27 @@
+using Grpc.Core;
+using Barkfluff.Developers.Persistence.Services;
+using MediatR;
+
+namespace Barkfluff.Developers.Features.DeleteSection;
+
+public class DeleteSectionCommand : IRequest<bool>
+{
+    public string Key { get; set; } = string.Empty;
+}
+
+public class DeleteSectionCommandHandler : IRequestHandler<DeleteSectionCommand, bool>
+{
+    private readonly DocumentationStorage _storage;
+
+    public DeleteSectionCommandHandler(DocumentationStorage storage)
+    {
+        _storage = storage;
+    }
+
+    public async Task<bool> Handle(DeleteSectionCommand request, CancellationToken cancellationToken)
+    {
+        var deleted = await _storage.DeleteAsync(request.Key);
+        if (!deleted) throw new RpcException(new Status(StatusCode.NotFound, $"Section '{request.Key}' not found"));
+        return true;
+    }
+}
