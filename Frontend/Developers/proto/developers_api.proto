@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+option csharp_namespace = "BarkFluff.Proto.Developers";
+
+package barkfluff.developers;
+
+service DevelopersApi {
+  rpc GetDocumentationSections(GetDocumentationSectionsRequest) returns (GetDocumentationSectionsResponse);
+  rpc GetDocumentationSection(GetDocumentationSectionRequest) returns (DocumentationSection);
+  rpc GetProtoFiles(GetProtoFilesRequest) returns (GetProtoFilesResponse);
+  rpc GetProtoFileContent(GetProtoFileContentRequest) returns (GetProtoFileContentResponse);
+  rpc GetErrorCodes(GetErrorCodesRequest) returns (GetErrorCodesResponse);
+}
+
+message GetDocumentationSectionsRequest {}
+
+message GetDocumentationSectionsResponse {
+  repeated DocumentationSection sections = 1;
+}
+
+message GetDocumentationSectionRequest {
+  string key = 1;
+}
+
+message DocumentationSection {
+  string key = 1;
+  string title = 2;
+  string type = 3;
+  int32 order = 4;
+  string content = 5;
+}
+
+message GetProtoFilesRequest {}
+
+message GetProtoFilesResponse {
+  repeated ProtoFileInfo files = 1;
+}
+
+message ProtoFileInfo {
+  string file_name = 1;
+  string display_name = 2;
+  string slug = 3;
+  int32 order = 4;
+  string rpc_descriptions = 5;
+}
+
+message GetProtoFileContentRequest {
+  string file_name = 1;
+}
+
+message GetProtoFileContentResponse {
+  string content = 1;
+  ProtoFileInfo metadata = 2;
+}
+
+message GetErrorCodesRequest {}
+
+message GetErrorCodesResponse {
+  repeated ErrorCodeEntry error_codes = 1;
+}
+
+message ErrorCodeEntry {
+  string code = 1;
+  string exception_name = 2;
+  string description = 3;
+  string domain = 4;
+}
