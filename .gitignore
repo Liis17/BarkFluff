@@ -374,4 +374,19 @@ FodyWeavers.xsd
 #Билды линуха
 /Linux/build/
 
+# Xcode (Mac / iOS)
+**/xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+DerivedData/
+.swiftpm/
+Package.resolved
+build/
+
 .playwright-mcp
