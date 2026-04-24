@@ -94,10 +94,10 @@ public class Program
             ctx.Database.Migrate();
         }
 
-        app.MapGrpcReflectionService();
+        app.UseRouting();
         app.UseCors("IdentityCors");
         app.UseGrpcWeb();
-        app.UseRouting();
+        app.MapGrpcReflectionService();
 
         app.UseXAuth();
 
