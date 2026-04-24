@@ -382,7 +382,7 @@
             <h1>Политика удаления аккаунта</h1>
             <div class="meta">
                 <span>📅 Дата вступления в силу: 24 января 2026 г.</span>
-                <span>🔄 Последнее обновление: 24 января 2026 г.</span>
+                <span>🔄 Последнее обновление: 21 июля 2026 г.</span>
             </div>
         </div>
 
@@ -481,20 +481,24 @@ message DeleteAccountRequest {
                 </thead>
                 <tbody>
                     <tr>
-                        <td><strong>Запись в таблице Identity.Users</strong></td>
-                        <td>✅ Удалена (Email, Username, Password Hash)</td>
+                        <td><strong>Данные аутентификации (Identity service)</strong></td>
+                        <td>✅ Удалены (Password Hash, Refresh Tokens, OTP-секреты, коды подтверждения)</td>
                     </tr>
                     <tr>
-                        <td><strong>Профиль пользователя (Users.UserProfiles)</strong></td>
-                        <td>✅ Удален (FirstName, LastName, Bio)</td>
+                        <td><strong>Профиль пользователя (Users.Users)</strong></td>
+                        <td>✅ Удален (Username, FirstName, LastName, Bio, Email)</td>
                     </tr>
                     <tr>
                         <td><strong>Аватар</strong></td>
-                        <td>✅ Удален из S3 и метаданные из PostgreSQL</td>
+                        <td>✅ Удален из Minio и метаданные из PostgreSQL</td>
                     </tr>
                     <tr>
-                        <td><strong>Все активные сессии (Identity.Sessions)</strong></td>
+                        <td><strong>Все активные сессии (Identity.RefreshTokens)</strong></td>
                         <td>✅ Удалены (Refresh Tokens, Device IDs)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Зарегистрированные устройства (Users.UserDevices)</strong></td>
+                        <td>✅ Удалены (названия, FCM-токены, OS, Location)</td>
                     </tr>
                     <tr>
                         <td><strong>Личные файлы</strong></td>
@@ -503,10 +507,6 @@ message DeleteAccountRequest {
                     <tr>
                         <td><strong>Настройки конфиденциальности</strong></td>
                         <td>✅ Удалены</td>
-                    </tr>
-                    <tr>
-                        <td><strong>История входов (старше 90 дней)</strong></td>
-                        <td>✅ Удалена</td>
                     </tr>
                 </tbody>
             </table>
