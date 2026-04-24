@@ -1,0 +1,170 @@
+name: "🚀 BarkFluff.Updates CI/CD"
+
+on:
+  push:
+    branches:
+      - dev
+      - master
+    paths:
+      - 'Backend/BarkFluff.Updates/**'
+      - 'Backend/BarkFluff.GrpcServer/**'
+      - 'Shared/BarkFluff.Shared.Queue/**'
+      - 'Shared/BarkFluff.Proto/**'
+      - 'Backend/rebuild.trigger'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  # ═══════════════════════════════════════════════════════════════
+  #  1. Проверка наличия .NET 9.0 SDK на раннере
+  # ═══════════════════════════════════════════════════════════════
+  check-dotnet:
+    name: "🔍 Проверка .NET 9.0 SDK"
+    runs-on: self-hosted
+    steps:
+      - name: "Проверка наличия .NET 9.0 SDK"
+        id: check
+        run: |
+          if ! dotnet --list-sdks 2>/dev/null | grep -q "^9\."; then
+            echo "missing=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "missing=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: "\u274C .NET 9.0 SDK не установлен — уведомление в Telegram"
+        if: steps.check.outputs.missing == 'true'
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=❌ *Сборка невозможна: .NET 9.0 SDK не установлен на раннере*
+
+🐳 *BarkFluff.Updates*
+📌 Ветка: \`${{ github.ref_name }}\`
+👤 Автор: *${{ github.actor }}*"
+          exit 1
+
+  # ═══════════════════════════════════════════════════════════════
+  #  2. Запрос подтверждения сборки через Telegram
+  # ═══════════════════════════════════════════════════════════════
+  request-approval:
+    name: "📲 Запрос подтверждения"
+    needs: check-dotnet
+    runs-on: self-hosted
+    outputs:
+      approved: ${{ steps.result.outputs.approved }}
+    steps:
+      - name: "\U0001F4F2 Собрать BarkFluff.Updates?"
+        id: approval
+        continue-on-error: true
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "Запустить сборку BarkFluff.Updates?"
+          APPROVAL_BUTTON: "\u2705 Собрать"
+          REJECT_BUTTON: "\u274C Отменить"
+          APPROVED_TEXT: "\u2705 Сборка BarkFluff.Updates одобрена"
+          REJECTED_TEXT: "\u274C Сборка BarkFluff.Updates отклонена"
+          TIMEOUT_TEXT: "\u23F0 Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Результат
+        id: result
+        run: |
+          if [ "${{ steps.approval.outcome }}" = "success" ]; then
+            echo "approved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "approved=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ═══════════════════════════════════════════════════════════════
+  #  3. dotnet publish → Docker build → Push
+  # ═══════════════════════════════════════════════════════════════
+  build:
+    name: "🐳 Сборка и публикация BarkFluff.Updates"
+    needs: [check-dotnet, request-approval]
+    if: needs.request-approval.outputs.approved == 'true'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "\u2699\uFE0F dotnet publish (Linux Release)"
+        run: |
+          dotnet publish Backend/BarkFluff.Updates/BarkFluff.Updates.csproj \
+            -c Release \
+            -o ./publish \
+            /p:UseAppHost=false
+          mkdir -p ./publish/logs
+
+      - name: Login to Private Registry
+        uses: docker/login-action@v2
+        with:
+          registry: docker.barkfluff.com:5000
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Set tags
+        id: vars
+        run: |
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            echo "tags=docker.barkfluff.com:5000/barkfluff-updates-dev:latest,docker.barkfluff.com:5000/barkfluff-updates-dev:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+            echo "tag_sha=docker.barkfluff.com:5000/barkfluff-updates-dev:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tags=docker.barkfluff.com:5000/barkfluff-updates:latest,docker.barkfluff.com:5000/barkfluff-updates:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+            echo "tag_sha=docker.barkfluff.com:5000/barkfluff-updates:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build and Push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Backend/BarkFluff.Updates/Dockerfile.slim
+          push: true
+          tags: ${{ steps.vars.outputs.tags }}
+
+      - name: "\u2705 Уведомление об успехе"
+        if: success()
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ✅ *Сборка успешна*
+
+            🐳 *BarkFluff.Updates*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+            🏷️ Тег: `${{ steps.vars.outputs.tag_sha }}`
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
+
+      - name: "\u274C Уведомление об ошибке"
+        if: failure()
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ❌ *Сборка провалена*
+
+            🐳 *BarkFluff.Updates*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
