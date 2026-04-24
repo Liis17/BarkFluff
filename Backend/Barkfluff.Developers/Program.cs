@@ -70,9 +70,9 @@ public class Program
             protoStorage.SeedIfNeeded().GetAwaiter().GetResult();
         }
 
+        app.UseRouting();
         app.UseCors("DevelopersCors");
         app.UseGrpcWeb();
-        app.UseRouting();
         app.UseXAuth();
 
         app.MapGrpcReflectionService();
