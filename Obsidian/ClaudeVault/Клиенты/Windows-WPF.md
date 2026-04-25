@@ -36,6 +36,7 @@ BarkFluff.Client.WPF/
 ```
 
 gRPC-клиентский код — в [[Клиенты/Windows-WebApiCore]].
+UI/UX спецификация всех экранов и сценариев — [[Клиенты/DesignDocument]] (источник: `dd.md`).
 
 ## Архитектура (Code-Behind + Service Layer)
 
