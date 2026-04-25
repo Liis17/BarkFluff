@@ -1,0 +1,10 @@
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine
+USER root
+WORKDIR /app
+RUN apk add --no-cache docker-cli docker-cli-compose \
+    && addgroup docker \
+    && adduser app docker
+COPY publish/ .
+RUN mkdir -p /app/db && chown app:app /app/db
+USER $APP_UID
+ENTRYPOINT ["dotnet", "Barkfluff.AdminPanel.dll"]

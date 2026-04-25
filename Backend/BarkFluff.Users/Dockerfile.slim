@@ -1,0 +1,5 @@
+FROM mcr.microsoft.com/dotnet/aspnet:9.0-noble-chiseled
+WORKDIR /app
+COPY --chown=1654:1654 publish/ .
+USER $APP_UID
+ENTRYPOINT ["dotnet", "BarkFluff.Users.dll"]
