@@ -353,22 +353,26 @@ Toggle уведомлений, настройки каналов Android.
 
 **Тип:** AppCompatActivity
 
-Настройки персонализации. Две секции:
+Экран персонализации. Три блока сверху вниз:
 
-**Внешний вид сообщений:**
-- Превью двух пузырей (входящий + исходящий) с фоном и блюром (если выбран)
-- `Slider` 0–30 dp → сохраняет в `GlobalParam.chatMessageCornerRadius`
+**Блок 1 — Превью чата (260dp):**
+- `FrameLayout chatPreviewLayout` — полноразмерный превью-контейнер
+- `previewBackgroundImage` — фоновое изображение (`GONE` если фон не выбран)
+- `previewDimOverlay` — View с чёрным фоном переменной альфа (затемнение 0–100%)
+- 5 пузырей (`previewMsg1..5`): 3 входящих + 2 исходящих, прибиты к низу; радиус обновляется в реалтайм
+- Блюр: `RenderEffect.createBlurEffect` (API 31+) применяется к `previewBackgroundImage`
 
-**Фон чатов:**
-- `RecyclerView` (GridLayoutManager 3 колонки) + `ChatBackgroundAdapter` — превью 2:3 через `AspectRatioImageView`
-- Первая ячейка всегда — "Без фона" (fileId = ""), выбор сбрасывает фон
-- Клик по ячейке: выбрать как фон (`GlobalParam.chatBackgroundFileId`) + обновить превью
-- Долгое нажатие: режим удаления (оверлей корзины)
-- Кнопка "Добавить фон": `GetContent("image/*")` → сжатие до JPEG 85% → `ChatRepository.uploadFile(MESSAGE_ATTACHMENT_IMAGE)` → fileId → `GrpcManager.updatePersonalizationBackgrounds`
-- `MaterialSwitch` "Размыть фон" → `GlobalParam.chatBackgroundBlur`
-- `Slider` 1–25 (сила блюра) → `GlobalParam.chatBackgroundBlurRadius`; появляется только при включённом тогле
-- Блюр превью: `RenderEffect.createBlurEffect` (API 31+)
-- Список фонов загружается при старте через `GrpcManager.getPersonalization()`
+**Блок 2 — Настройки отображения:**
+- `Slider cornerRadiusSlider` (0..30 dp) → `GlobalParam.chatMessageCornerRadius`
+- `MaterialSwitch switchBlurBackground` → `GlobalParam.chatBackgroundBlur`
+- `blurRadiusSection` (скрыт если тогл выкл): `Slider blurRadiusSlider` (1..25) → `GlobalParam.chatBackgroundBlurRadius`
+- `Slider dimSlider` (0..100 %) → `GlobalParam.chatBackgroundDim`; значение отображается как "N%"
+
+**Блок 3 — Фон чатов:**
+- `RecyclerView` GridLayoutManager 3 колонки + `ChatBackgroundAdapter`
+- Первая ячейка всегда — "Без фона" (fileId = ""); выбор сбрасывает фон
+- Кнопка "Добавить фон": `GetContent("image/*")` → JPEG 85% → `ChatRepository.uploadFile` → `GrpcManager.updatePersonalizationBackgrounds`
+- Долгое нажатие → режим удаления (оверлей корзины)
 
 **Связи:** `GlobalParam`, `GrpcManager`, `ChatRepository`, `ChatBackgroundAdapter`, `AspectRatioImageView`
 
