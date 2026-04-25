@@ -14,15 +14,18 @@ public class ClientStorageController : ControllerBase
 {
     private readonly ClientStorageContext _db;
     private readonly S3StorageService _s3;
+    private readonly LocalFileCache _cache;
     private readonly ILogger<ClientStorageController> _logger;
 
     public ClientStorageController(
         ClientStorageContext db,
         S3StorageService s3,
+        LocalFileCache cache,
         ILogger<ClientStorageController> logger)
     {
         _db = db;
         _s3 = s3;
+        _cache = cache;
         _logger = logger;
     }
 
@@ -42,7 +45,6 @@ public class ClientStorageController : ControllerBase
     public Task<IActionResult> GetWindowsChannelVersion(string channel)
         => ParseChannelAndGetVersion(ClientType.Windows, channel);
 
-    /// <summary>Возвращает presigned URL + метаданные для создания BITS-задания.</summary>
     [HttpGet("/get/barkfluffwindows/bitsurl")]
     public Task<IActionResult> GetWindowsBitsUrl()
         => GetBitsUrl(ClientType.Windows, ReleaseChannel.Release);
@@ -139,56 +141,76 @@ public class ClientStorageController : ControllerBase
     public Task<IActionResult> SetIOSChannel(IFormFile file, string channel)
         => ParseChannelAndUpload(file, ClientType.iOS, channel);
 
+    // --- Helpers ---
+
     private bool TryParseChannel(string channel, out ReleaseChannel releaseChannel)
     {
         switch (channel.ToLowerInvariant())
         {
-            case "release":
-                releaseChannel = ReleaseChannel.Release;
-                return true;
-            case "beta":
-                releaseChannel = ReleaseChannel.Beta;
-                return true;
-            default:
-                releaseChannel = default;
-                return false;
+            case "release": releaseChannel = ReleaseChannel.Release; return true;
+            case "beta":    releaseChannel = ReleaseChannel.Beta;    return true;
+            default:        releaseChannel = default;                return false;
         }
     }
 
-    private async Task<IActionResult> ParseChannelAndDownload(ClientType clientType, string channel)
+    private static string GetDownloadPath(ClientType clientType, ReleaseChannel channel)
     {
-        if (!TryParseChannel(channel, out var releaseChannel))
-            return BadRequest(new { error = "Неизвестный канал. Допустимые значения: release, beta" });
-
-        return await DownloadClient(clientType, releaseChannel);
+        var slug = clientType switch
+        {
+            ClientType.Windows => "windows",
+            ClientType.Kotlin  => "kotlin",
+            ClientType.MacOS   => "macos",
+            ClientType.iOS     => "ios",
+            _                  => throw new ArgumentOutOfRangeException(nameof(clientType))
+        };
+        var ch = channel == ReleaseChannel.Release ? "release" : "beta";
+        return $"/get/barkfluff{slug}/{ch}";
     }
 
-    private async Task<IActionResult> ParseChannelAndGetVersion(ClientType clientType, string channel)
+    private string BuildPublicUrl(string path)
     {
-        if (!TryParseChannel(channel, out var releaseChannel))
-            return BadRequest(new { error = "Неизвестный канал. Допустимые значения: release, beta" });
+        var baseUrl = HttpContext.RequestServices
+            .GetRequiredService<IConfiguration>()["PUBLIC_BASE_URL"];
 
-        return await GetVersion(clientType, releaseChannel);
+        if (!string.IsNullOrWhiteSpace(baseUrl))
+            return baseUrl.TrimEnd('/') + path;
+
+        return $"{Request.Scheme}://{Request.Host}{path}";
     }
 
-    private async Task<IActionResult> ParseChannelAndUpload(IFormFile file, ClientType clientType, string channel)
+    private Task<IActionResult> ParseChannelAndDownload(ClientType clientType, string channel)
     {
-        if (!TryParseChannel(channel, out var releaseChannel))
-            return BadRequest(new { error = "Неизвестный канал. Допустимые значения: release, beta" });
-
-        return await UploadClient(file, clientType, releaseChannel);
+        if (!TryParseChannel(channel, out var rc))
+            return Task.FromResult<IActionResult>(BadRequest(new { error = "Неизвестный канал. Допустимые значения: release, beta" }));
+        return DownloadClient(clientType, rc);
     }
 
-    private async Task<IActionResult> ParseChannelAndGetBitsUrl(ClientType clientType, string channel)
+    private Task<IActionResult> ParseChannelAndGetVersion(ClientType clientType, string channel)
     {
-        if (!TryParseChannel(channel, out var releaseChannel))
-            return BadRequest(new { error = "Неизвестный канал. Допустимые значения: release, beta" });
-        return await GetBitsUrl(clientType, releaseChannel);
+        if (!TryParseChannel(channel, out var rc))
+            return Task.FromResult<IActionResult>(BadRequest(new { error = "Неизвестный канал. Допустимые значения: release, beta" }));
+        return GetVersion(clientType, rc);
     }
+
+    private Task<IActionResult> ParseChannelAndUpload(IFormFile file, ClientType clientType, string channel)
+    {
+        if (!TryParseChannel(channel, out var rc))
+            return Task.FromResult<IActionResult>(BadRequest(new { error = "Неизвестный канал. Допустимые значения: release, beta" }));
+        return UploadClient(file, clientType, rc);
+    }
+
+    private Task<IActionResult> ParseChannelAndGetBitsUrl(ClientType clientType, string channel)
+    {
+        if (!TryParseChannel(channel, out var rc))
+            return Task.FromResult<IActionResult>(BadRequest(new { error = "Неизвестный канал. Допустимые значения: release, beta" }));
+        return GetBitsUrl(clientType, rc);
+    }
+
+    // --- Core actions ---
 
     /// <summary>
-    /// Возвращает presigned URL + метаданные для создания BITS-задания на Windows-клиенте.
-    /// Ответ содержит URL, размер файла и SHA-256 checksum для проверки целостности.
+    /// Возвращает URL для BITS-задания + метаданные файла.
+    /// URL указывает на сам ClientStorage (кешированный файл), S3 не фигурирует.
     /// </summary>
     private async Task<IActionResult> GetBitsUrl(ClientType clientType, ReleaseChannel releaseChannel)
     {
@@ -200,29 +222,17 @@ public class ClientStorageController : ControllerBase
         if (clientFile == null)
             return NotFound(new { error = "Файл клиента не найден" });
 
-        try
-        {
-            var presignedUrl = _s3.GeneratePresignedUrl(clientFile.S3Key, clientFile.OriginalFileName);
+        var downloadUrl = BuildPublicUrl(GetDownloadPath(clientType, releaseChannel));
 
-            // Ответ содержит всё для Windows BITS:
-            //   url       → передать BitsJob.AddFile(url, localPath)
-            //   fileSize  → необязательно, но удобно для прогресса
-            //   checksum  → SHA-256 hex, BitsJob.SetHashAndAlgorithm(checksum, BG_AUTH_SCHEME.Sha256)
-            return Ok(new
-            {
-                url        = presignedUrl,
-                fileName   = clientFile.OriginalFileName,
-                fileSize   = clientFile.FileSize,
-                checksum   = clientFile.Checksum,
-                version    = clientFile.Version,
-                uploadedAt = clientFile.UploadedAt
-            });
-        }
-        catch (Exception ex)
+        return Ok(new
         {
-            _logger.LogError(ex, "Ошибка генерации presigned URL для {S3Key}", clientFile.S3Key);
-            return StatusCode(500, new { error = "Ошибка генерации URL" });
-        }
+            url        = downloadUrl,
+            fileName   = clientFile.OriginalFileName,
+            fileSize   = clientFile.FileSize,
+            checksum   = clientFile.Checksum,
+            version    = clientFile.Version,
+            uploadedAt = clientFile.UploadedAt
+        });
     }
 
     private async Task<IActionResult> GetVersion(ClientType clientType, ReleaseChannel releaseChannel)
@@ -244,8 +254,9 @@ public class ClientStorageController : ControllerBase
     }
 
     /// <summary>
-    /// Стриминговая отдача файла с поддержкой Range-запросов (возобновляемые загрузки, BITS).
-    /// Данные идут напрямую из S3 → клиент, без буферизации в памяти сервера.
+    /// Скачивание файла клиента.
+    /// Приоритет: локальный кеш → стриминг из S3.
+    /// Поддерживает Range-запросы в обоих случаях.
     /// </summary>
     private async Task<IActionResult> DownloadClient(ClientType clientType, ReleaseChannel releaseChannel)
     {
@@ -257,15 +268,26 @@ public class ClientStorageController : ControllerBase
         if (clientFile == null)
             return NotFound(new { error = "Файл клиента не найден" });
 
+        Response.Headers.AcceptRanges = "bytes";
+
+        // Кеш есть → отдаём с диска (быстро, без S3)
+        var cachedPath = _cache.GetCachedFilePath(clientType, releaseChannel);
+        if (cachedPath != null)
+        {
+            var fs = new FileStream(cachedPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            return new FileStreamResult(fs, clientFile.ContentType)
+            {
+                FileDownloadName      = clientFile.OriginalFileName,
+                EnableRangeProcessing = true
+            };
+        }
+
+        // Кеша нет → стримим напрямую из S3
+        _logger.LogWarning("Кеш отсутствует для {ClientType} {Channel}, стриминг из S3", clientType, releaseChannel);
         try
         {
             var rangeHeader = Request.Headers.Range.FirstOrDefault();
-            var result = await _s3.DownloadAsync(clientFile.S3Key, rangeHeader);
-
-            // Сообщаем клиенту, что поддерживаем Range — обязательно для BITS
-            Response.Headers.AcceptRanges = "bytes";
-
-            // FileStreamResult сам пишет поток в response и вызовет Dispose по завершении
+            var result      = await _s3.DownloadAsync(clientFile.S3Key, rangeHeader);
             return new FileStreamResult(result.Stream, clientFile.ContentType)
             {
                 FileDownloadName      = clientFile.OriginalFileName,
@@ -274,30 +296,28 @@ public class ClientStorageController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Ошибка при скачивании файла {S3Key} из S3", clientFile.S3Key);
+            _logger.LogError(ex, "Ошибка стриминга из S3 для {S3Key}", clientFile.S3Key);
             return StatusCode(500, new { error = "Ошибка при скачивании файла" });
         }
     }
 
     /// <summary>
-    /// Загрузка файла в S3.
-    /// SHA-256 вычисляется за один проход через HashingReadStream —
-    /// без создания дополнительного временного файла на диске.
+    /// Загрузка нового дистрибутива.
+    /// Файл сохраняется в S3, затем асинхронно обновляется локальный кеш.
     /// </summary>
     private async Task<IActionResult> UploadClient(IFormFile? file, ClientType clientType, ReleaseChannel releaseChannel)
     {
         if (file == null || file.Length == 0)
             return BadRequest(new { error = "Файл не предоставлен" });
 
-        var s3Key = Guid.NewGuid().ToString();
+        var s3Key    = Guid.NewGuid().ToString();
         string checksum;
 
         try
         {
-            // Один проход: HashingReadStream считает хэш во время чтения данных для S3
-            await using var sourceStream = file.OpenReadStream();
-            using var incrementalHash   = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-            await using var hashStream  = new HashingReadStream(sourceStream, incrementalHash);
+            await using var sourceStream  = file.OpenReadStream();
+            using  var incrementalHash   = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+            await using var hashStream   = new HashingReadStream(sourceStream, incrementalHash);
 
             await _s3.UploadAsync(s3Key, hashStream, file.ContentType ?? "application/octet-stream");
 
@@ -305,12 +325,11 @@ public class ClientStorageController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Ошибка при загрузке файла клиента {ClientType} в S3", clientType);
+            _logger.LogError(ex, "Ошибка загрузки файла {ClientType} в S3", clientType);
             return StatusCode(500, new { error = "Ошибка при загрузке файла" });
         }
 
-        _logger.LogInformation(
-            "Файл {FileName} загружен в S3 как {S3Key}, checksum: {Checksum}",
+        _logger.LogInformation("Файл {FileName} загружен в S3 как {S3Key}, checksum: {Checksum}",
             file.FileName, s3Key, checksum);
 
         var version = Request.Headers["X-App-Version"].FirstOrDefault();
@@ -331,6 +350,9 @@ public class ClientStorageController : ControllerBase
         _db.ClientFiles.Add(clientFile);
         await _db.SaveChangesAsync();
 
+        // Обновляем кеш асинхронно — не задерживаем ответ клиенту
+        _ = UpdateCacheInBackgroundAsync(s3Key, clientType, releaseChannel);
+
         return Ok(new
         {
             fileName   = clientFile.OriginalFileName,
@@ -340,5 +362,17 @@ public class ClientStorageController : ControllerBase
             uploadedAt = clientFile.UploadedAt
         });
     }
-}
 
+    private async Task UpdateCacheInBackgroundAsync(string s3Key, ClientType clientType, ReleaseChannel channel)
+    {
+        try
+        {
+            await using var result = await _s3.DownloadAsync(s3Key);
+            await _cache.UpdateAsync(clientType, channel, result.Stream);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка обновления кеша после загрузки: {ClientType} {Channel}", clientType, channel);
+        }
+    }
+}

@@ -2,7 +2,9 @@
 using BarkFluff.ClientStorage.Infrastructure;
 using BarkFluff.ClientStorage.Middleware;
 using BarkFluff.ClientStorage.Persistence;
+using BarkFluff.ClientStorage.Services;
 
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 
 namespace BarkFluff.ClientStorage;
@@ -16,11 +18,19 @@ public class Program
         builder.Services.AddControllers();
 
         builder.Services.AddSingleton<S3StorageService>();
+        builder.Services.AddSingleton<LocalFileCache>();
+        builder.Services.AddHostedService<CacheWarmupService>();
 
         builder.Services.AddDbContext<ClientStorageContext>(options =>
             options.UseSqlite("Data Source=/app/data/clientstorage.db"));
 
-        // Разрешаем загрузку больших файлов
+        builder.Services.Configure<ForwardedHeadersOptions>(options =>
+        {
+            options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
+            options.KnownNetworks.Clear();
+            options.KnownProxies.Clear();
+        });
+
         builder.WebHost.ConfigureKestrel(options =>
         {
             options.Limits.MaxRequestBodySize = 512 * 1024 * 1024; // 512 MB
@@ -28,10 +38,9 @@ public class Program
 
         var app = builder.Build();
 
-        // Создаём директорию для SQLite, если она не существует
         Directory.CreateDirectory("/app/data");
+        Directory.CreateDirectory(app.Configuration["CACHE_DIR"] ?? "/app/cache");
 
-        // Применяем миграции и инициализируем S3 бакет
         using (var scope = app.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<ClientStorageContext>();
@@ -41,6 +50,7 @@ public class Program
             s3.InitializeBucketAsync().GetAwaiter().GetResult();
         }
 
+        app.UseForwardedHeaders();
         app.UseMiddleware<TokenAuthMiddleware>();
 
         app.MapControllers();

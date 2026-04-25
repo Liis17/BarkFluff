@@ -26,9 +26,6 @@ public class S3StorageService : IDisposable
     private readonly string _bucketName;
     private readonly ILogger<S3StorageService> _logger;
 
-    // Время жизни presigned URL (достаточно для передачи BITS-заданию)
-    private static readonly TimeSpan PresignedUrlTtl = TimeSpan.FromHours(6);
-
     public S3StorageService(IConfiguration configuration, ILogger<S3StorageService> logger)
     {
         _logger = logger;
@@ -104,27 +101,6 @@ public class S3StorageService : IDisposable
 
         var response = await _client.GetObjectAsync(request);
         return new S3DownloadResult(response);
-    }
-
-    /// <summary>
-    /// Генерирует presigned URL для прямого скачивания из S3.
-    /// Используется для формирования BITS-задания на Windows-клиенте.
-    /// </summary>
-    public string GeneratePresignedUrl(string key, string fileName)
-    {
-        var request = new GetPreSignedUrlRequest
-        {
-            BucketName = _bucketName,
-            Key = key,
-            Expires = DateTime.UtcNow.Add(PresignedUrlTtl),
-            Verb = HttpVerb.GET,
-            ResponseHeaderOverrides =
-            {
-                ContentDisposition = $"attachment; filename=\"{fileName}\""
-            }
-        };
-
-        return _client.GetPreSignedURL(request);
     }
 
     private static bool TryParseRange(string header, out long from, out long to)
