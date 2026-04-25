@@ -2069,4 +2069,48 @@ class GrpcManager {
             null
         }
     }
+
+    // -------------------------------------------------------------------------
+    // Персонализация
+    // -------------------------------------------------------------------------
+
+    /**
+     * Получает персонализацию текущего пользователя с сервера.
+     * Возвращает список fileId фоновых изображений.
+     */
+    suspend fun getPersonalization(): Result<List<String>> = withContext(Dispatchers.IO) {
+        try {
+            if (usersClient == null) {
+                return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            }
+            val request = UsersApiOuterClass.GetPersonalizationRequest.newBuilder().build()
+            val response = usersClient!!.getPersonalization(request)
+            Result.success(response.personalization.chatBackgroundFileIdsList.toList())
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка получения персонализации", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Обновляет список fileId фоновых изображений на сервере.
+     */
+    suspend fun updatePersonalizationBackgrounds(fileIds: List<String>): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (usersClient == null) {
+                return@withContext Result.failure(IllegalStateException("Users клиент не создан"))
+            }
+            val personalization = UsersApiOuterClass.UserPersonalizationData.newBuilder()
+                .addAllChatBackgroundFileIds(fileIds)
+                .build()
+            val request = UsersApiOuterClass.UpdatePersonalizationRequest.newBuilder()
+                .setPersonalization(personalization)
+                .build()
+            usersClient!!.updatePersonalization(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка обновления персонализации", e)
+            Result.failure(e)
+        }
+    }
 }

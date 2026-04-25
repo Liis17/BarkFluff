@@ -170,6 +170,7 @@ class ChatActivity : AppCompatActivity() {
         setupMessageInput()
         setupStickerPanel()
         setupKeyboardTracking()
+        setupChatBackground()
         loadChatInfoAndMessages()
 
         // Устанавливаем этот чат как открытый
@@ -232,6 +233,120 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Загружает и отображает фон чата из кэша или по URL.
+     * На API 31+ применяет RenderEffect blur, на старых — ScriptIntrinsicBlur (RenderScript).
+     */
+    private fun setupChatBackground() {
+        val fileId = globalParam.chatBackgroundFileId
+        if (fileId.isBlank()) {
+            binding.chatBackgroundImage.visibility = View.GONE
+            return
+        }
+
+        binding.chatBackgroundImage.visibility = View.VISIBLE
+        val applyBlur = globalParam.chatBackgroundBlur
+
+        lifecycleScope.launch {
+            // Сначала пробуем из дискового кэша
+            val cachedFile = withContext(Dispatchers.IO) { FileCache.getFile(fileId) }
+            if (cachedFile != null && cachedFile.exists()) {
+                applyBackgroundFromFile(cachedFile, applyBlur)
+                return@launch
+            }
+            // Иначе скачиваем через Files API
+            val url = withContext(Dispatchers.IO) {
+                chatRepository.getFileDownloadUrl(fileId).getOrNull()
+            } ?: return@launch
+
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                // API 31+: загружаем через Coil, blur через RenderEffect
+                binding.chatBackgroundImage.load(url, AvatarLoader.getImageLoader(this@ChatActivity)) {
+                    crossfade(true)
+                    listener(onSuccess = { _, _ ->
+                        applyRenderEffectBlur(applyBlur)
+                    })
+                }
+            } else {
+                // API 26–30: загружаем Bitmap, blur через ScriptIntrinsicBlur
+                val bitmap = withContext(Dispatchers.IO) {
+                    loadBitmapFromUrl(url)
+                }
+                if (bitmap != null) {
+                    val finalBitmap = if (applyBlur) blurBitmapLegacy(bitmap) else bitmap
+                    binding.chatBackgroundImage.setImageBitmap(finalBitmap)
+                }
+            }
+
+            // Кешируем в дисковый кэш приложения
+            withContext(Dispatchers.IO) {
+                try {
+                    val connection = java.net.URL(url)
+                        .openConnection() as java.net.HttpURLConnection
+                    connection.connect()
+                    val bytes = connection.inputStream.readBytes()
+                    connection.disconnect()
+                    FileCache.saveFile(fileId, bytes)
+                } catch (_: Exception) { }
+            }
+        }
+    }
+
+    private fun applyBackgroundFromFile(file: java.io.File, applyBlur: Boolean) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            binding.chatBackgroundImage.load(file, AvatarLoader.getImageLoader(this)) {
+                crossfade(false)
+                listener(onSuccess = { _, _ ->
+                    applyRenderEffectBlur(applyBlur)
+                })
+            }
+        } else {
+            lifecycleScope.launch {
+                val bitmap = withContext(Dispatchers.IO) {
+                    android.graphics.BitmapFactory.decodeFile(file.absolutePath)
+                } ?: return@launch
+                val finalBitmap = if (applyBlur) blurBitmapLegacy(bitmap) else bitmap
+                binding.chatBackgroundImage.setImageBitmap(finalBitmap)
+            }
+        }
+    }
+
+    @androidx.annotation.RequiresApi(android.os.Build.VERSION_CODES.S)
+    private fun applyRenderEffectBlur(applyBlur: Boolean) {
+        binding.chatBackgroundImage.setRenderEffect(
+            if (applyBlur) android.graphics.RenderEffect.createBlurEffect(
+                20f, 20f, android.graphics.Shader.TileMode.CLAMP
+            ) else null
+        )
+    }
+
+    private fun loadBitmapFromUrl(url: String): android.graphics.Bitmap? {
+        return try {
+            val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+            conn.connect()
+            val bmp = android.graphics.BitmapFactory.decodeStream(conn.inputStream)
+            conn.disconnect()
+            bmp
+        } catch (_: Exception) { null }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun blurBitmapLegacy(src: android.graphics.Bitmap): android.graphics.Bitmap {
+        return try {
+            val rs = android.renderscript.RenderScript.create(this)
+            val input = android.renderscript.Allocation.createFromBitmap(rs, src)
+            val output = android.renderscript.Allocation.createTyped(rs, input.type)
+            val script = android.renderscript.ScriptIntrinsicBlur.create(rs, input.element)
+            script.setRadius(20f)
+            script.setInput(input)
+            script.forEach(output)
+            val blurred = src.copy(src.config ?: android.graphics.Bitmap.Config.ARGB_8888, true)
+            output.copyTo(blurred)
+            rs.destroy()
+            blurred
+        } catch (_: Exception) { src }
+    }
+
     private fun setupMessagesRecyclerView() {
         val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main)
         messageAdapter = MessageAdapter(
@@ -243,7 +358,8 @@ class ChatActivity : AppCompatActivity() {
             downloadToCache = { fileId, onProgress ->
                 chatRepository.downloadFile(fileId, onProgress)
             },
-            scope = scope
+            scope = scope,
+            messageCornerRadiusDp = globalParam.chatMessageCornerRadius
         )
 
         binding.messagesRecyclerView.apply {
