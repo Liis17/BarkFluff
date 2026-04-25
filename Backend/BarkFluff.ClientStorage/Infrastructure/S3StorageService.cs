@@ -58,11 +58,6 @@ public class S3StorageService : IDisposable
         }
     }
 
-    /// <summary>
-    /// Загружает файл в S3. Данные читаются из <paramref name="data"/> только один раз —
-    /// без промежуточного буферирования. Хэширование выполняется до передачи этого метода
-    /// через <see cref="HashingReadStream"/>.
-    /// </summary>
     public async Task<string> UploadAsync(string key, Stream data, string contentType)
     {
         var request = new PutObjectRequest
