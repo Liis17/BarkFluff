@@ -55,27 +55,32 @@ Design-time factory: `Persistence/ClientStorageContextFactory.cs` (файл `cli
 
 - `Controllers/ClientStorageController` — GET (скачивание) и POST (загрузка)
 - `Domain/` — `ClientFile`, `ClientType` (Windows/Kotlin/MacOS/iOS), `ReleaseChannel` (Release/Beta)
-- `Infrastructure/S3StorageService` — AWS SDK, стриминг, presigned URLs
+- `Infrastructure/S3StorageService` — AWS SDK, стриминг из S3
+- `Infrastructure/LocalFileCache` — локальный дисковый кеш (`CACHE_DIR`, default `/app/cache`)
 - `Infrastructure/HashingReadStream` — SHA-256 за один проход при upload
+- `Services/CacheWarmupService` — `IHostedService`, прогревает кеш при старте контейнера
 - `Middleware/TokenAuthMiddleware` — Bearer-токен только для `/set/*`
 - `Persistence/` — EF Core + SQLite
 
 ## Детали реализации
 
-### Upload (оптимизировано)
-- ASP.NET буферирует IFormFile в temp-файл при разборе multipart — это неизбежно
-- Далее один проход: `HashingReadStream` вычисляет SHA-256 **одновременно** с отправкой данных в S3
-- Нет дополнительного temp-файла, нет лишних копий — было 3 прохода, стало 1
+### Локальный кеш
+- При старте контейнера `CacheWarmupService` скачивает последние версии всех клиентов из S3 в `/app/cache/`
+- Файлы именуются: `windows_release`, `windows_beta`, `kotlin_release`, и т.д.
+- При загрузке нового файла (`/set/*`) кеш обновляется асинхронно в фоне
+- Кеш **эфемерный** — очищается при перезапуске контейнера, прогревается снова
 
-### Download (стриминг + Range)
-- `S3StorageService.DownloadAsync` возвращает `S3DownloadResult` со стримом напрямую из S3
-- **Нет буферизации в MemoryStream** — первый байт клиент получает немедленно
-- Заголовок `Accept-Ranges: bytes` выставляется явно
-- `FileStreamResult` с `EnableRangeProcessing = true` — ASP.NET обрабатывает Range-запросы
-- Поддерживаются возобновляемые загрузки и BITS-совместимые клиенты
+### Upload
+- ASP.NET буферирует IFormFile в temp-файл при разборе multipart
+- `HashingReadStream` вычисляет SHA-256 одновременно с отправкой в S3 (один проход)
+- После ответа клиенту: фоновая задача скачивает файл из S3 в локальный кеш
 
-### BITS (Windows Background Intelligent Transfer Service)
-- Эндпоинт `/bitsurl` возвращает presigned URL с TTL 6 часов
-- Windows-клиент создаёт BITS-задание: `BitsJob.AddFile(url, localPath)`
-- Checksum в ответе — SHA-256 hex для `BitsJob.SetHashAndAlgorithm`
-- BITS работает напрямую с S3, минуя сервер — максимальная скорость и возобновляемость
+### Download (кеш → S3)
+- Приоритет: `LocalFileCache` (с диска контейнера) → стриминг из S3 как fallback
+- В обоих случаях: `Accept-Ranges: bytes` + `EnableRangeProcessing = true`
+
+### /bitsurl
+- Возвращает URL самого ClientStorage (`/get/barkfluff{platform}/{channel}`)
+- S3 и MinIO наружу не фигурируют
+- Checksum (SHA-256 hex) и метаданные — для проверки целостности на клиенте
+- BITS качает через ClientStorage (кешированный файл), поддержка Range встроена

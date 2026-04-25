@@ -186,46 +186,46 @@ namespace BarkFluff.Client.WPF.Pages
                     Remove-Item $TempZip -Force
                 }
 
-                $BitsInfo   = $null
-                $Downloaded = $false
+                $Meta        = $null
+                $DownloadUrl = $FallbackUrl
+                $Downloaded  = $false
 
-                # Получение presigned URL и метаданных через /bitsurl
+                # Получение метаданных: URL (кеш на сервере), checksum, версия
                 try {
-                    $BitsInfo = Invoke-RestMethod -Uri ($FallbackUrl + '/bitsurl') -Method Get
-                    if ($BitsInfo.version)  { Write-Host "Версия: $($BitsInfo.version)" }
-                    if ($BitsInfo.fileSize) { Write-Host "Размер: $([math]::Round($BitsInfo.fileSize / 1MB, 2)) MB" }
+                    $Meta = Invoke-RestMethod -Uri ($FallbackUrl + '/bitsurl') -Method Get
+                    if ($Meta.version)  { Write-Host "Версия: $($Meta.version)" }
+                    if ($Meta.fileSize) { Write-Host "Размер: $([math]::Round($Meta.fileSize / 1MB, 2)) MB" }
+                    if ($Meta.url)      { $DownloadUrl = $Meta.url }
                 }
                 catch {
-                    Write-Warning "Не удалось получить BITS-информацию, будет использован прямой URL."
+                    Write-Warning "Не удалось получить метаданные, checksum не будет проверен."
                 }
 
-                # 1. BITS — напрямую к S3 через presigned URL
-                if ($BitsInfo -ne $null) {
-                    try {
-                        Write-Host "Загрузка через BITS..."
-                        Start-BitsTransfer -Source $BitsInfo.url -Destination $TempZip
-                        $Downloaded = $true
-                        Write-Host "Загружено через BITS."
-                    }
-                    catch {
-                        Write-Warning "BITS не удался, переход на WebClient..."
-                    }
+                # 1. BITS — URL из /bitsurl (кешированный файл на сервере, поддерживает Range)
+                try {
+                    Write-Host "Загрузка через BITS..."
+                    Start-BitsTransfer -Source $DownloadUrl -Destination $TempZip
+                    $Downloaded = $true
+                    Write-Host "Загружено через BITS."
+                }
+                catch {
+                    Write-Warning "BITS не удался, переход на WebClient..."
                 }
 
                 # 2. WebClient fallback
                 if (-not $Downloaded) {
                     $wc = New-Object System.Net.WebClient
-                    $wc.DownloadFile($FallbackUrl, $TempZip)
+                    $wc.DownloadFile($DownloadUrl, $TempZip)
                     Write-Host "Загружено через WebClient."
                 }
 
                 # 3. Проверка контрольной суммы
-                if ($BitsInfo -ne $null -and $BitsInfo.checksum) {
+                if ($Meta -ne $null -and $Meta.checksum) {
                     Write-Host "Проверка контрольной суммы..."
                     $Hash = (Get-FileHash -Path $TempZip -Algorithm SHA256).Hash
-                    if ($Hash -ne $BitsInfo.checksum.ToUpper()) {
+                    if ($Hash -ne $Meta.checksum.ToUpper()) {
                         Remove-Item $TempZip -Force -ErrorAction SilentlyContinue
-                        throw "Ошибка контрольной суммы: ожидалось $($BitsInfo.checksum.ToUpper()), получено $Hash"
+                        throw "Ошибка контрольной суммы: ожидалось $($Meta.checksum.ToUpper()), получено $Hash"
                     }
                     Write-Host "Контрольная сумма верна."
                 }

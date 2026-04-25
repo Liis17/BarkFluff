@@ -23,57 +23,54 @@ $Channel = if ($choice -eq '2') { 'beta' } else { 'release' }
 Write-Host ""
 Write-Host "Канал выбран / Selected channel: $Channel"
 
-# --- Получение информации о загрузке / Fetch download info ---
+# --- Метаданные: URL, checksum, версия ---
 Write-Host "Получение информации о загрузке... / Fetching download info..."
 
-$BitsInfo   = $null
-$Downloaded = $false
+$Meta        = $null
+$DownloadUrl = "$BaseUrl/get/barkfluffwindows/$Channel"
 
 try {
-    $BitsInfo = Invoke-RestMethod -Uri "$BaseUrl/get/barkfluffwindows/$Channel/bitsurl" -Method Get
-    if ($BitsInfo.version) {
-        Write-Host "Версия / Version: $($BitsInfo.version)"
-    }
-    if ($BitsInfo.fileSize) {
-        Write-Host "Размер / Size: $([math]::Round($BitsInfo.fileSize / 1MB, 2)) MB"
-    }
+    $Meta = Invoke-RestMethod -Uri "$BaseUrl/get/barkfluffwindows/$Channel/bitsurl" -Method Get
+    if ($Meta.version)  { Write-Host "Версия / Version: $($Meta.version)" }
+    if ($Meta.fileSize) { Write-Host "Размер / Size: $([math]::Round($Meta.fileSize / 1MB, 2)) MB" }
+    if ($Meta.url)      { $DownloadUrl = $Meta.url }
 }
 catch {
-    Write-Warning "Не удалось получить BITS-информацию, будет использован прямой URL. / Failed to get BITS info, will use direct URL."
+    Write-Warning "Не удалось получить метаданные, checksum не будет проверен. / Failed to fetch metadata, checksum will be skipped."
 }
 
 if (Test-Path $TempZip) {
     Remove-Item $TempZip -Force
 }
 
-# 1. BITS
-if ($BitsInfo -ne $null) {
-    try {
-        Write-Host "Загрузка через BITS... / Downloading via BITS..."
-        Start-BitsTransfer -Source $BitsInfo.url -Destination $TempZip
-        $Downloaded = $true
-        Write-Host "Загружено через BITS / Downloaded via BITS."
-    }
-    catch {
-        Write-Warning "BITS не удался, переключаемся на WebClient... / BITS failed, falling back to WebClient..."
-    }
+$Downloaded = $false
+
+# 1. BITS — URL из /bitsurl (локальный кеш на сервере, поддерживает Range)
+try {
+    Write-Host "Загрузка через BITS... / Downloading via BITS..."
+    Start-BitsTransfer -Source $DownloadUrl -Destination $TempZip
+    $Downloaded = $true
+    Write-Host "Загружено через BITS / Downloaded via BITS."
+}
+catch {
+    Write-Warning "BITS не удался, переключаемся на WebClient... / BITS failed, falling back to WebClient..."
 }
 
 # 2. WebClient fallback
 if (-not $Downloaded) {
     Write-Host "Загрузка через WebClient... / Downloading via WebClient..."
     $wc = New-Object System.Net.WebClient
-    $wc.DownloadFile("$BaseUrl/get/barkfluffwindows/$Channel", $TempZip)
+    $wc.DownloadFile($DownloadUrl, $TempZip)
     Write-Host "Загружено через WebClient / Downloaded via WebClient."
 }
 
 # 3. Проверка контрольной суммы / Checksum verification
-if ($BitsInfo -ne $null -and $BitsInfo.checksum) {
+if ($Meta -ne $null -and $Meta.checksum) {
     Write-Host "Проверка контрольной суммы... / Verifying checksum..."
     $Hash = (Get-FileHash -Path $TempZip -Algorithm SHA256).Hash
-    if ($Hash -ne $BitsInfo.checksum.ToUpper()) {
+    if ($Hash -ne $Meta.checksum.ToUpper()) {
         Remove-Item $TempZip -Force -ErrorAction SilentlyContinue
-        throw "Ошибка контрольной суммы / Checksum mismatch: expected $($BitsInfo.checksum.ToUpper()), got $Hash"
+        throw "Ошибка контрольной суммы / Checksum mismatch: expected $($Meta.checksum.ToUpper()), got $Hash"
     }
     Write-Host "Контрольная сумма верна / Checksum OK."
 }
