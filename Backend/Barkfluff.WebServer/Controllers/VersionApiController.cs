@@ -14,11 +14,12 @@ public class VersionApiController : ControllerBase
     [HttpGet("/api/versions")]
     public IActionResult GetVersions()
     {
-        var (androidRelease, androidBeta, windowsRelease, windowsBeta) = _store.GetAll();
+        var (androidRelease, androidBeta, windowsRelease, windowsBeta, macosRelease, macosBeta) = _store.GetAll();
         return Ok(new
         {
             android = new { release = androidRelease, beta = androidBeta },
-            windows = new { release = windowsRelease, beta = windowsBeta }
+            windows = new { release = windowsRelease, beta = windowsBeta },
+            macos   = new { release = macosRelease,   beta = macosBeta }
         });
     }
 }
