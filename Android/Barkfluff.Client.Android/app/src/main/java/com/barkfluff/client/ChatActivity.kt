@@ -1,11 +1,13 @@
 package com.barkfluff.client
 
+import android.animation.ValueAnimator
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.view.animation.DecelerateInterpolator
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -14,6 +16,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.LinearSmoothScroller
 import androidx.recyclerview.widget.RecyclerView
 import com.barkfluff.client.adapter.MessageAdapter
 import com.barkfluff.client.adapter.MessageItem
@@ -42,6 +45,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.recyclerview.widget.GridLayoutManager
+import kotlinx.coroutines.async
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -409,7 +413,124 @@ class ChatActivity : AppCompatActivity() {
 
         // Обработчик клика на кнопку прокрутки вниз
         binding.scrollToBottomButton.setOnClickListener {
-            binding.messagesRecyclerView.smoothScrollToPosition(messageAdapter.itemCount - 1)
+            scrollToLatestMessages()
+        }
+    }
+
+    /**
+     * Запускает быстрый плавный скролл вниз для визуальной динамики, параллельно делает запрос
+     * на сервер. Через 300 мс — рывок к самому низу (с подгрузкой новых сообщений если нужно).
+     * Если расстояние до конца > 500px: рывок на 120dp выше финала → плавное торможение по кривой.
+     */
+    private fun scrollToLatestMessages() {
+        if (isLoadingMessages) return
+        lifecycleScope.launch {
+            val lm = binding.messagesRecyclerView.layoutManager as? LinearLayoutManager
+
+            // Сразу запускаем быстрый плавный скролл (скорость в 3x быстрее стандартной)
+            if (lm != null) {
+                val fastScroller = object : LinearSmoothScroller(this@ChatActivity) {
+                    override fun calculateSpeedPerPixel(displayMetrics: android.util.DisplayMetrics): Float {
+                        return 25f / 3f / displayMetrics.densityDpi
+                    }
+                }
+                fastScroller.targetPosition = messageAdapter.itemCount - 1
+                lm.startSmoothScroll(fastScroller)
+            }
+
+            // Параллельно запрашиваем актуальное состояние чата
+            val chatInfoDeferred = async { chatRepository.getChatInfo(chatId) }
+
+            // Ждём 300 мс — за это время список успевает «полететь» вниз
+            delay(300)
+
+            try {
+                val serverLastMessageId = chatInfoDeferred.await().getOrNull()?.lastMessageId ?: 0L
+
+                if (serverLastMessageId > 0L && serverLastMessageId != lastVisibleMessageId) {
+                    // Есть незагруженные сообщения — подгружаем последние
+                    isLoadingMessages = true
+                    hasMoreMessagesDown = false
+                    val result = chatRepository.loadMessages(
+                        chatId = chatId,
+                        fromMessageId = 0L,
+                        offsetBefore = 0,
+                        offsetAfter = 0,
+                        count = 30
+                    )
+                    isLoadingMessages = false
+
+                    if (result.isSuccess) {
+                        val messages = result.getOrNull()!!
+                        displayMessages(messages)
+                        if (messages.isNotEmpty()) {
+                            val sorted = messages.sortedBy { it.sentAt.seconds }
+                            firstVisibleMessageId = sorted.first().id
+                            lastVisibleMessageId = sorted.last().id
+                        }
+                        hasMoreMessagesUp = messages.size >= 15
+                        hasMoreMessagesDown = false
+                        markVisibleMessagesAsRead(messages)
+                    }
+                }
+
+                // Рывок в конец с эффектом плавного торможения если расстояние большое
+                snapToBottom()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error scrolling to latest messages", e)
+                binding.messagesRecyclerView.scrollToPosition(messageAdapter.itemCount - 1)
+            }
+        }
+    }
+
+    /**
+     * Рывок в самый низ списка.
+     * Если расстояние до конца > 500px: моментально перепрыгивает на 120dp выше финала,
+     * затем доезжает последние 120dp с плавным торможением по кривой DecelerateInterpolator.
+     * Иначе — просто мгновенный scrollToPosition.
+     */
+    private fun snapToBottom() {
+        val rv = binding.messagesRecyclerView
+        val lm = rv.layoutManager as? LinearLayoutManager ?: run {
+            rv.scrollToPosition(messageAdapter.itemCount - 1)
+            return
+        }
+
+        // Считаем текущее расстояние до конца контента через публичные методы RecyclerView
+        val totalHeight = rv.computeVerticalScrollRange()
+        val currentOffset = rv.computeVerticalScrollOffset()
+        val visibleHeight = rv.height
+        val distanceToEnd = totalHeight - currentOffset - visibleHeight
+
+        val density = resources.displayMetrics.density
+        val overshootPx = (120 * density).toInt() // 120dp → px
+
+        if (distanceToEnd > 500) {
+            // Мгновенно прыгаем на 120dp выше финала, потом плавно тормозим до конца
+            val jumpTarget = (totalHeight - visibleHeight - overshootPx).coerceAtLeast(currentOffset)
+            rv.stopScroll()
+            rv.scrollBy(0, jumpTarget - currentOffset)
+
+            // Вычисляем скорость в момент рывка (та же что и у fastScroller: 25/3 ms/px)
+            // Длина оставшегося пути = overshootPx, начальная скорость из этой же формулы
+            val durationMs = (overshootPx * (25f / 3f)).toLong().coerceAtLeast(80L)
+
+            ValueAnimator.ofInt(0, overshootPx).apply {
+                duration = durationMs
+                interpolator = DecelerateInterpolator(2f)
+                var lastValue = 0
+                addUpdateListener { anim ->
+                    val value = anim.animatedValue as Int
+                    val delta = value - lastValue
+                    lastValue = value
+                    rv.scrollBy(0, delta)
+                }
+                start()
+            }
+        } else {
+            // Расстояние маленькое — просто мгновенный переход
+            rv.stopScroll()
+            rv.scrollToPosition(messageAdapter.itemCount - 1)
         }
     }
 
