@@ -1588,6 +1588,13 @@ class ChatActivity : AppCompatActivity() {
             .setView(dialogView)
             .create()
 
+        dialog.setOnShowListener {
+            dialog.window?.setLayout(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        }
+
         // Получаем ссылки на view
         val closeButton = dialogView.findViewById<ImageButton>(R.id.closeButton)
         val avatarImageView = dialogView.findViewById<com.google.android.material.imageview.ShapeableImageView>(R.id.profileAvatarImageView)
@@ -1707,6 +1714,9 @@ class ChatActivity : AppCompatActivity() {
         } else {
             // Для ЛС — загружаем данные пользователя
             if (otherUserId > 0) {
+                val posterImageView = dialogView.findViewById<android.widget.ImageView>(R.id.profilePosterImageView)
+                val posterPlaceholder = dialogView.findViewById<View>(R.id.profilePosterPlaceholder)
+
                 lifecycleScope.launch {
                     try {
                         val userResult = chatRepository.getUserData(otherUserId)
@@ -1745,6 +1755,22 @@ class ChatActivity : AppCompatActivity() {
                             } else {
                                 AvatarLoader.showPlaceholder(avatarPlaceholder, displayName, otherUserId)
                                 avatarImageView.visibility = View.GONE
+                            }
+
+                            // Постер профиля
+                            val posterFileId = user.profilePosterFileId
+                            if (posterFileId.isNotBlank()) {
+                                val urlResult = chatRepository.getFileDownloadUrl(posterFileId)
+                                if (urlResult.isSuccess) {
+                                    val url = urlResult.getOrNull()
+                                    if (!url.isNullOrBlank()) {
+                                        posterPlaceholder?.visibility = View.GONE
+                                        posterImageView?.visibility = View.VISIBLE
+                                        posterImageView?.load(url, AvatarLoader.getImageLoader(this@ChatActivity)) {
+                                            crossfade(true)
+                                        }
+                                    }
+                                }
                             }
                         }
                     } catch (e: Exception) {

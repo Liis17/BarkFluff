@@ -394,3 +394,4 @@ Package.resolved
 build/
 
 .playwright-mcp
+/Obsidian/ClaudeVault/.obsidian/workspace.json

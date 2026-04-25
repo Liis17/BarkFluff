@@ -4,8 +4,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:maxHeight="800dp">
+    android:layout_height="wrap_content">
 
     <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
@@ -18,31 +17,64 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
+            android:clipChildren="false"
             android:paddingStart="0dp"
             android:paddingEnd="0dp"
-            android:paddingTop="8dp"
+            android:paddingTop="0dp"
             android:paddingBottom="0dp">
 
-        <!-- Кнопка закрытия (крестик) -->
+    <!-- Постер профиля (соотношение 3:1) -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <!-- Постер (фон) -->
+        <ImageView
+            android:id="@+id/profilePosterImageView"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:scaleType="centerCrop"
+            android:visibility="gone"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintDimensionRatio="3:1"
+            tools:visibility="visible"
+            tools:background="#AABBCC" />
+
+        <!-- Плейсхолдер постера -->
+        <View
+            android:id="@+id/profilePosterPlaceholder"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:background="?attr/colorSurfaceVariant"
+            android:visibility="visible"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintDimensionRatio="3:1" />
+
+        <!-- Кнопка закрытия поверх постера -->
         <ImageButton
             android:id="@+id/closeButton"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:layout_gravity="end"
-            android:layout_marginTop="0dp"
-            android:layout_marginEnd="0dp"
-            android:layout_marginBottom="4dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:layout_margin="8dp"
+            android:background="@drawable/bg_circle_surface"
             android:contentDescription="Закрыть"
             android:src="@android:drawable/ic_menu_close_clear_cancel"
-            app:tint="?attr/colorOnSurface" />
+            app:tint="?attr/colorOnSurface"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Аватар пользователя -->
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- Аватар: перекрывает нижнюю половину постера (marginTop = -60dp) -->
     <FrameLayout
         android:layout_width="120dp"
         android:layout_height="120dp"
         android:layout_gravity="center_horizontal"
-        android:layout_marginBottom="12dp">
+        android:layout_marginTop="-60dp">
 
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/profileAvatarImageView"
@@ -74,6 +106,11 @@
             android:visibility="gone" />
 
     </FrameLayout>
+
+    <!-- Небольшой отступ под аватаром -->
+    <android.widget.Space
+        android:layout_width="match_parent"
+        android:layout_height="8dp" />
 
     <!-- Имя пользователя -->
     <TextView
