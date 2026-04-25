@@ -114,6 +114,18 @@
 
     </com.google.android.material.appbar.AppBarLayout>
 
+    <!-- Фон чата (отображается между AppBar и полем ввода) -->
+    <ImageView
+        android:id="@+id/chatBackgroundImage"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:scaleType="centerCrop"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/appBarLayout"
+        app:layout_constraintBottom_toTopOf="@id/attachmentPreviewBar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
     <!-- Список сообщений -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/messagesRecyclerView"

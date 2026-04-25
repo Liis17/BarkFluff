@@ -9,10 +9,10 @@ package barkfluff.users;
 
 service UsersApi {
 
-
+  
   // Получить информацию о пользователе
   rpc GetUser(GetUserRequest) returns(GetUserResponse);
-
+  
   // Установить аватарку
   rpc SetProfilePicture(SetProfilePictureRequest) returns(SetProfilePictureResponse);
 
@@ -21,16 +21,16 @@ service UsersApi {
 
   // Проверить существование емейла
   rpc CheckExistEmail(CheckExistEmailRequest) returns(CheckExistResponse);
-
+  
   // Изменить имя или фамилию
   rpc ChangeName(ChangeNameRequest) returns(ChangeNameResponse);
-
+  
   // Изменить юзернейм
   rpc ChangeUsername(ChangeUsernameRequest) returns(ChangeUsernameResponse);
-
+  
   // Изменить био
   rpc ChangeBio(ChangeBioRequest) returns(ChangeBioResponse);
-
+  
   // Найти пользователей по имени/фамилии/юзернейму
   rpc SearchUsers(SearchUsersRequest) returns(SearchUsersResponse);
 
@@ -57,10 +57,16 @@ service UsersApi {
 
   // Обновить настройки приватности текущего пользователя
   rpc UpdatePrivacySettings(UpdatePrivacySettingsRequest) returns(UpdatePrivacySettingsResponse);
+
+  // Получить персонализацию текущего пользователя
+  rpc GetPersonalization(GetPersonalizationRequest) returns(GetPersonalizationResponse);
+
+  // Обновить персонализацию текущего пользователя
+  rpc UpdatePersonalization(UpdatePersonalizationRequest) returns(UpdatePersonalizationResponse);
 }
 
 service UsersServerApi {
-
+  
   // Найти по логину
   rpc FindByLogin(FindByLoginRequest) returns(FindByLoginResponse);
 
@@ -69,22 +75,22 @@ service UsersServerApi {
 
   // Проверить существование емейла
   rpc CheckExistEmail(CheckExistEmailRequest) returns(CheckExistResponse);
-
+  
   // Добавить черновик юзера
   rpc AddDraftUser(AddDraftUserRequest) returns(AddDraftUserResponse);
 
   // Переопределить черновик пользователя
   rpc OverrideDraftUser(AddDraftUserRequest) returns(AddDraftUserResponse);
-
+  
   // Подтвердить пользователя
   rpc ConfirmUser(ConfirmUserRequest) returns(ConfirmUserResponse);
-
+  
   // Получить пользователя по id
   rpc GetById(GetByIdRequest) returns(GetByIdResponse);
-
+  
   // Получить контакты пользователя по id
   rpc GetUserContacts(GetUserContactsRequest) returns(GetUserContactsResponse);
-
+  
   // Получить пользователей по id
   rpc ListByIds(ListByIdsRequest) returns(ListByIdsResponse);
 
@@ -135,6 +141,9 @@ service UsersServerApi {
 
   // Получить устройства с Firebase токенами
   rpc GetDevicesWithFirebaseTokens(GetDevicesWithFirebaseTokensRequest) returns(GetDevicesWithFirebaseTokensResponse);
+
+  // Получить настройки приватности пользователя (для других микросервисов, напр. Onliner)
+  rpc GetUserPrivacy(GetUserPrivacyRequest) returns(GetUserPrivacyResponse);
 }
 
 // Установить аватарку (серверный)
@@ -184,7 +193,7 @@ message ChangeUserPasswordRequest {
   int64 user_id = 2; // идентификатор пользователя
 }
 
-message ChangeUserPasswordResponse {
+message ChangeUserPasswordResponse { 
   string password_hash = 1;
 }
 
@@ -199,7 +208,7 @@ message ChangeUsernameRequest {
 }
 
 message ChangeUsernameResponse {
-
+  
 }
 
 message ChangeNameRequest {
@@ -261,7 +270,7 @@ message ConfirmUserResponse { }
 
 
 message AddDraftUserRequest {
-  string first_name = 1; // имя
+  string first_name = 1; // имя 
   string last_name = 2; // фамилия
   string username = 3; // имя пользователя
   string email = 4; // почта
@@ -552,25 +561,63 @@ message SetNotificationsEnabledRequest {
 
 message SetNotificationsEnabledResponse { }
 
-// Видимость поля профиля
+// Настройки приватности пользователя
+
+// Уровень видимости поля профиля:
+//  ALL     — видят все
+//  FRIENDS — видят только друзья (временно трактуется как NONE,
+//            пока в бэкенде нет системы отношений между пользователями)
+//  NONE    — скрыто ото всех
 enum ProfileFieldVisibility {
-  ALL = 0;      // видят все
-  FRIENDS = 1;  // видят только друзья
-  NONE = 2;     // скрыто ото всех
+  ALL = 0;
+  FRIENDS = 1;
+  NONE = 2;
 }
 
-// Настройки приватности пользователя
 message PrivacySettings {
   bool profile_visible_on_site = 1;               // видимость публичной страницы barkfluff.com/{username}
   ProfileFieldVisibility avatar_visibility = 2;   // видимость аватара
-  ProfileFieldVisibility bio_visibility = 3;       // видимость описания профиля
-  ProfileFieldVisibility email_visibility = 4;     // видимость почты
-  bool search_visible = 5;                         // показывать ли в поиске
-  ProfileFieldVisibility online_visibility = 6;    // видимость онлайн-статуса
+  ProfileFieldVisibility bio_visibility = 3;      // видимость описания профиля (био)
+  ProfileFieldVisibility email_visibility = 4;    // видимость почты
+  bool search_visible = 5;                        // показывать ли пользователя в выдаче поиска
+  ProfileFieldVisibility online_visibility = 6;   // видимость онлайн-статуса
 }
 
 message GetPrivacySettingsRequest { }
-message GetPrivacySettingsResponse { PrivacySettings settings = 1; }
-message UpdatePrivacySettingsRequest { PrivacySettings settings = 1; }
+
+message GetPrivacySettingsResponse {
+  PrivacySettings settings = 1;
+}
+
+message UpdatePrivacySettingsRequest {
+  PrivacySettings settings = 1;
+}
+
 message UpdatePrivacySettingsResponse { }
 
+message GetUserPrivacyRequest {
+  int64 user_id = 1;
+}
+
+message GetUserPrivacyResponse {
+  PrivacySettings settings = 1;
+}
+
+// Персонализация пользователя
+
+message UserPersonalizationData {
+  string profile_poster_file_id = 1;          // FileId файла-постера профиля (пусто если не задан)
+  repeated string chat_background_file_ids = 2; // FileId фоновых изображений чатов
+}
+
+message GetPersonalizationRequest { }
+
+message GetPersonalizationResponse {
+  UserPersonalizationData personalization = 1;
+}
+
+message UpdatePersonalizationRequest {
+  UserPersonalizationData personalization = 1;
+}
+
+message UpdatePersonalizationResponse { }

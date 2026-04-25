@@ -25,6 +25,28 @@ service FilesServerApi {
   rpc GetFileData(GetFileDataRequest) returns(GetFileDataResponse); // Получить информацию о загруженном файле
 
   rpc GetFilesData(GetFilesDataRequest) returns(GetFilesDataResponse); // Получить информацию о загруженных файлах
+
+  rpc UploadBadgeImage(UploadBadgeImageRequest) returns(UploadBadgeImageResponse); // Загрузить PNG-картинку для бейджа (постоянная ссылка, без сжатия)
+
+  rpc GetUserStorageInfoServer(GetUserStorageInfoServerRequest) returns(GetUserStorageInfoResponse); // Получить информацию о хранилище пользователя (для админ-панели)
+
+  rpc UploadAvatarServer(UploadAvatarServerRequest) returns(UploadAvatarServerResponse); // Загрузить аватарку пользователя (для админ-панели)
+
+  // Стикерпаки
+  rpc CreateStickerPack(CreateStickerPackRequest) returns(CreateStickerPackResponse);
+  rpc UpdateStickerPack(UpdateStickerPackRequest) returns(UpdateStickerPackResponse);
+  rpc DeleteStickerPack(DeleteStickerPackRequest) returns(DeleteStickerPackResponse);
+  rpc ListStickerPacks(ListStickerPacksRequest) returns(ListStickerPacksResponse);
+  rpc GetStickerPack(GetStickerPackRequest) returns(GetStickerPackResponse);
+
+  // Стикеры
+  rpc AddSticker(AddStickerRequest) returns(AddStickerResponse);
+  rpc RemoveSticker(RemoveStickerRequest) returns(RemoveStickerResponse);
+  rpc UpdateSticker(UpdateStickerRequest) returns(UpdateStickerResponse);
+  rpc GetStickers(GetStickersRequest) returns(GetStickersResponse);
+
+  // Загрузка изображения стикера (для админ-панели)
+  rpc UploadStickerImage(UploadStickerImageRequest) returns(UploadStickerImageResponse);
 }
 
 message GetTempDownloadUrlRequest {
@@ -32,15 +54,15 @@ message GetTempDownloadUrlRequest {
 }
 
 message GetTempDownloadUrlResponse {
-
+  
   message DownloadFileData {
     string file_id = 1; // идентификатор файла
     string url = 2; // ссылка на загрузку
     string preview_url = 3; // ссылка на превью файла
   }
-
+  
   repeated DownloadFileData file_urls = 1; // ссылки на файлы
-
+  
 }
 
 message GetFilesDataRequest {
@@ -104,6 +126,32 @@ enum UploadFileType {
   MESSAGE_ATTACHMENT_STICKER = 9; // Вложение сообщения - стикер (WebP)
 }
 
+message UploadBadgeImageRequest {
+  bytes image_data = 1; // содержимое PNG-файла
+  string filename = 2;  // имя файла (например "badge.png")
+}
+
+message UploadBadgeImageResponse {
+  string badge_image_id = 1; // идентификатор изображения бейджа
+  string permanent_url = 2;  // постоянная ссылка на скачивание
+}
+
+message GetUserStorageInfoServerRequest {
+  int64 user_id = 1;
+}
+
+message UploadAvatarServerRequest {
+  bytes image_data = 1;   // содержимое файла
+  string filename = 2;    // имя файла
+  int64 user_id = 3;      // идентификатор пользователя
+}
+
+message UploadAvatarServerResponse {
+  string file_url = 1;          // ссылка на полное изображение
+  string preview_url = 2;       // ссылка на превью
+  string file_id = 3;           // идентификатор файла
+}
+
 message CheckFileHashRequest {
   string file_hash = 1; // SHA256 хеш файла (hex строка, 64 символа)
 }
@@ -120,7 +168,7 @@ message GetUserStorageInfoResponse {
     UploadFileType file_type = 1; // Тип файла
     int64 used_storage = 2; // Занятое пространство для данного типа в байтах
   }
-
+  
   int64 total_used_storage = 1; // Общее занятое пространство в байтах
   int64 storage_limit = 2; // Лимит хранилища в байтах
   repeated StorageByType storage_by_types = 3; // Использованное пространство по типам файлов
@@ -149,6 +197,33 @@ message StickerInfo {
   string preview_url = 8;
 }
 
+message CreateStickerPackRequest {
+  int64 creator_user_id = 1;
+  string name = 2;
+  string description = 3;
+}
+
+message CreateStickerPackResponse {
+  StickerPackInfo pack = 1;
+}
+
+message UpdateStickerPackRequest {
+  string pack_id = 1;
+  string name = 2;
+  string description = 3;
+  string cover_sticker_id = 4;
+}
+
+message UpdateStickerPackResponse {
+  StickerPackInfo pack = 1;
+}
+
+message DeleteStickerPackRequest {
+  string pack_id = 1;
+}
+
+message DeleteStickerPackResponse {}
+
 message ListStickerPacksRequest {
   barkfluff.shared.PageRequest pagination = 1;
 }
@@ -165,4 +240,47 @@ message GetStickerPackRequest {
 message GetStickerPackResponse {
   StickerPackInfo pack = 1;
   repeated StickerInfo stickers = 2;
+}
+
+message AddStickerRequest {
+  string pack_id = 1;
+  string file_id = 2;
+  string emoji = 3;
+}
+
+message AddStickerResponse {
+  StickerInfo sticker = 1;
+}
+
+message RemoveStickerRequest {
+  string sticker_id = 1;
+}
+
+message RemoveStickerResponse {}
+
+message UpdateStickerRequest {
+  string sticker_id = 1;
+  string emoji = 2;
+}
+
+message UpdateStickerResponse {
+  StickerInfo sticker = 1;
+}
+
+message GetStickersRequest {
+  repeated string sticker_ids = 1;
+}
+
+message GetStickersResponse {
+  repeated StickerInfo stickers = 1;
+}
+
+message UploadStickerImageRequest {
+  bytes image_data = 1;
+  string filename = 2;
+}
+
+message UploadStickerImageResponse {
+  string file_id = 1;
+  string file_url = 2;
 }

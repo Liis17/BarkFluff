@@ -177,6 +177,23 @@ class GlobalParam(private val context: Context) {
         get() = sharedPreferences.getString(KEY_FIREBASE_TOKEN, "") ?: ""
         set(value) = sharedPreferences.edit().putString(KEY_FIREBASE_TOKEN, value).apply()
 
+    // --- Персонализация (локальные параметры) ---
+
+    /** Закругление пузырей сообщений, 0..30 (dp). По умолчанию 20. */
+    var chatMessageCornerRadius: Int
+        get() = sharedPreferences.getInt(KEY_CHAT_CORNER_RADIUS, 20)
+        set(value) = sharedPreferences.edit().putInt(KEY_CHAT_CORNER_RADIUS, value).apply()
+
+    /** FileId выбранного фона чата (пусто = нет фона). */
+    var chatBackgroundFileId: String
+        get() = sharedPreferences.getString(KEY_CHAT_BACKGROUND_FILE_ID, "") ?: ""
+        set(value) = sharedPreferences.edit().putString(KEY_CHAT_BACKGROUND_FILE_ID, value).apply()
+
+    /** Применять ли блюр к фону чата. */
+    var chatBackgroundBlur: Boolean
+        get() = sharedPreferences.getBoolean(KEY_CHAT_BACKGROUND_BLUR, false)
+        set(value) = sharedPreferences.edit().putBoolean(KEY_CHAT_BACKGROUND_BLUR, value).apply()
+
     /**
      * Очищает пользовательские данные (для выхода из аккаунта).
      * Оставляет серверные адреса, device_id, server_name.
@@ -242,6 +259,11 @@ class GlobalParam(private val context: Context) {
         private const val KEY_REGISTRATION_DATE = "registration_date"
         private const val KEY_NOTIFICATIONS_ENABLED = "notifications_enabled"
         private const val KEY_FIREBASE_TOKEN = "firebase_token"
+
+        // Персонализация
+        private const val KEY_CHAT_CORNER_RADIUS = "chat_corner_radius"
+        private const val KEY_CHAT_BACKGROUND_FILE_ID = "chat_background_file_id"
+        private const val KEY_CHAT_BACKGROUND_BLUR = "chat_background_blur"
 
         /**
          * Генерирует уникальный ID устройства
