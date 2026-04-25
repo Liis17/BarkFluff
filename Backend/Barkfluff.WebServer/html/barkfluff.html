@@ -630,19 +630,29 @@
           </div>
         </div>
 
-        <div class="platform-card disabled" data-platform="macos">
+        <div class="platform-card" data-platform="macos">
           <div class="pc-header">
             <div class="pc-icon">
               <svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
             </div>
-            <span class="pc-badge">Скоро</span>
+            <div class="pc-version-block" id="versionBlockMacos">
+              <div class="pc-version-row">
+                <svg viewBox="0 0 24 24" width="9" height="9" fill="currentColor"><path d="M12 1l9 4v6c0 5.5-3.8 10.7-9 12-5.2-1.3-9-6.5-9-12V5l9-4z"/></svg>
+                <span id="vBadgeMacRelease"></span>
+              </div>
+              <div class="pc-version-row pc-version-beta">
+                <svg viewBox="0 0 24 24" width="9" height="9" fill="currentColor"><path d="M6 2h12v2l-4 7v8l-4 2V11L6 4V2z"/></svg>
+                <span id="vBadgeMacBeta"></span>
+              </div>
+            </div>
           </div>
           <div class="pc-title">
             macOS
-            <small id="macosSubtitle">В разработке</small>
+            <small id="macosSubtitle">macOS 12+ · Intel &amp; Apple Silicon</small>
           </div>
           <div class="pc-actions">
-            <span class="btn btn-ghost" style="opacity:0.5;" id="macosUnavail">Недоступно</span>
+            <a href="https://storage.barkfluff.com/get/barkfluffmacos/release" class="btn btn-primary" id="macosRelBtn">Релиз</a>
+            <a href="https://storage.barkfluff.com/get/barkfluffmacos/beta" class="btn btn-ghost" id="macosBetaBtn">Бета</a>
           </div>
         </div>
 
@@ -795,22 +805,25 @@
     function selectPlatform(platform) {
       currentPlatform = platform;
       const idx = previewOrder.indexOf(platform);
-      const leftIdx  = (idx - 1 + previewOrder.length) % previewOrder.length;
-      const rightIdx = (idx + 1) % previewOrder.length;
 
-      document.querySelectorAll('#previewStack .preview-frame').forEach(f => {
-        const p = f.dataset.platform;
-        f.classList.remove('is-active', 'peek-left', 'peek-right');
-        if (p === platform)              f.classList.add('is-active');
-        else if (p === previewOrder[leftIdx])  f.classList.add('peek-left');
-        else if (p === previewOrder[rightIdx]) f.classList.add('peek-right');
-      });
+      if (idx !== -1) {
+        const leftIdx  = (idx - 1 + previewOrder.length) % previewOrder.length;
+        const rightIdx = (idx + 1) % previewOrder.length;
+
+        document.querySelectorAll('#previewStack .preview-frame').forEach(f => {
+          const p = f.dataset.platform;
+          f.classList.remove('is-active', 'peek-left', 'peek-right');
+          if (p === platform)                    f.classList.add('is-active');
+          else if (p === previewOrder[leftIdx])  f.classList.add('peek-left');
+          else if (p === previewOrder[rightIdx]) f.classList.add('peek-right');
+        });
+      }
 
       document.querySelectorAll('.platform-card').forEach(c => {
         c.classList.toggle('is-active', c.dataset.platform === platform);
       });
 
-      const osMap = { windows: 'windows', android: null, web: null };
+      const osMap = { windows: 'windows', macos: 'macos', android: null, web: null };
       if (osMap[platform]) setCliOs(osMap[platform]);
     }
 
@@ -1001,7 +1014,9 @@
           andSub:         'Android 12+ · arm64-v8a, armeabi-v7a, x86, x86_64',
           webSub:         'Любой современный браузер',
           webOpen:        'Открыть →',
-          macosSub:       'В разработке',
+          macosSub:       'macOS 12+ · Intel & Apple Silicon',
+          macosRel:       'Релиз',
+          macosBeta:      'Бета',
           iosSub:         'В разработке',
           linuxSub:       'В разработке',
           unavailable:    'Недоступно',
@@ -1044,7 +1059,9 @@
           andSub:         'Android 12+ · arm64-v8a, armeabi-v7a, x86, x86_64',
           webSub:         'Any modern browser',
           webOpen:        'Open →',
-          macosSub:       'In development',
+          macosSub:       'macOS 12+ · Intel & Apple Silicon',
+          macosRel:       'Release',
+          macosBeta:      'Beta',
           iosSub:         'In development',
           linuxSub:       'In development',
           unavailable:    'Unavailable',
@@ -1084,6 +1101,7 @@
         const ua = navigator.userAgent;
         if (/android/i.test(ua)) return 'android';
         if (/win/i.test(navigator.platform || '') || /windows/i.test(ua)) return 'windows';
+        if (/mac/i.test(navigator.platform || '') || /macintosh/i.test(ua)) return 'macos';
         return 'other';
       }
 
@@ -1097,7 +1115,7 @@
         let   suffix   = '';
 
         if (_ver) {
-          const { android, windows } = _ver;
+          const { android, windows, macos } = _ver;
 
           const wBlock = $e('versionBlockWindows');
           if (wBlock && windows) {
@@ -1113,10 +1131,19 @@
             if (android.release || android.beta) aBlock.classList.add('visible');
           }
 
+          const mBlock = $e('versionBlockMacos');
+          if (mBlock && macos) {
+            if (macos.release) $e('vBadgeMacRelease').textContent = 'v' + macos.release;
+            if (macos.beta)    $e('vBadgeMacBeta').textContent    = 'v' + macos.beta;
+            if (macos.release || macos.beta) mBlock.classList.add('visible');
+          }
+
           if (platform === 'windows' && windows && windows.release)
             suffix = ' v' + windows.release;
           else if (platform === 'android' && android && android.release)
             suffix = ' v' + android.release;
+          else if (platform === 'macos' && macos && macos.release)
+            suffix = ' v' + macos.release;
         }
 
         const eyebrowEl = $e('heroEyebrowText');
@@ -1157,7 +1184,8 @@
         txt('webSubtitle',    'webSub');
         txt('webOpenBtn',     'webOpen');
         txt('macosSubtitle',  'macosSub');
-        txt('macosUnavail',   'unavailable');
+        txt('macosRelBtn',    'macosRel');
+        txt('macosBetaBtn',   'macosBeta');
         txt('iosSubtitle',    'iosSub');
         txt('iosUnavail',     'unavailable');
         txt('linuxSubtitle',  'linuxSub');
@@ -1213,6 +1241,8 @@
           selectPlatform('android');
           const cli = document.querySelector('.cli-block');
           if (cli) cli.style.display = 'none';
+        } else if (p === 'macos') {
+          selectPlatform('macos');
         } else {
           selectPlatform('web');
           if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
