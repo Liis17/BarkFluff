@@ -16,9 +16,6 @@ permissions:
   actions: write
 
 jobs:
-  # ═══════════════════════════════════════════════════════════════
-  #  1. Проверка наличия .NET 10.0 SDK на раннере
-  # ═══════════════════════════════════════════════════════════════
   check-dotnet:
     name: "🔍 Проверка .NET 10.0 SDK"
     runs-on: self-hosted
@@ -32,25 +29,24 @@ jobs:
             echo "missing=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: "\u274C .NET 10.0 SDK не установлен — уведомление в Telegram"
+      - name: "❌ .NET 10.0 SDK не установлен — уведомление в Telegram"
         if: steps.check.outputs.missing == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ❌ *Сборка невозможна: .NET 10.0 SDK не установлен на раннере*
+
+            🐳 *Barkfluff.AdminPanel*
+            📌 Ветка: `${{ github.ref_name }}`
+            👤 Автор: *${{ github.actor }}*
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
             --data-urlencode "parse_mode=Markdown" \
-            --data-urlencode "text=❌ *Сборка невозможна: .NET 10.0 SDK не установлен на раннере*
-
-🐳 *Barkfluff.AdminPanel*
-📌 Ветка: \`${{ github.ref_name }}\`
-👤 Автор: *${{ github.actor }}*"
+            --data-urlencode "text=${TG_MESSAGE}"
           exit 1
 
-  # ═══════════════════════════════════════════════════════════════
-  #  2. Запрос подтверждения сборки через Telegram
-  # ═══════════════════════════════════════════════════════════════
   request-approval:
     name: "📲 Запрос подтверждения"
     needs: check-dotnet
@@ -58,7 +54,7 @@ jobs:
     outputs:
       approved: ${{ steps.result.outputs.approved }}
     steps:
-      - name: "\U0001F4F2 Собрать Barkfluff.AdminPanel?"
+      - name: "📲 Собрать Barkfluff.AdminPanel?"
         id: approval
         continue-on-error: true
         uses: powerdot/telegram-manual-approval@main
@@ -66,11 +62,11 @@ jobs:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
           APPROVAL_TEXT: "Запустить сборку Barkfluff.AdminPanel?"
-          APPROVAL_BUTTON: "\u2705 Собрать"
-          REJECT_BUTTON: "\u274C Отменить"
-          APPROVED_TEXT: "\u2705 Сборка Barkfluff.AdminPanel одобрена"
-          REJECTED_TEXT: "\u274C Сборка Barkfluff.AdminPanel отклонена"
-          TIMEOUT_TEXT: "\u23F0 Время ожидания истекло"
+          APPROVAL_BUTTON: "✅ Собрать"
+          REJECT_BUTTON: "❌ Отменить"
+          APPROVED_TEXT: "✅ Сборка Barkfluff.AdminPanel одобрена"
+          REJECTED_TEXT: "❌ Сборка Barkfluff.AdminPanel отклонена"
+          TIMEOUT_TEXT: "⏰ Время ожидания истекло"
           UPDATE_REQUESTS: 120
 
       - name: Результат
@@ -82,9 +78,6 @@ jobs:
             echo "approved=false" >> "$GITHUB_OUTPUT"
           fi
 
-  # ═══════════════════════════════════════════════════════════════
-  #  3. dotnet publish → Docker build → Push
-  # ═══════════════════════════════════════════════════════════════
   build:
     name: "🐳 Сборка и публикация Barkfluff.AdminPanel"
     needs: [check-dotnet, request-approval]
@@ -93,7 +86,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: "\u2699\uFE0F dotnet publish (Linux Release)"
+      - name: "⚙️ dotnet publish (Linux Release)"
         run: |
           dotnet publish Backend/Barkfluff.AdminPanel/Barkfluff.AdminPanel.csproj \
             -c Release \
@@ -129,7 +122,7 @@ jobs:
           push: true
           tags: ${{ steps.vars.outputs.tags }}
 
-      - name: "\u2705 Уведомление об успехе"
+      - name: "✅ Уведомление об успехе"
         if: success()
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -148,7 +141,7 @@ jobs:
             --data-urlencode "parse_mode=Markdown" \
             --data-urlencode "text=${TG_MESSAGE}"
 
-      - name: "\u274C Уведомление об ошибке"
+      - name: "❌ Уведомление об ошибке"
         if: failure()
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -164,4 +157,4 @@ jobs:
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
             --data-urlencode "parse_mode=Markdown" \
-            --data-urlencode "text=${TG_MESSAGE}"
+            --data-urlencode "text=${TG_MESSAGE}","
