@@ -12,6 +12,9 @@
     <None Remove="files\barkfluff.windows.png" />
     <None Remove="files\favicon.ico" />
     <None Remove="files\install.ps1" />
+    <None Remove="files\installbeta.ps1" />
+    <None Remove="files\install.sh" />
+    <None Remove="files\installbeta.sh" />
     <None Remove="files\linkpreview.png" />
     <None Remove="html\legal\account-deletion.html" />
     <None Remove="html\legal\ACCOUNT_DELETION.md" />
@@ -31,6 +34,15 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="files\install.ps1">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="files\installbeta.ps1">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="files\install.sh">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="files\installbeta.sh">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="files\linkpreview.png">
