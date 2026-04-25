@@ -197,10 +197,17 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
 
     /**
      * Загружает файл на сервер.
-     * @param jpegImageBytes Байты изображения в формате JPEG
+     * @param jpegImageBytes Байты файла
      * @param fileType Тип файла
+     * @param fileName Опциональное оригинальное имя файла (с расширением). Если задано вместе с mimeType — будут использованы вместо хардкод-значений.
+     * @param mimeType Опциональный MIME-тип файла.
      */
-    suspend fun uploadFile(jpegImageBytes: ByteArray, fileType: barkfluff.files.FilesApiOuterClass.UploadFileType): Result<String> = withContext(Dispatchers.IO) {
+    suspend fun uploadFile(
+        jpegImageBytes: ByteArray,
+        fileType: barkfluff.files.FilesApiOuterClass.UploadFileType,
+        fileName: String? = null,
+        mimeType: String? = null
+    ): Result<String> = withContext(Dispatchers.IO) {
         try {
             if (grpcManager.filesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Files client not created"))
@@ -242,7 +249,7 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
             connection.readTimeout = 60000
 
             // Определяем filename и Content-Type по типу загрузки
-            val (uploadFileName, uploadContentType) = when (fileType) {
+            val (defaultFileName, defaultContentType) = when (fileType) {
                 barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_STICKER -> "sticker.webp" to "image/webp"
                 barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_DOCUMENT -> "file" to "application/octet-stream"
                 barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_AUDIO -> "audio.mp3" to "audio/mpeg"
@@ -250,6 +257,8 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
                 barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_VIDEO -> "video.mp4" to "video/mp4"
                 else -> "file.jpg" to "image/jpeg"
             }
+            val uploadFileName = fileName?.takeIf { it.isNotBlank() } ?: defaultFileName
+            val uploadContentType = mimeType?.takeIf { it.isNotBlank() } ?: defaultContentType
 
             connection.outputStream.use { out ->
                 val writer = out.bufferedWriter()

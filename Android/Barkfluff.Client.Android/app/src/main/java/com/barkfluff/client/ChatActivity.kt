@@ -873,21 +873,23 @@ class ChatActivity : AppCompatActivity() {
                 ).show()
             }
 
-            // Загружаем каждое изображение
+            // Загружаем каждое изображение/видео
             val fileIds = mutableListOf<String>()
             for ((index, uri) in selectedUris.withIndex()) {
                 try {
                     val mimeType = contentResolver.getType(uri)
                     val isWebp = mimeType == "image/webp"
+                    val isVideo = mimeType?.startsWith("video/") == true
 
                     // Определяем тип файла для загрузки
                     val uploadFileType = when {
                         sendAsFile -> barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_DOCUMENT
+                        isVideo -> barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_VIDEO
                         isWebp -> barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_STICKER
                         else -> barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_IMAGE
                     }
 
-                    val bytes = if (sendAsFile || isWebp) {
+                    val bytes = if (sendAsFile || isWebp || isVideo) {
                         // Без сжатия — читаем оригинальный файл
                         readBytesFromUri(uri)
                     } else {
@@ -897,18 +899,30 @@ class ChatActivity : AppCompatActivity() {
 
                     if (bytes == null) continue
 
+                    // Для видео и DOCUMENT передаём оригинальные имя/MIME
+                    val (passName, passMime) = if (sendAsFile || isVideo) {
+                        getDocumentInfo(uri)
+                    } else {
+                        null to null
+                    }
+
                     // Загрузка на сервер
-                    val uploadResult = chatRepository.uploadFile(bytes, uploadFileType)
+                    val uploadResult = chatRepository.uploadFile(
+                        bytes,
+                        uploadFileType,
+                        fileName = passName,
+                        mimeType = passMime
+                    )
 
                     if (uploadResult.isSuccess) {
                         val fileId = uploadResult.getOrNull()!!
                         fileIds.add(fileId)
-                        Log.d(TAG, "Image ${index + 1}/${selectedUris.size} uploaded: $fileId, fileIds.size=${fileIds.size}")
+                        Log.d(TAG, "Media ${index + 1}/${selectedUris.size} uploaded: $fileId, fileIds.size=${fileIds.size}")
                     } else {
-                        Log.e(TAG, "Image ${index + 1}/${selectedUris.size} upload failed: ${uploadResult.exceptionOrNull()?.message}")
+                        Log.e(TAG, "Media ${index + 1}/${selectedUris.size} upload failed: ${uploadResult.exceptionOrNull()?.message}")
                     }
                 } catch (e: Exception) {
-                    Log.e(TAG, "Error processing image ${index + 1}/${selectedUris.size}", e)
+                    Log.e(TAG, "Error processing media ${index + 1}/${selectedUris.size}", e)
                 }
             }
 
@@ -990,6 +1004,35 @@ class ChatActivity : AppCompatActivity() {
             Log.e(TAG, "Error reading bytes from uri", e)
             null
         }
+    }
+
+    /**
+     * Возвращает (displayName, mimeType) для документа по URI.
+     * displayName ищется через OpenableColumns.DISPLAY_NAME, mimeType — через ContentResolver.getType().
+     * Если ничего не нашлось — возвращается (null, null).
+     */
+    private fun getDocumentInfo(uri: Uri): Pair<String?, String?> {
+        var name: String? = null
+        try {
+            contentResolver.query(
+                uri,
+                arrayOf(android.provider.OpenableColumns.DISPLAY_NAME),
+                null, null, null
+            )?.use { cursor ->
+                val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                if (nameIndex >= 0 && cursor.moveToFirst()) {
+                    name = cursor.getString(nameIndex)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error querying document info for $uri", e)
+        }
+        if (name.isNullOrBlank()) {
+            // fallback на последний сегмент пути
+            name = uri.lastPathSegment?.substringAfterLast('/')
+        }
+        val mime = contentResolver.getType(uri)
+        return name to mime
     }
 
     private fun processNextCropFromQueue() {
@@ -1088,9 +1131,12 @@ class ChatActivity : AppCompatActivity() {
             for ((index, uri) in documents.withIndex()) {
                 try {
                     val bytes = readBytesFromUri(uri) ?: continue
+                    val (docName, docMime) = getDocumentInfo(uri)
                     val uploadResult = chatRepository.uploadFile(
                         bytes,
-                        barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_DOCUMENT
+                        barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_DOCUMENT,
+                        fileName = docName,
+                        mimeType = docMime
                     )
                     if (uploadResult.isSuccess) {
                         fileIds.add(uploadResult.getOrNull()!!)
