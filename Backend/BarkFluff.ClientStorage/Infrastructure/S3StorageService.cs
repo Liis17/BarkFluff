@@ -4,11 +4,30 @@ using Amazon.S3.Model;
 
 namespace BarkFluff.ClientStorage.Infrastructure;
 
+public sealed class S3DownloadResult : IDisposable
+{
+    private readonly GetObjectResponse _response;
+
+    public Stream Stream        => _response.ResponseStream;
+    public string ContentType   => _response.Headers.ContentType;
+    public long   ContentLength => _response.ContentLength;
+
+    internal S3DownloadResult(GetObjectResponse response)
+    {
+        _response = response;
+    }
+
+    public void Dispose() => _response.Dispose();
+}
+
 public class S3StorageService : IDisposable
 {
     private readonly IAmazonS3 _client;
     private readonly string _bucketName;
     private readonly ILogger<S3StorageService> _logger;
+
+    // Время жизни presigned URL (достаточно для передачи BITS-заданию)
+    private static readonly TimeSpan PresignedUrlTtl = TimeSpan.FromHours(6);
 
     public S3StorageService(IConfiguration configuration, ILogger<S3StorageService> logger)
     {
@@ -42,6 +61,11 @@ public class S3StorageService : IDisposable
         }
     }
 
+    /// <summary>
+    /// Загружает файл в S3. Данные читаются из <paramref name="data"/> только один раз —
+    /// без промежуточного буферирования. Хэширование выполняется до передачи этого метода
+    /// через <see cref="HashingReadStream"/>.
+    /// </summary>
     public async Task<string> UploadAsync(string key, Stream data, string contentType)
     {
         var request = new PutObjectRequest
@@ -58,7 +82,12 @@ public class S3StorageService : IDisposable
         return response.ETag;
     }
 
-    public async Task<(Stream Stream, string ContentType)> DownloadAsync(string key)
+    /// <summary>
+    /// Возвращает стриминговый ответ S3 без буферизации.
+    /// Caller должен через await using освободить результат.
+    /// Поддерживает Range-запросы для возобновляемых загрузок / BITS.
+    /// </summary>
+    public async Task<S3DownloadResult> DownloadAsync(string key, string? rangeHeader = null)
     {
         var request = new GetObjectRequest
         {
@@ -66,13 +95,49 @@ public class S3StorageService : IDisposable
             Key = key
         };
 
+        if (!string.IsNullOrEmpty(rangeHeader))
+        {
+            // Парсим "bytes=start-end" → ByteRange для SDK
+            if (TryParseRange(rangeHeader, out var from, out var to))
+                request.ByteRange = new ByteRange(from, to);
+        }
+
         var response = await _client.GetObjectAsync(request);
+        return new S3DownloadResult(response);
+    }
 
-        var memoryStream = new MemoryStream();
-        await response.ResponseStream.CopyToAsync(memoryStream);
-        memoryStream.Position = 0;
+    /// <summary>
+    /// Генерирует presigned URL для прямого скачивания из S3.
+    /// Используется для формирования BITS-задания на Windows-клиенте.
+    /// </summary>
+    public string GeneratePresignedUrl(string key, string fileName)
+    {
+        var request = new GetPreSignedUrlRequest
+        {
+            BucketName = _bucketName,
+            Key = key,
+            Expires = DateTime.UtcNow.Add(PresignedUrlTtl),
+            Verb = HttpVerb.GET,
+            ResponseHeaderOverrides =
+            {
+                ContentDisposition = $"attachment; filename=\"{fileName}\""
+            }
+        };
 
-        return (memoryStream, response.Headers.ContentType);
+        return _client.GetPreSignedURL(request);
+    }
+
+    private static bool TryParseRange(string header, out long from, out long to)
+    {
+        from = 0; to = 0;
+        // "bytes=1234-5678"
+        if (!header.StartsWith("bytes=", StringComparison.OrdinalIgnoreCase)) return false;
+        var span = header.AsSpan(6);
+        var dash = span.IndexOf('-');
+        if (dash < 0) return false;
+        return long.TryParse(span[..dash], out from)
+            && long.TryParse(span[(dash + 1)..], out to)
+            && to >= from;
     }
 
     public void Dispose()

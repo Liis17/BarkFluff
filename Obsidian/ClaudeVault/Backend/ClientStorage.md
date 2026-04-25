@@ -30,25 +30,52 @@ Design-time factory: `Persistence/ClientStorageContextFactory.cs` (файл `cli
 ## API Endpoints
 
 **Download (публичные):**
-- `GET /get/barkfluff{windows|kotlin|macos|ios}[/{channel}]` — скачать клиент
+- `GET /get/barkfluff{windows|kotlin|macos|ios}[/{channel}]` — скачать клиент (streaming, поддержка Range)
 - `GET /get/barkfluff{windows|kotlin|macos|ios}[/{channel}]/version` — версия
+- `GET /get/barkfluffwindows[/{channel}]/bitsurl` — presigned URL + метаданные для BITS-задания (Windows)
 
 **Upload (Bearer `UPLOAD_TOKEN`, заголовок `X-App-Version`):**
 - `POST /set/barkfluff{windows|kotlin|macos|ios}[/{channel}]` — загрузить (multipart form, поле `file`, лимит 512 MB)
 
 Каналы: `release` (default), `beta`.
 
+### Ответ `/bitsurl`
+```json
+{
+  "url":        "https://...",       // presigned S3 URL, TTL 6 часов
+  "fileName":   "BarkFluff.exe",
+  "fileSize":   104857600,
+  "checksum":   "abc123...",         // SHA-256 hex — для BitsJob.SetHashAndAlgorithm
+  "version":    "1.2.3",
+  "uploadedAt": "2026-03-24T..."
+}
+```
+
 ## Архитектура
 
 - `Controllers/ClientStorageController` — GET (скачивание) и POST (загрузка)
-- `Domain/` — `ClientFile`, `ClientType` (Windows/Kotlin), `ReleaseChannel` (Release/Beta)
-- `Infrastructure/S3StorageService` — AWS SDK
+- `Domain/` — `ClientFile`, `ClientType` (Windows/Kotlin/MacOS/iOS), `ReleaseChannel` (Release/Beta)
+- `Infrastructure/S3StorageService` — AWS SDK, стриминг, presigned URLs
+- `Infrastructure/HashingReadStream` — SHA-256 за один проход при upload
 - `Middleware/TokenAuthMiddleware` — Bearer-токен только для `/set/*`
 - `Persistence/` — EF Core + SQLite
 
 ## Детали реализации
 
-- Файлы → временный файл → SHA256 → S3 с GUID-ключом → запись в SQLite
-- При скачивании — последний файл по `UploadedAt` для данного `ClientType` + `ReleaseChannel`
-- S3 бакет создаётся автоматически при старте
-- `Kestrel MaxRequestBodySize` = 512 MB
+### Upload (оптимизировано)
+- ASP.NET буферирует IFormFile в temp-файл при разборе multipart — это неизбежно
+- Далее один проход: `HashingReadStream` вычисляет SHA-256 **одновременно** с отправкой данных в S3
+- Нет дополнительного temp-файла, нет лишних копий — было 3 прохода, стало 1
+
+### Download (стриминг + Range)
+- `S3StorageService.DownloadAsync` возвращает `S3DownloadResult` со стримом напрямую из S3
+- **Нет буферизации в MemoryStream** — первый байт клиент получает немедленно
+- Заголовок `Accept-Ranges: bytes` выставляется явно
+- `FileStreamResult` с `EnableRangeProcessing = true` — ASP.NET обрабатывает Range-запросы
+- Поддерживаются возобновляемые загрузки и BITS-совместимые клиенты
+
+### BITS (Windows Background Intelligent Transfer Service)
+- Эндпоинт `/bitsurl` возвращает presigned URL с TTL 6 часов
+- Windows-клиент создаёт BITS-задание: `BitsJob.AddFile(url, localPath)`
+- Checksum в ответе — SHA-256 hex для `BitsJob.SetHashAndAlgorithm`
+- BITS работает напрямую с S3, минуя сервер — максимальная скорость и возобновляемость

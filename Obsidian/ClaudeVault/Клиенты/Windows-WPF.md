@@ -100,3 +100,26 @@ Mutex `BarkFluffMutex`. Второй экземпляр передаёт args ч
 ## Темы
 
 Light/Dark XAML resource dictionaries в `Resources/Styles/Themes/`. Toggle F8 в DEBUG. Hex-цвета в `GlobalParam.Colors`.
+
+## Система обновлений
+
+**`UpdateService`** (`Services/App/Update/UpdateService.cs`) — запускается из `App.MainPageLoaded()`:
+1. Каждые 2 часа запрашивает `GET /get/barkfluffwindows/{channel}/version`
+2. Сравнивает версии; если `remoteVer > currentVer` → огонь `UpdateAvailable`
+3. Канал определяется из `AppVersion.VersionType`: `"Release"` → `release`, иначе `beta`
+4. `LatestDownloadUrl` = `https://storage.barkfluff.com/get/barkfluffwindows/{channel}/` (streaming URL)
+
+**`LaunchUpdater`** (`Pages/Messenger/MessengerPage.Viewers.cs`) — вызывается по иконке обновления:
+1. Генерирует PS1-скрипт через `GenerateUpdateScript(downloadUrl, installPath, isInstalledInAppData)`
+2. Записывает в `%TEMP%\BarkFluff_update.ps1` и запускает через `powershell.exe -ExecutionPolicy Bypass`
+3. Приложение сразу завершается (`Application.Current.Shutdown()`)
+
+**Сгенерированный скрипт** (логика загрузки):
+1. Завершает процессы `Barkfluff`, ждёт 2 сек
+2. `GET {channel_url}/bitsurl` → получает presigned S3 URL + checksum + версию
+3. BITS → `Start-BitsTransfer -Source $BitsInfo.url` (прямо к S3, минуя сервер)
+4. Fallback: WebClient → `{channel_url}` (streaming endpoint)
+5. Проверка SHA-256 из `BitsInfo.checksum`
+6. `Expand-Archive` в `InstallPath`
+7. Ярлык + протокол `bf://` (если `IsInstalled = true`)
+8. Запуск с аргументом `--successfulupdate` → показывает `PostUpdateMessage`
