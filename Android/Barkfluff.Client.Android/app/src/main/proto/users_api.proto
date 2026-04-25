@@ -63,6 +63,12 @@ service UsersApi {
 
   // Обновить персонализацию текущего пользователя
   rpc UpdatePersonalization(UpdatePersonalizationRequest) returns(UpdatePersonalizationResponse);
+
+  // Получить постер профиля текущего пользователя
+  rpc GetProfilePoster(GetProfilePosterRequest) returns(GetProfilePosterResponse);
+
+  // Установить (или удалить) постер профиля текущего пользователя
+  rpc SetProfilePoster(SetProfilePosterRequest) returns(SetProfilePosterResponse);
 }
 
 service UsersServerApi {
@@ -315,6 +321,7 @@ message User{
   string profile_picture_preview = 8; // ссылка на превью аватарки
   repeated UserBadge badges = 9; // баджи пользователя
   int32 storage_limit_gb = 10; // лимит хранилища в гигабайтах
+  string profile_poster_file_id = 11; // FileId постера/фона профиля (пусто если не задан)
 }
 
 // Сообщения для работы с баджами
@@ -621,3 +628,17 @@ message UpdatePersonalizationRequest {
 }
 
 message UpdatePersonalizationResponse { }
+
+// Постер профиля
+
+message GetProfilePosterRequest { }
+
+message GetProfilePosterResponse {
+  string profile_poster_file_id = 1; // FileId постера профиля (пусто если не задан)
+}
+
+message SetProfilePosterRequest {
+  string profile_poster_file_id = 1; // FileId нового постера (пусто чтобы удалить)
+}
+
+message SetProfilePosterResponse { }
