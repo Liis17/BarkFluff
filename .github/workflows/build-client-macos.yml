@@ -1,0 +1,171 @@
+name: "🍎 macOS Client CI/CD"
+
+on:
+  push:
+    branches:
+      - dev
+      - master
+    paths:
+      - 'Mac/Barkfluff/**'
+      - 'Mac/macos-rebuild.trigger'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  # ═══════════════════════════════════════════════════════════════
+  #  Запрос подтверждения сборки через Telegram
+  # ═══════════════════════════════════════════════════════════════
+  request-approval:
+    name: "📲 Запрос подтверждения"
+    runs-on: macos-latest
+    outputs:
+      approved: ${{ steps.result.outputs.approved }}
+    steps:
+      - name: "📲 Собрать macOS Client?"
+        id: approval
+        continue-on-error: true
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "Запустить сборку macOS Client?"
+          APPROVAL_BUTTON: "\u2705 Собрать"
+          REJECT_BUTTON: "\u274C Отменить"
+          APPROVED_TEXT: "\u2705 Сборка macOS Client одобрена"
+          REJECTED_TEXT: "\u274C Сборка macOS Client отклонена"
+          TIMEOUT_TEXT: "\u23F0 Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Результат
+        id: result
+        run: |
+          if [ "${{ steps.approval.outcome }}" = "success" ]; then
+            echo "approved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "approved=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ═══════════════════════════════════════════════════════════════
+  #  Сборка DMG без подписи + загрузка на сервер
+  # ═══════════════════════════════════════════════════════════════
+  build:
+    name: "🍎 macOS Client"
+    needs: request-approval
+    if: needs.request-approval.outputs.approved == 'true'
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: Mac/Barkfluff
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Выбор Xcode (Swift 6.2)
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest
+
+      - name: Проверка версии Xcode/Swift
+        run: |
+          ls -d /Applications/Xcode*.app 2>/dev/null || true
+          xcodebuild -version
+          swift --version
+
+      - name: Установить xcbeautify и create-dmg
+        run: brew install xcbeautify create-dmg
+
+      - name: Archive (без подписи)
+        run: |
+          set -o pipefail
+          NSUnbufferedIO=YES xcodebuild -project Barkfluff.xcodeproj \
+            -scheme Barkfluff \
+            -configuration Release \
+            -destination 'generic/platform=macOS' \
+            -archivePath build/Barkfluff.xcarchive \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            archive 2>&1 | xcbeautify --renderer github-actions
+
+      - name: Export .app
+        run: |
+          set -o pipefail
+          NSUnbufferedIO=YES xcodebuild -exportArchive \
+            -archivePath build/Barkfluff.xcarchive \
+            -exportOptionsPlist ExportOptions.plist \
+            -exportPath build/export \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | xcbeautify --renderer github-actions
+
+      - name: Get version
+        id: meta
+        run: |
+          VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" \
+            build/export/Barkfluff.app/Contents/Info.plist 2>/dev/null || echo "0.0.0")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Version: $VERSION"
+
+      - name: Собрать DMG
+        id: dmg
+        run: |
+          DMG_PATH="build/BarkFluff-${{ steps.meta.outputs.version }}.dmg"
+          create-dmg \
+            --volname "BarkFluff" \
+            --window-size 600 400 \
+            --icon-size 128 \
+            --icon "Barkfluff.app" 150 200 \
+            --app-drop-link 450 200 \
+            "$DMG_PATH" \
+            "build/export/Barkfluff.app"
+          echo "path=$DMG_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: "📤 Загрузка на сервер обновлений"
+        run: |
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            CHANNEL="beta"
+          else
+            CHANNEL="release"
+          fi
+          curl -f -X POST "${{ secrets.CLIENT_STORAGE_URL }}/set/barkfluffmacos/${CHANNEL}" \
+            -H "Authorization: Bearer ${{ secrets.CLIENT_STORAGE_TOKEN }}" \
+            -H "X-App-Version: ${{ steps.meta.outputs.version }}" \
+            -F "file=@${{ steps.dmg.outputs.path }}"
+
+      - name: "✅ Уведомление об успехе"
+        if: success()
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ✅ *Сборка успешна*
+
+            🍎 *macOS Client* v${{ steps.meta.outputs.version }}
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
+
+      - name: "❌ Уведомление об ошибке"
+        if: failure()
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ❌ *Сборка провалена*
+
+            🍎 *macOS Client*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"

@@ -1,0 +1,183 @@
+name: "📱 Android Client CI/CD"
+
+on:
+  push:
+    branches:
+      - dev
+      - master
+    paths:
+      - 'Android/Barkfluff.Client.Android/**'
+      - 'Android/android-rebuild.trigger'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  # ═══════════════════════════════════════════════════════════════
+  #  Запрос подтверждения сборки через Telegram
+  # ═══════════════════════════════════════════════════════════════
+  request-approval:
+    name: "📲 Запрос подтверждения"
+    runs-on: self-hosted
+    outputs:
+      approved: ${{ steps.result.outputs.approved }}
+    steps:
+      - name: "📲 Собрать Android Client?"
+        id: approval
+        continue-on-error: true
+        uses: powerdot/telegram-manual-approval@main
+        with:
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_APPROVAL_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_APPROVAL_CHAT_ID }}
+          APPROVAL_TEXT: "Запустить сборку Android Client?"
+          APPROVAL_BUTTON: "\u2705 Собрать"
+          REJECT_BUTTON: "\u274C Отменить"
+          APPROVED_TEXT: "\u2705 Сборка Android Client одобрена"
+          REJECTED_TEXT: "\u274C Сборка Android Client отклонена"
+          TIMEOUT_TEXT: "\u23F0 Время ожидания истекло"
+          UPDATE_REQUESTS: 120
+
+      - name: Результат
+        id: result
+        run: |
+          if [ "${{ steps.approval.outcome }}" = "success" ]; then
+            echo "approved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "approved=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ═══════════════════════════════════════════════════════════════
+  #  Сборка APK + загрузка на сервер обновлений
+  # ═══════════════════════════════════════════════════════════════
+  build:
+    name: "📱 Сборка Android Client"
+    needs: request-approval
+    if: needs.request-approval.outputs.approved == 'true'
+    runs-on: self-hosted
+    env:
+      ANDROID_HOME: /home/liis/android-sdk
+      ANDROID_SDK_ROOT: /home/liis/android-sdk
+    defaults:
+      run:
+        working-directory: Android/Barkfluff.Client.Android
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Подготовка gradlew
+        run: |
+          dos2unix gradlew
+          chmod +x gradlew
+
+      - name: Настройка Android SDK
+        run: |
+          echo "sdk.dir=${ANDROID_HOME}" > local.properties
+          echo "ANDROID_HOME=${ANDROID_HOME}"
+          test -d "${ANDROID_HOME}"
+
+      - name: Автоподнятие версии
+        run: |
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            CHANNEL="beta"
+          else
+            CHANNEL="release"
+          fi
+
+          RESPONSE=$(curl -sf "https://storage.barkfluff.com/get/barkfluffkotlin/${CHANNEL}/version" || echo "")
+
+          if [ -n "$RESPONSE" ]; then
+            SERVER_VERSION=$(echo "$RESPONSE" | grep -oP '"version"\s*:\s*"\K[^"]+')
+          else
+            SERVER_VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts || echo "0.0.0")
+          fi
+
+          # Стрипаем любой нечисловой суффикс (например " beta")
+          SERVER_VERSION=$(echo "$SERVER_VERSION" | grep -oP '^\d+\.\d+\.\d+' || echo "0.0.0")
+
+          echo "Server version: $SERVER_VERSION"
+
+          MAJOR=$(echo "$SERVER_VERSION" | cut -d. -f1)
+          MINOR=$(echo "$SERVER_VERSION" | cut -d. -f2)
+          PATCH=$(echo "$SERVER_VERSION" | cut -d. -f3)
+          PATCH=$((PATCH + 1))
+          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+
+          echo "New version: $NEW_VERSION"
+
+          sed -i "s/versionName\s*=\s*\"[^\"]*\"/versionName = \"${NEW_VERSION}\"/" app/build.gradle.kts
+
+      - name: Пометка beta-версии
+        if: github.ref_name == 'dev'
+        run: |
+          sed -i 's/versionName\s*=\s*"\([^"]*\)"/versionName = "\1 beta"/' app/build.gradle.kts
+
+      - name: Сборка APK
+        env:
+          RELEASE_STORE_FILE: ${{ secrets.ANDROID_RELEASE_STORE_FILE }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
+        run: ./gradlew assembleRelease
+
+      - name: Поиск APK
+        id: apk
+        run: |
+          APK_PATH=$(find app/build/outputs/apk/release -name '*.apk' | head -1)
+          echo "path=$APK_PATH" >> "$GITHUB_OUTPUT"
+          echo "Found APK: $APK_PATH"
+
+      - name: Get version
+        id: meta
+        run: |
+          VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts || echo "0.0.0")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Version: $VERSION"
+
+      - name: "📤 Загрузка на сервер обновлений"
+        run: |
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            CHANNEL="beta"
+          else
+            CHANNEL="release"
+          fi
+          curl -f -X POST "${{ secrets.CLIENT_STORAGE_URL }}/set/barkfluffkotlin/${CHANNEL}" \
+            -H "Authorization: Bearer ${{ secrets.CLIENT_STORAGE_TOKEN }}" \
+            -H "X-App-Version: ${{ steps.meta.outputs.version }}" \
+            -F "file=@${{ steps.apk.outputs.path }}"
+
+      - name: "✅ Уведомление об успехе"
+        if: success()
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ✅ *Сборка успешна*
+
+            📱 *Android Client* v${{ steps.meta.outputs.version }}
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
+
+      - name: "❌ Уведомление об ошибке"
+        if: failure()
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ❌ *Сборка провалена*
+
+            📱 *Android Client*
+            📌 Ветка: `${{ github.ref_name }}`
+            🔗 Коммит: `${{ github.sha }}`
+            👤 Автор: *${{ github.actor }}*
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "text=${TG_MESSAGE}"
