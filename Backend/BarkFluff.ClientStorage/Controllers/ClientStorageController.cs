@@ -367,7 +367,7 @@ public class ClientStorageController : ControllerBase
     {
         try
         {
-            await using var result = await _s3.DownloadAsync(s3Key);
+            using var result = await _s3.DownloadAsync(s3Key);
             await _cache.UpdateAsync(clientType, channel, result.Stream);
         }
         catch (Exception ex)
