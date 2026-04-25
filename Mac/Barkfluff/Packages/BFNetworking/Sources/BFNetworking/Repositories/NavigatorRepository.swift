@@ -18,7 +18,7 @@ public actor NavigatorRepository: NavigatorRepositoryProtocol {
 
     /// Адрес Navigator по умолчанию
     public static let defaultHost = "navigator.barkfluff.com"
-    public static let defaultPort = 64646
+    public static let defaultPort = 443
 
     private let host: String
     private let port: Int
@@ -37,7 +37,7 @@ public actor NavigatorRepository: NavigatorRepositoryProtocol {
         // Создаём транспорт к Navigator
         let transport = try HTTP2ClientTransport.Posix(
             target: .dns(host: host, port: port),
-            transportSecurity: .plaintext
+            transportSecurity: .tls
         )
 
         // Используем withGRPCClient для автоматического управления жизненным циклом
@@ -87,7 +87,7 @@ public actor NavigatorRepository: NavigatorRepositoryProtocol {
         // Создаём транспорт к Navigator
         let transport = try HTTP2ClientTransport.Posix(
             target: .dns(host: self.host, port: self.port),
-            transportSecurity: .plaintext
+            transportSecurity: .tls
         )
 
         // Формируем запрос

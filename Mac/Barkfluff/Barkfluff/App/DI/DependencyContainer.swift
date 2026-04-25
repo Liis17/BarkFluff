@@ -122,7 +122,7 @@ final class DependencyContainer {
         self.fastAuthRepository = FastAuthRepository(connectionManager: connectionManager)
         self.navigatorRepository = NavigatorRepository(
             host: "navigator.barkfluff.com",
-            port: 64646
+            port: 443
         )
         self.onlinerRepository = OnlinerRepository(connectionManager: connectionManager)
 
