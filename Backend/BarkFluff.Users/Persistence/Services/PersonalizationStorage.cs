@@ -48,4 +48,11 @@ public class PersonalizationStorage
         await _usersContext.SaveChangesAsync();
         return personalization;
     }
+
+    public async Task UpdatePoster(long userId, string? profilePosterFileId)
+    {
+        var personalization = await GetOrCreate(userId);
+        personalization.ProfilePosterFileId = profilePosterFileId;
+        await _usersContext.SaveChangesAsync();
+    }
 }

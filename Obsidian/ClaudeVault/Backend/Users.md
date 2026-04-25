@@ -1,4 +1,4 @@
-# BarkFluff.Users
+﻿# BarkFluff.Users
 
 Управление профилями пользователей, бейджами, устройствами и GDPR-экспортом. Порт: **7001**.
 
@@ -50,7 +50,7 @@ dotnet ef database update --project BarkFluff.Users.csproj
 
 | Метод                                    | Описание                                      | Примечания                                                    |
 | ---------------------------------------- | --------------------------------------------- | ------------------------------------------------------------- |
-| `GetUser(userId)`                        | Профиль пользователя                          | `userId=0` → текущий пользователь                             |
+| `GetUser(userId)`                        | Профиль пользователя                          | `userId=0` → текущий пользователь; содержит `profile_poster_file_id` |
 | `SetProfilePicture(fileId)`              | Установить аватарку                           | `fileId` — GUID файла из Files; пустой → удалить аватар       |
 | `CheckExistUsername(username)`           | Проверить существование username              | **`[AllowAnonymous]`**                                        |
 | `CheckExistEmail(email)`                 | Проверить существование email                 | **`[AllowAnonymous]`**                                        |
@@ -67,7 +67,9 @@ dotnet ef database update --project BarkFluff.Users.csproj
 | `GetPrivacySettings()`                   | Настройки приватности текущего пользователя   |                                                               |
 | `UpdatePrivacySettings(settings)`        | Обновить настройки приватности                |                                                               |
 | `GetPersonalization()`                   | Персонализация текущего пользователя          |                                                               |
-| `UpdatePersonalization(personalization)` | Обновить персонализацию                       | Полная замена `ChatBackgroundFileIds`                         |
+| `UpdatePersonalization(personalization)` | Обновить персонализацию                       | Полная замена `ChatBackgroundFileIds`                          |
+| `GetProfilePoster()`                     | Получить FileId постера профиля               | Быстрый аналог GetPersonalization только для постера           |
+| `SetProfilePoster(fileId)`               | Установить (или удалить) постер профиля       | Пустой `fileId` → удаление; не трогает `ChatBackgroundFileIds` |
 
 ## UsersServerApi — межсервисный (TokenType.Service)
 
