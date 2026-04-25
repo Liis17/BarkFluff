@@ -6,6 +6,7 @@ Kotlin + gRPC-OkHttp клиент. Activity-based архитектура.
 Package: `com.barkfluff.client`
 
 > Полная карта файлов и внутреннего строения: [[Android-ProjectMap]]
+> UI/UX спецификация всех экранов и сценариев: [[Клиенты/DesignDocument]] (источник: `dd.md`)
 
 ## Версии
 
