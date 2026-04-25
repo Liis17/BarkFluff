@@ -14,6 +14,8 @@ using BarkFluff.Users.Features.Devices.SetFirebaseToken;
 using BarkFluff.Users.Features.Devices.SetNotificationsEnabled;
 using BarkFluff.Users.Features.GetUser;
 using BarkFluff.Users.Features.Personalization.GetPersonalization;
+using BarkFluff.Users.Features.Personalization.GetProfilePoster;
+using BarkFluff.Users.Features.Personalization.SetProfilePoster;
 using BarkFluff.Users.Features.Personalization.UpdatePersonalization;
 using BarkFluff.Users.Features.Privacy.GetPrivacySettings;
 using BarkFluff.Users.Features.Privacy.UpdatePrivacySettings;
@@ -210,5 +212,17 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
     {
         await _mediator.Send(new UpdatePersonalizationCommand { Personalization = request.Personalization });
         return new UpdatePersonalizationResponse();
+    }
+
+    public override Task<GetProfilePosterResponse> GetProfilePoster(GetProfilePosterRequest request, ServerCallContext context)
+    {
+        return _mediator.Send(new GetProfilePosterQuery());
+    }
+
+    public override async Task<SetProfilePosterResponse> SetProfilePoster(SetProfilePosterRequest request, ServerCallContext context)
+    {
+        var fileId = string.IsNullOrEmpty(request.ProfilePosterFileId) ? null : request.ProfilePosterFileId;
+        await _mediator.Send(new SetProfilePosterCommand { ProfilePosterFileId = fileId });
+        return new SetProfilePosterResponse();
     }
 }

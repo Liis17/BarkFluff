@@ -11,13 +11,18 @@ namespace BarkFluff.Users.Features.GetUser;
 public class GetUserQueryHandler : IRequestHandler<GetUserQuery, GetUserResponse>
 {
     private readonly UsersStorage _usersStorage;
+    private readonly PersonalizationStorage _personalizationStorage;
     private readonly UserContext _userContext;
     private readonly ILogger<GetUserQueryHandler> _logger;
 
-    public GetUserQueryHandler(UsersStorage usersStorage, UserContext userContext,
+    public GetUserQueryHandler(
+        UsersStorage usersStorage,
+        PersonalizationStorage personalizationStorage,
+        UserContext userContext,
         ILogger<GetUserQueryHandler> logger)
     {
         _usersStorage = usersStorage;
+        _personalizationStorage = personalizationStorage;
         _userContext = userContext;
         _logger = logger;
     }
@@ -49,9 +54,11 @@ public class GetUserQueryHandler : IRequestHandler<GetUserQuery, GetUserResponse
             user.Username
         );
 
-        return new GetUserResponse
-        {
-            User = user.ToGrpc()
-        };
+        var personalization = await _personalizationStorage.Get(userId);
+
+        var grpcUser = user.ToGrpc();
+        grpcUser.ProfilePosterFileId = personalization?.ProfilePosterFileId ?? string.Empty;
+
+        return new GetUserResponse { User = grpcUser };
     }
 }
