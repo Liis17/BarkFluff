@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Архитектура.md",
+                "file": "Backend/Users.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Архитектура"
+              "title": "Users"
             }
           }
         ]
@@ -171,6 +171,8 @@
   },
   "active": "7f596fe4d7ff83c5",
   "lastOpenFiles": [
+    "Backend/Users.md.tmp.9324.1777117127481",
+    "Архитектура.md",
     "Index.md",
     "Клиенты/Windows-WebApiCore-ProjectMap.md",
     "Клиенты/Windows-WebApiCore.md",
@@ -199,13 +201,11 @@
     "Shared/Auth.md",
     "Shared/Proto.md",
     "Backend/Web.md",
-    "Архитектура.md",
     "Backend/WebServer.md",
     "Backend/CloudMessaging.md",
     "Backend/AdminPanel.md",
     "Backend/FastAuth.md",
     "Backend/Notification.md",
-    "Backend/Onliner.md",
-    "Backend/Updates.md"
+    "Backend/Onliner.md"
   ]
 }
