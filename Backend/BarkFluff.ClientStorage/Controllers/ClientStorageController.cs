@@ -310,18 +310,22 @@ public class ClientStorageController : ControllerBase
         if (file == null || file.Length == 0)
             return BadRequest(new { error = "Файл не предоставлен" });
 
-        var s3Key    = Guid.NewGuid().ToString();
+        var s3Key = Guid.NewGuid().ToString();
         string checksum;
 
         try
         {
-            await using var sourceStream  = file.OpenReadStream();
-            using  var incrementalHash   = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-            await using var hashStream   = new HashingReadStream(sourceStream, incrementalHash);
+            await using var sourceStream = file.OpenReadStream();
 
-            await _s3.UploadAsync(s3Key, hashStream, file.ContentType ?? "application/octet-stream");
-
+            using var incrementalHash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+            var buffer = new byte[81920];
+            int bytesRead;
+            while ((bytesRead = await sourceStream.ReadAsync(buffer)) > 0)
+                incrementalHash.AppendData(buffer, 0, bytesRead);
             checksum = Convert.ToHexStringLower(incrementalHash.GetHashAndReset());
+
+            sourceStream.Position = 0;
+            await _s3.UploadAsync(s3Key, sourceStream, file.ContentType ?? "application/octet-stream");
         }
         catch (Exception ex)
         {
