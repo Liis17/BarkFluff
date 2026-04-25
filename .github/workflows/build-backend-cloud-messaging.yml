@@ -41,15 +41,17 @@ jobs:
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TG_MESSAGE: |
+            ❌ *Сборка невозможна: .NET 9.0 SDK не установлен на раннере*
+
+            🐳 *Barkfluff.CloudMessaging*
+            📌 Ветка: `${{ github.ref_name }}`
+            👤 Автор: *${{ github.actor }}*
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TG_CHAT}" \
             --data-urlencode "parse_mode=Markdown" \
-            --data-urlencode "text=❌ *Сборка невозможна: .NET 9.0 SDK не установлен на раннере*
-
-🐳 *Barkfluff.CloudMessaging*
-📌 Ветка: \`${{ github.ref_name }}\`
-👤 Автор: *${{ github.actor }}*"
+            --data-urlencode "text=${TG_MESSAGE}"
           exit 1
 
   # ═══════════════════════════════════════════════════════════════
