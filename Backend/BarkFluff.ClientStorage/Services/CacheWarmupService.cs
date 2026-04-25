@@ -54,7 +54,7 @@ public class CacheWarmupService : IHostedService
                     _logger.LogInformation("Прогрев кеша: {ClientType} {Channel} ({S3Key})", clientType, channel, file.S3Key);
                     try
                     {
-                        await using var result = await s3.DownloadAsync(file.S3Key);
+                        using var result = await s3.DownloadAsync(file.S3Key);
                         await cache.UpdateAsync(clientType, channel, result.Stream);
                     }
                     catch (Exception ex)
