@@ -160,12 +160,12 @@ namespace BarkFluff.Client.WPF.Pages
         private static string GenerateUpdateScript(string downloadUrl, string installPath, bool isInstalledInAppData)
         {
             string escapedInstallPath = installPath.TrimEnd('\\', '/').Replace("'", "''");
-            string escapedDownloadUrl = downloadUrl.Replace("'", "''");
+            string escapedDownloadUrl = downloadUrl.TrimEnd('/').Replace("'", "''");
 
             string script = """
                 $ErrorActionPreference = "Stop"
 
-                $DownloadUrl = '%%DOWNLOAD_URL%%'
+                $FallbackUrl = '%%DOWNLOAD_URL%%'
                 $TempZip     = Join-Path $env:TEMP "BarkFluff_update.zip"
                 $InstallPath = '%%INSTALL_PATH%%'
                 $ExePath     = Join-Path $InstallPath "Barkfluff.exe"
@@ -184,27 +184,51 @@ namespace BarkFluff.Client.WPF.Pages
                     Remove-Item $TempZip -Force
                 }
 
+                $BitsInfo   = $null
                 $Downloaded = $false
 
-                # 1. BITS
+                # Получение presigned URL и метаданных через /bitsurl
                 try {
-                    Write-Host "Загрузка через BITS..."
-                    Start-BitsTransfer -Source $DownloadUrl -Destination $TempZip
-                    $Downloaded = $true
-                    Write-Host "Загружено через BITS."
+                    $BitsInfo = Invoke-RestMethod -Uri ($FallbackUrl + '/bitsurl') -Method Get
+                    if ($BitsInfo.version)  { Write-Host "Версия: $($BitsInfo.version)" }
+                    if ($BitsInfo.fileSize) { Write-Host "Размер: $([math]::Round($BitsInfo.fileSize / 1MB, 2)) MB" }
                 }
                 catch {
-                    Write-Warning "BITS не удался, переход на WebClient..."
+                    Write-Warning "Не удалось получить BITS-информацию, будет использован прямой URL."
+                }
+
+                # 1. BITS — напрямую к S3 через presigned URL
+                if ($BitsInfo -ne $null) {
+                    try {
+                        Write-Host "Загрузка через BITS..."
+                        Start-BitsTransfer -Source $BitsInfo.url -Destination $TempZip
+                        $Downloaded = $true
+                        Write-Host "Загружено через BITS."
+                    }
+                    catch {
+                        Write-Warning "BITS не удался, переход на WebClient..."
+                    }
                 }
 
                 # 2. WebClient fallback
                 if (-not $Downloaded) {
                     $wc = New-Object System.Net.WebClient
-                    $wc.DownloadFile($DownloadUrl, $TempZip)
+                    $wc.DownloadFile($FallbackUrl, $TempZip)
                     Write-Host "Загружено через WebClient."
                 }
 
-                # 3. Распаковка
+                # 3. Проверка контрольной суммы
+                if ($BitsInfo -ne $null -and $BitsInfo.checksum) {
+                    Write-Host "Проверка контрольной суммы..."
+                    $Hash = (Get-FileHash -Path $TempZip -Algorithm SHA256).Hash
+                    if ($Hash -ne $BitsInfo.checksum.ToUpper()) {
+                        Remove-Item $TempZip -Force -ErrorAction SilentlyContinue
+                        throw "Ошибка контрольной суммы: ожидалось $($BitsInfo.checksum.ToUpper()), получено $Hash"
+                    }
+                    Write-Host "Контрольная сумма верна."
+                }
+
+                # 4. Распаковка
                 Write-Host "Распаковка в: $InstallPath"
                 if (-not (Test-Path $InstallPath)) {
                     New-Item -ItemType Directory -Path $InstallPath | Out-Null
@@ -214,7 +238,7 @@ namespace BarkFluff.Client.WPF.Pages
                 Write-Host "Распаковка завершена."
 
                 if ($IsInstalled) {
-                    # 4. Ярлык в меню Пуск
+                    # 5. Ярлык в меню Пуск
                     $StartMenuPrograms = Join-Path ([Environment]::GetFolderPath('StartMenu')) "Programs"
                     $ShortcutPath = Join-Path $StartMenuPrograms "BarkFluff.lnk"
 
@@ -232,7 +256,7 @@ namespace BarkFluff.Client.WPF.Pages
                         Write-Host "Ярлык в меню Пуск уже существует."
                     }
 
-                    # 5. Регистрация протокола bf:// (требует права администратора)
+                    # 6. Регистрация протокола bf:// (требует права администратора)
                     $ProtocolRegistered = Test-Path "Registry::HKEY_CLASSES_ROOT\bf"
 
                     if (-not $ProtocolRegistered) {
@@ -261,7 +285,7 @@ namespace BarkFluff.Client.WPF.Pages
                     }
                 }
 
-                # 6. Запуск BarkFluff
+                # 7. Запуск BarkFluff
                 if (Test-Path $ExePath) {
                     Write-Host "Запуск BarkFluff..."
                     Start-Process -FilePath $ExePath -WorkingDirectory $InstallPath -ArgumentList "--successfulupdate"

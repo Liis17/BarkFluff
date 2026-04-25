@@ -1,68 +1,113 @@
 $ErrorActionPreference = "Stop"
 
-$DownloadUrl = "https://storage.barkfluff.com/get/barkfluffwindows/"
+$BaseUrl     = "https://storage.barkfluff.com"
 $TempZip     = Join-Path $env:TEMP "BarkFluff_install.zip"
 $InstallPath = Join-Path $env:APPDATA "BarkFluff"
 $ExePath     = Join-Path $InstallPath "Barkfluff.exe"
 
-Write-Host "Downloading BarkFluff..."
+# --- Выбор канала / Channel selection ---
+Write-Host ""
+Write-Host "Выберите канал обновления / Choose update channel:"
+Write-Host "  1 - Release  (стабильная версия / stable version)"
+Write-Host "  2 - Beta     (бета-версия / beta version)"
+Write-Host ""
+
+do {
+    $choice = Read-Host "Ваш выбор / Your choice [1/2]"
+} while ($choice -notin @('1', '2'))
+
+$Channel = if ($choice -eq '2') { 'beta' } else { 'release' }
+
+Write-Host ""
+Write-Host "Канал выбран / Selected channel: $Channel"
+
+# --- Получение информации о загрузке / Fetch download info ---
+Write-Host "Получение информации о загрузке... / Fetching download info..."
+
+$BitsInfo   = $null
+$Downloaded = $false
+
+try {
+    $BitsInfo = Invoke-RestMethod -Uri "$BaseUrl/get/barkfluffwindows/$Channel/bitsurl" -Method Get
+    if ($BitsInfo.version) {
+        Write-Host "Версия / Version: $($BitsInfo.version)"
+    }
+    if ($BitsInfo.fileSize) {
+        Write-Host "Размер / Size: $([math]::Round($BitsInfo.fileSize / 1MB, 2)) MB"
+    }
+}
+catch {
+    Write-Warning "Не удалось получить BITS-информацию, будет использован прямой URL. / Failed to get BITS info, will use direct URL."
+}
 
 if (Test-Path $TempZip) {
     Remove-Item $TempZip -Force
 }
 
-$Downloaded = $false
-
 # 1. BITS
-try {
-    Write-Host "Trying BITS transfer..."
-    Start-BitsTransfer -Source $DownloadUrl -Destination $TempZip
-    $Downloaded = $true
-    Write-Host "Downloaded via BITS."
-}
-catch {
-    Write-Warning "BITS failed, falling back to WebClient..."
+if ($BitsInfo -ne $null) {
+    try {
+        Write-Host "Загрузка через BITS... / Downloading via BITS..."
+        Start-BitsTransfer -Source $BitsInfo.url -Destination $TempZip
+        $Downloaded = $true
+        Write-Host "Загружено через BITS / Downloaded via BITS."
+    }
+    catch {
+        Write-Warning "BITS не удался, переключаемся на WebClient... / BITS failed, falling back to WebClient..."
+    }
 }
 
 # 2. WebClient fallback
 if (-not $Downloaded) {
+    Write-Host "Загрузка через WebClient... / Downloading via WebClient..."
     $wc = New-Object System.Net.WebClient
-    $wc.DownloadFile($DownloadUrl, $TempZip)
-    Write-Host "Downloaded via WebClient."
+    $wc.DownloadFile("$BaseUrl/get/barkfluffwindows/$Channel", $TempZip)
+    Write-Host "Загружено через WebClient / Downloaded via WebClient."
 }
 
-# 3. Extract
-Write-Host "Extracting to: $InstallPath"
+# 3. Проверка контрольной суммы / Checksum verification
+if ($BitsInfo -ne $null -and $BitsInfo.checksum) {
+    Write-Host "Проверка контрольной суммы... / Verifying checksum..."
+    $Hash = (Get-FileHash -Path $TempZip -Algorithm SHA256).Hash
+    if ($Hash -ne $BitsInfo.checksum.ToUpper()) {
+        Remove-Item $TempZip -Force -ErrorAction SilentlyContinue
+        throw "Ошибка контрольной суммы / Checksum mismatch: expected $($BitsInfo.checksum.ToUpper()), got $Hash"
+    }
+    Write-Host "Контрольная сумма верна / Checksum OK."
+}
+
+# 4. Распаковка / Extract
+Write-Host "Распаковка в / Extracting to: $InstallPath"
 if (-not (Test-Path $InstallPath)) {
     New-Item -ItemType Directory -Path $InstallPath | Out-Null
 }
 Expand-Archive -Path $TempZip -DestinationPath $InstallPath -Force
 Remove-Item $TempZip -Force -ErrorAction SilentlyContinue
-Write-Host "Extraction complete."
+Write-Host "Распаковка завершена / Extraction complete."
 
-# 4. Start Menu shortcut
+# 5. Ярлык в меню Пуск / Start Menu shortcut
 $StartMenuPrograms = Join-Path ([Environment]::GetFolderPath('StartMenu')) "Programs"
 $ShortcutPath = Join-Path $StartMenuPrograms "BarkFluff.lnk"
 
 if (-not (Test-Path $ShortcutPath)) {
-    Write-Host "Creating Start Menu shortcut..."
+    Write-Host "Создание ярлыка в меню Пуск... / Creating Start Menu shortcut..."
     $wshell = New-Object -ComObject WScript.Shell
     $shortcut = $wshell.CreateShortcut($ShortcutPath)
     $shortcut.TargetPath = $ExePath
     $shortcut.WorkingDirectory = $InstallPath
     $shortcut.Description = "BarkFluff Messenger"
     $shortcut.Save()
-    Write-Host "Shortcut created: $ShortcutPath"
+    Write-Host "Ярлык создан / Shortcut created: $ShortcutPath"
 }
 else {
-    Write-Host "Start Menu shortcut already exists."
+    Write-Host "Ярлык в меню Пуск уже существует / Start Menu shortcut already exists."
 }
 
-# 5. Register bf:// protocol (requires Administrator - separate elevated process)
+# 6. Регистрация протокола bf:// / Register bf:// protocol
 $ProtocolRegistered = Test-Path "Registry::HKEY_CLASSES_ROOT\bf"
 
 if (-not $ProtocolRegistered) {
-    Write-Host "Registering bf:// protocol (requires Administrator)..."
+    Write-Host "Регистрация протокола bf:// (требуются права администратора)... / Registering bf:// protocol (requires Administrator)..."
 
     $RegScript = @"
 `$exePath = '$($ExePath -replace "'", "''")'
@@ -80,17 +125,17 @@ Set-ItemProperty -Path 'HKCR:\bf\shell\open\command' -Name '(Default)' -Value ('
     $Encoded = [Convert]::ToBase64String($Bytes)
 
     Start-Process powershell -Verb RunAs -ArgumentList "-NoProfile -NonInteractive -EncodedCommand $Encoded" -Wait
-    Write-Host "Protocol registration complete."
+    Write-Host "Протокол зарегистрирован / Protocol registration complete."
 }
 else {
-    Write-Host "Protocol bf:// is already registered."
+    Write-Host "Протокол bf:// уже зарегистрирован / Protocol bf:// is already registered."
 }
 
-# 6. Launch BarkFluff
+# 7. Запуск BarkFluff / Launch BarkFluff
 if (Test-Path $ExePath) {
-    Write-Host "Launching BarkFluff..."
+    Write-Host "Запуск BarkFluff... / Launching BarkFluff..."
     Start-Process -FilePath $ExePath -WorkingDirectory $InstallPath
 }
 else {
-    Write-Warning "Barkfluff.exe not found at: $ExePath"
+    Write-Warning "Barkfluff.exe не найден по пути / Barkfluff.exe not found at: $ExePath"
 }

@@ -42,6 +42,15 @@ public class ClientStorageController : ControllerBase
     public Task<IActionResult> GetWindowsChannelVersion(string channel)
         => ParseChannelAndGetVersion(ClientType.Windows, channel);
 
+    /// <summary>Возвращает presigned URL + метаданные для создания BITS-задания.</summary>
+    [HttpGet("/get/barkfluffwindows/bitsurl")]
+    public Task<IActionResult> GetWindowsBitsUrl()
+        => GetBitsUrl(ClientType.Windows, ReleaseChannel.Release);
+
+    [HttpGet("/get/barkfluffwindows/{channel}/bitsurl")]
+    public Task<IActionResult> GetWindowsChannelBitsUrl(string channel)
+        => ParseChannelAndGetBitsUrl(ClientType.Windows, channel);
+
     [HttpGet("/get/barkfluffkotlin")]
     public Task<IActionResult> GetKotlin()
         => DownloadClient(ClientType.Kotlin, ReleaseChannel.Release);
@@ -170,6 +179,52 @@ public class ClientStorageController : ControllerBase
         return await UploadClient(file, clientType, releaseChannel);
     }
 
+    private async Task<IActionResult> ParseChannelAndGetBitsUrl(ClientType clientType, string channel)
+    {
+        if (!TryParseChannel(channel, out var releaseChannel))
+            return BadRequest(new { error = "Неизвестный канал. Допустимые значения: release, beta" });
+        return await GetBitsUrl(clientType, releaseChannel);
+    }
+
+    /// <summary>
+    /// Возвращает presigned URL + метаданные для создания BITS-задания на Windows-клиенте.
+    /// Ответ содержит URL, размер файла и SHA-256 checksum для проверки целостности.
+    /// </summary>
+    private async Task<IActionResult> GetBitsUrl(ClientType clientType, ReleaseChannel releaseChannel)
+    {
+        var clientFile = await _db.ClientFiles
+            .Where(f => f.ClientType == clientType && f.ReleaseChannel == releaseChannel)
+            .OrderByDescending(f => f.UploadedAt)
+            .FirstOrDefaultAsync();
+
+        if (clientFile == null)
+            return NotFound(new { error = "Файл клиента не найден" });
+
+        try
+        {
+            var presignedUrl = _s3.GeneratePresignedUrl(clientFile.S3Key, clientFile.OriginalFileName);
+
+            // Ответ содержит всё для Windows BITS:
+            //   url       → передать BitsJob.AddFile(url, localPath)
+            //   fileSize  → необязательно, но удобно для прогресса
+            //   checksum  → SHA-256 hex, BitsJob.SetHashAndAlgorithm(checksum, BG_AUTH_SCHEME.Sha256)
+            return Ok(new
+            {
+                url        = presignedUrl,
+                fileName   = clientFile.OriginalFileName,
+                fileSize   = clientFile.FileSize,
+                checksum   = clientFile.Checksum,
+                version    = clientFile.Version,
+                uploadedAt = clientFile.UploadedAt
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка генерации presigned URL для {S3Key}", clientFile.S3Key);
+            return StatusCode(500, new { error = "Ошибка генерации URL" });
+        }
+    }
+
     private async Task<IActionResult> GetVersion(ClientType clientType, ReleaseChannel releaseChannel)
     {
         var clientFile = await _db.ClientFiles
@@ -182,12 +237,16 @@ public class ClientStorageController : ControllerBase
 
         return Ok(new
         {
-            version = clientFile.Version,
+            version    = clientFile.Version,
             uploadedAt = clientFile.UploadedAt,
-            fileName = clientFile.OriginalFileName
+            fileName   = clientFile.OriginalFileName
         });
     }
 
+    /// <summary>
+    /// Стриминговая отдача файла с поддержкой Range-запросов (возобновляемые загрузки, BITS).
+    /// Данные идут напрямую из S3 → клиент, без буферизации в памяти сервера.
+    /// </summary>
     private async Task<IActionResult> DownloadClient(ClientType clientType, ReleaseChannel releaseChannel)
     {
         var clientFile = await _db.ClientFiles
@@ -200,8 +259,18 @@ public class ClientStorageController : ControllerBase
 
         try
         {
-            var (stream, _) = await _s3.DownloadAsync(clientFile.S3Key);
-            return File(stream, clientFile.ContentType, clientFile.OriginalFileName);
+            var rangeHeader = Request.Headers.Range.FirstOrDefault();
+            var result = await _s3.DownloadAsync(clientFile.S3Key, rangeHeader);
+
+            // Сообщаем клиенту, что поддерживаем Range — обязательно для BITS
+            Response.Headers.AcceptRanges = "bytes";
+
+            // FileStreamResult сам пишет поток в response и вызовет Dispose по завершении
+            return new FileStreamResult(result.Stream, clientFile.ContentType)
+            {
+                FileDownloadName      = clientFile.OriginalFileName,
+                EnableRangeProcessing = true
+            };
         }
         catch (Exception ex)
         {
@@ -210,80 +279,66 @@ public class ClientStorageController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Загрузка файла в S3.
+    /// SHA-256 вычисляется за один проход через HashingReadStream —
+    /// без создания дополнительного временного файла на диске.
+    /// </summary>
     private async Task<IActionResult> UploadClient(IFormFile? file, ClientType clientType, ReleaseChannel releaseChannel)
     {
         if (file == null || file.Length == 0)
             return BadRequest(new { error = "Файл не предоставлен" });
 
-        var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        var s3Key = Guid.NewGuid().ToString();
+        string checksum;
 
         try
         {
-            // Сохраняем во временный файл
-            await using (var tempStream = new FileStream(tempPath, FileMode.Create))
-            {
-                await file.CopyToAsync(tempStream);
-            }
+            // Один проход: HashingReadStream считает хэш во время чтения данных для S3
+            await using var sourceStream = file.OpenReadStream();
+            using var incrementalHash   = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+            await using var hashStream  = new HashingReadStream(sourceStream, incrementalHash);
 
-            // Проверяем целостность — вычисляем контрольную сумму
-            string checksum;
-            await using (var hashStream = new FileStream(tempPath, FileMode.Open, FileAccess.Read))
-            {
-                using var sha256 = SHA256.Create();
-                var hashBytes = await sha256.ComputeHashAsync(hashStream);
-                checksum = Convert.ToHexStringLower(hashBytes);
-            }
+            await _s3.UploadAsync(s3Key, hashStream, file.ContentType ?? "application/octet-stream");
 
-            // Загружаем в S3 с GUID-именем
-            var s3Key = Guid.NewGuid().ToString();
-            await using (var uploadStream = new FileStream(tempPath, FileMode.Open, FileAccess.Read))
-            {
-                await _s3.UploadAsync(s3Key, uploadStream, file.ContentType ?? "application/octet-stream");
-            }
-
-            _logger.LogInformation(
-                "Файл {FileName} загружен в S3 как {S3Key}, checksum: {Checksum}",
-                file.FileName, s3Key, checksum);
-
-            // Считываем версию из заголовка (опционально)
-            var version = Request.Headers["X-App-Version"].FirstOrDefault();
-
-            // Сохраняем запись в БД
-            var clientFile = new ClientFile
-            {
-                ClientType = clientType,
-                ReleaseChannel = releaseChannel,
-                OriginalFileName = file.FileName,
-                S3Key = s3Key,
-                ContentType = file.ContentType ?? "application/octet-stream",
-                FileSize = file.Length,
-                Checksum = checksum,
-                UploadedAt = DateTime.UtcNow,
-                Version = version
-            };
-
-            _db.ClientFiles.Add(clientFile);
-            await _db.SaveChangesAsync();
-
-            return Ok(new
-            {
-                fileName = clientFile.OriginalFileName,
-                s3Key = clientFile.S3Key,
-                checksum = clientFile.Checksum,
-                size = clientFile.FileSize,
-                uploadedAt = clientFile.UploadedAt
-            });
+            checksum = Convert.ToHexStringLower(incrementalHash.GetHashAndReset());
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Ошибка при загрузке файла клиента {ClientType}", clientType);
+            _logger.LogError(ex, "Ошибка при загрузке файла клиента {ClientType} в S3", clientType);
             return StatusCode(500, new { error = "Ошибка при загрузке файла" });
         }
-        finally
+
+        _logger.LogInformation(
+            "Файл {FileName} загружен в S3 как {S3Key}, checksum: {Checksum}",
+            file.FileName, s3Key, checksum);
+
+        var version = Request.Headers["X-App-Version"].FirstOrDefault();
+
+        var clientFile = new ClientFile
         {
-            // Удаляем временный файл
-            if (System.IO.File.Exists(tempPath))
-                System.IO.File.Delete(tempPath);
-        }
+            ClientType       = clientType,
+            ReleaseChannel   = releaseChannel,
+            OriginalFileName = file.FileName,
+            S3Key            = s3Key,
+            ContentType      = file.ContentType ?? "application/octet-stream",
+            FileSize         = file.Length,
+            Checksum         = checksum,
+            UploadedAt       = DateTime.UtcNow,
+            Version          = version
+        };
+
+        _db.ClientFiles.Add(clientFile);
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            fileName   = clientFile.OriginalFileName,
+            s3Key      = clientFile.S3Key,
+            checksum   = clientFile.Checksum,
+            size       = clientFile.FileSize,
+            uploadedAt = clientFile.UploadedAt
+        });
     }
 }
+
