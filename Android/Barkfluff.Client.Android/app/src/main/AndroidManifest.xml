@@ -148,6 +148,18 @@
             android:screenOrientation="unspecified" />
 
         <activity
+            android:name=".PreviewImageActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:screenOrientation="unspecified" />
+
+        <activity
+            android:name=".PreviewVideoActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:screenOrientation="unspecified" />
+
+        <activity
             android:name=".AccountSettingsActivity"
             android:exported="false"
             android:theme="@style/Theme.BarkfluffClientAndroid"

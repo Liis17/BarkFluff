@@ -119,6 +119,9 @@
     <string name="attached_files_count">Прикреплено файлов: %d</string>
     <string name="attached_mixed_count">Прикреплено: %1$d фото, %2$d файлов</string>
     <string name="file_button">Файл</string>
+    <string name="gallery_button">Галерея</string>
+    <string name="select_media">Выбрать медиа</string>
+    <string name="add_caption_hint">Добавить подпись…</string>
 
     <!-- Common -->
     <string name="btn_skip">Пропустить</string>

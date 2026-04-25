@@ -7,135 +7,140 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import coil.decode.VideoFrameDecoder
 import coil.load
 import com.barkfluff.client.R
 import com.barkfluff.client.databinding.ItemCameraButtonBinding
 import com.barkfluff.client.databinding.ItemFileButtonBinding
 import com.barkfluff.client.databinding.ItemImagePickerBinding
+import com.barkfluff.client.databinding.ItemSystemPickerButtonBinding
 
 /**
- * Адаптер для отображения сетки изображений в ImagePickerBottomSheet.
+ * Адаптер для отображения сетки медиа в ImagePickerBottomSheet.
  * Поддерживает:
- * - Кнопку камеры в начале списка
- * - Множественный выбор до maxSelection изображений
- * - Нумерацию выбранных элементов в порядке выбора
- * - Раздельные зоны: галочка = выбор, превью = кропер
- * - Индикатор обрезки (ножницы) для обрезанных изображений
+ * - Три служебные плитки в начале списка: Камера, Системный пикер фото, Файлы
+ * - Множественный выбор до maxSelection элементов
+ * - Нумерацию выбранных в порядке выбора
+ * - Раздельные зоны: галочка = выбор, превью = просмотр
+ * - Превью видео с длительностью и иконкой play
  */
 class ImagePickerAdapter(
     private val onCameraClick: () -> Unit,
+    private val onSystemPickerClick: () -> Unit,
     private val onFileClick: () -> Unit,
-    private val onCheckboxClick: (ImageItem) -> Unit,
-    private val onImagePreviewClick: (ImageItem) -> Unit,
+    private val onCheckboxClick: (MediaItem) -> Unit,
+    private val onMediaPreviewClick: (MediaItem) -> Unit,
     private val maxSelection: Int = 10
 ) : ListAdapter<ImagePickerAdapter.ListItem, RecyclerView.ViewHolder>(DiffCallback()) {
 
-    // Выбранные изображения в порядке выбора
-    private val selectedItems = mutableListOf<ImageItem>()
+    private val selectedItems = mutableListOf<MediaItem>()
     private val selectedUris = mutableSetOf<Uri>()
-
-    // Маппинг оригинальный URI → обрезанный URI
-    private val croppedUris = mutableMapOf<Uri, Uri>()
 
     companion object {
         private const val VIEW_TYPE_CAMERA = 0
-        private const val VIEW_TYPE_IMAGE = 1
+        private const val VIEW_TYPE_SYSTEM_PICKER = 1
         private const val VIEW_TYPE_FILE = 2
+        private const val VIEW_TYPE_MEDIA = 3
+
+        // Сколько служебных плиток впереди
+        private const val LEADING_TILES = 3
     }
 
-    /**
-     * Элемент списка (камера, файл или изображение)
-     */
     sealed class ListItem {
         data object Camera : ListItem()
+        data object SystemPicker : ListItem()
         data object File : ListItem()
-        data class Image(val imageItem: ImageItem) : ListItem()
+        data class Media(val item: MediaItem) : ListItem()
     }
 
     override fun getItemViewType(position: Int): Int {
         return when (getItem(position)) {
             is ListItem.Camera -> VIEW_TYPE_CAMERA
+            is ListItem.SystemPicker -> VIEW_TYPE_SYSTEM_PICKER
             is ListItem.File -> VIEW_TYPE_FILE
-            is ListItem.Image -> VIEW_TYPE_IMAGE
+            is ListItem.Media -> VIEW_TYPE_MEDIA
         }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        val inflater = LayoutInflater.from(parent.context)
         return when (viewType) {
-            VIEW_TYPE_CAMERA -> {
-                val binding = ItemCameraButtonBinding.inflate(
-                    LayoutInflater.from(parent.context),
-                    parent,
-                    false
-                )
-                CameraViewHolder(binding)
-            }
-            VIEW_TYPE_FILE -> {
-                val binding = ItemFileButtonBinding.inflate(
-                    LayoutInflater.from(parent.context),
-                    parent,
-                    false
-                )
-                FileViewHolder(binding)
-            }
-            else -> {
-                val binding = ItemImagePickerBinding.inflate(
-                    LayoutInflater.from(parent.context),
-                    parent,
-                    false
-                )
-                ImageViewHolder(binding)
-            }
+            VIEW_TYPE_CAMERA -> CameraViewHolder(
+                ItemCameraButtonBinding.inflate(inflater, parent, false)
+            )
+            VIEW_TYPE_SYSTEM_PICKER -> SystemPickerViewHolder(
+                ItemSystemPickerButtonBinding.inflate(inflater, parent, false)
+            )
+            VIEW_TYPE_FILE -> FileViewHolder(
+                ItemFileButtonBinding.inflate(inflater, parent, false)
+            )
+            else -> MediaViewHolder(
+                ItemImagePickerBinding.inflate(inflater, parent, false)
+            )
         }
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         when (val item = getItem(position)) {
             is ListItem.Camera -> (holder as CameraViewHolder).bind()
+            is ListItem.SystemPicker -> (holder as SystemPickerViewHolder).bind()
             is ListItem.File -> (holder as FileViewHolder).bind()
-            is ListItem.Image -> (holder as ImageViewHolder).bind(item.imageItem)
+            is ListItem.Media -> (holder as MediaViewHolder).bind(item.item)
         }
     }
 
     inner class CameraViewHolder(
         private val binding: ItemCameraButtonBinding
     ) : RecyclerView.ViewHolder(binding.root) {
-
         fun bind() {
-            binding.root.setOnClickListener {
-                onCameraClick()
-            }
+            binding.root.setOnClickListener { onCameraClick() }
+        }
+    }
+
+    inner class SystemPickerViewHolder(
+        private val binding: ItemSystemPickerButtonBinding
+    ) : RecyclerView.ViewHolder(binding.root) {
+        fun bind() {
+            binding.root.setOnClickListener { onSystemPickerClick() }
         }
     }
 
     inner class FileViewHolder(
         private val binding: ItemFileButtonBinding
     ) : RecyclerView.ViewHolder(binding.root) {
-
         fun bind() {
-            binding.root.setOnClickListener {
-                onFileClick()
-            }
+            binding.root.setOnClickListener { onFileClick() }
         }
     }
 
-    inner class ImageViewHolder(
+    inner class MediaViewHolder(
         private val binding: ItemImagePickerBinding
     ) : RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(item: ImageItem) {
-            // Загрузка оригинального изображения через Coil (не обрезанного)
+        fun bind(item: MediaItem) {
+            // Превью: для видео — кадр через VideoFrameDecoder, для фото — обычная загрузка
             binding.imageView.load(item.uri) {
                 crossfade(true)
                 placeholder(R.color.surface_container_high)
                 error(R.color.surface_container_high)
+                if (item.isVideo) {
+                    decoderFactory(VideoFrameDecoder.Factory())
+                }
+            }
+
+            // Видео-оверлей
+            if (item.isVideo) {
+                binding.playIcon.visibility = View.VISIBLE
+                binding.durationLabel.visibility = View.VISIBLE
+                binding.durationLabel.text = formatDuration(item.durationMs)
+            } else {
+                binding.playIcon.visibility = View.GONE
+                binding.durationLabel.visibility = View.GONE
             }
 
             val isSelected = selectedUris.contains(item.uri)
             val selectionIndex = selectedItems.indexOfFirst { it.uri == item.uri }
-            val isCropped = croppedUris.containsKey(item.uri)
 
-            // Состояние выбора
             if (isSelected && selectionIndex >= 0) {
                 binding.selectionOverlay.visibility = View.VISIBLE
                 binding.selectionIndicator.background =
@@ -151,121 +156,75 @@ class ImagePickerAdapter(
                 binding.selectionNumber.visibility = View.GONE
             }
 
-            // Индикатор обрезки (ножницы)
-            binding.cropIndicator.visibility = if (isCropped) View.VISIBLE else View.GONE
-
-            // Клик по превью = открытие кропера
-            binding.cardView.setOnClickListener {
-                onImagePreviewClick(item)
-            }
-
-            // Клик по галочке = выбор/снятие выбора
-            binding.checkboxTouchTarget.setOnClickListener {
-                toggleSelection(item)
-            }
+            binding.cardView.setOnClickListener { onMediaPreviewClick(item) }
+            binding.checkboxTouchTarget.setOnClickListener { toggleSelection(item) }
         }
 
-        private fun toggleSelection(item: ImageItem) {
+        private fun toggleSelection(item: MediaItem) {
             if (selectedUris.contains(item.uri)) {
-                // Снимаем выделение
                 selectedUris.remove(item.uri)
                 selectedItems.removeIf { it.uri == item.uri }
             } else {
-                // Проверяем лимит
-                if (selectedItems.size >= maxSelection) {
-                    return
-                }
-                // Добавляем выделение
+                if (selectedItems.size >= maxSelection) return
                 selectedUris.add(item.uri)
                 selectedItems.add(item)
             }
-
-            // Уведомляем об изменении для обновления нумерации
             notifySelectionChanged()
             onCheckboxClick(item)
         }
     }
 
-    /**
-     * Сохраняет обрезанный URI для оригинального изображения.
-     */
-    fun setCroppedUri(originalUri: Uri, croppedUri: Uri) {
-        croppedUris[originalUri] = croppedUri
-        // Обновляем отображение для этого элемента
-        val position = currentList.indexOfFirst {
-            it is ListItem.Image && it.imageItem.uri == originalUri
-        }
-        if (position >= 0) {
-            notifyItemChanged(position)
-        }
-    }
+    fun getSelectedUrisForSending(): List<Uri> = selectedItems.map { it.uri }
 
-    /**
-     * Программно выбирает элемент (используется для авто-выбора после обрезки).
-     */
-    fun selectItem(item: ImageItem) {
-        if (selectedUris.contains(item.uri)) return
-        if (selectedItems.size >= maxSelection) return
+    fun getSelectedItems(): List<MediaItem> = selectedItems.toList()
 
-        selectedUris.add(item.uri)
-        selectedItems.add(item)
-        notifySelectionChanged()
-    }
-
-    /**
-     * Возвращает URIs для отправки — обрезанный URI если есть, иначе оригинальный.
-     */
-    fun getSelectedUrisForSending(): List<Uri> {
-        return selectedItems.map { item ->
-            croppedUris[item.uri] ?: item.uri
-        }
-    }
-
-    /**
-     * Уведомляет об изменении выделения.
-     * Обновляем все видимые элементы для корректной нумерации.
-     * Начинаем с индекса 2 (пропускаем Camera и File).
-     */
-    private fun notifySelectionChanged() {
-        notifyItemRangeChanged(2, currentList.size - 2)
-    }
-
-    /**
-     * Возвращает список выбранных изображений в порядке выбора.
-     */
-    fun getSelectedItems(): List<ImageItem> = selectedItems.toList()
-
-    /**
-     * Очищает выделение.
-     */
-    fun clearSelection() {
-        selectedItems.clear()
-        selectedUris.clear()
-        notifyItemRangeChanged(2, currentList.size - 2)
-    }
-
-    /**
-     * Количество выбранных элементов.
-     */
     fun getSelectionCount(): Int = selectedItems.size
 
+    fun clearSelection() {
+        if (selectedItems.isEmpty()) return
+        selectedItems.clear()
+        selectedUris.clear()
+        notifyItemRangeChanged(LEADING_TILES, currentList.size - LEADING_TILES)
+    }
+
+    private fun notifySelectionChanged() {
+        notifyItemRangeChanged(LEADING_TILES, currentList.size - LEADING_TILES)
+    }
+
     /**
-     * Устанавливает изображения в адаптер.
-     * Список начинается с кнопок Camera и File, затем изображения.
+     * Устанавливает медиа в адаптер.
+     * Список начинается со служебных плиток [Camera, SystemPicker, File], затем медиа.
      */
-    fun setImages(images: List<ImageItem>) {
-        val items = mutableListOf<ListItem>(ListItem.Camera, ListItem.File)
-        items.addAll(images.map { ListItem.Image(it) })
-        submitList(items)
+    fun setMedia(items: List<MediaItem>) {
+        val list = mutableListOf<ListItem>(
+            ListItem.Camera,
+            ListItem.SystemPicker,
+            ListItem.File
+        )
+        list.addAll(items.map { ListItem.Media(it) })
+        submitList(list)
+    }
+
+    private fun formatDuration(durationMs: Long): String {
+        val totalSeconds = (durationMs / 1000L).coerceAtLeast(0L)
+        val hours = totalSeconds / 3600
+        val minutes = (totalSeconds % 3600) / 60
+        val seconds = totalSeconds % 60
+        return if (hours > 0) {
+            String.format("%d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            String.format("%d:%02d", minutes, seconds)
+        }
     }
 
     class DiffCallback : DiffUtil.ItemCallback<ListItem>() {
         override fun areItemsTheSame(oldItem: ListItem, newItem: ListItem): Boolean {
             return when {
                 oldItem is ListItem.Camera && newItem is ListItem.Camera -> true
+                oldItem is ListItem.SystemPicker && newItem is ListItem.SystemPicker -> true
                 oldItem is ListItem.File && newItem is ListItem.File -> true
-                oldItem is ListItem.Image && newItem is ListItem.Image ->
-                    oldItem.imageItem.uri == newItem.imageItem.uri
+                oldItem is ListItem.Media && newItem is ListItem.Media ->
+                    oldItem.item.uri == newItem.item.uri
                 else -> false
             }
         }
@@ -277,11 +236,14 @@ class ImagePickerAdapter(
 }
 
 /**
- * Модель изображения для пикера.
+ * Модель медиа-элемента (фото или видео) для пикера.
  */
-data class ImageItem(
+data class MediaItem(
     val uri: Uri,
     val id: Long,
     val dateAdded: Long,
-    val displayName: String = ""
+    val displayName: String = "",
+    val isVideo: Boolean = false,
+    val durationMs: Long = 0L,
+    val mimeType: String? = null
 )

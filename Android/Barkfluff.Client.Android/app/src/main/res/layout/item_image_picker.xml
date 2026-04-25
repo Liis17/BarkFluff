@@ -32,6 +32,34 @@
                 android:scaleType="centerCrop"
                 tools:background="#CCCCCC" />
 
+            <!-- Play icon (for videos) -->
+            <ImageView
+                android:id="@+id/playIcon"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_play_arrow"
+                android:visibility="gone"
+                app:tint="@android:color/white" />
+
+            <!-- Video duration overlay -->
+            <TextView
+                android:id="@+id/durationLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|end"
+                android:layout_marginEnd="6dp"
+                android:layout_marginBottom="6dp"
+                android:background="@drawable/duration_label_background"
+                android:paddingHorizontal="6dp"
+                android:paddingVertical="2dp"
+                android:textColor="@android:color/white"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:visibility="gone"
+                tools:text="1:23"
+                tools:visibility="visible" />
+
             <!-- Selection overlay -->
             <View
                 android:id="@+id/selectionOverlay"
@@ -80,17 +108,6 @@
                         tools:text="1" />
 
                 </FrameLayout>
-
-                <!-- Crop indicator (scissors icon) -->
-                <ImageView
-                    android:id="@+id/cropIndicator"
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:layout_gravity="top|end"
-                    android:layout_marginTop="32dp"
-                    android:layout_marginEnd="10dp"
-                    android:src="@drawable/ic_content_cut"
-                    android:visibility="gone" />
 
             </FrameLayout>
 
