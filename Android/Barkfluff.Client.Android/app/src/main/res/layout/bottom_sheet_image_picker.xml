@@ -31,17 +31,15 @@
             android:paddingTop="16dp"
             android:paddingBottom="8dp">
 
-            <!-- Title -->
             <TextView
                 android:id="@+id/titleTextView"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/select_photos"
+                android:text="@string/select_media"
                 android:textAppearance="?attr/textAppearanceTitleMedium"
                 android:textColor="?attr/colorOnSurface" />
 
-            <!-- Selection count -->
             <TextView
                 android:id="@+id/selectionCountTextView"
                 android:layout_width="wrap_content"
@@ -49,10 +47,10 @@
                 android:layout_marginEnd="8dp"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
                 android:textColor="?attr/colorPrimary"
-                android:visibility="visible"
-                tools:text="3/10" />
+                android:visibility="gone"
+                tools:text="3/10"
+                tools:visibility="visible" />
 
-            <!-- Menu button -->
             <ImageButton
                 android:id="@+id/menuButton"
                 android:layout_width="40dp"
@@ -61,8 +59,9 @@
                 android:contentDescription="@string/options"
                 android:padding="8dp"
                 android:src="@drawable/ic_more_vert"
-                android:visibility="visible"
-                app:tint="?attr/colorOnSurfaceVariant" />
+                android:visibility="gone"
+                app:tint="?attr/colorOnSurfaceVariant"
+                tools:visibility="visible" />
 
         </LinearLayout>
 
@@ -118,18 +117,6 @@
             android:layout_marginVertical="48dp"
             android:visibility="gone" />
 
-        <!-- Images grid -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/imagesRecyclerView"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:clipToPadding="false"
-            android:paddingHorizontal="4dp"
-            android:paddingBottom="4dp"
-            android:visibility="gone"
-            tools:listitem="@layout/item_image_picker" />
-
         <!-- Empty state -->
         <LinearLayout
             android:id="@+id/emptyStateLayout"
@@ -165,7 +152,19 @@
 
         </LinearLayout>
 
-        <!-- Bottom input bar -->
+        <!-- Media grid -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/imagesRecyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:paddingHorizontal="4dp"
+            android:paddingBottom="4dp"
+            android:visibility="gone"
+            tools:listitem="@layout/item_image_picker" />
+
+        <!-- Bottom input bar (always visible) -->
         <LinearLayout
             android:id="@+id/inputBar"
             android:layout_width="match_parent"
@@ -173,15 +172,14 @@
             android:orientation="horizontal"
             android:paddingHorizontal="12dp"
             android:paddingVertical="6dp"
-            android:gravity="center_vertical"
-            android:visibility="gone">
+            android:gravity="center_vertical">
 
             <EditText
                 android:id="@+id/captionEditText"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:hint="Добавить подпись..."
+                android:hint="@string/add_caption_hint"
                 android:inputType="textMultiLine"
                 android:maxLines="3"
                 android:background="@android:color/transparent"

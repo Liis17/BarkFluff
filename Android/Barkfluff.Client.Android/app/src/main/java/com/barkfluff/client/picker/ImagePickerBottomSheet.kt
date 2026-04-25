@@ -1,9 +1,7 @@
 package com.barkfluff.client.picker
 
 import android.Manifest
-import android.app.Activity
 import android.content.ContentUris
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -15,33 +13,35 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.PopupMenu
 import android.widget.Toast
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
+import com.barkfluff.client.PreviewImageActivity
+import com.barkfluff.client.PreviewVideoActivity
 import com.barkfluff.client.R
-import com.barkfluff.client.adapter.ImageItem
 import com.barkfluff.client.adapter.ImagePickerAdapter
+import com.barkfluff.client.adapter.MediaItem
 import com.barkfluff.client.databinding.BottomSheetImagePickerBinding
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
-import com.yalantis.ucrop.UCrop
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
- * BottomSheet для выбора изображений с устройства.
+ * Полноэкранный BottomSheet для выбора фото и видео.
  *
  * Особенности:
- * - Анимация выезда снизу с интерполятором FastOutSlowIn
- * - Сетка изображений 3 колонки
- * - Множественный выбор до 10 изображений
- * - Кнопка камеры в начале сетки
- * - Раздельные зоны: галочка = выбор, превью = кропер
- * - Поле для подписи + кнопка отправки внизу
- * - Меню с опциями: "Отправить как файл", "Отправить по отдельности"
+ * - Сразу разворачивается на весь экран (STATE_EXPANDED, height=MATCH_PARENT)
+ * - Сетка 3 колонки: первые 3 ячейки — Камера, Системный photo picker, Файлы; далее фото и видео из MediaStore
+ * - Видео-плитки имеют первый кадр + иконку play и длительность
+ * - Множественный выбор до 10 элементов с пронумерованным селектором
+ * - Тап по превью (вне чекбокса) — открывает PreviewImage/VideoActivity
+ * - Внизу всегда строка ввода подписи + кнопка отправки (отправка возможна только при наличии выбранных)
+ * - Меню «3 точки»: Отправить без сжатия / Отправить без группировки
  */
 class ImagePickerBottomSheet : BottomSheetDialogFragment() {
 
@@ -50,87 +50,56 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
 
     private lateinit var adapter: ImagePickerAdapter
 
-    // Опции отправки
     private var sendAsFile: Boolean = false
     private var sendSeparately: Boolean = false
 
-    // Callback для возврата результата
     private var onResult: ((ImagePickerResult) -> Unit)? = null
 
-    // Pending crop item
-    private var pendingCropItem: ImageItem? = null
-
-    // Pending camera URI для full-res capture
+    // Pending camera URI для full-res capture (FileProvider)
     private var pendingCameraUri: Uri? = null
 
-    // Лаунчер для камеры (full-res)
     private val cameraLauncher = registerForActivityResult(
         ActivityResultContracts.TakePicture()
     ) { success ->
-        if (success && pendingCameraUri != null) {
-            // Открыть UCrop для обрезки фото с камеры
-            openCameraCropper(pendingCameraUri!!)
-        } else {
-            pendingCameraUri = null
-        }
-    }
-
-    // Лаунчер для UCrop после камеры
-    private val cameraCropLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        val sourceUri = pendingCameraUri
+        val uri = pendingCameraUri
         pendingCameraUri = null
+        if (success && uri != null) {
+            // Открываем простой просмотр снимка; в будущем здесь будет редактирование/отправка.
+            startActivity(PreviewImageActivity.createIntent(requireContext(), uri))
+            dismiss()
+        }
+    }
 
-        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
-            val croppedUri = UCrop.getOutput(result.data!!)
-            if (croppedUri != null) {
-                onResult?.invoke(
-                    ImagePickerResult(
-                        uris = listOf(croppedUri),
-                        sendAsFile = false,
-                        sendSeparately = false,
-                        fromCamera = true
-                    )
+    // Системный photo picker — фото и видео в одном диалоге
+    private val systemPickerLauncher = registerForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia(MAX_SELECTION)
+    ) { uris ->
+        if (uris.isNotEmpty()) {
+            onResult?.invoke(
+                ImagePickerResult(
+                    uris = uris,
+                    sendAsFile = sendAsFile,
+                    sendSeparately = sendSeparately,
+                    fromCamera = false,
+                    captionText = "",
+                    isDocuments = false
                 )
-                dismiss()
-            }
+            )
+            dismiss()
         }
     }
 
-    // Лаунчер для UCrop
-    private val uCropLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        val item = pendingCropItem ?: return@registerForActivityResult
-        pendingCropItem = null
-
-        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
-            val croppedUri = UCrop.getOutput(result.data!!)
-            if (croppedUri != null) {
-                adapter.setCroppedUri(item.uri, croppedUri)
-                adapter.selectItem(item)
-                updateSelectionUI()
-            }
-        } else if (result.resultCode == UCrop.RESULT_ERROR && result.data != null) {
-            val error = UCrop.getError(result.data!!)
-            Log.e(TAG, "UCrop error", error)
-        }
-    }
-
-    // Лаунчер для запроса разрешений на хранилище
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val allGranted = permissions.entries.all { it.value }
         if (allGranted) {
-            loadImages()
+            loadMedia()
         } else {
             showPermissionDenied()
         }
     }
 
-    // Лаунчер для запроса разрешения на камеру
     private val cameraPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -141,7 +110,6 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
         }
     }
 
-    // Лаунчер для выбора файлов
     private val filePickerLauncher = registerForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments()
     ) { uris ->
@@ -164,9 +132,6 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
         private const val TAG = "ImagePickerBottomSheet"
         const val MAX_SELECTION = 10
 
-        /**
-         * Создаёт новый экземпляр BottomSheet с callback.
-         */
         fun newInstance(onResult: (ImagePickerResult) -> Unit): ImagePickerBottomSheet {
             return ImagePickerBottomSheet().apply {
                 this.onResult = onResult
@@ -186,12 +151,11 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        cleanOldCropFiles()
         setupRecyclerView()
         setupButtons()
         setupAnimation()
+        updateSelectionUI()
 
-        // Проверяем разрешения и загружаем изображения
         checkPermissionsAndLoad()
     }
 
@@ -199,43 +163,28 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
         super.onStart()
         val dialog = dialog as? com.google.android.material.bottomsheet.BottomSheetDialog ?: return
         val bottomSheet = dialog.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet) ?: return
-        val behavior = BottomSheetBehavior.from(bottomSheet)
 
-        val screenHeight = resources.displayMetrics.heightPixels
-        val halfHeight = (screenHeight * 0.5f).toInt()
-
-        // Устанавливаем высоту bottom sheet явно, чтобы inputBar
-        // всегда был видим (не уходил за край экрана)
-        bottomSheet.layoutParams.height = halfHeight
+        // Фулскрин
+        bottomSheet.layoutParams.height = ViewGroup.LayoutParams.MATCH_PARENT
         bottomSheet.requestLayout()
 
-        behavior.peekHeight = halfHeight
-        behavior.state = BottomSheetBehavior.STATE_COLLAPSED
-        behavior.skipCollapsed = false
-
-        behavior.addBottomSheetCallback(object : BottomSheetBehavior.BottomSheetCallback() {
-            override fun onStateChanged(sheet: View, newState: Int) {
-                when (newState) {
-                    BottomSheetBehavior.STATE_EXPANDED -> {
-                        sheet.layoutParams.height = android.view.ViewGroup.LayoutParams.MATCH_PARENT
-                        sheet.requestLayout()
-                    }
-                    BottomSheetBehavior.STATE_COLLAPSED -> {
-                        sheet.layoutParams.height = halfHeight
-                        sheet.requestLayout()
-                    }
-                }
-            }
-            override fun onSlide(sheet: View, slideOffset: Float) {}
-        })
+        val behavior = BottomSheetBehavior.from(bottomSheet)
+        behavior.skipCollapsed = true
+        behavior.state = BottomSheetBehavior.STATE_EXPANDED
     }
 
     private fun setupRecyclerView() {
         adapter = ImagePickerAdapter(
-            onCameraClick = { openCamera() },
+            onCameraClick = {
+                // По запуску камеры сбрасываем текущее выделение в пикере
+                adapter.clearSelection()
+                updateSelectionUI()
+                openCamera()
+            },
+            onSystemPickerClick = { openSystemPicker() },
             onFileClick = { openFilePicker() },
             onCheckboxClick = { updateSelectionUI() },
-            onImagePreviewClick = { item -> openCropper(item) },
+            onMediaPreviewClick = { item -> openPreview(item) },
             maxSelection = MAX_SELECTION
         )
 
@@ -246,36 +195,32 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
     }
 
     private fun setupButtons() {
-        // Меню с опциями
         binding.menuButton.setOnClickListener { showOptionsMenu() }
-
-        // Кнопка отправки
         binding.sendButton.setOnClickListener { sendSelected() }
-
-        // Кнопка запроса разрешения
-        binding.requestPermissionButton.setOnClickListener {
-            requestPermissions()
-        }
+        binding.requestPermissionButton.setOnClickListener { requestPermissions() }
     }
 
     private fun setupAnimation() {
-        // FastOutSlowIn интерполятор для плавной анимации
         dialog?.window?.attributes?.windowAnimations = R.style.ImagePickerAnimation
     }
 
     private fun checkPermissionsAndLoad() {
-        if (hasStoragePermission()) {
-            loadImages()
+        if (hasMediaPermissions()) {
+            loadMedia()
         } else {
             requestPermissions()
         }
     }
 
-    private fun hasStoragePermission(): Boolean {
+    private fun hasMediaPermissions(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             ContextCompat.checkSelfPermission(
                 requireContext(),
                 Manifest.permission.READ_MEDIA_IMAGES
+            ) == PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.READ_MEDIA_VIDEO
             ) == PackageManager.PERMISSION_GRANTED
         } else {
             ContextCompat.checkSelfPermission(
@@ -287,7 +232,10 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
 
     private fun requestPermissions() {
         val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            arrayOf(Manifest.permission.READ_MEDIA_IMAGES)
+            arrayOf(
+                Manifest.permission.READ_MEDIA_IMAGES,
+                Manifest.permission.READ_MEDIA_VIDEO
+            )
         } else {
             arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
         }
@@ -299,85 +247,101 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
         binding.imagesRecyclerView.visibility = View.GONE
         binding.loadingProgress.visibility = View.GONE
         binding.emptyStateLayout.visibility = View.GONE
-        binding.inputBar.visibility = View.GONE
     }
 
-    private fun loadImages() {
+    private fun loadMedia() {
         binding.permissionDeniedLayout.visibility = View.GONE
         binding.loadingProgress.visibility = View.VISIBLE
         binding.imagesRecyclerView.visibility = View.GONE
         binding.emptyStateLayout.visibility = View.GONE
-        binding.inputBar.visibility = View.GONE
 
         lifecycleScope.launch {
             try {
-                val images = loadImagesFromMediaStore()
-
-                if (images.isEmpty()) {
-                    showEmptyState()
-                } else {
-                    showImages(images)
-                }
+                val items = loadMediaFromMediaStore()
+                showMedia(items)
             } catch (e: Exception) {
-                Log.e(TAG, "Error loading images", e)
+                Log.e(TAG, "Error loading media", e)
                 showEmptyState()
             }
         }
     }
 
-    private suspend fun loadImagesFromMediaStore(): List<ImageItem> = withContext(Dispatchers.IO) {
-        val images = mutableListOf<ImageItem>()
-        val uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-        val projection = arrayOf(
-            MediaStore.Images.Media._ID,
-            MediaStore.Images.Media.DATE_ADDED,
-            MediaStore.Images.Media.DISPLAY_NAME
-        )
-        val sortOrder = "${MediaStore.Images.Media.DATE_ADDED} DESC"
+    private suspend fun loadMediaFromMediaStore(): List<MediaItem> = withContext(Dispatchers.IO) {
+        val results = mutableListOf<MediaItem>()
+        val collectionUri = MediaStore.Files.getContentUri("external")
 
-        requireContext().contentResolver.query(uri, projection, null, null, sortOrder)?.use { cursor ->
-            val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
-            val dateColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)
-            val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
+        val projection = arrayOf(
+            MediaStore.Files.FileColumns._ID,
+            MediaStore.Files.FileColumns.DATE_ADDED,
+            MediaStore.Files.FileColumns.DISPLAY_NAME,
+            MediaStore.Files.FileColumns.MEDIA_TYPE,
+            MediaStore.Files.FileColumns.MIME_TYPE,
+            MediaStore.Files.FileColumns.DURATION
+        )
+        val selection = "${MediaStore.Files.FileColumns.MEDIA_TYPE} IN (?, ?)"
+        val selectionArgs = arrayOf(
+            MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE.toString(),
+            MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO.toString()
+        )
+        val sortOrder = "${MediaStore.Files.FileColumns.DATE_ADDED} DESC"
+
+        requireContext().contentResolver.query(
+            collectionUri, projection, selection, selectionArgs, sortOrder
+        )?.use { cursor ->
+            val idCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
+            val dateCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_ADDED)
+            val nameCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
+            val typeCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MEDIA_TYPE)
+            val mimeCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)
+            val durationCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DURATION)
 
             while (cursor.moveToNext()) {
-                val id = cursor.getLong(idColumn)
-                val dateAdded = cursor.getLong(dateColumn) * 1000 // Конвертируем в миллисекунды
-                val displayName = cursor.getString(nameColumn) ?: ""
+                val id = cursor.getLong(idCol)
+                val dateAdded = cursor.getLong(dateCol) * 1000L
+                val name = cursor.getString(nameCol) ?: ""
+                val mediaType = cursor.getInt(typeCol)
+                val mime = cursor.getString(mimeCol)
+                val duration = cursor.getLong(durationCol)
+                val isVideo = mediaType == MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO
 
-                val contentUri = ContentUris.withAppendedId(uri, id)
+                val itemUri = if (isVideo) {
+                    ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id)
+                } else {
+                    ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
+                }
 
-                images.add(
-                    ImageItem(
-                        uri = contentUri,
+                results.add(
+                    MediaItem(
+                        uri = itemUri,
                         id = id,
                         dateAdded = dateAdded,
-                        displayName = displayName
+                        displayName = name,
+                        isVideo = isVideo,
+                        durationMs = if (isVideo) duration else 0L,
+                        mimeType = mime
                     )
                 )
             }
         }
-
-        images
+        results
     }
 
-    private fun showImages(images: List<ImageItem>) {
+    private fun showMedia(items: List<MediaItem>) {
         binding.loadingProgress.visibility = View.GONE
         binding.imagesRecyclerView.visibility = View.VISIBLE
         binding.emptyStateLayout.visibility = View.GONE
-        binding.inputBar.visibility = View.VISIBLE
-        adapter.setImages(images)
+        adapter.setMedia(items)
     }
 
     private fun showEmptyState() {
         binding.loadingProgress.visibility = View.GONE
         binding.imagesRecyclerView.visibility = View.GONE
-        binding.emptyStateLayout.visibility = View.VISIBLE
-        binding.inputBar.visibility = View.GONE
+        // Даже на пустом MediaStore оставляем сетку с тремя служебными плитками
+        binding.imagesRecyclerView.visibility = View.VISIBLE
+        adapter.setMedia(emptyList())
     }
 
     private fun openCamera() {
-        // Проверяем разрешение на камеру
         if (ContextCompat.checkSelfPermission(
                 requireContext(),
                 Manifest.permission.CAMERA
@@ -385,14 +349,12 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
         ) {
             doOpenCamera()
         } else {
-            // Запрашиваем разрешение
             cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
 
     private fun doOpenCamera() {
         try {
-            // Создаём временный файл для full-res фото
             val tempFile = File.createTempFile(
                 "camera_${System.currentTimeMillis()}",
                 ".jpg",
@@ -410,24 +372,17 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
         }
     }
 
-    private fun openCameraCropper(sourceUri: Uri) {
-        val destinationUri = Uri.fromFile(
-            File(requireContext().cacheDir, "camera_crop_${System.currentTimeMillis()}.jpg")
-        )
-
-        val options = UCrop.Options().apply {
-            setCompressionFormat(android.graphics.Bitmap.CompressFormat.JPEG)
-            setCompressionQuality(95)
-            setFreeStyleCropEnabled(true)
-            setToolbarColor(requireContext().getColor(android.R.color.white))
-            setStatusBarColor(requireContext().getColor(android.R.color.black))
-            setActiveControlsWidgetColor(requireContext().getColor(android.R.color.black))
+    private fun openSystemPicker() {
+        try {
+            systemPickerLauncher.launch(
+                PickVisualMediaRequest(
+                    ActivityResultContracts.PickVisualMedia.ImageAndVideo
+                )
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Error opening system photo picker", e)
+            Toast.makeText(requireContext(), "Не удалось открыть галерею", Toast.LENGTH_SHORT).show()
         }
-
-        val uCrop = UCrop.of(sourceUri, destinationUri)
-            .withOptions(options)
-
-        cameraCropLauncher.launch(uCrop.getIntent(requireContext()))
     }
 
     private fun openFilePicker() {
@@ -439,41 +394,26 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
         }
     }
 
-    private fun openCropper(item: ImageItem) {
-        pendingCropItem = item
-
-        val destinationUri = Uri.fromFile(
-            File(requireContext().cacheDir, "crop_${item.id}_${System.currentTimeMillis()}.jpg")
-        )
-
-        val options = UCrop.Options().apply {
-            setCompressionFormat(android.graphics.Bitmap.CompressFormat.JPEG)
-            setCompressionQuality(95)
-            setFreeStyleCropEnabled(true)
-            setToolbarColor(requireContext().getColor(android.R.color.white))
-            setStatusBarColor(requireContext().getColor(android.R.color.black))
-            setActiveControlsWidgetColor(requireContext().getColor(android.R.color.black))
+    private fun openPreview(item: MediaItem) {
+        val intent = if (item.isVideo) {
+            PreviewVideoActivity.createIntent(requireContext(), item.uri)
+        } else {
+            PreviewImageActivity.createIntent(requireContext(), item.uri)
         }
-
-        val uCrop = UCrop.of(item.uri, destinationUri)
-            .withOptions(options)
-
-        uCropLauncher.launch(uCrop.getIntent(requireContext()))
+        startActivity(intent)
     }
 
     private fun updateSelectionUI() {
         val count = adapter.getSelectionCount()
 
-        // Always show counter and menu button
-        binding.selectionCountTextView.visibility = View.VISIBLE
-        binding.selectionCountTextView.text = getString(
-            R.string.selected_count,
-            count,
-            MAX_SELECTION
-        )
-        binding.menuButton.visibility = View.VISIBLE
-
         if (count > 0) {
+            binding.selectionCountTextView.visibility = View.VISIBLE
+            binding.selectionCountTextView.text = getString(
+                R.string.selected_count,
+                count,
+                MAX_SELECTION
+            )
+            binding.menuButton.visibility = View.VISIBLE
             binding.sendButton.isEnabled = true
             binding.sendButton.alpha = 1.0f
             binding.titleTextView.text = resources.getQuantityString(
@@ -482,9 +422,11 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
                 count
             )
         } else {
+            binding.selectionCountTextView.visibility = View.GONE
+            binding.menuButton.visibility = View.GONE
             binding.sendButton.isEnabled = false
             binding.sendButton.alpha = 0.5f
-            binding.titleTextView.setText(R.string.select_photos)
+            binding.titleTextView.setText(R.string.select_media)
         }
     }
 
@@ -492,7 +434,6 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
         val popup = PopupMenu(requireContext(), binding.menuButton)
         popup.menuInflater.inflate(R.menu.image_picker_menu, popup.menu)
 
-        // Устанавливаем текущие состояния
         popup.menu.findItem(R.id.action_send_as_file)?.isChecked = sendAsFile
         popup.menu.findItem(R.id.action_send_separately)?.isChecked = sendSeparately
 
@@ -516,12 +457,12 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
 
     private fun sendSelected() {
         val count = adapter.getSelectionCount()
-        Log.d(TAG, "sendSelected: $count items selected")
         if (count == 0) return
 
         val uris = adapter.getSelectedUrisForSending()
         val captionText = binding.captionEditText.text.toString().trim()
-        Log.d(TAG, "sendSelected: uris=$uris, sendAsFile=$sendAsFile, sendSeparately=$sendSeparately, caption=$captionText")
+        val selectedItems = adapter.getSelectedItems()
+        val hasVideo = selectedItems.any { it.isVideo }
 
         onResult?.invoke(
             ImagePickerResult(
@@ -529,25 +470,12 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
                 sendAsFile = sendAsFile,
                 sendSeparately = sendSeparately,
                 fromCamera = false,
-                captionText = captionText
+                captionText = captionText,
+                isDocuments = false,
+                hasVideo = hasVideo
             )
         )
         dismiss()
-    }
-
-    /**
-     * Удаляет старые crop-файлы (старше 1 часа) при открытии пикера.
-     */
-    private fun cleanOldCropFiles() {
-        try {
-            val cacheDir = requireContext().cacheDir
-            val oneHourAgo = System.currentTimeMillis() - 3600_000
-            cacheDir.listFiles()?.filter {
-                it.name.startsWith("crop_") && it.lastModified() < oneHourAgo
-            }?.forEach { it.delete() }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error cleaning old crop files", e)
-        }
     }
 
     override fun onDestroyView() {
@@ -557,7 +485,7 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
 }
 
 /**
- * Результат выбора изображений.
+ * Результат выбора медиа.
  */
 data class ImagePickerResult(
     val uris: List<Uri>,
@@ -565,5 +493,6 @@ data class ImagePickerResult(
     val sendSeparately: Boolean,
     val fromCamera: Boolean = false,
     val captionText: String = "",
-    val isDocuments: Boolean = false
+    val isDocuments: Boolean = false,
+    val hasVideo: Boolean = false
 )
