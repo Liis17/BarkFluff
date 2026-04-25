@@ -1,4 +1,6 @@
 $ErrorActionPreference = "Stop"
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 
 $BaseUrl     = "https://storage.barkfluff.com"
 $TempZip     = Join-Path $env:TEMP "BarkFluff_install.zip"

@@ -164,6 +164,8 @@ namespace BarkFluff.Client.WPF.Pages
 
             string script = """
                 $ErrorActionPreference = "Stop"
+                [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+                $OutputEncoding = [System.Text.Encoding]::UTF8
 
                 $FallbackUrl = '%%DOWNLOAD_URL%%'
                 $TempZip     = Join-Path $env:TEMP "BarkFluff_update.zip"
