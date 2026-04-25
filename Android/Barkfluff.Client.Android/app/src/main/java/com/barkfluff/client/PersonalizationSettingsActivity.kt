@@ -163,11 +163,29 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
             binding.profilePosterPreviewPlaceholder.visibility = View.VISIBLE
             return
         }
+
+        // Сначала проверяем кэш URL
+        val cachedUrl = AvatarLoader.urlCache[currentPosterFileId]
+            ?: AvatarLoader.getUrlFromCache(currentPosterFileId)
+
+        if (cachedUrl != null) {
+            binding.profilePosterPreviewPlaceholder.visibility = View.GONE
+            binding.profilePosterPreviewImage.visibility = View.VISIBLE
+            binding.profilePosterPreviewImage.load(
+                cachedUrl, AvatarLoader.getImageLoader(this)
+            ) { crossfade(true) }
+            return
+        }
+
         lifecycleScope.launch {
             try {
                 val urlResult = grpcManager.getFileDownloadUrl(currentPosterFileId)
                 if (urlResult.isSuccess) {
                     val url = urlResult.getOrNull() ?: return@launch
+                    // Кэшируем URL
+                    AvatarLoader.urlCache[currentPosterFileId] = url
+                    AvatarLoader.putUrlInCache(currentPosterFileId, url)
+
                     binding.profilePosterPreviewPlaceholder.visibility = View.GONE
                     binding.profilePosterPreviewImage.visibility = View.VISIBLE
                     binding.profilePosterPreviewImage.load(

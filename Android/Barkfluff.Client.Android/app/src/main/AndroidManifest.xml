@@ -122,6 +122,12 @@
             android:launchMode="singleTop" />
 
         <activity
+            android:name=".UserProfileActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:screenOrientation="portrait" />
+
+        <activity
             android:name=".ChatActivity"
             android:exported="false"
             android:theme="@style/Theme.BarkfluffClientAndroid"
