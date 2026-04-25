@@ -260,7 +260,7 @@ Error codes (из gRPC trailer `x-error-code`):
 - Clipboard paste (вставка изображений из буфера)
 - Показ онлайн-статуса собеседника (через `RealtimeService.onlineStatuses`)
 - Read receipts (при входе в чат отмечает сообщения прочитанными)
-- Профиль чата (нижний диалог `DialogChatProfileBinding`)
+- Профиль чата открывается как отдельный экран **`UserProfileActivity`** (кнопка назад), больше НЕ диалог
 - Контекстное меню сообщения (copy, save, forward)
 - **Фон чата**: загружает по `GlobalParam.chatBackgroundFileId` из `FileCache` или Files API. На API 31+ blur через `RenderEffect`, на API 26–30 через `ScriptIntrinsicBlur` (deprecated). Фон кешируется в `FileCache`.
 - **Закругление пузырей**: передаёт `GlobalParam.chatMessageCornerRadius` в `MessageAdapter`
@@ -272,7 +272,29 @@ Error codes (из gRPC trailer `x-error-code`):
 - `firstUnreadMessageId` — разделитель непрочитанных
 - Списки pending-вложений (`pendingPastedImages`, `pendingStickerUris`, `pendingDocumentUris`)
 
-**Связи:** `GrpcManager`, `RealtimeService`, `ChatRepository`, `MessageAdapter`, `StickerPanelAdapter`, `ImagePickerBottomSheet`, `AvatarLoader`, `ImageCompressor`, `FileCache`, `StickerCache`, `KeyboardHeightTracker`, `MessageItemAnimator`, `OpenChatManager`, `ImageViewerActivity`, `MediaViewerActivity`
+**Связи:** `GrpcManager`, `RealtimeService`, `ChatRepository`, `MessageAdapter`, `StickerPanelAdapter`, `ImagePickerBottomSheet`, `AvatarLoader`, `ImageCompressor`, `FileCache`, `StickerCache`, `KeyboardHeightTracker`, `MessageItemAnimator`, `OpenChatManager`, `ImageViewerActivity`, `MediaViewerActivity`, `UserProfileActivity`
+
+---
+
+### `UserProfileActivity.kt`
+
+**Тип:** AppCompatActivity
+
+Полноэкранный экран профиля пользователя/группового чата. Открывается из `ChatActivity` по тапу на шапку чата.
+
+Функции:
+- Постер профиля (соотношение 3:1) с кэшированием URL через `AvatarLoader.urlCache`
+- Аватар (120dp, круглый) с перекрытием нижней части постера
+- Имя, @username, статус онлайна (через Onliner API), био
+- Медиафайлы чата с фильтрами по типу (фото/видео/файлы) через `AttachmentPreviewAdapter`
+
+Использует `activity_user_profile.xml`.
+
+Запускается через `UserProfileActivity.createIntent(context, chatId, otherUserId, isGroupChat, chatTitle, chatAvatarFileId)`.
+
+**Кэширование постера:** URL постера сохраняется в `AvatarLoader.urlCache` (runtime) и `AvatarLoader.putUrlInCache()` (persistent SharedPreferences) — повторные открытия не делают gRPC-запрос.
+
+**Связи:** `GrpcManager`, `ChatRepository`, `AvatarLoader`, `FileCache`, `AttachmentPreviewAdapter`, `ImageViewerActivity`, `MediaViewerActivity`
 
 ---
 

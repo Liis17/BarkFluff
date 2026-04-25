@@ -6,7 +6,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
-import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -23,7 +22,6 @@ import com.barkfluff.client.adapter.ReadStatus
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.data.OpenChatManager
 import com.barkfluff.client.databinding.ActivityChatBinding
-import com.barkfluff.client.databinding.DialogChatProfileBinding
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.grpc.RealtimeService
 import com.barkfluff.client.adapter.StickerPanelAdapter
@@ -39,7 +37,6 @@ import com.barkfluff.client.utils.StickerCache
 import com.barkfluff.client.notifications.NotificationHelper
 import com.barkfluff.client.utils.MessageItemAnimator
 import com.barkfluff.client.utils.MessageTimeSpacingDecoration
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.yalantis.ucrop.UCrop
 import androidx.activity.OnBackPressedCallback
 import androidx.core.view.WindowInsetsCompat
@@ -210,7 +207,16 @@ class ChatActivity : AppCompatActivity() {
 
         // Клик на контейнер с информацией о чате (аватар + имя) — открывает профиль
         binding.chatInfoContainer.setOnClickListener {
-            showChatProfile()
+            startActivity(
+                UserProfileActivity.createIntent(
+                    this,
+                    chatId = chatId,
+                    otherUserId = otherUserId,
+                    isGroupChat = isGroupChat,
+                    chatTitle = chatTitle,
+                    chatAvatarFileId = chatAvatarFileId
+                )
+            )
         }
     }
 
@@ -1582,320 +1588,6 @@ class ChatActivity : AppCompatActivity() {
         messageAdapter.submitList(currentList)
     }
 
-    private fun showChatProfile() {
-        val dialogView = layoutInflater.inflate(R.layout.dialog_chat_profile, null)
-        val dialog = MaterialAlertDialogBuilder(this, R.style.Theme_BarkfluffClientAndroid_Dialog_NoPadding)
-            .setView(dialogView)
-            .create()
-
-        dialog.setOnShowListener {
-            dialog.window?.setLayout(
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-        }
-
-        // Получаем ссылки на view
-        val closeButton = dialogView.findViewById<ImageButton>(R.id.closeButton)
-        val avatarImageView = dialogView.findViewById<com.google.android.material.imageview.ShapeableImageView>(R.id.profileAvatarImageView)
-        val avatarPlaceholder = dialogView.findViewById<TextView>(R.id.profileAvatarPlaceholder)
-        val nameTextView = dialogView.findViewById<TextView>(R.id.profileNameTextView)
-        val usernameTextView = dialogView.findViewById<TextView>(R.id.profileUsernameTextView)
-        val onlineStatusTextView = dialogView.findViewById<TextView>(R.id.profileOnlineStatusTextView)
-        val bioTextView = dialogView.findViewById<TextView>(R.id.profileBioTextView)
-        val onlineIndicator = dialogView.findViewById<View>(R.id.onlineIndicator)
-        val mediaTypeChipGroup = dialogView.findViewById<com.google.android.material.chip.ChipGroup>(R.id.mediaTypeChipGroup)
-        val chipPhotos = dialogView.findViewById<com.google.android.material.chip.Chip>(R.id.chipPhotos)
-        val chipVideos = dialogView.findViewById<com.google.android.material.chip.Chip>(R.id.chipVideos)
-        val chipFiles = dialogView.findViewById<com.google.android.material.chip.Chip>(R.id.chipFiles)
-        val attachmentsContainer = dialogView.findViewById<View>(R.id.attachmentsContainer)
-        val attachmentsRecyclerView = dialogView.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.attachmentsRecyclerView)
-        val attachmentsLoading = dialogView.findViewById<View>(R.id.attachmentsLoading)
-        val attachmentsEmpty = dialogView.findViewById<TextView>(R.id.attachmentsEmpty)
-
-        // Адаптер для вложений
-        var attachmentAdapter: com.barkfluff.client.adapter.AttachmentPreviewAdapter? = null
-        attachmentAdapter = com.barkfluff.client.adapter.AttachmentPreviewAdapter(
-            getFileUrl = { fileId -> chatRepository.getFileDownloadUrl(fileId).getOrNull() },
-            onAttachmentClick = { attachmentInfo ->
-                val att = attachmentInfo.attachment
-                when (att.type) {
-                    barkfluff.shared.Shared.MessageAttachmentType.IMAGE,
-                    barkfluff.shared.Shared.MessageAttachmentType.GIF -> {
-                        val adapter = attachmentAdapter
-                        if (adapter != null) {
-                            val allFileIds = adapter.currentList.map { it.attachment.fileId }
-                            val allPreviewUrls = adapter.currentList.map { it.attachment.previewUrl }
-                            val position = adapter.currentList.indexOf(attachmentInfo).coerceAtLeast(0)
-                            startActivity(
-                                ImageViewerActivity.createIntent(
-                                    this@ChatActivity, allFileIds, allPreviewUrls, position
-                                )
-                            )
-                        }
-                    }
-                    barkfluff.shared.Shared.MessageAttachmentType.VIDEO -> {
-                        val cachedPath = FileCache.getFile(att.fileId)?.absolutePath
-                        startActivity(
-                            MediaViewerActivity.createIntent(
-                                this@ChatActivity,
-                                att.fileId,
-                                att.fileName.ifBlank { "Видео" },
-                                cachedPath
-                            )
-                        )
-                    }
-                    else -> {
-                        // Документ / аудио — скачать и открыть системным приложением
-                        lifecycleScope.launch {
-                            try {
-                                val file = withContext(Dispatchers.IO) {
-                                    FileCache.getFile(att.fileId)
-                                        ?: chatRepository.downloadFile(att.fileId)
-                                }
-                                if (file != null) {
-                                    val uri = androidx.core.content.FileProvider.getUriForFile(
-                                        this@ChatActivity,
-                                        "${packageName}.fileprovider",
-                                        file
-                                    )
-                                    val mimeType = getMimeType(att.fileName) ?: "*/*"
-                                    val intent = Intent(Intent.ACTION_VIEW).apply {
-                                        setDataAndType(uri, mimeType)
-                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                    }
-                                    startActivity(Intent.createChooser(intent, "Открыть с помощью"))
-                                } else {
-                                    Toast.makeText(
-                                        this@ChatActivity,
-                                        "Не удалось скачать файл",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
-                            } catch (e: Exception) {
-                                Log.e(TAG, "Error opening file", e)
-                                Toast.makeText(
-                                    this@ChatActivity,
-                                    "Ошибка открытия файла",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
-                        }
-                    }
-                }
-            }
-        )
-        attachmentsRecyclerView.layoutManager = androidx.recyclerview.widget.GridLayoutManager(this, 3)
-        attachmentsRecyclerView.adapter = attachmentAdapter
-
-        if (isGroupChat) {
-            // Для группового чата — показываем название чата
-            nameTextView.text = chatTitle.trim()
-            usernameTextView.visibility = View.GONE
-            onlineStatusTextView.visibility = View.GONE
-            bioTextView.visibility = View.GONE
-
-            // Загрузка аватара чата
-            if (!chatAvatarFileId.isNullOrBlank()) {
-                AvatarLoader.loadByFileId(
-                    imageView = avatarImageView,
-                    placeholderView = avatarPlaceholder,
-                    fileId = chatAvatarFileId!!,
-                    displayName = chatTitle,
-                    userId = chatId.hashCode().toLong(),
-                    size = 240
-                ) {
-                    chatRepository.getFileDownloadUrl(chatAvatarFileId!!).getOrNull()
-                }
-            } else {
-                AvatarLoader.showPlaceholder(avatarPlaceholder, chatTitle, chatId.hashCode().toLong())
-                avatarImageView.visibility = View.GONE
-            }
-        } else {
-            // Для ЛС — загружаем данные пользователя
-            if (otherUserId > 0) {
-                val posterImageView = dialogView.findViewById<android.widget.ImageView>(R.id.profilePosterImageView)
-                val posterPlaceholder = dialogView.findViewById<View>(R.id.profilePosterPlaceholder)
-
-                lifecycleScope.launch {
-                    try {
-                        val userResult = chatRepository.getUserData(otherUserId)
-                        if (userResult.isSuccess) {
-                            val user = userResult.getOrNull()!!
-
-                            // Имя
-                            val displayName = "${user.firstName} ${user.lastName}".trim()
-                            nameTextView.text = if (displayName.isNotBlank()) displayName else user.username
-
-                            // Username
-                            usernameTextView.text = "@${user.username}"
-                            usernameTextView.visibility = View.VISIBLE
-
-                            // Био
-                            if (user.bio.isNotBlank()) {
-                                bioTextView.text = user.bio
-                                bioTextView.visibility = View.VISIBLE
-                            } else {
-                                bioTextView.visibility = View.GONE
-                            }
-
-                            // Аватар - используем ПОЛНУЮ версию, а не превью
-                            val avatarFileId = user.profilePictureFileId
-                            if (!avatarFileId.isNullOrBlank()) {
-                                AvatarLoader.loadByFileId(
-                                    imageView = avatarImageView,
-                                    placeholderView = avatarPlaceholder,
-                                    fileId = avatarFileId,
-                                    displayName = displayName,
-                                    userId = otherUserId,
-                                    size = 240
-                                ) {
-                                    chatRepository.getFileDownloadUrl(avatarFileId).getOrNull()
-                                }
-                            } else {
-                                AvatarLoader.showPlaceholder(avatarPlaceholder, displayName, otherUserId)
-                                avatarImageView.visibility = View.GONE
-                            }
-
-                            // Постер профиля
-                            val posterFileId = user.profilePosterFileId
-                            if (posterFileId.isNotBlank()) {
-                                val urlResult = chatRepository.getFileDownloadUrl(posterFileId)
-                                if (urlResult.isSuccess) {
-                                    val url = urlResult.getOrNull()
-                                    if (!url.isNullOrBlank()) {
-                                        posterPlaceholder?.visibility = View.GONE
-                                        posterImageView?.visibility = View.VISIBLE
-                                        posterImageView?.load(url, AvatarLoader.getImageLoader(this@ChatActivity)) {
-                                            crossfade(true)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error loading user profile", e)
-                    }
-                }
-
-                // Статус онлайна
-                lifecycleScope.launch {
-                    try {
-                        val onlinerClient = grpcManager.onlinerClient
-                        if (onlinerClient != null) {
-                            val request = barkfluff.onliner.OnlinerApiOuterClass.GetOnlineStatusRequest.newBuilder()
-                                .addUserIds(otherUserId)
-                                .build()
-                            val response = onlinerClient.getOnlineStatus(request)
-                            val userStatus = response.usersStatusesList.firstOrNull()
-
-                            if (userStatus != null) {
-                                val isOnline = userStatus.status.getNumber() == barkfluff.onliner.OnlinerApiOuterClass.StatusTypeId.STATUS_ONLINE.getNumber()
-                                if (isOnline) {
-                                    onlineStatusTextView.text = "в сети"
-                                    onlineStatusTextView.setTextColor(ContextCompat.getColor(this@ChatActivity, R.color.primary))
-                                    onlineIndicator.visibility = View.VISIBLE
-                                } else {
-                                    val lastSeen = formatLastSeen(userStatus.lastSeen.seconds * 1000)
-                                    onlineStatusTextView.text = lastSeen
-                                    onlineStatusTextView.setTextColor(ContextCompat.getColor(this@ChatActivity, R.color.on_surface_variant))
-                                    onlineIndicator.visibility = View.GONE
-                                }
-                            } else {
-                                onlineStatusTextView.text = "был(а) недавно"
-                                onlineIndicator.visibility = View.GONE
-                            }
-                        }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error loading online status for profile", e)
-                    }
-                }
-            }
-        }
-
-        // Обработка выбора типа медиа
-        var currentType: barkfluff.shared.Shared.MessageAttachmentType? = null
-
-        fun loadAttachments(type: barkfluff.shared.Shared.MessageAttachmentType) {
-            attachmentsContainer.visibility = View.VISIBLE
-            attachmentsLoading.visibility = View.VISIBLE
-            attachmentsRecyclerView.visibility = View.GONE
-            attachmentsEmpty.visibility = View.GONE
-
-            lifecycleScope.launch {
-                try {
-                    val result = chatRepository.getChatAttachments(chatId, type)
-                    if (result.isSuccess) {
-                        val attachments = result.getOrNull()!!
-                        if (attachments.isEmpty()) {
-                            attachmentsLoading.visibility = View.GONE
-                            attachmentsEmpty.visibility = View.VISIBLE
-                            attachmentsEmpty.text = when (type) {
-                                barkfluff.shared.Shared.MessageAttachmentType.IMAGE -> "Нет фото"
-                                barkfluff.shared.Shared.MessageAttachmentType.VIDEO -> "Нет видео"
-                                else -> "Нет файлов"
-                            }
-                        } else {
-                            attachmentAdapter.submitList(attachments)
-                            attachmentsLoading.visibility = View.GONE
-                            attachmentsRecyclerView.visibility = View.VISIBLE
-                        }
-                    } else {
-                        attachmentsLoading.visibility = View.GONE
-                        attachmentsEmpty.visibility = View.VISIBLE
-                        attachmentsEmpty.text = "Ошибка загрузки"
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error loading attachments", e)
-                    attachmentsLoading.visibility = View.GONE
-                    attachmentsEmpty.visibility = View.VISIBLE
-                }
-            }
-        }
-
-        chipPhotos.setOnClickListener {
-            if (chipPhotos.isChecked) {
-                attachmentsRecyclerView.layoutManager =
-                    androidx.recyclerview.widget.GridLayoutManager(this@ChatActivity, 3)
-                loadAttachments(barkfluff.shared.Shared.MessageAttachmentType.IMAGE)
-            } else {
-                attachmentsContainer.visibility = View.GONE
-            }
-        }
-
-        chipVideos.setOnClickListener {
-            if (chipVideos.isChecked) {
-                attachmentsRecyclerView.layoutManager =
-                    androidx.recyclerview.widget.GridLayoutManager(this@ChatActivity, 3)
-                loadAttachments(barkfluff.shared.Shared.MessageAttachmentType.VIDEO)
-            } else {
-                attachmentsContainer.visibility = View.GONE
-            }
-        }
-
-        chipFiles.setOnClickListener {
-            if (chipFiles.isChecked) {
-                attachmentsRecyclerView.layoutManager =
-                    androidx.recyclerview.widget.LinearLayoutManager(this@ChatActivity)
-                loadAttachments(barkfluff.shared.Shared.MessageAttachmentType.DOCUMENT)
-            } else {
-                attachmentsContainer.visibility = View.GONE
-            }
-        }
-
-        // По умолчанию открываем вкладку с фотографиями
-        chipPhotos.isChecked = true
-        attachmentsRecyclerView.layoutManager =
-            androidx.recyclerview.widget.GridLayoutManager(this, 3)
-        loadAttachments(barkfluff.shared.Shared.MessageAttachmentType.IMAGE)
-
-        // Обработчик кнопки закрытия
-        closeButton.setOnClickListener {
-            dialog.dismiss()
-        }
-
-        dialog.show()
-    }
 
     override fun onStart() {
         super.onStart()
