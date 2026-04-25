@@ -233,6 +233,13 @@ Error codes (из gRPC trailer `x-error-code`):
 - Обновление → `UpdateActivity`
 - Выход (logout → очищает `GlobalParam`, → `LoginActivity`)
 
+**Блок персонализации (превью профиля):**
+- Карточка с блоком постера (соотношение 3:1): `profilePosterPreviewImage` / `profilePosterPreviewPlaceholder`
+- Поверх постера по центру: круглый аватар 120dp (`profilePreviewAvatarImage` / `profilePreviewAvatarPlaceholder`)
+- Под аватаром: `profilePreviewFullName`, `profilePreviewUsername`
+- Кнопка `buttonSetPoster` → `GetContent("image/*")` → JPEG 85% → `GrpcManager.uploadProfilePoster()` → `GrpcManager.setProfilePoster(fileId)` → обновление превью
+- `currentPosterFileId` хранит текущий FileId постера, загружается из `getUserData().profilePosterFileId`
+
 Показывает update-badge если есть обновление.
 
 **Связи:** `GlobalParam`, `GrpcManager`, `AvatarLoader`, `UpdateChecker`, все Settings-Activity
@@ -878,7 +885,7 @@ Object. Создаёт каналы уведомлений Android и показ
 - `item_chat.xml`, `item_user.xml`, `item_server.xml`, `item_device.xml` — элементы списков
 - `item_sticker*.xml` — стикер-панель (sticker, header, loading, empty)
 - `step_register_0[1-9]_*.xml` — шаги регистрации
-- `dialog_chat_profile.xml` — диалог профиля чата
+- `dialog_chat_profile.xml` — диалог профиля чата. Верхняя часть: блок постера (соотношение 3:1, `profilePosterImageView`/`profilePosterPlaceholder`) + круглый аватар 120dp поверх по центру (`profileAvatarImageView`/`profileAvatarPlaceholder` + `onlineIndicator`) + кнопка закрытия floating поверх. Ниже: имя, @username, онлайн-статус, био, divider, медиафайлы (chips + RecyclerView). Без горизонтальных отступов (на всю ширину).
 - `bottom_sheet_image_picker.xml`, `bottom_sheet_device_details.xml`
 
 ### Animations (`res/anim/`)

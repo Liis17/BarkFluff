@@ -498,6 +498,7 @@ class GrpcManager {
                     profilePicturePreviewUrl = user.profilePicturePreview,
                     profilePictureFileId = profilePictureFileId,
                     profilePicturePreviewFileId = profilePicturePreviewFileId,
+                    profilePosterFileId = user.profilePosterFileId,
                     registrationDate = user.registrationDate.seconds * 1000
                 )
             )
@@ -1091,6 +1092,7 @@ class GrpcManager {
                     profilePicturePreviewUrl = user.profilePicturePreview,
                     profilePictureFileId = extractGuidFromUrl(user.profilePicture),
                     profilePicturePreviewFileId = extractGuidFromUrl(user.profilePicturePreview),
+                    profilePosterFileId = user.profilePosterFileId,
                     registrationDate = user.registrationDate.seconds * 1000
                 )
             )
@@ -1821,6 +1823,7 @@ class GrpcManager {
         val profilePicturePreviewUrl: String,
         val profilePictureFileId: String = "",
         val profilePicturePreviewFileId: String = "",
+        val profilePosterFileId: String = "",
         val registrationDate: Long
     )
 
@@ -2111,6 +2114,102 @@ class GrpcManager {
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка обновления персонализации", e)
             Result.failure(e)
+        }
+    }
+
+    /**
+     * Получает FileId постера профиля текущего пользователя
+     */
+    suspend fun getProfilePoster(): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            if (usersClient == null) {
+                return@withContext Result.failure(IllegalStateException("Клиент Users не создан"))
+            }
+            val request = UsersApiOuterClass.GetProfilePosterRequest.newBuilder().build()
+            val response = usersClient!!.getProfilePoster(request)
+            Result.success(response.profilePosterFileId)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка получения постера профиля", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Устанавливает постер профиля. Пустой fileId — удаляет постер.
+     */
+    suspend fun setProfilePoster(fileId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (usersClient == null) {
+                return@withContext Result.failure(IllegalStateException("Клиент Users не создан"))
+            }
+            val request = UsersApiOuterClass.SetProfilePosterRequest.newBuilder()
+                .setProfilePosterFileId(fileId)
+                .build()
+            usersClient!!.setProfilePoster(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка установки постера профиля", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Загружает постер профиля через Files API (JPEG 85%, MESSAGE_ATTACHMENT_IMAGE)
+     * @return fileId загруженного файла
+     */
+    suspend fun uploadProfilePoster(jpegImageBytes: ByteArray): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            if (filesClient == null) {
+                return@withContext Result.failure(IllegalStateException("Клиент Files не создан"))
+            }
+            val uploadUrlResult = getUploadUrl(FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_IMAGE)
+            if (uploadUrlResult.isFailure) {
+                return@withContext Result.failure(uploadUrlResult.exceptionOrNull()!!)
+            }
+            val uploadData = uploadUrlResult.getOrNull()!!
+            val fileId = uploadData.fileId
+            Log.d(TAG, "Profile poster upload URL получен, fileId: $fileId")
+
+            val boundary = "----BarkFluff${System.currentTimeMillis()}"
+            val url = java.net.URL(uploadData.url)
+            val connection = url.openConnection() as java.net.HttpURLConnection
+            if (connection is javax.net.ssl.HttpsURLConnection) {
+                val trustManager = object : javax.net.ssl.X509TrustManager {
+                    override fun checkClientTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) {}
+                    override fun checkServerTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) {}
+                    override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> = arrayOf()
+                }
+                val sslContext = javax.net.ssl.SSLContext.getInstance("TLS")
+                sslContext.init(null, arrayOf<javax.net.ssl.TrustManager>(trustManager), null)
+                connection.sslSocketFactory = sslContext.socketFactory
+                connection.hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true }
+            }
+            connection.requestMethod = "POST"
+            connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+            connection.doOutput = true
+            connection.outputStream.use { out ->
+                val writer = out.bufferedWriter()
+                writer.write("--$boundary\r\n")
+                writer.write("Content-Disposition: form-data; name=\"file\"; filename=\"poster.jpg\"\r\n")
+                writer.write("Content-Type: image/jpeg\r\n")
+                writer.write("\r\n")
+                writer.flush()
+                out.write(jpegImageBytes)
+                out.flush()
+                writer.write("\r\n")
+                writer.write("--$boundary--\r\n")
+                writer.flush()
+            }
+            val responseCode = connection.responseCode
+            connection.disconnect()
+            if (responseCode !in 200..299) {
+                return@withContext Result.failure(Exception("Upload failed: HTTP $responseCode"))
+            }
+            Log.d(TAG, "Постер профиля загружен, fileId: $fileId")
+            Result.success(fileId)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка загрузки постера профиля", e)
+            Result.failure(Exception("Ошибка загрузки постера: ${e.message}"))
         }
     }
 }

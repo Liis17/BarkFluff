@@ -60,6 +60,8 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
     /** Локальный список fileId фонов (синхронизируется с сервером) */
     private val backgroundFileIds = mutableListOf<String>()
 
+    private var currentPosterFileId: String = ""
+
     companion object {
         private const val TAG = "PersonalizationActivity"
     }
@@ -68,6 +70,12 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         if (uri != null) uploadBackgroundImage(uri)
+    }
+
+    private val pickPosterLauncher = registerForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) uploadPosterFromUri(uri)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -81,6 +89,7 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
         chatRepository = ChatRepository(this, grpcManager)
 
         setupToolbar()
+        setupPoster()
         setupCornerRadiusSlider()
         setupBlurToggle()
         setupDimSlider()
@@ -92,7 +101,124 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
         binding.toolbar.setNavigationOnClickListener { finish() }
     }
 
-    // ─── Блок 1: обновление превью ────────────────────────────────────────────
+    // ─── Блок 0: постер профиля ──────────────────────────────────────────
+
+    private fun setupPoster() {
+        binding.buttonSetPoster.setOnClickListener {
+            pickPosterLauncher.launch("image/*")
+        }
+        loadCurrentUserForPoster()
+    }
+
+    private fun loadCurrentUserForPoster() {
+        lifecycleScope.launch {
+            try {
+                val result = (application as BarkFluffApplication).grpcManager.getCurrentUserData()
+                if (result.isSuccess) {
+                    val userData = result.getOrNull() ?: return@launch
+                    val globalParam = GlobalParam(this@PersonalizationSettingsActivity)
+                    val displayName = "${userData.firstName} ${userData.lastName}".trim()
+                    currentPosterFileId = userData.profilePosterFileId
+
+                    binding.profilePreviewFullName.text = displayName.ifEmpty { "Пользователь" }
+                    binding.profilePreviewUsername.text =
+                        if (userData.username.isNotEmpty()) "@${userData.username}" else ""
+
+                    val avatarUrl = userData.profilePictureUrl
+                    if (avatarUrl.isNotBlank()) {
+                        AvatarLoader.load(
+                            imageView = binding.profilePreviewAvatarImage,
+                            placeholderView = binding.profilePreviewAvatarPlaceholder,
+                            avatarUrl = avatarUrl,
+                            displayName = displayName,
+                            userId = userData.userId
+                        )
+                    } else if (userData.profilePictureFileId.isNotEmpty()) {
+                        val fileId = userData.profilePictureFileId
+                        AvatarLoader.loadByFileId(
+                            binding.profilePreviewAvatarImage,
+                            binding.profilePreviewAvatarPlaceholder,
+                            fileId, displayName, userData.userId, size = 192
+                        ) {
+                            grpcManager.getFileDownloadUrl(fileId).getOrNull()
+                        }
+                    } else {
+                        AvatarLoader.showPlaceholder(
+                            binding.profilePreviewAvatarPlaceholder, displayName, userData.userId
+                        )
+                        binding.profilePreviewAvatarImage.visibility = View.GONE
+                    }
+
+                    loadPosterPreview()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Ошибка загрузки данных пользователя", e)
+            }
+        }
+    }
+
+    private fun loadPosterPreview() {
+        if (currentPosterFileId.isEmpty()) {
+            binding.profilePosterPreviewImage.visibility = View.GONE
+            binding.profilePosterPreviewPlaceholder.visibility = View.VISIBLE
+            return
+        }
+        lifecycleScope.launch {
+            try {
+                val urlResult = grpcManager.getFileDownloadUrl(currentPosterFileId)
+                if (urlResult.isSuccess) {
+                    val url = urlResult.getOrNull() ?: return@launch
+                    binding.profilePosterPreviewPlaceholder.visibility = View.GONE
+                    binding.profilePosterPreviewImage.visibility = View.VISIBLE
+                    binding.profilePosterPreviewImage.load(
+                        url, AvatarLoader.getImageLoader(this@PersonalizationSettingsActivity)
+                    ) { crossfade(true) }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Ошибка загрузки постера", e)
+            }
+        }
+    }
+
+    private fun uploadPosterFromUri(uri: Uri) {
+        lifecycleScope.launch {
+            try {
+                binding.buttonSetPoster.isEnabled = false
+                binding.buttonSetPoster.text = "Загрузка..."
+
+                val jpegBytes = withContext(Dispatchers.IO) {
+                    compressToJpeg85(uri)
+                } ?: run {
+                    Toast.makeText(this@PersonalizationSettingsActivity, "Не удалось обработать изображение", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                val uploadResult = grpcManager.uploadProfilePoster(jpegBytes)
+                if (uploadResult.isFailure) {
+                    Toast.makeText(this@PersonalizationSettingsActivity, "Ошибка загрузки файла", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                val fileId = uploadResult.getOrNull()!!
+                val setResult = grpcManager.setProfilePoster(fileId)
+                if (setResult.isSuccess) {
+                    currentPosterFileId = fileId
+                    loadPosterPreview()
+                    Toast.makeText(this@PersonalizationSettingsActivity, "Постер установлен", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this@PersonalizationSettingsActivity, "Ошибка установки постера", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Ошибка загрузки постера", e)
+                Toast.makeText(this@PersonalizationSettingsActivity, "Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
+            } finally {
+                binding.buttonSetPoster.isEnabled = true
+                binding.buttonSetPoster.text = "Установить новый постер"
+            }
+        }
+    }
+
+    // ─── Блок 1: обновление превью ──────────────────────────────────────
 
     /** Устанавливает радиус у всех 5 пузырей превью */
     private fun updatePreviewCorners(dp: Float) {

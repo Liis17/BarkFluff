@@ -113,8 +113,8 @@ class ProfileFragment : Fragment() {
 
         val urlToUse = globalParam.profilePictureUrl
 
+        // Основной аватар (tab Profile)
         if (urlToUse.isNotBlank()) {
-            Log.d(TAG, "loadAvatar: Loading full-size from URL=$urlToUse")
             AvatarLoader.load(
                 imageView = binding.avatarImage,
                 placeholderView = binding.avatarPlaceholder,
@@ -123,7 +123,6 @@ class ProfileFragment : Fragment() {
                 userId = globalParam.userId
             )
         } else if (fileId.isNotEmpty()) {
-            Log.d(TAG, "loadAvatar: Loading full-size from fileId=$fileId")
             AvatarLoader.loadByFileId(
                 binding.avatarImage,
                 binding.avatarPlaceholder,
@@ -136,7 +135,6 @@ class ProfileFragment : Fragment() {
                 if (result.isSuccess) result.getOrNull() else null
             }
         } else {
-            Log.d(TAG, "loadAvatar: No URL or fileId, showing placeholder")
             AvatarLoader.showPlaceholder(binding.avatarPlaceholder, displayName, globalParam.userId)
             binding.avatarImage.visibility = View.GONE
         }
