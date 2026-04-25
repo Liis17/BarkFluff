@@ -288,15 +288,18 @@
     }
     .cli-head { display: flex; align-items: center; justify-content: space-between; }
     .cli-head .eyebrow { color: var(--ink-dim); }
-    .cli-os-pills {
+    .cli-os-pills,
+    .cli-channel-pills {
       display: flex; gap: 4px; padding: 3px;
       background: rgba(255,240,220,0.04); border: 1px solid var(--line); border-radius: 8px;
     }
-    .cli-os-pills button {
+    .cli-os-pills button,
+    .cli-channel-pills button {
       all: unset; font-size: 11px; font-weight: 600; color: var(--ink-mute);
       padding: 4px 10px; border-radius: 6px; cursor: pointer; transition: background 0.15s, color 0.15s;
     }
-    .cli-os-pills button.active { background: rgba(255,122,41,0.15); color: #ffb47a; }
+    .cli-os-pills button.active,
+    .cli-channel-pills button.active { background: rgba(255,122,41,0.15); color: #ffb47a; }
     .cli-line {
       display: flex; align-items: center; gap: 12px; padding: 14px 16px;
       border-radius: 12px; background: rgba(0,0,0,0.5); border: 1px solid var(--line);
@@ -683,10 +686,16 @@
             <span class="eyebrow" id="cliHeading">Установка одной строкой</span>
             <span class="pc-badge" id="cliRecommended">Рекомендуется</span>
           </div>
-          <div class="cli-os-pills" id="cliPills">
-            <button class="active" data-os="windows">PowerShell</button>
-            <button data-os="macos">macOS</button>
-            <button data-os="linux">Linux</button>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="cli-channel-pills" id="cliChannelPills">
+              <button class="active" data-channel="release">Release</button>
+              <button data-channel="beta">Beta</button>
+            </div>
+            <div class="cli-os-pills" id="cliPills">
+              <button class="active" data-os="windows">PowerShell</button>
+              <button data-os="macos">macOS</button>
+              <button data-os="linux">Linux</button>
+            </div>
           </div>
         </div>
         <div class="cli-line">
@@ -820,28 +829,51 @@
     });
 
     /* CLI switcher */
+    let currentChannel = 'release';
+    let currentOs = 'windows';
+
     const cliCommands = {
-      windows: { prompt: '$', hl: 'powershell', rest: ' -ExecutionPolicy Bypass -Command "iwr https://barkfluff.com/install.ps1 -UseBasicParsing | iex"' },
-      macos:   { prompt: '#', hl: '', rest: null },
-      linux:   { prompt: '#', hl: '', rest: null }
+      windows: {
+        release: { prompt: '$', hl: 'powershell', rest: ' -ExecutionPolicy Bypass -Command "iwr https://barkfluff.com/install.ps1 -UseBasicParsing | iex"' },
+        beta:    { prompt: '$', hl: 'powershell', rest: ' -ExecutionPolicy Bypass -Command "iwr https://barkfluff.com/installbeta.ps1 -UseBasicParsing | iex"' },
+      },
+      macos: {
+        release: { prompt: '#', hl: '/bin/bash', rest: ' -c "$(curl -fsSL https://barkfluff.com/install.sh)"' },
+        beta:    { prompt: '#', hl: '/bin/bash', rest: ' -c "$(curl -fsSL https://barkfluff.com/installbeta.sh)"' },
+      },
+      linux: {
+        release: { prompt: '#', hl: '', rest: null },
+        beta:    { prompt: '#', hl: '', rest: null }
+      }
     };
 
     function setCliOs(os) {
-      const c = cliCommands[os];
+      currentOs = os;
+      const c = cliCommands[os]?.[currentChannel];
       if (!c) return;
       document.querySelectorAll('#cliPills button').forEach(b => b.classList.toggle('active', b.dataset.os === os));
       const el = document.getElementById('cliCmd');
       const promptEl = document.querySelector('.cli-line .prompt');
       if (promptEl) promptEl.textContent = c.prompt;
       const restText = c.rest !== null ? c.rest
-        : ' ' + ((window.__t && window.__t('cliUnavailable')) || 'команда установки пока недоступна — скоро будет');
+        : ' ' + ((window.__t && window.__t('cliUnavailable')) || 'install command not yet available — coming soon');
       el.innerHTML = c.hl
         ? '<span class="hl">' + c.hl + '</span>' + restText.replace(/</g, '&lt;')
         : '<span style="color:var(--ink-mute);font-style:italic;">' + restText.trim().replace(/</g, '&lt;') + '</span>';
     }
 
+    function setChannel(channel) {
+      currentChannel = channel;
+      document.querySelectorAll('#cliChannelPills button').forEach(b => b.classList.toggle('active', b.dataset.channel === channel));
+      setCliOs(currentOs);
+    }
+
     document.querySelectorAll('#cliPills button').forEach(b => {
       b.addEventListener('click', () => setCliOs(b.dataset.os));
+    });
+
+    document.querySelectorAll('#cliChannelPills button').forEach(b => {
+      b.addEventListener('click', () => setChannel(b.dataset.channel));
     });
 
     document.getElementById('cliCopyBtn').addEventListener('click', e => {
@@ -1154,9 +1186,8 @@
         const ci = $e('chatInput');
         if (ci) ci.placeholder = S[lang].chatPh;
 
-        /* CLI: обновить текст если активен macOS/Linux pill */
-        const activePill = document.querySelector('#cliPills button.active');
-        if (activePill && activePill.dataset.os !== 'windows') setCliOs(activePill.dataset.os);
+        /* CLI: re-render current OS/channel */
+        setCliOs(currentOs);
 
         /* Eyebrow — всегда обновляем (базовый текст + суффикс версии если есть) */
         applyVersions();

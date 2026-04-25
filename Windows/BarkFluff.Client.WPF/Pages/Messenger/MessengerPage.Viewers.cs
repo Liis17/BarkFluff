@@ -173,14 +173,14 @@ namespace BarkFluff.Client.WPF.Pages
                 $ExePath     = Join-Path $InstallPath "Barkfluff.exe"
                 $IsInstalled = $%%IS_INSTALLED%%
 
-                Write-Host "Ожидание завершения BarkFluff..."
+                Write-Host "Waiting for BarkFluff to exit..."
                 Start-Sleep -Seconds 2
 
-                # Завершить запущенные процессы BarkFluff
+                # Kill running BarkFluff processes
                 Get-Process -Name "Barkfluff" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
                 Start-Sleep -Seconds 1
 
-                Write-Host "Скачивание обновления BarkFluff..."
+                Write-Host "Downloading BarkFluff update..."
 
                 if (Test-Path $TempZip) {
                     Remove-Item $TempZip -Force
@@ -190,79 +190,79 @@ namespace BarkFluff.Client.WPF.Pages
                 $DownloadUrl = $FallbackUrl
                 $Downloaded  = $false
 
-                # Получение метаданных: URL (кеш на сервере), checksum, версия
+                # Fetch metadata: URL (server cache), checksum, version
                 try {
                     $Meta = Invoke-RestMethod -Uri ($FallbackUrl + '/bitsurl') -Method Get
-                    if ($Meta.version)  { Write-Host "Версия: $($Meta.version)" }
-                    if ($Meta.fileSize) { Write-Host "Размер: $([math]::Round($Meta.fileSize / 1MB, 2)) MB" }
+                    if ($Meta.version)  { Write-Host "Version: $($Meta.version)" }
+                    if ($Meta.fileSize) { Write-Host "Size: $([math]::Round($Meta.fileSize / 1MB, 2)) MB" }
                     if ($Meta.url)      { $DownloadUrl = $Meta.url }
                 }
                 catch {
-                    Write-Warning "Не удалось получить метаданные, checksum не будет проверен."
+                    Write-Warning "Failed to fetch metadata, checksum will be skipped."
                 }
 
-                # 1. BITS — URL из /bitsurl (кешированный файл на сервере, поддерживает Range)
+                # 1. BITS — URL from /bitsurl (server-side cache, supports Range)
                 try {
-                    Write-Host "Загрузка через BITS..."
+                    Write-Host "Downloading via BITS..."
                     Start-BitsTransfer -Source $DownloadUrl -Destination $TempZip
                     $Downloaded = $true
-                    Write-Host "Загружено через BITS."
+                    Write-Host "Downloaded via BITS."
                 }
                 catch {
-                    Write-Warning "BITS не удался, переход на WebClient..."
+                    Write-Warning "BITS failed, falling back to WebClient..."
                 }
 
                 # 2. WebClient fallback
                 if (-not $Downloaded) {
                     $wc = New-Object System.Net.WebClient
                     $wc.DownloadFile($DownloadUrl, $TempZip)
-                    Write-Host "Загружено через WebClient."
+                    Write-Host "Downloaded via WebClient."
                 }
 
-                # 3. Проверка контрольной суммы
+                # 3. Checksum verification
                 if ($Meta -ne $null -and $Meta.checksum) {
-                    Write-Host "Проверка контрольной суммы..."
+                    Write-Host "Verifying checksum..."
                     $Hash = (Get-FileHash -Path $TempZip -Algorithm SHA256).Hash
                     if ($Hash -ne $Meta.checksum.ToUpper()) {
                         Remove-Item $TempZip -Force -ErrorAction SilentlyContinue
-                        throw "Ошибка контрольной суммы: ожидалось $($Meta.checksum.ToUpper()), получено $Hash"
+                        throw "Checksum mismatch: expected $($Meta.checksum.ToUpper()), got $Hash"
                     }
-                    Write-Host "Контрольная сумма верна."
+                    Write-Host "Checksum OK."
                 }
 
-                # 4. Распаковка
-                Write-Host "Распаковка в: $InstallPath"
+                # 4. Extract
+                Write-Host "Extracting to: $InstallPath"
                 if (-not (Test-Path $InstallPath)) {
                     New-Item -ItemType Directory -Path $InstallPath | Out-Null
                 }
                 Expand-Archive -Path $TempZip -DestinationPath $InstallPath -Force
                 Remove-Item $TempZip -Force -ErrorAction SilentlyContinue
-                Write-Host "Распаковка завершена."
+                Write-Host "Extraction complete."
 
                 if ($IsInstalled) {
-                    # 5. Ярлык в меню Пуск
+                    # 5. Start Menu shortcut
                     $StartMenuPrograms = Join-Path ([Environment]::GetFolderPath('StartMenu')) "Programs"
                     $ShortcutPath = Join-Path $StartMenuPrograms "BarkFluff.lnk"
 
                     if (-not (Test-Path $ShortcutPath)) {
-                        Write-Host "Создание ярлыка в меню Пуск..."
+                        Write-Host "Creating Start Menu shortcut..."
                         $wshell = New-Object -ComObject WScript.Shell
                         $shortcut = $wshell.CreateShortcut($ShortcutPath)
                         $shortcut.TargetPath = $ExePath
                         $shortcut.WorkingDirectory = $InstallPath
                         $shortcut.Description = "BarkFluff Messenger"
                         $shortcut.Save()
-                        Write-Host "Ярлык создан: $ShortcutPath"
+                        Write-Host "Shortcut created: $ShortcutPath"
                     }
                     else {
-                        Write-Host "Ярлык в меню Пуск уже существует."
+                        Write-Host "Start Menu shortcut already exists."
                     }
 
-                    # 6. Регистрация протокола bf:// (требует права администратора)
+                    # 6. Register bf:// protocol (requires admin)
                     $ProtocolRegistered = Test-Path "Registry::HKEY_CLASSES_ROOT\bf"
 
                     if (-not $ProtocolRegistered) {
-                        Write-Host "Регистрация протокола bf:// (требуются права администратора)..."
+                        Write-Host "Registering bf:// protocol (requires Administrator)..."
 
                         $RegScript = @"
                 `$exePath = '$($ExePath -replace "'", "''")'
@@ -280,21 +280,21 @@ namespace BarkFluff.Client.WPF.Pages
                         $Encoded = [Convert]::ToBase64String($Bytes)
 
                         Start-Process powershell -Verb RunAs -ArgumentList "-NoProfile -NonInteractive -EncodedCommand $Encoded" -Wait
-                        Write-Host "Регистрация протокола завершена."
+                        Write-Host "Protocol registration complete."
                     }
                     else {
-                        Write-Host "Протокол bf:// уже зарегистрирован."
+                        Write-Host "Protocol bf:// already registered."
                     }
                 }
 
-                # 7. Запуск BarkFluff
+                # 7. Launch BarkFluff
                 if (Test-Path $ExePath) {
-                    Write-Host "Запуск BarkFluff..."
+                    Write-Host "Launching BarkFluff..."
                     Start-Process -FilePath $ExePath -WorkingDirectory $InstallPath -ArgumentList "--successfulupdate"
                 }
                 else {
-                    Write-Warning "Barkfluff.exe не найден: $ExePath"
-                    Read-Host "Нажмите Enter для выхода"
+                    Write-Warning "Barkfluff.exe not found at: $ExePath"
+                    Read-Host "Press Enter to exit"
                 }
                 """;
             script = script.Replace("%%DOWNLOAD_URL%%", escapedDownloadUrl);
