@@ -16,6 +16,10 @@ public class VersionPollingService : BackgroundService
             (s, v) => s.SetWindowsRelease(v)),
         ("https://storage.barkfluff.com/get/barkfluffwindows/beta/version",
             (s, v) => s.SetWindowsBeta(v)),
+        ("https://storage.barkfluff.com/get/barkfluffmacos/release/version",
+            (s, v) => s.SetMacosRelease(v)),
+        ("https://storage.barkfluff.com/get/barkfluffmacos/beta/version",
+            (s, v) => s.SetMacosBeta(v)),
     ];
 
     private readonly IHttpClientFactory _httpFactory;
