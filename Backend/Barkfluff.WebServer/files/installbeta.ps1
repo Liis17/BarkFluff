@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 $OutputEncoding = [System.Text.Encoding]::UTF8
 
 $BaseUrl     = "https://storage.barkfluff.com"
-$Channel     = "release"
+$Channel     = "beta"
 $TempZip     = Join-Path $env:TEMP "BarkFluff_install.zip"
 $InstallPath = Join-Path $env:APPDATA "BarkFluff"
 $ExePath     = Join-Path $InstallPath "Barkfluff.exe"

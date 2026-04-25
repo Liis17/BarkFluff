@@ -1,4 +1,4 @@
-﻿# BarkFluff.Users
+# BarkFluff.Users
 
 Управление профилями пользователей, бейджами, устройствами и GDPR-экспортом. Порт: **7001**.
 
@@ -48,28 +48,28 @@ dotnet ef database update --project BarkFluff.Users.csproj
 
 ## UsersApi — клиентский (TokenType.User)
 
-| Метод                                    | Описание                                      | Примечания                                                    |
-| ---------------------------------------- | --------------------------------------------- | ------------------------------------------------------------- |
+| Метод                                    | Описание                                      | Примечания                                                           |
+| ---------------------------------------- | --------------------------------------------- | -------------------------------------------------------------------- |
 | `GetUser(userId)`                        | Профиль пользователя                          | `userId=0` → текущий пользователь; содержит `profile_poster_file_id` |
-| `SetProfilePicture(fileId)`              | Установить аватарку                           | `fileId` — GUID файла из Files; пустой → удалить аватар       |
-| `CheckExistUsername(username)`           | Проверить существование username              | **`[AllowAnonymous]`**                                        |
-| `CheckExistEmail(email)`                 | Проверить существование email                 | **`[AllowAnonymous]`**                                        |
-| `ChangeName(firstName, lastName)`        | Изменить имя и фамилию                        | Trim, RabbitMQ `UserChangedName`                              |
-| `ChangeUsername(username)`               | Изменить username                             | Trim, RabbitMQ `UserChangedUsername`                          |
-| `ChangeBio(bio)`                         | Изменить описание профиля                     | RabbitMQ `UserChangedBio`                                     |
-| `SearchUsers(query, pagination)`         | Поиск по имени/фамилии/username               | Trigram; макс 50; уважает `SearchVisible`                     |
-| `GetUserBadges(userId, limit)`           | Получить баджи                                | Только активные; `limit=1` для списков, `limit=3` для профиля |
-| `GetDevices()`                           | Список устройств текущего пользователя        |                                                               |
-| `GetCurrentDevice()`                     | Текущее устройство                            |                                                               |
-| `RenameDevice(deviceId, customName)`     | Переименовать устройство                      |                                                               |
-| `SetFirebaseToken(firebaseToken)`        | Установить FCM-токен текущего устройства      |                                                               |
-| `SetNotificationsEnabled(enabled)`       | Включить/выключить push на текущем устройстве |                                                               |
-| `GetPrivacySettings()`                   | Настройки приватности текущего пользователя   |                                                               |
-| `UpdatePrivacySettings(settings)`        | Обновить настройки приватности                |                                                               |
-| `GetPersonalization()`                   | Персонализация текущего пользователя          |                                                               |
-| `UpdatePersonalization(personalization)` | Обновить персонализацию                       | Полная замена `ChatBackgroundFileIds`                          |
-| `GetProfilePoster()`                     | Получить FileId постера профиля               | Быстрый аналог GetPersonalization только для постера           |
-| `SetProfilePoster(fileId)`               | Установить (или удалить) постер профиля       | Пустой `fileId` → удаление; не трогает `ChatBackgroundFileIds` |
+| `SetProfilePicture(fileId)`              | Установить аватарку                           | `fileId` — GUID файла из Files; пустой → удалить аватар              |
+| `CheckExistUsername(username)`           | Проверить существование username              | **`[AllowAnonymous]`**                                               |
+| `CheckExistEmail(email)`                 | Проверить существование email                 | **`[AllowAnonymous]`**                                               |
+| `ChangeName(firstName, lastName)`        | Изменить имя и фамилию                        | Trim, RabbitMQ `UserChangedName`                                     |
+| `ChangeUsername(username)`               | Изменить username                             | Trim, RabbitMQ `UserChangedUsername`                                 |
+| `ChangeBio(bio)`                         | Изменить описание профиля                     | RabbitMQ `UserChangedBio`                                            |
+| `SearchUsers(query, pagination)`         | Поиск по имени/фамилии/username               | Trigram; макс 50; уважает `SearchVisible`                            |
+| `GetUserBadges(userId, limit)`           | Получить баджи                                | Только активные; `limit=1` для списков, `limit=3` для профиля        |
+| `GetDevices()`                           | Список устройств текущего пользователя        |                                                                      |
+| `GetCurrentDevice()`                     | Текущее устройство                            |                                                                      |
+| `RenameDevice(deviceId, customName)`     | Переименовать устройство                      |                                                                      |
+| `SetFirebaseToken(firebaseToken)`        | Установить FCM-токен текущего устройства      |                                                                      |
+| `SetNotificationsEnabled(enabled)`       | Включить/выключить push на текущем устройстве |                                                                      |
+| `GetPrivacySettings()`                   | Настройки приватности текущего пользователя   |                                                                      |
+| `UpdatePrivacySettings(settings)`        | Обновить настройки приватности                |                                                                      |
+| `GetPersonalization()`                   | Персонализация текущего пользователя          |                                                                      |
+| `UpdatePersonalization(personalization)` | Обновить персонализацию                       | Полная замена `ChatBackgroundFileIds`                                |
+| `GetProfilePoster()`                     | Получить FileId постера профиля               | Быстрый аналог GetPersonalization только для постера                 |
+| `SetProfilePoster(fileId)`               | Установить (или удалить) постер профиля       | Пустой `fileId` → удаление; не трогает `ChatBackgroundFileIds`       |
 
 ## UsersServerApi — межсервисный (TokenType.Service)
 
