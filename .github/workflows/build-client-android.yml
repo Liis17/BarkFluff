@@ -78,13 +78,7 @@ jobs:
 
       - name: Автоподнятие версии
         run: |
-          if [ "${{ github.ref_name }}" = "dev" ]; then
-            CHANNEL="beta"
-          else
-            CHANNEL="release"
-          fi
-
-          RESPONSE=$(curl -sf "https://storage.barkfluff.com/get/barkfluffkotlin/${CHANNEL}/version" || echo "")
+          RESPONSE=$(curl -sf "https://storage.barkfluff.com/get/barkfluffkotlin/beta/version" || echo "")
 
           if [ -n "$RESPONSE" ]; then
             SERVER_VERSION=$(echo "$RESPONSE" | grep -oP '"version"\s*:\s*"\K[^"]+')
@@ -97,11 +91,15 @@ jobs:
 
           echo "Server version: $SERVER_VERSION"
 
-          MAJOR=$(echo "$SERVER_VERSION" | cut -d. -f1)
-          MINOR=$(echo "$SERVER_VERSION" | cut -d. -f2)
-          PATCH=$(echo "$SERVER_VERSION" | cut -d. -f3)
-          PATCH=$((PATCH + 1))
-          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            MAJOR=$(echo "$SERVER_VERSION" | cut -d. -f1)
+            MINOR=$(echo "$SERVER_VERSION" | cut -d. -f2)
+            PATCH=$(echo "$SERVER_VERSION" | cut -d. -f3)
+            PATCH=$((PATCH + 1))
+            NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          else
+            NEW_VERSION="$SERVER_VERSION"
+          fi
 
           echo "New version: $NEW_VERSION"
 
