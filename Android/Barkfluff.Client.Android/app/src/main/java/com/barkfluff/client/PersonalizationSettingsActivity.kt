@@ -1,8 +1,7 @@
 package com.barkfluff.client
 
-import android.app.Activity
-import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -31,12 +30,15 @@ import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 
 /**
- * Экран настроек персонализации:
- * - Слайдер закругления пузырей сообщений (0..30 dp)
- * - Сетка фоновых изображений чата с возможностью добавления и удаления
- * - Ячейка "Без фона" в начале сетки
- * - Тогл размытия фона + слайдер силы блюра (1..25)
- * - Превью с фоном и блюром над слайдером закругления
+ * Экран настроек персонализации (редизайн).
+ *
+ * Структура (сверху вниз):
+ *  1. Блок превью — 260dp, 5 пузырей, фон + затемнение + блюр
+ *  2. Блок настроек отображения:
+ *       - Слайдер закругления (0..30 dp)
+ *       - Тогл размытия + слайдер силы (1..25, скрыт если тогл выкл)
+ *       - Слайдер затемнения (0..100 %)
+ *  3. Блок фонов чата — сетка 3 колонки + кнопка добавить
  */
 class PersonalizationSettingsActivity : AppCompatActivity() {
 
@@ -46,6 +48,15 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
     private lateinit var chatRepository: ChatRepository
     private lateinit var backgroundAdapter: ChatBackgroundAdapter
 
+    /** Список всех пузырей превью для пакетного обновления радиуса */
+    private val previewBubbles get() = listOf(
+        binding.previewMsg1,
+        binding.previewMsg2,
+        binding.previewMsg3,
+        binding.previewMsg4,
+        binding.previewMsg5
+    )
+
     /** Локальный список fileId фонов (синхронизируется с сервером) */
     private val backgroundFileIds = mutableListOf<String>()
 
@@ -53,7 +64,6 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
         private const val TAG = "PersonalizationActivity"
     }
 
-    // Лаунчер выбора одной картинки из галереи
     private val pickImageLauncher = registerForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -72,8 +82,9 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
 
         setupToolbar()
         setupCornerRadiusSlider()
-        setupBackgroundsGrid()
         setupBlurToggle()
+        setupDimSlider()
+        setupBackgroundsGrid()
         loadPersonalizationFromServer()
     }
 
@@ -81,31 +92,86 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
         binding.toolbar.setNavigationOnClickListener { finish() }
     }
 
-    // ─── Слайдер закругления ──────────────────────────────────────────────────
+    // ─── Блок 1: обновление превью ────────────────────────────────────────────
+
+    /** Устанавливает радиус у всех 5 пузырей превью */
+    private fun updatePreviewCorners(dp: Float) {
+        val px = dp * resources.displayMetrics.density
+        previewBubbles.forEach { it.radius = px }
+    }
+
+    /** Загружает фоновую картинку в превью, потом применяет блюр */
+    private fun updatePreviewBackground(fileId: String) {
+        if (fileId.isEmpty()) {
+            binding.previewBackgroundImage.visibility = View.GONE
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                binding.previewBackgroundImage.setRenderEffect(null)
+            }
+            updatePreviewDim()
+            return
+        }
+        binding.previewBackgroundImage.visibility = View.VISIBLE
+        lifecycleScope.launch {
+            val cached = withContext(Dispatchers.IO) { FileCache.getFile(fileId) }
+            if (cached != null && cached.exists()) {
+                binding.previewBackgroundImage.load(
+                    cached, AvatarLoader.getImageLoader(this@PersonalizationSettingsActivity)
+                ) { crossfade(true) }
+            } else {
+                val url = chatRepository.getFileDownloadUrl(fileId).getOrNull()
+                if (url != null) {
+                    binding.previewBackgroundImage.load(
+                        url, AvatarLoader.getImageLoader(this@PersonalizationSettingsActivity)
+                    ) { crossfade(true) }
+                }
+            }
+            updatePreviewBlur()
+            updatePreviewDim()
+        }
+    }
+
+    /** Применяет RenderEffect blur (API 31+) к фоновому изображению превью */
+    private fun updatePreviewBlur() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val visible = binding.previewBackgroundImage.visibility == View.VISIBLE
+            if (globalParam.chatBackgroundBlur && visible) {
+                val r = globalParam.chatBackgroundBlurRadius.toFloat()
+                binding.previewBackgroundImage.setRenderEffect(
+                    RenderEffect.createBlurEffect(r, r, Shader.TileMode.CLAMP)
+                )
+            } else {
+                binding.previewBackgroundImage.setRenderEffect(null)
+            }
+        }
+    }
+
+    /** Обновляет alpha затемняющего оверлея исходя из текущего значения dim (0–100%) */
+    private fun updatePreviewDim() {
+        val pct = globalParam.chatBackgroundDim
+        if (pct == 0) {
+            binding.previewDimOverlay.background = null
+        } else {
+            val alpha = (pct / 100f * 255).toInt().coerceIn(0, 255)
+            binding.previewDimOverlay.setBackgroundColor(Color.argb(alpha, 0, 0, 0))
+        }
+    }
+
+    // ─── Блок 2: слайдер закругления ─────────────────────────────────────────
 
     private fun setupCornerRadiusSlider() {
         val saved = globalParam.chatMessageCornerRadius
         binding.cornerRadiusSlider.value = saved.toFloat()
         binding.cornerRadiusValue.text = saved.toString()
-
         updatePreviewCorners(saved.toFloat())
 
         binding.cornerRadiusSlider.addOnChangeListener { _, value, fromUser ->
             binding.cornerRadiusValue.text = value.toInt().toString()
             updatePreviewCorners(value)
-            if (fromUser) {
-                globalParam.chatMessageCornerRadius = value.toInt()
-            }
+            if (fromUser) globalParam.chatMessageCornerRadius = value.toInt()
         }
     }
 
-    private fun updatePreviewCorners(dp: Float) {
-        val px = dp * resources.displayMetrics.density
-        binding.previewCardReceived.radius = px
-        binding.previewCardSent.radius = px
-    }
-
-    // ─── Тогл размытия + слайдер силы блюра ──────────────────────────────────
+    // ─── Блок 2: тогл размытия + слайдер силы ────────────────────────────────
 
     private fun setupBlurToggle() {
         val blurEnabled = globalParam.chatBackgroundBlur
@@ -113,7 +179,6 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
 
         binding.switchBlurBackground.isChecked = blurEnabled
         binding.blurRadiusSection.visibility = if (blurEnabled) View.VISIBLE else View.GONE
-
         binding.blurRadiusSlider.value = blurRadius.toFloat()
         binding.blurRadiusValue.text = blurRadius.toString()
 
@@ -125,56 +190,28 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
 
         binding.blurRadiusSlider.addOnChangeListener { _, value, fromUser ->
             binding.blurRadiusValue.text = value.toInt().toString()
-            if (fromUser) {
-                globalParam.chatBackgroundBlurRadius = value.toInt()
-            }
+            if (fromUser) globalParam.chatBackgroundBlurRadius = value.toInt()
             updatePreviewBlur()
         }
     }
 
-    /** Применяет RenderEffect (API 31+) к previewBackgroundImage, имитируя блюр фона в чате */
-    private fun updatePreviewBlur() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (globalParam.chatBackgroundBlur && binding.previewBackgroundImage.visibility == View.VISIBLE) {
-                val radius = globalParam.chatBackgroundBlurRadius.toFloat()
-                binding.previewBackgroundImage.setRenderEffect(
-                    RenderEffect.createBlurEffect(radius, radius, Shader.TileMode.CLAMP)
-                )
-            } else {
-                binding.previewBackgroundImage.setRenderEffect(null)
-            }
-        }
-        // На API < 31 блюр не поддерживается RenderEffect — превью без блюра
-    }
+    // ─── Блок 2: слайдер затемнения ───────────────────────────────────────────
 
-    // ─── Превью фона в секции "Внешний вид сообщений" ────────────────────────
+    private fun setupDimSlider() {
+        val saved = globalParam.chatBackgroundDim
+        binding.dimSlider.value = saved.toFloat()
+        binding.dimValue.text = "$saved%"
+        updatePreviewDim()
 
-    private fun updatePreviewBackground(fileId: String) {
-        if (fileId.isEmpty()) {
-            binding.previewBackgroundImage.visibility = View.GONE
-            binding.previewBackgroundImage.setRenderEffect(null)
-            return
-        }
-        binding.previewBackgroundImage.visibility = View.VISIBLE
-        lifecycleScope.launch {
-            val cached = withContext(Dispatchers.IO) { FileCache.getFile(fileId) }
-            if (cached != null && cached.exists()) {
-                binding.previewBackgroundImage.load(cached, AvatarLoader.getImageLoader(this@PersonalizationSettingsActivity)) {
-                    crossfade(true)
-                }
-            } else {
-                val url = chatRepository.getFileDownloadUrl(fileId).getOrNull()
-                if (url != null) {
-                    binding.previewBackgroundImage.load(url, AvatarLoader.getImageLoader(this@PersonalizationSettingsActivity)) {
-                        crossfade(true)
-                    }
-                }
-            }
-            updatePreviewBlur()
+        binding.dimSlider.addOnChangeListener { _, value, fromUser ->
+            val pct = value.toInt()
+            binding.dimValue.text = "$pct%"
+            if (fromUser) globalParam.chatBackgroundDim = pct
+            updatePreviewDim()
         }
     }
 
-    // ─── Сетка фонов ─────────────────────────────────────────────────────────
+    // ─── Блок 3: сетка фонов ──────────────────────────────────────────────────
 
     private fun setupBackgroundsGrid() {
         backgroundAdapter = ChatBackgroundAdapter(
@@ -207,7 +244,7 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
             }
         }
 
-        // Показать превью текущего фона
+        // Показываем превью сохранённого фона сразу при открытии
         updatePreviewBackground(globalParam.chatBackgroundFileId)
     }
 
@@ -230,7 +267,6 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
     }
 
     private fun refreshBackgroundList() {
-        // Первая ячейка — "без фона" (fileId == "")
         val items = listOf(ChatBackgroundItem("")) + backgroundFileIds.map { ChatBackgroundItem(it) }
         backgroundAdapter.submitList(items)
     }
@@ -259,8 +295,11 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
                 val bytes = withContext(Dispatchers.IO) {
                     compressToJpeg85(uri)
                 } ?: run {
-                    Toast.makeText(this@PersonalizationSettingsActivity,
-                        "Не удалось обработать изображение", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@PersonalizationSettingsActivity,
+                        "Не удалось обработать изображение",
+                        Toast.LENGTH_SHORT
+                    ).show()
                     return@launch
                 }
 
@@ -275,13 +314,19 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
                     refreshBackgroundList()
                     syncPersonalizationToServer()
                 } else {
-                    Toast.makeText(this@PersonalizationSettingsActivity,
-                        "Ошибка загрузки фона", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@PersonalizationSettingsActivity,
+                        "Ошибка загрузки фона",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Ошибка при загрузке фона", e)
-                Toast.makeText(this@PersonalizationSettingsActivity,
-                    "Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this@PersonalizationSettingsActivity,
+                    "Ошибка: ${e.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
             } finally {
                 binding.buttonAddBackground.isEnabled = true
                 binding.buttonAddBackground.text = "Добавить фон"
@@ -292,11 +337,11 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
     private fun compressToJpeg85(uri: Uri): ByteArray? {
         return try {
             val inputStream = contentResolver.openInputStream(uri) ?: return null
-            val originalBitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
+            val bitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
             inputStream.close()
             val out = ByteArrayOutputStream()
-            originalBitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
-            originalBitmap.recycle()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
+            bitmap.recycle()
             out.toByteArray()
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка сжатия изображения", e)
@@ -316,4 +361,3 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
         }
     }
 }
-

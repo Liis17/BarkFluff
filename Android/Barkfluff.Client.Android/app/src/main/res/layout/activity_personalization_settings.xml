@@ -5,6 +5,9 @@
     android:layout_height="match_parent"
     android:fitsSystemWindows="true">
 
+    <!-- ══════════════════════════════════════════════
+         Тулбар
+    ══════════════════════════════════════════════ -->
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appBarLayout"
         android:layout_width="match_parent"
@@ -36,15 +39,176 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:paddingHorizontal="16dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="120dp">
 
-            <!-- ───── Секция: Внешний вид сообщений ───── -->
+            <!-- ══════════════════════════════════════════════
+                 БЛОК 1 — Превью чата
+            ══════════════════════════════════════════════ -->
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="28dp"
+                app:cardElevation="0dp"
+                app:strokeColor="?attr/colorOutlineVariant"
+                app:strokeWidth="1dp"
+                app:cardBackgroundColor="?attr/colorSurfaceContainer">
+
+                <FrameLayout
+                    android:id="@+id/chatPreviewLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="260dp"
+                    android:clipChildren="true"
+                    android:clipToPadding="true">
+
+                    <!-- Фоновое изображение -->
+                    <ImageView
+                        android:id="@+id/previewBackgroundImage"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="centerCrop"
+                        android:importantForAccessibility="no"
+                        android:visibility="gone" />
+
+                    <!-- Слой затемнения: поверх фото, под пузырями -->
+                    <View
+                        android:id="@+id/previewDimOverlay"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="#00000000" />
+
+                    <!-- 5 пузырей, прибитых к низу -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:orientation="vertical"
+                        android:paddingHorizontal="14dp"
+                        android:paddingVertical="14dp"
+                        android:gravity="bottom">
+
+                        <!-- Входящее 1 -->
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/previewMsg1"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="5dp"
+                            app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+                            app:cardCornerRadius="20dp"
+                            app:cardElevation="0dp"
+                            app:strokeWidth="0dp">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:paddingHorizontal="14dp"
+                                android:paddingVertical="8dp"
+                                android:text="Привет! Как дела? 👋"
+                                android:textAppearance="?attr/textAppearanceBodyMedium"
+                                android:textColor="?attr/colorOnSurface" />
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <!-- Исходящее 1 -->
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/previewMsg2"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="end"
+                            android:layout_marginBottom="5dp"
+                            app:cardBackgroundColor="?attr/colorPrimaryContainer"
+                            app:cardCornerRadius="20dp"
+                            app:cardElevation="0dp"
+                            app:strokeWidth="0dp">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:paddingHorizontal="14dp"
+                                android:paddingVertical="8dp"
+                                android:text="Отлично! А у тебя?"
+                                android:textAppearance="?attr/textAppearanceBodyMedium"
+                                android:textColor="?attr/colorOnPrimaryContainer" />
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <!-- Входящее 2 -->
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/previewMsg3"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="5dp"
+                            app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+                            app:cardCornerRadius="20dp"
+                            app:cardElevation="0dp"
+                            app:strokeWidth="0dp">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:paddingHorizontal="14dp"
+                                android:paddingVertical="8dp"
+                                android:text="Тоже хорошо, спасибо 😊"
+                                android:textAppearance="?attr/textAppearanceBodyMedium"
+                                android:textColor="?attr/colorOnSurface" />
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <!-- Исходящее 2 -->
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/previewMsg4"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="end"
+                            android:layout_marginBottom="5dp"
+                            app:cardBackgroundColor="?attr/colorPrimaryContainer"
+                            app:cardCornerRadius="20dp"
+                            app:cardElevation="0dp"
+                            app:strokeWidth="0dp">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:paddingHorizontal="14dp"
+                                android:paddingVertical="8dp"
+                                android:text="Встретимся сегодня? 🕐"
+                                android:textAppearance="?attr/textAppearanceBodyMedium"
+                                android:textColor="?attr/colorOnPrimaryContainer" />
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <!-- Входящее 3 -->
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/previewMsg5"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+                            app:cardCornerRadius="20dp"
+                            app:cardElevation="0dp"
+                            app:strokeWidth="0dp">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:paddingHorizontal="14dp"
+                                android:paddingVertical="8dp"
+                                android:text="Да, конечно! В 18:00? 😄"
+                                android:textAppearance="?attr/textAppearanceBodyMedium"
+                                android:textColor="?attr/colorOnSurface" />
+                        </com.google.android.material.card.MaterialCardView>
+
+                    </LinearLayout>
+
+                </FrameLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <android.widget.Space
+                android:layout_width="match_parent"
+                android:layout_height="20dp" />
+
+            <!-- ══════════════════════════════════════════════
+                 БЛОК 2 — Настройки отображения
+            ══════════════════════════════════════════════ -->
+
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
+                android:layout_marginStart="4dp"
                 android:layout_marginBottom="8dp"
-                android:text="Внешний вид сообщений"
+                android:text="Настройки отображения"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
                 android:textColor="?attr/colorPrimary" />
 
@@ -61,106 +225,23 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingVertical="16dp">
+                    android:paddingHorizontal="20dp"
+                    android:paddingVertical="20dp">
 
-                    <!-- Превью чата -->
-                    <FrameLayout
-                        android:id="@+id/chatPreviewLayout"
-                        android:layout_width="match_parent"
-                        android:layout_height="130dp"
-                        android:background="?attr/colorSurfaceContainer"
-                        android:clipChildren="true">
-
-                        <!-- Фоновое изображение (видно только если выбран фон) -->
-                        <ImageView
-                            android:id="@+id/previewBackgroundImage"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:scaleType="centerCrop"
-                            android:importantForAccessibility="no"
-                            android:visibility="gone" />
-
-                        <!-- Оверлей размытия (программно применяется RenderEffect API 31+) -->
-                        <View
-                            android:id="@+id/previewBlurOverlay"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:visibility="gone" />
-
-                        <!-- Пузыри сообщений -->
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:orientation="vertical"
-                            android:paddingHorizontal="12dp"
-                            android:paddingVertical="8dp">
-
-                            <!-- Входящее сообщение (слева) -->
-                            <com.google.android.material.card.MaterialCardView
-                                android:id="@+id/previewCardReceived"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginBottom="6dp"
-                                app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
-                                app:cardCornerRadius="20dp"
-                                app:cardElevation="0dp"
-                                app:strokeWidth="0dp">
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:paddingHorizontal="14dp"
-                                    android:paddingVertical="8dp"
-                                    android:text="Привет! Как дела?"
-                                    android:textAppearance="?attr/textAppearanceBodyMedium"
-                                    android:textColor="?attr/colorOnSurface" />
-
-                            </com.google.android.material.card.MaterialCardView>
-
-                            <!-- Исходящее сообщение (справа) -->
-                            <com.google.android.material.card.MaterialCardView
-                                android:id="@+id/previewCardSent"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_gravity="end"
-                                app:cardBackgroundColor="?attr/colorPrimaryContainer"
-                                app:cardCornerRadius="20dp"
-                                app:cardElevation="0dp"
-                                app:strokeWidth="0dp">
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:paddingHorizontal="14dp"
-                                    android:paddingVertical="8dp"
-                                    android:text="Отлично! А у тебя?"
-                                    android:textAppearance="?attr/textAppearanceBodyMedium"
-                                    android:textColor="?attr/colorOnPrimaryContainer" />
-
-                            </com.google.android.material.card.MaterialCardView>
-
-                        </LinearLayout>
-
-                    </FrameLayout>
-
-                    <android.widget.Space
-                        android:layout_width="match_parent"
-                        android:layout_height="12dp" />
-
-                    <!-- Метка слайдера -->
+                    <!-- ─── Закругление сообщений ─── -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
-                        android:layout_marginBottom="4dp">
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="2dp">
 
                         <TextView
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="Закругление сообщений"
-                            android:textAppearance="?attr/textAppearanceBodyMedium"
+                            android:textAppearance="?attr/textAppearanceBodyLarge"
                             android:textColor="?attr/colorOnSurface" />
 
                         <TextView
@@ -173,7 +254,6 @@
 
                     </LinearLayout>
 
-                    <!-- Слайдер 0–30 -->
                     <com.google.android.material.slider.Slider
                         android:id="@+id/cornerRadiusSlider"
                         android:layout_width="match_parent"
@@ -183,74 +263,19 @@
                         android:stepSize="1"
                         android:value="20" />
 
-                </LinearLayout>
-
-            </com.google.android.material.card.MaterialCardView>
-
-            <android.widget.Space
-                android:layout_width="match_parent"
-                android:layout_height="12dp" />
-
-            <!-- ───── Секция: Фон чатов ───── -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_marginBottom="8dp"
-                android:text="Фон чатов"
-                android:textAppearance="?attr/textAppearanceLabelLarge"
-                android:textColor="?attr/colorPrimary" />
-
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
-                app:cardCornerRadius="28dp"
-                app:cardElevation="0dp"
-                app:strokeColor="?attr/colorOutlineVariant"
-                app:strokeWidth="1dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:paddingHorizontal="12dp"
-                    android:paddingVertical="12dp">
-
-                    <!-- Сетка фонов 3 колонки -->
-                    <androidx.recyclerview.widget.RecyclerView
-                        android:id="@+id/backgroundsRecyclerView"
+                    <!-- Разделитель -->
+                    <View
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:nestedScrollingEnabled="false" />
+                        android:layout_height="1dp"
+                        android:background="?attr/colorOutlineVariant"
+                        android:layout_marginVertical="8dp" />
 
-                    <android.widget.Space
-                        android:layout_width="match_parent"
-                        android:layout_height="8dp" />
-
-                    <!-- Кнопка добавить фон -->
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/buttonAddBackground"
-                        style="@style/Widget.Material3.Button.TonalButton"
-                        android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:text="Добавить фон"
-                        android:textAllCaps="false"
-                        app:icon="@drawable/ic_add"
-                        app:iconGravity="textStart"
-                        app:cornerRadius="16dp" />
-
-                    <android.widget.Space
-                        android:layout_width="match_parent"
-                        android:layout_height="8dp" />
-
-                    <!-- Тогл: Размыть фон -->
+                    <!-- ─── Тогл: Размыть фон ─── -->
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:layout_height="48dp"
                         android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingHorizontal="4dp">
+                        android:orientation="horizontal">
 
                         <TextView
                             android:layout_width="0dp"
@@ -267,20 +292,21 @@
 
                     </LinearLayout>
 
-                    <!-- Слайдер силы размытия (показывается только когда тогл включён) -->
+                    <!-- ─── Слайдер силы размытия (скрыт если тогл выключен) ─── -->
                     <LinearLayout
                         android:id="@+id/blurRadiusSection"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:layout_marginTop="8dp"
+                        android:layout_marginTop="4dp"
                         android:visibility="gone">
 
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="horizontal"
-                            android:layout_marginBottom="4dp">
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="2dp">
 
                             <TextView
                                 android:layout_width="0dp"
@@ -288,7 +314,7 @@
                                 android:layout_weight="1"
                                 android:text="Сила размытия"
                                 android:textAppearance="?attr/textAppearanceBodyMedium"
-                                android:textColor="?attr/colorOnSurface" />
+                                android:textColor="?attr/colorOnSurfaceVariant" />
 
                             <TextView
                                 android:id="@+id/blurRadiusValue"
@@ -311,13 +337,112 @@
 
                     </LinearLayout>
 
+                    <!-- Разделитель -->
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="?attr/colorOutlineVariant"
+                        android:layout_marginVertical="8dp" />
+
+                    <!-- ─── Затемнение фона ─── -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="2dp">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Затемнение фона"
+                            android:textAppearance="?attr/textAppearanceBodyLarge"
+                            android:textColor="?attr/colorOnSurface" />
+
+                        <TextView
+                            android:id="@+id/dimValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0%"
+                            android:textAppearance="?attr/textAppearanceLabelMedium"
+                            android:textColor="?attr/colorPrimary" />
+
+                    </LinearLayout>
+
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/dimSlider"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:valueFrom="0"
+                        android:valueTo="100"
+                        android:stepSize="1"
+                        android:value="0" />
+
                 </LinearLayout>
 
             </com.google.android.material.card.MaterialCardView>
 
             <android.widget.Space
                 android:layout_width="match_parent"
-                android:layout_height="120dp" />
+                android:layout_height="20dp" />
+
+            <!-- ══════════════════════════════════════════════
+                 БЛОК 3 — Фон чатов
+            ══════════════════════════════════════════════ -->
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:layout_marginBottom="8dp"
+                android:text="Фон чатов"
+                android:textAppearance="?attr/textAppearanceLabelLarge"
+                android:textColor="?attr/colorPrimary" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
+                app:cardCornerRadius="28dp"
+                app:cardElevation="0dp"
+                app:strokeColor="?attr/colorOutlineVariant"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="12dp"
+                    android:paddingTop="12dp"
+                    android:paddingBottom="16dp">
+
+                    <!-- Сетка фонов 3 колонки -->
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/backgroundsRecyclerView"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:nestedScrollingEnabled="false" />
+
+                    <android.widget.Space
+                        android:layout_width="match_parent"
+                        android:layout_height="10dp" />
+
+                    <!-- Кнопка добавить фон -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonAddBackground"
+                        style="@style/Widget.Material3.Button.TonalButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:text="Добавить фон"
+                        android:textAllCaps="false"
+                        app:icon="@drawable/ic_add"
+                        app:iconGravity="textStart"
+                        app:cornerRadius="16dp" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
 
         </LinearLayout>
 
