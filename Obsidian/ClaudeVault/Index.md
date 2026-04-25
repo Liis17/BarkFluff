@@ -49,6 +49,7 @@
 
 | Файл | Платформа |
 |------|-----------|
+| [[Клиенты/DesignDocument]] | **UI/UX дизайн-документ** — экраны, сценарии, вложения (источник: `dd.md`) |
 | [[Клиенты/Android]] | Kotlin + gRPC-OkHttp, Activity-based |
 | [[Клиенты/Android-ProjectMap]] | Карта всех файлов и классов Android-клиента |
 | [[Клиенты/Windows-WPF]] | WPF .NET 10, Code-behind + Reactive |
