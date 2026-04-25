@@ -44,6 +44,13 @@ Barkfluff/
     └── LiquidGlass/            # macOS 26 glass effects
 ```
 
+## Navigator
+
+- Адрес: `navigator.barkfluff.com:443` (TLS через nginx)
+- Реализация: `BFNetworking/Repositories/NavigatorRepository.swift`
+- Транспорт: `HTTP2ClientTransport.Posix`, `transportSecurity: .tls`
+- DependencyContainer явно передаёт `host: "navigator.barkfluff.com", port: 443`
+
 ## Data Flow
 
 Views → ViewModels → Services → Repositories → gRPC
