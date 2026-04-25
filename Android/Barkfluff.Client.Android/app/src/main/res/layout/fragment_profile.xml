@@ -519,6 +519,10 @@
                 android:textAppearance="?attr/textAppearanceLabelSmall"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
+            <android.widget.Space
+                android:layout_width="match_parent"
+                android:layout_height="150dp" />
+
         </LinearLayout>
 
     </androidx.core.widget.NestedScrollView>
