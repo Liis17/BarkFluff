@@ -356,15 +356,18 @@ Toggle уведомлений, настройки каналов Android.
 Настройки персонализации. Две секции:
 
 **Внешний вид сообщений:**
-- Превью двух пузырей (входящий + исходящий) — обновляется по слайдеру
+- Превью двух пузырей (входящий + исходящий) с фоном и блюром (если выбран)
 - `Slider` 0–30 dp → сохраняет в `GlobalParam.chatMessageCornerRadius`
 
 **Фон чатов:**
 - `RecyclerView` (GridLayoutManager 3 колонки) + `ChatBackgroundAdapter` — превью 2:3 через `AspectRatioImageView`
-- Клик по ячейке: выбрать как фон (`GlobalParam.chatBackgroundFileId`)
+- Первая ячейка всегда — "Без фона" (fileId = ""), выбор сбрасывает фон
+- Клик по ячейке: выбрать как фон (`GlobalParam.chatBackgroundFileId`) + обновить превью
 - Долгое нажатие: режим удаления (оверлей корзины)
 - Кнопка "Добавить фон": `GetContent("image/*")` → сжатие до JPEG 85% → `ChatRepository.uploadFile(MESSAGE_ATTACHMENT_IMAGE)` → fileId → `GrpcManager.updatePersonalizationBackgrounds`
 - `MaterialSwitch` "Размыть фон" → `GlobalParam.chatBackgroundBlur`
+- `Slider` 1–25 (сила блюра) → `GlobalParam.chatBackgroundBlurRadius`; появляется только при включённом тогле
+- Блюр превью: `RenderEffect.createBlurEffect` (API 31+)
 - Список фонов загружается при старте через `GrpcManager.getPersonalization()`
 
 **Связи:** `GlobalParam`, `GrpcManager`, `ChatRepository`, `ChatBackgroundAdapter`, `AspectRatioImageView`
@@ -531,6 +534,7 @@ ERROR_INVALID_OLD_PASSWORD  = "A7E3F1B2-9C4D-4E8A-B5F6-2D1A3C7E9F04"
 | `chatMessageCornerRadius` | обычное | Закругление облачков сообщений, 0..30 dp (дефолт 20) |
 | `chatBackgroundFileId` | обычное | FileId выбранного фона чата |
 | `chatBackgroundBlur` | обычное | Применять ли блюр к фону чата |
+| `chatBackgroundBlurRadius` | обычное | Сила размытия фона, 1..25 (дефолт 10) |
 
 Статические методы: `getDeviceName()`, `getOsVersion()`, `getAppName()`, `getAppVersion(ctx)`, `generateDeviceId()`, `loadIpAddress(prefs)`.
 

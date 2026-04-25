@@ -194,6 +194,11 @@ class GlobalParam(private val context: Context) {
         get() = sharedPreferences.getBoolean(KEY_CHAT_BACKGROUND_BLUR, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_CHAT_BACKGROUND_BLUR, value).apply()
 
+    /** Сила размытия фона чата, 0..25 (в dp-единицах для RenderEffect). По умолчанию 10. */
+    var chatBackgroundBlurRadius: Int
+        get() = sharedPreferences.getInt(KEY_CHAT_BACKGROUND_BLUR_RADIUS, 10)
+        set(value) = sharedPreferences.edit().putInt(KEY_CHAT_BACKGROUND_BLUR_RADIUS, value).apply()
+
     /**
      * Очищает пользовательские данные (для выхода из аккаунта).
      * Оставляет серверные адреса, device_id, server_name.
@@ -264,6 +269,7 @@ class GlobalParam(private val context: Context) {
         private const val KEY_CHAT_CORNER_RADIUS = "chat_corner_radius"
         private const val KEY_CHAT_BACKGROUND_FILE_ID = "chat_background_file_id"
         private const val KEY_CHAT_BACKGROUND_BLUR = "chat_background_blur"
+        private const val KEY_CHAT_BACKGROUND_BLUR_RADIUS = "chat_background_blur_radius"
 
         /**
          * Генерирует уникальный ID устройства
