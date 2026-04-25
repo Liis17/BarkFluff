@@ -46,6 +46,7 @@ Package: `com.barkfluff.client`
 - `AudioPlayerHelper` (`utils/AudioPlayerHelper.kt`) — MediaPlayer singleton, один аудио за раз
 - `ImageGridAdapter` (`adapter/ImageGridAdapter.kt`) — квадратная сетка с `SquareImageView`
 - `SquareImageView` (`views/SquareImageView.kt`) — `onMeasure` устанавливает height=width
+- `AspectRatioImageView` (`views/AspectRatioImageView.kt`) — `onMeasure` устанавливает height=width*3/2 (2:3, для превью фонов)
 - `MediaViewerActivity` — ExoPlayer, не fullscreen, swipe-down dismiss
 - `ImageViewerActivity` — без fullscreen, swipe-down dismiss
 - `ChatRepository.downloadFile()` — HTTP download → FileCache

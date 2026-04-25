@@ -64,7 +64,9 @@ class MessageAdapter(
     private val isGroupChat: Boolean,
     private val getFileUrl: suspend (String) -> String? = { null },
     private val downloadToCache: suspend (fileId: String, onProgress: (Int) -> Unit) -> java.io.File? = { _, _ -> null },
-    private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main)
+    private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main),
+    /** Закругление облачков сообщений в dp (0..30). */
+    var messageCornerRadiusDp: Int = 20
 ) : ListAdapter<MessageItem, RecyclerView.ViewHolder>(MessageDiffCallback()) {
 
     companion object {
@@ -148,6 +150,10 @@ class MessageAdapter(
                 binding.messageCard.visibility = View.VISIBLE
                 binding.stickerImageView.visibility = View.GONE
                 binding.stickerTimeStatusLayout.visibility = View.GONE
+
+                // Применяем закругление из настроек персонализации
+                val cornerPx = messageCornerRadiusDp * binding.root.context.resources.displayMetrics.density
+                binding.messageCard.radius = cornerPx
 
                 if (item.text.isNotBlank()) {
                     binding.messageTextView.text = item.text
@@ -251,6 +257,10 @@ class MessageAdapter(
                 binding.messageCard.visibility = View.VISIBLE
                 binding.stickerImageView.visibility = View.GONE
                 binding.stickerTimeTextView.visibility = View.GONE
+
+                // Применяем закругление из настроек персонализации
+                val cornerPx = messageCornerRadiusDp * binding.root.context.resources.displayMetrics.density
+                binding.messageCard.radius = cornerPx
 
                 if (item.text.isNotBlank()) {
                     binding.messageTextView.text = item.text

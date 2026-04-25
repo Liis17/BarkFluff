@@ -228,6 +228,7 @@ Error codes (из gRPC trailer `x-error-code`):
 - Уведомления → `NotificationSettingsActivity`
 - Хранилище → `StorageSettingsActivity`
 - Устройства → `DevicesActivity`
+- **Персонализация → `PersonalizationSettingsActivity`** (закругление пузырей, фон чата, блюр)
 - О приложении → `AboutActivity`
 - Обновление → `UpdateActivity`
 - Выход (logout → очищает `GlobalParam`, → `LoginActivity`)
@@ -254,6 +255,8 @@ Error codes (из gRPC trailer `x-error-code`):
 - Read receipts (при входе в чат отмечает сообщения прочитанными)
 - Профиль чата (нижний диалог `DialogChatProfileBinding`)
 - Контекстное меню сообщения (copy, save, forward)
+- **Фон чата**: загружает по `GlobalParam.chatBackgroundFileId` из `FileCache` или Files API. На API 31+ blur через `RenderEffect`, на API 26–30 через `ScriptIntrinsicBlur` (deprecated). Фон кешируется в `FileCache`.
+- **Закругление пузырей**: передаёт `GlobalParam.chatMessageCornerRadius` в `MessageAdapter`
 
 Хранит состояние:
 
@@ -343,6 +346,28 @@ Toggle уведомлений, настройки каналов Android.
 Просмотр и очистка кэша (`FileCache`, `StickerCache`, `ImageCache`). Показывает использование по категориям (легенда с цветными точками `item_storage_legend.xml`).
 
 **Связи:** `FileCache`, `StickerCache`
+
+---
+
+### `PersonalizationSettingsActivity.kt`
+
+**Тип:** AppCompatActivity
+
+Настройки персонализации. Две секции:
+
+**Внешний вид сообщений:**
+- Превью двух пузырей (входящий + исходящий) — обновляется по слайдеру
+- `Slider` 0–30 dp → сохраняет в `GlobalParam.chatMessageCornerRadius`
+
+**Фон чатов:**
+- `RecyclerView` (GridLayoutManager 3 колонки) + `ChatBackgroundAdapter` — превью 2:3 через `AspectRatioImageView`
+- Клик по ячейке: выбрать как фон (`GlobalParam.chatBackgroundFileId`)
+- Долгое нажатие: режим удаления (оверлей корзины)
+- Кнопка "Добавить фон": `GetContent("image/*")` → сжатие до JPEG 85% → `ChatRepository.uploadFile(MESSAGE_ATTACHMENT_IMAGE)` → fileId → `GrpcManager.updatePersonalizationBackgrounds`
+- `MaterialSwitch` "Размыть фон" → `GlobalParam.chatBackgroundBlur`
+- Список фонов загружается при старте через `GrpcManager.getPersonalization()`
+
+**Связи:** `GlobalParam`, `GrpcManager`, `ChatRepository`, `ChatBackgroundAdapter`, `AspectRatioImageView`
 
 ---
 
@@ -503,6 +528,9 @@ ERROR_INVALID_OLD_PASSWORD  = "A7E3F1B2-9C4D-4E8A-B5F6-2D1A3C7E9F04"
 | `pictureUrl, picturePreviewUrl, profilePictureUrl` | обычное | URL аватара |
 | `notificationsEnabled` | обычное | Флаг уведомлений |
 | `firebaseToken` | обычное | FCM токен |
+| `chatMessageCornerRadius` | обычное | Закругление облачков сообщений, 0..30 dp (дефолт 20) |
+| `chatBackgroundFileId` | обычное | FileId выбранного фона чата |
+| `chatBackgroundBlur` | обычное | Применять ли блюр к фону чата |
 
 Статические методы: `getDeviceName()`, `getOsVersion()`, `getAppName()`, `getAppVersion(ctx)`, `generateDeviceId()`, `loadIpAddress(prefs)`.
 
@@ -555,9 +583,25 @@ Data class: тема сервера (liteHex, mainHex, hardHex).
 
 Поддерживает вложения: изображения (grid через `ImageGridAdapter`), видео, аудио (через `AudioPlayerHelper`), документы. Тап на изображение → `ImageViewerActivity`, тап на видео → `MediaViewerActivity`. Контекстное меню (copy, save, download).
 
-Конструктор принимает: `getFileUrl: suspend (String) -> String?`, `downloadToCache: suspend (String) -> File?`, `scope: CoroutineScope`.
+**`messageCornerRadiusDp: Int`** — параметр закругления облачков (0..30), устанавливается из `GlobalParam` при создании в `ChatActivity`. Применяется к `messageCard.radius` при биндинге.
+
+Конструктор принимает: `getFileUrl: suspend (String) -> String?`, `downloadToCache: suspend (String) -> File?`, `scope: CoroutineScope`, `messageCornerRadiusDp: Int = 20`.
 
 **Связи:** `ImageGridAdapter`, `AudioPlayerHelper`, `FileCache`, `AvatarLoader`, `ImageLoadHelper`, `ImageViewerActivity`, `MediaViewerActivity`
+
+---
+
+### `adapter/ChatBackgroundAdapter.kt`
+
+`ListAdapter<ChatBackgroundItem, ViewHolder>`. Сетка превью фоновых изображений (3 колонки, 2:3 aspect ratio через `AspectRatioImageView`).
+
+- Клик: выбрать фон → `GlobalParam.chatBackgroundFileId`
+- Долгое нажатие: режим удаления (оверлей + кнопка урны)
+- Кнопка удалить: вызывает `onDelete(fileId)`
+- Клик вне режима удаления: отмена режима или выбор фона
+- `cancelDeleteMode()` / `isInDeleteMode()` — управление режимом
+
+Загружает изображения из `FileCache` (диск) или через `getFileUrl` (URL).
 
 ---
 

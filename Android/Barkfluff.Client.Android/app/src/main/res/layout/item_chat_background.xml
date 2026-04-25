@@ -1,0 +1,66 @@
+<!-- Ячейка сетки фонов чата: пропорция 2:3 (ширина:высота) -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="4dp">
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/backgroundCard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="0dp"
+        app:strokeWidth="2dp"
+        app:strokeColor="?attr/colorOutlineVariant">
+
+        <!-- AspectRatioLayout реализуется через SquareImageView-аналог для 2:3 -->
+        <com.barkfluff.client.views.AspectRatioImageView
+            android:id="@+id/backgroundPreviewImage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:scaleType="centerCrop"
+            android:importantForAccessibility="no" />
+
+        <!-- Оверлей при режиме удаления -->
+        <FrameLayout
+            android:id="@+id/deleteOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#AA000000"
+            android:visibility="gone">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonDelete"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                app:icon="@drawable/ic_delete"
+                app:iconTint="@android:color/white"
+                android:contentDescription="Удалить фон" />
+
+        </FrameLayout>
+
+        <!-- Оверлей выбранного состояния -->
+        <View
+            android:id="@+id/selectedIndicator"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#3300B0FF"
+            android:visibility="gone" />
+
+        <ImageView
+            android:id="@+id/selectedCheck"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_gravity="top|end"
+            android:layout_margin="6dp"
+            android:src="@drawable/ic_double_check"
+            android:visibility="gone"
+            app:tint="@android:color/white"
+            android:importantForAccessibility="no" />
+
+    </com.google.android.material.card.MaterialCardView>
+
+</FrameLayout>

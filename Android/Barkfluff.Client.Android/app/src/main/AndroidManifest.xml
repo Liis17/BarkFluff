@@ -185,6 +185,12 @@
             android:screenOrientation="portrait" />
 
         <activity
+            android:name=".PersonalizationSettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:screenOrientation="portrait" />
+
+        <activity
             android:name=".UpdateActivity"
             android:exported="false"
             android:theme="@style/Theme.BarkfluffClientAndroid"
