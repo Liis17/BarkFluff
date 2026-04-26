@@ -1646,6 +1646,24 @@ class GrpcManager {
     }
 
     /**
+     * Разлогинивает текущее устройство на сервере (удаляет refresh-токен).
+     */
+    suspend fun logout(): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (identityClient == null) {
+                return@withContext Result.failure(IllegalStateException("Identity клиент не создан"))
+            }
+
+            val request = IdentityApiOuterClass.LogoutRequest.newBuilder().build()
+            identityClient!!.logout(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка logout", e)
+            Result.failure(Exception("Ошибка logout: ${e.message}"))
+        }
+    }
+
+    /**
      * Получает статус 2FA
      */
     suspend fun listOtpVerification(): Result<OtpStatus> = withContext(Dispatchers.IO) {

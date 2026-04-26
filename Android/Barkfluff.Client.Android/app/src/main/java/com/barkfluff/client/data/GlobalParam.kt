@@ -205,32 +205,40 @@ class GlobalParam(private val context: Context) {
         set(value) = sharedPreferences.edit().putInt(KEY_CHAT_BACKGROUND_DIM, value).apply()
 
     /**
-     * Очищает пользовательские данные (для выхода из аккаунта).
-     * Оставляет серверные адреса, device_id, server_name.
+     * Очищает все данные аккаунта при разлогине.
+     * Сохраняет только адреса сервера (socket_*, server_name, server_description).
+     * device_id удаляется — пересоздаётся автоматически при следующем запросе deviceId.
      */
     fun clearUserData() {
+        // Сохраняем адреса сервера
+        val beacon = socketBeacon
+        val users = socketUsers
+        val identity = socketIdentity
+        val files = socketFiles
+        val messages = socketMessages
+        val updates = socketUpdates
+        val onliner = socketOnliner
+        val serverNameVal = serverName
+        val serverDescVal = serverDescription
+
+        // Полная очистка sharedPreferences
+        sharedPreferences.edit().clear().apply()
+
+        // Восстанавливаем только адреса сервера
         sharedPreferences.edit().apply {
-            remove(KEY_USER_ID)
-            remove(KEY_USER_NAME)
-            remove(KEY_FIRST_NAME)
-            remove(KEY_LAST_NAME)
-            remove(KEY_DESCRIPTION)
-            remove(KEY_EMAIL)
-            remove(KEY_PICTURE_ID)
-            remove(KEY_PICTURE_FILE_ID)
-            remove(KEY_PICTURE_PREVIEW_FILE_ID)
-            remove(KEY_PICTURE_URL)
-            remove(KEY_PICTURE_PREVIEW_URL)
-            remove(KEY_PROFILE_PICTURE_URL)
-            remove(KEY_REGISTRATION_DATE)
+            if (beacon.isNotBlank()) putString(KEY_SOCKET_BEACON, beacon)
+            if (users.isNotBlank()) putString(KEY_SOCKET_USERS, users)
+            if (identity.isNotBlank()) putString(KEY_SOCKET_IDENTITY, identity)
+            if (files.isNotBlank()) putString(KEY_SOCKET_FILES, files)
+            if (messages.isNotBlank()) putString(KEY_SOCKET_MESSAGES, messages)
+            if (updates.isNotBlank()) putString(KEY_SOCKET_UPDATES, updates)
+            if (onliner.isNotBlank()) putString(KEY_SOCKET_ONLINER, onliner)
+            if (serverNameVal.isNotBlank()) putString(KEY_SERVER_NAME, serverNameVal)
+            if (serverDescVal.isNotBlank()) putString(KEY_SERVER_DESCRIPTION, serverDescVal)
         }.apply()
 
-        securePreferences.edit().apply {
-            remove(KEY_REFRESH_TOKEN)
-            remove(KEY_ACCESS_TOKEN)
-            remove(KEY_ACCESS_TOKEN_EXPIRATION)
-            remove(KEY_REFRESH_TOKEN_EXPIRATION)
-        }.apply()
+        // Полная очистка зашифрованных настроек (токены)
+        securePreferences.edit().clear().apply()
     }
 
     companion object {
