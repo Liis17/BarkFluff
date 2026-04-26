@@ -11,10 +11,6 @@ import Nuke
 import NukeUI
 import BFCore
 
-// MARK: - Shared Image Pipeline
-
-/// Глобальный pipeline для изображений с кэшированием
-let sharedImagePipeline = ImagePipeline.shared
 
 struct AttachmentGridView: View {
     let attachments: [MessageAttachment]
@@ -181,15 +177,15 @@ struct CachedImageURLView: View {
     let fileService: FileServiceProtocol
     let onTap: () -> Void
 
-    /// Кэш URL по fileID (статический для сохранения между перерисовками)
-    @State private var cachedURL: URL?
+    @Environment(DependencyContainer.self) private var container
+    @State private var imageRequest: ImageRequest?
     @State private var isLoading = true
     @State private var hasError = false
 
     var body: some View {
         Group {
-            if let url = cachedURL {
-                LazyImage(url: url) { state in
+            if let request = imageRequest {
+                LazyImage(request: request) { state in
                     if let image = state.image {
                         image
                             .resizable()
@@ -201,6 +197,7 @@ struct CachedImageURLView: View {
                     }
                 }
                 .processors([.resize(size: targetSize)])
+                .pipeline(container.imagePipeline)
             } else if isLoading {
                 loadingPlaceholder
             } else {
@@ -217,18 +214,12 @@ struct CachedImageURLView: View {
     }
 
     private func loadURL() async {
-        // Сначала проверяем статический кэш
-        if let cached = URLCache.shared.cachedURL(fileID: fileID) {
-            cachedURL = cached
-            isLoading = false
-            return
-        }
-
+        isLoading = true
+        hasError = false
         do {
             let urlString = try await fileService.getDownloadURL(fileID: fileID)
             if let url = URL(string: urlString) {
-                cachedURL = url
-                URLCache.shared.storeURL(url, for: fileID)
+                imageRequest = ImageRequest(url: url, userInfo: [.imageIdKey: fileID])
             }
         } catch {
             hasError = true
@@ -252,27 +243,6 @@ struct CachedImageURLView: View {
                     .font(.largeTitle)
                     .foregroundStyle(.secondary)
             }
-    }
-}
-
-// MARK: - Simple URL Cache
-
-/// Простой кэш для URL по fileID
-private class URLCache {
-    static let shared = URLCache()
-    private var cache: [String: URL] = [:]
-    private let lock = NSLock()
-
-    func cachedURL(fileID: String) -> URL? {
-        lock.lock()
-        defer { lock.unlock() }
-        return cache[fileID]
-    }
-
-    func storeURL(_ url: URL, for fileID: String) {
-        lock.lock()
-        defer { lock.unlock() }
-        cache[fileID] = url
     }
 }
 

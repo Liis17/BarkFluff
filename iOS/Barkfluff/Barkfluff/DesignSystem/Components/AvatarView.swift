@@ -7,6 +7,8 @@
 
 import SwiftUI
 import BFCore
+import NukeUI
+import Nuke
 
 struct AvatarView: View {
     let imageURL: String?
@@ -18,6 +20,7 @@ struct AvatarView: View {
     @Environment(DependencyContainer.self) private var container
 
     @State private var resolvedURL: URL?
+    @State private var fileID: String?
 
     init(imageURL: String? = nil, initials: String, size: CGFloat = 40, isOnline: Bool = false, showOnlineIndicator: Bool = false) {
         self.imageURL = imageURL
@@ -31,18 +34,22 @@ struct AvatarView: View {
         ZStack(alignment: .bottomTrailing) {
             Group {
                 if let url = resolvedURL {
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .success(let image):
+                    let request: ImageRequest = {
+                        if let id = fileID {
+                            return ImageRequest(url: url, userInfo: [.imageIdKey: id])
+                        }
+                        return ImageRequest(url: url)
+                    }()
+                    LazyImage(request: request) { state in
+                        if let image = state.image {
                             image
                                 .resizable()
                                 .aspectRatio(contentMode: .fill)
-                        case .failure, .empty:
-                            placeholderView
-                        @unknown default:
+                        } else {
                             placeholderView
                         }
                     }
+                    .pipeline(container.imagePipeline)
                 } else {
                     placeholderView
                 }
@@ -71,21 +78,25 @@ struct AvatarView: View {
     private func resolveURL() async {
         guard let imageURL = imageURL, !imageURL.isEmpty else {
             resolvedURL = nil
+            fileID = nil
             return
         }
 
         // Если это валидный URL — используем напрямую
         if let url = URL(string: imageURL), url.scheme != nil {
             resolvedURL = url
+            fileID = nil
             return
         }
 
-        // Иначе пытаемся получить URL через fileService (это fileID)
+        // Иначе это fileID — получаем URL через fileService (использует FileURLCache)
         do {
             let urlString = try await container.fileService.getDownloadURL(fileID: imageURL)
             resolvedURL = URL(string: urlString)
+            fileID = imageURL
         } catch {
             resolvedURL = nil
+            fileID = nil
         }
     }
 

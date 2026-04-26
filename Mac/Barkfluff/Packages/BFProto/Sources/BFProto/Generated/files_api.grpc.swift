@@ -68,12 +68,32 @@ public enum Barkfluff_Files_FilesApi: Sendable {
                 method: "GetUserStorageInfo"
             )
         }
+        /// Namespace for "ListStickerPacks" metadata.
+        public enum ListStickerPacks: Sendable {
+            public typealias Input = Barkfluff_Files_ListStickerPacksRequest
+            public typealias Output = Barkfluff_Files_ListStickerPacksResponse
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesApi"),
+                method: "ListStickerPacks"
+            )
+        }
+        /// Namespace for "GetStickerPack" metadata.
+        public enum GetStickerPack: Sendable {
+            public typealias Input = Barkfluff_Files_GetStickerPackRequest
+            public typealias Output = Barkfluff_Files_GetStickerPackResponse
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesApi"),
+                method: "GetStickerPack"
+            )
+        }
         /// Descriptors for all methods in the "barkfluff.files.FilesApi" service.
         public static let descriptors: [GRPCCore.MethodDescriptor] = [
             GetUploadUrl.descriptor,
             GetTempDownloadUrl.descriptor,
             CheckFileHash.descriptor,
-            GetUserStorageInfo.descriptor
+            GetUserStorageInfo.descriptor,
+            ListStickerPacks.descriptor,
+            GetStickerPack.descriptor
         ]
     }
 }
@@ -183,6 +203,22 @@ extension Barkfluff_Files_FilesApi {
             deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_GetUserStorageInfoResponse>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_GetUserStorageInfoResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        func listStickerPacks<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Files_ListStickerPacksRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_ListStickerPacksRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_ListStickerPacksResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_ListStickerPacksResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        func getStickerPack<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Files_GetStickerPackRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_GetStickerPackRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_GetStickerPackResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_GetStickerPackResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
     }
 
@@ -337,6 +373,44 @@ extension Barkfluff_Files_FilesApi {
                 onResponse: handleResponse
             )
         }
+
+        public func listStickerPacks<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Files_ListStickerPacksRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_ListStickerPacksRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_ListStickerPacksResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_ListStickerPacksResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Files_FilesApi.Method.ListStickerPacks.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        public func getStickerPack<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Files_GetStickerPackRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_GetStickerPackRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_GetStickerPackResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_GetStickerPackResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Files_FilesApi.Method.GetStickerPack.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
     }
 }
 
@@ -454,6 +528,38 @@ extension Barkfluff_Files_FilesApi.ClientProtocol {
             request: request,
             serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Files_GetUserStorageInfoRequest>(),
             deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Files_GetUserStorageInfoResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func listStickerPacks<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Files_ListStickerPacksRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_ListStickerPacksResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.listStickerPacks(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Files_ListStickerPacksRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Files_ListStickerPacksResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func getStickerPack<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Files_GetStickerPackRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_GetStickerPackResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.getStickerPack(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Files_GetStickerPackRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Files_GetStickerPackResponse>(),
             options: options,
             onResponse: handleResponse
         )
@@ -594,6 +700,44 @@ extension Barkfluff_Files_FilesApi.ClientProtocol {
             onResponse: handleResponse
         )
     }
+
+    public func listStickerPacks<Result>(
+        _ message: Barkfluff_Files_ListStickerPacksRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_ListStickerPacksResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Files_ListStickerPacksRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.listStickerPacks(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func getStickerPack<Result>(
+        _ message: Barkfluff_Files_GetStickerPackRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_GetStickerPackResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Files_GetStickerPackRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.getStickerPack(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
 }
 
 // MARK: - barkfluff.files.FilesServerApi
@@ -641,11 +785,131 @@ public enum Barkfluff_Files_FilesServerApi: Sendable {
                 method: "UploadBadgeImage"
             )
         }
+        /// Namespace for "GetUserStorageInfoServer" metadata.
+        public enum GetUserStorageInfoServer: Sendable {
+            public typealias Input = Barkfluff_Files_GetUserStorageInfoServerRequest
+            public typealias Output = Barkfluff_Files_GetUserStorageInfoResponse
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesServerApi"),
+                method: "GetUserStorageInfoServer"
+            )
+        }
+        /// Namespace for "UploadAvatarServer" metadata.
+        public enum UploadAvatarServer: Sendable {
+            public typealias Input = Barkfluff_Files_UploadAvatarServerRequest
+            public typealias Output = Barkfluff_Files_UploadAvatarServerResponse
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesServerApi"),
+                method: "UploadAvatarServer"
+            )
+        }
+        /// Namespace for "CreateStickerPack" metadata.
+        public enum CreateStickerPack: Sendable {
+            public typealias Input = Barkfluff_Files_CreateStickerPackRequest
+            public typealias Output = Barkfluff_Files_CreateStickerPackResponse
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesServerApi"),
+                method: "CreateStickerPack"
+            )
+        }
+        /// Namespace for "UpdateStickerPack" metadata.
+        public enum UpdateStickerPack: Sendable {
+            public typealias Input = Barkfluff_Files_UpdateStickerPackRequest
+            public typealias Output = Barkfluff_Files_UpdateStickerPackResponse
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesServerApi"),
+                method: "UpdateStickerPack"
+            )
+        }
+        /// Namespace for "DeleteStickerPack" metadata.
+        public enum DeleteStickerPack: Sendable {
+            public typealias Input = Barkfluff_Files_DeleteStickerPackRequest
+            public typealias Output = Barkfluff_Files_DeleteStickerPackResponse
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesServerApi"),
+                method: "DeleteStickerPack"
+            )
+        }
+        /// Namespace for "ListStickerPacks" metadata (server).
+        public enum ListStickerPacks: Sendable {
+            public typealias Input = Barkfluff_Files_ListStickerPacksRequest
+            public typealias Output = Barkfluff_Files_ListStickerPacksResponse
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesServerApi"),
+                method: "ListStickerPacks"
+            )
+        }
+        /// Namespace for "GetStickerPack" metadata (server).
+        public enum GetStickerPack: Sendable {
+            public typealias Input = Barkfluff_Files_GetStickerPackRequest
+            public typealias Output = Barkfluff_Files_GetStickerPackResponse
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesServerApi"),
+                method: "GetStickerPack"
+            )
+        }
+        /// Namespace for "AddSticker" metadata.
+        public enum AddSticker: Sendable {
+            public typealias Input = Barkfluff_Files_AddStickerRequest
+            public typealias Output = Barkfluff_Files_AddStickerResponse
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesServerApi"),
+                method: "AddSticker"
+            )
+        }
+        /// Namespace for "RemoveSticker" metadata.
+        public enum RemoveSticker: Sendable {
+            public typealias Input = Barkfluff_Files_RemoveStickerRequest
+            public typealias Output = Barkfluff_Files_RemoveStickerResponse
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesServerApi"),
+                method: "RemoveSticker"
+            )
+        }
+        /// Namespace for "UpdateSticker" metadata.
+        public enum UpdateSticker: Sendable {
+            public typealias Input = Barkfluff_Files_UpdateStickerRequest
+            public typealias Output = Barkfluff_Files_UpdateStickerResponse
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesServerApi"),
+                method: "UpdateSticker"
+            )
+        }
+        /// Namespace for "GetStickers" metadata.
+        public enum GetStickers: Sendable {
+            public typealias Input = Barkfluff_Files_GetStickersRequest
+            public typealias Output = Barkfluff_Files_GetStickersResponse
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesServerApi"),
+                method: "GetStickers"
+            )
+        }
+        /// Namespace for "UploadStickerImage" metadata.
+        public enum UploadStickerImage: Sendable {
+            public typealias Input = Barkfluff_Files_UploadStickerImageRequest
+            public typealias Output = Barkfluff_Files_UploadStickerImageResponse
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesServerApi"),
+                method: "UploadStickerImage"
+            )
+        }
         /// Descriptors for all methods in the "barkfluff.files.FilesServerApi" service.
         public static let descriptors: [GRPCCore.MethodDescriptor] = [
             GetFileData.descriptor,
             GetFilesData.descriptor,
-            UploadBadgeImage.descriptor
+            UploadBadgeImage.descriptor,
+            GetUserStorageInfoServer.descriptor,
+            UploadAvatarServer.descriptor,
+            CreateStickerPack.descriptor,
+            UpdateStickerPack.descriptor,
+            DeleteStickerPack.descriptor,
+            ListStickerPacks.descriptor,
+            GetStickerPack.descriptor,
+            AddSticker.descriptor,
+            RemoveSticker.descriptor,
+            UpdateSticker.descriptor,
+            GetStickers.descriptor,
+            UploadStickerImage.descriptor
         ]
     }
 }
@@ -732,6 +996,102 @@ extension Barkfluff_Files_FilesServerApi {
             deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_UploadBadgeImageResponse>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_UploadBadgeImageResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        func getUserStorageInfoServer<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Files_GetUserStorageInfoServerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_GetUserStorageInfoServerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_GetUserStorageInfoResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_GetUserStorageInfoResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        func uploadAvatarServer<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Files_UploadAvatarServerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_UploadAvatarServerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_UploadAvatarServerResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_UploadAvatarServerResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        func createStickerPack<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Files_CreateStickerPackRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_CreateStickerPackRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_CreateStickerPackResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_CreateStickerPackResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        func updateStickerPack<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Files_UpdateStickerPackRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_UpdateStickerPackRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_UpdateStickerPackResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_UpdateStickerPackResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        func deleteStickerPack<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Files_DeleteStickerPackRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_DeleteStickerPackRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_DeleteStickerPackResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_DeleteStickerPackResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        func listStickerPacks<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Files_ListStickerPacksRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_ListStickerPacksRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_ListStickerPacksResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_ListStickerPacksResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        func getStickerPack<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Files_GetStickerPackRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_GetStickerPackRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_GetStickerPackResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_GetStickerPackResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        func addSticker<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Files_AddStickerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_AddStickerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_AddStickerResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_AddStickerResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        func removeSticker<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Files_RemoveStickerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_RemoveStickerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_RemoveStickerResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_RemoveStickerResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        func updateSticker<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Files_UpdateStickerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_UpdateStickerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_UpdateStickerResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_UpdateStickerResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        func getStickers<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Files_GetStickersRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_GetStickersRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_GetStickersResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_GetStickersResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        func uploadStickerImage<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Files_UploadStickerImageRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_UploadStickerImageRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_UploadStickerImageResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_UploadStickerImageResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
     }
 
@@ -852,6 +1212,234 @@ extension Barkfluff_Files_FilesServerApi {
                 onResponse: handleResponse
             )
         }
+
+        public func getUserStorageInfoServer<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Files_GetUserStorageInfoServerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_GetUserStorageInfoServerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_GetUserStorageInfoResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_GetUserStorageInfoResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Files_FilesServerApi.Method.GetUserStorageInfoServer.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        public func uploadAvatarServer<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Files_UploadAvatarServerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_UploadAvatarServerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_UploadAvatarServerResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_UploadAvatarServerResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Files_FilesServerApi.Method.UploadAvatarServer.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        public func createStickerPack<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Files_CreateStickerPackRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_CreateStickerPackRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_CreateStickerPackResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_CreateStickerPackResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Files_FilesServerApi.Method.CreateStickerPack.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        public func updateStickerPack<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Files_UpdateStickerPackRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_UpdateStickerPackRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_UpdateStickerPackResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_UpdateStickerPackResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Files_FilesServerApi.Method.UpdateStickerPack.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        public func deleteStickerPack<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Files_DeleteStickerPackRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_DeleteStickerPackRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_DeleteStickerPackResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_DeleteStickerPackResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Files_FilesServerApi.Method.DeleteStickerPack.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        public func listStickerPacks<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Files_ListStickerPacksRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_ListStickerPacksRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_ListStickerPacksResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_ListStickerPacksResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Files_FilesServerApi.Method.ListStickerPacks.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        public func getStickerPack<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Files_GetStickerPackRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_GetStickerPackRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_GetStickerPackResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_GetStickerPackResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Files_FilesServerApi.Method.GetStickerPack.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        public func addSticker<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Files_AddStickerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_AddStickerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_AddStickerResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_AddStickerResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Files_FilesServerApi.Method.AddSticker.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        public func removeSticker<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Files_RemoveStickerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_RemoveStickerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_RemoveStickerResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_RemoveStickerResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Files_FilesServerApi.Method.RemoveSticker.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        public func updateSticker<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Files_UpdateStickerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_UpdateStickerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_UpdateStickerResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_UpdateStickerResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Files_FilesServerApi.Method.UpdateSticker.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        public func getStickers<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Files_GetStickersRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_GetStickersRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_GetStickersResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_GetStickersResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Files_FilesServerApi.Method.GetStickers.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        public func uploadStickerImage<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Files_UploadStickerImageRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_UploadStickerImageRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Files_UploadStickerImageResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_UploadStickerImageResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Files_FilesServerApi.Method.UploadStickerImage.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
     }
 }
 
@@ -940,6 +1528,198 @@ extension Barkfluff_Files_FilesServerApi.ClientProtocol {
             request: request,
             serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Files_UploadBadgeImageRequest>(),
             deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Files_UploadBadgeImageResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func getUserStorageInfoServer<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Files_GetUserStorageInfoServerRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_GetUserStorageInfoResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.getUserStorageInfoServer(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Files_GetUserStorageInfoServerRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Files_GetUserStorageInfoResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func uploadAvatarServer<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Files_UploadAvatarServerRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_UploadAvatarServerResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.uploadAvatarServer(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Files_UploadAvatarServerRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Files_UploadAvatarServerResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func createStickerPack<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Files_CreateStickerPackRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_CreateStickerPackResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.createStickerPack(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Files_CreateStickerPackRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Files_CreateStickerPackResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func updateStickerPack<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Files_UpdateStickerPackRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_UpdateStickerPackResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.updateStickerPack(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Files_UpdateStickerPackRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Files_UpdateStickerPackResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func deleteStickerPack<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Files_DeleteStickerPackRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_DeleteStickerPackResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.deleteStickerPack(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Files_DeleteStickerPackRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Files_DeleteStickerPackResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func listStickerPacks<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Files_ListStickerPacksRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_ListStickerPacksResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.listStickerPacks(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Files_ListStickerPacksRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Files_ListStickerPacksResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func getStickerPack<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Files_GetStickerPackRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_GetStickerPackResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.getStickerPack(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Files_GetStickerPackRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Files_GetStickerPackResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func addSticker<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Files_AddStickerRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_AddStickerResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.addSticker(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Files_AddStickerRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Files_AddStickerResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func removeSticker<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Files_RemoveStickerRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_RemoveStickerResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.removeSticker(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Files_RemoveStickerRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Files_RemoveStickerResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func updateSticker<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Files_UpdateStickerRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_UpdateStickerResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.updateSticker(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Files_UpdateStickerRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Files_UpdateStickerResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func getStickers<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Files_GetStickersRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_GetStickersResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.getStickers(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Files_GetStickersRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Files_GetStickersResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func uploadStickerImage<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Files_UploadStickerImageRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_UploadStickerImageResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.uploadStickerImage(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Files_UploadStickerImageRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Files_UploadStickerImageResponse>(),
             options: options,
             onResponse: handleResponse
         )
@@ -1042,6 +1822,234 @@ extension Barkfluff_Files_FilesServerApi.ClientProtocol {
             metadata: metadata
         )
         return try await self.uploadBadgeImage(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func getUserStorageInfoServer<Result>(
+        _ message: Barkfluff_Files_GetUserStorageInfoServerRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_GetUserStorageInfoResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Files_GetUserStorageInfoServerRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.getUserStorageInfoServer(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func uploadAvatarServer<Result>(
+        _ message: Barkfluff_Files_UploadAvatarServerRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_UploadAvatarServerResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Files_UploadAvatarServerRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.uploadAvatarServer(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func createStickerPack<Result>(
+        _ message: Barkfluff_Files_CreateStickerPackRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_CreateStickerPackResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Files_CreateStickerPackRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.createStickerPack(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func updateStickerPack<Result>(
+        _ message: Barkfluff_Files_UpdateStickerPackRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_UpdateStickerPackResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Files_UpdateStickerPackRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.updateStickerPack(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func deleteStickerPack<Result>(
+        _ message: Barkfluff_Files_DeleteStickerPackRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_DeleteStickerPackResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Files_DeleteStickerPackRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.deleteStickerPack(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func listStickerPacks<Result>(
+        _ message: Barkfluff_Files_ListStickerPacksRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_ListStickerPacksResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Files_ListStickerPacksRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.listStickerPacks(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func getStickerPack<Result>(
+        _ message: Barkfluff_Files_GetStickerPackRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_GetStickerPackResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Files_GetStickerPackRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.getStickerPack(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func addSticker<Result>(
+        _ message: Barkfluff_Files_AddStickerRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_AddStickerResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Files_AddStickerRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.addSticker(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func removeSticker<Result>(
+        _ message: Barkfluff_Files_RemoveStickerRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_RemoveStickerResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Files_RemoveStickerRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.removeSticker(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func updateSticker<Result>(
+        _ message: Barkfluff_Files_UpdateStickerRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_UpdateStickerResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Files_UpdateStickerRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.updateSticker(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func getStickers<Result>(
+        _ message: Barkfluff_Files_GetStickersRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_GetStickersResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Files_GetStickersRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.getStickers(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func uploadStickerImage<Result>(
+        _ message: Barkfluff_Files_UploadStickerImageRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_UploadStickerImageResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Files_UploadStickerImageRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.uploadStickerImage(
             request: request,
             options: options,
             onResponse: handleResponse

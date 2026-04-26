@@ -38,6 +38,7 @@ public protocol IdentityRepositoryProtocol: Sendable {
     func resetPassword(email: String) async throws -> String
     func confirmResetPassword(codeID: String, code: String, newPassword: String) async throws
     func setPassword(password: String) async throws
+    func logout() async throws
 }
 
 // MARK: - Users

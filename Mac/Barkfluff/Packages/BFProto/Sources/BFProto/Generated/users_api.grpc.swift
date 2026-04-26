@@ -164,6 +164,78 @@ public enum Barkfluff_Users_UsersApi: Sendable {
                 method: "RenameDevice"
             )
         }
+        /// Namespace for "GetPrivacySettings" metadata.
+        public enum GetPrivacySettings: Sendable {
+            /// Request type for "GetPrivacySettings".
+            public typealias Input = Barkfluff_Users_GetPrivacySettingsRequest
+            /// Response type for "GetPrivacySettings".
+            public typealias Output = Barkfluff_Users_GetPrivacySettingsResponse
+            /// Descriptor for "GetPrivacySettings".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
+                method: "GetPrivacySettings"
+            )
+        }
+        /// Namespace for "UpdatePrivacySettings" metadata.
+        public enum UpdatePrivacySettings: Sendable {
+            /// Request type for "UpdatePrivacySettings".
+            public typealias Input = Barkfluff_Users_UpdatePrivacySettingsRequest
+            /// Response type for "UpdatePrivacySettings".
+            public typealias Output = Barkfluff_Users_UpdatePrivacySettingsResponse
+            /// Descriptor for "UpdatePrivacySettings".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
+                method: "UpdatePrivacySettings"
+            )
+        }
+        /// Namespace for "GetPersonalization" metadata.
+        public enum GetPersonalization: Sendable {
+            /// Request type for "GetPersonalization".
+            public typealias Input = Barkfluff_Users_GetPersonalizationRequest
+            /// Response type for "GetPersonalization".
+            public typealias Output = Barkfluff_Users_GetPersonalizationResponse
+            /// Descriptor for "GetPersonalization".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
+                method: "GetPersonalization"
+            )
+        }
+        /// Namespace for "UpdatePersonalization" metadata.
+        public enum UpdatePersonalization: Sendable {
+            /// Request type for "UpdatePersonalization".
+            public typealias Input = Barkfluff_Users_UpdatePersonalizationRequest
+            /// Response type for "UpdatePersonalization".
+            public typealias Output = Barkfluff_Users_UpdatePersonalizationResponse
+            /// Descriptor for "UpdatePersonalization".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
+                method: "UpdatePersonalization"
+            )
+        }
+        /// Namespace for "GetProfilePoster" metadata.
+        public enum GetProfilePoster: Sendable {
+            /// Request type for "GetProfilePoster".
+            public typealias Input = Barkfluff_Users_GetProfilePosterRequest
+            /// Response type for "GetProfilePoster".
+            public typealias Output = Barkfluff_Users_GetProfilePosterResponse
+            /// Descriptor for "GetProfilePoster".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
+                method: "GetProfilePoster"
+            )
+        }
+        /// Namespace for "SetProfilePoster" metadata.
+        public enum SetProfilePoster: Sendable {
+            /// Request type for "SetProfilePoster".
+            public typealias Input = Barkfluff_Users_SetProfilePosterRequest
+            /// Response type for "SetProfilePoster".
+            public typealias Output = Barkfluff_Users_SetProfilePosterResponse
+            /// Descriptor for "SetProfilePoster".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
+                method: "SetProfilePoster"
+            )
+        }
         /// Descriptors for all methods in the "barkfluff.users.UsersApi" service.
         public static let descriptors: [GRPCCore.MethodDescriptor] = [
             GetUser.descriptor,
@@ -177,7 +249,13 @@ public enum Barkfluff_Users_UsersApi: Sendable {
             GetUserBadges.descriptor,
             GetDevices.descriptor,
             GetCurrentDevice.descriptor,
-            RenameDevice.descriptor
+            RenameDevice.descriptor,
+            GetPrivacySettings.descriptor,
+            UpdatePrivacySettings.descriptor,
+            GetPersonalization.descriptor,
+            UpdatePersonalization.descriptor,
+            GetProfilePoster.descriptor,
+            SetProfilePoster.descriptor
         ]
     }
 }
@@ -471,6 +549,54 @@ extension Barkfluff_Users_UsersApi {
             deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_RenameDeviceResponse>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_RenameDeviceResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        func getPrivacySettings<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_GetPrivacySettingsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_GetPrivacySettingsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_GetPrivacySettingsResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_GetPrivacySettingsResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        func updatePrivacySettings<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_UpdatePrivacySettingsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_UpdatePrivacySettingsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_UpdatePrivacySettingsResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_UpdatePrivacySettingsResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        func getPersonalization<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_GetPersonalizationRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_GetPersonalizationRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_GetPersonalizationResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_GetPersonalizationResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        func updatePersonalization<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_UpdatePersonalizationRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_UpdatePersonalizationRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_UpdatePersonalizationResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_UpdatePersonalizationResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        func getProfilePoster<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_GetProfilePosterRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_GetProfilePosterRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_GetProfilePosterResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_GetProfilePosterResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        func setProfilePoster<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_SetProfilePosterRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_SetProfilePosterRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_SetProfilePosterResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_SetProfilePosterResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
     }
 
@@ -897,6 +1023,120 @@ extension Barkfluff_Users_UsersApi {
                 onResponse: handleResponse
             )
         }
+
+        public func getPrivacySettings<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_GetPrivacySettingsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_GetPrivacySettingsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_GetPrivacySettingsResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_GetPrivacySettingsResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Users_UsersApi.Method.GetPrivacySettings.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        public func updatePrivacySettings<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_UpdatePrivacySettingsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_UpdatePrivacySettingsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_UpdatePrivacySettingsResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_UpdatePrivacySettingsResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Users_UsersApi.Method.UpdatePrivacySettings.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        public func getPersonalization<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_GetPersonalizationRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_GetPersonalizationRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_GetPersonalizationResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_GetPersonalizationResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Users_UsersApi.Method.GetPersonalization.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        public func updatePersonalization<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_UpdatePersonalizationRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_UpdatePersonalizationRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_UpdatePersonalizationResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_UpdatePersonalizationResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Users_UsersApi.Method.UpdatePersonalization.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        public func getProfilePoster<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_GetProfilePosterRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_GetProfilePosterRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_GetProfilePosterResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_GetProfilePosterResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Users_UsersApi.Method.GetProfilePoster.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        public func setProfilePoster<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_SetProfilePosterRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_SetProfilePosterRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_SetProfilePosterResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_SetProfilePosterResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Users_UsersApi.Method.SetProfilePoster.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
     }
 }
 
@@ -1246,6 +1486,102 @@ extension Barkfluff_Users_UsersApi.ClientProtocol {
             request: request,
             serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Users_RenameDeviceRequest>(),
             deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Users_RenameDeviceResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func getPrivacySettings<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Users_GetPrivacySettingsRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_GetPrivacySettingsResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.getPrivacySettings(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Users_GetPrivacySettingsRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Users_GetPrivacySettingsResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func updatePrivacySettings<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Users_UpdatePrivacySettingsRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_UpdatePrivacySettingsResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.updatePrivacySettings(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Users_UpdatePrivacySettingsRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Users_UpdatePrivacySettingsResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func getPersonalization<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Users_GetPersonalizationRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_GetPersonalizationResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.getPersonalization(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Users_GetPersonalizationRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Users_GetPersonalizationResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func updatePersonalization<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Users_UpdatePersonalizationRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_UpdatePersonalizationResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.updatePersonalization(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Users_UpdatePersonalizationRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Users_UpdatePersonalizationResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func getProfilePoster<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Users_GetProfilePosterRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_GetProfilePosterResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.getProfilePoster(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Users_GetProfilePosterRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Users_GetProfilePosterResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func setProfilePoster<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Users_SetProfilePosterRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_SetProfilePosterResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.setProfilePoster(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Users_SetProfilePosterRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Users_SetProfilePosterResponse>(),
             options: options,
             onResponse: handleResponse
         )
@@ -1650,6 +1986,120 @@ extension Barkfluff_Users_UsersApi.ClientProtocol {
             onResponse: handleResponse
         )
     }
+
+    public func getPrivacySettings<Result>(
+        _ message: Barkfluff_Users_GetPrivacySettingsRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_GetPrivacySettingsResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Users_GetPrivacySettingsRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.getPrivacySettings(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func updatePrivacySettings<Result>(
+        _ message: Barkfluff_Users_UpdatePrivacySettingsRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_UpdatePrivacySettingsResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Users_UpdatePrivacySettingsRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.updatePrivacySettings(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func getPersonalization<Result>(
+        _ message: Barkfluff_Users_GetPersonalizationRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_GetPersonalizationResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Users_GetPersonalizationRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.getPersonalization(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func updatePersonalization<Result>(
+        _ message: Barkfluff_Users_UpdatePersonalizationRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_UpdatePersonalizationResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Users_UpdatePersonalizationRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.updatePersonalization(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func getProfilePoster<Result>(
+        _ message: Barkfluff_Users_GetProfilePosterRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_GetProfilePosterResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Users_GetProfilePosterRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.getProfilePoster(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func setProfilePoster<Result>(
+        _ message: Barkfluff_Users_SetProfilePosterRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_SetProfilePosterResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Users_SetProfilePosterRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.setProfilePoster(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
 }
 
 // MARK: - barkfluff.users.UsersServerApi
@@ -1913,6 +2363,18 @@ public enum Barkfluff_Users_UsersServerApi: Sendable {
                 method: "GetUserByUsername"
             )
         }
+        /// Namespace for "GetUserPrivacy" metadata.
+        public enum GetUserPrivacy: Sendable {
+            /// Request type for "GetUserPrivacy".
+            public typealias Input = Barkfluff_Users_GetUserPrivacyRequest
+            /// Response type for "GetUserPrivacy".
+            public typealias Output = Barkfluff_Users_GetUserPrivacyResponse
+            /// Descriptor for "GetUserPrivacy".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersServerApi"),
+                method: "GetUserPrivacy"
+            )
+        }
         /// Descriptors for all methods in the "barkfluff.users.UsersServerApi" service.
         public static let descriptors: [GRPCCore.MethodDescriptor] = [
             FindByLogin.descriptor,
@@ -1935,7 +2397,8 @@ public enum Barkfluff_Users_UsersServerApi: Sendable {
             RegisterDevice.descriptor,
             GetUserDevices.descriptor,
             DeleteUserDevice.descriptor,
-            GetUserByUsername.descriptor
+            GetUserByUsername.descriptor,
+            GetUserPrivacy.descriptor
         ]
     }
 }
@@ -2436,6 +2899,14 @@ extension Barkfluff_Users_UsersServerApi {
             deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_GetUserByUsernameResponse>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_GetUserByUsernameResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        func getUserPrivacy<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_GetUserPrivacyRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_GetUserPrivacyRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_GetUserPrivacyResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_GetUserPrivacyResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
     }
 
@@ -3168,6 +3639,25 @@ extension Barkfluff_Users_UsersServerApi {
                 onResponse: handleResponse
             )
         }
+
+        public func getUserPrivacy<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_GetUserPrivacyRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_GetUserPrivacyRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_GetUserPrivacyResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_GetUserPrivacyResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Users_UsersServerApi.Method.GetUserPrivacy.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
     }
 }
 
@@ -3778,6 +4268,22 @@ extension Barkfluff_Users_UsersServerApi.ClientProtocol {
             request: request,
             serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Users_GetUserByUsernameRequest>(),
             deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Users_GetUserByUsernameResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func getUserPrivacy<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Users_GetUserPrivacyRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_GetUserPrivacyResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.getUserPrivacy(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Users_GetUserPrivacyRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Users_GetUserPrivacyResponse>(),
             options: options,
             onResponse: handleResponse
         )
@@ -4474,6 +4980,25 @@ extension Barkfluff_Users_UsersServerApi.ClientProtocol {
             metadata: metadata
         )
         return try await self.getUserByUsername(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    public func getUserPrivacy<Result>(
+        _ message: Barkfluff_Users_GetUserPrivacyRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_GetUserPrivacyResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Users_GetUserPrivacyRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.getUserPrivacy(
             request: request,
             options: options,
             onResponse: handleResponse

@@ -110,6 +110,7 @@ public actor AuthService: AuthServiceProtocol {
     }
 
     public func logout() async {
+        try? await identityRepository.logout()
         await tokenProvider.clearAll()
         await connectionManager.shutdown()
     }

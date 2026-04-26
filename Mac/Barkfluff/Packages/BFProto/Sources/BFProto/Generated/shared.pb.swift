@@ -37,6 +37,15 @@ public enum Barkfluff_Shared_MessageAttachmentType: SwiftProtobuf.Enum, Swift.Ca
 
   /// Документ
   case document // = 4
+
+  /// Аудио
+  case audio // = 5
+
+  /// Голосовое сообщение
+  case voice // = 6
+
+  /// Стикер (WebP)
+  case sticker // = 7
   case UNRECOGNIZED(Int)
 
   public init() {
@@ -50,6 +59,9 @@ public enum Barkfluff_Shared_MessageAttachmentType: SwiftProtobuf.Enum, Swift.Ca
     case 2: self = .video
     case 3: self = .gif
     case 4: self = .document
+    case 5: self = .audio
+    case 6: self = .voice
+    case 7: self = .sticker
     default: self = .UNRECOGNIZED(rawValue)
     }
   }
@@ -61,6 +73,9 @@ public enum Barkfluff_Shared_MessageAttachmentType: SwiftProtobuf.Enum, Swift.Ca
     case .video: return 2
     case .gif: return 3
     case .document: return 4
+    case .audio: return 5
+    case .voice: return 6
+    case .sticker: return 7
     case .UNRECOGNIZED(let i): return i
     }
   }
@@ -72,6 +87,9 @@ public enum Barkfluff_Shared_MessageAttachmentType: SwiftProtobuf.Enum, Swift.Ca
     .video,
     .gif,
     .document,
+    .audio,
+    .voice,
+    .sticker,
   ]
 
 }
@@ -233,7 +251,7 @@ public struct Barkfluff_Shared_MessageAttachment: Sendable {
 fileprivate let _protobuf_package = "barkfluff.shared"
 
 extension Barkfluff_Shared_MessageAttachmentType: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0MESSAGE_ATTACHMENT_TYPE_UNKNOWN\0\u{1}IMAGE\0\u{1}VIDEO\0\u{1}GIF\0\u{1}DOCUMENT\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0MESSAGE_ATTACHMENT_TYPE_UNKNOWN\0\u{1}IMAGE\0\u{1}VIDEO\0\u{1}GIF\0\u{1}DOCUMENT\0\u{1}AUDIO\0\u{1}VOICE\0\u{1}STICKER\0")
 }
 
 extension Barkfluff_Shared_MessageContentType: SwiftProtobuf._ProtoNameProviding {

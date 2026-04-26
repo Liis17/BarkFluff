@@ -47,6 +47,7 @@ final class DependencyContainer {
     let chatCache: ChatCache
     let fileCacheService: FileCacheService
     let onlineStatusCache: OnlineStatusCache
+    let fileURLCache: FileURLCache
 
     // MARK: - Services (BFCore)
 
@@ -147,6 +148,7 @@ final class DependencyContainer {
         self.chatCache = ChatCache()
         self.fileCacheService = FileCacheService()
         self.onlineStatusCache = OnlineStatusCache()
+        self.fileURLCache = FileURLCache()
 
         // Streaming
         self.updatesStreamManager = UpdatesStreamManager(
@@ -177,7 +179,7 @@ final class DependencyContainer {
             userCache: userCache
         )
 
-        self.fileService = FileService(filesRepository: filesRepository)
+        self.fileService = FileService(filesRepository: filesRepository, fileURLCache: fileURLCache)
 
         self.updatesService = UpdatesService(
             updatesRepository: updatesRepository,
@@ -239,6 +241,7 @@ final class DependencyContainer {
         await chatCache.removeAll()
         await onlineStatusCache.removeAll()
         await fileCacheService.clearCache()
+        await fileURLCache.clear()
         await serverDiscoveryService.disconnect()
         currentUserID = 0
         currentUser = nil
