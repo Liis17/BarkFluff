@@ -74,11 +74,41 @@ class MessageAdapter(
         private const val VIEW_TYPE_RECEIVED = 2
         private const val VIEW_TYPE_DATE_SEPARATOR = 3
         private const val VIEW_TYPE_UNREAD_SEPARATOR = 4
+        private const val VIEW_TYPE_FOOTER = 5
+
+        private val FOOTER_ITEM = MessageItem(
+            messageId = Long.MIN_VALUE,
+            senderId = 0,
+            text = "",
+            timestamp = 0,
+            attachments = emptyList(),
+            type = MessageType.FOOTER
+        )
+    }
+
+    /** Удаляет все footer-элементы из списка и добавляет один в конец. */
+    private fun MutableList<MessageItem>.ensureFooter() {
+        removeAll { it.type == MessageType.FOOTER }
+        add(FOOTER_ITEM)
+    }
+
+    /** Переопределяем submitList — footer всегда в конце списка. */
+    override fun submitList(list: List<MessageItem>?) {
+        val mutable = (list ?: emptyList()).toMutableList()
+        mutable.ensureFooter()
+        super.submitList(mutable)
+    }
+
+    override fun submitList(list: List<MessageItem>?, commitCallback: Runnable?) {
+        val mutable = (list ?: emptyList()).toMutableList()
+        mutable.ensureFooter()
+        super.submitList(mutable, commitCallback)
     }
 
     override fun getItemViewType(position: Int): Int {
         val item = getItem(position)
         return when (item.type) {
+            MessageType.FOOTER -> VIEW_TYPE_FOOTER
             MessageType.DATE_SEPARATOR -> VIEW_TYPE_DATE_SEPARATOR
             MessageType.UNREAD_SEPARATOR -> VIEW_TYPE_UNREAD_SEPARATOR
             MessageType.MESSAGE -> if (item.senderId == currentUserId) VIEW_TYPE_SENT else VIEW_TYPE_RECEIVED
@@ -96,6 +126,10 @@ class MessageAdapter(
             VIEW_TYPE_UNREAD_SEPARATOR -> UnreadSeparatorViewHolder(
                 ItemMessageDateSeparatorBinding.inflate(LayoutInflater.from(parent.context), parent, false)
             )
+            VIEW_TYPE_FOOTER -> FooterViewHolder(
+                LayoutInflater.from(parent.context)
+                    .inflate(R.layout.item_message_footer, parent, false)
+            )
             else -> DateSeparatorViewHolder(
                 ItemMessageDateSeparatorBinding.inflate(LayoutInflater.from(parent.context), parent, false)
             )
@@ -109,10 +143,13 @@ class MessageAdapter(
             is ReceivedMessageViewHolder -> holder.bind(item)
             is DateSeparatorViewHolder -> holder.bind(item)
             is UnreadSeparatorViewHolder -> holder.bind(item)
+            is FooterViewHolder -> { /* спейсер, биндинг не нужен */ }
         }
     }
 
     // ─── Sent Message ViewHolder ───────────────────────────────────────────────
+
+    inner class FooterViewHolder(view: View) : RecyclerView.ViewHolder(view)
 
     inner class SentMessageViewHolder(
         private val binding: ItemMessageSentBinding
@@ -1237,17 +1274,21 @@ class MessageAdapter(
 
     class MessageDiffCallback : DiffUtil.ItemCallback<MessageItem>() {
         override fun areItemsTheSame(oldItem: MessageItem, newItem: MessageItem): Boolean {
+            if (oldItem.type == MessageType.FOOTER && newItem.type == MessageType.FOOTER) return true
+            if (oldItem.type == MessageType.FOOTER || newItem.type == MessageType.FOOTER) return false
             if (oldItem.type != newItem.type) return false
             if (oldItem.type == MessageType.UNREAD_SEPARATOR) return true
             return oldItem.messageId == newItem.messageId
         }
-        override fun areContentsTheSame(oldItem: MessageItem, newItem: MessageItem) = oldItem == newItem
+        override fun areContentsTheSame(oldItem: MessageItem, newItem: MessageItem) =
+            if (oldItem.type == MessageType.FOOTER && newItem.type == MessageType.FOOTER) true
+            else oldItem == newItem
     }
 }
 
 // ─── Data Classes & Enums ─────────────────────────────────────────────────────
 
-enum class MessageType { MESSAGE, DATE_SEPARATOR, UNREAD_SEPARATOR }
+enum class MessageType { MESSAGE, DATE_SEPARATOR, UNREAD_SEPARATOR, FOOTER }
 
 data class MessageItem(
     val messageId: Long,
