@@ -89,6 +89,16 @@ androidx.media3:media3-exoplayer:1.3.1
 androidx.media3:media3-ui:1.3.1
 ```
 
+## UI — Экран чата (ChatActivity + activity_chat.xml)
+
+- `activity_chat.xml`: ConstraintLayout, слои по z-order (снизу вверх):
+  1. `chatBackgroundImage` — фоновое изображение (ImageView на весь экран)
+  2. `chatDimOverlay` — оверлей затенения фона (View, `visibility=gone` при dim=0)
+  3. `messagesRecyclerView` + панели кнопок (с elevation)
+  4. `stickerPreviewOverlay` — поверх всего при предпросмотре стикера
+- **Затенение фона (`chatBackgroundDim`)**: применяется в `ChatActivity.applyDimOverlay()` при старте. Цвет оверлея — `android.R.attr.colorBackground` (фон окна из темы), что автоматически адаптируется к светлой/тёмной теме. Alpha = `dim% / 100 * 255`.
+- Аналогичная логика в превью `PersonalizationSettingsActivity.updatePreviewDim()`.
+
 ## gRPC Коды ошибок (из x-error-code trailer)
 
 | Исключение | ErrorCode |
