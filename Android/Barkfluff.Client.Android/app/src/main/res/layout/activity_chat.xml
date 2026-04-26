@@ -314,12 +314,12 @@
         app:layout_constraintBottom_toBottomOf="@id/inputRowBottom"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Поле ввода сообщения — между кнопками -->
+    <!-- Поле ввода сообщения — между кнопками, высота 48dp как у кнопок -->
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/messageInputLayout"
         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_height="48dp"
         android:layout_marginHorizontal="4dp"
         android:layout_marginBottom="8dp"
         android:elevation="4dp"
@@ -336,13 +336,14 @@
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/messageEditText"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:background="@null"
             android:hint="Сообщение"
             android:inputType="textMultiLine|textCapSentences"
             android:maxLines="4"
+            android:gravity="center_vertical"
             android:paddingHorizontal="16dp"
-            android:paddingVertical="10dp"
+            android:paddingVertical="0dp"
             android:textAppearance="?attr/textAppearanceBodyLarge" />
 
     </com.google.android.material.textfield.TextInputLayout>
