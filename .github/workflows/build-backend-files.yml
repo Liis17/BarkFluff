@@ -8,7 +8,6 @@ on:
     paths:
       - 'Backend/BarkFluff.Files/**'
       - 'Backend/BarkFluff.GrpcServer/**'
-      - 'Shared/BarkFluff.Proto/**'
       - 'Backend/rebuild.trigger'
   workflow_dispatch:
 

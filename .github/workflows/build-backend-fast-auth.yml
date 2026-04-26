@@ -9,7 +9,6 @@ on:
       - 'Backend/BarkFluff.FastAuth/**'
       - 'Backend/BarkFluff.Identity/**'
       - 'Backend/BarkFluff.GrpcServer/**'
-      - 'Shared/BarkFluff.Proto/**'
       - 'Backend/rebuild.trigger'
   workflow_dispatch:
 
