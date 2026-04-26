@@ -205,12 +205,15 @@ class ChatActivity : AppCompatActivity() {
         loadChatAvatar()
 
         // Кнопка назад
-        binding.toolbar.setNavigationOnClickListener {
+        binding.btnBack.setOnClickListener {
             finish()
         }
 
-        // Клик на контейнер с информацией о чате (аватар + имя) — открывает профиль
-        binding.chatInfoContainer.setOnClickListener {
+        // Кнопка меню (три точки) — пока ничего не делает
+        binding.btnMore.setOnClickListener { /* TODO: доп. меню */ }
+
+        // Клик на карточку с информацией о чате (аватар + имя) — открывает профиль
+        binding.chatInfoCard.setOnClickListener {
             startActivity(
                 UserProfileActivity.createIntent(
                     this,
