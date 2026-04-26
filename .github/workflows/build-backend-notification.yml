@@ -9,7 +9,6 @@ on:
       - 'Backend/BarkFluff.Notification/**'
       - 'Backend/BarkFluff.GrpcServer/**'
       - 'Shared/BarkFluff.Shared.Queue/**'
-      - 'Shared/BarkFluff.Proto/**'
       - 'Backend/rebuild.trigger'
   workflow_dispatch:
 

@@ -12,7 +12,6 @@ on:
       - 'Shared/BarkFluff.Shared.Exceptions/**'
       - 'Shared/BarkFluff.Shared.Identity/**'
       - 'Shared/BarkFluff.Shared.Queue/**'
-      - 'Shared/BarkFluff.Proto/**'
       - 'Backend/rebuild.trigger'
   workflow_dispatch:
 
