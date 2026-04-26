@@ -62,6 +62,17 @@ Package: `com.barkfluff.client`
 
 
 - `MessageAttachmentType`: Unknown, Image, Video, Gif, Document, Audio(4), Voice, Sticker; **AUDIO=5** (добавлен в shared.proto)
+## Система кеширования
+
+Подробная документация: `Android/Barkfluff.Client.Android/docs/CACHING_SYSTEM.md`
+
+Четыре слоя кеша:
+1. **Runtime URL-кэш** — `AvatarLoader.urlCache` (`ConcurrentHashMap<fileId, URL>`, in-memory)
+2. **Persistent URL-кэш** — `FileUrlCache` → SharedPreferences `"file_url_cache"` (SHA-256 keys)
+3. **gRPC-запрос** — `getFileDownloadUrl(fileId)` к Files API
+4. **Coil Image Cache** — memory (25% RAM) + disk `cacheDir/image_cache/` (10% storage), key=fileId
+
+Бинарные файлы (аудио/видео/документы):
 - `FileCache` (`utils/FileCache.kt`) — singleton disk cache, путь: `cacheDir/media_files/`
 - `AudioPlayerHelper` (`utils/AudioPlayerHelper.kt`) — MediaPlayer singleton, один аудио за раз
 - `ImageGridAdapter` (`adapter/ImageGridAdapter.kt`) — квадратная сетка с `SquareImageView`
