@@ -12,7 +12,6 @@ on:
       - 'Shared/BarkFluff.Shared.Exceptions/**'
       - 'Shared/BarkFluff.Shared.Auth/**'
       - 'Shared/BarkFluff.Shared.SecurityUtilities/**'
-      - 'Shared/BarkFluff.Proto/**'
   workflow_dispatch:
 
 permissions:
