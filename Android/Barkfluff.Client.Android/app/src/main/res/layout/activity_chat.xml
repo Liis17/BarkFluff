@@ -156,6 +156,19 @@
         app:layout_constraintEnd_toEndOf="parent" />
 
     <!-- ═══════════════════════════════════════════
+         ОВЕРЛЕЙ ЗАТЕНЕНИЯ ФОНА — поверх фона, под контентом
+         ═══════════════════════════════════════════ -->
+    <View
+        android:id="@+id/chatDimOverlay"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- ═══════════════════════════════════════════
          СПИСОК СООБЩЕНИЙ — на весь экран, под панелями
          paddingTop/Bottom = высота верхней/нижней панели
          ═══════════════════════════════════════════ -->
@@ -165,9 +178,9 @@
         android:layout_height="0dp"
         android:clipToPadding="false"
         android:paddingTop="72dp"
-        android:paddingBottom="72dp"
+        android:paddingBottom="8dp"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/inputRowBottom"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         tools:listitem="@layout/item_message_sent" />
@@ -196,7 +209,7 @@
         android:elevation="6dp"
         app:fabSize="mini"
         app:srcCompat="@drawable/ic_arrow_down"
-        app:layout_constraintBottom_toTopOf="@id/attachmentPreviewBar"
+        app:layout_constraintBottom_toTopOf="@id/inputRowBottom"
         app:layout_constraintEnd_toEndOf="parent" />
 
     <!-- ═══════════════════════════════════════════
