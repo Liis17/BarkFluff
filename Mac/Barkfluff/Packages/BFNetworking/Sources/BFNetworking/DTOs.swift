@@ -208,6 +208,9 @@ public enum UploadFileType: Sendable, Codable {
     case messageAttachmentGif
     case messageAttachmentDocument
     case chatPicture
+    case messageAttachmentAudio
+    case messageAttachmentVoice
+    case messageAttachmentSticker
 
     /// Определяет тип файла по расширению
     public static func from(extension ext: String) -> UploadFileType {

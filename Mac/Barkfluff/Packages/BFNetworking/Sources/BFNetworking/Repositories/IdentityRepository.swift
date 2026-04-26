@@ -222,4 +222,19 @@ public actor IdentityRepository: IdentityRepositoryProtocol {
     public func listOTP() async throws -> OTPStatus { throw BFNetworkingError.unknown("Not implemented") }
     public func resetPassword(email: String) async throws -> String { throw BFNetworkingError.unknown("Not implemented") }
     public func confirmResetPassword(codeID: String, code: String, newPassword: String) async throws {}
+
+    // MARK: - Logout (авторизованный)
+
+    public func logout() async throws {
+        let request = Barkfluff_Identity_LogoutRequest()
+
+        do {
+            try await connectionManager.withAuthorizedClient(for: .identity) { client in
+                let identityClient = Barkfluff_Identity_IdentityApi.Client(wrapping: client)
+                _ = try await identityClient.logout(request)
+            }
+        } catch let error as RPCError {
+            throw GRPCErrorMapper.map(error)
+        }
+    }
 }

@@ -42,6 +42,15 @@ public enum Barkfluff_Files_UploadFileType: SwiftProtobuf.Enum, Swift.CaseIterab
 
   /// Обложка группового чата
   case chatPicture // = 6
+
+  /// Вложение сообщения - аудио
+  case messageAttachmentAudio // = 7
+
+  /// Вложение сообщения - голосовое сообщение
+  case messageAttachmentVoice // = 8
+
+  /// Вложение сообщения - стикер (WebP)
+  case messageAttachmentSticker // = 9
   case UNRECOGNIZED(Int)
 
   public init() {
@@ -57,6 +66,9 @@ public enum Barkfluff_Files_UploadFileType: SwiftProtobuf.Enum, Swift.CaseIterab
     case 4: self = .messageAttachmentGif
     case 5: self = .messageAttachmentDocument
     case 6: self = .chatPicture
+    case 7: self = .messageAttachmentAudio
+    case 8: self = .messageAttachmentVoice
+    case 9: self = .messageAttachmentSticker
     default: self = .UNRECOGNIZED(rawValue)
     }
   }
@@ -70,6 +82,9 @@ public enum Barkfluff_Files_UploadFileType: SwiftProtobuf.Enum, Swift.CaseIterab
     case .messageAttachmentGif: return 4
     case .messageAttachmentDocument: return 5
     case .chatPicture: return 6
+    case .messageAttachmentAudio: return 7
+    case .messageAttachmentVoice: return 8
+    case .messageAttachmentSticker: return 9
     case .UNRECOGNIZED(let i): return i
     }
   }
@@ -83,6 +98,9 @@ public enum Barkfluff_Files_UploadFileType: SwiftProtobuf.Enum, Swift.CaseIterab
     .messageAttachmentGif,
     .messageAttachmentDocument,
     .chatPicture,
+    .messageAttachmentAudio,
+    .messageAttachmentVoice,
+    .messageAttachmentSticker,
   ]
 
 }
@@ -383,12 +401,237 @@ public struct Barkfluff_Files_GetUserStorageInfoResponse: Sendable {
   public init() {}
 }
 
+public struct Barkfluff_Files_GetUserStorageInfoServerRequest: Sendable {
+  public var userID: Int64 = 0
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+  public init() {}
+}
+
+public struct Barkfluff_Files_UploadAvatarServerRequest: Sendable {
+  public var imageData: Data = Data()
+  public var filename: String = String()
+  public var userID: Int64 = 0
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+  public init() {}
+}
+
+public struct Barkfluff_Files_UploadAvatarServerResponse: Sendable {
+  public var fileURL: String = String()
+  public var previewURL: String = String()
+  public var fileID: String = String()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+  public init() {}
+}
+
+public struct Barkfluff_Files_StickerPackInfo: Sendable {
+  public var id: String = String()
+  public var creatorUserID: Int64 = 0
+  public var coverStickerID: String = String()
+  public var name: String = String()
+  public var description_p: String = String()
+  public var createdAt: SwiftProtobuf.Google_Protobuf_Timestamp {
+    get {_createdAt ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
+    set {_createdAt = newValue}
+  }
+  public var hasCreatedAt: Bool {self._createdAt != nil}
+  public mutating func clearCreatedAt() {self._createdAt = nil}
+  public var stickerCount: Int32 = 0
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+  public init() {}
+  fileprivate var _createdAt: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
+}
+
+public struct Barkfluff_Files_StickerInfo: Sendable {
+  public var id: String = String()
+  public var stickerPackID: String = String()
+  public var fileID: String = String()
+  public var previewFileID: String = String()
+  public var emoji: String = String()
+  public var addedAt: SwiftProtobuf.Google_Protobuf_Timestamp {
+    get {_addedAt ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
+    set {_addedAt = newValue}
+  }
+  public var hasAddedAt: Bool {self._addedAt != nil}
+  public mutating func clearAddedAt() {self._addedAt = nil}
+  public var fileURL: String = String()
+  public var previewURL: String = String()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+  public init() {}
+  fileprivate var _addedAt: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
+}
+
+public struct Barkfluff_Files_CreateStickerPackRequest: Sendable {
+  public var creatorUserID: Int64 = 0
+  public var name: String = String()
+  public var description_p: String = String()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+  public init() {}
+}
+
+public struct Barkfluff_Files_CreateStickerPackResponse: Sendable {
+  public var pack: Barkfluff_Files_StickerPackInfo {
+    get {_pack ?? Barkfluff_Files_StickerPackInfo()}
+    set {_pack = newValue}
+  }
+  public var hasPack: Bool {self._pack != nil}
+  public mutating func clearPack() {self._pack = nil}
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+  public init() {}
+  fileprivate var _pack: Barkfluff_Files_StickerPackInfo? = nil
+}
+
+public struct Barkfluff_Files_UpdateStickerPackRequest: Sendable {
+  public var packID: String = String()
+  public var name: String = String()
+  public var description_p: String = String()
+  public var coverStickerID: String = String()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+  public init() {}
+}
+
+public struct Barkfluff_Files_UpdateStickerPackResponse: Sendable {
+  public var pack: Barkfluff_Files_StickerPackInfo {
+    get {_pack ?? Barkfluff_Files_StickerPackInfo()}
+    set {_pack = newValue}
+  }
+  public var hasPack: Bool {self._pack != nil}
+  public mutating func clearPack() {self._pack = nil}
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+  public init() {}
+  fileprivate var _pack: Barkfluff_Files_StickerPackInfo? = nil
+}
+
+public struct Barkfluff_Files_DeleteStickerPackRequest: Sendable {
+  public var packID: String = String()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+  public init() {}
+}
+
+public struct Barkfluff_Files_DeleteStickerPackResponse: Sendable {
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+  public init() {}
+}
+
+public struct Barkfluff_Files_ListStickerPacksRequest: Sendable {
+  public var pagination: Barkfluff_Shared_PageRequest {
+    get {_pagination ?? Barkfluff_Shared_PageRequest()}
+    set {_pagination = newValue}
+  }
+  public var hasPagination: Bool {self._pagination != nil}
+  public mutating func clearPagination() {self._pagination = nil}
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+  public init() {}
+  fileprivate var _pagination: Barkfluff_Shared_PageRequest? = nil
+}
+
+public struct Barkfluff_Files_ListStickerPacksResponse: Sendable {
+  public var packs: [Barkfluff_Files_StickerPackInfo] = []
+  public var totalCount: Int32 = 0
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+  public init() {}
+}
+
+public struct Barkfluff_Files_GetStickerPackRequest: Sendable {
+  public var packID: String = String()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+  public init() {}
+}
+
+public struct Barkfluff_Files_GetStickerPackResponse: Sendable {
+  public var pack: Barkfluff_Files_StickerPackInfo {
+    get {_pack ?? Barkfluff_Files_StickerPackInfo()}
+    set {_pack = newValue}
+  }
+  public var hasPack: Bool {self._pack != nil}
+  public mutating func clearPack() {self._pack = nil}
+  public var stickers: [Barkfluff_Files_StickerInfo] = []
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+  public init() {}
+  fileprivate var _pack: Barkfluff_Files_StickerPackInfo? = nil
+}
+
+public struct Barkfluff_Files_AddStickerRequest: Sendable {
+  public var packID: String = String()
+  public var fileID: String = String()
+  public var emoji: String = String()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+  public init() {}
+}
+
+public struct Barkfluff_Files_AddStickerResponse: Sendable {
+  public var sticker: Barkfluff_Files_StickerInfo {
+    get {_sticker ?? Barkfluff_Files_StickerInfo()}
+    set {_sticker = newValue}
+  }
+  public var hasSticker: Bool {self._sticker != nil}
+  public mutating func clearSticker() {self._sticker = nil}
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+  public init() {}
+  fileprivate var _sticker: Barkfluff_Files_StickerInfo? = nil
+}
+
+public struct Barkfluff_Files_RemoveStickerRequest: Sendable {
+  public var stickerID: String = String()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+  public init() {}
+}
+
+public struct Barkfluff_Files_RemoveStickerResponse: Sendable {
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+  public init() {}
+}
+
+public struct Barkfluff_Files_UpdateStickerRequest: Sendable {
+  public var stickerID: String = String()
+  public var emoji: String = String()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+  public init() {}
+}
+
+public struct Barkfluff_Files_UpdateStickerResponse: Sendable {
+  public var sticker: Barkfluff_Files_StickerInfo {
+    get {_sticker ?? Barkfluff_Files_StickerInfo()}
+    set {_sticker = newValue}
+  }
+  public var hasSticker: Bool {self._sticker != nil}
+  public mutating func clearSticker() {self._sticker = nil}
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+  public init() {}
+  fileprivate var _sticker: Barkfluff_Files_StickerInfo? = nil
+}
+
+public struct Barkfluff_Files_GetStickersRequest: Sendable {
+  public var stickerIds: [String] = []
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+  public init() {}
+}
+
+public struct Barkfluff_Files_GetStickersResponse: Sendable {
+  public var stickers: [Barkfluff_Files_StickerInfo] = []
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+  public init() {}
+}
+
+public struct Barkfluff_Files_UploadStickerImageRequest: Sendable {
+  public var imageData: Data = Data()
+  public var filename: String = String()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+  public init() {}
+}
+
+public struct Barkfluff_Files_UploadStickerImageResponse: Sendable {
+  public var fileID: String = String()
+  public var fileURL: String = String()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate let _protobuf_package = "barkfluff.files"
 
 extension Barkfluff_Files_UploadFileType: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0UPLOAD_FILE_TYPE_UNKNOWN\0\u{1}USER_AVATAR\0\u{1}MESSAGE_ATTACHMENT_IMAGE\0\u{1}MESSAGE_ATTACHMENT_VIDEO\0\u{1}MESSAGE_ATTACHMENT_GIF\0\u{1}MESSAGE_ATTACHMENT_DOCUMENT\0\u{1}CHAT_PICTURE\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0UPLOAD_FILE_TYPE_UNKNOWN\0\u{1}USER_AVATAR\0\u{1}MESSAGE_ATTACHMENT_IMAGE\0\u{1}MESSAGE_ATTACHMENT_VIDEO\0\u{1}MESSAGE_ATTACHMENT_GIF\0\u{1}MESSAGE_ATTACHMENT_DOCUMENT\0\u{1}CHAT_PICTURE\0\u{1}MESSAGE_ATTACHMENT_AUDIO\0\u{1}MESSAGE_ATTACHMENT_VOICE\0\u{1}MESSAGE_ATTACHMENT_STICKER\0")
 }
 
 extension Barkfluff_Files_GetTempDownloadUrlRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
@@ -983,6 +1226,812 @@ extension Barkfluff_Files_GetUserStorageInfoResponse.StorageByType: SwiftProtobu
   public static func ==(lhs: Barkfluff_Files_GetUserStorageInfoResponse.StorageByType, rhs: Barkfluff_Files_GetUserStorageInfoResponse.StorageByType) -> Bool {
     if lhs.fileType != rhs.fileType {return false}
     if lhs.usedStorage != rhs.usedStorage {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Files_GetUserStorageInfoServerRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".GetUserStorageInfoServerRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}user_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt64Field(value: &self.userID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.userID != 0 {
+      try visitor.visitSingularInt64Field(value: self.userID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Files_GetUserStorageInfoServerRequest, rhs: Barkfluff_Files_GetUserStorageInfoServerRequest) -> Bool {
+    if lhs.userID != rhs.userID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Files_UploadAvatarServerRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UploadAvatarServerRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}image_data\0\u{1}filename\0\u{3}user_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBytesField(value: &self.imageData) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.filename) }()
+      case 3: try { try decoder.decodeSingularInt64Field(value: &self.userID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.imageData.isEmpty {
+      try visitor.visitSingularBytesField(value: self.imageData, fieldNumber: 1)
+    }
+    if !self.filename.isEmpty {
+      try visitor.visitSingularStringField(value: self.filename, fieldNumber: 2)
+    }
+    if self.userID != 0 {
+      try visitor.visitSingularInt64Field(value: self.userID, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Files_UploadAvatarServerRequest, rhs: Barkfluff_Files_UploadAvatarServerRequest) -> Bool {
+    if lhs.imageData != rhs.imageData {return false}
+    if lhs.filename != rhs.filename {return false}
+    if lhs.userID != rhs.userID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Files_UploadAvatarServerResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UploadAvatarServerResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}file_url\0\u{3}preview_url\0\u{3}file_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.fileURL) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.previewURL) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.fileID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.fileURL.isEmpty {
+      try visitor.visitSingularStringField(value: self.fileURL, fieldNumber: 1)
+    }
+    if !self.previewURL.isEmpty {
+      try visitor.visitSingularStringField(value: self.previewURL, fieldNumber: 2)
+    }
+    if !self.fileID.isEmpty {
+      try visitor.visitSingularStringField(value: self.fileID, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Files_UploadAvatarServerResponse, rhs: Barkfluff_Files_UploadAvatarServerResponse) -> Bool {
+    if lhs.fileURL != rhs.fileURL {return false}
+    if lhs.previewURL != rhs.previewURL {return false}
+    if lhs.fileID != rhs.fileID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Files_StickerPackInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".StickerPackInfo"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{3}creator_user_id\0\u{3}cover_sticker_id\0\u{1}name\0\u{1}description\0\u{3}created_at\0\u{3}sticker_count\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      case 2: try { try decoder.decodeSingularInt64Field(value: &self.creatorUserID) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.coverStickerID) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.name) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.description_p) }()
+      case 6: try { try decoder.decodeSingularMessageField(value: &self._createdAt) }()
+      case 7: try { try decoder.decodeSingularInt32Field(value: &self.stickerCount) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
+    }
+    if self.creatorUserID != 0 {
+      try visitor.visitSingularInt64Field(value: self.creatorUserID, fieldNumber: 2)
+    }
+    if !self.coverStickerID.isEmpty {
+      try visitor.visitSingularStringField(value: self.coverStickerID, fieldNumber: 3)
+    }
+    if !self.name.isEmpty {
+      try visitor.visitSingularStringField(value: self.name, fieldNumber: 4)
+    }
+    if !self.description_p.isEmpty {
+      try visitor.visitSingularStringField(value: self.description_p, fieldNumber: 5)
+    }
+    try { if let v = self._createdAt {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
+    } }()
+    if self.stickerCount != 0 {
+      try visitor.visitSingularInt32Field(value: self.stickerCount, fieldNumber: 7)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Files_StickerPackInfo, rhs: Barkfluff_Files_StickerPackInfo) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs.creatorUserID != rhs.creatorUserID {return false}
+    if lhs.coverStickerID != rhs.coverStickerID {return false}
+    if lhs.name != rhs.name {return false}
+    if lhs.description_p != rhs.description_p {return false}
+    if lhs._createdAt != rhs._createdAt {return false}
+    if lhs.stickerCount != rhs.stickerCount {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Files_StickerInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".StickerInfo"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{3}sticker_pack_id\0\u{3}file_id\0\u{3}preview_file_id\0\u{1}emoji\0\u{3}added_at\0\u{3}file_url\0\u{3}preview_url\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.stickerPackID) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.fileID) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.previewFileID) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.emoji) }()
+      case 6: try { try decoder.decodeSingularMessageField(value: &self._addedAt) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self.fileURL) }()
+      case 8: try { try decoder.decodeSingularStringField(value: &self.previewURL) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
+    }
+    if !self.stickerPackID.isEmpty {
+      try visitor.visitSingularStringField(value: self.stickerPackID, fieldNumber: 2)
+    }
+    if !self.fileID.isEmpty {
+      try visitor.visitSingularStringField(value: self.fileID, fieldNumber: 3)
+    }
+    if !self.previewFileID.isEmpty {
+      try visitor.visitSingularStringField(value: self.previewFileID, fieldNumber: 4)
+    }
+    if !self.emoji.isEmpty {
+      try visitor.visitSingularStringField(value: self.emoji, fieldNumber: 5)
+    }
+    try { if let v = self._addedAt {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
+    } }()
+    if !self.fileURL.isEmpty {
+      try visitor.visitSingularStringField(value: self.fileURL, fieldNumber: 7)
+    }
+    if !self.previewURL.isEmpty {
+      try visitor.visitSingularStringField(value: self.previewURL, fieldNumber: 8)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Files_StickerInfo, rhs: Barkfluff_Files_StickerInfo) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs.stickerPackID != rhs.stickerPackID {return false}
+    if lhs.fileID != rhs.fileID {return false}
+    if lhs.previewFileID != rhs.previewFileID {return false}
+    if lhs.emoji != rhs.emoji {return false}
+    if lhs._addedAt != rhs._addedAt {return false}
+    if lhs.fileURL != rhs.fileURL {return false}
+    if lhs.previewURL != rhs.previewURL {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Files_CreateStickerPackRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CreateStickerPackRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}creator_user_id\0\u{1}name\0\u{1}description\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt64Field(value: &self.creatorUserID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.name) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.description_p) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.creatorUserID != 0 {
+      try visitor.visitSingularInt64Field(value: self.creatorUserID, fieldNumber: 1)
+    }
+    if !self.name.isEmpty {
+      try visitor.visitSingularStringField(value: self.name, fieldNumber: 2)
+    }
+    if !self.description_p.isEmpty {
+      try visitor.visitSingularStringField(value: self.description_p, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Files_CreateStickerPackRequest, rhs: Barkfluff_Files_CreateStickerPackRequest) -> Bool {
+    if lhs.creatorUserID != rhs.creatorUserID {return false}
+    if lhs.name != rhs.name {return false}
+    if lhs.description_p != rhs.description_p {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Files_CreateStickerPackResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CreateStickerPackResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}pack\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._pack) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try { if let v = self._pack {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Files_CreateStickerPackResponse, rhs: Barkfluff_Files_CreateStickerPackResponse) -> Bool {
+    if lhs._pack != rhs._pack {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Files_UpdateStickerPackRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UpdateStickerPackRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}pack_id\0\u{1}name\0\u{1}description\0\u{3}cover_sticker_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.packID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.name) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.description_p) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.coverStickerID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.packID.isEmpty {
+      try visitor.visitSingularStringField(value: self.packID, fieldNumber: 1)
+    }
+    if !self.name.isEmpty {
+      try visitor.visitSingularStringField(value: self.name, fieldNumber: 2)
+    }
+    if !self.description_p.isEmpty {
+      try visitor.visitSingularStringField(value: self.description_p, fieldNumber: 3)
+    }
+    if !self.coverStickerID.isEmpty {
+      try visitor.visitSingularStringField(value: self.coverStickerID, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Files_UpdateStickerPackRequest, rhs: Barkfluff_Files_UpdateStickerPackRequest) -> Bool {
+    if lhs.packID != rhs.packID {return false}
+    if lhs.name != rhs.name {return false}
+    if lhs.description_p != rhs.description_p {return false}
+    if lhs.coverStickerID != rhs.coverStickerID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Files_UpdateStickerPackResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UpdateStickerPackResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}pack\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._pack) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try { if let v = self._pack {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Files_UpdateStickerPackResponse, rhs: Barkfluff_Files_UpdateStickerPackResponse) -> Bool {
+    if lhs._pack != rhs._pack {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Files_DeleteStickerPackRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DeleteStickerPackRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}pack_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.packID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.packID.isEmpty {
+      try visitor.visitSingularStringField(value: self.packID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Files_DeleteStickerPackRequest, rhs: Barkfluff_Files_DeleteStickerPackRequest) -> Bool {
+    if lhs.packID != rhs.packID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Files_DeleteStickerPackResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DeleteStickerPackResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Files_DeleteStickerPackResponse, rhs: Barkfluff_Files_DeleteStickerPackResponse) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Files_ListStickerPacksRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ListStickerPacksRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}pagination\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._pagination) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try { if let v = self._pagination {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Files_ListStickerPacksRequest, rhs: Barkfluff_Files_ListStickerPacksRequest) -> Bool {
+    if lhs._pagination != rhs._pagination {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Files_ListStickerPacksResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ListStickerPacksResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}packs\0\u{3}total_count\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.packs) }()
+      case 2: try { try decoder.decodeSingularInt32Field(value: &self.totalCount) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.packs.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.packs, fieldNumber: 1)
+    }
+    if self.totalCount != 0 {
+      try visitor.visitSingularInt32Field(value: self.totalCount, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Files_ListStickerPacksResponse, rhs: Barkfluff_Files_ListStickerPacksResponse) -> Bool {
+    if lhs.packs != rhs.packs {return false}
+    if lhs.totalCount != rhs.totalCount {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Files_GetStickerPackRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".GetStickerPackRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}pack_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.packID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.packID.isEmpty {
+      try visitor.visitSingularStringField(value: self.packID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Files_GetStickerPackRequest, rhs: Barkfluff_Files_GetStickerPackRequest) -> Bool {
+    if lhs.packID != rhs.packID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Files_GetStickerPackResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".GetStickerPackResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}pack\0\u{1}stickers\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._pack) }()
+      case 2: try { try decoder.decodeRepeatedMessageField(value: &self.stickers) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try { if let v = self._pack {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    if !self.stickers.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.stickers, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Files_GetStickerPackResponse, rhs: Barkfluff_Files_GetStickerPackResponse) -> Bool {
+    if lhs._pack != rhs._pack {return false}
+    if lhs.stickers != rhs.stickers {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Files_AddStickerRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".AddStickerRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}pack_id\0\u{3}file_id\0\u{1}emoji\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.packID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.fileID) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.emoji) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.packID.isEmpty {
+      try visitor.visitSingularStringField(value: self.packID, fieldNumber: 1)
+    }
+    if !self.fileID.isEmpty {
+      try visitor.visitSingularStringField(value: self.fileID, fieldNumber: 2)
+    }
+    if !self.emoji.isEmpty {
+      try visitor.visitSingularStringField(value: self.emoji, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Files_AddStickerRequest, rhs: Barkfluff_Files_AddStickerRequest) -> Bool {
+    if lhs.packID != rhs.packID {return false}
+    if lhs.fileID != rhs.fileID {return false}
+    if lhs.emoji != rhs.emoji {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Files_AddStickerResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".AddStickerResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}sticker\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._sticker) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try { if let v = self._sticker {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Files_AddStickerResponse, rhs: Barkfluff_Files_AddStickerResponse) -> Bool {
+    if lhs._sticker != rhs._sticker {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Files_RemoveStickerRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".RemoveStickerRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}sticker_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.stickerID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.stickerID.isEmpty {
+      try visitor.visitSingularStringField(value: self.stickerID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Files_RemoveStickerRequest, rhs: Barkfluff_Files_RemoveStickerRequest) -> Bool {
+    if lhs.stickerID != rhs.stickerID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Files_RemoveStickerResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".RemoveStickerResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Files_RemoveStickerResponse, rhs: Barkfluff_Files_RemoveStickerResponse) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Files_UpdateStickerRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UpdateStickerRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}sticker_id\0\u{1}emoji\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.stickerID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.emoji) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.stickerID.isEmpty {
+      try visitor.visitSingularStringField(value: self.stickerID, fieldNumber: 1)
+    }
+    if !self.emoji.isEmpty {
+      try visitor.visitSingularStringField(value: self.emoji, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Files_UpdateStickerRequest, rhs: Barkfluff_Files_UpdateStickerRequest) -> Bool {
+    if lhs.stickerID != rhs.stickerID {return false}
+    if lhs.emoji != rhs.emoji {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Files_UpdateStickerResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UpdateStickerResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}sticker\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._sticker) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try { if let v = self._sticker {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Files_UpdateStickerResponse, rhs: Barkfluff_Files_UpdateStickerResponse) -> Bool {
+    if lhs._sticker != rhs._sticker {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Files_GetStickersRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".GetStickersRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}sticker_ids\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedStringField(value: &self.stickerIds) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.stickerIds.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.stickerIds, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Files_GetStickersRequest, rhs: Barkfluff_Files_GetStickersRequest) -> Bool {
+    if lhs.stickerIds != rhs.stickerIds {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Files_GetStickersResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".GetStickersResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}stickers\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.stickers) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.stickers.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.stickers, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Files_GetStickersResponse, rhs: Barkfluff_Files_GetStickersResponse) -> Bool {
+    if lhs.stickers != rhs.stickers {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Files_UploadStickerImageRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UploadStickerImageRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}image_data\0\u{1}filename\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBytesField(value: &self.imageData) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.filename) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.imageData.isEmpty {
+      try visitor.visitSingularBytesField(value: self.imageData, fieldNumber: 1)
+    }
+    if !self.filename.isEmpty {
+      try visitor.visitSingularStringField(value: self.filename, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Files_UploadStickerImageRequest, rhs: Barkfluff_Files_UploadStickerImageRequest) -> Bool {
+    if lhs.imageData != rhs.imageData {return false}
+    if lhs.filename != rhs.filename {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Files_UploadStickerImageResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UploadStickerImageResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}file_id\0\u{3}file_url\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.fileID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.fileURL) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.fileID.isEmpty {
+      try visitor.visitSingularStringField(value: self.fileID, fieldNumber: 1)
+    }
+    if !self.fileURL.isEmpty {
+      try visitor.visitSingularStringField(value: self.fileURL, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Files_UploadStickerImageResponse, rhs: Barkfluff_Files_UploadStickerImageResponse) -> Bool {
+    if lhs.fileID != rhs.fileID {return false}
+    if lhs.fileURL != rhs.fileURL {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

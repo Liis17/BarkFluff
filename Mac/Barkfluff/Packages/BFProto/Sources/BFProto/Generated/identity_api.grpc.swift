@@ -80,18 +80,6 @@ public enum Barkfluff_Identity_IdentityApi: Sendable {
                 method: "ConfirmAccount"
             )
         }
-        /// Namespace for "GenerateTestToken" metadata.
-        public enum GenerateTestToken: Sendable {
-            /// Request type for "GenerateTestToken".
-            public typealias Input = Barkfluff_Identity_GenerateTestTokenRequest
-            /// Response type for "GenerateTestToken".
-            public typealias Output = Barkfluff_Identity_GenerateTestTokenResponse
-            /// Descriptor for "GenerateTestToken".
-            public static let descriptor = GRPCCore.MethodDescriptor(
-                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
-                method: "GenerateTestToken"
-            )
-        }
         /// Namespace for "GetActiveSessions" metadata.
         public enum GetActiveSessions: Sendable {
             /// Request type for "GetActiveSessions".
@@ -200,6 +188,18 @@ public enum Barkfluff_Identity_IdentityApi: Sendable {
                 method: "SetPassword"
             )
         }
+        /// Namespace for "Logout" metadata.
+        public enum Logout: Sendable {
+            /// Request type for "Logout".
+            public typealias Input = Barkfluff_Identity_LogoutRequest
+            /// Response type for "Logout".
+            public typealias Output = Barkfluff_Identity_LogoutResponse
+            /// Descriptor for "Logout".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
+                method: "Logout"
+            )
+        }
         /// Descriptors for all methods in the "barkfluff.identity.IdentityApi" service.
         public static let descriptors: [GRPCCore.MethodDescriptor] = [
             Auth.descriptor,
@@ -207,7 +207,6 @@ public enum Barkfluff_Identity_IdentityApi: Sendable {
             CreateToken.descriptor,
             CreateAccount.descriptor,
             ConfirmAccount.descriptor,
-            GenerateTestToken.descriptor,
             GetActiveSessions.descriptor,
             RemoveActiveSession.descriptor,
             EnableOtpVerification.descriptor,
@@ -216,7 +215,8 @@ public enum Barkfluff_Identity_IdentityApi: Sendable {
             ListOtpVerification.descriptor,
             ResetPassword.descriptor,
             ConfirmResetPassword.descriptor,
-            SetPassword.descriptor
+            SetPassword.descriptor,
+            Logout.descriptor
         ]
     }
 }
@@ -349,25 +349,6 @@ extension Barkfluff_Identity_IdentityApi {
             deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_ConfirmAccountResponse>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_ConfirmAccountResponse>) async throws -> Result
-        ) async throws -> Result where Result: Sendable
-
-        /// Call the "GenerateTestToken" method.
-        ///
-        /// - Parameters:
-        ///   - request: A request containing a single `Barkfluff_Identity_GenerateTestTokenRequest` message.
-        ///   - serializer: A serializer for `Barkfluff_Identity_GenerateTestTokenRequest` messages.
-        ///   - deserializer: A deserializer for `Barkfluff_Identity_GenerateTestTokenResponse` messages.
-        ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
-        /// - Returns: The result of `handleResponse`.
-        func generateTestToken<Result>(
-            request: GRPCCore.ClientRequest<Barkfluff_Identity_GenerateTestTokenRequest>,
-            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_GenerateTestTokenRequest>,
-            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_GenerateTestTokenResponse>,
-            options: GRPCCore.CallOptions,
-            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_GenerateTestTokenResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
         /// Call the "GetActiveSessions" method.
@@ -558,7 +539,7 @@ extension Barkfluff_Identity_IdentityApi {
         ///
         /// > Source IDL Documentation:
         /// >
-        /// > Установить пароль 
+        /// > Установить пароль
         ///
         /// - Parameters:
         ///   - request: A request containing a single `Barkfluff_Identity_SetPasswordRequest` message.
@@ -575,6 +556,29 @@ extension Barkfluff_Identity_IdentityApi {
             deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_SetPasswordResponse>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_SetPasswordResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "Logout" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Разлогиниться с текущего устройства
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_LogoutRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_LogoutRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_LogoutResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func logout<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_LogoutRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_LogoutRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_LogoutResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_LogoutResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
     }
 
@@ -757,36 +761,6 @@ extension Barkfluff_Identity_IdentityApi {
             try await self.client.unary(
                 request: request,
                 descriptor: Barkfluff_Identity_IdentityApi.Method.ConfirmAccount.descriptor,
-                serializer: serializer,
-                deserializer: deserializer,
-                options: options,
-                onResponse: handleResponse
-            )
-        }
-
-        /// Call the "GenerateTestToken" method.
-        ///
-        /// - Parameters:
-        ///   - request: A request containing a single `Barkfluff_Identity_GenerateTestTokenRequest` message.
-        ///   - serializer: A serializer for `Barkfluff_Identity_GenerateTestTokenRequest` messages.
-        ///   - deserializer: A deserializer for `Barkfluff_Identity_GenerateTestTokenResponse` messages.
-        ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
-        /// - Returns: The result of `handleResponse`.
-        public func generateTestToken<Result>(
-            request: GRPCCore.ClientRequest<Barkfluff_Identity_GenerateTestTokenRequest>,
-            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_GenerateTestTokenRequest>,
-            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_GenerateTestTokenResponse>,
-            options: GRPCCore.CallOptions = .defaults,
-            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_GenerateTestTokenResponse>) async throws -> Result = { response in
-                try response.message
-            }
-        ) async throws -> Result where Result: Sendable {
-            try await self.client.unary(
-                request: request,
-                descriptor: Barkfluff_Identity_IdentityApi.Method.GenerateTestToken.descriptor,
                 serializer: serializer,
                 deserializer: deserializer,
                 options: options,
@@ -1070,7 +1044,7 @@ extension Barkfluff_Identity_IdentityApi {
         ///
         /// > Source IDL Documentation:
         /// >
-        /// > Установить пароль 
+        /// > Установить пароль
         ///
         /// - Parameters:
         ///   - request: A request containing a single `Barkfluff_Identity_SetPasswordRequest` message.
@@ -1093,6 +1067,40 @@ extension Barkfluff_Identity_IdentityApi {
             try await self.client.unary(
                 request: request,
                 descriptor: Barkfluff_Identity_IdentityApi.Method.SetPassword.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "Logout" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Разлогиниться с текущего устройства
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_LogoutRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_LogoutRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_LogoutResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func logout<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_LogoutRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_LogoutRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_LogoutResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_LogoutResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Identity_IdentityApi.Method.Logout.descriptor,
                 serializer: serializer,
                 deserializer: deserializer,
                 options: options,
@@ -1245,31 +1253,6 @@ extension Barkfluff_Identity_IdentityApi.ClientProtocol {
             request: request,
             serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_ConfirmAccountRequest>(),
             deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_ConfirmAccountResponse>(),
-            options: options,
-            onResponse: handleResponse
-        )
-    }
-
-    /// Call the "GenerateTestToken" method.
-    ///
-    /// - Parameters:
-    ///   - request: A request containing a single `Barkfluff_Identity_GenerateTestTokenRequest` message.
-    ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
-    /// - Returns: The result of `handleResponse`.
-    public func generateTestToken<Result>(
-        request: GRPCCore.ClientRequest<Barkfluff_Identity_GenerateTestTokenRequest>,
-        options: GRPCCore.CallOptions = .defaults,
-        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_GenerateTestTokenResponse>) async throws -> Result = { response in
-            try response.message
-        }
-    ) async throws -> Result where Result: Sendable {
-        try await self.generateTestToken(
-            request: request,
-            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_GenerateTestTokenRequest>(),
-            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_GenerateTestTokenResponse>(),
             options: options,
             onResponse: handleResponse
         )
@@ -1511,7 +1494,7 @@ extension Barkfluff_Identity_IdentityApi.ClientProtocol {
     ///
     /// > Source IDL Documentation:
     /// >
-    /// > Установить пароль 
+    /// > Установить пароль
     ///
     /// - Parameters:
     ///   - request: A request containing a single `Barkfluff_Identity_SetPasswordRequest` message.
@@ -1531,6 +1514,35 @@ extension Barkfluff_Identity_IdentityApi.ClientProtocol {
             request: request,
             serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_SetPasswordRequest>(),
             deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_SetPasswordResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "Logout" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Разлогиниться с текущего устройства
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Identity_LogoutRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func logout<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Identity_LogoutRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_LogoutResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.logout(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_LogoutRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_LogoutResponse>(),
             options: options,
             onResponse: handleResponse
         )
@@ -1699,35 +1711,6 @@ extension Barkfluff_Identity_IdentityApi.ClientProtocol {
             metadata: metadata
         )
         return try await self.confirmAccount(
-            request: request,
-            options: options,
-            onResponse: handleResponse
-        )
-    }
-
-    /// Call the "GenerateTestToken" method.
-    ///
-    /// - Parameters:
-    ///   - message: request message to send.
-    ///   - metadata: Additional metadata to send, defaults to empty.
-    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
-    /// - Returns: The result of `handleResponse`.
-    public func generateTestToken<Result>(
-        _ message: Barkfluff_Identity_GenerateTestTokenRequest,
-        metadata: GRPCCore.Metadata = [:],
-        options: GRPCCore.CallOptions = .defaults,
-        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_GenerateTestTokenResponse>) async throws -> Result = { response in
-            try response.message
-        }
-    ) async throws -> Result where Result: Sendable {
-        let request = GRPCCore.ClientRequest<Barkfluff_Identity_GenerateTestTokenRequest>(
-            message: message,
-            metadata: metadata
-        )
-        return try await self.generateTestToken(
             request: request,
             options: options,
             onResponse: handleResponse
@@ -2002,7 +1985,7 @@ extension Barkfluff_Identity_IdentityApi.ClientProtocol {
     ///
     /// > Source IDL Documentation:
     /// >
-    /// > Установить пароль 
+    /// > Установить пароль
     ///
     /// - Parameters:
     ///   - message: request message to send.
@@ -2025,6 +2008,39 @@ extension Barkfluff_Identity_IdentityApi.ClientProtocol {
             metadata: metadata
         )
         return try await self.setPassword(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "Logout" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Разлогиниться с текущего устройства
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func logout<Result>(
+        _ message: Barkfluff_Identity_LogoutRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_LogoutResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Identity_LogoutRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.logout(
             request: request,
             options: options,
             onResponse: handleResponse

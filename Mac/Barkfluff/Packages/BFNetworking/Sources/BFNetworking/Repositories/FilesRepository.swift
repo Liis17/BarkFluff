@@ -228,6 +228,12 @@ public actor FilesRepository: FilesRepositoryProtocol {
             return .messageAttachmentDocument
         case .chatPicture:
             return .chatPicture
+        case .messageAttachmentAudio:
+            return .messageAttachmentAudio
+        case .messageAttachmentVoice:
+            return .messageAttachmentVoice
+        case .messageAttachmentSticker:
+            return .messageAttachmentSticker
         }
     }
 
