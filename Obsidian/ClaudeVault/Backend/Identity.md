@@ -13,58 +13,165 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 
 Миграции применяются автоматически при старте.
 
+## Конфигурация (от Configuration-сервиса)
+
+| Ключ | Описание |
+|------|----------|
+| `IdentityDb` | Connection string PostgreSQL |
+| `JwtSettings:SecretKey` | Секрет для JWT |
+| `JwtSettings:Issuer` | JWT Issuer |
+| `JwtSettings:Audience` | JWT Audience |
+| `JwtSettings:ExpiryMinutes` | Время жизни access token (минуты) |
+| `UsersService:Host` | gRPC-адрес Users-сервиса |
+| `UsersService:Token` | Service token для Users |
+| `RabbitMQ:Host` | Адрес брокера |
+| `RabbitMQ:Username` / `RabbitMQ:Password` | Credentials MassTransit |
+
 ## Архитектура
 
 ### Слои
 
 - `Domain/` — `RefreshToken`, `UserPassword`, `ConfirmationCode`, `AuthUserProperty`, `ResetPassword`
 - `Features/` — CQRS-команды (MediatR)
-- `Host/` — `IdentityApiService` (публичные методы) + `IdentityServerApiService` (service-to-service, `[Authorize(Policy = nameof(TokenType.Service))]`)
-- `Infrastructure/` — `LocationClient` (ip-api.com геолокация), `NotificationQueueSender` (RabbitMQ)
-- `Persistence/Contexts/` — `IdentityContext` (EF Core)
+- `Host/` — `IdentityApiService` (публичные методы, gRPC-Web) + `IdentityServerApiService` (service-to-service, `[Authorize(Policy = nameof(TokenType.Service))]`)
+- `Infrastructure/` — `LocationClient` (ip-api.com, геолокация по IP), `NotificationQueueSender` (RabbitMQ/MassTransit)
+- `Persistence/Contexts/` — `IdentityContext` (EF Core + Npgsql)
 - `Persistence/Services/` — `RefreshTokensStorage`, `AuthPropertiesStorage`, `ConfirmationCodesStorage`, `PasswordsStorage`, `ResetPasswordsStorage`
-- `Services/` — `JwtService`, `PasswordHasher` (SHA256), `CodeGenerator` (6 цифр), `RefreshTokenGenerator` (20 символов)
+- `Services/` — `JwtService`, `PasswordHasher` (SHA-256), `CodeGenerator` (6-значный цифровой), `RefreshTokenGenerator` (20-символьный)
 - `Settings/` — `JwtSettings` (SecretKey, Issuer, Audience, ExpiryMinutes)
+- `Consumers/` — `SessionRevokedConsumer` (MassTransit, слушает `session-revoked-identity`)
 
-### Ключевые потоки
+### Domain-модели
 
-**Аутентификация (`AuthCommandHandler`)**:
-1. Проверка логина/пароля и обязательных заголовков (DeviceId, OS и т.д.)
-2. Поиск пользователя в Users service
-3. Проверка 2FA → `OtpCodeNeedException` (Email OTP) или `NotValidOtpCodeException` (TOTP)
-4. SHA256-хеш пароля vs `UserPassword.PasswordHash`
-5. Создание `RefreshToken` (старый для этого DeviceId удаляется)
-6. JWT access token
-7. Регистрация устройства в Users service
-8. Email-уведомления (успех/неудача через RabbitMQ)
+**`RefreshToken`** — токен сессии пользователя:
+- `Value`, `UserId`, `DeviceId`, `CreatedAt`, `ExpiresAt`
+- TTL: 9999 дней
 
-**Сброс пароля**:
-1. `ResetPassword` → OTP-код, `ResetPassword` запись, отправка по email
-2. `ConfirmResetPassword` → валидация кода, `IsApproved = true`, обнуление `PasswordHash`
-3. `SetPassword` (без старого пароля) → запись нового хеша
+**`AuthUserProperty`** — настройки 2FA пользователя:
+- `OtpEnabled` (TOTP), `EmailOtpEnabled`, `OtpSecret` (Base32), `LastEmailAuthCode`
 
-**TOTP 2FA**:
-1. `EnableOtpVerification` → генерация TOTP-секрета (Otp.NET), возврат клиенту для QR
-2. `ConfirmOtpVerification` → валидация → `OtpEnabled = true`
-3. `DisableOtpVerification` → требует валидного кода
+**`ConfirmationCode`** — код подтверждения регистрации (TTL 6 часов)
+
+**`ResetPassword`** — запись на сброс пароля:
+- `OtpType`, `OtpCode`, `IsApproved`, `UserId`, `CreatedAt`
+
+## gRPC-эндпоинты
+
+### IdentityApiService (публичный, gRPC-Web)
+
+| Метод | Proto-метод | Auth | Описание |
+|-------|------------|------|----------|
+| `Auth` | `AuthRequest → AuthResponse` | нет | Вход по username/email + пароль |
+| `CreateToken` | `CreateTokenRequest → CreateTokenResponse` | нет | Обмен refresh → access token |
+| `CreateAccount` | `CreateAccountRequest → CreateAccountResponse` | нет | Регистрация (шаг 1) |
+| `ConfirmAccount` | `ConfirmAccountRequest → ConfirmAccountResponse` | нет | Подтверждение email (шаг 2) |
+| `GetActiveSessions` | `GetActiveSessionsRequest → GetActiveSessionsResponse` | `TokenType.User` | Список активных сессий |
+| `RemoveActiveSession` | `RemoveActiveSessionRequest → RemoveActiveSessionResponse` | `TokenType.User` | Удалить сессию по DeviceId |
+| `EnableOtpVerification` | `EnableOtpVerificationRequest → EnableOtpVerificationResponse` | `TokenType.User` | Включить 2FA |
+| `ConfirmOtpVerification` | `ConfirmOtpVerificationRequest → ConfirmOtpVerificationResponse` | `TokenType.User` | Подтвердить и активировать 2FA |
+| `DisableOtpVerification` | `DisableOtpVerificationRequest → DisableOtpVerificationResponse` | `TokenType.User` | Отключить 2FA |
+| `ListOtpVerification` | `ListOtpVerificationRequest → ListOtpVerificationResponse` | `TokenType.User` | Список методов 2FA пользователя |
+| `ResetPassword` | `ResetPasswordRequest → ResetPasswordResponse` | нет | Запрос сброса пароля → `ResetId` |
+| `ConfirmResetPassword` | `ConfirmResetPasswordRequest → ConfirmResetPasswordResponse` | нет | Подтверждение сброса → токены |
+| `SetPassword` | `SetPasswordRequest → SetPasswordResponse` | `TokenType.User` | Установить/изменить пароль |
+| `Logout` | `LogoutRequest → LogoutResponse` | `TokenType.User` | Разлогиниться с текущего устройства |
+
+### IdentityServerApiService (service-to-service, только `TokenType.Service`)
+
+| Метод | Параметры | Описание |
+|-------|-----------|----------|
+| `ListOtpVerificationServer` | `UserId` | Список методов 2FA по userId |
+| `DisableOtpVerificationServer` | `UserId`, `OtpType` | Принудительно отключить 2FA |
+| `GetActiveSessionsServer` | `UserId` | Список сессий по userId |
+| `RemoveActiveSessionServer` | `UserId`, `DeviceId` | Удалить сессию по userId + deviceId |
+
+## Обязательные заголовки (XAuth) для большинства эндпоинтов
+
+Для `Auth`, `CreateAccount`, `ConfirmAccount`, `EnableOtp`, `ResetPassword`, `ConfirmResetPassword`, `SetPassword`:
+- `x-device-name` — обязателен
+- `x-os-name` — обязателен  
+- `x-app-name` + `x-app-version` — обязательны
+- `x-device-id` — опционален (если не передан — генерируется UUID)
+
+## Ключевые потоки
+
+### Регистрация (2 шага)
+1. `CreateAccount` → создаётся draft-пользователь в Users-сервисе (`AddDraftUser` / `OverrideDraftUser`), генерируется `ConfirmationCode` (6 цифр, TTL 6 ч.), код отправляется на email → возврат `CodeId`
+2. `ConfirmAccount` → код проверяется, пользователь подтверждается в Users-сервисе, выдаётся `RefreshToken`
+
+### Аутентификация (`Auth`)
+1. Проверка username/email + обязательных заголовков
+2. Поиск пользователя в Users-сервисе (`FindByLogin`)
+3. Проверка 2FA:
+   - Если включена но `OtpCode` не передан → Email OTP высылается, бросается `OtpCodeNeedException`
+   - TOTP (Authenticator) → `Totp.VerifyTotp` (OtpNet, RFC window)
+   - Email OTP → сравнение с `LastEmailAuthCode`
+4. Проверка пароля SHA-256 vs `UserPassword.PasswordHash`
+5. Удаление старого `RefreshToken` для данного DeviceId
+6. Создание нового `RefreshToken` (TTL 9999 дней) + JWT access token
+7. Регистрация/обновление устройства в Users-сервисе (`RegisterDevice`)
+8. Email-уведомления через RabbitMQ: успех (`SuccessfulLogin`) или неудача (`FailedLogin`)
+
+### Обновление токена (`CreateToken`)
+1. Поиск `RefreshToken` по значению
+2. Проверка срока действия и наличия `DeviceId`
+3. Генерация нового JWT access token через `JwtService.GenerateUserToken`
+
+### Сброс пароля (2 шага)
+1. `ResetPassword` → поиск пользователя, создание `ResetPassword`-записи:
+   - **Authenticator OTP**: запись сохраняется без кода (клиент использует TOTP-приложение)
+   - **Email OTP**: генерируется 6-значный код, высылается на email, код сохраняется в `ResetPassword.OtpCode`
+2. `ConfirmResetPassword` → валидация OTP-кода по типу → `IsApproved = true`, обнуление `PasswordHash`, выдача новых токенов
+
+### Разлогин (`Logout`) — `[Authorize]`
+1. `DeviceId` берётся из JWT-claim (`UserContext.DeviceId`) — аргументов нет
+2. Удаляются все `RefreshToken` для этого `DeviceId` + `UserId` (safe, без исключения если уже нет)
+3. Публикуется `SessionRevokedEvent` → `TokenRevocationCache` инвалидирует текущий access token немедленно
+4. Устройство удаляется из Users-сервиса (`DeleteUserDevice`), ошибка — только warning в логах
+
+### Установка/смена пароля (`SetPassword`) — `[Authorize]`
+- Если пароль ранее установлен: требует `OldPassword` (SHA-256 сравнение)
+- Если первая установка (после сброса): `OldPassword` не нужен
+- После смены отправляется уведомление `PasswordChanged`
+
+### 2FA — включение (TOTP)
+1. `EnableOtpVerification(OtpType.Authenticator)` → генерация TOTP-секрета (OtpNet, 20 байт), URI `otpauth://totp/...`, QR-код (Base64 PNG, QRCoder) → `OtpQr` + `OtpCode`
+2. `ConfirmOtpVerification` → валидация первого кода → `OtpEnabled = true`
+
+### 2FA — включение (Email)
+1. `EnableOtpVerification(OtpType.Email)` → генерация кода, сохранение в `LastEmailAuthCode`, отправка на email
+2. `ConfirmOtpVerification` → валидация кода → `EmailOtpEnabled = true`
+
+## RabbitMQ
+
+### Consumer (входящие события)
+| Очередь | Событие | Действие |
+|---------|---------|----------|
+| `session-revoked-identity` | `SessionRevokedEvent` | Добавляет `(UserId, DeviceId)` в `TokenRevocationCache` для немедленной инвалидации access token |
+
+### Producer (исходящие, через `NotificationQueueSender`)
+| Тип | Когда |
+|-----|-------|
+| `ConfirmationRegistration` | Создан черновик аккаунта |
+| `SuccessfulRegistration` | Email подтверждён |
+| `ConfirmationAuth` | Вход с Email OTP |
+| `FailedLogin` | Неверный пароль |
+| `SuccessfulLogin` | Успешный вход |
+| `ConfirmationOtpEmail` | Включение Email 2FA |
+| `ResetPassword` | Запрос сброса пароля |
+| `PasswordChanged` | Пароль изменён |
 
 ## Внешние зависимости
 
-- **Users service** — gRPC `UsersServerApi.UsersServerApiClient`: поиск пользователя, регистрация устройства
-- **Notification service** — RabbitMQ (`EmailNotification`): коды подтверждения, алерты входа
-- **ip-api.com** — HTTP геолокация по IP при каждом входе
-
-## Обработка ошибок
-
-Бросать исключения из `BarkFluff.Shared.Exceptions` — `ServerExceptionInterceptor` упакует в gRPC trailer `x-error-code`.
+- **Users service** — gRPC `UsersServerApi` (service token): `FindByLogin`, `AddDraftUser`, `OverrideDraftUser`, `ConfirmUser`, `GetById`, `GetUserContacts`, `RegisterDevice`, `GetUserDevices`
+- **Notification service** — RabbitMQ `EmailNotification` (через MassTransit)
+- **ip-api.com** — HTTP геолокация по IP (`LocationClient`), вызывается при каждом входе/регистрации
 
 ## gRPC-Web
 
 `IdentityApiService` включает gRPC-Web для поддержки браузерных клиентов:
-- NuGet: `Grpc.AspNetCore.Web 2.76.0`
-- `app.UseGrpcWeb()` + `MapGrpcService<IdentityApiService>().EnableGrpcWeb()`
-- CORS политика `IdentityCors` с exposed headers: `grpc-status`, `grpc-message`, `x-error-code`
-- Браузер отправляет `Content-Type: application/grpc-web+proto`, nginx прокидывает через `grpc_pass`
+- `app.UseGrpcWeb()` + `.EnableGrpcWeb()`
+- CORS политика `IdentityCors` с exposed headers: `grpc-status`, `grpc-message`, `grpc-status-details-bin`, `x-error-code`
 
 ## Proto
 
@@ -74,6 +181,7 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 
 ## Связанные файлы
 
-- [[Shared/Exceptions]] — коды ошибок аутентификации
+- [[Shared/Exceptions]] — коды ошибок аутентификации (`x-error-code` trailer)
 - [[Backend/Users]] — поиск/регистрация пользователей
 - [[Backend/Notification]] — email-уведомления
+- [[Архитектура]] — XAuth, TokenType, JWT-flow
