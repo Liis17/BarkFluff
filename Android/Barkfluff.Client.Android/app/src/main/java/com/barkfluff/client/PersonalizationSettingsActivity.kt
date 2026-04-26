@@ -296,7 +296,17 @@ class PersonalizationSettingsActivity : AppCompatActivity() {
             binding.previewDimOverlay.background = null
         } else {
             val alpha = (pct / 100f * 255).toInt().coerceIn(0, 255)
-            binding.previewDimOverlay.setBackgroundColor(Color.argb(alpha, 0, 0, 0))
+            // Используем цвет фона окна из темы (светлый/тёмный в зависимости от темы)
+            val typedValue = android.util.TypedValue()
+            theme.resolveAttribute(android.R.attr.colorBackground, typedValue, true)
+            val bgColor = typedValue.data
+            val dimColor = android.graphics.Color.argb(
+                alpha,
+                android.graphics.Color.red(bgColor),
+                android.graphics.Color.green(bgColor),
+                android.graphics.Color.blue(bgColor)
+            )
+            binding.previewDimOverlay.setBackgroundColor(dimColor)
         }
     }
 

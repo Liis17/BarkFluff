@@ -109,6 +109,9 @@ class ChatActivity : AppCompatActivity() {
     private var stickerDataLoaded = false
     private lateinit var stickerPanelAdapter: StickerPanelAdapter
 
+    // Callback назад — включён только когда стикер-панель или оверлей открыты
+    private lateinit var backCallback: OnBackPressedCallback
+
     private val pasteUCropLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -250,8 +253,30 @@ class ChatActivity : AppCompatActivity() {
      * Загружает и отображает фон чата из кэша или по URL.
      * На API 31+ применяет RenderEffect blur, на старых — ScriptIntrinsicBlur (RenderScript).
      */
+    private fun applyDimOverlay() {
+        val pct = globalParam.chatBackgroundDim
+        if (pct == 0) {
+            binding.chatDimOverlay.visibility = View.GONE
+        } else {
+            val alpha = (pct / 100f * 255).toInt().coerceIn(0, 255)
+            // Используем цвет фона окна из темы (светлый/тёмный в зависимости от темы)
+            val typedValue = android.util.TypedValue()
+            theme.resolveAttribute(android.R.attr.colorBackground, typedValue, true)
+            val bgColor = typedValue.data
+            val dimColor = android.graphics.Color.argb(
+                alpha,
+                android.graphics.Color.red(bgColor),
+                android.graphics.Color.green(bgColor),
+                android.graphics.Color.blue(bgColor)
+            )
+            binding.chatDimOverlay.setBackgroundColor(dimColor)
+            binding.chatDimOverlay.visibility = View.VISIBLE
+        }
+    }
+
     private fun setupChatBackground() {
         val fileId = globalParam.chatBackgroundFileId
+        applyDimOverlay()
         if (fileId.isBlank()) {
             binding.chatBackgroundImage.visibility = View.GONE
             return
@@ -656,6 +681,7 @@ class ChatActivity : AppCompatActivity() {
                     showStickerPanelView()
                 } else if (inputPanelState == InputPanelState.KEYBOARD) {
                     inputPanelState = InputPanelState.NONE
+                    backCallback.isEnabled = false
                 }
             }
         }
@@ -701,20 +727,18 @@ class ChatActivity : AppCompatActivity() {
             })
         }
 
-        // Back press закрывает стикер-панель или оверлей предпросмотра
-        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+        // Back press закрывает стикер-панель или оверлей предпросмотра.
+        // Callback включён только когда есть что закрывать — иначе система
+        // обрабатывает жест сама и показывает predictive back анимацию.
+        backCallback = object : OnBackPressedCallback(false) {
             override fun handleOnBackPressed() {
-                if (binding.stickerPreviewOverlay.visibility == View.VISIBLE) {
-                    hideStickerPreview()
-                } else if (inputPanelState == InputPanelState.STICKER_PANEL) {
-                    hideStickerPanel()
-                } else {
-                    isEnabled = false
-                    onBackPressedDispatcher.onBackPressed()
-                    isEnabled = true
+                when {
+                    binding.stickerPreviewOverlay.visibility == View.VISIBLE -> hideStickerPreview()
+                    inputPanelState == InputPanelState.STICKER_PANEL -> hideStickerPanel()
                 }
             }
-        })
+        }
+        onBackPressedDispatcher.addCallback(this, backCallback)
     }
 
     private fun showStickerPicker() {
@@ -739,6 +763,7 @@ class ChatActivity : AppCompatActivity() {
         binding.stickerPanelContainer.visibility = View.VISIBLE
         binding.stickerPanelContainer.requestLayout()
         inputPanelState = InputPanelState.STICKER_PANEL
+        backCallback.isEnabled = true
 
         if (!stickerDataLoaded) {
             loadStickerPanelData()
@@ -748,12 +773,14 @@ class ChatActivity : AppCompatActivity() {
     private fun hideStickerPanel() {
         binding.stickerPanelContainer.visibility = View.GONE
         inputPanelState = InputPanelState.NONE
+        backCallback.isEnabled = binding.stickerPreviewOverlay.visibility == View.VISIBLE
     }
 
     private fun showStickerPreview(sticker: barkfluff.files.FilesApiOuterClass.StickerInfo) {
         val fileId = sticker.fileId
         if (fileId.isBlank()) return
         binding.stickerPreviewOverlay.visibility = View.VISIBLE
+        backCallback.isEnabled = true
         val imageView = binding.stickerPreviewImage
         imageView.setImageDrawable(null)
         lifecycleScope.launch {
@@ -778,6 +805,7 @@ class ChatActivity : AppCompatActivity() {
     private fun hideStickerPreview() {
         binding.stickerPreviewOverlay.visibility = View.GONE
         binding.stickerPreviewImage.setImageDrawable(null)
+        backCallback.isEnabled = inputPanelState == InputPanelState.STICKER_PANEL
     }
 
     private fun loadStickerPanelData() {
