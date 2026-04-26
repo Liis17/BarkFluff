@@ -96,12 +96,18 @@ internal val urlCache = ConcurrentHashMap<String, String>()
 Создаётся лениво (double-checked locking):
 
 ```kotlin
-ImageLoader.Builder(context)
+ImageLoader.Builder(context.applicationContext)
     .okHttpClient(okHttpClient)           // trust-all SSL
-    .memoryCache { maxSizePercent(0.25) } // 25% RAM
+    .memoryCache {
+        MemoryCache.Builder(context.applicationContext)
+            .maxSizePercent(0.25)         // 25% RAM
+            .build()
+    }
     .diskCache {
-        directory(cacheDir / "image_cache")
-        maxSizePercent(0.10)              // 10% internal storage
+        DiskCache.Builder()
+            .directory(context.cacheDir.resolve("image_cache"))
+            .maxSizePercent(0.10)         // 10% internal storage
+            .build()
     }
     .respectCacheHeaders(false)           // игнорирует Cache-Control сервера
     .build()
@@ -116,8 +122,9 @@ ImageLoader.Builder(context)
 |---|---|
 | `initializeCache(context)` | вызывается из `BarkFluffApplication.onCreate()`, создаёт `FileUrlCache` и запускает `initialize()` |
 | `loadByFileId(imageView, placeholderView, fileId, …, getUrlCallback)` | основной метод загрузки аватара по fileId, трёхуровневая стратегия |
+| `loadByFileId(imageView, placeholderView, fileId, …, size, getUrlCallback)` | перегрузка с параметром `size: Int` — ограничивает разрешение (0 = `Size.ORIGINAL`) |
 | `load(imageView, placeholderView, avatarUrl, …)` | загрузка по готовому URL напрямую через Coil |
-| `loadIntoImageView(imageView, avatarUrl, …)` | упрощённый вариант без отдельного placeholder |
+| `loadIntoImageView(imageView, avatarUrl, …)` | упрощённый вариант без отдельного placeholder (URL как cache key) |
 | `getUrlFromCache(fileId)` | читает из `FileUrlCache` |
 | `putUrlInCache(fileId, url)` | записывает в `FileUrlCache` |
 | `clearAllCaches(context)` | очищает memory и disk кэш Coil + runtime urlCache + FileUrlCache |
@@ -166,7 +173,7 @@ ImageRequest.Builder(context)
 - использует `AvatarLoader.getImageLoader(context)` для Coil-запроса
 - устанавливает `memoryCacheKey(fileId)` и `diskCacheKey(fileId)`
 
-Параметр `size: Int` — если `> 0`, ограничивает разрешение загружаемого изображения (для thumbnail).
+Параметр `size: Int` — если `> 0`, ограничивает разрешение загружаемого изображения (для thumbnail). Если `0` — используется `Size.ORIGINAL`.
 
 ---
 
@@ -184,7 +191,7 @@ ImageRequest.Builder(context)
 | `hasFile(fileId)` | проверяет наличие файла |
 | `getFile(fileId)` | возвращает `File?` или null |
 | `saveFile(fileId, bytes)` | сохраняет `ByteArray` |
-| `saveFile(fileId, stream)` | сохраняет из `InputStream` |
+| `saveFile(fileId, stream, totalBytes)` | сохраняет из `InputStream`; `totalBytes: Long = -1` (зарезервировано для прогресса) |
 | `deleteFile(fileId)` | удаляет файл из кеша |
 
 Имя файла = `fileId` после санитизации (все символы кроме `[a-zA-Z0-9_\-]` заменяются на `_`).
@@ -214,7 +221,7 @@ ImageRequest.Builder(context)
 **Тип:** Kotlin `object` (singleton)  
 **Хранилище:** `SharedPreferences` с именем `"sticker_cache"`
 
-Кеширует **список** `StickerPanelItem` (метаданные паков и стикеров, включая `fileUrl` и `previewUrl`) в JSON.
+Кеширует **список** `StickerPanelItem` (метаданные паков и стикеров) в JSON. Каждый стикер сохраняет поля: `fileId`, `previewFileId`, `fileUrl`, `previewUrl`, `emoji`, `packId`, `id`, `stickerPackId`.
 
 | Метод | Описание |
 |---|---|
