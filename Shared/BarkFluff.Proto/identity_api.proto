@@ -49,6 +49,9 @@ service IdentityApi {
   
   // Установить пароль
   rpc SetPassword(SetPasswordRequest) returns(SetPasswordResponse);
+
+  // Разлогиниться с текущего устройства
+  rpc Logout(LogoutRequest) returns(LogoutResponse);
 }
 
 // Серверное API для админ-панели
@@ -251,3 +254,7 @@ message SetPasswordRequest {
 }
 
 message SetPasswordResponse { }
+
+message LogoutRequest { }
+
+message LogoutResponse { }

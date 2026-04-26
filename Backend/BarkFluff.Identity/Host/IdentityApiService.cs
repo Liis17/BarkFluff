@@ -9,6 +9,7 @@ using BarkFluff.Identity.Features.DisableOtpVerification;
 using BarkFluff.Identity.Features.EnableOtpVerification;
 using BarkFluff.Identity.Features.GetActiveSessions;
 using BarkFluff.Identity.Features.ListOtpVerification;
+using BarkFluff.Identity.Features.Logout;
 using BarkFluff.Identity.Features.RemoveActiveSession;
 using BarkFluff.Identity.Features.ResetPassword;
 using BarkFluff.Identity.Services;
@@ -198,5 +199,11 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
         await _mediator.Send(command);
 
         return new SetPasswordResponse();
+    }
+
+    [Authorize(Policy = nameof(TokenType.User))]
+    public override Task<LogoutResponse> Logout(LogoutRequest request, ServerCallContext context)
+    {
+        return _mediator.Send(new LogoutCommand());
     }
 }
