@@ -1574,7 +1574,9 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun prependMessages(messages: List<barkfluff.shared.Shared.Message>) {
-        val currentList = messageAdapter.currentList.toMutableList()
+        val currentList = messageAdapter.currentList
+            .filter { it.type != MessageType.FOOTER }
+            .toMutableList()
 
         // Фильтруем дубликаты
         val existingIds = currentList
@@ -1602,7 +1604,9 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun appendMessages(messages: List<barkfluff.shared.Shared.Message>) {
-        val currentList = messageAdapter.currentList.toMutableList()
+        val currentList = messageAdapter.currentList
+            .filter { it.type != MessageType.FOOTER }
+            .toMutableList()
 
         // Фильтруем дубликаты
         val existingIds = currentList
@@ -1679,7 +1683,9 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun addNewMessage(msg: barkfluff.shared.Shared.Message) {
-        val currentList = messageAdapter.currentList.toMutableList()
+        val currentList = messageAdapter.currentList
+            .filter { it.type != MessageType.FOOTER }
+            .toMutableList()
 
         // Проверка дубликата
         if (currentList.any { it.type == MessageType.MESSAGE && it.messageId == msg.id }) {
@@ -1721,8 +1727,10 @@ class ChatActivity : AppCompatActivity() {
         messageAdapter.submitList(currentList) {
             // Своё сообщение — всегда скроллим вниз
             // Чужое сообщение — скроллим только если уже были внизу
+            // size-1 = footer, size-2 = последнее сообщение
             if (isOwnMessage || wasAtBottom) {
-                binding.messagesRecyclerView.scrollToPosition(currentList.size - 1)
+                val lastIdx = messageAdapter.itemCount - 1
+                if (lastIdx >= 0) binding.messagesRecyclerView.scrollToPosition(lastIdx)
             }
             updateScrollToBottomButton()
         }
@@ -1742,7 +1750,9 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun updateMessageReadStatus(messageId: Long, newReadBy: List<Long>) {
-        val currentList = messageAdapter.currentList.toMutableList()
+        val currentList = messageAdapter.currentList
+            .filter { it.type != MessageType.FOOTER }
+            .toMutableList()
         val index = currentList.indexOfFirst { it.messageId == messageId }
         if (index < 0) return
 
