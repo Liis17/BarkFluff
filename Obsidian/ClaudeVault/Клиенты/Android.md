@@ -39,7 +39,27 @@ Package: `com.barkfluff.client`
 - EncryptedSharedPreferences (`barkfluff_secure_prefs`)
 - При создании gRPC-каналов добавлять `x-auth-token` через interceptor
 
-## Вложения и медиа
+## Разлогин (LogoutHelper)
+
+`utils/LogoutHelper.kt` — централизованный хелпер полного выхода из аккаунта:
+1. Серверный `Logout` gRPC (удаляет refresh-токен в Identity)
+2. `FirebaseMessaging.deleteToken()` — деактивирует push на устройстве
+3. `globalParam.clearUserData()` + очистка `firebaseToken`
+4. Очистка кешей: `AvatarLoader.clearAllCaches()`, `StickerCache.clear()`, `media_files/`
+5. Переход на `LoginActivity` с `FLAG_ACTIVITY_NEW_TASK or FLAG_ACTIVITY_CLEAR_TASK`
+
+Вызывается из:
+- `ProfileFragment` → кнопка "Выйти"
+- `DevicesActivity` → завершение сессии **текущего** устройства (если `deviceId == globalParam.deviceId`)
+
+## Firebase FCM токен
+
+`utils/FirebaseTokenHelper.kt`:
+- `getTokenAndSendToServer()` — берёт существующий или запрашивает токен, отправляет на сервер. Используется в **SplashActivity** при старте (уже залогинен).
+- `deleteAndRefreshTokenThenSend()` — удаляет старый токен, получает новый, отправляет. Используется в **LoginActivity** после успешного логина (свежий вход).
+- `refreshTokenAndSendToServer()` — принудительное обновление токена (вызывается из `BarkFluffFirebaseMessagingService.onNewToken()`).
+
+
 
 - `MessageAttachmentType`: Unknown, Image, Video, Gif, Document, Audio(4), Voice, Sticker; **AUDIO=5** (добавлен в shared.proto)
 - `FileCache` (`utils/FileCache.kt`) — singleton disk cache, путь: `cacheDir/media_files/`

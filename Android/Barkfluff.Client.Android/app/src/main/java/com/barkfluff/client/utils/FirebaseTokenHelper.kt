@@ -48,6 +48,35 @@ object FirebaseTokenHelper {
     }
 
     /**
+     * Удаляет текущий FCM-токен, получает новый и отправляет на сервер.
+     * Используется при свежем логине с LoginActivity — гарантирует отправку нового токена
+     * (а не унаследованного от предыдущего аккаунта).
+     */
+    suspend fun deleteAndRefreshTokenThenSend(context: Context, grpcManager: GrpcManager) {
+        try {
+            Log.d(TAG, "deleteAndRefreshTokenThenSend: удаляем старый токен")
+            withContext(Dispatchers.IO) {
+                FirebaseMessaging.getInstance().deleteToken().await()
+            }
+
+            // После удаления Firebase автоматически сгенерирует новый токен,
+            // явно запрашиваем его и отправляем на сервер
+            Log.d(TAG, "deleteAndRefreshTokenThenSend: запрашиваем новый токен")
+            val token = withContext(Dispatchers.IO) {
+                FirebaseMessaging.getInstance().token.await()
+            }
+
+            val globalParam = GlobalParam(context)
+            globalParam.firebaseToken = token
+
+            Log.d(TAG, "deleteAndRefreshTokenThenSend: новый токен получен: ${token.take(20)}...")
+            sendTokenToServer(grpcManager, token)
+        } catch (e: Exception) {
+            Log.e(TAG, "deleteAndRefreshTokenThenSend: ошибка", e)
+        }
+    }
+
+    /**
      * Принудительно запрашивает новый токен у Firebase и отправляет на сервер.
      * Используется при обновлении токена (onNewToken в сервисе).
      */
