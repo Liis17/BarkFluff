@@ -7,6 +7,8 @@
 
 import SwiftUI
 import BFCore
+import NukeUI
+import Nuke
 
 /// Отображение изображения во вложении
 struct ImageAttachmentView: View {
@@ -14,27 +16,47 @@ struct ImageAttachmentView: View {
     let isOwn: Bool
     let onTap: () -> Void
 
+    @Environment(DependencyContainer.self) private var container
+    @State private var imageRequest: ImageRequest?
+
     var body: some View {
         Group {
-            if let previewURL = attachment.previewURL, let url = URL(string: previewURL) {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
+            if let request = imageRequest {
+                LazyImage(request: request) { state in
+                    if let image = state.image {
                         image
                             .resizable()
                             .aspectRatio(contentMode: .fill)
                             .frame(maxWidth: 200, maxHeight: 200)
                             .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg))
                             .onTapGesture { onTap() }
-                    case .failure, .empty:
-                        placeholder
-                    @unknown default:
+                    } else {
                         placeholder
                     }
                 }
+                .pipeline(container.imagePipeline)
             } else {
                 placeholder
             }
+        }
+        .task(id: attachment.fileID) {
+            await resolveRequest()
+        }
+    }
+
+    private func resolveRequest() async {
+        // Приоритет: previewURL (готовый URL), fallback: fileID через fileService
+        if let previewURL = attachment.previewURL, let url = URL(string: previewURL), url.scheme != nil {
+            imageRequest = ImageRequest(url: url, userInfo: [.imageIdKey: attachment.fileID])
+            return
+        }
+        do {
+            let urlString = try await container.fileService.getDownloadURL(fileID: attachment.fileID)
+            if let url = URL(string: urlString) {
+                imageRequest = ImageRequest(url: url, userInfo: [.imageIdKey: attachment.fileID])
+            }
+        } catch {
+            imageRequest = nil
         }
     }
 

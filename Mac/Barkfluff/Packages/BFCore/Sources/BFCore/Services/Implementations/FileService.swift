@@ -13,9 +13,11 @@ import CryptoKit
 public actor FileService: FileServiceProtocol {
 
     private let filesRepository: FilesRepositoryProtocol
+    private let fileURLCache: FileURLCache
 
-    public init(filesRepository: FilesRepositoryProtocol) {
+    public init(filesRepository: FilesRepositoryProtocol, fileURLCache: FileURLCache = FileURLCache()) {
         self.filesRepository = filesRepository
+        self.fileURLCache = fileURLCache
     }
 
     // MARK: - FileServiceProtocol
@@ -30,7 +32,12 @@ public actor FileService: FileServiceProtocol {
     }
 
     public func getDownloadURL(fileID: String) async throws -> String {
-        try await filesRepository.getTempDownloadURL(fileID: fileID)
+        if let cached = await fileURLCache.getURL(forFileID: fileID) {
+            return cached
+        }
+        let url = try await filesRepository.getTempDownloadURL(fileID: fileID)
+        await fileURLCache.setURL(url, forFileID: fileID)
+        return url
     }
 
     public func getDownloadURLs(fileIDs: [String]) async throws -> [FileDownloadInfo] {

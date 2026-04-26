@@ -51,6 +51,24 @@ service UsersApi {
 
   // Включить или выключить уведомления для текущего устройства
   rpc SetNotificationsEnabled(SetNotificationsEnabledRequest) returns(SetNotificationsEnabledResponse);
+
+  // Получить настройки приватности текущего пользователя
+  rpc GetPrivacySettings(GetPrivacySettingsRequest) returns(GetPrivacySettingsResponse);
+
+  // Обновить настройки приватности текущего пользователя
+  rpc UpdatePrivacySettings(UpdatePrivacySettingsRequest) returns(UpdatePrivacySettingsResponse);
+
+  // Получить персонализацию текущего пользователя
+  rpc GetPersonalization(GetPersonalizationRequest) returns(GetPersonalizationResponse);
+
+  // Обновить персонализацию текущего пользователя
+  rpc UpdatePersonalization(UpdatePersonalizationRequest) returns(UpdatePersonalizationResponse);
+
+  // Получить постер профиля текущего пользователя
+  rpc GetProfilePoster(GetProfilePosterRequest) returns(GetProfilePosterResponse);
+
+  // Установить (или удалить) постер профиля текущего пользователя
+  rpc SetProfilePoster(SetProfilePosterRequest) returns(SetProfilePosterResponse);
 }
 
 service UsersServerApi {
@@ -129,6 +147,9 @@ service UsersServerApi {
 
   // Получить устройства с Firebase токенами
   rpc GetDevicesWithFirebaseTokens(GetDevicesWithFirebaseTokensRequest) returns(GetDevicesWithFirebaseTokensResponse);
+
+  // Получить настройки приватности пользователя (для других микросервисов, напр. Onliner)
+  rpc GetUserPrivacy(GetUserPrivacyRequest) returns(GetUserPrivacyResponse);
 }
 
 // Установить аватарку (серверный)
@@ -300,6 +321,7 @@ message User{
   string profile_picture_preview = 8; // ссылка на превью аватарки
   repeated UserBadge badges = 9; // баджи пользователя
   int32 storage_limit_gb = 10; // лимит хранилища в гигабайтах
+  string profile_poster_file_id = 11; // FileId постера/фона профиля (пусто если не задан)
 }
 
 // Сообщения для работы с баджами
@@ -437,6 +459,7 @@ message Device {
   string app_name = 6; // Имя приложения
   string operation_system = 7; // Операционная система
   string location = 8; // Страна/город
+  bool notifications_enabled = 9; // Включены ли push-уведомления на этом устройстве
 }
 
 // Запросы и ответы для получения списка устройств
@@ -545,3 +568,77 @@ message SetNotificationsEnabledRequest {
 
 message SetNotificationsEnabledResponse { }
 
+// Настройки приватности пользователя
+
+// Уровень видимости поля профиля:
+//  ALL     — видят все
+//  FRIENDS — видят только друзья (временно трактуется как NONE,
+//            пока в бэкенде нет системы отношений между пользователями)
+//  NONE    — скрыто ото всех
+enum ProfileFieldVisibility {
+  ALL = 0;
+  FRIENDS = 1;
+  NONE = 2;
+}
+
+message PrivacySettings {
+  bool profile_visible_on_site = 1;               // видимость публичной страницы barkfluff.com/{username}
+  ProfileFieldVisibility avatar_visibility = 2;   // видимость аватара
+  ProfileFieldVisibility bio_visibility = 3;      // видимость описания профиля (био)
+  ProfileFieldVisibility email_visibility = 4;    // видимость почты
+  bool search_visible = 5;                        // показывать ли пользователя в выдаче поиска
+  ProfileFieldVisibility online_visibility = 6;   // видимость онлайн-статуса
+}
+
+message GetPrivacySettingsRequest { }
+
+message GetPrivacySettingsResponse {
+  PrivacySettings settings = 1;
+}
+
+message UpdatePrivacySettingsRequest {
+  PrivacySettings settings = 1;
+}
+
+message UpdatePrivacySettingsResponse { }
+
+message GetUserPrivacyRequest {
+  int64 user_id = 1;
+}
+
+message GetUserPrivacyResponse {
+  PrivacySettings settings = 1;
+}
+
+// Персонализация пользователя
+
+message UserPersonalizationData {
+  string profile_poster_file_id = 1;          // FileId файла-постера профиля (пусто если не задан)
+  repeated string chat_background_file_ids = 2; // FileId фоновых изображений чатов
+}
+
+message GetPersonalizationRequest { }
+
+message GetPersonalizationResponse {
+  UserPersonalizationData personalization = 1;
+}
+
+message UpdatePersonalizationRequest {
+  UserPersonalizationData personalization = 1;
+}
+
+message UpdatePersonalizationResponse { }
+
+// Постер профиля
+
+message GetProfilePosterRequest { }
+
+message GetProfilePosterResponse {
+  string profile_poster_file_id = 1; // FileId постера профиля (пусто если не задан)
+}
+
+message SetProfilePosterRequest {
+  string profile_poster_file_id = 1; // FileId нового постера (пусто чтобы удалить)
+}
+
+message SetProfilePosterResponse { }

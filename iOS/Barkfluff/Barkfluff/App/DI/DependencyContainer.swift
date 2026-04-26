@@ -9,6 +9,7 @@ import Foundation
 import SwiftUI
 import BFNetworking
 import BFCore
+import Nuke
 
 /// Контейнер зависимостей для всего приложения
 @Observable
@@ -47,6 +48,11 @@ final class DependencyContainer {
     let chatCache: ChatCache
     let fileCacheService: FileCacheService
     let onlineStatusCache: OnlineStatusCache
+    let fileURLCache: FileURLCache
+
+    // MARK: - Image Pipeline
+
+    let imagePipeline: ImagePipeline
 
     // MARK: - Services (BFCore)
 
@@ -147,6 +153,15 @@ final class DependencyContainer {
         self.chatCache = ChatCache()
         self.fileCacheService = FileCacheService()
         self.onlineStatusCache = OnlineStatusCache()
+        self.fileURLCache = FileURLCache()
+
+        // Image Pipeline — disk cache, не зависит от HTTP cache headers
+        self.imagePipeline = ImagePipeline {
+            let dataCache = try? DataCache(name: "com.barkfluff.imageCache")
+            $0.dataCache = dataCache
+            $0.dataCachePolicy = .storeAll
+            $0.isStoringPreviewsInMemoryCache = true
+        }
 
         // Streaming
         self.updatesStreamManager = UpdatesStreamManager(
@@ -177,7 +192,7 @@ final class DependencyContainer {
             userCache: userCache
         )
 
-        self.fileService = FileService(filesRepository: filesRepository)
+        self.fileService = FileService(filesRepository: filesRepository, fileURLCache: fileURLCache)
 
         self.updatesService = UpdatesService(
             updatesRepository: updatesRepository,
@@ -239,6 +254,8 @@ final class DependencyContainer {
         await chatCache.removeAll()
         await onlineStatusCache.removeAll()
         await fileCacheService.clearCache()
+        await fileURLCache.clear()
+        imagePipeline.cache.removeAll()
         await serverDiscoveryService.disconnect()
         currentUserID = 0
         currentUser = nil
