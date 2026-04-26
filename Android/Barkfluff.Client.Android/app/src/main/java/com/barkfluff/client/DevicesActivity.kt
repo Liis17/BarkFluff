@@ -12,6 +12,7 @@ import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.databinding.ActivityDevicesBinding
 import com.barkfluff.client.databinding.BottomSheetDeviceDetailsBinding
 import com.barkfluff.client.grpc.GrpcManager
+import com.barkfluff.client.utils.LogoutHelper
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
@@ -240,12 +241,25 @@ class DevicesActivity : AppCompatActivity() {
 
     private fun showRemoveSessionDialog(session: GrpcManager.SessionData) {
         val name = session.customName.ifEmpty { session.originalName }.ifEmpty { "Неизвестное устройство" }
+        val isCurrentDevice = session.deviceId == globalParam.deviceId
+
+        val message = if (isCurrentDevice) {
+            "Завершить сессию на этом устройстве? Вы будете разлогинены."
+        } else {
+            "Завершить сессию на устройстве \"$name\"?"
+        }
 
         MaterialAlertDialogBuilder(this)
             .setTitle("Завершить сессию")
-            .setMessage("Завершить сессию на устройстве \"$name\"?")
+            .setMessage(message)
             .setPositiveButton("Завершить") { _, _ ->
-                removeSession(session.deviceId)
+                if (isCurrentDevice) {
+                    lifecycleScope.launch {
+                        LogoutHelper.performFullLogout(this@DevicesActivity, grpcManager)
+                    }
+                } else {
+                    removeSession(session.deviceId)
+                }
             }
             .setNegativeButton("Отмена", null)
             .show()

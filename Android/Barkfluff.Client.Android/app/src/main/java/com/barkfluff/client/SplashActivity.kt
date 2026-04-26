@@ -7,6 +7,7 @@ import androidx.lifecycle.lifecycleScope
 import com.barkfluff.client.data.GlobalParam
 import com.barkfluff.client.grpc.GrpcManager
 import com.barkfluff.client.notifications.NotificationHelper
+import com.barkfluff.client.utils.FirebaseTokenHelper
 import kotlinx.coroutines.launch
 
 /**
@@ -151,7 +152,7 @@ class SplashActivity : AppCompatActivity() {
             // Создаем клиенты для загрузки данных
             val identityAddress = globalParam.socketIdentity
             val usersAddress = globalParam.socketUsers
-            
+
             if (identityAddress.isNotBlank()) {
                 grpcManager.createIdentityClient(identityAddress, this)
             }
@@ -160,7 +161,24 @@ class SplashActivity : AppCompatActivity() {
             }
 
             // Загружаем данные текущего пользователя
-            val userDataResult = grpcManager.getCurrentUserData()
+            var userDataResult = grpcManager.getCurrentUserData()
+
+            // Если 401 — токен инвалидирован на сервере, пробуем обновить принудительно
+            if (userDataResult.isFailure) {
+                val errMsg = userDataResult.exceptionOrNull()?.message ?: ""
+                if (errMsg.contains("401") || errMsg.contains("UNAUTHENTICATED")) {
+                    val refreshed = grpcManager.forceRefreshToken(this)
+                    if (!refreshed) {
+                        // Refresh тоже невалиден — на Login
+                        globalParam.clearUserData()
+                        navigateToLogin()
+                        return
+                    }
+                    // Повторяем запрос с новым токеном
+                    userDataResult = grpcManager.getCurrentUserData()
+                }
+            }
+
             if (userDataResult.isSuccess) {
                 val userData = userDataResult.getOrNull()
                 if (userData != null) {
@@ -170,6 +188,12 @@ class SplashActivity : AppCompatActivity() {
                     globalParam.lastName = userData.lastName
                     globalParam.description = userData.bio
                 }
+            }
+            // Отправляем актуальный FCM-токен на сервер (уже залогинен — не пересоздаём)
+            try {
+                FirebaseTokenHelper.getTokenAndSendToServer(this, grpcManager)
+            } catch (e: Exception) {
+                // Не критично — продолжаем
             }
         } catch (e: Exception) {
             // Ошибка загрузки данных пользователя - не критично, продолжаем
@@ -193,11 +217,11 @@ class SplashActivity : AppCompatActivity() {
     }
 
     private fun navigateToChats() {
-        // Инициализируем app-level grpcManager до перехода в MainActivity
+        // Пересоздаём каналы app-level grpcManager — гарантирует свежие каналы
+        // с актуальным токеном (AuthInterceptor читает из GlobalParam динамически,
+        // но каналы могут быть устаревшими после предыдущей сессии)
         val app = applicationContext as BarkFluffApplication
-        if (!app.grpcManager.isInitialized()) {
-            app.grpcManager.initAllClients(this, globalParam)
-        }
+        app.grpcManager.recreateAllClients(this, globalParam)
 
         val intent = Intent(this, MainActivity::class.java)
         // Пробрасываем chatId из уведомления, если есть
