@@ -25,6 +25,7 @@
     <None Remove="html\legal\PRIVACY_POLICY.md" />
     <None Remove="html\legal\terms-of-service.html" />
     <None Remove="html\legal\TERMS_OF_SERVICE.md" />
+    <None Remove="html\li_is_page.html" />
     <None Remove="html\selfhosted.html" />
     <None Remove="html\userpage.html" />
   </ItemGroup>
@@ -76,6 +77,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="html\legal\TERMS_OF_SERVICE.md">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="html\li_is_page.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="html\selfhosted.html">
