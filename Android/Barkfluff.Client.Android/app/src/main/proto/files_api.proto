@@ -124,6 +124,8 @@ enum UploadFileType {
   MESSAGE_ATTACHMENT_VOICE = 8; // Вложение сообщения - голосовое сообщение
 
   MESSAGE_ATTACHMENT_STICKER = 9; // Вложение сообщения - стикер (WebP)
+
+  USER_PROFILE_POSTER = 10; // Постер профиля пользователя (горизонтальный баннер)
 }
 
 message UploadBadgeImageRequest {
