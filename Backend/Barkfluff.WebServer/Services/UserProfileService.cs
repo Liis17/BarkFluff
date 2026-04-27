@@ -62,6 +62,7 @@ public class UserProfileService
                 Username = response.Username,
                 Bio = response.Bio,
                 ProfilePicture = response.ProfilePicture,
+                ProfilePosterUrl = response.ProfilePosterUrl,
             };
 
             _cache.Set(cacheKey, (UserProfileData?)data, CacheDuration);
@@ -87,4 +88,5 @@ public class UserProfileData
     public string Username { get; set; } = string.Empty;
     public string Bio { get; set; } = string.Empty;
     public string ProfilePicture { get; set; } = string.Empty;
+    public string ProfilePosterUrl { get; set; } = string.Empty;
 }
