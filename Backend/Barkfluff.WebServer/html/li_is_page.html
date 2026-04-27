@@ -64,6 +64,70 @@
       -webkit-mask-image: radial-gradient(1000px 700px at 50% 40%, #000 30%, transparent 80%);
     }
 
+    /* ===== PAW PRINTS LAYER ===== */
+    .paw-layer {
+      position: fixed; inset: 0; z-index: 2; pointer-events: none; overflow: hidden;
+    }
+
+    .paw {
+      position: absolute;
+      width: 40px; height: 40px;
+      opacity: 0;
+      animation: pawStep 4s ease-in-out infinite;
+    }
+
+    .paw svg {
+      width: 100%; height: 100%;
+      fill: rgba(255, 122, 41, 0.18);
+    }
+
+    /* Each paw has unique position and delay for a realistic walking trail effect */
+    /* Trail 1 — bottom-left to top-right diagonal */
+    .paw-t1-s1 { left: 5%;  top: 82%; transform: rotate(-30deg); animation-delay: 0s;    animation-duration: 5s; }
+    .paw-t1-s2 { left: 8%;  top: 74%; transform: rotate(-30deg) scaleX(-1); animation-delay: 0.4s;  animation-duration: 5s; }
+    .paw-t1-s3 { left: 11%; top: 66%; transform: rotate(-30deg); animation-delay: 0.8s;  animation-duration: 5s; }
+    .paw-t1-s4 { left: 14%; top: 58%; transform: rotate(-30deg) scaleX(-1); animation-delay: 1.2s;  animation-duration: 5s; }
+    .paw-t1-s5 { left: 17%; top: 50%; transform: rotate(-30deg); animation-delay: 1.6s;  animation-duration: 5s; }
+    .paw-t1-s6 { left: 20%; top: 42%; transform: rotate(-30deg) scaleX(-1); animation-delay: 2.0s;  animation-duration: 5s; }
+    .paw-t1-s7 { left: 23%; top: 34%; transform: rotate(-30deg); animation-delay: 2.4s;  animation-duration: 5s; }
+    .paw-t1-s8 { left: 26%; top: 26%; transform: rotate(-30deg) scaleX(-1); animation-delay: 2.8s;  animation-duration: 5s; }
+
+    /* Trail 2 — middle */
+    .paw-t2-s1 { left: 42%; top: 88%; transform: rotate(-25deg); animation-delay: 0.5s;  animation-duration: 4.5s; }
+    .paw-t2-s2 { left: 46%; top: 80%; transform: rotate(-25deg) scaleX(-1); animation-delay: 0.9s;  animation-duration: 4.5s; }
+    .paw-t2-s3 { left: 50%; top: 72%; transform: rotate(-25deg); animation-delay: 1.3s;  animation-duration: 4.5s; }
+    .paw-t2-s4 { left: 54%; top: 64%; transform: rotate(-25deg) scaleX(-1); animation-delay: 1.7s;  animation-duration: 4.5s; }
+    .paw-t2-s5 { left: 58%; top: 56%; transform: rotate(-25deg); animation-delay: 2.1s;  animation-duration: 4.5s; }
+    .paw-t2-s6 { left: 62%; top: 48%; transform: rotate(-25deg) scaleX(-1); animation-delay: 2.5s;  animation-duration: 4.5s; }
+    .paw-t2-s7 { left: 66%; top: 40%; transform: rotate(-25deg); animation-delay: 2.9s;  animation-duration: 4.5s; }
+    .paw-t2-s8 { left: 70%; top: 32%; transform: rotate(-25deg) scaleX(-1); animation-delay: 3.3s;  animation-duration: 4.5s; }
+
+    /* Trail 3 — right side */
+    .paw-t3-s1 { left: 72%; top: 90%; transform: rotate(-20deg); animation-delay: 1.0s;  animation-duration: 5.5s; }
+    .paw-t3-s2 { left: 76%; top: 80%; transform: rotate(-20deg) scaleX(-1); animation-delay: 1.4s;  animation-duration: 5.5s; }
+    .paw-t3-s3 { left: 80%; top: 70%; transform: rotate(-20deg); animation-delay: 1.8s;  animation-duration: 5.5s; }
+    .paw-t3-s4 { left: 84%; top: 60%; transform: rotate(-20deg) scaleX(-1); animation-delay: 2.2s;  animation-duration: 5.5s; }
+    .paw-t3-s5 { left: 88%; top: 50%; transform: rotate(-20deg); animation-delay: 2.6s;  animation-duration: 5.5s; }
+    .paw-t3-s6 { left: 84%; top: 40%; transform: rotate(-20deg) scaleX(-1); animation-delay: 3.0s;  animation-duration: 5.5s; }
+    .paw-t3-s7 { left: 80%; top: 30%; transform: rotate(-20deg); animation-delay: 3.4s;  animation-duration: 5.5s; }
+    .paw-t3-s8 { left: 76%; top: 20%; transform: rotate(-20deg) scaleX(-1); animation-delay: 3.8s;  animation-duration: 5.5s; }
+
+    /* Trail 4 — top scatter */
+    .paw-t4-s1 { left: 30%; top: 10%; transform: rotate(15deg); animation-delay: 0.2s;   animation-duration: 6s; }
+    .paw-t4-s2 { left: 35%; top: 5%;  transform: rotate(15deg) scaleX(-1); animation-delay: 0.6s;   animation-duration: 6s; }
+    .paw-t4-s3 { left: 40%; top: 15%; transform: rotate(15deg); animation-delay: 1.0s;   animation-duration: 6s; }
+    .paw-t4-s4 { left: 45%; top: 8%;  transform: rotate(15deg) scaleX(-1); animation-delay: 1.4s;   animation-duration: 6s; }
+    .paw-t4-s5 { left: 55%; top: 12%; transform: rotate(15deg); animation-delay: 1.8s;   animation-duration: 6s; }
+    .paw-t4-s6 { left: 60%; top: 6%;  transform: rotate(15deg) scaleX(-1); animation-delay: 2.2s;   animation-duration: 6s; }
+
+    @keyframes pawStep {
+      0%   { opacity: 0; transform: scale(0.6) rotate(var(--r, 0deg)); }
+      15%  { opacity: 0.85; transform: scale(1.05) rotate(var(--r, 0deg)); }
+      40%  { opacity: 0.6; transform: scale(1) rotate(var(--r, 0deg)); }
+      80%  { opacity: 0.2; }
+      100% { opacity: 0; }
+    }
+
     .btn {
       display: inline-flex; align-items: center; justify-content: center; gap: 10px;
       padding: 14px 20px; border: 1px solid transparent; border-radius: 14px;
@@ -86,7 +150,7 @@
     .btn-ghost:hover { background: rgba(255,240,220,0.08); border-color: rgba(255,240,220,0.22); }
 
     .page {
-      position: relative; z-index: 2; min-height: 100vh;
+      position: relative; z-index: 3; min-height: 100vh;
       animation: pageIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
     }
     @keyframes pageIn {
@@ -271,6 +335,49 @@
   <div class="bg-mesh"></div>
   <div class="grid-overlay"></div>
   <div class="bg-grain"></div>
+
+  <!-- Animated paw prints layer (special li_is page) -->
+  <div class="paw-layer" aria-hidden="true">
+    <!-- The SVG paw print template (dog paw: large pad + 4 toe pads) -->
+
+    <!-- Trail 1 -->
+    <div class="paw paw-t1-s1"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t1-s2"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t1-s3"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t1-s4"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t1-s5"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t1-s6"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t1-s7"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t1-s8"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+
+    <!-- Trail 2 -->
+    <div class="paw paw-t2-s1"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t2-s2"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t2-s3"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t2-s4"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t2-s5"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t2-s6"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t2-s7"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t2-s8"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+
+    <!-- Trail 3 -->
+    <div class="paw paw-t3-s1"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t3-s2"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t3-s3"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t3-s4"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t3-s5"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t3-s6"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t3-s7"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t3-s8"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+
+    <!-- Trail 4 top scatter -->
+    <div class="paw paw-t4-s1"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t4-s2"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t4-s3"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t4-s4"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t4-s5"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t4-s6"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+  </div>
 
   <div class="page">
     <div class="profile-page">
