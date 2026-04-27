@@ -27,11 +27,29 @@ dotnet publish Barkfluff.WebServer.csproj -c Release -r linux-x64 --self-contain
 
 ## Services
 
-- **`UserProfileService`** — gRPC запросы профилей, кеш 30 мин (не найденных — 5 мин, `IMemoryCache`)
-- **`UserPageService`** — читает `html/userpage.html`, заменяет `%%username%%`
+- **`UserProfileService`** — gRPC запросы профилей, кеш 30 мин (не найденных — 5 мин, `IMemoryCache`). Возвращает `UserProfileData` включая `ProfilePosterUrl`.
+- **`UserPageService`** — читает `html/userpage.html`, заменяет `%%username%%`. Специальная обработка: если username == `li_is` (без учёта регистра), отдаётся `html/li_is_page.html` с анимированными лапками на фоне.
 - **`LegalPageService`** — файлы из `html/legal/` по имени страницы
 - **`SupportChatService`** — in-memory сессии чата (`ConcurrentDictionary`)
 - **`TelegramService`** — Telegram-бот для уведомлений чата поддержки. Ответ администратора — reply, первая строка — GUID чата
+
+## REST API — `/api/user/{username}`
+
+Возвращает публичный профиль пользователя:
+
+```json
+{
+  "found": true,
+  "firstName": "...",
+  "lastName": "...",
+  "username": "...",
+  "bio": "...",
+  "profilePicture": "https://...",
+  "profilePosterUrl": "https://..."   // пусто если постер не задан
+}
+```
+
+`profilePosterUrl` — URL постера/обложки профиля (горизонтальное изображение 3:1, отображается за аватаром в `.pc-cover`).
 
 ## gRPC Client
 
@@ -43,6 +61,7 @@ dotnet publish Barkfluff.WebServer.csproj -c Release -r linux-x64 --self-contain
 
 - `html/barkfluff.html` — главная страница
 - `html/userpage.html` — шаблон страницы пользователя
+- `html/li_is_page.html` — **специальная** страница для пользователя `li_is`: как userpage, но с анимированными полупрозрачными лапками-следами (SVG, CSS keyframes) на заднем плане
 - `html/selfhosted.html` — self-hosted
 - `html/legal/*.html` — юридические страницы
 - `files/install.ps1` — скрипт установки

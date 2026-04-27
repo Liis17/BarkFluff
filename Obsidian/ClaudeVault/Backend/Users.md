@@ -95,7 +95,7 @@ dotnet ef database update --project BarkFluff.Users.csproj
 | `RegisterDevice(...)` | Зарегистрировать устройство | Upsert по DeviceId; вызывается Identity при авторизации |
 | `GetUserDevices(userId)` | Список устройств пользователя | |
 | `DeleteUserDevice(deviceId, userId)` | Удалить устройство | |
-| `GetUserByUsername(username)` | Публичная информация для веб-сервера | Применяет Privacy: `ProfileVisibleOnSite`, `AvatarVisibility`, `BioVisibility` |
+| `GetUserByUsername(username)` | Публичная информация для веб-сервера | Применяет Privacy: `ProfileVisibleOnSite`, `AvatarVisibility`, `BioVisibility`. Возвращает `profile_poster_url` (field 7) — получается из PersonalizationStorage + FilesServerApi.GetFileData |
 | `GetUserPrivacy(userId)` | Настройки приватности пользователя | Для других микросервисов (напр. Onliner) |
 | `SearchUsersServer(query, offset, size)` | Поиск пользователей для AdminPanel | Пустой query → все пользователи убыванию ID; макс 50 |
 | `UpdateStorageLimit(userId, storageLimit_gb)` | Обновить лимит хранилища | 1–250 ГБ |
@@ -111,7 +111,7 @@ dotnet ef database update --project BarkFluff.Users.csproj
 FRIENDS трактуется как NONE до появления сервиса отношений.
 
 Применение:
-- `GetUserByUsername` — если `!ProfileVisibleOnSite` → found=false; avatar/bio фильтруются по visibility
+- `GetUserByUsername` — если `!ProfileVisibleOnSite` → found=false; avatar/bio фильтруются по visibility; poster_url получается через FilesServerApi (если ошибка — пустая строка)
 - `SearchUsers` — `SearchVisible=false` исключает из поиска, но пользователь видит сам себя
 - [[Backend/Onliner]] — `OnlineVisibilityFilter` по `OnlineVisibility`
 

@@ -1,4 +1,5 @@
 using BarkFluff.GrpcServer.Metrics;
+using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Identity;
 using BarkFluff.Users.Features.AddDraftUser;
@@ -42,13 +43,23 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
     private readonly IMediator _mediator;
     private readonly UsersStorage _usersStorage;
     private readonly PrivacyStorage _privacyStorage;
+    private readonly PersonalizationStorage _personalizationStorage;
+    private readonly FilesServerApi.FilesServerApiClient _filesClient;
     private readonly MetricsCollector _metrics;
 
-    public UsersServerApiService(IMediator mediator, UsersStorage usersStorage, PrivacyStorage privacyStorage, MetricsCollector metrics)
+    public UsersServerApiService(
+        IMediator mediator,
+        UsersStorage usersStorage,
+        PrivacyStorage privacyStorage,
+        PersonalizationStorage personalizationStorage,
+        FilesServerApi.FilesServerApiClient filesClient,
+        MetricsCollector metrics)
     {
         _mediator = mediator;
         _usersStorage = usersStorage;
         _privacyStorage = privacyStorage;
+        _personalizationStorage = personalizationStorage;
+        _filesClient = filesClient;
         _metrics = metrics;
     }
 
@@ -294,6 +305,24 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
             ? (user.ProfilePicture ?? string.Empty)
             : string.Empty;
 
+        // Получаем постер профиля через персонализацию
+        var posterUrl = string.Empty;
+        try
+        {
+            var personalization = await _personalizationStorage.Get(user.Id);
+            if (!string.IsNullOrEmpty(personalization?.ProfilePosterFileId))
+            {
+                var fileDataResponse = await _filesClient.GetFileDataAsync(
+                    new GetFileDataRequest { FileId = personalization.ProfilePosterFileId });
+                posterUrl = fileDataResponse.FileInfo.FileUrl ?? string.Empty;
+            }
+        }
+        catch (Exception)
+        {
+            // Не блокируем ответ, если постер недоступен
+            posterUrl = string.Empty;
+        }
+
         return new GetUserByUsernameResponse
         {
             Found = true,
@@ -302,6 +331,7 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
             Username = user.Username,
             Bio = bio,
             ProfilePicture = avatar,
+            ProfilePosterUrl = posterUrl,
         };
     }
 

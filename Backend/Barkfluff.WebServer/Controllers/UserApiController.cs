@@ -37,6 +37,7 @@ public class UserApiController : ControllerBase
             username = profile.Username,
             bio = profile.Bio,
             profilePicture = profile.ProfilePicture,
+            profilePosterUrl = profile.ProfilePosterUrl,
         });
     }
 }

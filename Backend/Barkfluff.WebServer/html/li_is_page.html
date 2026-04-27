@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Barkfluff: @%%username%%</title>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+
+  <style>
+    /* ===== BASE (styles.css) ===== */
+    :root {
+      --bg-0: #14070a;
+      --bg-1: #1c0d0a;
+      --bg-2: #241310;
+      --bg-3: #2d1914;
+      --line: rgba(255, 240, 220, 0.08);
+      --line-strong: rgba(255, 240, 220, 0.14);
+      --ink: #fef6ea;
+      --ink-dim: #c9a893;
+      --ink-mute: #8a6a5b;
+      --brand: #ff7a29;
+      --brand-2: #e25a12;
+      --brand-glow: rgba(255, 122, 41, 0.35);
+      --shadow-card: 0 30px 60px -20px rgba(0, 0, 0, 0.7);
+      --shadow-brand: 0 12px 30px -8px rgba(255, 122, 41, 0.45);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
+
+    body {
+      background: var(--bg-1);
+      color: var(--ink);
+      font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+      font-feature-settings: "ss01", "cv11";
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    .bg-mesh {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(900px 600px at 85% 10%, rgba(255, 122, 41, 0.18), transparent 60%),
+        radial-gradient(700px 500px at 15% 90%, rgba(138, 46, 6, 0.28), transparent 60%),
+        radial-gradient(500px 400px at 50% 50%, rgba(255, 180, 100, 0.05), transparent 70%),
+        linear-gradient(180deg, #1c0d0a 0%, #14070a 100%);
+    }
+    .bg-grain {
+      position: fixed; inset: 0; z-index: 1; pointer-events: none;
+      opacity: 0.22; mix-blend-mode: overlay;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    }
+    .grid-overlay {
+      position: fixed; inset: 0; z-index: 1; pointer-events: none;
+      background-image:
+        linear-gradient(to right, rgba(255,240,220,0.025) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,240,220,0.025) 1px, transparent 1px);
+      background-size: 80px 80px;
+      mask-image: radial-gradient(1000px 700px at 50% 40%, #000 30%, transparent 80%);
+      -webkit-mask-image: radial-gradient(1000px 700px at 50% 40%, #000 30%, transparent 80%);
+    }
+
+    /* ===== PAW PRINTS LAYER ===== */
+    .paw-layer {
+      position: fixed; inset: 0; z-index: 2; pointer-events: none; overflow: hidden;
+    }
+
+    .paw {
+      position: absolute;
+      width: 40px; height: 40px;
+      opacity: 0;
+      animation: pawStep 4s ease-in-out infinite;
+    }
+
+    .paw svg {
+      width: 100%; height: 100%;
+      fill: rgba(255, 122, 41, 0.18);
+    }
+
+    /* Each paw has unique position and delay for a realistic walking trail effect */
+    /* Trail 1 — bottom-left to top-right diagonal */
+    .paw-t1-s1 { left: 5%;  top: 82%; transform: rotate(-30deg); animation-delay: 0s;    animation-duration: 5s; }
+    .paw-t1-s2 { left: 8%;  top: 74%; transform: rotate(-30deg) scaleX(-1); animation-delay: 0.4s;  animation-duration: 5s; }
+    .paw-t1-s3 { left: 11%; top: 66%; transform: rotate(-30deg); animation-delay: 0.8s;  animation-duration: 5s; }
+    .paw-t1-s4 { left: 14%; top: 58%; transform: rotate(-30deg) scaleX(-1); animation-delay: 1.2s;  animation-duration: 5s; }
+    .paw-t1-s5 { left: 17%; top: 50%; transform: rotate(-30deg); animation-delay: 1.6s;  animation-duration: 5s; }
+    .paw-t1-s6 { left: 20%; top: 42%; transform: rotate(-30deg) scaleX(-1); animation-delay: 2.0s;  animation-duration: 5s; }
+    .paw-t1-s7 { left: 23%; top: 34%; transform: rotate(-30deg); animation-delay: 2.4s;  animation-duration: 5s; }
+    .paw-t1-s8 { left: 26%; top: 26%; transform: rotate(-30deg) scaleX(-1); animation-delay: 2.8s;  animation-duration: 5s; }
+
+    /* Trail 2 — middle */
+    .paw-t2-s1 { left: 42%; top: 88%; transform: rotate(-25deg); animation-delay: 0.5s;  animation-duration: 4.5s; }
+    .paw-t2-s2 { left: 46%; top: 80%; transform: rotate(-25deg) scaleX(-1); animation-delay: 0.9s;  animation-duration: 4.5s; }
+    .paw-t2-s3 { left: 50%; top: 72%; transform: rotate(-25deg); animation-delay: 1.3s;  animation-duration: 4.5s; }
+    .paw-t2-s4 { left: 54%; top: 64%; transform: rotate(-25deg) scaleX(-1); animation-delay: 1.7s;  animation-duration: 4.5s; }
+    .paw-t2-s5 { left: 58%; top: 56%; transform: rotate(-25deg); animation-delay: 2.1s;  animation-duration: 4.5s; }
+    .paw-t2-s6 { left: 62%; top: 48%; transform: rotate(-25deg) scaleX(-1); animation-delay: 2.5s;  animation-duration: 4.5s; }
+    .paw-t2-s7 { left: 66%; top: 40%; transform: rotate(-25deg); animation-delay: 2.9s;  animation-duration: 4.5s; }
+    .paw-t2-s8 { left: 70%; top: 32%; transform: rotate(-25deg) scaleX(-1); animation-delay: 3.3s;  animation-duration: 4.5s; }
+
+    /* Trail 3 — right side */
+    .paw-t3-s1 { left: 72%; top: 90%; transform: rotate(-20deg); animation-delay: 1.0s;  animation-duration: 5.5s; }
+    .paw-t3-s2 { left: 76%; top: 80%; transform: rotate(-20deg) scaleX(-1); animation-delay: 1.4s;  animation-duration: 5.5s; }
+    .paw-t3-s3 { left: 80%; top: 70%; transform: rotate(-20deg); animation-delay: 1.8s;  animation-duration: 5.5s; }
+    .paw-t3-s4 { left: 84%; top: 60%; transform: rotate(-20deg) scaleX(-1); animation-delay: 2.2s;  animation-duration: 5.5s; }
+    .paw-t3-s5 { left: 88%; top: 50%; transform: rotate(-20deg); animation-delay: 2.6s;  animation-duration: 5.5s; }
+    .paw-t3-s6 { left: 84%; top: 40%; transform: rotate(-20deg) scaleX(-1); animation-delay: 3.0s;  animation-duration: 5.5s; }
+    .paw-t3-s7 { left: 80%; top: 30%; transform: rotate(-20deg); animation-delay: 3.4s;  animation-duration: 5.5s; }
+    .paw-t3-s8 { left: 76%; top: 20%; transform: rotate(-20deg) scaleX(-1); animation-delay: 3.8s;  animation-duration: 5.5s; }
+
+    /* Trail 4 — top scatter */
+    .paw-t4-s1 { left: 30%; top: 10%; transform: rotate(15deg); animation-delay: 0.2s;   animation-duration: 6s; }
+    .paw-t4-s2 { left: 35%; top: 5%;  transform: rotate(15deg) scaleX(-1); animation-delay: 0.6s;   animation-duration: 6s; }
+    .paw-t4-s3 { left: 40%; top: 15%; transform: rotate(15deg); animation-delay: 1.0s;   animation-duration: 6s; }
+    .paw-t4-s4 { left: 45%; top: 8%;  transform: rotate(15deg) scaleX(-1); animation-delay: 1.4s;   animation-duration: 6s; }
+    .paw-t4-s5 { left: 55%; top: 12%; transform: rotate(15deg); animation-delay: 1.8s;   animation-duration: 6s; }
+    .paw-t4-s6 { left: 60%; top: 6%;  transform: rotate(15deg) scaleX(-1); animation-delay: 2.2s;   animation-duration: 6s; }
+
+    @keyframes pawStep {
+      0%   { opacity: 0; transform: scale(0.6); }
+      15%  { opacity: 0.85; transform: scale(1.05); }
+      40%  { opacity: 0.6; transform: scale(1); }
+      80%  { opacity: 0.2; }
+      100% { opacity: 0; }
+    }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+      padding: 14px 20px; border: 1px solid transparent; border-radius: 14px;
+      font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+      text-decoration: none; color: inherit;
+      transition: transform 0.15s ease, background 0.2s, border-color 0.2s, box-shadow 0.2s;
+    }
+    .btn svg { width: 16px; height: 16px; }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary {
+      background: linear-gradient(180deg, #ff8a3c 0%, #e65c12 100%);
+      color: #fff;
+      box-shadow: var(--shadow-brand), inset 0 1px 0 rgba(255,255,255,0.25);
+    }
+    .btn-primary:hover {
+      box-shadow: 0 16px 40px -8px rgba(255,122,41,0.6), inset 0 1px 0 rgba(255,255,255,0.3);
+      transform: translateY(-1px);
+    }
+    .btn-ghost { background: rgba(255,240,220,0.04); border-color: var(--line-strong); color: var(--ink); }
+    .btn-ghost:hover { background: rgba(255,240,220,0.08); border-color: rgba(255,240,220,0.22); }
+
+    .page {
+      position: relative; z-index: 3; min-height: 100vh;
+      animation: pageIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    @keyframes pageIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ===== PROFILE (profile.css) ===== */
+    .profile-page {
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 80px 24px 40px; position: relative;
+    }
+
+    .profile-nav {
+      position: absolute; top: 24px; left: 0; right: 0;
+      display: flex; justify-content: space-between; align-items: center; padding: 0 28px;
+    }
+    .profile-nav-link {
+      font-size: 12px; font-weight: 600; color: var(--ink-mute); text-decoration: none;
+      display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px;
+      border-radius: 8px; transition: background 0.15s, color 0.15s;
+    }
+    .profile-nav-link:hover { color: var(--ink-dim); background: rgba(255,240,220,0.04); }
+    .profile-nav-link svg { width: 12px; height: 12px; fill: currentColor; }
+
+    .profile-card {
+      width: 100%; max-width: 440px;
+      border-radius: 28px; border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(50,28,22,0.72), rgba(22,11,9,0.78));
+      backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px);
+      box-shadow: var(--shadow-card); overflow: hidden; position: relative;
+      animation: cardIn 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    }
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(20px) scale(0.98); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .state { display: none; }
+    .state.active { display: block; }
+
+    /* Loading */
+    .pc-loading {
+      width: 100%; padding: 72px 28px;
+      display: flex; flex-direction: column; align-items: center; gap: 16px;
+    }
+    .pc-spinner {
+      width: 48px; height: 48px; border-radius: 50%;
+      border: 3px solid rgba(255,122,41,0.15); border-top-color: var(--brand);
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .pc-loading-text { font-size: 13px; color: var(--ink-dim); font-weight: 500; }
+
+    /* Cover */
+    .pc-cover {
+      height: 116px; position: relative; overflow: hidden; border-bottom: 1px solid var(--line);
+      background:
+        radial-gradient(400px 200px at 50% 120%, rgba(255,122,41,0.45), transparent 70%),
+        linear-gradient(135deg, #3a1a11 0%, #1a0a07 100%);
+    }
+    .pc-cover-poster {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      object-fit: cover; object-position: center;
+      display: none;
+    }
+    .pc-cover-poster.visible { display: block; }
+    .pc-cover::after {
+      content: ""; position: absolute; inset: 0; opacity: 0.6;
+      background-image:
+        radial-gradient(circle at 20% 30%, rgba(255,180,100,0.08) 0, transparent 2px),
+        radial-gradient(circle at 80% 60%, rgba(255,180,100,0.10) 0, transparent 2px),
+        radial-gradient(circle at 50% 80%, rgba(255,180,100,0.06) 0, transparent 2px);
+      background-size: 120px 120px, 80px 80px, 150px 150px;
+    }
+
+    .pc-body {
+      padding: 0 28px 28px; display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative;
+    }
+
+    /* Avatar */
+    .pc-avatar-wrap { margin-top: -52px; width: 112px; height: 112px; position: relative; margin-bottom: 14px; }
+    .pc-avatar-ring {
+      position: absolute; inset: -5px; border-radius: 50%;
+      background: conic-gradient(from 90deg, #ff8a3c, #e25a12, #ffb47a, #ff8a3c);
+      padding: 3px;
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude; opacity: 0.9;
+    }
+    .pc-avatar {
+      width: 112px; height: 112px; border-radius: 50%; object-fit: cover;
+      background: #2a1208; border: 4px solid var(--bg-2);
+      box-shadow: 0 8px 20px -4px rgba(0,0,0,0.5); position: relative; z-index: 1;
+    }
+
+    .pc-fullname { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; color: var(--ink); text-align: center; line-height: 1.15; }
+    .pc-username { font-size: 14px; font-weight: 600; color: #ffb47a; font-family: 'JetBrains Mono', monospace; }
+    .pc-bio { font-size: 14px; line-height: 1.55; color: var(--ink-dim); text-align: center; margin: 16px 0 4px; max-width: 340px; }
+
+    /* Divider */
+    .pc-divider {
+      display: flex; align-items: center; gap: 10px; width: 100%; margin: 24px 0 16px;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.18em; color: var(--ink-mute); text-transform: uppercase;
+    }
+    .pc-divider::before, .pc-divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+    /* Open button */
+    .pc-open-status { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+    .pc-open-btn {
+      width: 100%; padding: 15px 20px; font-size: 14px; border-radius: 14px;
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+      cursor: pointer; font-weight: 700; border: none; color: #fff;
+      background: linear-gradient(180deg, #ff8a3c 0%, #e65c12 100%);
+      box-shadow: var(--shadow-brand), inset 0 1px 0 rgba(255,255,255,0.22);
+      transition: transform 0.15s, box-shadow 0.2s; font-family: inherit;
+    }
+    .pc-open-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 16px 40px -8px rgba(255,122,41,0.65), inset 0 1px 0 rgba(255,255,255,0.3);
+    }
+    .pc-open-btn svg { width: 17px; height: 17px; fill: currentColor; }
+
+    /* Opening indicator */
+    .pc-opening {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      padding: 12px 16px; background: rgba(255,122,41,0.08); border: 1px solid rgba(255,122,41,0.2);
+      border-radius: 12px; font-size: 12px; color: #ffb47a; font-weight: 500;
+    }
+    .pc-opening .dots { display: inline-flex; gap: 3px; }
+    .pc-opening .dots span {
+      width: 5px; height: 5px; border-radius: 50%; background: #ffb47a;
+      animation: bounce 1.2s infinite ease-in-out;
+    }
+    .pc-opening .dots span:nth-child(2) { animation-delay: 0.15s; }
+    .pc-opening .dots span:nth-child(3) { animation-delay: 0.30s; }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+      40%            { transform: translateY(-3px); opacity: 1; }
+    }
+
+    /* Downloads slide-in */
+    .pc-downloads {
+      width: 100%; display: grid; grid-template-rows: 0fr;
+      opacity: 0; transition: grid-template-rows 0.6s ease, opacity 0.4s ease, margin-top 0.4s ease; margin-top: 0;
+    }
+    .pc-downloads.show { grid-template-rows: 1fr; opacity: 1; margin-top: 16px; }
+    .pc-downloads-inner { overflow: hidden; display: flex; flex-direction: column; gap: 10px; }
+    .pc-dl-label {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.16em;
+      text-transform: uppercase; color: var(--ink-mute); text-align: center;
+    }
+    .pc-dl-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .pc-dl-grid .btn { padding: 11px 12px; font-size: 12px; border-radius: 11px; }
+
+    /* 404 */
+    .pc-404 {
+      width: 100%; padding: 56px 28px;
+      display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center;
+    }
+    .pc-404-glyph {
+      width: 88px; height: 88px; border-radius: 24px;
+      background: rgba(255,122,41,0.08); border: 1px solid rgba(255,122,41,0.2);
+      display: grid; place-items: center; margin-bottom: 10px; color: #ffb47a;
+    }
+    .pc-404-glyph svg { width: 40px; height: 40px; fill: currentColor; }
+    .pc-404-title { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+    .pc-404-desc { font-size: 14px; line-height: 1.5; color: var(--ink-dim); max-width: 320px; }
+    .pc-404-desc strong { color: var(--ink); font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+    .pc-404-actions { display: flex; gap: 10px; margin-top: 12px; width: 100%; max-width: 280px; }
+    .pc-404-actions .btn { flex: 1; padding: 12px; font-size: 13px; }
+
+    @media (max-width: 480px) {
+      .profile-page { padding: 64px 16px 24px; }
+      .pc-body { padding: 0 20px 22px; }
+      .pc-fullname { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-mesh"></div>
+  <div class="grid-overlay"></div>
+  <div class="bg-grain"></div>
+
+  <!-- Animated paw prints layer (special li_is page) -->
+  <div class="paw-layer" aria-hidden="true">
+    <!-- The SVG paw print template (dog paw: large pad + 4 toe pads) -->
+
+    <!-- Trail 1 -->
+    <div class="paw paw-t1-s1"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t1-s2"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t1-s3"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t1-s4"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t1-s5"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t1-s6"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t1-s7"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t1-s8"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+
+    <!-- Trail 2 -->
+    <div class="paw paw-t2-s1"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t2-s2"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t2-s3"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t2-s4"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t2-s5"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t2-s6"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t2-s7"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t2-s8"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+
+    <!-- Trail 3 -->
+    <div class="paw paw-t3-s1"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t3-s2"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t3-s3"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t3-s4"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t3-s5"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t3-s6"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t3-s7"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t3-s8"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+
+    <!-- Trail 4 top scatter -->
+    <div class="paw paw-t4-s1"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t4-s2"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t4-s3"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t4-s4"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t4-s5"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+    <div class="paw paw-t4-s6"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="40" rx="16" ry="13"/><ellipse cx="14" cy="22" rx="6.5" ry="8"/><ellipse cx="26" cy="16" rx="6" ry="7.5"/><ellipse cx="38" cy="16" rx="6" ry="7.5"/><ellipse cx="50" cy="22" rx="6.5" ry="8"/></svg></div>
+  </div>
+
+  <div class="page">
+    <div class="profile-page">
+
+      <div class="profile-nav">
+        <a href="/" class="profile-nav-link">
+          <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+          barkfluff.com
+        </a>
+        <button class="profile-nav-link" id="shareBtn" style="background:none;border:none;cursor:pointer;">
+          Поделиться
+          <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/></svg>
+        </button>
+      </div>
+
+      <div class="profile-card">
+
+        <!-- Загрузка -->
+        <div id="state-loading" class="state active">
+          <div class="pc-loading">
+            <div class="pc-spinner"></div>
+            <div class="pc-loading-text">Загружаем профиль…</div>
+          </div>
+        </div>
+
+        <!-- Профиль найден -->
+        <div id="state-profile" class="state">
+          <div class="pc-cover">
+            <img class="pc-cover-poster" id="profile-poster" src="" alt="Profile cover image" />
+          </div>
+          <div class="pc-body">
+            <div class="pc-avatar-wrap">
+              <div class="pc-avatar-ring"></div>
+              <img class="pc-avatar" id="profile-avatar" src="" alt="Avatar" />
+            </div>
+
+            <div class="pc-fullname" id="profile-fullname"></div>
+            <div class="pc-username">@%%username%%</div>
+            <div class="pc-bio" id="profile-bio"></div>
+
+            <div class="pc-divider">Открыть переписку</div>
+
+            <div class="pc-open-status">
+              <button class="pc-open-btn" id="openProtocolBtn">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+                Открыть в Barkfluff
+              </button>
+              <div class="pc-opening" id="openingIndicator" style="display: none;">
+                <span class="dots"><span></span><span></span><span></span></span>
+                <span id="openingText">Запрашиваем приложение…</span>
+              </div>
+            </div>
+
+            <div class="pc-downloads" id="pcDownloads">
+              <div class="pc-downloads-inner">
+                <div class="pc-dl-label">Приложение не открылось? Скачайте:</div>
+                <div class="pc-dl-grid">
+                  <a href="https://storage.barkfluff.com/get/barkfluffwindows" class="btn btn-ghost">Windows</a>
+                  <a href="https://storage.barkfluff.com/get/barkfluffkotlin/release" class="btn btn-ghost">Android</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 404 -->
+        <div id="state-notfound" class="state">
+          <div class="pc-404">
+            <div class="pc-404-glyph">
+              <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+            </div>
+            <div class="pc-404-title">Пользователь не найден</div>
+            <div class="pc-404-desc">
+              Пользователь <strong>@%%username%%</strong> не зарегистрирован в Barkfluff или удалил аккаунт.
+            </div>
+            <div class="pc-404-actions">
+              <a href="/" class="btn btn-ghost">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+                На главную
+              </a>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const USERNAME = "%%username%%";
+    const PROTOCOL_URL = "bf://user-username=" + USERNAME;
+    const REVEAL_DELAY = 5000;
+    const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%238a6a5b'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E";
+
+    function showState(id) {
+      document.querySelectorAll('.state').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+
+    document.getElementById('openProtocolBtn').addEventListener('click', function () {
+      document.getElementById('openingIndicator').style.display = 'flex';
+      window.location.href = PROTOCOL_URL;
+      setTimeout(() => {
+        if (document.visibilityState === 'visible') {
+          document.getElementById('openingText').textContent = 'Не удалось. Приложение не установлено?';
+          document.getElementById('pcDownloads').classList.add('show');
+        }
+      }, REVEAL_DELAY);
+    });
+
+    async function loadProfile() {
+      try {
+        const res = await fetch('/api/user/' + encodeURIComponent(USERNAME));
+        const data = await res.json();
+
+        if (!data.found) {
+          showState('state-notfound');
+          document.title = 'Barkfluff: пользователь не найден';
+          return;
+        }
+
+        const fullName = [data.firstName, data.lastName].filter(Boolean).join(' ') || USERNAME;
+        document.getElementById('profile-fullname').textContent = fullName;
+        document.title = 'Barkfluff: ' + fullName + ' (@' + data.username + ')';
+
+        const avatarEl = document.getElementById('profile-avatar');
+        if (data.profilePicture && data.profilePicture.length > 0) {
+          avatarEl.src = data.profilePicture;
+          avatarEl.onerror = function () { this.src = DEFAULT_AVATAR; };
+        } else {
+          avatarEl.src = DEFAULT_AVATAR;
+        }
+
+        // Показываем постер (обложку профиля) если он задан
+        const posterEl = document.getElementById('profile-poster');
+        if (data.profilePosterUrl && data.profilePosterUrl.length > 0) {
+          posterEl.src = data.profilePosterUrl;
+          posterEl.onload = function () { posterEl.classList.add('visible'); };
+          posterEl.onerror = function () { /* не показываем при ошибке */ };
+        }
+
+        const bioEl = document.getElementById('profile-bio');
+        if (data.bio && data.bio.length > 0) {
+          bioEl.textContent = data.bio;
+          bioEl.style.display = 'block';
+        } else {
+          bioEl.style.display = 'none';
+        }
+
+        showState('state-profile');
+
+        // Автооткрытие протокола
+        window.location.href = PROTOCOL_URL;
+
+        // Через 5 секунд показываем кнопки скачивания
+        setTimeout(() => {
+          if (document.visibilityState === 'visible') {
+            document.getElementById('pcDownloads').classList.add('show');
+          }
+        }, REVEAL_DELAY);
+
+      } catch (err) {
+        console.error('Failed to load profile:', err);
+        showState('state-notfound');
+      }
+    }
+
+    document.getElementById('shareBtn').addEventListener('click', function () {
+      navigator.clipboard.writeText(window.location.href).then(() => {
+        const btn = document.getElementById('shareBtn');
+        const orig = btn.innerHTML;
+        btn.innerHTML = 'Скопировано <svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>';
+        setTimeout(() => { btn.innerHTML = orig; }, 2000);
+      }).catch(() => {});
+    });
+
+    window.addEventListener('load', loadProfile);
+  </script>
+
+</body>
+</html>
