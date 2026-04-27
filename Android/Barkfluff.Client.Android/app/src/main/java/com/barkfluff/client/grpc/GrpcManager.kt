@@ -2180,7 +2180,7 @@ class GrpcManager {
             if (filesClient == null) {
                 return@withContext Result.failure(IllegalStateException("Клиент Files не создан"))
             }
-            val uploadUrlResult = getUploadUrl(FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_IMAGE)
+            val uploadUrlResult = getUploadUrl(FilesApiOuterClass.UploadFileType.USER_PROFILE_POSTER)
             if (uploadUrlResult.isFailure) {
                 return@withContext Result.failure(uploadUrlResult.exceptionOrNull()!!)
             }
