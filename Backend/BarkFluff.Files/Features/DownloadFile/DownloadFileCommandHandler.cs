@@ -36,8 +36,8 @@ public class DownloadFileCommandHandler : IRequestHandler<DownloadFileCommand, D
 
         var file = await _filesStorage.GetFile(request.FileId);
 
-        // Незя получать файлы по их оригинальным ID кроме аватарок и картинок чата
-        if (file is { Type: not (UploadFileType.UserAvatar or UploadFileType.ChatPicture) })
+        // Незя получать файлы по их оригинальным ID кроме аватарок, картинок чата и постеров профиля
+        if (file is { Type: not (UploadFileType.UserAvatar or UploadFileType.ChatPicture or UploadFileType.UserProfilePoster) })
         {
             _logger.LogWarning(
                 "Попытка доступа к файлу {FileId} с недопустимым типом {FileType}",

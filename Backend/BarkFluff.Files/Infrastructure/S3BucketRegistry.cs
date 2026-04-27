@@ -32,6 +32,7 @@ public class S3BucketRegistry : IDisposable
         { UploadFileType.MessageAttachmentAudio, "message-audio" },
         { UploadFileType.MessageAttachmentVoice, "message-audio" },
         { UploadFileType.MessageAttachmentSticker, "message-documents" },
+        { UploadFileType.UserProfilePoster, "profile-pictures" },
     };
 
     /// <summary>

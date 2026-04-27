@@ -48,6 +48,8 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 
 Бакеты: `profile-pictures`, `message-images`, `message-videos`, `message-documents`, `message-audio`, `chat-pictures`, `badge-images`, `barkfluff-uploads` (fallback).
 
+> **Тип `UserProfilePoster = 10`** — постеры профиля (горизонтальный баннер 3:1). Хранятся в бакете `profile-pictures`. Разрешены к публичному скачиванию через `GET /download/{id}`. Android-клиент должен использовать `USER_PROFILE_POSTER` при вызове `GetUploadUrl`.
+
 ### Доменные сущности
 
 | Сущность | Назначение |
