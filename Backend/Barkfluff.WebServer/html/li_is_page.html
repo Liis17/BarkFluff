@@ -121,9 +121,9 @@
     .paw-t4-s6 { left: 60%; top: 6%;  transform: rotate(15deg) scaleX(-1); animation-delay: 2.2s;   animation-duration: 6s; }
 
     @keyframes pawStep {
-      0%   { opacity: 0; transform: scale(0.6) rotate(var(--r, 0deg)); }
-      15%  { opacity: 0.85; transform: scale(1.05) rotate(var(--r, 0deg)); }
-      40%  { opacity: 0.6; transform: scale(1) rotate(var(--r, 0deg)); }
+      0%   { opacity: 0; transform: scale(0.6); }
+      15%  { opacity: 0.85; transform: scale(1.05); }
+      40%  { opacity: 0.6; transform: scale(1); }
       80%  { opacity: 0.2; }
       100% { opacity: 0; }
     }
@@ -406,7 +406,7 @@
         <!-- Профиль найден -->
         <div id="state-profile" class="state">
           <div class="pc-cover">
-            <img class="pc-cover-poster" id="profile-poster" src="" alt="" />
+            <img class="pc-cover-poster" id="profile-poster" src="" alt="Profile cover image" />
           </div>
           <div class="pc-body">
             <div class="pc-avatar-wrap">
