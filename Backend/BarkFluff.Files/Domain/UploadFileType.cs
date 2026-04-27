@@ -21,4 +21,6 @@ public enum UploadFileType
     MessageAttachmentVoice = 8,
 
     MessageAttachmentSticker = 9,
+
+    UserProfilePoster = 10, // Постер профиля пользователя (горизонтальный баннер)
 }
