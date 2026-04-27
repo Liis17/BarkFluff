@@ -534,6 +534,7 @@ message GetUserByUsernameResponse {
   string username = 4; // юзернейм
   string bio = 5; // био
   string profile_picture = 6; // ссылка на аватарку
+  string profile_poster_url = 7; // ссылка на постер/фон профиля (пусто если не задан)
 }
 
 // Запросы и ответы для установки Firebase токена
