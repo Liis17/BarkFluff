@@ -47,6 +47,7 @@ dotnet build BarkFluff.Proto.csproj
 - `ListMessagesRequest`: поле `count` устарело, использовать `offset_before`/`offset_after`
 - `MessageReadEvent.new_read_by` — **полный** список прочитавших, не только новых
 - `UploadFileType` — отдельный enum от `MessageAttachmentType`, маппировать при отправке сообщений
+- `GetUserByUsernameResponse.profile_poster_url` (field 7) — URL постера профиля (пусто если не задан); заполняется в Users через Files gRPC
 
 ## Подключение в .csproj
 
