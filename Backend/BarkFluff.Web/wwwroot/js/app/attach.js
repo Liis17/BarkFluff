@@ -34,9 +34,9 @@
         });
         var hasAnyImage = currentFiles.some(function (f) { return f.isImage; });
         var hasNonImage = currentFiles.some(function (f) { return !f.isImage; });
-        // Режим docs если есть хотя бы один не-медиафайл; кнопка images скрыта только если картинок нет вообще
         mode = hasNonImage ? 'docs' : 'images';
         btnImages.style.display = hasAnyImage ? '' : 'none';
+        btnDocs.style.display = '';
         render();
         overlay.classList.add('visible');
     }
@@ -81,12 +81,12 @@
                     if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
                     currentFiles.splice(actualIdx, 1);
                 }
+                if (currentFiles.length === 0) { close(); return; }
                 var hasAnyImage = currentFiles.some(function (f) { return f.isImage; });
                 var hasNonImage = currentFiles.some(function (f) { return !f.isImage; });
-                if (hasNonImage) { mode = 'docs'; }
-                else if (hasAnyImage) { mode = 'images'; }
+                mode = hasNonImage ? 'docs' : 'images';
                 btnImages.style.display = hasAnyImage ? '' : 'none';
-                if (currentFiles.length === 0) { close(); return; }
+                btnDocs.style.display = '';
                 render();
             });
             div.appendChild(rm);
