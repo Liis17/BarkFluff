@@ -9,7 +9,7 @@ namespace Barkfluff.WebServer.Services
             // Специальная страница только для пользователя li_is
             if (string.Equals(path, "li_is", StringComparison.OrdinalIgnoreCase))
             {
-                var liIsPath = Path.Combine(assemblyLocation, "html", "li_is_page.html");
+                var liIsPath = Path.Combine(assemblyLocation, "html", "UniqueUsers", "paws.page.html");
                 if (File.Exists(liIsPath))
                 {
                     return File.ReadAllText(liIsPath).Replace("%%username%%", path);
