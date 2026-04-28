@@ -32,9 +32,11 @@
         currentFiles = Array.from(files).map(function (f) {
             return { file: f, isImage: isImageFile(f), previewUrl: null };
         });
+        var hasAnyImage = currentFiles.some(function (f) { return f.isImage; });
         var hasNonImage = currentFiles.some(function (f) { return !f.isImage; });
+        // Режим docs если есть хотя бы один не-медиафайл; кнопка images скрыта только если картинок нет вообще
         mode = hasNonImage ? 'docs' : 'images';
-        btnImages.style.display = hasNonImage ? 'none' : '';
+        btnImages.style.display = hasAnyImage ? '' : 'none';
         render();
         overlay.classList.add('visible');
     }
@@ -72,11 +74,18 @@
             rm.className = 'attach-remove';
             rm.textContent = '\xd7';
             rm.addEventListener('click', function () {
-                if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
-                currentFiles.splice(i, 1);
+                // Вычисляем актуальный индекс в момент клика, а не захваченный i
+                // (splice сдвигает массив, захваченный i устаревает после первого удаления)
+                var actualIdx = currentFiles.indexOf(item);
+                if (actualIdx !== -1) {
+                    if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+                    currentFiles.splice(actualIdx, 1);
+                }
+                var hasAnyImage = currentFiles.some(function (f) { return f.isImage; });
                 var hasNonImage = currentFiles.some(function (f) { return !f.isImage; });
-                if (hasNonImage) { mode = 'docs'; btnImages.style.display = 'none'; }
-                else { mode = 'images'; btnImages.style.display = ''; }
+                if (hasNonImage) { mode = 'docs'; }
+                else if (hasAnyImage) { mode = 'images'; }
+                btnImages.style.display = hasAnyImage ? '' : 'none';
                 if (currentFiles.length === 0) { close(); return; }
                 render();
             });
