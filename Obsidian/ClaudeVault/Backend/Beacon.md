@@ -17,7 +17,7 @@ dotnet build Backend/BarkFluff.Beacon/BarkFluff.Beacon.csproj
 
 Сервис **не имеет БД**. Вся логика — две операции:
 
-1. **GetServerInfo** (gRPC endpoint) — запрашивает конфигурации Identity, Users, Files, Messages, Updates, Onliner из Configuration service и собирает ответ с внешними эндпоинтами (`ExternalEndpoint:Host`, фолбэк на `RunSettings:Host`).
+1. **GetServerInfo** (gRPC endpoint) — запрашивает конфигурации Identity, Users, Files, Messages, Updates, Onliner, FastAuth из Configuration service и собирает ответ с внешними эндпоинтами (`ExternalEndpoint:Host`, фолбэк на `RunSettings:Host`).
 2. **ServerRegistrationService** (BackgroundService) — каждые 5 минут отправляет `RegisterServerRequest` в Navigator.
 
 CQRS через MediatR: `GetServerInfoCommand` → `GetServerInfoCommandHandler`.

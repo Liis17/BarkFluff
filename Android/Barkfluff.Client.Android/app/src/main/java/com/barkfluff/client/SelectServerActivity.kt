@@ -186,6 +186,7 @@ class SelectServerActivity : AppCompatActivity() {
                             socketMessages = ensureHttpPrefix(serverInfo.messagesEndpoint)
                             socketUpdates = ensureHttpPrefix(serverInfo.updatesEndpoint)
                             socketOnliner = ensureHttpPrefix(serverInfo.onlinerEndpoint)
+                            socketFastAuth = ensureHttpPrefix(serverInfo.fastAuthEndpoint)
                             colors = serverInfo.color
                         }
 

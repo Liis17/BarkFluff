@@ -52,7 +52,8 @@ class AboutActivity : AppCompatActivity() {
             "Files" to globalParam.socketFiles,
             "Messages" to globalParam.socketMessages,
             "Updates" to globalParam.socketUpdates,
-            "Onliner" to globalParam.socketOnliner
+            "Onliner" to globalParam.socketOnliner,
+            "FastAuth" to globalParam.socketFastAuth
         )
 
         val container = binding.serverInfoContainer
