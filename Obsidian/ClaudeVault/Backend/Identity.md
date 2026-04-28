@@ -84,6 +84,7 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 | `DisableOtpVerificationServer` | `UserId`, `OtpType` | Принудительно отключить 2FA |
 | `GetActiveSessionsServer` | `UserId` | Список сессий по userId |
 | `RemoveActiveSessionServer` | `UserId`, `DeviceId` | Удалить сессию по userId + deviceId |
+| `CreateSessionForUserServer` | `UserId`, `DeviceId`, `DeviceName`, `OperationSystem`, `AppName`, `IpAddress` | Выпустить пару `access_token`+`refresh_token` для пользователя из другого сервиса (например [[Backend/FastAuth]] после Accept). Регистрирует устройство в Users + отправляет email-уведомление `SuccessfulLogin`. |
 
 ## Обязательные заголовки (XAuth) для большинства эндпоинтов
 
