@@ -696,7 +696,8 @@ class GrpcManager {
                 filesEndpoint = "${response.files.endpoint.host}:${response.files.endpoint.port}",
                 messagesEndpoint = "${response.messages.endpoint.host}:${response.messages.endpoint.port}",
                 updatesEndpoint = "${response.updates.endpoint.host}:${response.updates.endpoint.port}",
-                onlinerEndpoint = "${response.onliner.endpoint.host}:${response.onliner.endpoint.port}"
+                onlinerEndpoint = "${response.onliner.endpoint.host}:${response.onliner.endpoint.port}",
+                fastAuthEndpoint = "${response.fastAuth.endpoint.host}:${response.fastAuth.endpoint.port}"
             )
 
             Log.d(TAG, "Получена информация о сервере: ${serverInfo.name}")
@@ -1854,7 +1855,8 @@ class GrpcManager {
         val filesEndpoint: String,
         val messagesEndpoint: String,
         val updatesEndpoint: String,
-        val onlinerEndpoint: String
+        val onlinerEndpoint: String,
+        val fastAuthEndpoint: String
     )
 
     data class ChatData(

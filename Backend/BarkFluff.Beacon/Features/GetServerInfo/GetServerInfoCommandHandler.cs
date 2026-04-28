@@ -60,6 +60,11 @@ public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand,
             ServiceId = (int)ServiceId.Onliner
         });
 
+        var fastAuthSettings = await _configurationApiClient.GetConfigurationAsync(new GetConfigurationRequest()
+        {
+            ServiceId = (int)ServiceId.FastAuth
+        });
+
         _logger.LogInformation(
             "Информация о сервере '{ServerName}' успешно собрана. Описание: {Description}",
             _serverPropsSettings.Name,
@@ -84,6 +89,7 @@ public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand,
             Messages = ParseService(ServiceId.Messages, messagesSettings.Configurations.ToList()),
             Updates = ParseService(ServiceId.Updates, updatesSettings.Configurations.ToList()),
             Onliner = ParseService(ServiceId.Onliner, onlinerSettings.Configurations.ToList()),
+            FastAuth = ParseService(ServiceId.FastAuth, fastAuthSettings.Configurations.ToList()),
         };
     }
 
