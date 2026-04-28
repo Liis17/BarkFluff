@@ -58,6 +58,10 @@ class GlobalParam(private val context: Context) {
         get() = sharedPreferences.getString(KEY_SOCKET_ONLINER, "") ?: ""
         set(value) = sharedPreferences.edit().putString(KEY_SOCKET_ONLINER, value).apply()
 
+    var socketFastAuth: String
+        get() = sharedPreferences.getString(KEY_SOCKET_FAST_AUTH, "") ?: ""
+        set(value) = sharedPreferences.edit().putString(KEY_SOCKET_FAST_AUTH, value).apply()
+
     var serverName: String
         get() = sharedPreferences.getString(KEY_SERVER_NAME, "") ?: ""
         set(value) = sharedPreferences.edit().putString(KEY_SERVER_NAME, value).apply()
@@ -218,6 +222,7 @@ class GlobalParam(private val context: Context) {
         val messages = socketMessages
         val updates = socketUpdates
         val onliner = socketOnliner
+        val fastAuth = socketFastAuth
         val serverNameVal = serverName
         val serverDescVal = serverDescription
 
@@ -233,6 +238,7 @@ class GlobalParam(private val context: Context) {
             if (messages.isNotBlank()) putString(KEY_SOCKET_MESSAGES, messages)
             if (updates.isNotBlank()) putString(KEY_SOCKET_UPDATES, updates)
             if (onliner.isNotBlank()) putString(KEY_SOCKET_ONLINER, onliner)
+            if (fastAuth.isNotBlank()) putString(KEY_SOCKET_FAST_AUTH, fastAuth)
             if (serverNameVal.isNotBlank()) putString(KEY_SERVER_NAME, serverNameVal)
             if (serverDescVal.isNotBlank()) putString(KEY_SERVER_DESCRIPTION, serverDescVal)
         }.apply()
@@ -249,6 +255,7 @@ class GlobalParam(private val context: Context) {
         private const val KEY_SOCKET_MESSAGES = "socket_messages"
         private const val KEY_SOCKET_UPDATES = "socket_updates"
         private const val KEY_SOCKET_ONLINER = "socket_onliner"
+        private const val KEY_SOCKET_FAST_AUTH = "socket_fast_auth"
         private const val KEY_SERVER_NAME = "server_name"
         private const val KEY_SERVER_DESCRIPTION = "server_description"
         private const val KEY_DEVICE_ID = "device_id"
