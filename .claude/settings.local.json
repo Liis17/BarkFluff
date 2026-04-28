@@ -54,5 +54,6 @@
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "claude-flow"
-  ]
+  ],
+  "outputStyle": "default"
 }
