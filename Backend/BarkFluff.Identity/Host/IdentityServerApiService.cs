@@ -1,3 +1,4 @@
+using BarkFluff.Identity.Features.CreateSessionForUserServer;
 using BarkFluff.Identity.Features.DisableOtpVerificationServer;
 using BarkFluff.Identity.Features.GetActiveSessionsServer;
 using BarkFluff.Identity.Features.ListOtpVerificationServer;
@@ -64,6 +65,22 @@ public class IdentityServerApiService : IdentityServerApi.IdentityServerApiBase
         {
             UserId = request.UserId,
             DeviceId = request.DeviceId
+        };
+
+        return _mediator.Send(command);
+    }
+
+    public override Task<CreateSessionForUserServerResponse> CreateSessionForUserServer(
+        CreateSessionForUserServerRequest request, ServerCallContext context)
+    {
+        var command = new CreateSessionForUserServerCommand
+        {
+            UserId = request.UserId,
+            DeviceId = request.DeviceId,
+            DeviceName = request.DeviceName,
+            OperationSystem = request.OperationSystem,
+            AppName = request.AppName,
+            IpAddress = request.IpAddress
         };
 
         return _mediator.Send(command);

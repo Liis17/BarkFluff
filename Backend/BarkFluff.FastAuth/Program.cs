@@ -1,6 +1,9 @@
 using BarkFluff.FastAuth.Host;
 using BarkFluff.GrpcServer;
 using BarkFluff.GrpcServer.XAuth;
+using BarkFluff.Proto.Identity;
+using BarkFluff.Shared.Auth;
+using BarkFluff.Shared.Exceptions.Interceptors;
 using BarkFluff.Shared.Identity;
 
 using Serilog;
@@ -17,34 +20,31 @@ public class Program
         builder.AddBarkFluffSerilog("BarkFluff.FastAuth");
         builder.SetRunningAddress(builder.Configuration);
 
-        // Регистрируем gRPC сервисы с интерцепторами
-        builder.Services.AddGrpc(options =>
-        {
-            options.Interceptors.Add<ServerExceptionInterceptor>();
-        });
+        builder.Services.AddBarkFluffGrpc();
         builder.Services.AddBarkFluffMetrics("BarkFluff.FastAuth");
-
-        builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
-
         builder.Services.AddGrpcReflection();
 
-        builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
-
-        // Регистрируем аутентификацию и авторизацию
         builder.Services.AddXAuth(builder.Configuration);
+
+        builder.Services.AddGrpcClient<IdentityServerApi.IdentityServerApiClient>(o =>
+            {
+                o.Address = new Uri(builder.Configuration["IdentityService:Host"]!);
+            })
+            .AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["IdentityService:Token"]))
+            .AddInterceptor(() => new ExceptionClientInterceptor());
+
+        builder.Services.AddFastAuthServices();
 
         var app = builder.Build();
 
-        // Нет DbContext – миграции не нужны
         app.MapGrpcReflectionService();
 
-        // Настраиваем middleware pipeline
         app.UseRouting();
 
         app.UseXAuth();
 
-        // Регистрируем gRPC сервисы
         app.MapGrpcService<FastAuthApiService>();
+        app.MapGrpcService<FastAuthServerApiService>();
 
         app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
         app.Run();
