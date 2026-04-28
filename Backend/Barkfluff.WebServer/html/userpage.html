@@ -259,6 +259,21 @@
     .pc-404-actions { display: flex; gap: 10px; margin-top: 12px; width: 100%; max-width: 280px; }
     .pc-404-actions .btn { flex: 1; padding: 12px; font-size: 13px; }
 
+    /* Web client button — desktop only */
+    .pc-web-btn {
+      width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+      padding: 15px 20px; font-size: 14px; font-weight: 600; border-radius: 14px;
+      border: 1px solid var(--line-strong); background: rgba(255,240,220,0.04);
+      color: var(--ink); text-decoration: none; font-family: inherit; cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, transform 0.15s;
+    }
+    .pc-web-btn:hover { background: rgba(255,240,220,0.08); border-color: rgba(255,240,220,0.22); }
+    .pc-web-btn:active { transform: translateY(1px); }
+    .pc-web-btn svg { width: 17px; height: 17px; fill: currentColor; }
+    @media (hover: none), (pointer: coarse) {
+      .pc-web-btn { display: none; }
+    }
+
     @media (max-width: 480px) {
       .profile-page { padding: 64px 16px 24px; }
       .pc-body { padding: 0 20px 22px; }
@@ -318,6 +333,10 @@
                 <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
                 Открыть в Barkfluff
               </button>
+              <a class="pc-web-btn" id="webChatBtn" href="#">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                Написать в браузере
+              </a>
               <div class="pc-opening" id="openingIndicator" style="display: none;">
                 <span class="dots"><span></span><span></span><span></span></span>
                 <span id="openingText">Запрашиваем приложение…</span>
@@ -326,11 +345,10 @@
 
             <div class="pc-downloads" id="pcDownloads">
               <div class="pc-downloads-inner">
-                <div class="pc-dl-label">Приложение не открылось? Скачайте:</div>
-                <div class="pc-dl-grid">
-                  <a href="https://storage.barkfluff.com/get/barkfluffwindows" class="btn btn-ghost">Windows</a>
-                  <a href="https://storage.barkfluff.com/get/barkfluffkotlin/release" class="btn btn-ghost">Android</a>
-                </div>
+                <a href="/" class="btn btn-ghost" style="width:100%;">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                  Скачать Barkfluff
+                </a>
               </div>
             </div>
           </div>
@@ -362,6 +380,8 @@
   <script>
     const USERNAME = "%%username%%";
     const PROTOCOL_URL = "bf://user-username=" + USERNAME;
+    const webBtn = document.getElementById('webChatBtn');
+    if (webBtn) webBtn.href = "https://barkfluff.com/web/" + encodeURIComponent(USERNAME);
     const REVEAL_DELAY = 5000;
     const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%238a6a5b'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E";
 
