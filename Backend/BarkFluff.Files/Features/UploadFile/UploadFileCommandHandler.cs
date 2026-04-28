@@ -152,6 +152,16 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
 
                 // Пересчитываем bucketName для нового типа
                 bucketName = _bucketRegistry.GetBucketName(file.Type);
+
+                // Пересчитываем isImageType и contentType после детекции —
+                // тип файла мог измениться (например Video → Image)
+                isImageType = file.Type is UploadFileType.UserAvatar
+                    or UploadFileType.MessageAttachmentImage
+                    or UploadFileType.ChatPicture
+                    or UploadFileType.MessageAttachmentGif;
+
+                if (isImageType)
+                    contentType = request.FileName.GetContentType();
             }
         }
 

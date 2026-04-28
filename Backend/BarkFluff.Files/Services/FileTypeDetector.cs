@@ -12,6 +12,27 @@ public class FileTypeDetector
     private static readonly byte[] RiffSignature = [0x52, 0x49, 0x46, 0x46]; // RIFF - used by WebP, WAV, AVI
     private static readonly byte[] WebpMarker = [0x57, 0x45, 0x42, 0x50]; // WEBP at offset 8
 
+    // HEIF/HEIC/AVIF: ftyp box at offset 4, brand at offset 8
+    // heic, heix, hevc, hevx, heim, heis, hevm, hevs → HEIC
+    // mif1, msf1 → HEIF generic
+    // avif, avis → AVIF
+    private static readonly byte[] HeicBrand1 = [0x68, 0x65, 0x69, 0x63]; // heic
+    private static readonly byte[] HeicBrand2 = [0x68, 0x65, 0x69, 0x78]; // heix
+    private static readonly byte[] HeicBrand3 = [0x68, 0x65, 0x76, 0x63]; // hevc
+    private static readonly byte[] HeicBrand4 = [0x68, 0x65, 0x76, 0x78]; // hevx
+    private static readonly byte[] HeicBrand5 = [0x68, 0x65, 0x69, 0x6D]; // heim
+    private static readonly byte[] HeicBrand6 = [0x68, 0x65, 0x69, 0x73]; // heis
+    private static readonly byte[] HeicBrand7 = [0x68, 0x65, 0x76, 0x6D]; // hevm
+    private static readonly byte[] HeicBrand8 = [0x68, 0x65, 0x76, 0x73]; // hevs
+    private static readonly byte[] HeifBrand1 = [0x6D, 0x69, 0x66, 0x31]; // mif1
+    private static readonly byte[] HeifBrand2 = [0x6D, 0x73, 0x66, 0x31]; // msf1
+    private static readonly byte[] AvifBrand1 = [0x61, 0x76, 0x69, 0x66]; // avif
+    private static readonly byte[] AvifBrand2 = [0x61, 0x76, 0x69, 0x73]; // avis
+
+    // TIFF signatures (little-endian and big-endian)
+    private static readonly byte[] TiffLe = [0x49, 0x49, 0x2A, 0x00]; // II*\0 (little-endian)
+    private static readonly byte[] TiffBe = [0x4D, 0x4D, 0x00, 0x2A]; // MM\0* (big-endian)
+
     // GIF signature
     private static readonly byte[] GifSignature = [0x47, 0x49, 0x46, 0x38]; // GIF8
 
@@ -88,6 +109,13 @@ public class FileTypeDetector
                 return DetectedFileType.Image;
             }
 
+            // Проверяем HEIC/HEIF/AVIF — используют ftyp-box как MP4,
+            // поэтому проверяем до видео чтобы не ошибиться
+            if (IsHeifFamily(buffer))
+            {
+                return DetectedFileType.Image;
+            }
+
             // Проверяем видео
             if (IsVideo(buffer, stream))
             {
@@ -134,7 +162,36 @@ public class FileTypeDetector
             return true;
         }
 
+        // TIFF (little-endian и big-endian)
+        if (StartsWith(buffer, TiffLe) || StartsWith(buffer, TiffBe))
+        {
+            return true;
+        }
+
         return false;
+    }
+
+    /// <summary>
+    /// Определяет HEIC / HEIF / AVIF по ftyp-бренду (ISO Base Media File Format).
+    /// Структура: [4 байта размера][ftyp][4 байта бренда]...
+    /// </summary>
+    private static bool IsHeifFamily(byte[] buffer)
+    {
+        // Нужно минимум 12 байт: 4 (size) + 4 (ftyp) + 4 (brand)
+        if (buffer.Length < 12)
+            return false;
+
+        // ftyp box: bytes 4-7 = "ftyp"
+        if (!MatchesAt(buffer, Mp4Ftyp, 4))
+            return false;
+
+        // Бренд в bytes 8-11
+        return MatchesAt(buffer, HeicBrand1, 8) || MatchesAt(buffer, HeicBrand2, 8) ||
+               MatchesAt(buffer, HeicBrand3, 8) || MatchesAt(buffer, HeicBrand4, 8) ||
+               MatchesAt(buffer, HeicBrand5, 8) || MatchesAt(buffer, HeicBrand6, 8) ||
+               MatchesAt(buffer, HeicBrand7, 8) || MatchesAt(buffer, HeicBrand8, 8) ||
+               MatchesAt(buffer, HeifBrand1, 8) || MatchesAt(buffer, HeifBrand2, 8) ||
+               MatchesAt(buffer, AvifBrand1, 8) || MatchesAt(buffer, AvifBrand2, 8);
     }
 
     private static bool IsVideo(byte[] buffer, Stream stream)
@@ -148,17 +205,15 @@ public class FileTypeDetector
         // MP4: xxxxftyp (ftyp atom at offset 4)
         if (buffer.Length >= 8 && MatchesAt(buffer, Mp4Ftyp, 4))
         {
-            // Проверяем, что это не аудио (M4A, M4B, isom могут быть аудио)
-            // Видео контейнеры обычно содержат: mp42, avc1, M4V, etc.
-            // Но для простоты считаем всё с ftyp как MP4, если это не M4A/M4B
             if (buffer.Length >= 12)
             {
-                var brand = buffer.AsSpan(8, 4);
-                // M4A/M4B - это аудио контейнеры
+                // M4A/M4B - аудио контейнеры
                 if (MatchesAt(buffer, M4aMarker1, 8) || MatchesAt(buffer, M4aMarker2, 8))
-                {
                     return false;
-                }
+
+                // HEIC/HEIF/AVIF — изображения, не видео
+                if (IsHeifFamily(buffer))
+                    return false;
             }
             return true;
         }
