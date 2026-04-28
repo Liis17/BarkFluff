@@ -189,19 +189,29 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
                 "Файл с хешем {FileHash} уже существует в хранилище (FileId: {ExistingFileId}). Дедупликация.",
                 fileHash, existingFileId.Value);
 
-            // Добавляем загрузчиков из текущего запроса к существующему файлу
-            foreach (var uploaderId in file.Uploaders)
+            var existingFile = await _filesStorage.GetFile(existingFileId.Value);
+
+            // Дедупликация только если тип совпадает и файл реально загружен в S3.
+            // Один и тот же контент может быть отправлен как IMAGE и как DOCUMENT —
+            // это принципиально разные записи (разные бакеты, разная обработка превью).
+            var canDeduplicate = existingFile is not null
+                && !string.IsNullOrEmpty(existingFile.Etag)
+                && existingFile.Type == file.Type;
+
+            if (canDeduplicate)
             {
-                await _filesStorage.AddUploaderToFile(existingFileId.Value, uploaderId);
+                foreach (var uploaderId in file.Uploaders)
+                    await _filesStorage.AddUploaderToFile(existingFileId.Value, uploaderId);
+
+                await _filesStorage.DeleteFile(file.Id);
+                await originalStream.DisposeAsync();
+
+                return existingFileId.Value.ToString();
             }
 
-            // Удаляем неиспользуемую запись UploadFile, созданную при GetUploadUrl
-            await _filesStorage.DeleteFile(file.Id);
-
-            // Освобождаем поток — загрузка в S3 не требуется
-            await originalStream.DisposeAsync();
-
-            return existingFileId.Value.ToString();
+            _logger.LogInformation(
+                "Дедупликация пропущена для {FileId}: тип отличается ({ExistingType} vs {NewType}) или файл не загружен.",
+                file.Id, existingFile?.Type, file.Type);
         }
 
         try
