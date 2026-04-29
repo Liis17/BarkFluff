@@ -250,6 +250,7 @@ namespace BarkFluff.Client.WPF
             var updates = App.GParam.SocketUpdates;
             var onliner = App.GParam.SocketOnliner;
             var beacon = App.GParam.SocketBeacon;
+            var fastAuth = App.GParam.SocketFastAuth;
             var appPass = App.GParam.AppPass;
 
             var colors = App.GParam.Colors;
@@ -269,6 +270,7 @@ namespace BarkFluff.Client.WPF
             App.GParam.SocketUpdates = updates;
             App.GParam.SocketOnliner = onliner;
             App.GParam.SocketBeacon = beacon;
+            App.GParam.SocketFastAuth = fastAuth;
             App.GParam.AppPass = appPass;
 
             App.GParam.Colors = colors;
@@ -439,6 +441,7 @@ namespace BarkFluff.Client.WPF
                 App.GParam.SocketMessages = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Messages.Endpoint.Host + ":" + serverInfo.Messages.Endpoint.Port);
                 App.GParam.SocketUpdates = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Updates.Endpoint.Host + ":" + serverInfo.Updates.Endpoint.Port);
                 App.GParam.SocketOnliner = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Onliner.Endpoint.Host + ":" + serverInfo.Onliner.Endpoint.Port);
+                App.GParam.SocketFastAuth = WebApi.Core.WebApi.EnsureHttpPrefix($"{serverInfo.FastAuth.Endpoint.Host}:{serverInfo.FastAuth.Endpoint.Port}");
                 App.GParam.Colors = new ClientColors()
                 {
                     LiteHex = serverInfo.Color.LiteHex,

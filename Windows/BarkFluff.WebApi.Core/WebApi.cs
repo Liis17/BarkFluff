@@ -40,6 +40,7 @@ namespace BarkFluff.WebApi.Core
         internal BarkFluff.Proto.Navigator.NavigatorApi.NavigatorApiClient? NavigatorAC;
         internal BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiClient? UpdatesAC;
         internal BarkFluff.Proto.Onliner.OnlinerApi.OnlinerApiClient? OnlinerAC;
+        internal BarkFluff.Proto.FastAuth.FastAuthApi.FastAuthApiClient? FastAuthAC;
         #endregion
 
         #region gRPC Channels (internal для доступа менеджеров)
@@ -51,6 +52,7 @@ namespace BarkFluff.WebApi.Core
         internal GrpcChannel? NavigatorChannel;
         internal GrpcChannel? UpdatesChannel;
         internal GrpcChannel? OnlinerChannel;
+        internal GrpcChannel? FastAuthChannel;
         #endregion
 
         #region Менеджеры
@@ -66,6 +68,7 @@ namespace BarkFluff.WebApi.Core
         internal readonly WebApiFileManager FileManager;
         internal readonly WebApiUpdateManager UpdateManager;
         internal readonly WebApiOnlinerManager OnlinerManager;
+        internal readonly WebApiFastAuthManager FastAuthManager;
         #endregion
 
         public bool ACisnull => UsersAC == null || BeaconAC == null || IdentityAC == null || FilesAC == null || MessagesAC == null || UpdatesAC == null;
@@ -85,6 +88,7 @@ namespace BarkFluff.WebApi.Core
             FileManager = new WebApiFileManager(this);
             UpdateManager = new WebApiUpdateManager(this);
             OnlinerManager = new WebApiOnlinerManager(this);
+            FastAuthManager = new WebApiFastAuthManager(this);
         }
 
         #region IDisposable
@@ -108,6 +112,7 @@ namespace BarkFluff.WebApi.Core
                 NavigatorChannel?.Dispose();
                 UpdatesChannel?.Dispose();
                 OnlinerChannel?.Dispose();
+                FastAuthChannel?.Dispose();
             }
             _disposed = true;
         }
@@ -244,6 +249,20 @@ namespace BarkFluff.WebApi.Core
         #region Реалтайм обновления (делегирование к UpdateManager)
         public async Task<(ErrorReturner error, IAsyncEnumerable<NewMessageEvent>? stream)> JustUpdate(GlobalParam globalParam) => await UpdateManager.JustUpdate(globalParam);
         public async Task<(ErrorReturner error, IAsyncEnumerable<MessageReadEvent>? stream)> SubscribeToReadReceipts(GlobalParam globalParam) => await UpdateManager.SubscribeToReadReceipts(globalParam);
+        #endregion
+
+        #region FastAuth (делегирование к FastAuthManager)
+        public ErrorReturner CreateFastAuthClient(MessengerData.GlobalParam gParam, string deviceName, string os, string appName, string appVersion, string ip)
+            => ClientManager.CreateFastAuthClient(gParam, deviceName, os, appName, appVersion, ip);
+
+        public void DisposeFastAuthClient()
+            => ClientManager.DisposeFastAuthClient();
+
+        public async Task<(ErrorReturner, Proto.FastAuth.GenerateFastAuthTokenResponse?)> GenerateFastAuthToken(Proto.FastAuth.TokenFormat format)
+            => await FastAuthManager.GenerateFastAuthToken(format);
+
+        public async Task<(ErrorReturner, IAsyncEnumerable<Proto.FastAuth.FastAuthResult>?)> SubscribeFastAuthResult(string fastAuthId, CancellationToken ct)
+            => await FastAuthManager.SubscribeFastAuthResult(fastAuthId, ct);
         #endregion
 
         #region Работа с онлайн-статусами (делегирование к OnlinerManager)

@@ -14,7 +14,7 @@ dotnet build Windows/BarkFluff.WebApi.Core/BarkFluff.WebApi.Core.csproj
 
 ## Архитектура: Manager-based Facade
 
-`WebApi` — единая точка входа, делегирует 12 специализированным менеджерам (`WebApiBase`):
+`WebApi` — единая точка входа, делегирует специализированным менеджерам (`WebApiBase`):
 
 ```
 WebApi (IDisposable, фасад)
@@ -29,14 +29,15 @@ WebApi (IDisposable, фасад)
 ├── WebApiFileManager        — загрузка/скачивание (singleton HttpClient)
 ├── WebApiServerManager      — информация о серверах
 ├── WebApiUpdateManager      — real-time streaming (IAsyncEnumerable)
-└── WebApiOnlinerManager     — онлайн-статусы
+├── WebApiOnlinerManager     — онлайн-статусы
+└── WebApiFastAuthManager    — QR-вход (анонимный, отдельный канал, НЕ WebApiBase)
 ```
 
 ## Ключевые классы
 
 | Класс | Описание |
 |-------|----------|
-| `WebApi` | Фасад, 8 gRPC каналов + 8 API клиентов |
+| `WebApi` | Фасад, 9 gRPC каналов + 9 API клиентов (включая анонимный FastAuth) |
 | `WebApiBase` | Абстрактный базовый, доступ ко всем gRPC клиентам |
 | `GlobalParam` | Состояние (токены, URL, профиль), AES-256-CBC / PBKDF2 |
 | `ErrorReturner` | `(bool IsSuccess, string? ErrorMessage, int ErrorCode)` |
@@ -103,9 +104,31 @@ _webApi.TokenRefreshed += async (_, _) =>
 
 > ⚠️ Все стримы **необходимо пересоздавать** после получения события `TokenRefreshed` — старый стрим открыт со старым токеном и будет отклонён сервером.
 
+## FastAuth QR-вход
+
+`WebApiFastAuthManager` — не наследует `WebApiBase`, работает с отдельным анонимным каналом.
+
+**Публичные методы `WebApi`:**
+- `CreateFastAuthClient(gParam, deviceName, os, appName, appVersion, ip)` — создаёт анонимный gRPC канал к FastAuth с device-info interceptors (без JWT)
+- `DisposeFastAuthClient()` — закрывает и обнуляет FastAuth канал/клиент
+- `GenerateFastAuthToken(TokenFormat.Qr)` → `(ErrorReturner, GenerateFastAuthTokenResponse?)` — шаг 1: получить QR-код (PNG base64) и `fastAuthId`
+- `SubscribeFastAuthResult(fastAuthId, ct)` → `IAsyncEnumerable<FastAuthResult>` — шаг 2: ожидать результата (Accepted / Rejected / Expired)
+
+**Флоу (страница Login):**
+1. `Login_Loaded` → `StartFastAuthSessionAsync()` (fire and forget)
+2. `CreateFastAuthClient` + `GenerateFastAuthToken(Qr)` → декодируем base64 PNG → `QrCodeImage.Source`
+3. `SubscribeFastAuthResult(fastAuthId, ct)` — stream loop
+4. `Accepted` → set tokens → `CreateAC()` → `GetUserData()` → `OpenMessengerPage()`
+5. `Rejected` / `Expired` → рестарт сессии (новый QR)
+6. `Login_Unloaded` → отмена CTS + `DisposeFastAuthClient()`
+
+**GlobalParam:** добавлено поле `SocketFastAuth` — заполняется из `serverInfo.FastAuth.Endpoint` в `SelectServer` и `UpdateApiClient`.
+
+**Важно:** enum-значения протобуф в C#: `TokenFormat.Qr` (не `TokenFormatQr`), `FastAuthStatus.Accepted` (не `FastAuthStatusAccepted`).
+
 ## Proto
 
-Из `Shared/BarkFluff.Proto/`, подключены как `GrpcServices="Client"` (или `"None"` для shared.proto).
+Из `Shared/BarkFluff.Proto/`, подключены как `GrpcServices="Client"` (или `"None"` для shared.proto). Включает `fast_auth_api.proto`.
 
 ## Зависимости
 
