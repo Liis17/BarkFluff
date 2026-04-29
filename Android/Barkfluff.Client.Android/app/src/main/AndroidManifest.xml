@@ -192,6 +192,18 @@
             android:screenOrientation="portrait" />
 
         <activity
+            android:name=".QrScannerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".FastAuthConfirmActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BarkfluffClientAndroid"
+            android:screenOrientation="portrait" />
+
+        <activity
             android:name=".NotificationSettingsActivity"
             android:exported="false"
             android:theme="@style/Theme.BarkfluffClientAndroid"

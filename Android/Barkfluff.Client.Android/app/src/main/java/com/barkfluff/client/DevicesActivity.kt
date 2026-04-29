@@ -1,9 +1,12 @@
 package com.barkfluff.client
 
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -25,6 +28,24 @@ class DevicesActivity : AppCompatActivity() {
     private lateinit var deviceAdapter: DeviceAdapter
 
     private var allSessions: List<GrpcManager.SessionData> = emptyList()
+
+    private val qrScannerLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            loadSessions()
+        }
+    }
+
+    private val cameraPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            qrScannerLauncher.launch(Intent(this, QrScannerActivity::class.java))
+        } else {
+            Toast.makeText(this, "Разрешите доступ к камере в настройках", Toast.LENGTH_LONG).show()
+        }
+    }
 
     companion object {
         private const val TAG = "DevicesActivity"
@@ -71,8 +92,11 @@ class DevicesActivity : AppCompatActivity() {
 
     private fun setupButtons() {
         binding.buttonConnectDevice.setOnClickListener {
-            // TODO: Navigate to QR scanner activity
-            Toast.makeText(this, "Сканирование QR-кода (скоро)", Toast.LENGTH_SHORT).show()
+            if (checkSelfPermission(android.Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                qrScannerLauncher.launch(Intent(this, QrScannerActivity::class.java))
+            } else {
+                cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+            }
         }
 
         binding.buttonTerminateAll.setOnClickListener {

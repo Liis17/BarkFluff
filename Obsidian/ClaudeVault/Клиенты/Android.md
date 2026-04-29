@@ -99,6 +99,31 @@ androidx.media3:media3-ui:1.3.1
 - **Затенение фона (`chatBackgroundDim`)**: применяется в `ChatActivity.applyDimOverlay()` при старте. Цвет оверлея — `android.R.attr.colorBackground` (фон окна из темы), что автоматически адаптируется к светлой/тёмной теме. Alpha = `dim% / 100 * 255`.
 - Аналогичная логика в превью `PersonalizationSettingsActivity.updatePreviewDim()`.
 
+## FastAuth QR-сканер (DevicesActivity → QrScannerActivity → FastAuthConfirmActivity)
+
+Флоу: авторизованный мобильный клиент сканирует QR нового устройства и подтверждает/отклоняет вход.
+
+**Зависимости (app/build.gradle.kts):**
+- CameraX 1.4.2: `camera-core`, `camera-camera2`, `camera-lifecycle`, `camera-view`
+- ML Kit: `com.google.mlkit:barcode-scanning:17.3.0`
+
+**Файлы:**
+- `QrScannerActivity.kt` — CameraX + ML Kit (QR_CODE), при обнаружении QR вызывает `grpcManager.scanFastAuth()`, при успехе переходит в FastAuthConfirmActivity
+- `FastAuthConfirmActivity.kt` — отображает метаданные нового устройства (имя, ОС, приложение, IP), кнопки «Подтвердить» / «Отклонить», вызывает `acceptFastAuth` / `rejectFastAuth`
+- `views/ScannerOverlayView.kt` — кастомная View с полупрозрачным оверлеем и угловыми уголками (рисуется через Canvas, `LAYER_TYPE_SOFTWARE`)
+
+**GrpcManager — новые поля и методы:**
+- `fastAuthClient: FastAuthApiGrpcKt.FastAuthApiCoroutineStub?`
+- `createFastAuthClient(address, context, includeDeviceInfo)` — с `AuthInterceptor` + `DeviceInfoInterceptor`
+- `suspend fun scanFastAuth(fastAuthId: String): Result<ScanFastAuthResponse>`
+- `suspend fun acceptFastAuth(fastAuthId, confirmationCode): Result<Unit>`
+- `suspend fun rejectFastAuth(fastAuthId, confirmationCode): Result<Unit>`
+
+**DevicesActivity:**
+- `buttonConnectDevice` использует `ActivityResultLauncher<Intent>` → `QrScannerActivity`
+- На RESULT_OK — вызывает `loadSessions()` для обновления списка устройств
+- Проверяет `CAMERA` permission перед запуском; при отказе — подсказка о настройках
+
 ## gRPC Коды ошибок (из x-error-code trailer)
 
 | Исключение | ErrorCode |
