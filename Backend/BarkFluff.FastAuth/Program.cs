@@ -28,7 +28,7 @@ public class Program
 
         builder.Services.AddGrpcClient<IdentityServerApi.IdentityServerApiClient>(o =>
             {
-                o.Address = new Uri(builder.Configuration["IdentityService:Host"]!);
+                o.Address = new Uri(builder.Configuration["IdentityService:Host"] ?? "http://identity:7000");
             })
             .AddInterceptor(() => new JwtClientInterceptor(builder.Configuration["IdentityService:Token"]))
             .AddInterceptor(() => new ExceptionClientInterceptor());
