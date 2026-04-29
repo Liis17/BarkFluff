@@ -298,6 +298,17 @@ public class ConfigurationDefaultsPopulator
             };
         }
 
+        // --- IdentityService (inter-service) ---
+        if (config.Section == "IdentityService")
+        {
+            return config.Key switch
+            {
+                "Host" => $"http://identity:{DefaultPorts[ServiceId.Identity]}",
+                "Token" => GenerateServiceToken(jwtSecret, jwtIssuer, jwtAudience, "IdentityServiceClient"),
+                _ => null
+            };
+        }
+
         // --- TempFiles ---
         if (config.Section == "TempFiles" && config.Key == "ExpiresAt")
         {
