@@ -315,7 +315,9 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
 
     /// <summary>
     /// Преобразует определённый тип файла в UploadFileType.
-    /// Если тип не удалось определить, возвращает MessageAttachmentDocument.
+    /// Если тип не удалось определить (Unknown), возвращает оригинальный тип пользователя —
+    /// это позволяет PNG/JPG, не распознанные детектором, оставаться изображениями, а не
+    /// превращаться в документы.
     /// </summary>
     private static UploadFileType MapDetectedTypeToUploadFileType(DetectedFileType detectedType, UploadFileType originalType)
     {
@@ -327,9 +329,10 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
             DetectedFileType.Audio => UploadFileType.MessageAttachmentAudio,
             DetectedFileType.Voice => UploadFileType.MessageAttachmentVoice,
             DetectedFileType.Sticker => UploadFileType.MessageAttachmentSticker,
-            DetectedFileType.Unknown => UploadFileType.MessageAttachmentDocument,
             DetectedFileType.Document => UploadFileType.MessageAttachmentDocument,
-            _ => UploadFileType.MessageAttachmentDocument
+            // Unknown означает, что детектор не смог распознать формат —
+            // в этом случае доверяем выбору пользователя (originalType).
+            _ => originalType
         };
     }
 }
