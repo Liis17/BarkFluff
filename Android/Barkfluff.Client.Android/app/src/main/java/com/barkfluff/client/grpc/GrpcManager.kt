@@ -5,6 +5,9 @@ import android.util.Base64
 import android.util.Log
 import barkfluff.beacon.BeaconApiGrpcKt
 import barkfluff.beacon.BeaconApiOuterClass
+import barkfluff.fast.auth.FastAuthApiGrpcKt
+import barkfluff.fast.auth.FastAuthApiOuterClass
+import barkfluff.fast.auth.FastAuthApiOuterClass.ScanFastAuthResponse
 import barkfluff.identity.IdentityApiGrpcKt
 import barkfluff.identity.IdentityApiOuterClass
 import barkfluff.navigator.NavigatorApiGrpcKt
@@ -64,6 +67,7 @@ class GrpcManager {
     private var messagesAddress: String? = null
     private var updatesAddress: String? = null
     private var onlinerAddress: String? = null
+    private var fastAuthAddress: String? = null
 
     // gRPC каналы
     var navigatorChannel: Channel? = null
@@ -82,6 +86,8 @@ class GrpcManager {
         private set
     var onlinerChannel: Channel? = null
         private set
+    var fastAuthChannel: Channel? = null
+        private set
 
     // gRPC клиенты
     var navigatorClient: NavigatorApiGrpcKt.NavigatorApiCoroutineStub? = null
@@ -99,6 +105,8 @@ class GrpcManager {
     var updatesClient: UpdatesApiGrpcKt.UpdatesApiCoroutineStub? = null
         private set
     var onlinerClient: OnlinerApiGrpcKt.OnlinerApiCoroutineStub? = null
+        private set
+    var fastAuthClient: FastAuthApiGrpcKt.FastAuthApiCoroutineStub? = null
         private set
 
     /**
@@ -126,6 +134,8 @@ class GrpcManager {
         if (messages.isNotBlank()) createMessagesClient(messages, context, includeDeviceInfo = true)
         if (onliner.isNotBlank()) createOnlinerClient(onliner, context, includeDeviceInfo = true)
         if (updates.isNotBlank()) createUpdatesClient(updates, context, includeDeviceInfo = true)
+        val fastAuth = globalParam.socketFastAuth
+        if (fastAuth.isNotBlank()) createFastAuthClient(fastAuth, context, includeDeviceInfo = true)
     }
 
     /**
@@ -777,6 +787,7 @@ class GrpcManager {
         messagesAddress = null
         updatesAddress = null
         onlinerAddress = null
+        fastAuthAddress = null
 
         // 3. Создаём новые каналы и клиенты — ссылки обновляются атомарно для каждого сервиса
         initAllClients(context, globalParam)
@@ -799,6 +810,7 @@ class GrpcManager {
         shutdownChannel(messagesChannel)
         shutdownChannel(updatesChannel)
         shutdownChannel(onlinerChannel)
+        shutdownChannel(fastAuthChannel)
 
         navigatorChannel = null
         beaconChannel = null
@@ -808,6 +820,7 @@ class GrpcManager {
         messagesChannel = null
         updatesChannel = null
         onlinerChannel = null
+        fastAuthChannel = null
 
         navigatorClient = null
         beaconClient = null
@@ -817,6 +830,7 @@ class GrpcManager {
         messagesClient = null
         updatesClient = null
         onlinerClient = null
+        fastAuthClient = null
 
         navigatorAddress = null
         beaconAddress = null
@@ -826,6 +840,7 @@ class GrpcManager {
         messagesAddress = null
         updatesAddress = null
         onlinerAddress = null
+        fastAuthAddress = null
     }
 
     /**
@@ -1001,6 +1016,92 @@ class GrpcManager {
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка создания Onliner клиента", e)
             Result.failure(Exception("Ошибка подключения к серверу онлайн-статусов: ${e.message}"))
+        }
+    }
+
+    fun createFastAuthClient(address: String, context: Context? = null, includeDeviceInfo: Boolean = false): Result<Unit> {
+        if (address.isBlank()) {
+            return Result.failure(IllegalArgumentException("Адрес FastAuth сервера не указан"))
+        }
+
+        val normalized = ensureHttpPrefix(address)
+        if (this.fastAuthAddress == normalized && fastAuthClient != null) return Result.success(Unit)
+
+        return try {
+            val channel = createChannel(normalized)
+
+            val interceptors = mutableListOf<ClientInterceptor>()
+            if (context != null) {
+                interceptors.add(AuthInterceptor(context))
+            }
+            if (includeDeviceInfo && context != null) {
+                interceptors.add(DeviceInfoInterceptor(context))
+            }
+
+            val interceptedChannel = if (interceptors.isNotEmpty()) {
+                ClientInterceptors.intercept(channel, *interceptors.toTypedArray())
+            } else {
+                channel
+            }
+
+            this.fastAuthChannel = interceptedChannel
+            fastAuthClient = FastAuthApiGrpcKt.FastAuthApiCoroutineStub(interceptedChannel)
+            this.fastAuthAddress = normalized
+            Log.d(TAG, "FastAuth клиент создан: $normalized")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка создания FastAuth клиента", e)
+            Result.failure(Exception("Ошибка подключения к FastAuth серверу: ${e.message}"))
+        }
+    }
+
+    suspend fun scanFastAuth(fastAuthId: String): Result<ScanFastAuthResponse> = withContext(Dispatchers.IO) {
+        try {
+            if (fastAuthClient == null) {
+                return@withContext Result.failure(IllegalStateException("FastAuth клиент не создан"))
+            }
+            val request = FastAuthApiOuterClass.ScanFastAuthRequest.newBuilder()
+                .setFastAuthId(fastAuthId)
+                .build()
+            val response = fastAuthClient!!.scanFastAuth(request)
+            Result.success(response)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка scanFastAuth", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun acceptFastAuth(fastAuthId: String, confirmationCode: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (fastAuthClient == null) {
+                return@withContext Result.failure(IllegalStateException("FastAuth клиент не создан"))
+            }
+            val request = FastAuthApiOuterClass.AcceptFastAuthRequest.newBuilder()
+                .setFastAuthId(fastAuthId)
+                .setConfirmationCode(confirmationCode)
+                .build()
+            fastAuthClient!!.acceptFastAuth(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка acceptFastAuth", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun rejectFastAuth(fastAuthId: String, confirmationCode: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (fastAuthClient == null) {
+                return@withContext Result.failure(IllegalStateException("FastAuth клиент не создан"))
+            }
+            val request = FastAuthApiOuterClass.RejectFastAuthRequest.newBuilder()
+                .setFastAuthId(fastAuthId)
+                .setConfirmationCode(confirmationCode)
+                .build()
+            fastAuthClient!!.rejectFastAuth(request)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка rejectFastAuth", e)
+            Result.failure(e)
         }
     }
 
