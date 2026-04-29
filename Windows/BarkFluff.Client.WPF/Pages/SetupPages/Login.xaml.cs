@@ -1,9 +1,9 @@
-﻿using BarkFluff.Client.WPF.Services.QR;
-
+﻿using System.IO;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media.Imaging;
 
 using Erida = BarkFluff.Client.WPF.Services.Erida.MessageType;
 using MType = BarkFluff.Client.WPF.Services.Erida.MessageType.MessageTypeEnum;
@@ -22,6 +22,9 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
         private bool _step2FA = false;
         private bool _isLoading = false;
 
+        private string _fastAuthId = string.Empty;
+        private CancellationTokenSource? _fastAuthCts;
+
         private TextBox[]? codeBoxes;
 
         // Regex patterns for validation
@@ -36,6 +39,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
         {
             InitializeComponent();
             Loaded += Login_Loaded;
+            Unloaded += Login_Unloaded;
         }
 
         private void Login_Loaded(object sender, RoutedEventArgs e)
@@ -54,6 +58,128 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                 App.ServerCommunication.CreateOnlyBeaconAC(App.GParam);
                 App.ErideMessage.AddMessage("Ошибка инициализации Beacon API клиента, попытка переподключения.", new Erida { Type = MType.Error });
             }
+
+            if (!string.IsNullOrWhiteSpace(App.GParam.SocketFastAuth))
+                _ = StartFastAuthSessionAsync();
+        }
+
+        private void Login_Unloaded(object sender, RoutedEventArgs e)
+        {
+            _fastAuthCts?.Cancel();
+            _fastAuthCts?.Dispose();
+            _fastAuthCts = null;
+            App.ServerCommunication.DisposeFastAuthClient();
+        }
+
+        private async Task StartFastAuthSessionAsync()
+        {
+            _fastAuthCts?.Cancel();
+            _fastAuthCts?.Dispose();
+            _fastAuthCts = new CancellationTokenSource();
+            var ct = _fastAuthCts.Token;
+
+            try
+            {
+                var createResult = App.ServerCommunication.CreateFastAuthClient(
+                    App.GParam, App.GParam.MachineName,
+                    SystemInfo.GetFriendlyWindowsVersion(),
+                    AppVersion.AppName, AppVersion.Version,
+                    App.GParam.IpAddress);
+
+                if (!createResult.IsSuccess || ct.IsCancellationRequested) return;
+
+                var (error, response) = await App.ServerCommunication.GenerateFastAuthToken(
+                    BarkFluff.Proto.FastAuth.TokenFormat.Qr);
+
+                if (!error.IsSuccess || response == null || ct.IsCancellationRequested) return;
+
+                _fastAuthId = response.FastAuthId;
+
+                var pngBytes = Convert.FromBase64String(response.Token.Value);
+                BitmapImage? bitmapImage = null;
+                using (var ms = new MemoryStream(pngBytes))
+                {
+                    bitmapImage = new BitmapImage();
+                    bitmapImage.BeginInit();
+                    bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmapImage.StreamSource = ms;
+                    bitmapImage.EndInit();
+                    bitmapImage.Freeze();
+                }
+
+                QrProgressRing.Visibility = Visibility.Collapsed;
+
+                if (ct.IsCancellationRequested) return;
+
+                Dispatcher.Invoke(() =>
+                {
+                    QrCodeImage.Source = bitmapImage;
+                });
+
+                var (subError, stream) = await App.ServerCommunication.SubscribeFastAuthResult(_fastAuthId, ct);
+                if (!subError.IsSuccess || stream == null || ct.IsCancellationRequested) return;
+
+                await foreach (var result in stream.WithCancellation(ct))
+                {
+                    switch (result.Status)
+                    {
+                        case BarkFluff.Proto.FastAuth.FastAuthStatus.Accepted:
+                            await HandleFastAuthAccepted(result);
+                            return;
+                        case BarkFluff.Proto.FastAuth.FastAuthStatus.Rejected:
+                            Dispatcher.Invoke(() => App.ErideMessage.AddMessage(
+                                "Вход через QR отклонён на мобильном устройстве",
+                                new Erida { Type = MType.Warning }));
+                            _ = StartFastAuthSessionAsync();
+                            return;
+                        case BarkFluff.Proto.FastAuth.FastAuthStatus.Expired:
+                            _ = StartFastAuthSessionAsync();
+                            return;
+                    }
+                }
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                App.ErideMessage.AddMessage($"Ошибка QR-входа: {ex.Message}", new Erida { Type = MType.Error });
+            }
+        }
+
+        private async Task HandleFastAuthAccepted(BarkFluff.Proto.FastAuth.FastAuthResult result)
+        {
+            App.GParam.AccessToken = new BarkFluff.Proto.Identity.Token
+            {
+                Value = result.AccessToken,
+                ExpirationDate = result.AccessTokenExpiresAt
+            };
+            App.GParam.RefreshToken = new BarkFluff.Proto.Identity.Token
+            {
+                Value = result.RefreshToken,
+                ExpirationDate = result.RefreshTokenExpiresAt
+            };
+
+            App.ServerCommunication.CreateAC(
+                App.GParam, App.GParam.MachineName,
+                SystemInfo.GetFriendlyWindowsVersion(),
+                AppVersion.AppName, AppVersion.Version,
+                App.GParam.IpAddress);
+
+            var responseUserData = await App.ServerCommunication.GetUserData(App.GParam);
+            if (responseUserData.Error.IsSuccess && responseUserData.Data != null)
+            {
+                App.GParam.UserId = responseUserData.Data.Id;
+                App.GParam.UserName = responseUserData.Data.Username;
+                App.GParam.FirstName = responseUserData.Data.FirstName;
+                App.GParam.LastName = responseUserData.Data.LastName;
+                App.GParam.Description = responseUserData.Data.Description;
+                App.GParam.RegistrationDate = responseUserData.Data.RegistrationDate;
+                App.GParam.Email = responseUserData.Data.Email;
+                MainWindow.SaveSettings();
+            }
+
+            App.ServerCommunication.DisposeFastAuthClient();
+
+            Dispatcher.Invoke(() => App.OpenMessengerPage());
         }
 
         private void CreateAccountPageOpen(object sender, RoutedEventArgs e)
@@ -443,12 +569,5 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
             e.Handled = !Regex.IsMatch(e.Text, @"^\d$");
         }
 
-        private void QrTemplate(object sender, RoutedEventArgs e)
-        {
-            var color1 = System.Drawing.Color.FromArgb(128, 61, 61, 61); // Пурпурный
-            var color2 = System.Drawing.Color.FromArgb(128, 61, 61, 61); // Розовый
-            var qrCodeBitmap = RoundedQrGenerator.GenerateRoundedQrBitmap("https://barkfluff.com", color1, color2, "");
-            QrCodeImage.Source = qrCodeBitmap;
-        }
     }
 }

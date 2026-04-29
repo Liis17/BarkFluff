@@ -173,6 +173,48 @@ namespace BarkFluff.WebApi.Core.Managers
             }
         }
 
+        public ErrorReturner CreateFastAuthClient(MessengerData.GlobalParam gParam, string deviceName, string os, string appName, string appVersion, string ip)
+        {
+            if (string.IsNullOrWhiteSpace(gParam?.SocketFastAuth))
+                return new ErrorReturner(false, "Адрес FastAuth сервера не указан");
+
+            try
+            {
+                var address = WebApi.EnsureHttpPrefix(gParam.SocketFastAuth);
+                _webApi.FastAuthChannel?.Dispose();
+                _webApi.FastAuthChannel = Grpc.Net.Client.GrpcChannel.ForAddress(address);
+
+                var deviceInterceptor = new Shared.Auth.XDeviceClientInterceptor(deviceName: deviceName);
+                var deviceIdInterceptor = new Shared.Auth.XDeviceIdInterceptor(gParam.DeviceId);
+                var osInterceptor = new Shared.Auth.XOsClientInterceptor(os);
+                var appInterceptor = new Shared.Auth.XAppClientInterceptor(appName, appVersion);
+                var ipInterceptor = new Shared.Auth.XIpClientInterceptor(ip);
+                var errorInterceptor = new Shared.Exceptions.Interceptors.ExceptionClientInterceptor();
+
+                var invoker = _webApi.FastAuthChannel
+                    .Intercept(deviceInterceptor)
+                    .Intercept(deviceIdInterceptor)
+                    .Intercept(osInterceptor)
+                    .Intercept(appInterceptor)
+                    .Intercept(ipInterceptor)
+                    .Intercept(errorInterceptor);
+
+                _webApi.FastAuthAC = new Proto.FastAuth.FastAuthApi.FastAuthApiClient(invoker);
+                return new ErrorReturner(true);
+            }
+            catch (Exception)
+            {
+                return new ErrorReturner(false, "Ошибка создания FastAuth клиента");
+            }
+        }
+
+        public void DisposeFastAuthClient()
+        {
+            _webApi.FastAuthAC = null;
+            _webApi.FastAuthChannel?.Dispose();
+            _webApi.FastAuthChannel = null;
+        }
+
         /// <summary>
         /// Обновляет ссылки на клиенты во всех менеджерах.
         /// </summary>

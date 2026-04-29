@@ -234,12 +234,12 @@
                             Padding="10"
                             HorizontalAlignment="Center"
                             CornerRadius="16"
-                            Loaded="QrTemplate"
                             Style="{DynamicResource MainStyleBorder}">
                             <Grid>
 
                                 <Image x:Name="QrCodeImage" Stretch="Uniform" />
                                 <ui:ProgressRing
+                                    x:Name="QrProgressRing"
                                     Width="48"
                                     Height="48"
                                     Foreground="{DynamicResource ProgressRingAlternativeColor}"

@@ -4,7 +4,6 @@ using Microsoft.Win32;
 
 using System.Runtime.InteropServices;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Media;
 
 namespace BarkFluff.Client.WPF.UserControls.SettingsPages
@@ -45,10 +44,10 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
         // ──────────────────────────────────────────────────────────────
         private void LoadSystemInfo()
         {
-            OsVersionText.Text  = GetWindowsFriendlyName();
-            CpuText.Text        = GetCpuName();
-            RamText.Text        = GetRamInfo();
-            ArchText.Text       = RuntimeInformation.OSArchitecture.ToString();
+            OsVersionText.Text = GetWindowsFriendlyName();
+            CpuText.Text = GetCpuName();
+            RamText.Text = GetRamInfo();
+            ArchText.Text = RuntimeInformation.OSArchitecture.ToString();
         }
 
         private static string GetWindowsFriendlyName()
@@ -58,9 +57,9 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
                 using var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion");
                 if (key != null)
                 {
-                    var product        = key.GetValue("ProductName")      as string ?? string.Empty;
-                    var displayVersion = key.GetValue("DisplayVersion")   as string ?? string.Empty;
-                    var build          = key.GetValue("CurrentBuildNumber") as string ?? string.Empty;
+                    var product = key.GetValue("ProductName") as string ?? string.Empty;
+                    var displayVersion = key.GetValue("DisplayVersion") as string ?? string.Empty;
+                    var build = key.GetValue("CurrentBuildNumber") as string ?? string.Empty;
                     return $"{product} {displayVersion} (сборка {build})".Trim();
                 }
             }
@@ -107,15 +106,15 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
         [StructLayout(LayoutKind.Sequential)]
         private struct MEMORYSTATUSEX
         {
-            public uint   dwLength;
-            public uint   dwMemoryLoad;
-            public ulong  ullTotalPhys;
-            public ulong  ullAvailPhys;
-            public ulong  ullTotalPageFile;
-            public ulong  ullAvailPageFile;
-            public ulong  ullTotalVirtual;
-            public ulong  ullAvailVirtual;
-            public ulong  ullAvailExtendedVirtual;
+            public uint dwLength;
+            public uint dwMemoryLoad;
+            public ulong ullTotalPhys;
+            public ulong ullAvailPhys;
+            public ulong ullTotalPageFile;
+            public ulong ullAvailPageFile;
+            public ulong ullTotalVirtual;
+            public ulong ullAvailVirtual;
+            public ulong ullAvailExtendedVirtual;
         }
 
         // ──────────────────────────────────────────────────────────────
@@ -180,6 +179,7 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
                 ("Messages", info.Messages),
                 ("Updates",  info.Updates),
                 ("Onliner",  info.Onliner),
+                ("FastAuth", info.FastAuth)
             ];
             return [.. services.Select(s => new ServiceItem(s.Name, s.Svc))];
         }
@@ -190,8 +190,8 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
     // ──────────────────────────────────────────────────────────────────
     internal sealed class ServiceItem
     {
-        public string Name        { get; }
-        public string Endpoint    { get; }
+        public string Name { get; }
+        public string Endpoint { get; }
         public string StatusLabel { get; }
         public SolidColorBrush StatusColor { get; }
 
@@ -201,7 +201,7 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
 
             if (service == null)
             {
-                Endpoint    = string.Empty;
+                Endpoint = string.Empty;
                 StatusLabel = "нет данных";
                 StatusColor = new SolidColorBrush(Color.FromRgb(0x95, 0xA5, 0xA6));
                 return;
@@ -213,11 +213,11 @@ namespace BarkFluff.Client.WPF.UserControls.SettingsPages
 
             (StatusLabel, StatusColor) = service.Status switch
             {
-                ServiceStatus.Healthy   => ("Работает",   new SolidColorBrush(Color.FromRgb(0x57, 0xBB, 0x62))),
-                ServiceStatus.Degraded  => ("Деградация", new SolidColorBrush(Color.FromRgb(0xE8, 0xA8, 0x38))),
+                ServiceStatus.Healthy => ("Работает", new SolidColorBrush(Color.FromRgb(0x57, 0xBB, 0x62))),
+                ServiceStatus.Degraded => ("Деградация", new SolidColorBrush(Color.FromRgb(0xE8, 0xA8, 0x38))),
                 ServiceStatus.Unhealthy => ("Недоступен", new SolidColorBrush(Color.FromRgb(0xE7, 0x4C, 0x3C))),
-                ServiceStatus.Offline   => ("Офлайн",     new SolidColorBrush(Color.FromRgb(0xE7, 0x4C, 0x3C))),
-                _                       => ("Неизвестно", new SolidColorBrush(Color.FromRgb(0x95, 0xA5, 0xA6))),
+                ServiceStatus.Offline => ("Офлайн", new SolidColorBrush(Color.FromRgb(0xE7, 0x4C, 0x3C))),
+                _ => ("Неизвестно", new SolidColorBrush(Color.FromRgb(0x95, 0xA5, 0xA6))),
             };
         }
     }
