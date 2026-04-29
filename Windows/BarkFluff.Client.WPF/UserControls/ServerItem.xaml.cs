@@ -105,6 +105,7 @@ namespace BarkFluff.Client.WPF.UserControls
                 App.GParam.SocketMessages = WebApi.Core.WebApi.EnsureHttpPrefix($"{serverInfo.Messages.Endpoint.Host}:{serverInfo.Messages.Endpoint.Port}");
                 App.GParam.SocketUpdates = WebApi.Core.WebApi.EnsureHttpPrefix($"{serverInfo.Updates.Endpoint.Host}:{serverInfo.Updates.Endpoint.Port}");
                 App.GParam.SocketOnliner = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Onliner.Endpoint.Host + ":" + serverInfo.Onliner.Endpoint.Port);
+                App.GParam.SocketFastAuth = WebApi.Core.WebApi.EnsureHttpPrefix($"{serverInfo.FastAuth.Endpoint.Host}:{serverInfo.FastAuth.Endpoint.Port}");
                 App.GParam.Colors = new ClientColors
                 {
                     LiteHex = serverInfo.Color.LiteHex,
