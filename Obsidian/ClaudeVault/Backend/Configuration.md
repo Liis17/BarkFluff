@@ -29,7 +29,7 @@ CQRS через MediatR. gRPC API (`configuration_api.proto`):
 
 - `Domain/ConfigurationItem` — единственная сущность: Section, Key, Value, ServiceId, EditedAt/By/From
 - `Infrastructure/ConfigurationStorage` — read/upsert конфигураций + CRUD reserved names
-- `Infrastructure/ConfigurationDefaultsPopulator` — при старте заполняет пустые (`Value == ""`) конфигурации дефолтами (порты, JWT, RabbitMQ, Redis, S3, токены). Генерирует JWT SecretKey и Service-токены автоматически.
+- `Infrastructure/ConfigurationDefaultsPopulator` — при старте заполняет пустые (`Value == ""`) конфигурации дефолтами (порты, JWT, RabbitMQ, Redis, S3, токены). Поддерживает секции: `UsersService`, `FilesService`, `MessagesService`, `IdentityService`. Генерирует JWT SecretKey и Service-токены автоматически.
 - `Infrastructure/ConfigurationContext` — EF Core DbContext, один DbSet: `Configurations`
 - `Host/ConfigurationApiService` — gRPC-сервис, делегирует в MediatR-команды
 
