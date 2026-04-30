@@ -23,7 +23,7 @@ fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAP
 public enum Barkfluff_Shared_MessageAttachmentType: SwiftProtobuf.Enum, Swift.CaseIterable {
   public typealias RawValue = Int
 
-  /// Неизвестно 
+  /// Неизвестно
   case unknown // = 0
 
   /// Изображение
@@ -188,7 +188,7 @@ public struct Barkfluff_Shared_Message: Sendable {
   /// Clears the value of `content`. Subsequent reads from it will return its default value.
   public mutating func clearContent() {self._content = nil}
 
-  /// Тип сообщения
+  /// Тип сообщения 
   public var type: Barkfluff_Shared_MessageContentType = .unknown
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -240,6 +240,12 @@ public struct Barkfluff_Shared_MessageAttachment: Sendable {
 
   /// Оригинальное имя файла
   public var fileName: String = String()
+
+  /// Ширина изображения в пикселях (0 если не изображение)
+  public var imageWidth: Int32 = 0
+
+  /// Высота изображения в пикселях (0 если не изображение)
+  public var imageHeight: Int32 = 0
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -389,7 +395,7 @@ extension Barkfluff_Shared_MessageContent: SwiftProtobuf.Message, SwiftProtobuf.
 
 extension Barkfluff_Shared_MessageAttachment: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MessageAttachment"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}type\0\u{3}file_id\0\u{3}preview_url\0\u{3}attachment_size\0\u{3}preview_file_id\0\u{3}file_name\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}type\0\u{3}file_id\0\u{3}preview_url\0\u{3}attachment_size\0\u{3}preview_file_id\0\u{3}file_name\0\u{3}image_width\0\u{3}image_height\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -404,6 +410,8 @@ extension Barkfluff_Shared_MessageAttachment: SwiftProtobuf.Message, SwiftProtob
       case 5: try { try decoder.decodeSingularInt64Field(value: &self.attachmentSize) }()
       case 6: try { try decoder.decodeSingularStringField(value: &self.previewFileID) }()
       case 7: try { try decoder.decodeSingularStringField(value: &self.fileName) }()
+      case 8: try { try decoder.decodeSingularInt32Field(value: &self.imageWidth) }()
+      case 9: try { try decoder.decodeSingularInt32Field(value: &self.imageHeight) }()
       default: break
       }
     }
@@ -431,6 +439,12 @@ extension Barkfluff_Shared_MessageAttachment: SwiftProtobuf.Message, SwiftProtob
     if !self.fileName.isEmpty {
       try visitor.visitSingularStringField(value: self.fileName, fieldNumber: 7)
     }
+    if self.imageWidth != 0 {
+      try visitor.visitSingularInt32Field(value: self.imageWidth, fieldNumber: 8)
+    }
+    if self.imageHeight != 0 {
+      try visitor.visitSingularInt32Field(value: self.imageHeight, fieldNumber: 9)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -442,6 +456,8 @@ extension Barkfluff_Shared_MessageAttachment: SwiftProtobuf.Message, SwiftProtob
     if lhs.attachmentSize != rhs.attachmentSize {return false}
     if lhs.previewFileID != rhs.previewFileID {return false}
     if lhs.fileName != rhs.fileName {return false}
+    if lhs.imageWidth != rhs.imageWidth {return false}
+    if lhs.imageHeight != rhs.imageHeight {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

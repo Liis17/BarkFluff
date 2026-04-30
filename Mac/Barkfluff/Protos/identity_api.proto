@@ -67,6 +67,24 @@ service IdentityServerApi {
 
   // Удалить активную сессию пользователя
   rpc RemoveActiveSessionServer(RemoveActiveSessionServerRequest) returns(RemoveActiveSessionResponse);
+
+  // Создать сессию (refresh + access) для пользователя из другого сервиса (например FastAuth).
+  // Регистрирует устройство в Users, отправляет уведомление о входе.
+  rpc CreateSessionForUserServer(CreateSessionForUserServerRequest) returns(CreateSessionForUserServerResponse);
+}
+
+message CreateSessionForUserServerRequest {
+  int64 user_id = 1;
+  string device_id = 2;            // GUID нового устройства
+  string device_name = 3;
+  string operation_system = 4;
+  string app_name = 5;             // "AppName v.X.Y.Z" (склеено вызывающим)
+  string ip_address = 6;
+}
+
+message CreateSessionForUserServerResponse {
+  Token access_token = 1;
+  Token refresh_token = 2;
 }
 
 message ListOtpVerificationServerRequest {

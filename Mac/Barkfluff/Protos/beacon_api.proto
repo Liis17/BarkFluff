@@ -33,6 +33,8 @@ message GetServerInfoResponse {
   Service updates = 8; // Микросервис updates
   
   Service onliner = 9; // Микросервис onliner
+
+  Service fast_auth = 10; // Микросервис fast_auth
 }
 
 message ServerColor {

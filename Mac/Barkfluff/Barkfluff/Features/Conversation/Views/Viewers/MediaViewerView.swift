@@ -63,7 +63,7 @@ struct MediaViewerView: View {
     @ViewBuilder
     private func viewerContent(for attachment: MessageAttachment) -> some View {
         switch attachment.type {
-        case .image:
+        case .image, .sticker:
             ImageViewerView(attachment: attachment)
                 .ignoresSafeArea()
 
@@ -72,12 +72,10 @@ struct MediaViewerView: View {
                 .ignoresSafeArea()
 
         case .gif:
-            // GIF также открываем как изображение
             ImageViewerView(attachment: attachment)
                 .ignoresSafeArea()
 
-        case .document, .audio:
-            // Для документов показываем инфо
+        case .document, .audio, .voice:
             DocumentViewerPlaceholder(attachment: attachment)
         }
     }

@@ -234,6 +234,8 @@ public actor FilesRepository: FilesRepositoryProtocol {
             return .messageAttachmentVoice
         case .messageAttachmentSticker:
             return .messageAttachmentSticker
+        case .userProfilePoster:
+            return .userProfilePoster
         }
     }
 

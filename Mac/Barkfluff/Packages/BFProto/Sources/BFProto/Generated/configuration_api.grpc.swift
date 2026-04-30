@@ -29,12 +29,83 @@ public enum Barkfluff_Configuration_ConfigurationApi: Sendable {
             /// Descriptor for "GetConfiguration".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.configuration.ConfigurationApi"),
-                method: "GetConfiguration"
+                method: "GetConfiguration",
+                type: .unary
+            )
+        }
+        /// Namespace for "UpdateConfiguration" metadata.
+        public enum UpdateConfiguration: Sendable {
+            /// Request type for "UpdateConfiguration".
+            public typealias Input = Barkfluff_Configuration_UpdateConfigurationRequest
+            /// Response type for "UpdateConfiguration".
+            public typealias Output = Barkfluff_Configuration_UpdateConfigurationResponse
+            /// Descriptor for "UpdateConfiguration".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.configuration.ConfigurationApi"),
+                method: "UpdateConfiguration",
+                type: .unary
+            )
+        }
+        /// Namespace for "GetReservedNames" metadata.
+        public enum GetReservedNames: Sendable {
+            /// Request type for "GetReservedNames".
+            public typealias Input = Barkfluff_Configuration_GetReservedNamesRequest
+            /// Response type for "GetReservedNames".
+            public typealias Output = Barkfluff_Configuration_GetReservedNamesResponse
+            /// Descriptor for "GetReservedNames".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.configuration.ConfigurationApi"),
+                method: "GetReservedNames",
+                type: .unary
+            )
+        }
+        /// Namespace for "AddReservedName" metadata.
+        public enum AddReservedName: Sendable {
+            /// Request type for "AddReservedName".
+            public typealias Input = Barkfluff_Configuration_AddReservedNameRequest
+            /// Response type for "AddReservedName".
+            public typealias Output = Barkfluff_Configuration_AddReservedNameResponse
+            /// Descriptor for "AddReservedName".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.configuration.ConfigurationApi"),
+                method: "AddReservedName",
+                type: .unary
+            )
+        }
+        /// Namespace for "UpdateReservedName" metadata.
+        public enum UpdateReservedName: Sendable {
+            /// Request type for "UpdateReservedName".
+            public typealias Input = Barkfluff_Configuration_UpdateReservedNameRequest
+            /// Response type for "UpdateReservedName".
+            public typealias Output = Barkfluff_Configuration_UpdateReservedNameResponse
+            /// Descriptor for "UpdateReservedName".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.configuration.ConfigurationApi"),
+                method: "UpdateReservedName",
+                type: .unary
+            )
+        }
+        /// Namespace for "DeleteReservedName" metadata.
+        public enum DeleteReservedName: Sendable {
+            /// Request type for "DeleteReservedName".
+            public typealias Input = Barkfluff_Configuration_DeleteReservedNameRequest
+            /// Response type for "DeleteReservedName".
+            public typealias Output = Barkfluff_Configuration_DeleteReservedNameResponse
+            /// Descriptor for "DeleteReservedName".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.configuration.ConfigurationApi"),
+                method: "DeleteReservedName",
+                type: .unary
             )
         }
         /// Descriptors for all methods in the "barkfluff.configuration.ConfigurationApi" service.
         public static let descriptors: [GRPCCore.MethodDescriptor] = [
-            GetConfiguration.descriptor
+            GetConfiguration.descriptor,
+            UpdateConfiguration.descriptor,
+            GetReservedNames.descriptor,
+            AddReservedName.descriptor,
+            UpdateReservedName.descriptor,
+            DeleteReservedName.descriptor
         ]
     }
 }
@@ -75,6 +146,109 @@ extension Barkfluff_Configuration_ConfigurationApi {
             deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Configuration_GetConfigurationResponse>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Configuration_GetConfigurationResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "UpdateConfiguration" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Обновить настройку
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Configuration_UpdateConfigurationRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Configuration_UpdateConfigurationRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Configuration_UpdateConfigurationResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func updateConfiguration<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Configuration_UpdateConfigurationRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Configuration_UpdateConfigurationRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Configuration_UpdateConfigurationResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Configuration_UpdateConfigurationResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "GetReservedNames" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Зарезервированные юзернеймы
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Configuration_GetReservedNamesRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Configuration_GetReservedNamesRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Configuration_GetReservedNamesResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func getReservedNames<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Configuration_GetReservedNamesRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Configuration_GetReservedNamesRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Configuration_GetReservedNamesResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Configuration_GetReservedNamesResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "AddReservedName" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Configuration_AddReservedNameRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Configuration_AddReservedNameRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Configuration_AddReservedNameResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func addReservedName<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Configuration_AddReservedNameRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Configuration_AddReservedNameRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Configuration_AddReservedNameResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Configuration_AddReservedNameResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "UpdateReservedName" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Configuration_UpdateReservedNameRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Configuration_UpdateReservedNameRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Configuration_UpdateReservedNameResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func updateReservedName<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Configuration_UpdateReservedNameRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Configuration_UpdateReservedNameRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Configuration_UpdateReservedNameResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Configuration_UpdateReservedNameResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "DeleteReservedName" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Configuration_DeleteReservedNameRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Configuration_DeleteReservedNameRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Configuration_DeleteReservedNameResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func deleteReservedName<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Configuration_DeleteReservedNameRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Configuration_DeleteReservedNameRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Configuration_DeleteReservedNameResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Configuration_DeleteReservedNameResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
     }
 
@@ -127,6 +301,164 @@ extension Barkfluff_Configuration_ConfigurationApi {
                 onResponse: handleResponse
             )
         }
+
+        /// Call the "UpdateConfiguration" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Обновить настройку
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Configuration_UpdateConfigurationRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Configuration_UpdateConfigurationRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Configuration_UpdateConfigurationResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func updateConfiguration<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Configuration_UpdateConfigurationRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Configuration_UpdateConfigurationRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Configuration_UpdateConfigurationResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Configuration_UpdateConfigurationResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Configuration_ConfigurationApi.Method.UpdateConfiguration.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "GetReservedNames" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Зарезервированные юзернеймы
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Configuration_GetReservedNamesRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Configuration_GetReservedNamesRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Configuration_GetReservedNamesResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func getReservedNames<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Configuration_GetReservedNamesRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Configuration_GetReservedNamesRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Configuration_GetReservedNamesResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Configuration_GetReservedNamesResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Configuration_ConfigurationApi.Method.GetReservedNames.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "AddReservedName" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Configuration_AddReservedNameRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Configuration_AddReservedNameRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Configuration_AddReservedNameResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func addReservedName<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Configuration_AddReservedNameRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Configuration_AddReservedNameRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Configuration_AddReservedNameResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Configuration_AddReservedNameResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Configuration_ConfigurationApi.Method.AddReservedName.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "UpdateReservedName" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Configuration_UpdateReservedNameRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Configuration_UpdateReservedNameRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Configuration_UpdateReservedNameResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func updateReservedName<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Configuration_UpdateReservedNameRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Configuration_UpdateReservedNameRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Configuration_UpdateReservedNameResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Configuration_UpdateReservedNameResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Configuration_ConfigurationApi.Method.UpdateReservedName.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "DeleteReservedName" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Configuration_DeleteReservedNameRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Configuration_DeleteReservedNameRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Configuration_DeleteReservedNameResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func deleteReservedName<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Configuration_DeleteReservedNameRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Configuration_DeleteReservedNameRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Configuration_DeleteReservedNameResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Configuration_DeleteReservedNameResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Configuration_ConfigurationApi.Method.DeleteReservedName.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
     }
 }
 
@@ -157,6 +489,139 @@ extension Barkfluff_Configuration_ConfigurationApi.ClientProtocol {
             request: request,
             serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Configuration_GetConfigurationRequest>(),
             deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Configuration_GetConfigurationResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UpdateConfiguration" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Обновить настройку
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Configuration_UpdateConfigurationRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func updateConfiguration<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Configuration_UpdateConfigurationRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Configuration_UpdateConfigurationResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.updateConfiguration(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Configuration_UpdateConfigurationRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Configuration_UpdateConfigurationResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetReservedNames" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Зарезервированные юзернеймы
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Configuration_GetReservedNamesRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func getReservedNames<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Configuration_GetReservedNamesRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Configuration_GetReservedNamesResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.getReservedNames(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Configuration_GetReservedNamesRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Configuration_GetReservedNamesResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "AddReservedName" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Configuration_AddReservedNameRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func addReservedName<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Configuration_AddReservedNameRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Configuration_AddReservedNameResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.addReservedName(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Configuration_AddReservedNameRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Configuration_AddReservedNameResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UpdateReservedName" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Configuration_UpdateReservedNameRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func updateReservedName<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Configuration_UpdateReservedNameRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Configuration_UpdateReservedNameResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.updateReservedName(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Configuration_UpdateReservedNameRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Configuration_UpdateReservedNameResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "DeleteReservedName" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Configuration_DeleteReservedNameRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func deleteReservedName<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Configuration_DeleteReservedNameRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Configuration_DeleteReservedNameResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.deleteReservedName(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Configuration_DeleteReservedNameRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Configuration_DeleteReservedNameResponse>(),
             options: options,
             onResponse: handleResponse
         )
@@ -193,6 +658,159 @@ extension Barkfluff_Configuration_ConfigurationApi.ClientProtocol {
             metadata: metadata
         )
         return try await self.getConfiguration(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UpdateConfiguration" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Обновить настройку
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func updateConfiguration<Result>(
+        _ message: Barkfluff_Configuration_UpdateConfigurationRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Configuration_UpdateConfigurationResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Configuration_UpdateConfigurationRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.updateConfiguration(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetReservedNames" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Зарезервированные юзернеймы
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func getReservedNames<Result>(
+        _ message: Barkfluff_Configuration_GetReservedNamesRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Configuration_GetReservedNamesResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Configuration_GetReservedNamesRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.getReservedNames(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "AddReservedName" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func addReservedName<Result>(
+        _ message: Barkfluff_Configuration_AddReservedNameRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Configuration_AddReservedNameResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Configuration_AddReservedNameRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.addReservedName(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UpdateReservedName" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func updateReservedName<Result>(
+        _ message: Barkfluff_Configuration_UpdateReservedNameRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Configuration_UpdateReservedNameResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Configuration_UpdateReservedNameRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.updateReservedName(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "DeleteReservedName" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func deleteReservedName<Result>(
+        _ message: Barkfluff_Configuration_DeleteReservedNameRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Configuration_DeleteReservedNameResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Configuration_DeleteReservedNameRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.deleteReservedName(
             request: request,
             options: options,
             onResponse: handleResponse
