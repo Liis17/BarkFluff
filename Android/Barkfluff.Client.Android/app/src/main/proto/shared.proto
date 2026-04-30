@@ -51,6 +51,10 @@ message MessageAttachment {
   string preview_file_id = 6; // Идентификатор файла превью (может быть пустым)
   
   string file_name = 7; // Оригинальное имя файла
+
+  int32 image_width = 8; // Ширина изображения в пикселях (0 если не изображение)
+
+  int32 image_height = 9; // Высота изображения в пикселях (0 если не изображение)
 }
 
 enum MessageAttachmentType {

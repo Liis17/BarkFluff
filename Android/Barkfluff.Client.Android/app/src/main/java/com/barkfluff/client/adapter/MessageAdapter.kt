@@ -509,11 +509,30 @@ class MessageAdapter(
             )
         }
 
+        // Для одиночного изображения применяем соотношение сторон из метаданных, чтобы
+        // облачко заняло правильный размер ещё до загрузки картинки и не скакало.
+        val isSingleImage = capped.size == 1
+
         var itemIndex = 0
         for ((rowIdx, itemsInRow) in layout.withIndex()) {
             val totalSpacing = spacingPx * (itemsInRow - 1)
             val cellWidth = (maxWidth - totalSpacing) / itemsInRow
-            val cellHeight = cellWidth
+
+            // Высота ячейки: для одиночного изображения — по соотношению сторон (если известно),
+            // для мульти-сетки — всегда квадратная ячейка.
+            val cellHeight: Int = if (isSingleImage) {
+                val attachment = capped[0]
+                val imgW = attachment.imageWidth
+                val imgH = attachment.imageHeight
+                if (imgW > 0 && imgH > 0) {
+                    // Ограничиваем высоту: не меньше 1/3 и не больше 2x ширины
+                    (imgH.toLong() * cellWidth / imgW).toInt().coerceIn(cellWidth / 3, cellWidth * 2)
+                } else {
+                    cellWidth
+                }
+            } else {
+                cellWidth
+            }
 
             val row = android.widget.LinearLayout(context).apply {
                 orientation = android.widget.LinearLayout.HORIZONTAL
