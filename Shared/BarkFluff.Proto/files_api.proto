@@ -93,6 +93,8 @@ message UploadFileInfo {
   string preview_url = 9; // Ссылка на превью, если есть
   int64 file_size = 10; // Размер файла в байтах
   string preview_file_id = 11; // Идентификатор файла превью, если есть
+  int32 image_width = 12; // Ширина изображения в пикселях (0 если не изображение)
+  int32 image_height = 13; // Высота изображения в пикселях (0 если не изображение)
 }
 
 message GetUploadUrlRequest {

@@ -26,4 +26,8 @@ public class UploadFile
     public Guid? PreviewId { get; set; }
 
     public long Size { get; set; }
+
+    public int? ImageWidth { get; set; }
+
+    public int? ImageHeight { get; set; }
 }

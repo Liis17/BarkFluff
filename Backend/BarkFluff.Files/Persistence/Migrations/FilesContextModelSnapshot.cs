@@ -164,6 +164,12 @@ namespace BarkFluff.Files.Persistence.Migrations
                     b.Property<Guid?>("PreviewId")
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("ImageHeight")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ImageWidth")
+                        .HasColumnType("integer");
+
                     b.Property<long>("Size")
                         .HasColumnType("bigint");
 

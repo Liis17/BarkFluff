@@ -54,7 +54,7 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 
 | Сущность | Назначение |
 |----------|-----------|
-| `UploadFile` | Основная таблица. `Uploaders` (List\<long\>) — дедупликация. `PreviewId` — ссылка на превью. |
+| `UploadFile` | Основная таблица. `Uploaders` (List\<long\>) — дедупликация. `PreviewId` — ссылка на превью. `ImageWidth`/`ImageHeight` — размеры изображения в пикселях (nullable int, только для графических типов). |
 | `TempFile` | Временные файлы с `ExpiresAt`. Индекс по `OriginalFileId`. |
 | `FileHash` | SHA256-хеши для дедупликации. Индекс по `Hash`. |
 | `BadgeImage` | Отдельная таблица (не `UploadFile`). Бакет `badge-images`. PNG без сжатия. |
@@ -65,6 +65,10 @@ Design-time factory: `FilesContextFactory` (подключение к `localhost
 
 - **ImageCompressor** — SixLabors.ImageSharp. Превью: ресайз до 1024px, JPEG 75%. Оригинал: макс. 2500px, макс. 2 МБ, JPEG 90%.
 - **FileTypeDetector** — тип по magic bytes (JPEG, PNG, WebP, GIF, MP4, WebM, AVI, MOV, MP3, WAV, FLAC, M4A, OGG). OGG → `Voice`, остальное аудио → `Audio`.
+
+### Метаданные изображений
+
+При загрузке файлов графических типов (`UserAvatar`, `MessageAttachmentImage`, `MessageAttachmentGif`, `ChatPicture`, `MessageAttachmentSticker`, `UserProfilePoster`) автоматически извлекаются и сохраняются размеры изображения через `Image.IdentifyAsync()` (SixLabors.ImageSharp). Значения `ImageWidth`/`ImageHeight` возвращаются во всех ответах `UploadFileInfo` (`GetFileData`, `GetFilesData`). Для не-графических файлов и старых записей возвращается `0`.
 
 ## Конфигурация
 
