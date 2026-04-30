@@ -4,6 +4,8 @@ gRPC-Web reverse proxy + static file server для веб-клиента. Пор
 
 Расположение: `Backend/BarkFluff.Web/`
 
+📁 **Детальная карта файлов и классов:** [[Backend/Web-ProjectMap]]
+
 ## Сборка
 
 ```bash
@@ -48,7 +50,12 @@ docker-compose -f docker-compose-dev.yml up web
 - `files.js` — кэш URL файлов, upload
 - `messages.js` — рендеринг пузырей, вложений, аудиоплеер
 - `realtime.js` — server-streaming подписки (new_message, message_read, online_status)
+- `attach.js` — диалог прикрепления файлов (images/docs режим, превью)
+- `settings.js` — многоэкранная панель настроек (профиль, 2FA, сессии, пароль)
 - `main.js` — bootstrap мессенджера
+
+**Дополнительные страницы:**
+- `mobile.html` — мобильная версия интерфейса
 
 **Proto bundle** (`wwwroot/js/proto/barkfluff.bundle.js`):
 Генерируется через `scripts/generate-proto.ps1` (или `.sh`). Требует: protoc, protoc-gen-grpc-web, Node.js (esbuild).

@@ -1,9 +1,11 @@
 # Barkfluff.WebServer
 
-Публичный HTTP-сервер. Порт: **64641** (.NET 10, ASP.NET Core MVC).
-Раздаёт HTML-страницы, статику и файлы, предоставляет REST API профилей и чат поддержки через Telegram-бота.
+Публичный HTTP-сервер. Порт: **64641** (.NET 9, ASP.NET Core MVC).
+Раздаёт HTML-страницы, статику и файлы, предоставляет REST API профилей, версий клиентов и чат поддержки через Telegram-бота.
 
 Расположение: `Backend/Barkfluff.WebServer/`
+
+> 📂 Подробная карта всех файлов и классов: [[Backend/WebServer-ProjectMap]]
 
 ## Сборка
 
@@ -17,21 +19,26 @@ dotnet publish Barkfluff.WebServer.csproj -c Release -r linux-x64 --self-contain
 | Controller | Маршрут | Описание |
 |------------|---------|----------|
 | `HomeController` | `GET /` | Отдаёт `html/barkfluff.html` |
-| `InstallController` | `GET /install.ps1` | Скрипт установки |
+| `InstallController` | `GET /install.ps1`, `GET /installbeta.ps1`, `GET /install.sh`, `GET /installbeta.sh` | Скрипты установки (Windows и Linux, release и beta) |
 | `DownloadController` | `GET /download/installer` | `Barkfluff.Updater.CLI.exe` |
-| `FallbackController` | `GET /{**catchAll}` | `legal/*` → LegalPageService; `selfhosted` → selfhosted.html; иначе → UserPageService |
+| `FallbackController` | `GET /{**catchAll}` | `legal/*` → LegalPageService; `selfhosted` → LegalPageService; иначе → UserPageService |
 | `UserApiController` | `GET /api/user/{username}` | REST API профиля |
+| `VersionApiController` | `GET /api/versions` | Версии клиентов (Android/Windows/macOS, release+beta) |
 | `SupportChatController` | `POST /api/support/send`, `GET /api/support/messages/{chatId}` | Чат поддержки |
+| `AssetsController` | `GET /assets/{filename}` | Ассеты (изображения для магазинов и превью) |
+| `FaviconController` | `GET /favicon.ico` | Иконка сайта |
 
 **Важно**: `FallbackController` перехватывает все необработанные пути — специфичные маршруты ASP.NET Core расставляет в приоритет автоматически.
 
 ## Services
 
 - **`UserProfileService`** — gRPC запросы профилей, кеш 30 мин (не найденных — 5 мин, `IMemoryCache`). Возвращает `UserProfileData` включая `ProfilePosterUrl`.
-- **`UserPageService`** — читает `html/userpage.html`, заменяет `%%username%%`. Специальная обработка: если username == `li_is` (без учёта регистра), отдаётся `html/li_is_page.html` с анимированными лапками на фоне.
-- **`LegalPageService`** — файлы из `html/legal/` по имени страницы
+- **`UserPageService`** — читает `html/userpage.html`, заменяет `%%username%%`. Специальная обработка: если username == `li_is` (без учёта регистра), отдаётся `html/UniqueUsers/paws.page.html` с анимированными лапками на фоне.
+- **`LegalPageService`** — файлы из `html/legal/` по имени страницы; также обрабатывает `selfhosted.html`
 - **`SupportChatService`** — in-memory сессии чата (`ConcurrentDictionary`)
 - **`TelegramService`** — Telegram-бот для уведомлений чата поддержки. Ответ администратора — reply, первая строка — GUID чата
+- **`VersionStore`** — thread-safe in-memory хранилище актуальных версий клиентов (Android/Windows/macOS, release+beta)
+- **`VersionPollingService`** — `BackgroundService`, каждые 10 минут опрашивает `storage.barkfluff.com` и обновляет `VersionStore`
 
 ## REST API — `/api/user/{username}`
 
@@ -61,10 +68,12 @@ dotnet publish Barkfluff.WebServer.csproj -c Release -r linux-x64 --self-contain
 
 - `html/barkfluff.html` — главная страница
 - `html/userpage.html` — шаблон страницы пользователя
-- `html/li_is_page.html` — **специальная** страница для пользователя `li_is`: как userpage, но с анимированными полупрозрачными лапками-следами (SVG, CSS keyframes) на заднем плане
+- `html/UniqueUsers/paws.page.html` — **специальная** страница для пользователя `li_is`: как userpage, но с анимированными полупрозрачными лапками-следами (SVG, CSS keyframes) на заднем плане
 - `html/selfhosted.html` — self-hosted
 - `html/legal/*.html` — юридические страницы
-- `files/install.ps1` — скрипт установки
+- `html/new/` — **WIP** редизайн главной страницы (Barkfluff Redesign.html, profile.html, стили)
+- `files/install.ps1`, `files/installbeta.ps1` — скрипты установки Windows
+- `files/install.sh`, `files/installbeta.sh` — скрипты установки Linux
 - `files/Barkfluff.Updater.CLI.exe` — инсталлятор (не в git)
 
 ## Proto

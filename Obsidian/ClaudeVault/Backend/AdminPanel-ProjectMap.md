@@ -14,6 +14,8 @@ Barkfluff.AdminPanel/
 ├── appsettings.json
 ├── appsettings.Development.json
 ├── Dockerfile
+├── Dockerfile.slim                        ← облегчённый образ
+├── dotnet-tools.json                      ← манифест .NET инструментов
 ├── Data/
 │   ├── TokenDbContext.cs              ← LiteDB: auth-токены
 │   └── MetricsCacheDbContext.cs       ← LiteDB: кеш метрик
@@ -70,9 +72,9 @@ Barkfluff.AdminPanel/
 | Класс | Назначение |
 |-------|-----------|
 | `TelegramSettings` | Конфиг Telegram-бота: `BotToken`, `Admins` (строка `"id:name,id:name"`) |
-| `TelegramProxySettings` | Proxy для бота: `Host`, `Port`, `Username`, `Password` |
+| `TelegramProxySettings` | Proxy для бота: `Url`, `Username`, `Password` |
 | `AdminUser` | Парсированный админ: `TelegramUserId` (long), `Username` |
-| `TelegramSettingsExtensions` | `IsAdmin(userId)`, `FindAdminByUsername(name)` |
+| `TelegramSettingsExtensions` | `IsAdmin(userId)`, `GetAdminByUsername(name)`, `GetAdminByTelegramId(id)`, `GetUsername(id)` |
 | `AuthSettings` | `TokenExpirationDays` (default 3), `PendingRequestTimeoutMinutes` (10) |
 | `Program.StartedAtUtc` | `static DateTime` — метка запуска, подставляется в HTML |
 

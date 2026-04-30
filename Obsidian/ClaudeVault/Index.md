@@ -28,9 +28,12 @@
 | [[Backend/FastAuth]] | QR-авторизация устройств | 7008 |
 | [[Backend/AdminPanel]] | Веб-дашборд администратора | 51888 |
 | [[Backend/AdminPanel-ProjectMap]] | Карта всех файлов и классов AdminPanel | — |
+| [[Backend/AdminPanel-Files]] | Краткое описание каждого файла AdminPanel | — |
 | [[Backend/CloudMessaging]] | Push-уведомления (Firebase) | — |
 | [[Backend/Web]] | gRPC-Web прокси + статика | 7016 |
+| [[Backend/Web-ProjectMap]] | Карта всех файлов и классов BarkFluff.Web | — |
 | [[Backend/WebServer]] | Публичный HTTP-сервер | 64641 |
+| [[Backend/WebServer-ProjectMap]] | Карта всех файлов и классов WebServer | — |
 | [[Backend/ClientStorage]] | Хранилище клиентских приложений | — |
 | [[Backend/Developers]] | Портал документации для разработчиков | 7020 |
 
@@ -52,7 +55,9 @@
 | [[Клиенты/DesignDocument]] | **UI/UX дизайн-документ** — экраны, сценарии, вложения (источник: `dd.md`) |
 | [[Клиенты/Android]] | Kotlin + gRPC-OkHttp, Activity-based |
 | [[Клиенты/Android-ProjectMap]] | Карта всех файлов и классов Android-клиента |
+| [[Клиенты/Android-FileIndex]] | Индекс файлов Android-клиента с кратким описанием каждого |
 | [[Клиенты/Windows-WPF]] | WPF .NET 10, Code-behind + Reactive |
+| [[Клиенты/Windows-WPF-ProjectMap]] | Карта всех файлов и классов WPF-клиента |
 | [[Клиенты/Windows-WebApiCore]] | gRPC-клиентская библиотека для WPF |
 | [[Клиенты/Windows-WebApiCore-ProjectMap]] | Карта всех файлов и менеджеров WebApi.Core |
 | [[Клиенты/Windows-DBEditor]] | Редактор конфигурации БД (WPF) |
