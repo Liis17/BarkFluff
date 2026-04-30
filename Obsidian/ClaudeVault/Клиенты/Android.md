@@ -62,6 +62,17 @@ Package: `com.barkfluff.client`
 
 
 - `MessageAttachmentType`: Unknown, Image, Video, Gif, Document, Audio(4), Voice, Sticker; **AUDIO=5** (добавлен в shared.proto)
+
+## Соотношение сторон изображений в облачках
+
+`MessageAdapter.buildMediaGrid` вычисляет размер ячеек:
+- **Одно изображение**: высота ячейки = `cellWidth * imageHeight / imageWidth` (из `MessageAttachment.image_width` / `image_height`), ограничена диапазоном `[cellWidth/3 .. cellWidth*2]`. Если размеры равны 0 — квадратная ячейка как fallback.
+- **Несколько изображений**: всегда квадратные ячейки (стандартная сетка).
+
+Это позволяет облачку принять правильный размер **до** загрузки картинки, исключая прыжок высоты после загрузки.
+
+Поля `image_width` (field 8) и `image_height` (field 9) добавлены в `MessageAttachment` в `shared.proto`.
+Backend заполняет эти поля при доставке сообщения с вложением-изображением.
 ## Система кеширования
 
 Подробная документация: `Android/Barkfluff.Client.Android/docs/CACHING_SYSTEM.md`

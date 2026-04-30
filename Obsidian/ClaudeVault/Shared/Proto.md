@@ -48,6 +48,8 @@ dotnet build BarkFluff.Proto.csproj
 - `MessageReadEvent.new_read_by` — **полный** список прочитавших, не только новых
 - `UploadFileType` — отдельный enum от `MessageAttachmentType`, маппировать при отправке сообщений
 - `GetUserByUsernameResponse.profile_poster_url` (field 7) — URL постера профиля (пусто если не задан); заполняется в Users через Files gRPC
+- `MessageAttachment.image_width` (field 8) и `image_height` (field 9) — размеры изображения в пикселях; 0 если вложение не является изображением. Используются Android-клиентом для вычисления соотношения сторон ячейки **до** загрузки картинки, чтобы облачко сообщения не меняло размер.
+- `UploadFileInfo.image_width` (field 12) и `image_height` (field 13) — аналогичные поля в данных о загруженном файле (в `files_api.proto`).
 
 ## Подключение в .csproj
 
