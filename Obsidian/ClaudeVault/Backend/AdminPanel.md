@@ -107,6 +107,8 @@ dotnet run --project Barkfluff.AdminPanel.csproj
 
 Детальный разбор всех файлов, классов и эндпоинтов → [[Backend/AdminPanel-ProjectMap]]
 
+Краткое описание каждого файла проекта → [[Backend/AdminPanel-Files]]
+
 ## Ключевые зависимости
 
 - `LiteDB 5.0.21` — embedded NoSQL
