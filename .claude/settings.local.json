@@ -56,7 +56,8 @@
       "Bash(ln -sf /opt/homebrew/opt/protoc-gen-grpc-swift/bin/protoc-gen-grpc-swift-2 /opt/homebrew/bin/protoc-gen-grpc-swift)",
       "Bash(protoc-gen-grpc-swift --help)",
       "Bash(git ls-remote *)",
-      "Bash(brew info *)"
+      "Bash(brew info *)",
+      "Bash(xcodebuild -scheme Barkfluff -configuration Debug -destination 'platform=macOS' build)"
     ],
     "deny": [],
     "ask": []

@@ -26,8 +26,10 @@ public actor OnlineStatusService: OnlineStatusServiceProtocol {
 
     // MARK: - Streams
 
-    private var eventsContinuation: AsyncStream<OnlineStatusEvent>.Continuation?
-    private var eventsStream: AsyncStream<OnlineStatusEvent>?
+    // Multicast: несколько подписчиков получают одни и те же события.
+    // AsyncStream — single-consumer, поэтому для каждого вызова getStatusEventsStream
+    // создаём отдельный стрим. UUID — ключ для удаления при завершении подписчика.
+    private var eventSubscribers: [UUID: AsyncStream<OnlineStatusEvent>.Continuation] = [:]
 
     private var connectionContinuation: AsyncStream<OnlineStatusConnectionEvent>.Continuation?
     private var connectionStream: AsyncStream<OnlineStatusConnectionEvent>?
@@ -61,9 +63,9 @@ public actor OnlineStatusService: OnlineStatusServiceProtocol {
                 let events = statuses.map { mapToEvent($0) }
                 await cache.updateStatuses(events)
 
-                // Прокидываем начальные статусы в stream для UI
+                // Прокидываем начальные статусы всем подписчикам
                 for event in events {
-                    eventsContinuation?.yield(event)
+                    broadcastStatusEvent(event)
                 }
             } catch {
                 // Не критично — статусы придут по стриму
@@ -73,7 +75,7 @@ public actor OnlineStatusService: OnlineStatusServiceProtocol {
         // 2. Запускаем стрим-менеджер (heartbeat + подписка)
         await streamManager.start(userIDs: initialUserIDs)
 
-        // 3. Форвардим события из стрим-менеджера в кеш и наш stream
+        // 3. Форвардим события из стрим-менеджера в кеш и подписчикам
         startForwardingEvents()
         startForwardingConnectionEvents()
     }
@@ -115,7 +117,7 @@ public actor OnlineStatusService: OnlineStatusServiceProtocol {
             await cache.updateStatuses(events)
 
             for event in events {
-                eventsContinuation?.yield(event)
+                broadcastStatusEvent(event)
             }
         } catch {
             // Не критично — повторим при следующей возможности
@@ -157,15 +159,24 @@ public actor OnlineStatusService: OnlineStatusServiceProtocol {
     // MARK: - Streams
 
     public func getStatusEventsStream() async -> AsyncStream<OnlineStatusEvent> {
-        if let existing = eventsStream {
-            return existing
-        }
-
+        let id = UUID()
         let stream = AsyncStream<OnlineStatusEvent> { continuation in
-            self.eventsContinuation = continuation
+            self.eventSubscribers[id] = continuation
+            continuation.onTermination = { [weak self] _ in
+                Task { await self?.removeEventSubscriber(id: id) }
+            }
         }
-        eventsStream = stream
         return stream
+    }
+
+    private func removeEventSubscriber(id: UUID) {
+        eventSubscribers.removeValue(forKey: id)
+    }
+
+    private func broadcastStatusEvent(_ event: OnlineStatusEvent) {
+        for continuation in eventSubscribers.values {
+            continuation.yield(event)
+        }
     }
 
     public func getConnectionEventsStream() async -> AsyncStream<OnlineStatusConnectionEvent> {
@@ -200,9 +211,8 @@ public actor OnlineStatusService: OnlineStatusServiceProtocol {
                 // Обновляем кеш
                 await self.cache.updateStatus(userID: event.userID, status: event.status)
 
-                // Прокидываем в наш stream для UI
-                let cont = await self.eventsContinuation
-                cont?.yield(event)
+                // Рассылаем всем подписчикам
+                await self.broadcastStatusEvent(event)
             }
         }
     }
@@ -218,13 +228,36 @@ public actor OnlineStatusService: OnlineStatusServiceProtocol {
 
                 let domainEvent: OnlineStatusConnectionEvent
                 switch event {
-                case .connectionLost: domainEvent = .connectionLost
-                case .reconnected: domainEvent = .reconnected
+                case .connectionLost:
+                    domainEvent = .connectionLost
+                case .reconnected:
+                    domainEvent = .reconnected
+                    // Рефреш при переподключении: SubscribeToOnlineStatus — delta stream,
+                    // статусы изменившиеся во время разрыва теряются. Синхронизируем кеш.
+                    await self.refreshAllTrackedStatuses()
                 }
 
                 let cont = await self.connectionContinuation
                 cont?.yield(domainEvent)
             }
+        }
+    }
+
+    /// Повторно запрашивает текущие статусы всех отслеживаемых пользователей.
+    /// Вызывается после переподключения стрима для исправления кеша.
+    private func refreshAllTrackedStatuses() async {
+        let trackedIDs = await streamManager.getTrackedUserIDs()
+        guard !trackedIDs.isEmpty else { return }
+
+        do {
+            let statuses = try await onlinerRepository.getOnlineStatus(userIDs: Array(trackedIDs))
+            let events = statuses.map { mapToEvent($0) }
+            await cache.updateStatuses(events)
+            for event in events {
+                broadcastStatusEvent(event)
+            }
+        } catch {
+            // Не критично — следующее событие по стриму скорректирует статус
         }
     }
 
