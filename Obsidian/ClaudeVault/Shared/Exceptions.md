@@ -4,6 +4,8 @@
 
 Расположение: `Shared/BarkFluff.Shared.Exceptions/`
 
+> Полная карта файлов с кодами ошибок: [[Shared/Exceptions-ProjectMap]]
+
 ## Базовый класс
 
 `BaseGrpcException` — базовый для всех исключений:
@@ -12,11 +14,12 @@
 
 ## Исключения по доменам
 
-- `Identity/` — аутентификация, OTP, сессии, пользователи
-- `Messages/` — чаты и сообщения
-- `Files/` — загрузка файлов
-- `Users/` — профили
-- `Navigator/` — регистрация серверов
+- `Identity/` — аутентификация, OTP, сессии, пользователи (21 класс)
+- `Messages/` — чаты и сообщения (13 классов)
+- `FastAuth/` — QR-авторизация устройств (4 класса)
+- `Files/` — загрузка файлов (2 класса)
+- `Navigator/` — регистрация серверов (3 класса)
+- `Users/` — профили (3 класса)
 
 ## Известные коды ошибок
 
@@ -25,6 +28,13 @@
 | OtpCodeNeedException | `C1576884-12D8-4722-A7EE-9F9789AD1265` |
 | NotValidOtpCodeException | `803B632C-4457-4B05-9435-9C3DD0F41E00` |
 | InvalidLoginOrPasswordException | `21BFB9B5-C377-45D1-9B15-6B7F3432B397` |
+| UserNotFoundException | `A4DAB334-1067-4838-A782-C4257DC838F7` |
+| SessionNotFoundException | `011BF29A-2DE6-4A63-BF8D-3F36AE730D9D` |
+| FastAuthSessionNotFoundException | `A5E94C7D-1B82-4F36-9CDE-78B1F4A7E2C5` |
+| ChatNotFoundException | `7506386A-8940-4F3B-87B8-315DD0A7AB08` |
+| NoAccessToChatException | `604DD334-0484-4C6B-8113-354B9D2FDF2A` |
+
+Полный список — [[Shared/Exceptions-ProjectMap]]
 
 ## ExceptionClientInterceptor
 

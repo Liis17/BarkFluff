@@ -5,6 +5,8 @@ Background Worker для push-уведомлений через Firebase Cloud M
 
 Расположение: `Backend/Barkfluff.CloudMessaging/`
 
+📁 [[Backend/CloudMessaging-ProjectMap|Карта проекта — все файлы и их назначение]]
+
 ## Сборка
 
 ```bash
@@ -31,7 +33,27 @@ Messages service → PushNotificationEvent → RabbitMQ
   → FirebaseService.SendNotificationAsync (per device)
 ```
 
-Отправка задерживается на 5 сек через [[Backend/Updates]] (отменяется если прочитано).
+> ⚠️ Задержки отправки **нет** — обработка немедленная после получения события из очереди.
+
+## FirebaseService — data payload
+
+Отправляются **data-only** сообщения (без блока `Notification`), `Priority.High`. Android-клиент сам строит уведомления.
+
+| Ключ | Значение |
+|------|---------|
+| `type` | `"new_message"` |
+| `chat_id` | ID чата |
+| `sender_id` | ID отправителя |
+| `sender_name` | Имя отправителя |
+| `avatar_url` | URL аватара отправителя |
+| `chat_title` | Название чата (для групп) |
+| `chat_avatar_url` | Аватар чата |
+| `is_group_chat` | `"true"` / `"false"` |
+| `content_type` | Тип контента сообщения |
+| `image_url` | Превью изображения |
+| `message_id` | ID сообщения |
+| `message_text` | Текст (обрезается до 100 символов) |
+| `attachment_count` | Количество вложений |
 
 ## Конфигурация
 

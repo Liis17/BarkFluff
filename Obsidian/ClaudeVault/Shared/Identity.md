@@ -3,12 +3,15 @@
 Разделяемая библиотека с общими типами идентификации. Используется всеми микросервисами.
 
 Расположение: `Shared/BarkFluff.Shared.Identity/`
+Target framework: `net9.0`, без внешних зависимостей.
+
+> 📋 Подробная карта файлов → [[Shared/Identity-ProjectMap]]
 
 ## Содержимое (три файла)
 
-- **`ServiceId.cs`** — enum с ID каждого микросервиса (Identity=1, Users=2, Beacon=3, ..., Developers=12). При добавлении нового сервиса — добавить сюда.
-- **`TokenType.cs`** — enum: `User`, `Service`, `FastAuth`.
-- **`IdentityClaims.cs`** — строковые константы для JWT claims и gRPC metadata: `x-user-id`, `x-token-type`, `x-service-id`.
+- **`ServiceId.cs`** — enum с ID каждого микросервиса (`Unknown=0`, `Identity=1`, `Users=2`, `Beacon=3`, ..., `Developers=12`). При добавлении нового сервиса — добавить сюда.
+- **`TokenType.cs`** — enum: `Unknown=0`, `User=1`, `Service=2`.
+- **`IdentityClaims.cs`** — строковые константы для JWT claims и gRPC metadata: `x-user-id`, `x-token-type`, `x-service-id`, `x-device-id`.
 
 ## Использование
 

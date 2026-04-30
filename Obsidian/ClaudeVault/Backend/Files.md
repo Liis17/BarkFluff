@@ -5,6 +5,8 @@
 
 Расположение: `Backend/BarkFluff.Files/`
 
+> 📁 Детальная карта всех файлов проекта: [[Backend/Files-ProjectMap]]
+
 ## Сборка
 
 ```bash

@@ -4,6 +4,8 @@
 
 Расположение: `Backend/BarkFluff.Users/`
 
+→ [[Backend/Users-ProjectMap]] — карта всех файлов и классов проекта
+
 ## Сборка
 
 ```bash
@@ -26,7 +28,7 @@ dotnet ef database update --project BarkFluff.Users.csproj
 - `Features/` — MediatR команды/запросы (CQRS)
 - `Host/` — gRPC-сервисы
 - `Persistence/Services/` — `UsersStorage`, `DevicesStorage`, `PrivacyStorage`, `PersonalizationStorage` (Transient)
-- `Infrastructure/` — `UserInfoQueueSender` (RabbitMQ события)
+- `Infrastructure/` — `UserInfoQueueSender` (RabbitMQ события, Scoped)
 - `Services/` — `ReservedUsernamesService` (Singleton)
 - `Mapping/` — extension-методы маппинга доменных объектов в protobuf
 

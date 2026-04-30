@@ -6,6 +6,8 @@
 
 Расположение: `Backend/BarkFluff.Onliner/`
 
+📁 **[[Backend/Onliner-ProjectMap]]** — карта всех файлов и классов проекта
+
 ## Сборка
 
 ```bash
@@ -39,12 +41,16 @@ Client → SetOnlineStatus (gRPC)
 
 ### Приватность онлайн-статуса
 
-`Services/OnlineVisibilityFilter` (Scoped) запрашивает у [[Backend/Users]] `UsersServerApi.GetUserPrivacy`. Пропускает только `OnlineVisibility.All` или самого вызывающего. Применяется в `GetOnlineStatusQueryHandler`, `SubscribeToOnlineStatusQueryHandler`, `ChangeUsersInSubscriptionCommandHandler`.
+`Services/OnlineVisibilityFilter` (Scoped) запрашивает у [[Backend/Users]] `UsersServerApi.GetUserPrivacy`. Пропускает только `OnlineVisibility.All` или самого вызывающего. `OnlineVisibility.Friends` трактуется как `None` (сервис отношений ещё не реализован). Применяется в `GetOnlineStatusQueryHandler`, `SubscribeToOnlineStatusQueryHandler`, `ChangeUsersInSubscriptionCommandHandler`.
 
 ### Фоновые сервисы
 
-- **OfflineDetectionService**: каждую секунду — пользователи без активности >5 сек → Offline
+- **OfflineDetectionService**: каждую секунду — пользователи без активности >5 сек → Offline. Инкрементирует метрику через `MetricsCollector`
 - **DatabasePersistenceService**: каждые 10 минут — сохранение всех статусов в PostgreSQL
+
+### MassTransit Consumer
+
+- **SessionRevokedConsumer**: слушает `SessionRevokedEvent`, добавляет токен в `TokenRevocationCache` (XAuth invalidation)
 
 ### gRPC-методы (все `TokenType.User`)
 

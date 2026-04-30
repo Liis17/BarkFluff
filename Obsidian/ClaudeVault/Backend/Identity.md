@@ -182,6 +182,7 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 
 ## Связанные файлы
 
+- [[Backend/Identity-ProjectMap]] — подробная карта всех файлов и классов проекта
 - [[Shared/Exceptions]] — коды ошибок аутентификации (`x-error-code` trailer)
 - [[Backend/Users]] — поиск/регистрация пользователей
 - [[Backend/Notification]] — email-уведомления

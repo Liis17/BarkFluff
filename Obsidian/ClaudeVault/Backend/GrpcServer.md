@@ -4,6 +4,8 @@ Shared-библиотека (.NET 9.0), подключаемая всеми back
 
 Расположение: `Backend/BarkFluff.GrpcServer/`
 
+→ [[Backend/GrpcServer-ProjectMap|Карта проекта — все файлы и их назначение]]
+
 ## Startup-конвейер (порядок вызовов в Program.cs)
 
 ```csharp
@@ -22,12 +24,16 @@ JWT-аутентификация через заголовок `x-auth-token` (�
 - `TokenType.User` — принимает User и Service токены
 - `TokenType.Service` — только Service токены
 
-`UserContext` — scoped-сервис, извлекает `UserId` и `TokenType` из ClaimsPrincipal.
+`UserContext` — scoped-сервис, извлекает `UserId`, `TokenType` и `DeviceId` из ClaimsPrincipal. Свойство `IsAuthenticated` = true если `UserId != 0` и `TokenType != Unknown`.
+
+### Отзыв сессий (TokenRevocationCache)
+
+`TokenRevocationCache` — singleton in-memory кэш отозванных сессий. При валидации токена (тип `User`) проверяет, не отозвана ли сессия по ключу `{userId}:{deviceId}`. `TokenRevocationCleanupService` — фоновый сервис, каждые 5 минут очищает истёкшие записи.
 
 ## Interceptors (через `AddBarkFluffGrpc()`)
 
-- **ServerExceptionInterceptor** — ловит `BaseGrpcException` и необработанные исключения → `RpcException` с trailer `x-error-code`. Бизнес-ошибки → `StatusCode.FailedPrecondition`, неизвестные → `StatusCode.Unknown`.
-- **RequestContextInterceptor** — извлекает клиентские metadata-заголовки (`x-device-id`, `x-device-name`, `x-ip`, `x-os`, `x-app-name`, `x-app-version`) в scoped `RequestContext`. Значения в Base64.
+- **ServerExceptionInterceptor** — ловит `BaseGrpcException` и необработанные исключения → `RpcException` с trailer `x-error-code`. Бизнес-ошибки → `StatusCode.FailedPrecondition`, неизвестные → `StatusCode.Unknown`. Инкрементирует метрики `grpc_requests_total`, `grpc_requests_failed`, `grpc_requests_errors`.
+- **RequestContextInterceptor** — извлекает клиентские metadata-заголовки (`x-device-id`, `x-device-name`, `x-ip-address`, `x-os`, `x-app-name`, `x-app-version`) в scoped `RequestContext`. IP-адрес резолвится по приоритету: 1) `x-ip-address` из gRPC metadata, 2) `X-Forwarded-For` HTTP-заголовок, 3) `X-Real-IP` (nginx), 4) `RemoteIpAddress` TCP-соединения.
 
 ## Конфигурация (`WebApplicationBuilderExtensions`)
 
@@ -42,7 +48,7 @@ JWT-аутентификация через заголовок `x-auth-token` (�
 
 ## Логирование
 
-`AddBarkFluffSerilog(serviceName)` — Serilog → Console + Seq. Enrichers: MachineName, EnvironmentName, ThreadId, Application. Microsoft/EF Core логи подавлены до Warning.
+`AddBarkFluffSerilog(serviceName)` — Serilog → Console + Seq. Enrichers: MachineName, EnvironmentName, ThreadId, Application. Microsoft/EF Core/HttpClient логи подавлены до Warning. Seq sink дуральный с файловым буфером (`logs/seq-buffer`, лимит 100MB, batch 100 событий, flush каждые 2 секунды).
 
 ## Зависимости
 

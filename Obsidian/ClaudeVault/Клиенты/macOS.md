@@ -3,6 +3,7 @@
 SwiftUI приложение для macOS. gRPC через grpc-swift.
 
 > UI/UX спецификация всех экранов и сценариев: [[Клиенты/DesignDocument]] (источник: `dd.md`)
+> Карта всех файлов проекта: [[Клиенты/macOS-ProjectMap]]
 
 Расположение: `Mac/Barkfluff/`
 Swift 6.2, platforms: macOS 26, iOS 26.

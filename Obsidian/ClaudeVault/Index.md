@@ -15,38 +15,57 @@
 | Файл | Сервис | Порт |
 |------|--------|------|
 | [[Backend/Configuration]] | Централизованная конфигурация | 7003 |
+| [[Backend/Configuration-ProjectMap]] | Карта всех файлов и классов Configuration | — |
 | [[Backend/Beacon]] | Точка входа клиентов | 7002 |
+| [[Backend/Beacon-ProjectMap]] | Карта всех файлов и классов Beacon | — |
 | [[Backend/Navigator]] | Реестр серверов BarkFluff | 7010 |
 | [[Backend/GrpcServer]] | Shared-библиотека инфраструктуры | — |
+| [[Backend/GrpcServer-ProjectMap]] | Карта всех файлов и классов GrpcServer | — |
 | [[Backend/Identity]] | Auth, JWT, 2FA, сессии | 7000 |
+| [[Backend/Identity-ProjectMap]] | Карта всех файлов и классов Identity | — |
 | [[Backend/Users]] | Профили, устройства, бейджи | 7001 |
+| [[Backend/Users-ProjectMap]] | Карта всех файлов и классов Users | — |
 | [[Backend/Messages]] | Чаты, сообщения, вложения | 7007 |
+| [[Backend/Messages-ProjectMap]] | Карта всех файлов и классов Messages | — |
 | [[Backend/Files]] | Файлы, S3, стикеры | 7005 |
+| [[Backend/Files-ProjectMap]] | Карта всех файлов и классов BarkFluff.Files | — |
 | [[Backend/Updates]] | Real-time стриминг событий | 7015 |
+| [[Backend/Updates-ProjectMap]] | Карта всех файлов и классов Updates | — |
 | [[Backend/Onliner]] | Онлайн-статусы | 7009 |
+| [[Backend/Onliner-ProjectMap]] | Карта всех файлов и классов Onliner | — |
 | [[Backend/Notification]] | Email-уведомления (RabbitMQ consumer) | 7004 |
+| [[Backend/Notification-ProjectMap]] | Карта всех файлов и классов Notification | — |
 | [[Backend/FastAuth]] | QR-авторизация устройств | 7008 |
+| [[Backend/FastAuth-ProjectMap]] | Карта всех файлов и классов FastAuth | — |
 | [[Backend/AdminPanel]] | Веб-дашборд администратора | 51888 |
 | [[Backend/AdminPanel-ProjectMap]] | Карта всех файлов и классов AdminPanel | — |
 | [[Backend/AdminPanel-Files]] | Краткое описание каждого файла AdminPanel | — |
 | [[Backend/CloudMessaging]] | Push-уведомления (Firebase) | — |
+| [[Backend/CloudMessaging-ProjectMap]] | Карта всех файлов и классов CloudMessaging | — |
 | [[Backend/Web]] | gRPC-Web прокси + статика | 7016 |
 | [[Backend/Web-ProjectMap]] | Карта всех файлов и классов BarkFluff.Web | — |
 | [[Backend/WebServer]] | Публичный HTTP-сервер | 64641 |
 | [[Backend/WebServer-ProjectMap]] | Карта всех файлов и классов WebServer | — |
 | [[Backend/ClientStorage]] | Хранилище клиентских приложений | — |
+| [[Backend/ClientStorage-ProjectMap]] | Карта всех файлов и классов ClientStorage | — |
 | [[Backend/Developers]] | Портал документации для разработчиков | 7020 |
+| [[Backend/Nginx]] | Nginx reverse proxy — TLS, субдомены, gRPC/HTTP маршрутизация | — |
 
 ### Shared-библиотеки
 
 | Файл | Описание |
 |------|----------|
 | [[Shared/Proto]] | Все .proto контракты платформы |
+| [[Shared/Proto-ProjectMap]] | Карта всех файлов и RPC Proto |
 | [[Shared/Auth]] | gRPC client interceptors (JWT, device metadata) |
+| [[Shared/Auth-ProjectMap]] | Карта всех файлов и классов Auth |
 | [[Shared/Exceptions]] | BaseGrpcException, ErrorCode, ExceptionClientInterceptor |
+| [[Shared/Exceptions-ProjectMap]] | Карта всех файлов и классов Exceptions |
 | [[Shared/Identity]] | ServiceId enum, TokenType enum, IdentityClaims |
+| [[Shared/Identity-ProjectMap]] | Карта всех файлов и классов Identity |
 | [[Shared/Queue]] | RabbitMQ события (MassTransit POCO) |
 | [[Shared/SecurityUtilities]] | Утилиты оценки силы пароля |
+| [[Shared/SecurityUtilities-ProjectMap]] | Карта всех файлов и классов SecurityUtilities |
 
 ### Клиенты
 
@@ -62,8 +81,10 @@
 | [[Клиенты/Windows-WebApiCore-ProjectMap]] | Карта всех файлов и менеджеров WebApi.Core |
 | [[Клиенты/Windows-DBEditor]] | Редактор конфигурации БД (WPF) |
 | [[Клиенты/Linux-Qt]] | Qt 6 / C++20, ранняя стадия |
-| [[Клиенты/macOS]] | SwiftUI + gRPC-Swift |
-| [[Клиенты/iOS]] | SwiftUI + gRPC-Swift (на базе macOS-клиента) |
+| [[Клиенты/macOS]] | SwiftUI + gRPC-Swift (macOS 26) |
+| [[Клиенты/macOS-ProjectMap]] | Карта всех файлов и классов macOS-клиента |
+| [[Клиенты/iOS]] | SwiftUI + gRPC-Swift (iOS 26, на базе macOS-клиента) |
+| [[Клиенты/iOS-ProjectMap]] | Карта всех файлов iOS-клиента с описанием |
 | [[Клиенты/Developers-Web]] | React + Vite + TS, портал документации |
 
 ---
