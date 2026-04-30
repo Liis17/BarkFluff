@@ -7,6 +7,8 @@ using BarkFluff.Files.Services;
 
 using MediatR;
 
+using SixLabors.ImageSharp;
+
 using System.Security.Cryptography;
 
 using UploadFileType = BarkFluff.Files.Domain.UploadFileType;
@@ -45,6 +47,19 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
         UploadFileType.MessageAttachmentAudio,
         UploadFileType.MessageAttachmentVoice,
         UploadFileType.MessageAttachmentSticker
+    ];
+
+    /// <summary>
+    /// Типы файлов, для которых нужно извлекать размеры изображения.
+    /// </summary>
+    private static readonly HashSet<UploadFileType> ImageTypesForDimensions =
+    [
+        UploadFileType.UserAvatar,
+        UploadFileType.MessageAttachmentImage,
+        UploadFileType.MessageAttachmentGif,
+        UploadFileType.ChatPicture,
+        UploadFileType.MessageAttachmentSticker,
+        UploadFileType.UserProfilePoster
     ];
 
     public UploadFileCommandHandler(
@@ -250,6 +265,29 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
             );
 
             _logger.LogInformation("Файл успешно загружен в S3, получен Etag: {Etag}", etag);
+
+            // Извлекаем размеры изображения для графических типов файлов
+            if (ImageTypesForDimensions.Contains(file.Type))
+            {
+                try
+                {
+                    originalStream.Position = 0;
+                    var imageInfo = await Image.IdentifyAsync(originalStream, cancellationToken);
+                    if (imageInfo is not null)
+                    {
+                        file.ImageWidth = imageInfo.Width;
+                        file.ImageHeight = imageInfo.Height;
+                        _logger.LogInformation(
+                            "Размеры изображения {FileId}: {Width}x{Height}",
+                            file.Id, imageInfo.Width, imageInfo.Height);
+                    }
+                    originalStream.Position = 0;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Не удалось определить размеры изображения {FileId}", file.Id);
+                }
+            }
 
             // Если это изображение — сжимаем и сохраняем с другим ключом
             if (_filesToNeedGeneratePreview.Contains(file.Type) && contentType.StartsWith("image/"))
