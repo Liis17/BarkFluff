@@ -18,6 +18,17 @@ BarkFluff.Client.WPF/
 ├── Pages/
 │   ├── SetupPages/       # Login, registration, password reset
 │   ├── PinCode/          # PIN lock/unlock
+│   ├── Messenger/
+│   │   ├── Controllers/  # AttachmentController, ChatHistoryController, ChatListController,
+│   │   │                 # ChatOpeningController, MessageReadController, MessageSendController,
+│   │   │                 # NotificationController, OnlineStatusController, RealtimeMessagesController
+│   │   ├── MessengerPage.DragDrop.cs
+│   │   ├── MessengerPage.Input.cs
+│   │   ├── MessengerPage.Panels.cs
+│   │   ├── MessengerPage.Search.cs
+│   │   ├── MessengerPage.Viewers.cs
+│   │   ├── MessageTypeMapper.cs
+│   │   └── ScrollAnimationBehavior.cs
 │   └── MessengerPage.xaml(.cs)
 ├── MessengerWindows/     # MainWindow
 ├── Services/
@@ -38,6 +49,8 @@ BarkFluff.Client.WPF/
 gRPC-клиентский код — в [[Клиенты/Windows-WebApiCore]].
 UI/UX спецификация всех экранов и сценариев — [[Клиенты/DesignDocument]] (источник: `dd.md`).
 
+**Карта всех файлов и классов** — [[Клиенты/Windows-WPF-ProjectMap]]
+
 ## Архитектура (Code-Behind + Service Layer)
 
 **Без MVVM**. UI-логика в `.xaml.cs`. Reactive wrappers для XAML-биндинга:
@@ -50,12 +63,16 @@ public ReactiveString ChatId { get; set; } = new ReactiveString(string.Empty);
 ## Глобальное состояние (App класс)
 
 ```csharp
-App.ServerCommunication  // WebApi facade — все gRPC вызовы
-App.GParam               // GlobalParam — user info, tokens, server addresses, colors
-App.CacheManager         // MessageCacheManager (LiteDB)
-App.FileCacheService     // Файловый кеш
-App.MessengerWindow      // MainWindow
-App.Messenger            // MessengerPage
+App.ServerCommunication    // WebApi facade — все gRPC вызовы
+App.GParam                 // GlobalParam — user info, tokens, server addresses, colors
+App.CacheManager           // MessageCacheManager (LiteDB)
+App.FileCacheService       // Файловый кеш
+App.MessengerWindow        // MainWindow
+App.Messenger              // MessengerPage
+App.WindowStateService     // Сохранение/восстановление размера и позиции окна
+App.NotificationManager    // Singleton WinRT toast-уведомлений
+App.OnlineStatusService    // Singleton gRPC-стриминга онлайн-статусов
+App.DeadTokenMode          // true — токен невалиден, ждём повторной авторизации
 ```
 
 ## Навигация
@@ -86,8 +103,8 @@ OnStartup
 
 ## Real-Time Services (Singleton)
 
-- **RealtimeUpdateService** — `Updates.JustUpdate()` streaming, события `NewMessageReceived` / `ReadReceiptReceived`
-- **OnlineStatusService** — `Onliner.SubscribeToOnlineStatus()`, `OnlineStatusChanged`; keepalive каждые 3 сек
+- **RealtimeUpdateService** — `Updates.JustUpdate()` streaming. Автопереподключение (exp. backoff 2с→30с). Дедупликация по `MessageId` (HashSet, макс. 1000). События: `NewMessageReceived`, `ReadReceiptReceived`, `ConnectionStatusChanged`
+- **OnlineStatusService** — `Onliner.SubscribeToOnlineStatus()`. Keepalive (ping) каждые 3 сек. Дебаунс обновлений 500 мс. Кеш статусов в памяти. События: `OnlineStatusChanged`, `ConnectionStatusChanged`
 
 ## Конфигурация и шифрование
 

@@ -427,6 +427,42 @@ Toggle уведомлений, настройки каналов Android.
 
 ---
 
+### `PreviewImageActivity.kt`
+
+**Тип:** AppCompatActivity
+
+Предпросмотр **локального** изображения перед отправкой. Запускается из `ImagePickerBottomSheet` / `ChatActivity`. Получает `Uri` через `EXTRA_URI`. Отображает изображение через Coil. В будущем — инструменты редактирования.
+
+`createIntent(context, uri)` — статичная фабрика.
+
+**Связи:** `ChatActivity`, `ImagePickerBottomSheet`
+
+---
+
+### `PreviewVideoActivity.kt`
+
+**Тип:** AppCompatActivity
+
+Предпросмотр **локального** видео перед отправкой. Получает `Uri` через `EXTRA_URI`. Воспроизводит через ExoPlayer (media3). В будущем — кнопка отправки.
+
+`createIntent(context, uri)` — статичная фабрика.
+
+**Связи:** `ChatActivity`, ExoPlayer (media3-exoplayer)
+
+---
+
+### `PrivacySettingsActivity.kt`
+
+**Тип:** AppCompatActivity
+
+Настройки приватности профиля. Управляет видимостью данных пользователя (онлайн-статус, аватар, описание) для трёх уровней: **Все / Друзья / Никто**. Читает и сохраняет `UsersApiOuterClass.PrivacySettings` через Users API (`GrpcManager`).
+
+Открывается из `ProfileFragment` (раздел настроек).
+
+**Связи:** `GrpcManager`, `BarkFluffApplication`
+
+---
+
 ### `DeepLinkActivity.kt`
 
 **Тип:** AppCompatActivity
@@ -769,6 +805,14 @@ In-memory LRU кэш битмапов (используется как допо�
 
 ---
 
+### `utils/MessageTimeSpacingDecoration.kt`
+
+`RecyclerView.ItemDecoration`. Добавляет увеличенный вертикальный отступ между группами сообщений, разделёнными по времени: если между двумя соседними сообщениями прошло больше `timeGapThresholdMs` (дефолт 10 мин) — применяется `largeSpacingPx`, иначе `smallSpacingPx`. Разделители дат и непрочитанных пропускаются.
+
+**Связи:** `MessageAdapter`, `ChatActivity`
+
+---
+
 ### `utils/MessageItemAnimator.kt`
 
 Кастомный `RecyclerView.ItemAnimator` для сообщений — плавное появление новых сообщений.
@@ -810,6 +854,12 @@ In-memory LRU кэш битмапов (используется как допо�
 ### `views/SquareImageView.kt`
 
 `AppCompatImageView` с `onMeasure` → `height = width`. Используется в `ImageGridAdapter`.
+
+---
+
+### `views/AspectRatioImageView.kt`
+
+`AppCompatImageView` с `onMeasure` → `height = width * 3/2` (соотношение 2:3). Используется для превью фоновых изображений чата в `PersonalizationSettingsActivity` и `ChatBackgroundAdapter`.
 
 ---
 
