@@ -281,7 +281,6 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
                             "Размеры изображения {FileId}: {Width}x{Height}",
                             file.Id, imageInfo.Width, imageInfo.Height);
                     }
-                    originalStream.Position = 0;
                 }
                 catch (Exception ex)
                 {
