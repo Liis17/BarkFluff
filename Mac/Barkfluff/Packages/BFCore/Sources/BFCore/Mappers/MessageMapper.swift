@@ -57,6 +57,12 @@ public enum MessageMapper {
             return .gif
         case .document:
             return .document
+        case .audio:
+            return .audio
+        case .voice:
+            return .voice
+        case .sticker:
+            return .sticker
         case .unknown, .UNRECOGNIZED:
             return .document
         }

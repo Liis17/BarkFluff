@@ -29,7 +29,8 @@ public enum Barkfluff_Onliner_OnlinerApi: Sendable {
             /// Descriptor for "SubscribeToOnlineStatus".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.onliner.OnlinerApi"),
-                method: "SubscribeToOnlineStatus"
+                method: "SubscribeToOnlineStatus",
+                type: .serverStreaming
             )
         }
         /// Namespace for "SetOnlineStatus" metadata.
@@ -41,7 +42,8 @@ public enum Barkfluff_Onliner_OnlinerApi: Sendable {
             /// Descriptor for "SetOnlineStatus".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.onliner.OnlinerApi"),
-                method: "SetOnlineStatus"
+                method: "SetOnlineStatus",
+                type: .unary
             )
         }
         /// Namespace for "GetOnlineStatus" metadata.
@@ -53,7 +55,8 @@ public enum Barkfluff_Onliner_OnlinerApi: Sendable {
             /// Descriptor for "GetOnlineStatus".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.onliner.OnlinerApi"),
-                method: "GetOnlineStatus"
+                method: "GetOnlineStatus",
+                type: .unary
             )
         }
         /// Namespace for "ChangeUsersInSubscription" metadata.
@@ -65,7 +68,8 @@ public enum Barkfluff_Onliner_OnlinerApi: Sendable {
             /// Descriptor for "ChangeUsersInSubscription".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.onliner.OnlinerApi"),
-                method: "ChangeUsersInSubscription"
+                method: "ChangeUsersInSubscription",
+                type: .unary
             )
         }
         /// Descriptors for all methods in the "barkfluff.onliner.OnlinerApi" service.

@@ -387,11 +387,11 @@ struct FullScreenMediaViewerView: View {
     @ViewBuilder
     private func viewerContent(for attachment: MessageAttachment) -> some View {
         switch attachment.type {
-        case .image, .gif:
+        case .image, .gif, .sticker:
             FullScreenImageView(attachment: attachment, onClose: onClose)
         case .video:
             FullScreenVideoPlayerView(attachment: attachment, onClose: onClose)
-        case .document, .audio:
+        case .document, .audio, .voice:
             EmptyView()
         }
     }

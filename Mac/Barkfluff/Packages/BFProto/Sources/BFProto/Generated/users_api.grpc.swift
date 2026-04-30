@@ -29,7 +29,8 @@ public enum Barkfluff_Users_UsersApi: Sendable {
             /// Descriptor for "GetUser".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
-                method: "GetUser"
+                method: "GetUser",
+                type: .unary
             )
         }
         /// Namespace for "SetProfilePicture" metadata.
@@ -41,7 +42,8 @@ public enum Barkfluff_Users_UsersApi: Sendable {
             /// Descriptor for "SetProfilePicture".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
-                method: "SetProfilePicture"
+                method: "SetProfilePicture",
+                type: .unary
             )
         }
         /// Namespace for "CheckExistUsername" metadata.
@@ -53,7 +55,8 @@ public enum Barkfluff_Users_UsersApi: Sendable {
             /// Descriptor for "CheckExistUsername".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
-                method: "CheckExistUsername"
+                method: "CheckExistUsername",
+                type: .unary
             )
         }
         /// Namespace for "CheckExistEmail" metadata.
@@ -65,7 +68,8 @@ public enum Barkfluff_Users_UsersApi: Sendable {
             /// Descriptor for "CheckExistEmail".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
-                method: "CheckExistEmail"
+                method: "CheckExistEmail",
+                type: .unary
             )
         }
         /// Namespace for "ChangeName" metadata.
@@ -77,7 +81,8 @@ public enum Barkfluff_Users_UsersApi: Sendable {
             /// Descriptor for "ChangeName".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
-                method: "ChangeName"
+                method: "ChangeName",
+                type: .unary
             )
         }
         /// Namespace for "ChangeUsername" metadata.
@@ -89,7 +94,8 @@ public enum Barkfluff_Users_UsersApi: Sendable {
             /// Descriptor for "ChangeUsername".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
-                method: "ChangeUsername"
+                method: "ChangeUsername",
+                type: .unary
             )
         }
         /// Namespace for "ChangeBio" metadata.
@@ -101,7 +107,8 @@ public enum Barkfluff_Users_UsersApi: Sendable {
             /// Descriptor for "ChangeBio".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
-                method: "ChangeBio"
+                method: "ChangeBio",
+                type: .unary
             )
         }
         /// Namespace for "SearchUsers" metadata.
@@ -113,7 +120,8 @@ public enum Barkfluff_Users_UsersApi: Sendable {
             /// Descriptor for "SearchUsers".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
-                method: "SearchUsers"
+                method: "SearchUsers",
+                type: .unary
             )
         }
         /// Namespace for "GetUserBadges" metadata.
@@ -125,7 +133,8 @@ public enum Barkfluff_Users_UsersApi: Sendable {
             /// Descriptor for "GetUserBadges".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
-                method: "GetUserBadges"
+                method: "GetUserBadges",
+                type: .unary
             )
         }
         /// Namespace for "GetDevices" metadata.
@@ -137,7 +146,8 @@ public enum Barkfluff_Users_UsersApi: Sendable {
             /// Descriptor for "GetDevices".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
-                method: "GetDevices"
+                method: "GetDevices",
+                type: .unary
             )
         }
         /// Namespace for "GetCurrentDevice" metadata.
@@ -149,7 +159,8 @@ public enum Barkfluff_Users_UsersApi: Sendable {
             /// Descriptor for "GetCurrentDevice".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
-                method: "GetCurrentDevice"
+                method: "GetCurrentDevice",
+                type: .unary
             )
         }
         /// Namespace for "RenameDevice" metadata.
@@ -161,7 +172,34 @@ public enum Barkfluff_Users_UsersApi: Sendable {
             /// Descriptor for "RenameDevice".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
-                method: "RenameDevice"
+                method: "RenameDevice",
+                type: .unary
+            )
+        }
+        /// Namespace for "SetFirebaseToken" metadata.
+        public enum SetFirebaseToken: Sendable {
+            /// Request type for "SetFirebaseToken".
+            public typealias Input = Barkfluff_Users_SetFirebaseTokenRequest
+            /// Response type for "SetFirebaseToken".
+            public typealias Output = Barkfluff_Users_SetFirebaseTokenResponse
+            /// Descriptor for "SetFirebaseToken".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
+                method: "SetFirebaseToken",
+                type: .unary
+            )
+        }
+        /// Namespace for "SetNotificationsEnabled" metadata.
+        public enum SetNotificationsEnabled: Sendable {
+            /// Request type for "SetNotificationsEnabled".
+            public typealias Input = Barkfluff_Users_SetNotificationsEnabledRequest
+            /// Response type for "SetNotificationsEnabled".
+            public typealias Output = Barkfluff_Users_SetNotificationsEnabledResponse
+            /// Descriptor for "SetNotificationsEnabled".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
+                method: "SetNotificationsEnabled",
+                type: .unary
             )
         }
         /// Namespace for "GetPrivacySettings" metadata.
@@ -173,7 +211,8 @@ public enum Barkfluff_Users_UsersApi: Sendable {
             /// Descriptor for "GetPrivacySettings".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
-                method: "GetPrivacySettings"
+                method: "GetPrivacySettings",
+                type: .unary
             )
         }
         /// Namespace for "UpdatePrivacySettings" metadata.
@@ -185,7 +224,8 @@ public enum Barkfluff_Users_UsersApi: Sendable {
             /// Descriptor for "UpdatePrivacySettings".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
-                method: "UpdatePrivacySettings"
+                method: "UpdatePrivacySettings",
+                type: .unary
             )
         }
         /// Namespace for "GetPersonalization" metadata.
@@ -197,7 +237,8 @@ public enum Barkfluff_Users_UsersApi: Sendable {
             /// Descriptor for "GetPersonalization".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
-                method: "GetPersonalization"
+                method: "GetPersonalization",
+                type: .unary
             )
         }
         /// Namespace for "UpdatePersonalization" metadata.
@@ -209,7 +250,8 @@ public enum Barkfluff_Users_UsersApi: Sendable {
             /// Descriptor for "UpdatePersonalization".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
-                method: "UpdatePersonalization"
+                method: "UpdatePersonalization",
+                type: .unary
             )
         }
         /// Namespace for "GetProfilePoster" metadata.
@@ -221,7 +263,8 @@ public enum Barkfluff_Users_UsersApi: Sendable {
             /// Descriptor for "GetProfilePoster".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
-                method: "GetProfilePoster"
+                method: "GetProfilePoster",
+                type: .unary
             )
         }
         /// Namespace for "SetProfilePoster" metadata.
@@ -233,7 +276,8 @@ public enum Barkfluff_Users_UsersApi: Sendable {
             /// Descriptor for "SetProfilePoster".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersApi"),
-                method: "SetProfilePoster"
+                method: "SetProfilePoster",
+                type: .unary
             )
         }
         /// Descriptors for all methods in the "barkfluff.users.UsersApi" service.
@@ -250,6 +294,8 @@ public enum Barkfluff_Users_UsersApi: Sendable {
             GetDevices.descriptor,
             GetCurrentDevice.descriptor,
             RenameDevice.descriptor,
+            SetFirebaseToken.descriptor,
+            SetNotificationsEnabled.descriptor,
             GetPrivacySettings.descriptor,
             UpdatePrivacySettings.descriptor,
             GetPersonalization.descriptor,
@@ -551,6 +597,67 @@ extension Barkfluff_Users_UsersApi {
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_RenameDeviceResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
+        /// Call the "SetFirebaseToken" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Установить Firebase токен устройства
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_SetFirebaseTokenRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_SetFirebaseTokenRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_SetFirebaseTokenResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func setFirebaseToken<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_SetFirebaseTokenRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_SetFirebaseTokenRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_SetFirebaseTokenResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_SetFirebaseTokenResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "SetNotificationsEnabled" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Включить или выключить уведомления для текущего устройства
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_SetNotificationsEnabledRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_SetNotificationsEnabledRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_SetNotificationsEnabledResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func setNotificationsEnabled<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_SetNotificationsEnabledRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_SetNotificationsEnabledRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_SetNotificationsEnabledResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_SetNotificationsEnabledResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "GetPrivacySettings" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Получить настройки приватности текущего пользователя
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_GetPrivacySettingsRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_GetPrivacySettingsRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_GetPrivacySettingsResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         func getPrivacySettings<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Users_GetPrivacySettingsRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_GetPrivacySettingsRequest>,
@@ -559,6 +666,21 @@ extension Barkfluff_Users_UsersApi {
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_GetPrivacySettingsResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
+        /// Call the "UpdatePrivacySettings" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Обновить настройки приватности текущего пользователя
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_UpdatePrivacySettingsRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_UpdatePrivacySettingsRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_UpdatePrivacySettingsResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         func updatePrivacySettings<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Users_UpdatePrivacySettingsRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_UpdatePrivacySettingsRequest>,
@@ -567,6 +689,21 @@ extension Barkfluff_Users_UsersApi {
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_UpdatePrivacySettingsResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
+        /// Call the "GetPersonalization" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Получить персонализацию текущего пользователя
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_GetPersonalizationRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_GetPersonalizationRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_GetPersonalizationResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         func getPersonalization<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Users_GetPersonalizationRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_GetPersonalizationRequest>,
@@ -575,6 +712,21 @@ extension Barkfluff_Users_UsersApi {
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_GetPersonalizationResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
+        /// Call the "UpdatePersonalization" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Обновить персонализацию текущего пользователя
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_UpdatePersonalizationRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_UpdatePersonalizationRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_UpdatePersonalizationResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         func updatePersonalization<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Users_UpdatePersonalizationRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_UpdatePersonalizationRequest>,
@@ -583,6 +735,21 @@ extension Barkfluff_Users_UsersApi {
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_UpdatePersonalizationResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
+        /// Call the "GetProfilePoster" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Получить постер профиля текущего пользователя
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_GetProfilePosterRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_GetProfilePosterRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_GetProfilePosterResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         func getProfilePoster<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Users_GetProfilePosterRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_GetProfilePosterRequest>,
@@ -591,6 +758,21 @@ extension Barkfluff_Users_UsersApi {
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_GetProfilePosterResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
+        /// Call the "SetProfilePoster" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Установить (или удалить) постер профиля текущего пользователя
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_SetProfilePosterRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_SetProfilePosterRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_SetProfilePosterResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         func setProfilePoster<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Users_SetProfilePosterRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_SetProfilePosterRequest>,
@@ -1024,6 +1206,89 @@ extension Barkfluff_Users_UsersApi {
             )
         }
 
+        /// Call the "SetFirebaseToken" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Установить Firebase токен устройства
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_SetFirebaseTokenRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_SetFirebaseTokenRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_SetFirebaseTokenResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func setFirebaseToken<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_SetFirebaseTokenRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_SetFirebaseTokenRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_SetFirebaseTokenResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_SetFirebaseTokenResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Users_UsersApi.Method.SetFirebaseToken.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "SetNotificationsEnabled" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Включить или выключить уведомления для текущего устройства
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_SetNotificationsEnabledRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_SetNotificationsEnabledRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_SetNotificationsEnabledResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func setNotificationsEnabled<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_SetNotificationsEnabledRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_SetNotificationsEnabledRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_SetNotificationsEnabledResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_SetNotificationsEnabledResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Users_UsersApi.Method.SetNotificationsEnabled.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "GetPrivacySettings" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Получить настройки приватности текущего пользователя
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_GetPrivacySettingsRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_GetPrivacySettingsRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_GetPrivacySettingsResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         public func getPrivacySettings<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Users_GetPrivacySettingsRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_GetPrivacySettingsRequest>,
@@ -1043,6 +1308,21 @@ extension Barkfluff_Users_UsersApi {
             )
         }
 
+        /// Call the "UpdatePrivacySettings" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Обновить настройки приватности текущего пользователя
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_UpdatePrivacySettingsRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_UpdatePrivacySettingsRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_UpdatePrivacySettingsResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         public func updatePrivacySettings<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Users_UpdatePrivacySettingsRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_UpdatePrivacySettingsRequest>,
@@ -1062,6 +1342,21 @@ extension Barkfluff_Users_UsersApi {
             )
         }
 
+        /// Call the "GetPersonalization" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Получить персонализацию текущего пользователя
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_GetPersonalizationRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_GetPersonalizationRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_GetPersonalizationResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         public func getPersonalization<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Users_GetPersonalizationRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_GetPersonalizationRequest>,
@@ -1081,6 +1376,21 @@ extension Barkfluff_Users_UsersApi {
             )
         }
 
+        /// Call the "UpdatePersonalization" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Обновить персонализацию текущего пользователя
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_UpdatePersonalizationRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_UpdatePersonalizationRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_UpdatePersonalizationResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         public func updatePersonalization<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Users_UpdatePersonalizationRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_UpdatePersonalizationRequest>,
@@ -1100,6 +1410,21 @@ extension Barkfluff_Users_UsersApi {
             )
         }
 
+        /// Call the "GetProfilePoster" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Получить постер профиля текущего пользователя
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_GetProfilePosterRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_GetProfilePosterRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_GetProfilePosterResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         public func getProfilePoster<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Users_GetProfilePosterRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_GetProfilePosterRequest>,
@@ -1119,6 +1444,21 @@ extension Barkfluff_Users_UsersApi {
             )
         }
 
+        /// Call the "SetProfilePoster" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Установить (или удалить) постер профиля текущего пользователя
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_SetProfilePosterRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_SetProfilePosterRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_SetProfilePosterResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         public func setProfilePoster<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Users_SetProfilePosterRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_SetProfilePosterRequest>,
@@ -1491,6 +1831,77 @@ extension Barkfluff_Users_UsersApi.ClientProtocol {
         )
     }
 
+    /// Call the "SetFirebaseToken" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Установить Firebase токен устройства
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Users_SetFirebaseTokenRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func setFirebaseToken<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Users_SetFirebaseTokenRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_SetFirebaseTokenResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.setFirebaseToken(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Users_SetFirebaseTokenRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Users_SetFirebaseTokenResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SetNotificationsEnabled" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Включить или выключить уведомления для текущего устройства
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Users_SetNotificationsEnabledRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func setNotificationsEnabled<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Users_SetNotificationsEnabledRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_SetNotificationsEnabledResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.setNotificationsEnabled(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Users_SetNotificationsEnabledRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Users_SetNotificationsEnabledResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetPrivacySettings" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Получить настройки приватности текущего пользователя
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Users_GetPrivacySettingsRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func getPrivacySettings<Result>(
         request: GRPCCore.ClientRequest<Barkfluff_Users_GetPrivacySettingsRequest>,
         options: GRPCCore.CallOptions = .defaults,
@@ -1507,6 +1918,19 @@ extension Barkfluff_Users_UsersApi.ClientProtocol {
         )
     }
 
+    /// Call the "UpdatePrivacySettings" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Обновить настройки приватности текущего пользователя
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Users_UpdatePrivacySettingsRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func updatePrivacySettings<Result>(
         request: GRPCCore.ClientRequest<Barkfluff_Users_UpdatePrivacySettingsRequest>,
         options: GRPCCore.CallOptions = .defaults,
@@ -1523,6 +1947,19 @@ extension Barkfluff_Users_UsersApi.ClientProtocol {
         )
     }
 
+    /// Call the "GetPersonalization" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Получить персонализацию текущего пользователя
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Users_GetPersonalizationRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func getPersonalization<Result>(
         request: GRPCCore.ClientRequest<Barkfluff_Users_GetPersonalizationRequest>,
         options: GRPCCore.CallOptions = .defaults,
@@ -1539,6 +1976,19 @@ extension Barkfluff_Users_UsersApi.ClientProtocol {
         )
     }
 
+    /// Call the "UpdatePersonalization" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Обновить персонализацию текущего пользователя
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Users_UpdatePersonalizationRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func updatePersonalization<Result>(
         request: GRPCCore.ClientRequest<Barkfluff_Users_UpdatePersonalizationRequest>,
         options: GRPCCore.CallOptions = .defaults,
@@ -1555,6 +2005,19 @@ extension Barkfluff_Users_UsersApi.ClientProtocol {
         )
     }
 
+    /// Call the "GetProfilePoster" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Получить постер профиля текущего пользователя
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Users_GetProfilePosterRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func getProfilePoster<Result>(
         request: GRPCCore.ClientRequest<Barkfluff_Users_GetProfilePosterRequest>,
         options: GRPCCore.CallOptions = .defaults,
@@ -1571,6 +2034,19 @@ extension Barkfluff_Users_UsersApi.ClientProtocol {
         )
     }
 
+    /// Call the "SetProfilePoster" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Установить (или удалить) постер профиля текущего пользователя
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Users_SetProfilePosterRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func setProfilePoster<Result>(
         request: GRPCCore.ClientRequest<Barkfluff_Users_SetProfilePosterRequest>,
         options: GRPCCore.CallOptions = .defaults,
@@ -1987,6 +2463,86 @@ extension Barkfluff_Users_UsersApi.ClientProtocol {
         )
     }
 
+    /// Call the "SetFirebaseToken" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Установить Firebase токен устройства
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func setFirebaseToken<Result>(
+        _ message: Barkfluff_Users_SetFirebaseTokenRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_SetFirebaseTokenResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Users_SetFirebaseTokenRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.setFirebaseToken(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SetNotificationsEnabled" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Включить или выключить уведомления для текущего устройства
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func setNotificationsEnabled<Result>(
+        _ message: Barkfluff_Users_SetNotificationsEnabledRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_SetNotificationsEnabledResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Users_SetNotificationsEnabledRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.setNotificationsEnabled(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetPrivacySettings" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Получить настройки приватности текущего пользователя
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func getPrivacySettings<Result>(
         _ message: Barkfluff_Users_GetPrivacySettingsRequest,
         metadata: GRPCCore.Metadata = [:],
@@ -2006,6 +2562,20 @@ extension Barkfluff_Users_UsersApi.ClientProtocol {
         )
     }
 
+    /// Call the "UpdatePrivacySettings" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Обновить настройки приватности текущего пользователя
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func updatePrivacySettings<Result>(
         _ message: Barkfluff_Users_UpdatePrivacySettingsRequest,
         metadata: GRPCCore.Metadata = [:],
@@ -2025,6 +2595,20 @@ extension Barkfluff_Users_UsersApi.ClientProtocol {
         )
     }
 
+    /// Call the "GetPersonalization" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Получить персонализацию текущего пользователя
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func getPersonalization<Result>(
         _ message: Barkfluff_Users_GetPersonalizationRequest,
         metadata: GRPCCore.Metadata = [:],
@@ -2044,6 +2628,20 @@ extension Barkfluff_Users_UsersApi.ClientProtocol {
         )
     }
 
+    /// Call the "UpdatePersonalization" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Обновить персонализацию текущего пользователя
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func updatePersonalization<Result>(
         _ message: Barkfluff_Users_UpdatePersonalizationRequest,
         metadata: GRPCCore.Metadata = [:],
@@ -2063,6 +2661,20 @@ extension Barkfluff_Users_UsersApi.ClientProtocol {
         )
     }
 
+    /// Call the "GetProfilePoster" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Получить постер профиля текущего пользователя
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func getProfilePoster<Result>(
         _ message: Barkfluff_Users_GetProfilePosterRequest,
         metadata: GRPCCore.Metadata = [:],
@@ -2082,6 +2694,20 @@ extension Barkfluff_Users_UsersApi.ClientProtocol {
         )
     }
 
+    /// Call the "SetProfilePoster" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Установить (или удалить) постер профиля текущего пользователя
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func setProfilePoster<Result>(
         _ message: Barkfluff_Users_SetProfilePosterRequest,
         metadata: GRPCCore.Metadata = [:],
@@ -2120,7 +2746,8 @@ public enum Barkfluff_Users_UsersServerApi: Sendable {
             /// Descriptor for "FindByLogin".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersServerApi"),
-                method: "FindByLogin"
+                method: "FindByLogin",
+                type: .unary
             )
         }
         /// Namespace for "CheckExistUsername" metadata.
@@ -2132,7 +2759,8 @@ public enum Barkfluff_Users_UsersServerApi: Sendable {
             /// Descriptor for "CheckExistUsername".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersServerApi"),
-                method: "CheckExistUsername"
+                method: "CheckExistUsername",
+                type: .unary
             )
         }
         /// Namespace for "CheckExistEmail" metadata.
@@ -2144,7 +2772,8 @@ public enum Barkfluff_Users_UsersServerApi: Sendable {
             /// Descriptor for "CheckExistEmail".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersServerApi"),
-                method: "CheckExistEmail"
+                method: "CheckExistEmail",
+                type: .unary
             )
         }
         /// Namespace for "AddDraftUser" metadata.
@@ -2156,7 +2785,8 @@ public enum Barkfluff_Users_UsersServerApi: Sendable {
             /// Descriptor for "AddDraftUser".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersServerApi"),
-                method: "AddDraftUser"
+                method: "AddDraftUser",
+                type: .unary
             )
         }
         /// Namespace for "OverrideDraftUser" metadata.
@@ -2168,7 +2798,8 @@ public enum Barkfluff_Users_UsersServerApi: Sendable {
             /// Descriptor for "OverrideDraftUser".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersServerApi"),
-                method: "OverrideDraftUser"
+                method: "OverrideDraftUser",
+                type: .unary
             )
         }
         /// Namespace for "ConfirmUser" metadata.
@@ -2180,7 +2811,8 @@ public enum Barkfluff_Users_UsersServerApi: Sendable {
             /// Descriptor for "ConfirmUser".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersServerApi"),
-                method: "ConfirmUser"
+                method: "ConfirmUser",
+                type: .unary
             )
         }
         /// Namespace for "GetById" metadata.
@@ -2192,7 +2824,8 @@ public enum Barkfluff_Users_UsersServerApi: Sendable {
             /// Descriptor for "GetById".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersServerApi"),
-                method: "GetById"
+                method: "GetById",
+                type: .unary
             )
         }
         /// Namespace for "GetUserContacts" metadata.
@@ -2204,7 +2837,8 @@ public enum Barkfluff_Users_UsersServerApi: Sendable {
             /// Descriptor for "GetUserContacts".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersServerApi"),
-                method: "GetUserContacts"
+                method: "GetUserContacts",
+                type: .unary
             )
         }
         /// Namespace for "ListByIds" metadata.
@@ -2216,7 +2850,8 @@ public enum Barkfluff_Users_UsersServerApi: Sendable {
             /// Descriptor for "ListByIds".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersServerApi"),
-                method: "ListByIds"
+                method: "ListByIds",
+                type: .unary
             )
         }
         /// Namespace for "AssignUserBadge" metadata.
@@ -2228,7 +2863,8 @@ public enum Barkfluff_Users_UsersServerApi: Sendable {
             /// Descriptor for "AssignUserBadge".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersServerApi"),
-                method: "AssignUserBadge"
+                method: "AssignUserBadge",
+                type: .unary
             )
         }
         /// Namespace for "RemoveUserBadge" metadata.
@@ -2240,7 +2876,8 @@ public enum Barkfluff_Users_UsersServerApi: Sendable {
             /// Descriptor for "RemoveUserBadge".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersServerApi"),
-                method: "RemoveUserBadge"
+                method: "RemoveUserBadge",
+                type: .unary
             )
         }
         /// Namespace for "UpdateUserBadgePriority" metadata.
@@ -2252,7 +2889,8 @@ public enum Barkfluff_Users_UsersServerApi: Sendable {
             /// Descriptor for "UpdateUserBadgePriority".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersServerApi"),
-                method: "UpdateUserBadgePriority"
+                method: "UpdateUserBadgePriority",
+                type: .unary
             )
         }
         /// Namespace for "CreateBadge" metadata.
@@ -2264,7 +2902,8 @@ public enum Barkfluff_Users_UsersServerApi: Sendable {
             /// Descriptor for "CreateBadge".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersServerApi"),
-                method: "CreateBadge"
+                method: "CreateBadge",
+                type: .unary
             )
         }
         /// Namespace for "GetAllBadges" metadata.
@@ -2276,7 +2915,8 @@ public enum Barkfluff_Users_UsersServerApi: Sendable {
             /// Descriptor for "GetAllBadges".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersServerApi"),
-                method: "GetAllBadges"
+                method: "GetAllBadges",
+                type: .unary
             )
         }
         /// Namespace for "UpdateBadge" metadata.
@@ -2288,7 +2928,8 @@ public enum Barkfluff_Users_UsersServerApi: Sendable {
             /// Descriptor for "UpdateBadge".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersServerApi"),
-                method: "UpdateBadge"
+                method: "UpdateBadge",
+                type: .unary
             )
         }
         /// Namespace for "DeleteBadge" metadata.
@@ -2300,7 +2941,8 @@ public enum Barkfluff_Users_UsersServerApi: Sendable {
             /// Descriptor for "DeleteBadge".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersServerApi"),
-                method: "DeleteBadge"
+                method: "DeleteBadge",
+                type: .unary
             )
         }
         /// Namespace for "ExportData" metadata.
@@ -2312,7 +2954,8 @@ public enum Barkfluff_Users_UsersServerApi: Sendable {
             /// Descriptor for "ExportData".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersServerApi"),
-                method: "ExportData"
+                method: "ExportData",
+                type: .unary
             )
         }
         /// Namespace for "RegisterDevice" metadata.
@@ -2324,7 +2967,8 @@ public enum Barkfluff_Users_UsersServerApi: Sendable {
             /// Descriptor for "RegisterDevice".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersServerApi"),
-                method: "RegisterDevice"
+                method: "RegisterDevice",
+                type: .unary
             )
         }
         /// Namespace for "GetUserDevices" metadata.
@@ -2336,7 +2980,8 @@ public enum Barkfluff_Users_UsersServerApi: Sendable {
             /// Descriptor for "GetUserDevices".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersServerApi"),
-                method: "GetUserDevices"
+                method: "GetUserDevices",
+                type: .unary
             )
         }
         /// Namespace for "DeleteUserDevice" metadata.
@@ -2348,7 +2993,8 @@ public enum Barkfluff_Users_UsersServerApi: Sendable {
             /// Descriptor for "DeleteUserDevice".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersServerApi"),
-                method: "DeleteUserDevice"
+                method: "DeleteUserDevice",
+                type: .unary
             )
         }
         /// Namespace for "GetUserByUsername" metadata.
@@ -2360,7 +3006,60 @@ public enum Barkfluff_Users_UsersServerApi: Sendable {
             /// Descriptor for "GetUserByUsername".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersServerApi"),
-                method: "GetUserByUsername"
+                method: "GetUserByUsername",
+                type: .unary
+            )
+        }
+        /// Namespace for "SearchUsersServer" metadata.
+        public enum SearchUsersServer: Sendable {
+            /// Request type for "SearchUsersServer".
+            public typealias Input = Barkfluff_Users_SearchUsersServerRequest
+            /// Response type for "SearchUsersServer".
+            public typealias Output = Barkfluff_Users_SearchUsersServerResponse
+            /// Descriptor for "SearchUsersServer".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersServerApi"),
+                method: "SearchUsersServer",
+                type: .unary
+            )
+        }
+        /// Namespace for "UpdateStorageLimit" metadata.
+        public enum UpdateStorageLimit: Sendable {
+            /// Request type for "UpdateStorageLimit".
+            public typealias Input = Barkfluff_Users_UpdateStorageLimitRequest
+            /// Response type for "UpdateStorageLimit".
+            public typealias Output = Barkfluff_Users_UpdateStorageLimitResponse
+            /// Descriptor for "UpdateStorageLimit".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersServerApi"),
+                method: "UpdateStorageLimit",
+                type: .unary
+            )
+        }
+        /// Namespace for "SetProfilePictureServer" metadata.
+        public enum SetProfilePictureServer: Sendable {
+            /// Request type for "SetProfilePictureServer".
+            public typealias Input = Barkfluff_Users_SetProfilePictureServerRequest
+            /// Response type for "SetProfilePictureServer".
+            public typealias Output = Barkfluff_Users_SetProfilePictureServerResponse
+            /// Descriptor for "SetProfilePictureServer".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersServerApi"),
+                method: "SetProfilePictureServer",
+                type: .unary
+            )
+        }
+        /// Namespace for "GetDevicesWithFirebaseTokens" metadata.
+        public enum GetDevicesWithFirebaseTokens: Sendable {
+            /// Request type for "GetDevicesWithFirebaseTokens".
+            public typealias Input = Barkfluff_Users_GetDevicesWithFirebaseTokensRequest
+            /// Response type for "GetDevicesWithFirebaseTokens".
+            public typealias Output = Barkfluff_Users_GetDevicesWithFirebaseTokensResponse
+            /// Descriptor for "GetDevicesWithFirebaseTokens".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersServerApi"),
+                method: "GetDevicesWithFirebaseTokens",
+                type: .unary
             )
         }
         /// Namespace for "GetUserPrivacy" metadata.
@@ -2372,7 +3071,8 @@ public enum Barkfluff_Users_UsersServerApi: Sendable {
             /// Descriptor for "GetUserPrivacy".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.users.UsersServerApi"),
-                method: "GetUserPrivacy"
+                method: "GetUserPrivacy",
+                type: .unary
             )
         }
         /// Descriptors for all methods in the "barkfluff.users.UsersServerApi" service.
@@ -2398,6 +3098,10 @@ public enum Barkfluff_Users_UsersServerApi: Sendable {
             GetUserDevices.descriptor,
             DeleteUserDevice.descriptor,
             GetUserByUsername.descriptor,
+            SearchUsersServer.descriptor,
+            UpdateStorageLimit.descriptor,
+            SetProfilePictureServer.descriptor,
+            GetDevicesWithFirebaseTokens.descriptor,
             GetUserPrivacy.descriptor
         ]
     }
@@ -2901,6 +3605,113 @@ extension Barkfluff_Users_UsersServerApi {
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_GetUserByUsernameResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
+        /// Call the "SearchUsersServer" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Поиск пользователей (для админ-панели)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_SearchUsersServerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_SearchUsersServerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_SearchUsersServerResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func searchUsersServer<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_SearchUsersServerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_SearchUsersServerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_SearchUsersServerResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_SearchUsersServerResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "UpdateStorageLimit" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Обновить лимит хранилища пользователя
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_UpdateStorageLimitRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_UpdateStorageLimitRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_UpdateStorageLimitResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func updateStorageLimit<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_UpdateStorageLimitRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_UpdateStorageLimitRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_UpdateStorageLimitResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_UpdateStorageLimitResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "SetProfilePictureServer" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Установить аватарку пользователю (для админ-панели)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_SetProfilePictureServerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_SetProfilePictureServerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_SetProfilePictureServerResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func setProfilePictureServer<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_SetProfilePictureServerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_SetProfilePictureServerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_SetProfilePictureServerResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_SetProfilePictureServerResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "GetDevicesWithFirebaseTokens" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Получить устройства с Firebase токенами
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_GetDevicesWithFirebaseTokensRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_GetDevicesWithFirebaseTokensRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_GetDevicesWithFirebaseTokensResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func getDevicesWithFirebaseTokens<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_GetDevicesWithFirebaseTokensRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_GetDevicesWithFirebaseTokensRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_GetDevicesWithFirebaseTokensResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_GetDevicesWithFirebaseTokensResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "GetUserPrivacy" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Получить настройки приватности пользователя (для других микросервисов, напр. Onliner)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_GetUserPrivacyRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_GetUserPrivacyRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_GetUserPrivacyResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         func getUserPrivacy<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Users_GetUserPrivacyRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_GetUserPrivacyRequest>,
@@ -3640,6 +4451,157 @@ extension Barkfluff_Users_UsersServerApi {
             )
         }
 
+        /// Call the "SearchUsersServer" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Поиск пользователей (для админ-панели)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_SearchUsersServerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_SearchUsersServerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_SearchUsersServerResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func searchUsersServer<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_SearchUsersServerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_SearchUsersServerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_SearchUsersServerResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_SearchUsersServerResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Users_UsersServerApi.Method.SearchUsersServer.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "UpdateStorageLimit" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Обновить лимит хранилища пользователя
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_UpdateStorageLimitRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_UpdateStorageLimitRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_UpdateStorageLimitResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func updateStorageLimit<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_UpdateStorageLimitRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_UpdateStorageLimitRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_UpdateStorageLimitResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_UpdateStorageLimitResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Users_UsersServerApi.Method.UpdateStorageLimit.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "SetProfilePictureServer" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Установить аватарку пользователю (для админ-панели)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_SetProfilePictureServerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_SetProfilePictureServerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_SetProfilePictureServerResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func setProfilePictureServer<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_SetProfilePictureServerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_SetProfilePictureServerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_SetProfilePictureServerResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_SetProfilePictureServerResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Users_UsersServerApi.Method.SetProfilePictureServer.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "GetDevicesWithFirebaseTokens" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Получить устройства с Firebase токенами
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_GetDevicesWithFirebaseTokensRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_GetDevicesWithFirebaseTokensRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_GetDevicesWithFirebaseTokensResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func getDevicesWithFirebaseTokens<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Users_GetDevicesWithFirebaseTokensRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_GetDevicesWithFirebaseTokensRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Users_GetDevicesWithFirebaseTokensResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_GetDevicesWithFirebaseTokensResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Users_UsersServerApi.Method.GetDevicesWithFirebaseTokens.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "GetUserPrivacy" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Получить настройки приватности пользователя (для других микросервисов, напр. Onliner)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Users_GetUserPrivacyRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Users_GetUserPrivacyRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Users_GetUserPrivacyResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         public func getUserPrivacy<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Users_GetUserPrivacyRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Users_GetUserPrivacyRequest>,
@@ -4273,6 +5235,135 @@ extension Barkfluff_Users_UsersServerApi.ClientProtocol {
         )
     }
 
+    /// Call the "SearchUsersServer" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Поиск пользователей (для админ-панели)
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Users_SearchUsersServerRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func searchUsersServer<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Users_SearchUsersServerRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_SearchUsersServerResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.searchUsersServer(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Users_SearchUsersServerRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Users_SearchUsersServerResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UpdateStorageLimit" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Обновить лимит хранилища пользователя
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Users_UpdateStorageLimitRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func updateStorageLimit<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Users_UpdateStorageLimitRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_UpdateStorageLimitResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.updateStorageLimit(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Users_UpdateStorageLimitRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Users_UpdateStorageLimitResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SetProfilePictureServer" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Установить аватарку пользователю (для админ-панели)
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Users_SetProfilePictureServerRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func setProfilePictureServer<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Users_SetProfilePictureServerRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_SetProfilePictureServerResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.setProfilePictureServer(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Users_SetProfilePictureServerRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Users_SetProfilePictureServerResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetDevicesWithFirebaseTokens" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Получить устройства с Firebase токенами
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Users_GetDevicesWithFirebaseTokensRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func getDevicesWithFirebaseTokens<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Users_GetDevicesWithFirebaseTokensRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_GetDevicesWithFirebaseTokensResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.getDevicesWithFirebaseTokens(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Users_GetDevicesWithFirebaseTokensRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Users_GetDevicesWithFirebaseTokensResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetUserPrivacy" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Получить настройки приватности пользователя (для других микросервисов, напр. Onliner)
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Users_GetUserPrivacyRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func getUserPrivacy<Result>(
         request: GRPCCore.ClientRequest<Barkfluff_Users_GetUserPrivacyRequest>,
         options: GRPCCore.CallOptions = .defaults,
@@ -4986,6 +6077,152 @@ extension Barkfluff_Users_UsersServerApi.ClientProtocol {
         )
     }
 
+    /// Call the "SearchUsersServer" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Поиск пользователей (для админ-панели)
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func searchUsersServer<Result>(
+        _ message: Barkfluff_Users_SearchUsersServerRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_SearchUsersServerResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Users_SearchUsersServerRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.searchUsersServer(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UpdateStorageLimit" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Обновить лимит хранилища пользователя
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func updateStorageLimit<Result>(
+        _ message: Barkfluff_Users_UpdateStorageLimitRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_UpdateStorageLimitResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Users_UpdateStorageLimitRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.updateStorageLimit(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SetProfilePictureServer" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Установить аватарку пользователю (для админ-панели)
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func setProfilePictureServer<Result>(
+        _ message: Barkfluff_Users_SetProfilePictureServerRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_SetProfilePictureServerResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Users_SetProfilePictureServerRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.setProfilePictureServer(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetDevicesWithFirebaseTokens" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Получить устройства с Firebase токенами
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func getDevicesWithFirebaseTokens<Result>(
+        _ message: Barkfluff_Users_GetDevicesWithFirebaseTokensRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Users_GetDevicesWithFirebaseTokensResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Users_GetDevicesWithFirebaseTokensRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.getDevicesWithFirebaseTokens(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetUserPrivacy" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Получить настройки приватности пользователя (для других микросервисов, напр. Onliner)
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func getUserPrivacy<Result>(
         _ message: Barkfluff_Users_GetUserPrivacyRequest,
         metadata: GRPCCore.Metadata = [:],

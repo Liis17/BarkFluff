@@ -63,6 +63,14 @@ public enum FileMapper {
             return .messageAttachmentDocument
         case .chatPicture:
             return .chatPicture
+        case .messageAttachmentAudio:
+            return .messageAttachmentAudio
+        case .messageAttachmentVoice:
+            return .messageAttachmentVoice
+        case .messageAttachmentSticker:
+            return .messageAttachmentSticker
+        case .userProfilePoster:
+            return .userProfilePoster
         }
     }
 
@@ -83,6 +91,14 @@ public enum FileMapper {
             return .messageAttachmentDocument
         case .chatPicture:
             return .chatPicture
+        case .messageAttachmentAudio:
+            return .messageAttachmentAudio
+        case .messageAttachmentVoice:
+            return .messageAttachmentVoice
+        case .messageAttachmentSticker:
+            return .messageAttachmentSticker
+        case .userProfilePoster:
+            return .userProfilePoster
         case .UNRECOGNIZED:
             return .unknown
         }

@@ -142,6 +142,8 @@ public enum AttachmentType: Sendable, Codable {
     case gif
     case document
     case audio
+    case voice
+    case sticker
 }
 
 public struct ChatMemberInfo: Sendable {
@@ -211,6 +213,7 @@ public enum UploadFileType: Sendable, Codable {
     case messageAttachmentAudio
     case messageAttachmentVoice
     case messageAttachmentSticker
+    case userProfilePoster
 
     /// Определяет тип файла по расширению
     public static func from(extension ext: String) -> UploadFileType {

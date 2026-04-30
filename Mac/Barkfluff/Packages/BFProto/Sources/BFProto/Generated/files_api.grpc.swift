@@ -29,7 +29,8 @@ public enum Barkfluff_Files_FilesApi: Sendable {
             /// Descriptor for "GetUploadUrl".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesApi"),
-                method: "GetUploadUrl"
+                method: "GetUploadUrl",
+                type: .unary
             )
         }
         /// Namespace for "GetTempDownloadUrl" metadata.
@@ -41,7 +42,8 @@ public enum Barkfluff_Files_FilesApi: Sendable {
             /// Descriptor for "GetTempDownloadUrl".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesApi"),
-                method: "GetTempDownloadUrl"
+                method: "GetTempDownloadUrl",
+                type: .unary
             )
         }
         /// Namespace for "CheckFileHash" metadata.
@@ -53,7 +55,8 @@ public enum Barkfluff_Files_FilesApi: Sendable {
             /// Descriptor for "CheckFileHash".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesApi"),
-                method: "CheckFileHash"
+                method: "CheckFileHash",
+                type: .unary
             )
         }
         /// Namespace for "GetUserStorageInfo" metadata.
@@ -65,25 +68,34 @@ public enum Barkfluff_Files_FilesApi: Sendable {
             /// Descriptor for "GetUserStorageInfo".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesApi"),
-                method: "GetUserStorageInfo"
+                method: "GetUserStorageInfo",
+                type: .unary
             )
         }
         /// Namespace for "ListStickerPacks" metadata.
         public enum ListStickerPacks: Sendable {
+            /// Request type for "ListStickerPacks".
             public typealias Input = Barkfluff_Files_ListStickerPacksRequest
+            /// Response type for "ListStickerPacks".
             public typealias Output = Barkfluff_Files_ListStickerPacksResponse
+            /// Descriptor for "ListStickerPacks".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesApi"),
-                method: "ListStickerPacks"
+                method: "ListStickerPacks",
+                type: .unary
             )
         }
         /// Namespace for "GetStickerPack" metadata.
         public enum GetStickerPack: Sendable {
+            /// Request type for "GetStickerPack".
             public typealias Input = Barkfluff_Files_GetStickerPackRequest
+            /// Response type for "GetStickerPack".
             public typealias Output = Barkfluff_Files_GetStickerPackResponse
+            /// Descriptor for "GetStickerPack".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesApi"),
-                method: "GetStickerPack"
+                method: "GetStickerPack",
+                type: .unary
             )
         }
         /// Descriptors for all methods in the "barkfluff.files.FilesApi" service.
@@ -205,6 +217,21 @@ extension Barkfluff_Files_FilesApi {
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_GetUserStorageInfoResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
+        /// Call the "ListStickerPacks" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Стикерпаки (клиентский доступ, только чтение)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Files_ListStickerPacksRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Files_ListStickerPacksRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Files_ListStickerPacksResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         func listStickerPacks<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Files_ListStickerPacksRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_ListStickerPacksRequest>,
@@ -213,6 +240,21 @@ extension Barkfluff_Files_FilesApi {
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_ListStickerPacksResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
+        /// Call the "GetStickerPack" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Получить стикерпак со стикерами
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Files_GetStickerPackRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Files_GetStickerPackRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Files_GetStickerPackResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         func getStickerPack<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Files_GetStickerPackRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_GetStickerPackRequest>,
@@ -374,6 +416,21 @@ extension Barkfluff_Files_FilesApi {
             )
         }
 
+        /// Call the "ListStickerPacks" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Стикерпаки (клиентский доступ, только чтение)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Files_ListStickerPacksRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Files_ListStickerPacksRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Files_ListStickerPacksResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         public func listStickerPacks<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Files_ListStickerPacksRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_ListStickerPacksRequest>,
@@ -393,6 +450,21 @@ extension Barkfluff_Files_FilesApi {
             )
         }
 
+        /// Call the "GetStickerPack" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Получить стикерпак со стикерами
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Files_GetStickerPackRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Files_GetStickerPackRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Files_GetStickerPackResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         public func getStickerPack<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Files_GetStickerPackRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_GetStickerPackRequest>,
@@ -533,6 +605,19 @@ extension Barkfluff_Files_FilesApi.ClientProtocol {
         )
     }
 
+    /// Call the "ListStickerPacks" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Стикерпаки (клиентский доступ, только чтение)
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Files_ListStickerPacksRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func listStickerPacks<Result>(
         request: GRPCCore.ClientRequest<Barkfluff_Files_ListStickerPacksRequest>,
         options: GRPCCore.CallOptions = .defaults,
@@ -549,6 +634,19 @@ extension Barkfluff_Files_FilesApi.ClientProtocol {
         )
     }
 
+    /// Call the "GetStickerPack" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Получить стикерпак со стикерами
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Files_GetStickerPackRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func getStickerPack<Result>(
         request: GRPCCore.ClientRequest<Barkfluff_Files_GetStickerPackRequest>,
         options: GRPCCore.CallOptions = .defaults,
@@ -701,6 +799,20 @@ extension Barkfluff_Files_FilesApi.ClientProtocol {
         )
     }
 
+    /// Call the "ListStickerPacks" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Стикерпаки (клиентский доступ, только чтение)
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func listStickerPacks<Result>(
         _ message: Barkfluff_Files_ListStickerPacksRequest,
         metadata: GRPCCore.Metadata = [:],
@@ -720,6 +832,20 @@ extension Barkfluff_Files_FilesApi.ClientProtocol {
         )
     }
 
+    /// Call the "GetStickerPack" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Получить стикерпак со стикерами
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func getStickerPack<Result>(
         _ message: Barkfluff_Files_GetStickerPackRequest,
         metadata: GRPCCore.Metadata = [:],
@@ -758,7 +884,8 @@ public enum Barkfluff_Files_FilesServerApi: Sendable {
             /// Descriptor for "GetFileData".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesServerApi"),
-                method: "GetFileData"
+                method: "GetFileData",
+                type: .unary
             )
         }
         /// Namespace for "GetFilesData" metadata.
@@ -770,7 +897,8 @@ public enum Barkfluff_Files_FilesServerApi: Sendable {
             /// Descriptor for "GetFilesData".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesServerApi"),
-                method: "GetFilesData"
+                method: "GetFilesData",
+                type: .unary
             )
         }
         /// Namespace for "UploadBadgeImage" metadata.
@@ -782,115 +910,164 @@ public enum Barkfluff_Files_FilesServerApi: Sendable {
             /// Descriptor for "UploadBadgeImage".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesServerApi"),
-                method: "UploadBadgeImage"
+                method: "UploadBadgeImage",
+                type: .unary
             )
         }
         /// Namespace for "GetUserStorageInfoServer" metadata.
         public enum GetUserStorageInfoServer: Sendable {
+            /// Request type for "GetUserStorageInfoServer".
             public typealias Input = Barkfluff_Files_GetUserStorageInfoServerRequest
+            /// Response type for "GetUserStorageInfoServer".
             public typealias Output = Barkfluff_Files_GetUserStorageInfoResponse
+            /// Descriptor for "GetUserStorageInfoServer".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesServerApi"),
-                method: "GetUserStorageInfoServer"
+                method: "GetUserStorageInfoServer",
+                type: .unary
             )
         }
         /// Namespace for "UploadAvatarServer" metadata.
         public enum UploadAvatarServer: Sendable {
+            /// Request type for "UploadAvatarServer".
             public typealias Input = Barkfluff_Files_UploadAvatarServerRequest
+            /// Response type for "UploadAvatarServer".
             public typealias Output = Barkfluff_Files_UploadAvatarServerResponse
+            /// Descriptor for "UploadAvatarServer".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesServerApi"),
-                method: "UploadAvatarServer"
+                method: "UploadAvatarServer",
+                type: .unary
             )
         }
         /// Namespace for "CreateStickerPack" metadata.
         public enum CreateStickerPack: Sendable {
+            /// Request type for "CreateStickerPack".
             public typealias Input = Barkfluff_Files_CreateStickerPackRequest
+            /// Response type for "CreateStickerPack".
             public typealias Output = Barkfluff_Files_CreateStickerPackResponse
+            /// Descriptor for "CreateStickerPack".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesServerApi"),
-                method: "CreateStickerPack"
+                method: "CreateStickerPack",
+                type: .unary
             )
         }
         /// Namespace for "UpdateStickerPack" metadata.
         public enum UpdateStickerPack: Sendable {
+            /// Request type for "UpdateStickerPack".
             public typealias Input = Barkfluff_Files_UpdateStickerPackRequest
+            /// Response type for "UpdateStickerPack".
             public typealias Output = Barkfluff_Files_UpdateStickerPackResponse
+            /// Descriptor for "UpdateStickerPack".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesServerApi"),
-                method: "UpdateStickerPack"
+                method: "UpdateStickerPack",
+                type: .unary
             )
         }
         /// Namespace for "DeleteStickerPack" metadata.
         public enum DeleteStickerPack: Sendable {
+            /// Request type for "DeleteStickerPack".
             public typealias Input = Barkfluff_Files_DeleteStickerPackRequest
+            /// Response type for "DeleteStickerPack".
             public typealias Output = Barkfluff_Files_DeleteStickerPackResponse
+            /// Descriptor for "DeleteStickerPack".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesServerApi"),
-                method: "DeleteStickerPack"
+                method: "DeleteStickerPack",
+                type: .unary
             )
         }
-        /// Namespace for "ListStickerPacks" metadata (server).
+        /// Namespace for "ListStickerPacks" metadata.
         public enum ListStickerPacks: Sendable {
+            /// Request type for "ListStickerPacks".
             public typealias Input = Barkfluff_Files_ListStickerPacksRequest
+            /// Response type for "ListStickerPacks".
             public typealias Output = Barkfluff_Files_ListStickerPacksResponse
+            /// Descriptor for "ListStickerPacks".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesServerApi"),
-                method: "ListStickerPacks"
+                method: "ListStickerPacks",
+                type: .unary
             )
         }
-        /// Namespace for "GetStickerPack" metadata (server).
+        /// Namespace for "GetStickerPack" metadata.
         public enum GetStickerPack: Sendable {
+            /// Request type for "GetStickerPack".
             public typealias Input = Barkfluff_Files_GetStickerPackRequest
+            /// Response type for "GetStickerPack".
             public typealias Output = Barkfluff_Files_GetStickerPackResponse
+            /// Descriptor for "GetStickerPack".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesServerApi"),
-                method: "GetStickerPack"
+                method: "GetStickerPack",
+                type: .unary
             )
         }
         /// Namespace for "AddSticker" metadata.
         public enum AddSticker: Sendable {
+            /// Request type for "AddSticker".
             public typealias Input = Barkfluff_Files_AddStickerRequest
+            /// Response type for "AddSticker".
             public typealias Output = Barkfluff_Files_AddStickerResponse
+            /// Descriptor for "AddSticker".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesServerApi"),
-                method: "AddSticker"
+                method: "AddSticker",
+                type: .unary
             )
         }
         /// Namespace for "RemoveSticker" metadata.
         public enum RemoveSticker: Sendable {
+            /// Request type for "RemoveSticker".
             public typealias Input = Barkfluff_Files_RemoveStickerRequest
+            /// Response type for "RemoveSticker".
             public typealias Output = Barkfluff_Files_RemoveStickerResponse
+            /// Descriptor for "RemoveSticker".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesServerApi"),
-                method: "RemoveSticker"
+                method: "RemoveSticker",
+                type: .unary
             )
         }
         /// Namespace for "UpdateSticker" metadata.
         public enum UpdateSticker: Sendable {
+            /// Request type for "UpdateSticker".
             public typealias Input = Barkfluff_Files_UpdateStickerRequest
+            /// Response type for "UpdateSticker".
             public typealias Output = Barkfluff_Files_UpdateStickerResponse
+            /// Descriptor for "UpdateSticker".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesServerApi"),
-                method: "UpdateSticker"
+                method: "UpdateSticker",
+                type: .unary
             )
         }
         /// Namespace for "GetStickers" metadata.
         public enum GetStickers: Sendable {
+            /// Request type for "GetStickers".
             public typealias Input = Barkfluff_Files_GetStickersRequest
+            /// Response type for "GetStickers".
             public typealias Output = Barkfluff_Files_GetStickersResponse
+            /// Descriptor for "GetStickers".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesServerApi"),
-                method: "GetStickers"
+                method: "GetStickers",
+                type: .unary
             )
         }
         /// Namespace for "UploadStickerImage" metadata.
         public enum UploadStickerImage: Sendable {
+            /// Request type for "UploadStickerImage".
             public typealias Input = Barkfluff_Files_UploadStickerImageRequest
+            /// Response type for "UploadStickerImage".
             public typealias Output = Barkfluff_Files_UploadStickerImageResponse
+            /// Descriptor for "UploadStickerImage".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.files.FilesServerApi"),
-                method: "UploadStickerImage"
+                method: "UploadStickerImage",
+                type: .unary
             )
         }
         /// Descriptors for all methods in the "barkfluff.files.FilesServerApi" service.
@@ -998,6 +1175,21 @@ extension Barkfluff_Files_FilesServerApi {
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_UploadBadgeImageResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
+        /// Call the "GetUserStorageInfoServer" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Получить информацию о хранилище пользователя (для админ-панели)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Files_GetUserStorageInfoServerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Files_GetUserStorageInfoServerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Files_GetUserStorageInfoResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         func getUserStorageInfoServer<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Files_GetUserStorageInfoServerRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_GetUserStorageInfoServerRequest>,
@@ -1006,6 +1198,21 @@ extension Barkfluff_Files_FilesServerApi {
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_GetUserStorageInfoResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
+        /// Call the "UploadAvatarServer" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Загрузить аватарку пользователя (для админ-панели)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Files_UploadAvatarServerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Files_UploadAvatarServerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Files_UploadAvatarServerResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         func uploadAvatarServer<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Files_UploadAvatarServerRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_UploadAvatarServerRequest>,
@@ -1014,6 +1221,21 @@ extension Barkfluff_Files_FilesServerApi {
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_UploadAvatarServerResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
+        /// Call the "CreateStickerPack" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Стикерпаки
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Files_CreateStickerPackRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Files_CreateStickerPackRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Files_CreateStickerPackResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         func createStickerPack<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Files_CreateStickerPackRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_CreateStickerPackRequest>,
@@ -1022,6 +1244,17 @@ extension Barkfluff_Files_FilesServerApi {
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_CreateStickerPackResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
+        /// Call the "UpdateStickerPack" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Files_UpdateStickerPackRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Files_UpdateStickerPackRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Files_UpdateStickerPackResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         func updateStickerPack<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Files_UpdateStickerPackRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_UpdateStickerPackRequest>,
@@ -1030,6 +1263,17 @@ extension Barkfluff_Files_FilesServerApi {
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_UpdateStickerPackResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
+        /// Call the "DeleteStickerPack" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Files_DeleteStickerPackRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Files_DeleteStickerPackRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Files_DeleteStickerPackResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         func deleteStickerPack<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Files_DeleteStickerPackRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_DeleteStickerPackRequest>,
@@ -1038,6 +1282,17 @@ extension Barkfluff_Files_FilesServerApi {
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_DeleteStickerPackResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
+        /// Call the "ListStickerPacks" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Files_ListStickerPacksRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Files_ListStickerPacksRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Files_ListStickerPacksResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         func listStickerPacks<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Files_ListStickerPacksRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_ListStickerPacksRequest>,
@@ -1046,6 +1301,17 @@ extension Barkfluff_Files_FilesServerApi {
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_ListStickerPacksResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
+        /// Call the "GetStickerPack" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Files_GetStickerPackRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Files_GetStickerPackRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Files_GetStickerPackResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         func getStickerPack<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Files_GetStickerPackRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_GetStickerPackRequest>,
@@ -1054,6 +1320,21 @@ extension Barkfluff_Files_FilesServerApi {
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_GetStickerPackResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
+        /// Call the "AddSticker" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Стикеры
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Files_AddStickerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Files_AddStickerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Files_AddStickerResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         func addSticker<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Files_AddStickerRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_AddStickerRequest>,
@@ -1062,6 +1343,17 @@ extension Barkfluff_Files_FilesServerApi {
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_AddStickerResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
+        /// Call the "RemoveSticker" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Files_RemoveStickerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Files_RemoveStickerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Files_RemoveStickerResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         func removeSticker<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Files_RemoveStickerRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_RemoveStickerRequest>,
@@ -1070,6 +1362,17 @@ extension Barkfluff_Files_FilesServerApi {
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_RemoveStickerResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
+        /// Call the "UpdateSticker" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Files_UpdateStickerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Files_UpdateStickerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Files_UpdateStickerResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         func updateSticker<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Files_UpdateStickerRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_UpdateStickerRequest>,
@@ -1078,6 +1381,17 @@ extension Barkfluff_Files_FilesServerApi {
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_UpdateStickerResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
+        /// Call the "GetStickers" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Files_GetStickersRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Files_GetStickersRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Files_GetStickersResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         func getStickers<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Files_GetStickersRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_GetStickersRequest>,
@@ -1086,6 +1400,21 @@ extension Barkfluff_Files_FilesServerApi {
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Files_GetStickersResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
+        /// Call the "UploadStickerImage" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Загрузка изображения стикера (для админ-панели)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Files_UploadStickerImageRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Files_UploadStickerImageRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Files_UploadStickerImageResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         func uploadStickerImage<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Files_UploadStickerImageRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_UploadStickerImageRequest>,
@@ -1213,6 +1542,21 @@ extension Barkfluff_Files_FilesServerApi {
             )
         }
 
+        /// Call the "GetUserStorageInfoServer" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Получить информацию о хранилище пользователя (для админ-панели)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Files_GetUserStorageInfoServerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Files_GetUserStorageInfoServerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Files_GetUserStorageInfoResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         public func getUserStorageInfoServer<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Files_GetUserStorageInfoServerRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_GetUserStorageInfoServerRequest>,
@@ -1232,6 +1576,21 @@ extension Barkfluff_Files_FilesServerApi {
             )
         }
 
+        /// Call the "UploadAvatarServer" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Загрузить аватарку пользователя (для админ-панели)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Files_UploadAvatarServerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Files_UploadAvatarServerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Files_UploadAvatarServerResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         public func uploadAvatarServer<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Files_UploadAvatarServerRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_UploadAvatarServerRequest>,
@@ -1251,6 +1610,21 @@ extension Barkfluff_Files_FilesServerApi {
             )
         }
 
+        /// Call the "CreateStickerPack" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Стикерпаки
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Files_CreateStickerPackRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Files_CreateStickerPackRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Files_CreateStickerPackResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         public func createStickerPack<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Files_CreateStickerPackRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_CreateStickerPackRequest>,
@@ -1270,6 +1644,17 @@ extension Barkfluff_Files_FilesServerApi {
             )
         }
 
+        /// Call the "UpdateStickerPack" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Files_UpdateStickerPackRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Files_UpdateStickerPackRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Files_UpdateStickerPackResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         public func updateStickerPack<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Files_UpdateStickerPackRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_UpdateStickerPackRequest>,
@@ -1289,6 +1674,17 @@ extension Barkfluff_Files_FilesServerApi {
             )
         }
 
+        /// Call the "DeleteStickerPack" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Files_DeleteStickerPackRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Files_DeleteStickerPackRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Files_DeleteStickerPackResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         public func deleteStickerPack<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Files_DeleteStickerPackRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_DeleteStickerPackRequest>,
@@ -1308,6 +1704,17 @@ extension Barkfluff_Files_FilesServerApi {
             )
         }
 
+        /// Call the "ListStickerPacks" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Files_ListStickerPacksRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Files_ListStickerPacksRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Files_ListStickerPacksResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         public func listStickerPacks<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Files_ListStickerPacksRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_ListStickerPacksRequest>,
@@ -1327,6 +1734,17 @@ extension Barkfluff_Files_FilesServerApi {
             )
         }
 
+        /// Call the "GetStickerPack" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Files_GetStickerPackRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Files_GetStickerPackRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Files_GetStickerPackResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         public func getStickerPack<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Files_GetStickerPackRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_GetStickerPackRequest>,
@@ -1346,6 +1764,21 @@ extension Barkfluff_Files_FilesServerApi {
             )
         }
 
+        /// Call the "AddSticker" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Стикеры
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Files_AddStickerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Files_AddStickerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Files_AddStickerResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         public func addSticker<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Files_AddStickerRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_AddStickerRequest>,
@@ -1365,6 +1798,17 @@ extension Barkfluff_Files_FilesServerApi {
             )
         }
 
+        /// Call the "RemoveSticker" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Files_RemoveStickerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Files_RemoveStickerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Files_RemoveStickerResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         public func removeSticker<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Files_RemoveStickerRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_RemoveStickerRequest>,
@@ -1384,6 +1828,17 @@ extension Barkfluff_Files_FilesServerApi {
             )
         }
 
+        /// Call the "UpdateSticker" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Files_UpdateStickerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Files_UpdateStickerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Files_UpdateStickerResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         public func updateSticker<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Files_UpdateStickerRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_UpdateStickerRequest>,
@@ -1403,6 +1858,17 @@ extension Barkfluff_Files_FilesServerApi {
             )
         }
 
+        /// Call the "GetStickers" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Files_GetStickersRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Files_GetStickersRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Files_GetStickersResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         public func getStickers<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Files_GetStickersRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_GetStickersRequest>,
@@ -1422,6 +1888,21 @@ extension Barkfluff_Files_FilesServerApi {
             )
         }
 
+        /// Call the "UploadStickerImage" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Загрузка изображения стикера (для админ-панели)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Files_UploadStickerImageRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Files_UploadStickerImageRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Files_UploadStickerImageResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         public func uploadStickerImage<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Files_UploadStickerImageRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Files_UploadStickerImageRequest>,
@@ -1533,6 +2014,19 @@ extension Barkfluff_Files_FilesServerApi.ClientProtocol {
         )
     }
 
+    /// Call the "GetUserStorageInfoServer" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Получить информацию о хранилище пользователя (для админ-панели)
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Files_GetUserStorageInfoServerRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func getUserStorageInfoServer<Result>(
         request: GRPCCore.ClientRequest<Barkfluff_Files_GetUserStorageInfoServerRequest>,
         options: GRPCCore.CallOptions = .defaults,
@@ -1549,6 +2043,19 @@ extension Barkfluff_Files_FilesServerApi.ClientProtocol {
         )
     }
 
+    /// Call the "UploadAvatarServer" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Загрузить аватарку пользователя (для админ-панели)
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Files_UploadAvatarServerRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func uploadAvatarServer<Result>(
         request: GRPCCore.ClientRequest<Barkfluff_Files_UploadAvatarServerRequest>,
         options: GRPCCore.CallOptions = .defaults,
@@ -1565,6 +2072,19 @@ extension Barkfluff_Files_FilesServerApi.ClientProtocol {
         )
     }
 
+    /// Call the "CreateStickerPack" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Стикерпаки
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Files_CreateStickerPackRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func createStickerPack<Result>(
         request: GRPCCore.ClientRequest<Barkfluff_Files_CreateStickerPackRequest>,
         options: GRPCCore.CallOptions = .defaults,
@@ -1581,6 +2101,15 @@ extension Barkfluff_Files_FilesServerApi.ClientProtocol {
         )
     }
 
+    /// Call the "UpdateStickerPack" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Files_UpdateStickerPackRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func updateStickerPack<Result>(
         request: GRPCCore.ClientRequest<Barkfluff_Files_UpdateStickerPackRequest>,
         options: GRPCCore.CallOptions = .defaults,
@@ -1597,6 +2126,15 @@ extension Barkfluff_Files_FilesServerApi.ClientProtocol {
         )
     }
 
+    /// Call the "DeleteStickerPack" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Files_DeleteStickerPackRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func deleteStickerPack<Result>(
         request: GRPCCore.ClientRequest<Barkfluff_Files_DeleteStickerPackRequest>,
         options: GRPCCore.CallOptions = .defaults,
@@ -1613,6 +2151,15 @@ extension Barkfluff_Files_FilesServerApi.ClientProtocol {
         )
     }
 
+    /// Call the "ListStickerPacks" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Files_ListStickerPacksRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func listStickerPacks<Result>(
         request: GRPCCore.ClientRequest<Barkfluff_Files_ListStickerPacksRequest>,
         options: GRPCCore.CallOptions = .defaults,
@@ -1629,6 +2176,15 @@ extension Barkfluff_Files_FilesServerApi.ClientProtocol {
         )
     }
 
+    /// Call the "GetStickerPack" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Files_GetStickerPackRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func getStickerPack<Result>(
         request: GRPCCore.ClientRequest<Barkfluff_Files_GetStickerPackRequest>,
         options: GRPCCore.CallOptions = .defaults,
@@ -1645,6 +2201,19 @@ extension Barkfluff_Files_FilesServerApi.ClientProtocol {
         )
     }
 
+    /// Call the "AddSticker" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Стикеры
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Files_AddStickerRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func addSticker<Result>(
         request: GRPCCore.ClientRequest<Barkfluff_Files_AddStickerRequest>,
         options: GRPCCore.CallOptions = .defaults,
@@ -1661,6 +2230,15 @@ extension Barkfluff_Files_FilesServerApi.ClientProtocol {
         )
     }
 
+    /// Call the "RemoveSticker" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Files_RemoveStickerRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func removeSticker<Result>(
         request: GRPCCore.ClientRequest<Barkfluff_Files_RemoveStickerRequest>,
         options: GRPCCore.CallOptions = .defaults,
@@ -1677,6 +2255,15 @@ extension Barkfluff_Files_FilesServerApi.ClientProtocol {
         )
     }
 
+    /// Call the "UpdateSticker" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Files_UpdateStickerRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func updateSticker<Result>(
         request: GRPCCore.ClientRequest<Barkfluff_Files_UpdateStickerRequest>,
         options: GRPCCore.CallOptions = .defaults,
@@ -1693,6 +2280,15 @@ extension Barkfluff_Files_FilesServerApi.ClientProtocol {
         )
     }
 
+    /// Call the "GetStickers" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Files_GetStickersRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func getStickers<Result>(
         request: GRPCCore.ClientRequest<Barkfluff_Files_GetStickersRequest>,
         options: GRPCCore.CallOptions = .defaults,
@@ -1709,6 +2305,19 @@ extension Barkfluff_Files_FilesServerApi.ClientProtocol {
         )
     }
 
+    /// Call the "UploadStickerImage" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Загрузка изображения стикера (для админ-панели)
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Files_UploadStickerImageRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func uploadStickerImage<Result>(
         request: GRPCCore.ClientRequest<Barkfluff_Files_UploadStickerImageRequest>,
         options: GRPCCore.CallOptions = .defaults,
@@ -1828,6 +2437,20 @@ extension Barkfluff_Files_FilesServerApi.ClientProtocol {
         )
     }
 
+    /// Call the "GetUserStorageInfoServer" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Получить информацию о хранилище пользователя (для админ-панели)
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func getUserStorageInfoServer<Result>(
         _ message: Barkfluff_Files_GetUserStorageInfoServerRequest,
         metadata: GRPCCore.Metadata = [:],
@@ -1847,6 +2470,20 @@ extension Barkfluff_Files_FilesServerApi.ClientProtocol {
         )
     }
 
+    /// Call the "UploadAvatarServer" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Загрузить аватарку пользователя (для админ-панели)
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func uploadAvatarServer<Result>(
         _ message: Barkfluff_Files_UploadAvatarServerRequest,
         metadata: GRPCCore.Metadata = [:],
@@ -1866,6 +2503,20 @@ extension Barkfluff_Files_FilesServerApi.ClientProtocol {
         )
     }
 
+    /// Call the "CreateStickerPack" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Стикерпаки
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func createStickerPack<Result>(
         _ message: Barkfluff_Files_CreateStickerPackRequest,
         metadata: GRPCCore.Metadata = [:],
@@ -1885,6 +2536,16 @@ extension Barkfluff_Files_FilesServerApi.ClientProtocol {
         )
     }
 
+    /// Call the "UpdateStickerPack" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func updateStickerPack<Result>(
         _ message: Barkfluff_Files_UpdateStickerPackRequest,
         metadata: GRPCCore.Metadata = [:],
@@ -1904,6 +2565,16 @@ extension Barkfluff_Files_FilesServerApi.ClientProtocol {
         )
     }
 
+    /// Call the "DeleteStickerPack" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func deleteStickerPack<Result>(
         _ message: Barkfluff_Files_DeleteStickerPackRequest,
         metadata: GRPCCore.Metadata = [:],
@@ -1923,6 +2594,16 @@ extension Barkfluff_Files_FilesServerApi.ClientProtocol {
         )
     }
 
+    /// Call the "ListStickerPacks" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func listStickerPacks<Result>(
         _ message: Barkfluff_Files_ListStickerPacksRequest,
         metadata: GRPCCore.Metadata = [:],
@@ -1942,6 +2623,16 @@ extension Barkfluff_Files_FilesServerApi.ClientProtocol {
         )
     }
 
+    /// Call the "GetStickerPack" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func getStickerPack<Result>(
         _ message: Barkfluff_Files_GetStickerPackRequest,
         metadata: GRPCCore.Metadata = [:],
@@ -1961,6 +2652,20 @@ extension Barkfluff_Files_FilesServerApi.ClientProtocol {
         )
     }
 
+    /// Call the "AddSticker" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Стикеры
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func addSticker<Result>(
         _ message: Barkfluff_Files_AddStickerRequest,
         metadata: GRPCCore.Metadata = [:],
@@ -1980,6 +2685,16 @@ extension Barkfluff_Files_FilesServerApi.ClientProtocol {
         )
     }
 
+    /// Call the "RemoveSticker" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func removeSticker<Result>(
         _ message: Barkfluff_Files_RemoveStickerRequest,
         metadata: GRPCCore.Metadata = [:],
@@ -1999,6 +2714,16 @@ extension Barkfluff_Files_FilesServerApi.ClientProtocol {
         )
     }
 
+    /// Call the "UpdateSticker" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func updateSticker<Result>(
         _ message: Barkfluff_Files_UpdateStickerRequest,
         metadata: GRPCCore.Metadata = [:],
@@ -2018,6 +2743,16 @@ extension Barkfluff_Files_FilesServerApi.ClientProtocol {
         )
     }
 
+    /// Call the "GetStickers" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func getStickers<Result>(
         _ message: Barkfluff_Files_GetStickersRequest,
         metadata: GRPCCore.Metadata = [:],
@@ -2037,6 +2772,20 @@ extension Barkfluff_Files_FilesServerApi.ClientProtocol {
         )
     }
 
+    /// Call the "UploadStickerImage" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Загрузка изображения стикера (для админ-панели)
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func uploadStickerImage<Result>(
         _ message: Barkfluff_Files_UploadStickerImageRequest,
         metadata: GRPCCore.Metadata = [:],

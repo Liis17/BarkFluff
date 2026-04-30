@@ -29,7 +29,8 @@ public enum Barkfluff_Identity_IdentityApi: Sendable {
             /// Descriptor for "Auth".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
-                method: "Auth"
+                method: "Auth",
+                type: .unary
             )
         }
         /// Namespace for "FastAuth" metadata.
@@ -41,7 +42,8 @@ public enum Barkfluff_Identity_IdentityApi: Sendable {
             /// Descriptor for "FastAuth".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
-                method: "FastAuth"
+                method: "FastAuth",
+                type: .unary
             )
         }
         /// Namespace for "CreateToken" metadata.
@@ -53,7 +55,8 @@ public enum Barkfluff_Identity_IdentityApi: Sendable {
             /// Descriptor for "CreateToken".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
-                method: "CreateToken"
+                method: "CreateToken",
+                type: .unary
             )
         }
         /// Namespace for "CreateAccount" metadata.
@@ -65,7 +68,8 @@ public enum Barkfluff_Identity_IdentityApi: Sendable {
             /// Descriptor for "CreateAccount".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
-                method: "CreateAccount"
+                method: "CreateAccount",
+                type: .unary
             )
         }
         /// Namespace for "ConfirmAccount" metadata.
@@ -77,7 +81,8 @@ public enum Barkfluff_Identity_IdentityApi: Sendable {
             /// Descriptor for "ConfirmAccount".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
-                method: "ConfirmAccount"
+                method: "ConfirmAccount",
+                type: .unary
             )
         }
         /// Namespace for "GetActiveSessions" metadata.
@@ -89,7 +94,8 @@ public enum Barkfluff_Identity_IdentityApi: Sendable {
             /// Descriptor for "GetActiveSessions".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
-                method: "GetActiveSessions"
+                method: "GetActiveSessions",
+                type: .unary
             )
         }
         /// Namespace for "RemoveActiveSession" metadata.
@@ -101,7 +107,8 @@ public enum Barkfluff_Identity_IdentityApi: Sendable {
             /// Descriptor for "RemoveActiveSession".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
-                method: "RemoveActiveSession"
+                method: "RemoveActiveSession",
+                type: .unary
             )
         }
         /// Namespace for "EnableOtpVerification" metadata.
@@ -113,7 +120,8 @@ public enum Barkfluff_Identity_IdentityApi: Sendable {
             /// Descriptor for "EnableOtpVerification".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
-                method: "EnableOtpVerification"
+                method: "EnableOtpVerification",
+                type: .unary
             )
         }
         /// Namespace for "ConfirmOtpVerification" metadata.
@@ -125,7 +133,8 @@ public enum Barkfluff_Identity_IdentityApi: Sendable {
             /// Descriptor for "ConfirmOtpVerification".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
-                method: "ConfirmOtpVerification"
+                method: "ConfirmOtpVerification",
+                type: .unary
             )
         }
         /// Namespace for "DisableOtpVerification" metadata.
@@ -137,7 +146,8 @@ public enum Barkfluff_Identity_IdentityApi: Sendable {
             /// Descriptor for "DisableOtpVerification".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
-                method: "DisableOtpVerification"
+                method: "DisableOtpVerification",
+                type: .unary
             )
         }
         /// Namespace for "ListOtpVerification" metadata.
@@ -149,7 +159,8 @@ public enum Barkfluff_Identity_IdentityApi: Sendable {
             /// Descriptor for "ListOtpVerification".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
-                method: "ListOtpVerification"
+                method: "ListOtpVerification",
+                type: .unary
             )
         }
         /// Namespace for "ResetPassword" metadata.
@@ -161,7 +172,8 @@ public enum Barkfluff_Identity_IdentityApi: Sendable {
             /// Descriptor for "ResetPassword".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
-                method: "ResetPassword"
+                method: "ResetPassword",
+                type: .unary
             )
         }
         /// Namespace for "ConfirmResetPassword" metadata.
@@ -173,7 +185,8 @@ public enum Barkfluff_Identity_IdentityApi: Sendable {
             /// Descriptor for "ConfirmResetPassword".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
-                method: "ConfirmResetPassword"
+                method: "ConfirmResetPassword",
+                type: .unary
             )
         }
         /// Namespace for "SetPassword" metadata.
@@ -185,7 +198,8 @@ public enum Barkfluff_Identity_IdentityApi: Sendable {
             /// Descriptor for "SetPassword".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
-                method: "SetPassword"
+                method: "SetPassword",
+                type: .unary
             )
         }
         /// Namespace for "Logout" metadata.
@@ -197,7 +211,8 @@ public enum Barkfluff_Identity_IdentityApi: Sendable {
             /// Descriptor for "Logout".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityApi"),
-                method: "Logout"
+                method: "Logout",
+                type: .unary
             )
         }
         /// Descriptors for all methods in the "barkfluff.identity.IdentityApi" service.
@@ -2041,6 +2056,740 @@ extension Barkfluff_Identity_IdentityApi.ClientProtocol {
             metadata: metadata
         )
         return try await self.logout(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+}
+
+// MARK: - barkfluff.identity.IdentityServerApi
+
+/// Namespace containing generated types for the "barkfluff.identity.IdentityServerApi" service.
+@available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
+public enum Barkfluff_Identity_IdentityServerApi: Sendable {
+    /// Service descriptor for the "barkfluff.identity.IdentityServerApi" service.
+    public static let descriptor = GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityServerApi")
+    /// Namespace for method metadata.
+    public enum Method: Sendable {
+        /// Namespace for "ListOtpVerificationServer" metadata.
+        public enum ListOtpVerificationServer: Sendable {
+            /// Request type for "ListOtpVerificationServer".
+            public typealias Input = Barkfluff_Identity_ListOtpVerificationServerRequest
+            /// Response type for "ListOtpVerificationServer".
+            public typealias Output = Barkfluff_Identity_ListOtpVerificationResponse
+            /// Descriptor for "ListOtpVerificationServer".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityServerApi"),
+                method: "ListOtpVerificationServer",
+                type: .unary
+            )
+        }
+        /// Namespace for "DisableOtpVerificationServer" metadata.
+        public enum DisableOtpVerificationServer: Sendable {
+            /// Request type for "DisableOtpVerificationServer".
+            public typealias Input = Barkfluff_Identity_DisableOtpVerificationServerRequest
+            /// Response type for "DisableOtpVerificationServer".
+            public typealias Output = Barkfluff_Identity_DisableOtpVerificationResponse
+            /// Descriptor for "DisableOtpVerificationServer".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityServerApi"),
+                method: "DisableOtpVerificationServer",
+                type: .unary
+            )
+        }
+        /// Namespace for "GetActiveSessionsServer" metadata.
+        public enum GetActiveSessionsServer: Sendable {
+            /// Request type for "GetActiveSessionsServer".
+            public typealias Input = Barkfluff_Identity_GetActiveSessionsServerRequest
+            /// Response type for "GetActiveSessionsServer".
+            public typealias Output = Barkfluff_Identity_GetActiveSessionsResponse
+            /// Descriptor for "GetActiveSessionsServer".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityServerApi"),
+                method: "GetActiveSessionsServer",
+                type: .unary
+            )
+        }
+        /// Namespace for "RemoveActiveSessionServer" metadata.
+        public enum RemoveActiveSessionServer: Sendable {
+            /// Request type for "RemoveActiveSessionServer".
+            public typealias Input = Barkfluff_Identity_RemoveActiveSessionServerRequest
+            /// Response type for "RemoveActiveSessionServer".
+            public typealias Output = Barkfluff_Identity_RemoveActiveSessionResponse
+            /// Descriptor for "RemoveActiveSessionServer".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityServerApi"),
+                method: "RemoveActiveSessionServer",
+                type: .unary
+            )
+        }
+        /// Namespace for "CreateSessionForUserServer" metadata.
+        public enum CreateSessionForUserServer: Sendable {
+            /// Request type for "CreateSessionForUserServer".
+            public typealias Input = Barkfluff_Identity_CreateSessionForUserServerRequest
+            /// Response type for "CreateSessionForUserServer".
+            public typealias Output = Barkfluff_Identity_CreateSessionForUserServerResponse
+            /// Descriptor for "CreateSessionForUserServer".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityServerApi"),
+                method: "CreateSessionForUserServer",
+                type: .unary
+            )
+        }
+        /// Descriptors for all methods in the "barkfluff.identity.IdentityServerApi" service.
+        public static let descriptors: [GRPCCore.MethodDescriptor] = [
+            ListOtpVerificationServer.descriptor,
+            DisableOtpVerificationServer.descriptor,
+            GetActiveSessionsServer.descriptor,
+            RemoveActiveSessionServer.descriptor,
+            CreateSessionForUserServer.descriptor
+        ]
+    }
+}
+
+@available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
+extension GRPCCore.ServiceDescriptor {
+    /// Service descriptor for the "barkfluff.identity.IdentityServerApi" service.
+    public static let barkfluff_identity_IdentityServerApi = GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.identity.IdentityServerApi")
+}
+
+// MARK: barkfluff.identity.IdentityServerApi (client)
+
+@available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
+extension Barkfluff_Identity_IdentityServerApi {
+    /// Generated client protocol for the "barkfluff.identity.IdentityServerApi" service.
+    ///
+    /// You don't need to implement this protocol directly, use the generated
+    /// implementation, ``Client``.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Серверное API для админ-панели
+    public protocol ClientProtocol: Sendable {
+        /// Call the "ListOtpVerificationServer" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Получить статус 2FA пользователя
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_ListOtpVerificationServerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_ListOtpVerificationServerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_ListOtpVerificationResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func listOtpVerificationServer<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_ListOtpVerificationServerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_ListOtpVerificationServerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_ListOtpVerificationResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_ListOtpVerificationResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "DisableOtpVerificationServer" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Принудительно отключить 2FA пользователя
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_DisableOtpVerificationServerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_DisableOtpVerificationServerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_DisableOtpVerificationResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func disableOtpVerificationServer<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_DisableOtpVerificationServerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_DisableOtpVerificationServerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_DisableOtpVerificationResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_DisableOtpVerificationResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "GetActiveSessionsServer" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Получить активные сессии пользователя
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_GetActiveSessionsServerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_GetActiveSessionsServerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_GetActiveSessionsResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func getActiveSessionsServer<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_GetActiveSessionsServerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_GetActiveSessionsServerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_GetActiveSessionsResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_GetActiveSessionsResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "RemoveActiveSessionServer" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Удалить активную сессию пользователя
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_RemoveActiveSessionServerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_RemoveActiveSessionServerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_RemoveActiveSessionResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func removeActiveSessionServer<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_RemoveActiveSessionServerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_RemoveActiveSessionServerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_RemoveActiveSessionResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_RemoveActiveSessionResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "CreateSessionForUserServer" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Создать сессию (refresh + access) для пользователя из другого сервиса (например FastAuth).
+        /// > Регистрирует устройство в Users, отправляет уведомление о входе.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_CreateSessionForUserServerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_CreateSessionForUserServerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_CreateSessionForUserServerResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func createSessionForUserServer<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_CreateSessionForUserServerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_CreateSessionForUserServerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_CreateSessionForUserServerResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_CreateSessionForUserServerResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+    }
+
+    /// Generated client for the "barkfluff.identity.IdentityServerApi" service.
+    ///
+    /// The ``Client`` provides an implementation of ``ClientProtocol`` which wraps
+    /// a `GRPCCore.GRPCCClient`. The underlying `GRPCClient` provides the long-lived
+    /// means of communication with the remote peer.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Серверное API для админ-панели
+    public struct Client<Transport>: ClientProtocol where Transport: GRPCCore.ClientTransport {
+        private let client: GRPCCore.GRPCClient<Transport>
+
+        /// Creates a new client wrapping the provided `GRPCCore.GRPCClient`.
+        ///
+        /// - Parameters:
+        ///   - client: A `GRPCCore.GRPCClient` providing a communication channel to the service.
+        public init(wrapping client: GRPCCore.GRPCClient<Transport>) {
+            self.client = client
+        }
+
+        /// Call the "ListOtpVerificationServer" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Получить статус 2FA пользователя
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_ListOtpVerificationServerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_ListOtpVerificationServerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_ListOtpVerificationResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func listOtpVerificationServer<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_ListOtpVerificationServerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_ListOtpVerificationServerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_ListOtpVerificationResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_ListOtpVerificationResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Identity_IdentityServerApi.Method.ListOtpVerificationServer.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "DisableOtpVerificationServer" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Принудительно отключить 2FA пользователя
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_DisableOtpVerificationServerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_DisableOtpVerificationServerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_DisableOtpVerificationResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func disableOtpVerificationServer<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_DisableOtpVerificationServerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_DisableOtpVerificationServerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_DisableOtpVerificationResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_DisableOtpVerificationResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Identity_IdentityServerApi.Method.DisableOtpVerificationServer.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "GetActiveSessionsServer" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Получить активные сессии пользователя
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_GetActiveSessionsServerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_GetActiveSessionsServerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_GetActiveSessionsResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func getActiveSessionsServer<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_GetActiveSessionsServerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_GetActiveSessionsServerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_GetActiveSessionsResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_GetActiveSessionsResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Identity_IdentityServerApi.Method.GetActiveSessionsServer.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "RemoveActiveSessionServer" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Удалить активную сессию пользователя
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_RemoveActiveSessionServerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_RemoveActiveSessionServerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_RemoveActiveSessionResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func removeActiveSessionServer<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_RemoveActiveSessionServerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_RemoveActiveSessionServerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_RemoveActiveSessionResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_RemoveActiveSessionResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Identity_IdentityServerApi.Method.RemoveActiveSessionServer.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "CreateSessionForUserServer" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Создать сессию (refresh + access) для пользователя из другого сервиса (например FastAuth).
+        /// > Регистрирует устройство в Users, отправляет уведомление о входе.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Identity_CreateSessionForUserServerRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Identity_CreateSessionForUserServerRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Identity_CreateSessionForUserServerResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func createSessionForUserServer<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Identity_CreateSessionForUserServerRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Identity_CreateSessionForUserServerRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Identity_CreateSessionForUserServerResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_CreateSessionForUserServerResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Identity_IdentityServerApi.Method.CreateSessionForUserServer.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+    }
+}
+
+// Helpers providing default arguments to 'ClientProtocol' methods.
+@available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
+extension Barkfluff_Identity_IdentityServerApi.ClientProtocol {
+    /// Call the "ListOtpVerificationServer" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Получить статус 2FA пользователя
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Identity_ListOtpVerificationServerRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func listOtpVerificationServer<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Identity_ListOtpVerificationServerRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_ListOtpVerificationResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.listOtpVerificationServer(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_ListOtpVerificationServerRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_ListOtpVerificationResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "DisableOtpVerificationServer" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Принудительно отключить 2FA пользователя
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Identity_DisableOtpVerificationServerRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func disableOtpVerificationServer<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Identity_DisableOtpVerificationServerRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_DisableOtpVerificationResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.disableOtpVerificationServer(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_DisableOtpVerificationServerRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_DisableOtpVerificationResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetActiveSessionsServer" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Получить активные сессии пользователя
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Identity_GetActiveSessionsServerRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func getActiveSessionsServer<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Identity_GetActiveSessionsServerRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_GetActiveSessionsResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.getActiveSessionsServer(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_GetActiveSessionsServerRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_GetActiveSessionsResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "RemoveActiveSessionServer" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Удалить активную сессию пользователя
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Identity_RemoveActiveSessionServerRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func removeActiveSessionServer<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Identity_RemoveActiveSessionServerRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_RemoveActiveSessionResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.removeActiveSessionServer(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_RemoveActiveSessionServerRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_RemoveActiveSessionResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "CreateSessionForUserServer" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Создать сессию (refresh + access) для пользователя из другого сервиса (например FastAuth).
+    /// > Регистрирует устройство в Users, отправляет уведомление о входе.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Identity_CreateSessionForUserServerRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func createSessionForUserServer<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Identity_CreateSessionForUserServerRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_CreateSessionForUserServerResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.createSessionForUserServer(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Identity_CreateSessionForUserServerRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Identity_CreateSessionForUserServerResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+}
+
+// Helpers providing sugared APIs for 'ClientProtocol' methods.
+@available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
+extension Barkfluff_Identity_IdentityServerApi.ClientProtocol {
+    /// Call the "ListOtpVerificationServer" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Получить статус 2FA пользователя
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func listOtpVerificationServer<Result>(
+        _ message: Barkfluff_Identity_ListOtpVerificationServerRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_ListOtpVerificationResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Identity_ListOtpVerificationServerRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.listOtpVerificationServer(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "DisableOtpVerificationServer" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Принудительно отключить 2FA пользователя
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func disableOtpVerificationServer<Result>(
+        _ message: Barkfluff_Identity_DisableOtpVerificationServerRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_DisableOtpVerificationResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Identity_DisableOtpVerificationServerRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.disableOtpVerificationServer(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetActiveSessionsServer" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Получить активные сессии пользователя
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func getActiveSessionsServer<Result>(
+        _ message: Barkfluff_Identity_GetActiveSessionsServerRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_GetActiveSessionsResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Identity_GetActiveSessionsServerRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.getActiveSessionsServer(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "RemoveActiveSessionServer" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Удалить активную сессию пользователя
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func removeActiveSessionServer<Result>(
+        _ message: Barkfluff_Identity_RemoveActiveSessionServerRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_RemoveActiveSessionResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Identity_RemoveActiveSessionServerRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.removeActiveSessionServer(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "CreateSessionForUserServer" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Создать сессию (refresh + access) для пользователя из другого сервиса (например FastAuth).
+    /// > Регистрирует устройство в Users, отправляет уведомление о входе.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func createSessionForUserServer<Result>(
+        _ message: Barkfluff_Identity_CreateSessionForUserServerRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Identity_CreateSessionForUserServerResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Identity_CreateSessionForUserServerRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.createSessionForUserServer(
             request: request,
             options: options,
             onResponse: handleResponse
