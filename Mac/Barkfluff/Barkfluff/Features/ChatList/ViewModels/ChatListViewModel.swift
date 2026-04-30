@@ -60,12 +60,26 @@ final class ChatListViewModel {
         errorMessage = nil
 
         do {
-            let result = try await chatService.listChats(offset: 0, size: PaginationHelper.defaultChatsPageSize)
+            // Загружаем первую страницу
+            var result = try await chatService.listChats(offset: 0, size: PaginationHelper.defaultChatsPageSize)
             allChats = result.items
             totalCount = result.totalCount
             applyFilter()
 
-            // Запускаем отслеживание онлайн-статусов для загруженных чатов
+            // Догружаем все оставшиеся страницы, чтобы клиентская сортировка
+            // по времени последнего сообщения охватывала весь список чатов
+            while result.hasMore {
+                let nextResult = try await chatService.listChats(
+                    offset: result.nextOffset,
+                    size: PaginationHelper.defaultChatsPageSize
+                )
+                allChats.append(contentsOf: nextResult.items)
+                totalCount = nextResult.totalCount
+                result = nextResult
+                applyFilter()
+            }
+
+            // Запускаем отслеживание онлайн-статусов для всех загруженных чатов
             await startOnlineStatusTracking()
         } catch {
             errorMessage = error.localizedDescription
@@ -225,9 +239,6 @@ final class ChatListViewModel {
             if event.message.senderID != currentUserID && !isChatActive(event.chatID) {
                 allChats[index].unreadCount += 1
             }
-            // Move to top
-            let chat = allChats.remove(at: index)
-            allChats.insert(chat, at: 0)
             applyFilter()
         } else {
             // Новый чат — добавляем отправителя в отслеживаемые
@@ -282,9 +293,6 @@ final class ChatListViewModel {
     func updateLastMessage(chatID: String, message: BFCore.Message) {
         if let index = allChats.firstIndex(where: { $0.id == chatID }) {
             allChats[index].lastMessage = message
-            // Переместить чат наверх
-            let chat = allChats.remove(at: index)
-            allChats.insert(chat, at: 0)
             applyFilter()
         }
     }
@@ -391,12 +399,13 @@ final class ChatListViewModel {
     // MARK: - Private
 
     private func applyFilter() {
-        if searchText.isEmpty {
-            chats = allChats
-        } else {
-            chats = allChats.filter { chat in
-                chat.title.localizedCaseInsensitiveContains(searchText)
-            }
+        let filtered = searchText.isEmpty
+            ? allChats
+            : allChats.filter { $0.title.localizedCaseInsensitiveContains(searchText) }
+        chats = filtered.sorted { lhs, rhs in
+            let lhsDate = lhs.lastMessage?.sentAt ?? .distantPast
+            let rhsDate = rhs.lastMessage?.sentAt ?? .distantPast
+            return lhsDate > rhsDate
         }
     }
 }

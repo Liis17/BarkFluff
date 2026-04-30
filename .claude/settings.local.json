@@ -57,7 +57,8 @@
       "Bash(protoc-gen-grpc-swift --help)",
       "Bash(git ls-remote *)",
       "Bash(brew info *)",
-      "Bash(xcodebuild -scheme Barkfluff -configuration Debug -destination 'platform=macOS' build)"
+      "Bash(xcodebuild -scheme Barkfluff -configuration Debug -destination 'platform=macOS' build)",
+      "Bash(xcodebuild -project Mac/Barkfluff/Barkfluff.xcodeproj -scheme Barkfluff -configuration Debug build)"
     ],
     "deny": [],
     "ask": []
