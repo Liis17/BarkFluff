@@ -1,5 +1,8 @@
 # BarkFluff.ClientStorage
 
+→ [[Backend/ClientStorage-ProjectMap]] — полная карта файлов проекта
+
+
 Автономный микросервис для хранения и раздачи клиентских дистрибутивов BarkFluff (Windows, Android, macOS, iOS).
 REST API на ASP.NET 9.0, файлы в S3/Minio, метаданные в SQLite.
 
@@ -57,7 +60,7 @@ Design-time factory: `Persistence/ClientStorageContextFactory.cs` (файл `cli
 - `Domain/` — `ClientFile`, `ClientType` (Windows/Kotlin/MacOS/iOS), `ReleaseChannel` (Release/Beta)
 - `Infrastructure/S3StorageService` — AWS SDK, стриминг из S3
 - `Infrastructure/LocalFileCache` — локальный дисковый кеш (`CACHE_DIR`, default `/app/cache`)
-- `Infrastructure/HashingReadStream` — SHA-256 за один проход при upload
+- `Infrastructure/HashingReadStream` — ~~класса не существует~~; SHA-256 вычисляется инлайн в контроллере через `IncrementalHash` (один проход до отправки в S3)
 - `Services/CacheWarmupService` — `IHostedService`, прогревает кеш при старте контейнера
 - `Middleware/TokenAuthMiddleware` — Bearer-токен только для `/set/*`
 - `Persistence/` — EF Core + SQLite

@@ -1,5 +1,7 @@
 # BarkFluff.Beacon
 
+> 📁 Подробная карта файлов: [[Backend/Beacon-ProjectMap]]
+
 Точка входа для клиентов BarkFluff. Порт: **7002**.
 Собирает адреса всех бизнес-сервисов из Configuration service и отдаёт клиентам единый `GetServerInfoResponse`. Также периодически (каждые 5 минут) регистрирует себя в Navigator.
 
@@ -32,8 +34,15 @@ CQRS через MediatR: `GetServerInfoCommand` → `GetServerInfoCommandHandler
 Загружается из Configuration service (`LoadConfiguration(ServiceId.Beacon)`):
 - `ServerProps` → `ServerPropsSettings` (Name, Description, PublicName, Location)
 - `ServerColor` → `ServerColorSettings` (Lite, Main, Hard — hex-цвета)
-- `NavigatorUrl` — адрес Navigator service
-- `ExternalEndpoint:Host` — внешний адрес через nginx
+- `NavigatorUrl` — адрес Navigator service (default: `http://localhost:7010`)
+- `ConfigurationServiceAddr` — адрес Configuration service (default: `http://localhost:7003`)
+- `ExternalEndpoint:Host` — внешний адрес через nginx (порт 443, TLS)
+
+## Метрики
+
+Инкрементируются через `MetricsCollector` (из `BarkFluff.GrpcServer`):
+- `server_info_requests` — каждый вызов `GetServerInfo`
+- `navigator_registrations` — каждая успешная регистрация в Navigator
 
 ## Proto
 
