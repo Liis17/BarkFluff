@@ -27,7 +27,9 @@ public static class UploadFileMapping
             FileUrl = publicBaseUrl is null
                 ? string.Empty
                 : FileUrlHelper.GenerateDownloadUrl(publicBaseUrl, file.Id),
-            PreviewFileId = file.PreviewId?.ToString() ?? string.Empty
+            PreviewFileId = file.PreviewId?.ToString() ?? string.Empty,
+            ImageWidth = file.ImageWidth ?? 0,
+            ImageHeight = file.ImageHeight ?? 0
         };
 
         info.Uploaders.AddRange(file.Uploaders);
