@@ -20,66 +20,6 @@ public enum Barkfluff_Fast_Auth_FastAuthApi: Sendable {
     public static let descriptor = GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.fast.auth.FastAuthApi")
     /// Namespace for method metadata.
     public enum Method: Sendable {
-        /// Namespace for "GenerateConnectDeviceToken" metadata.
-        public enum GenerateConnectDeviceToken: Sendable {
-            /// Request type for "GenerateConnectDeviceToken".
-            public typealias Input = Barkfluff_Fast_Auth_GenerateConnectDeviceTokenRequest
-            /// Response type for "GenerateConnectDeviceToken".
-            public typealias Output = Barkfluff_Fast_Auth_GenerateConnectDeviceTokenResponse
-            /// Descriptor for "GenerateConnectDeviceToken".
-            public static let descriptor = GRPCCore.MethodDescriptor(
-                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.fast.auth.FastAuthApi"),
-                method: "GenerateConnectDeviceToken"
-            )
-        }
-        /// Namespace for "ConnectDevice" metadata.
-        public enum ConnectDevice: Sendable {
-            /// Request type for "ConnectDevice".
-            public typealias Input = Barkfluff_Fast_Auth_ConnectDeviceRequest
-            /// Response type for "ConnectDevice".
-            public typealias Output = Barkfluff_Fast_Auth_ConnectDeviceResponse
-            /// Descriptor for "ConnectDevice".
-            public static let descriptor = GRPCCore.MethodDescriptor(
-                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.fast.auth.FastAuthApi"),
-                method: "ConnectDevice"
-            )
-        }
-        /// Namespace for "AcceptConnectDevice" metadata.
-        public enum AcceptConnectDevice: Sendable {
-            /// Request type for "AcceptConnectDevice".
-            public typealias Input = Barkfluff_Fast_Auth_AcceptConnectDeviceRequest
-            /// Response type for "AcceptConnectDevice".
-            public typealias Output = Barkfluff_Fast_Auth_AcceptConnectDeviceResponse
-            /// Descriptor for "AcceptConnectDevice".
-            public static let descriptor = GRPCCore.MethodDescriptor(
-                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.fast.auth.FastAuthApi"),
-                method: "AcceptConnectDevice"
-            )
-        }
-        /// Namespace for "SubscribeConnectDeviceStatus" metadata.
-        public enum SubscribeConnectDeviceStatus: Sendable {
-            /// Request type for "SubscribeConnectDeviceStatus".
-            public typealias Input = Barkfluff_Fast_Auth_SubscribeConnectDeviceStatusRequest
-            /// Response type for "SubscribeConnectDeviceStatus".
-            public typealias Output = Barkfluff_Fast_Auth_ConnectDeviceStatus
-            /// Descriptor for "SubscribeConnectDeviceStatus".
-            public static let descriptor = GRPCCore.MethodDescriptor(
-                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.fast.auth.FastAuthApi"),
-                method: "SubscribeConnectDeviceStatus"
-            )
-        }
-        /// Namespace for "ListConnectedDevices" metadata.
-        public enum ListConnectedDevices: Sendable {
-            /// Request type for "ListConnectedDevices".
-            public typealias Input = Barkfluff_Fast_Auth_ListConnectedDevicesRequest
-            /// Response type for "ListConnectedDevices".
-            public typealias Output = Barkfluff_Fast_Auth_ListConnectedDevicesResponse
-            /// Descriptor for "ListConnectedDevices".
-            public static let descriptor = GRPCCore.MethodDescriptor(
-                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.fast.auth.FastAuthApi"),
-                method: "ListConnectedDevices"
-            )
-        }
         /// Namespace for "GenerateFastAuthToken" metadata.
         public enum GenerateFastAuthToken: Sendable {
             /// Request type for "GenerateFastAuthToken".
@@ -89,31 +29,8 @@ public enum Barkfluff_Fast_Auth_FastAuthApi: Sendable {
             /// Descriptor for "GenerateFastAuthToken".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.fast.auth.FastAuthApi"),
-                method: "GenerateFastAuthToken"
-            )
-        }
-        /// Namespace for "AcceptFastAuth" metadata.
-        public enum AcceptFastAuth: Sendable {
-            /// Request type for "AcceptFastAuth".
-            public typealias Input = Barkfluff_Fast_Auth_AcceptFastAuthRequest
-            /// Response type for "AcceptFastAuth".
-            public typealias Output = Barkfluff_Fast_Auth_AcceptFastAuthResponse
-            /// Descriptor for "AcceptFastAuth".
-            public static let descriptor = GRPCCore.MethodDescriptor(
-                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.fast.auth.FastAuthApi"),
-                method: "AcceptFastAuth"
-            )
-        }
-        /// Namespace for "SubscribeFastAuthRequests" metadata.
-        public enum SubscribeFastAuthRequests: Sendable {
-            /// Request type for "SubscribeFastAuthRequests".
-            public typealias Input = Barkfluff_Fast_Auth_SubscribeFastAuthRequestsRequest
-            /// Response type for "SubscribeFastAuthRequests".
-            public typealias Output = Barkfluff_Fast_Auth_FastAuthRequest
-            /// Descriptor for "SubscribeFastAuthRequests".
-            public static let descriptor = GRPCCore.MethodDescriptor(
-                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.fast.auth.FastAuthApi"),
-                method: "SubscribeFastAuthRequests"
+                method: "GenerateFastAuthToken",
+                type: .unary
             )
         }
         /// Namespace for "SubscribeFastAuthResult" metadata.
@@ -125,59 +42,56 @@ public enum Barkfluff_Fast_Auth_FastAuthApi: Sendable {
             /// Descriptor for "SubscribeFastAuthResult".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.fast.auth.FastAuthApi"),
-                method: "SubscribeFastAuthResult"
+                method: "SubscribeFastAuthResult",
+                type: .serverStreaming
             )
         }
-        /// Namespace for "CheckFastAuth" metadata.
-        public enum CheckFastAuth: Sendable {
-            /// Request type for "CheckFastAuth".
-            public typealias Input = Barkfluff_Fast_Auth_CheckFastAuthRequest
-            /// Response type for "CheckFastAuth".
-            public typealias Output = Barkfluff_Fast_Auth_CheckFastAuthResponse
-            /// Descriptor for "CheckFastAuth".
+        /// Namespace for "ScanFastAuth" metadata.
+        public enum ScanFastAuth: Sendable {
+            /// Request type for "ScanFastAuth".
+            public typealias Input = Barkfluff_Fast_Auth_ScanFastAuthRequest
+            /// Response type for "ScanFastAuth".
+            public typealias Output = Barkfluff_Fast_Auth_ScanFastAuthResponse
+            /// Descriptor for "ScanFastAuth".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.fast.auth.FastAuthApi"),
-                method: "CheckFastAuth"
+                method: "ScanFastAuth",
+                type: .unary
             )
         }
-        /// Namespace for "CreateFastAuth" metadata.
-        public enum CreateFastAuth: Sendable {
-            /// Request type for "CreateFastAuth".
-            public typealias Input = Barkfluff_Fast_Auth_CreateFastAuthRequest
-            /// Response type for "CreateFastAuth".
-            public typealias Output = Barkfluff_Fast_Auth_CreateFastAuthResponse
-            /// Descriptor for "CreateFastAuth".
+        /// Namespace for "AcceptFastAuth" metadata.
+        public enum AcceptFastAuth: Sendable {
+            /// Request type for "AcceptFastAuth".
+            public typealias Input = Barkfluff_Fast_Auth_AcceptFastAuthRequest
+            /// Response type for "AcceptFastAuth".
+            public typealias Output = Barkfluff_Fast_Auth_AcceptFastAuthResponse
+            /// Descriptor for "AcceptFastAuth".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.fast.auth.FastAuthApi"),
-                method: "CreateFastAuth"
+                method: "AcceptFastAuth",
+                type: .unary
             )
         }
-        /// Namespace for "RemoveConnectedDevice" metadata.
-        public enum RemoveConnectedDevice: Sendable {
-            /// Request type for "RemoveConnectedDevice".
-            public typealias Input = Barkfluff_Fast_Auth_RemoveConnectedDeviceRequest
-            /// Response type for "RemoveConnectedDevice".
-            public typealias Output = Barkfluff_Fast_Auth_RemoveConnectedDeviceResponse
-            /// Descriptor for "RemoveConnectedDevice".
+        /// Namespace for "RejectFastAuth" metadata.
+        public enum RejectFastAuth: Sendable {
+            /// Request type for "RejectFastAuth".
+            public typealias Input = Barkfluff_Fast_Auth_RejectFastAuthRequest
+            /// Response type for "RejectFastAuth".
+            public typealias Output = Barkfluff_Fast_Auth_RejectFastAuthResponse
+            /// Descriptor for "RejectFastAuth".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.fast.auth.FastAuthApi"),
-                method: "RemoveConnectedDevice"
+                method: "RejectFastAuth",
+                type: .unary
             )
         }
         /// Descriptors for all methods in the "barkfluff.fast.auth.FastAuthApi" service.
         public static let descriptors: [GRPCCore.MethodDescriptor] = [
-            GenerateConnectDeviceToken.descriptor,
-            ConnectDevice.descriptor,
-            AcceptConnectDevice.descriptor,
-            SubscribeConnectDeviceStatus.descriptor,
-            ListConnectedDevices.descriptor,
             GenerateFastAuthToken.descriptor,
-            AcceptFastAuth.descriptor,
-            SubscribeFastAuthRequests.descriptor,
             SubscribeFastAuthResult.descriptor,
-            CheckFastAuth.descriptor,
-            CreateFastAuth.descriptor,
-            RemoveConnectedDevice.descriptor
+            ScanFastAuth.descriptor,
+            AcceptFastAuth.descriptor,
+            RejectFastAuth.descriptor
         ]
     }
 }
@@ -197,131 +111,13 @@ extension Barkfluff_Fast_Auth_FastAuthApi {
     /// You don't need to implement this protocol directly, use the generated
     /// implementation, ``Client``.
     public protocol ClientProtocol: Sendable {
-        /// Call the "GenerateConnectDeviceToken" method.
-        ///
-        /// > Source IDL Documentation:
-        /// >
-        /// > Сгенерировать токен для подключения устройства 
-        /// > Authorization: xAuth access токен
-        ///
-        /// - Parameters:
-        ///   - request: A request containing a single `Barkfluff_Fast_Auth_GenerateConnectDeviceTokenRequest` message.
-        ///   - serializer: A serializer for `Barkfluff_Fast_Auth_GenerateConnectDeviceTokenRequest` messages.
-        ///   - deserializer: A deserializer for `Barkfluff_Fast_Auth_GenerateConnectDeviceTokenResponse` messages.
-        ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
-        /// - Returns: The result of `handleResponse`.
-        func generateConnectDeviceToken<Result>(
-            request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_GenerateConnectDeviceTokenRequest>,
-            serializer: some GRPCCore.MessageSerializer<Barkfluff_Fast_Auth_GenerateConnectDeviceTokenRequest>,
-            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Fast_Auth_GenerateConnectDeviceTokenResponse>,
-            options: GRPCCore.CallOptions,
-            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_GenerateConnectDeviceTokenResponse>) async throws -> Result
-        ) async throws -> Result where Result: Sendable
-
-        /// Call the "ConnectDevice" method.
-        ///
-        /// > Source IDL Documentation:
-        /// >
-        /// > Подключить устройство для быстрого входа 
-        /// > Authorization: fastAuth токен
-        ///
-        /// - Parameters:
-        ///   - request: A request containing a single `Barkfluff_Fast_Auth_ConnectDeviceRequest` message.
-        ///   - serializer: A serializer for `Barkfluff_Fast_Auth_ConnectDeviceRequest` messages.
-        ///   - deserializer: A deserializer for `Barkfluff_Fast_Auth_ConnectDeviceResponse` messages.
-        ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
-        /// - Returns: The result of `handleResponse`.
-        func connectDevice<Result>(
-            request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_ConnectDeviceRequest>,
-            serializer: some GRPCCore.MessageSerializer<Barkfluff_Fast_Auth_ConnectDeviceRequest>,
-            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Fast_Auth_ConnectDeviceResponse>,
-            options: GRPCCore.CallOptions,
-            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_ConnectDeviceResponse>) async throws -> Result
-        ) async throws -> Result where Result: Sendable
-
-        /// Call the "AcceptConnectDevice" method.
-        ///
-        /// > Source IDL Documentation:
-        /// >
-        /// > Подтвердить подключение устройства
-        /// > Authorization: xAuth access токен
-        ///
-        /// - Parameters:
-        ///   - request: A request containing a single `Barkfluff_Fast_Auth_AcceptConnectDeviceRequest` message.
-        ///   - serializer: A serializer for `Barkfluff_Fast_Auth_AcceptConnectDeviceRequest` messages.
-        ///   - deserializer: A deserializer for `Barkfluff_Fast_Auth_AcceptConnectDeviceResponse` messages.
-        ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
-        /// - Returns: The result of `handleResponse`.
-        func acceptConnectDevice<Result>(
-            request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_AcceptConnectDeviceRequest>,
-            serializer: some GRPCCore.MessageSerializer<Barkfluff_Fast_Auth_AcceptConnectDeviceRequest>,
-            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Fast_Auth_AcceptConnectDeviceResponse>,
-            options: GRPCCore.CallOptions,
-            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_AcceptConnectDeviceResponse>) async throws -> Result
-        ) async throws -> Result where Result: Sendable
-
-        /// Call the "SubscribeConnectDeviceStatus" method.
-        ///
-        /// > Source IDL Documentation:
-        /// >
-        /// > Подписаться на измение статуса подключенного устройства
-        /// > Authorization: fastAuth токен
-        ///
-        /// - Parameters:
-        ///   - request: A request containing a single `Barkfluff_Fast_Auth_SubscribeConnectDeviceStatusRequest` message.
-        ///   - serializer: A serializer for `Barkfluff_Fast_Auth_SubscribeConnectDeviceStatusRequest` messages.
-        ///   - deserializer: A deserializer for `Barkfluff_Fast_Auth_ConnectDeviceStatus` messages.
-        ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
-        /// - Returns: The result of `handleResponse`.
-        func subscribeConnectDeviceStatus<Result>(
-            request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_SubscribeConnectDeviceStatusRequest>,
-            serializer: some GRPCCore.MessageSerializer<Barkfluff_Fast_Auth_SubscribeConnectDeviceStatusRequest>,
-            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Fast_Auth_ConnectDeviceStatus>,
-            options: GRPCCore.CallOptions,
-            onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Barkfluff_Fast_Auth_ConnectDeviceStatus>) async throws -> Result
-        ) async throws -> Result where Result: Sendable
-
-        /// Call the "ListConnectedDevices" method.
-        ///
-        /// > Source IDL Documentation:
-        /// >
-        /// > Получить список устройств подключенных к аккаунту
-        /// > Authorization: xAuth access токен
-        ///
-        /// - Parameters:
-        ///   - request: A request containing a single `Barkfluff_Fast_Auth_ListConnectedDevicesRequest` message.
-        ///   - serializer: A serializer for `Barkfluff_Fast_Auth_ListConnectedDevicesRequest` messages.
-        ///   - deserializer: A deserializer for `Barkfluff_Fast_Auth_ListConnectedDevicesResponse` messages.
-        ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
-        /// - Returns: The result of `handleResponse`.
-        func listConnectedDevices<Result>(
-            request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_ListConnectedDevicesRequest>,
-            serializer: some GRPCCore.MessageSerializer<Barkfluff_Fast_Auth_ListConnectedDevicesRequest>,
-            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Fast_Auth_ListConnectedDevicesResponse>,
-            options: GRPCCore.CallOptions,
-            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_ListConnectedDevicesResponse>) async throws -> Result
-        ) async throws -> Result where Result: Sendable
-
         /// Call the "GenerateFastAuthToken" method.
         ///
         /// > Source IDL Documentation:
         /// >
-        /// > Сгенерировать токен для быстрого входа
+        /// > Шаг 1. Анонимный клиент запрашивает QR-токен.
+        /// > Метаданные нового устройства сервер забирает из gRPC headers
+        /// > (x-device-name, x-os-name, x-app-name, x-app-version, x-ip-address).
         /// > Authorization: без авторизации
         ///
         /// - Parameters:
@@ -341,59 +137,13 @@ extension Barkfluff_Fast_Auth_FastAuthApi {
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_GenerateFastAuthTokenResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
-        /// Call the "AcceptFastAuth" method.
-        ///
-        /// > Source IDL Documentation:
-        /// >
-        /// > Подтвердить быстрый вход
-        /// > Authorization: fastAuth токен
-        ///
-        /// - Parameters:
-        ///   - request: A request containing a single `Barkfluff_Fast_Auth_AcceptFastAuthRequest` message.
-        ///   - serializer: A serializer for `Barkfluff_Fast_Auth_AcceptFastAuthRequest` messages.
-        ///   - deserializer: A deserializer for `Barkfluff_Fast_Auth_AcceptFastAuthResponse` messages.
-        ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
-        /// - Returns: The result of `handleResponse`.
-        func acceptFastAuth<Result>(
-            request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_AcceptFastAuthRequest>,
-            serializer: some GRPCCore.MessageSerializer<Barkfluff_Fast_Auth_AcceptFastAuthRequest>,
-            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Fast_Auth_AcceptFastAuthResponse>,
-            options: GRPCCore.CallOptions,
-            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_AcceptFastAuthResponse>) async throws -> Result
-        ) async throws -> Result where Result: Sendable
-
-        /// Call the "SubscribeFastAuthRequests" method.
-        ///
-        /// > Source IDL Documentation:
-        /// >
-        /// > Подписаться на запросы быстрого входа
-        /// > Authorization: fastAuth токен
-        ///
-        /// - Parameters:
-        ///   - request: A request containing a single `Barkfluff_Fast_Auth_SubscribeFastAuthRequestsRequest` message.
-        ///   - serializer: A serializer for `Barkfluff_Fast_Auth_SubscribeFastAuthRequestsRequest` messages.
-        ///   - deserializer: A deserializer for `Barkfluff_Fast_Auth_FastAuthRequest` messages.
-        ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
-        /// - Returns: The result of `handleResponse`.
-        func subscribeFastAuthRequests<Result>(
-            request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_SubscribeFastAuthRequestsRequest>,
-            serializer: some GRPCCore.MessageSerializer<Barkfluff_Fast_Auth_SubscribeFastAuthRequestsRequest>,
-            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Fast_Auth_FastAuthRequest>,
-            options: GRPCCore.CallOptions,
-            onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Barkfluff_Fast_Auth_FastAuthRequest>) async throws -> Result
-        ) async throws -> Result where Result: Sendable
-
         /// Call the "SubscribeFastAuthResult" method.
         ///
         /// > Source IDL Documentation:
         /// >
-        /// > Подписаться на результат быстрой авторизации
+        /// > Шаг 2. Анонимный клиент подписывается на real-time статус.
+        /// > Стрим живёт до финального статуса (ACCEPTED / REJECTED / EXPIRED).
+        /// > На ACCEPTED отправляются access_token и refresh_token.
         /// > Authorization: без авторизации
         ///
         /// - Parameters:
@@ -413,76 +163,77 @@ extension Barkfluff_Fast_Auth_FastAuthApi {
             onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Barkfluff_Fast_Auth_FastAuthResult>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
-        /// Call the "CheckFastAuth" method.
+        /// Call the "ScanFastAuth" method.
         ///
         /// > Source IDL Documentation:
         /// >
-        /// > Проверить, есть ли возможность быстрого входа
-        /// > Authorization: без авторизации
+        /// > Шаг 3. Авторизованный мобильный клиент сканирует QR.
+        /// > В ответе — метаданные нового устройства + одноразовый confirmation_code (GUID).
+        /// > Authorization: User token
         ///
         /// - Parameters:
-        ///   - request: A request containing a single `Barkfluff_Fast_Auth_CheckFastAuthRequest` message.
-        ///   - serializer: A serializer for `Barkfluff_Fast_Auth_CheckFastAuthRequest` messages.
-        ///   - deserializer: A deserializer for `Barkfluff_Fast_Auth_CheckFastAuthResponse` messages.
+        ///   - request: A request containing a single `Barkfluff_Fast_Auth_ScanFastAuthRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Fast_Auth_ScanFastAuthRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Fast_Auth_ScanFastAuthResponse` messages.
         ///   - options: Options to apply to this RPC.
         ///   - handleResponse: A closure which handles the response, the result of which is
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        func checkFastAuth<Result>(
-            request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_CheckFastAuthRequest>,
-            serializer: some GRPCCore.MessageSerializer<Barkfluff_Fast_Auth_CheckFastAuthRequest>,
-            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Fast_Auth_CheckFastAuthResponse>,
+        func scanFastAuth<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_ScanFastAuthRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Fast_Auth_ScanFastAuthRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Fast_Auth_ScanFastAuthResponse>,
             options: GRPCCore.CallOptions,
-            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_CheckFastAuthResponse>) async throws -> Result
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_ScanFastAuthResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
-        /// Call the "CreateFastAuth" method.
+        /// Call the "AcceptFastAuth" method.
         ///
         /// > Source IDL Documentation:
         /// >
-        /// > Создать запрос на быстрый вход по логину
-        /// > Authorization: без авторизации
+        /// > Шаг 4a. Подтвердить вход. Передаются fast_auth_id и confirmation_code из ScanFastAuth.
+        /// > Authorization: User token
         ///
         /// - Parameters:
-        ///   - request: A request containing a single `Barkfluff_Fast_Auth_CreateFastAuthRequest` message.
-        ///   - serializer: A serializer for `Barkfluff_Fast_Auth_CreateFastAuthRequest` messages.
-        ///   - deserializer: A deserializer for `Barkfluff_Fast_Auth_CreateFastAuthResponse` messages.
+        ///   - request: A request containing a single `Barkfluff_Fast_Auth_AcceptFastAuthRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Fast_Auth_AcceptFastAuthRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Fast_Auth_AcceptFastAuthResponse` messages.
         ///   - options: Options to apply to this RPC.
         ///   - handleResponse: A closure which handles the response, the result of which is
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        func createFastAuth<Result>(
-            request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_CreateFastAuthRequest>,
-            serializer: some GRPCCore.MessageSerializer<Barkfluff_Fast_Auth_CreateFastAuthRequest>,
-            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Fast_Auth_CreateFastAuthResponse>,
+        func acceptFastAuth<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_AcceptFastAuthRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Fast_Auth_AcceptFastAuthRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Fast_Auth_AcceptFastAuthResponse>,
             options: GRPCCore.CallOptions,
-            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_CreateFastAuthResponse>) async throws -> Result
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_AcceptFastAuthResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
-        /// Call the "RemoveConnectedDevice" method.
+        /// Call the "RejectFastAuth" method.
         ///
         /// > Source IDL Documentation:
         /// >
-        /// > Удалить подключенное устройство
-        /// > Authorization: xAuth access токен
+        /// > Шаг 4b. Отклонить вход. Закрывает стрим со статусом REJECTED.
+        /// > Authorization: User token
         ///
         /// - Parameters:
-        ///   - request: A request containing a single `Barkfluff_Fast_Auth_RemoveConnectedDeviceRequest` message.
-        ///   - serializer: A serializer for `Barkfluff_Fast_Auth_RemoveConnectedDeviceRequest` messages.
-        ///   - deserializer: A deserializer for `Barkfluff_Fast_Auth_RemoveConnectedDeviceResponse` messages.
+        ///   - request: A request containing a single `Barkfluff_Fast_Auth_RejectFastAuthRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Fast_Auth_RejectFastAuthRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Fast_Auth_RejectFastAuthResponse` messages.
         ///   - options: Options to apply to this RPC.
         ///   - handleResponse: A closure which handles the response, the result of which is
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        func removeConnectedDevice<Result>(
-            request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_RemoveConnectedDeviceRequest>,
-            serializer: some GRPCCore.MessageSerializer<Barkfluff_Fast_Auth_RemoveConnectedDeviceRequest>,
-            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Fast_Auth_RemoveConnectedDeviceResponse>,
+        func rejectFastAuth<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_RejectFastAuthRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Fast_Auth_RejectFastAuthRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Fast_Auth_RejectFastAuthResponse>,
             options: GRPCCore.CallOptions,
-            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_RemoveConnectedDeviceResponse>) async throws -> Result
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_RejectFastAuthResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
     }
 
@@ -502,184 +253,13 @@ extension Barkfluff_Fast_Auth_FastAuthApi {
             self.client = client
         }
 
-        /// Call the "GenerateConnectDeviceToken" method.
-        ///
-        /// > Source IDL Documentation:
-        /// >
-        /// > Сгенерировать токен для подключения устройства 
-        /// > Authorization: xAuth access токен
-        ///
-        /// - Parameters:
-        ///   - request: A request containing a single `Barkfluff_Fast_Auth_GenerateConnectDeviceTokenRequest` message.
-        ///   - serializer: A serializer for `Barkfluff_Fast_Auth_GenerateConnectDeviceTokenRequest` messages.
-        ///   - deserializer: A deserializer for `Barkfluff_Fast_Auth_GenerateConnectDeviceTokenResponse` messages.
-        ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
-        /// - Returns: The result of `handleResponse`.
-        public func generateConnectDeviceToken<Result>(
-            request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_GenerateConnectDeviceTokenRequest>,
-            serializer: some GRPCCore.MessageSerializer<Barkfluff_Fast_Auth_GenerateConnectDeviceTokenRequest>,
-            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Fast_Auth_GenerateConnectDeviceTokenResponse>,
-            options: GRPCCore.CallOptions = .defaults,
-            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_GenerateConnectDeviceTokenResponse>) async throws -> Result = { response in
-                try response.message
-            }
-        ) async throws -> Result where Result: Sendable {
-            try await self.client.unary(
-                request: request,
-                descriptor: Barkfluff_Fast_Auth_FastAuthApi.Method.GenerateConnectDeviceToken.descriptor,
-                serializer: serializer,
-                deserializer: deserializer,
-                options: options,
-                onResponse: handleResponse
-            )
-        }
-
-        /// Call the "ConnectDevice" method.
-        ///
-        /// > Source IDL Documentation:
-        /// >
-        /// > Подключить устройство для быстрого входа 
-        /// > Authorization: fastAuth токен
-        ///
-        /// - Parameters:
-        ///   - request: A request containing a single `Barkfluff_Fast_Auth_ConnectDeviceRequest` message.
-        ///   - serializer: A serializer for `Barkfluff_Fast_Auth_ConnectDeviceRequest` messages.
-        ///   - deserializer: A deserializer for `Barkfluff_Fast_Auth_ConnectDeviceResponse` messages.
-        ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
-        /// - Returns: The result of `handleResponse`.
-        public func connectDevice<Result>(
-            request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_ConnectDeviceRequest>,
-            serializer: some GRPCCore.MessageSerializer<Barkfluff_Fast_Auth_ConnectDeviceRequest>,
-            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Fast_Auth_ConnectDeviceResponse>,
-            options: GRPCCore.CallOptions = .defaults,
-            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_ConnectDeviceResponse>) async throws -> Result = { response in
-                try response.message
-            }
-        ) async throws -> Result where Result: Sendable {
-            try await self.client.unary(
-                request: request,
-                descriptor: Barkfluff_Fast_Auth_FastAuthApi.Method.ConnectDevice.descriptor,
-                serializer: serializer,
-                deserializer: deserializer,
-                options: options,
-                onResponse: handleResponse
-            )
-        }
-
-        /// Call the "AcceptConnectDevice" method.
-        ///
-        /// > Source IDL Documentation:
-        /// >
-        /// > Подтвердить подключение устройства
-        /// > Authorization: xAuth access токен
-        ///
-        /// - Parameters:
-        ///   - request: A request containing a single `Barkfluff_Fast_Auth_AcceptConnectDeviceRequest` message.
-        ///   - serializer: A serializer for `Barkfluff_Fast_Auth_AcceptConnectDeviceRequest` messages.
-        ///   - deserializer: A deserializer for `Barkfluff_Fast_Auth_AcceptConnectDeviceResponse` messages.
-        ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
-        /// - Returns: The result of `handleResponse`.
-        public func acceptConnectDevice<Result>(
-            request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_AcceptConnectDeviceRequest>,
-            serializer: some GRPCCore.MessageSerializer<Barkfluff_Fast_Auth_AcceptConnectDeviceRequest>,
-            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Fast_Auth_AcceptConnectDeviceResponse>,
-            options: GRPCCore.CallOptions = .defaults,
-            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_AcceptConnectDeviceResponse>) async throws -> Result = { response in
-                try response.message
-            }
-        ) async throws -> Result where Result: Sendable {
-            try await self.client.unary(
-                request: request,
-                descriptor: Barkfluff_Fast_Auth_FastAuthApi.Method.AcceptConnectDevice.descriptor,
-                serializer: serializer,
-                deserializer: deserializer,
-                options: options,
-                onResponse: handleResponse
-            )
-        }
-
-        /// Call the "SubscribeConnectDeviceStatus" method.
-        ///
-        /// > Source IDL Documentation:
-        /// >
-        /// > Подписаться на измение статуса подключенного устройства
-        /// > Authorization: fastAuth токен
-        ///
-        /// - Parameters:
-        ///   - request: A request containing a single `Barkfluff_Fast_Auth_SubscribeConnectDeviceStatusRequest` message.
-        ///   - serializer: A serializer for `Barkfluff_Fast_Auth_SubscribeConnectDeviceStatusRequest` messages.
-        ///   - deserializer: A deserializer for `Barkfluff_Fast_Auth_ConnectDeviceStatus` messages.
-        ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
-        /// - Returns: The result of `handleResponse`.
-        public func subscribeConnectDeviceStatus<Result>(
-            request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_SubscribeConnectDeviceStatusRequest>,
-            serializer: some GRPCCore.MessageSerializer<Barkfluff_Fast_Auth_SubscribeConnectDeviceStatusRequest>,
-            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Fast_Auth_ConnectDeviceStatus>,
-            options: GRPCCore.CallOptions = .defaults,
-            onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Barkfluff_Fast_Auth_ConnectDeviceStatus>) async throws -> Result
-        ) async throws -> Result where Result: Sendable {
-            try await self.client.serverStreaming(
-                request: request,
-                descriptor: Barkfluff_Fast_Auth_FastAuthApi.Method.SubscribeConnectDeviceStatus.descriptor,
-                serializer: serializer,
-                deserializer: deserializer,
-                options: options,
-                onResponse: handleResponse
-            )
-        }
-
-        /// Call the "ListConnectedDevices" method.
-        ///
-        /// > Source IDL Documentation:
-        /// >
-        /// > Получить список устройств подключенных к аккаунту
-        /// > Authorization: xAuth access токен
-        ///
-        /// - Parameters:
-        ///   - request: A request containing a single `Barkfluff_Fast_Auth_ListConnectedDevicesRequest` message.
-        ///   - serializer: A serializer for `Barkfluff_Fast_Auth_ListConnectedDevicesRequest` messages.
-        ///   - deserializer: A deserializer for `Barkfluff_Fast_Auth_ListConnectedDevicesResponse` messages.
-        ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
-        /// - Returns: The result of `handleResponse`.
-        public func listConnectedDevices<Result>(
-            request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_ListConnectedDevicesRequest>,
-            serializer: some GRPCCore.MessageSerializer<Barkfluff_Fast_Auth_ListConnectedDevicesRequest>,
-            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Fast_Auth_ListConnectedDevicesResponse>,
-            options: GRPCCore.CallOptions = .defaults,
-            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_ListConnectedDevicesResponse>) async throws -> Result = { response in
-                try response.message
-            }
-        ) async throws -> Result where Result: Sendable {
-            try await self.client.unary(
-                request: request,
-                descriptor: Barkfluff_Fast_Auth_FastAuthApi.Method.ListConnectedDevices.descriptor,
-                serializer: serializer,
-                deserializer: deserializer,
-                options: options,
-                onResponse: handleResponse
-            )
-        }
-
         /// Call the "GenerateFastAuthToken" method.
         ///
         /// > Source IDL Documentation:
         /// >
-        /// > Сгенерировать токен для быстрого входа
+        /// > Шаг 1. Анонимный клиент запрашивает QR-токен.
+        /// > Метаданные нового устройства сервер забирает из gRPC headers
+        /// > (x-device-name, x-os-name, x-app-name, x-app-version, x-ip-address).
         /// > Authorization: без авторизации
         ///
         /// - Parameters:
@@ -710,12 +290,83 @@ extension Barkfluff_Fast_Auth_FastAuthApi {
             )
         }
 
+        /// Call the "SubscribeFastAuthResult" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Шаг 2. Анонимный клиент подписывается на real-time статус.
+        /// > Стрим живёт до финального статуса (ACCEPTED / REJECTED / EXPIRED).
+        /// > На ACCEPTED отправляются access_token и refresh_token.
+        /// > Authorization: без авторизации
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Fast_Auth_SubscribeFastAuthResultRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Fast_Auth_SubscribeFastAuthResultRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Fast_Auth_FastAuthResult` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func subscribeFastAuthResult<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_SubscribeFastAuthResultRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Fast_Auth_SubscribeFastAuthResultRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Fast_Auth_FastAuthResult>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Barkfluff_Fast_Auth_FastAuthResult>) async throws -> Result
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.serverStreaming(
+                request: request,
+                descriptor: Barkfluff_Fast_Auth_FastAuthApi.Method.SubscribeFastAuthResult.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "ScanFastAuth" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Шаг 3. Авторизованный мобильный клиент сканирует QR.
+        /// > В ответе — метаданные нового устройства + одноразовый confirmation_code (GUID).
+        /// > Authorization: User token
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Fast_Auth_ScanFastAuthRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Fast_Auth_ScanFastAuthRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Fast_Auth_ScanFastAuthResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func scanFastAuth<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_ScanFastAuthRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Fast_Auth_ScanFastAuthRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Fast_Auth_ScanFastAuthResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_ScanFastAuthResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Fast_Auth_FastAuthApi.Method.ScanFastAuth.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
         /// Call the "AcceptFastAuth" method.
         ///
         /// > Source IDL Documentation:
         /// >
-        /// > Подтвердить быстрый вход
-        /// > Authorization: fastAuth токен
+        /// > Шаг 4a. Подтвердить вход. Передаются fast_auth_id и confirmation_code из ScanFastAuth.
+        /// > Authorization: User token
         ///
         /// - Parameters:
         ///   - request: A request containing a single `Barkfluff_Fast_Auth_AcceptFastAuthRequest` message.
@@ -745,170 +396,34 @@ extension Barkfluff_Fast_Auth_FastAuthApi {
             )
         }
 
-        /// Call the "SubscribeFastAuthRequests" method.
+        /// Call the "RejectFastAuth" method.
         ///
         /// > Source IDL Documentation:
         /// >
-        /// > Подписаться на запросы быстрого входа
-        /// > Authorization: fastAuth токен
+        /// > Шаг 4b. Отклонить вход. Закрывает стрим со статусом REJECTED.
+        /// > Authorization: User token
         ///
         /// - Parameters:
-        ///   - request: A request containing a single `Barkfluff_Fast_Auth_SubscribeFastAuthRequestsRequest` message.
-        ///   - serializer: A serializer for `Barkfluff_Fast_Auth_SubscribeFastAuthRequestsRequest` messages.
-        ///   - deserializer: A deserializer for `Barkfluff_Fast_Auth_FastAuthRequest` messages.
+        ///   - request: A request containing a single `Barkfluff_Fast_Auth_RejectFastAuthRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Fast_Auth_RejectFastAuthRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Fast_Auth_RejectFastAuthResponse` messages.
         ///   - options: Options to apply to this RPC.
         ///   - handleResponse: A closure which handles the response, the result of which is
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        public func subscribeFastAuthRequests<Result>(
-            request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_SubscribeFastAuthRequestsRequest>,
-            serializer: some GRPCCore.MessageSerializer<Barkfluff_Fast_Auth_SubscribeFastAuthRequestsRequest>,
-            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Fast_Auth_FastAuthRequest>,
+        public func rejectFastAuth<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_RejectFastAuthRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Fast_Auth_RejectFastAuthRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Fast_Auth_RejectFastAuthResponse>,
             options: GRPCCore.CallOptions = .defaults,
-            onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Barkfluff_Fast_Auth_FastAuthRequest>) async throws -> Result
-        ) async throws -> Result where Result: Sendable {
-            try await self.client.serverStreaming(
-                request: request,
-                descriptor: Barkfluff_Fast_Auth_FastAuthApi.Method.SubscribeFastAuthRequests.descriptor,
-                serializer: serializer,
-                deserializer: deserializer,
-                options: options,
-                onResponse: handleResponse
-            )
-        }
-
-        /// Call the "SubscribeFastAuthResult" method.
-        ///
-        /// > Source IDL Documentation:
-        /// >
-        /// > Подписаться на результат быстрой авторизации
-        /// > Authorization: без авторизации
-        ///
-        /// - Parameters:
-        ///   - request: A request containing a single `Barkfluff_Fast_Auth_SubscribeFastAuthResultRequest` message.
-        ///   - serializer: A serializer for `Barkfluff_Fast_Auth_SubscribeFastAuthResultRequest` messages.
-        ///   - deserializer: A deserializer for `Barkfluff_Fast_Auth_FastAuthResult` messages.
-        ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
-        /// - Returns: The result of `handleResponse`.
-        public func subscribeFastAuthResult<Result>(
-            request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_SubscribeFastAuthResultRequest>,
-            serializer: some GRPCCore.MessageSerializer<Barkfluff_Fast_Auth_SubscribeFastAuthResultRequest>,
-            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Fast_Auth_FastAuthResult>,
-            options: GRPCCore.CallOptions = .defaults,
-            onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Barkfluff_Fast_Auth_FastAuthResult>) async throws -> Result
-        ) async throws -> Result where Result: Sendable {
-            try await self.client.serverStreaming(
-                request: request,
-                descriptor: Barkfluff_Fast_Auth_FastAuthApi.Method.SubscribeFastAuthResult.descriptor,
-                serializer: serializer,
-                deserializer: deserializer,
-                options: options,
-                onResponse: handleResponse
-            )
-        }
-
-        /// Call the "CheckFastAuth" method.
-        ///
-        /// > Source IDL Documentation:
-        /// >
-        /// > Проверить, есть ли возможность быстрого входа
-        /// > Authorization: без авторизации
-        ///
-        /// - Parameters:
-        ///   - request: A request containing a single `Barkfluff_Fast_Auth_CheckFastAuthRequest` message.
-        ///   - serializer: A serializer for `Barkfluff_Fast_Auth_CheckFastAuthRequest` messages.
-        ///   - deserializer: A deserializer for `Barkfluff_Fast_Auth_CheckFastAuthResponse` messages.
-        ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
-        /// - Returns: The result of `handleResponse`.
-        public func checkFastAuth<Result>(
-            request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_CheckFastAuthRequest>,
-            serializer: some GRPCCore.MessageSerializer<Barkfluff_Fast_Auth_CheckFastAuthRequest>,
-            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Fast_Auth_CheckFastAuthResponse>,
-            options: GRPCCore.CallOptions = .defaults,
-            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_CheckFastAuthResponse>) async throws -> Result = { response in
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_RejectFastAuthResponse>) async throws -> Result = { response in
                 try response.message
             }
         ) async throws -> Result where Result: Sendable {
             try await self.client.unary(
                 request: request,
-                descriptor: Barkfluff_Fast_Auth_FastAuthApi.Method.CheckFastAuth.descriptor,
-                serializer: serializer,
-                deserializer: deserializer,
-                options: options,
-                onResponse: handleResponse
-            )
-        }
-
-        /// Call the "CreateFastAuth" method.
-        ///
-        /// > Source IDL Documentation:
-        /// >
-        /// > Создать запрос на быстрый вход по логину
-        /// > Authorization: без авторизации
-        ///
-        /// - Parameters:
-        ///   - request: A request containing a single `Barkfluff_Fast_Auth_CreateFastAuthRequest` message.
-        ///   - serializer: A serializer for `Barkfluff_Fast_Auth_CreateFastAuthRequest` messages.
-        ///   - deserializer: A deserializer for `Barkfluff_Fast_Auth_CreateFastAuthResponse` messages.
-        ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
-        /// - Returns: The result of `handleResponse`.
-        public func createFastAuth<Result>(
-            request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_CreateFastAuthRequest>,
-            serializer: some GRPCCore.MessageSerializer<Barkfluff_Fast_Auth_CreateFastAuthRequest>,
-            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Fast_Auth_CreateFastAuthResponse>,
-            options: GRPCCore.CallOptions = .defaults,
-            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_CreateFastAuthResponse>) async throws -> Result = { response in
-                try response.message
-            }
-        ) async throws -> Result where Result: Sendable {
-            try await self.client.unary(
-                request: request,
-                descriptor: Barkfluff_Fast_Auth_FastAuthApi.Method.CreateFastAuth.descriptor,
-                serializer: serializer,
-                deserializer: deserializer,
-                options: options,
-                onResponse: handleResponse
-            )
-        }
-
-        /// Call the "RemoveConnectedDevice" method.
-        ///
-        /// > Source IDL Documentation:
-        /// >
-        /// > Удалить подключенное устройство
-        /// > Authorization: xAuth access токен
-        ///
-        /// - Parameters:
-        ///   - request: A request containing a single `Barkfluff_Fast_Auth_RemoveConnectedDeviceRequest` message.
-        ///   - serializer: A serializer for `Barkfluff_Fast_Auth_RemoveConnectedDeviceRequest` messages.
-        ///   - deserializer: A deserializer for `Barkfluff_Fast_Auth_RemoveConnectedDeviceResponse` messages.
-        ///   - options: Options to apply to this RPC.
-        ///   - handleResponse: A closure which handles the response, the result of which is
-        ///       returned to the caller. Returning from the closure will cancel the RPC if it
-        ///       hasn't already finished.
-        /// - Returns: The result of `handleResponse`.
-        public func removeConnectedDevice<Result>(
-            request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_RemoveConnectedDeviceRequest>,
-            serializer: some GRPCCore.MessageSerializer<Barkfluff_Fast_Auth_RemoveConnectedDeviceRequest>,
-            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Fast_Auth_RemoveConnectedDeviceResponse>,
-            options: GRPCCore.CallOptions = .defaults,
-            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_RemoveConnectedDeviceResponse>) async throws -> Result = { response in
-                try response.message
-            }
-        ) async throws -> Result where Result: Sendable {
-            try await self.client.unary(
-                request: request,
-                descriptor: Barkfluff_Fast_Auth_FastAuthApi.Method.RemoveConnectedDevice.descriptor,
+                descriptor: Barkfluff_Fast_Auth_FastAuthApi.Method.RejectFastAuth.descriptor,
                 serializer: serializer,
                 deserializer: deserializer,
                 options: options,
@@ -921,159 +436,13 @@ extension Barkfluff_Fast_Auth_FastAuthApi {
 // Helpers providing default arguments to 'ClientProtocol' methods.
 @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
 extension Barkfluff_Fast_Auth_FastAuthApi.ClientProtocol {
-    /// Call the "GenerateConnectDeviceToken" method.
-    ///
-    /// > Source IDL Documentation:
-    /// >
-    /// > Сгенерировать токен для подключения устройства 
-    /// > Authorization: xAuth access токен
-    ///
-    /// - Parameters:
-    ///   - request: A request containing a single `Barkfluff_Fast_Auth_GenerateConnectDeviceTokenRequest` message.
-    ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
-    /// - Returns: The result of `handleResponse`.
-    public func generateConnectDeviceToken<Result>(
-        request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_GenerateConnectDeviceTokenRequest>,
-        options: GRPCCore.CallOptions = .defaults,
-        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_GenerateConnectDeviceTokenResponse>) async throws -> Result = { response in
-            try response.message
-        }
-    ) async throws -> Result where Result: Sendable {
-        try await self.generateConnectDeviceToken(
-            request: request,
-            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Fast_Auth_GenerateConnectDeviceTokenRequest>(),
-            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Fast_Auth_GenerateConnectDeviceTokenResponse>(),
-            options: options,
-            onResponse: handleResponse
-        )
-    }
-
-    /// Call the "ConnectDevice" method.
-    ///
-    /// > Source IDL Documentation:
-    /// >
-    /// > Подключить устройство для быстрого входа 
-    /// > Authorization: fastAuth токен
-    ///
-    /// - Parameters:
-    ///   - request: A request containing a single `Barkfluff_Fast_Auth_ConnectDeviceRequest` message.
-    ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
-    /// - Returns: The result of `handleResponse`.
-    public func connectDevice<Result>(
-        request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_ConnectDeviceRequest>,
-        options: GRPCCore.CallOptions = .defaults,
-        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_ConnectDeviceResponse>) async throws -> Result = { response in
-            try response.message
-        }
-    ) async throws -> Result where Result: Sendable {
-        try await self.connectDevice(
-            request: request,
-            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Fast_Auth_ConnectDeviceRequest>(),
-            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Fast_Auth_ConnectDeviceResponse>(),
-            options: options,
-            onResponse: handleResponse
-        )
-    }
-
-    /// Call the "AcceptConnectDevice" method.
-    ///
-    /// > Source IDL Documentation:
-    /// >
-    /// > Подтвердить подключение устройства
-    /// > Authorization: xAuth access токен
-    ///
-    /// - Parameters:
-    ///   - request: A request containing a single `Barkfluff_Fast_Auth_AcceptConnectDeviceRequest` message.
-    ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
-    /// - Returns: The result of `handleResponse`.
-    public func acceptConnectDevice<Result>(
-        request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_AcceptConnectDeviceRequest>,
-        options: GRPCCore.CallOptions = .defaults,
-        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_AcceptConnectDeviceResponse>) async throws -> Result = { response in
-            try response.message
-        }
-    ) async throws -> Result where Result: Sendable {
-        try await self.acceptConnectDevice(
-            request: request,
-            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Fast_Auth_AcceptConnectDeviceRequest>(),
-            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Fast_Auth_AcceptConnectDeviceResponse>(),
-            options: options,
-            onResponse: handleResponse
-        )
-    }
-
-    /// Call the "SubscribeConnectDeviceStatus" method.
-    ///
-    /// > Source IDL Documentation:
-    /// >
-    /// > Подписаться на измение статуса подключенного устройства
-    /// > Authorization: fastAuth токен
-    ///
-    /// - Parameters:
-    ///   - request: A request containing a single `Barkfluff_Fast_Auth_SubscribeConnectDeviceStatusRequest` message.
-    ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
-    /// - Returns: The result of `handleResponse`.
-    public func subscribeConnectDeviceStatus<Result>(
-        request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_SubscribeConnectDeviceStatusRequest>,
-        options: GRPCCore.CallOptions = .defaults,
-        onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Barkfluff_Fast_Auth_ConnectDeviceStatus>) async throws -> Result
-    ) async throws -> Result where Result: Sendable {
-        try await self.subscribeConnectDeviceStatus(
-            request: request,
-            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Fast_Auth_SubscribeConnectDeviceStatusRequest>(),
-            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Fast_Auth_ConnectDeviceStatus>(),
-            options: options,
-            onResponse: handleResponse
-        )
-    }
-
-    /// Call the "ListConnectedDevices" method.
-    ///
-    /// > Source IDL Documentation:
-    /// >
-    /// > Получить список устройств подключенных к аккаунту
-    /// > Authorization: xAuth access токен
-    ///
-    /// - Parameters:
-    ///   - request: A request containing a single `Barkfluff_Fast_Auth_ListConnectedDevicesRequest` message.
-    ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
-    /// - Returns: The result of `handleResponse`.
-    public func listConnectedDevices<Result>(
-        request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_ListConnectedDevicesRequest>,
-        options: GRPCCore.CallOptions = .defaults,
-        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_ListConnectedDevicesResponse>) async throws -> Result = { response in
-            try response.message
-        }
-    ) async throws -> Result where Result: Sendable {
-        try await self.listConnectedDevices(
-            request: request,
-            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Fast_Auth_ListConnectedDevicesRequest>(),
-            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Fast_Auth_ListConnectedDevicesResponse>(),
-            options: options,
-            onResponse: handleResponse
-        )
-    }
-
     /// Call the "GenerateFastAuthToken" method.
     ///
     /// > Source IDL Documentation:
     /// >
-    /// > Сгенерировать токен для быстрого входа
+    /// > Шаг 1. Анонимный клиент запрашивает QR-токен.
+    /// > Метаданные нового устройства сервер забирает из gRPC headers
+    /// > (x-device-name, x-os-name, x-app-name, x-app-version, x-ip-address).
     /// > Authorization: без авторизации
     ///
     /// - Parameters:
@@ -1099,12 +468,73 @@ extension Barkfluff_Fast_Auth_FastAuthApi.ClientProtocol {
         )
     }
 
+    /// Call the "SubscribeFastAuthResult" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Шаг 2. Анонимный клиент подписывается на real-time статус.
+    /// > Стрим живёт до финального статуса (ACCEPTED / REJECTED / EXPIRED).
+    /// > На ACCEPTED отправляются access_token и refresh_token.
+    /// > Authorization: без авторизации
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Fast_Auth_SubscribeFastAuthResultRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func subscribeFastAuthResult<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_SubscribeFastAuthResultRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Barkfluff_Fast_Auth_FastAuthResult>) async throws -> Result
+    ) async throws -> Result where Result: Sendable {
+        try await self.subscribeFastAuthResult(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Fast_Auth_SubscribeFastAuthResultRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Fast_Auth_FastAuthResult>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ScanFastAuth" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Шаг 3. Авторизованный мобильный клиент сканирует QR.
+    /// > В ответе — метаданные нового устройства + одноразовый confirmation_code (GUID).
+    /// > Authorization: User token
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Fast_Auth_ScanFastAuthRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func scanFastAuth<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_ScanFastAuthRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_ScanFastAuthResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.scanFastAuth(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Fast_Auth_ScanFastAuthRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Fast_Auth_ScanFastAuthResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
     /// Call the "AcceptFastAuth" method.
     ///
     /// > Source IDL Documentation:
     /// >
-    /// > Подтвердить быстрый вход
-    /// > Authorization: fastAuth токен
+    /// > Шаг 4a. Подтвердить вход. Передаются fast_auth_id и confirmation_code из ScanFastAuth.
+    /// > Authorization: User token
     ///
     /// - Parameters:
     ///   - request: A request containing a single `Barkfluff_Fast_Auth_AcceptFastAuthRequest` message.
@@ -1129,147 +559,31 @@ extension Barkfluff_Fast_Auth_FastAuthApi.ClientProtocol {
         )
     }
 
-    /// Call the "SubscribeFastAuthRequests" method.
+    /// Call the "RejectFastAuth" method.
     ///
     /// > Source IDL Documentation:
     /// >
-    /// > Подписаться на запросы быстрого входа
-    /// > Authorization: fastAuth токен
+    /// > Шаг 4b. Отклонить вход. Закрывает стрим со статусом REJECTED.
+    /// > Authorization: User token
     ///
     /// - Parameters:
-    ///   - request: A request containing a single `Barkfluff_Fast_Auth_SubscribeFastAuthRequestsRequest` message.
+    ///   - request: A request containing a single `Barkfluff_Fast_Auth_RejectFastAuthRequest` message.
     ///   - options: Options to apply to this RPC.
     ///   - handleResponse: A closure which handles the response, the result of which is
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    public func subscribeFastAuthRequests<Result>(
-        request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_SubscribeFastAuthRequestsRequest>,
+    public func rejectFastAuth<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_RejectFastAuthRequest>,
         options: GRPCCore.CallOptions = .defaults,
-        onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Barkfluff_Fast_Auth_FastAuthRequest>) async throws -> Result
-    ) async throws -> Result where Result: Sendable {
-        try await self.subscribeFastAuthRequests(
-            request: request,
-            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Fast_Auth_SubscribeFastAuthRequestsRequest>(),
-            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Fast_Auth_FastAuthRequest>(),
-            options: options,
-            onResponse: handleResponse
-        )
-    }
-
-    /// Call the "SubscribeFastAuthResult" method.
-    ///
-    /// > Source IDL Documentation:
-    /// >
-    /// > Подписаться на результат быстрой авторизации
-    /// > Authorization: без авторизации
-    ///
-    /// - Parameters:
-    ///   - request: A request containing a single `Barkfluff_Fast_Auth_SubscribeFastAuthResultRequest` message.
-    ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
-    /// - Returns: The result of `handleResponse`.
-    public func subscribeFastAuthResult<Result>(
-        request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_SubscribeFastAuthResultRequest>,
-        options: GRPCCore.CallOptions = .defaults,
-        onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Barkfluff_Fast_Auth_FastAuthResult>) async throws -> Result
-    ) async throws -> Result where Result: Sendable {
-        try await self.subscribeFastAuthResult(
-            request: request,
-            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Fast_Auth_SubscribeFastAuthResultRequest>(),
-            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Fast_Auth_FastAuthResult>(),
-            options: options,
-            onResponse: handleResponse
-        )
-    }
-
-    /// Call the "CheckFastAuth" method.
-    ///
-    /// > Source IDL Documentation:
-    /// >
-    /// > Проверить, есть ли возможность быстрого входа
-    /// > Authorization: без авторизации
-    ///
-    /// - Parameters:
-    ///   - request: A request containing a single `Barkfluff_Fast_Auth_CheckFastAuthRequest` message.
-    ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
-    /// - Returns: The result of `handleResponse`.
-    public func checkFastAuth<Result>(
-        request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_CheckFastAuthRequest>,
-        options: GRPCCore.CallOptions = .defaults,
-        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_CheckFastAuthResponse>) async throws -> Result = { response in
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_RejectFastAuthResponse>) async throws -> Result = { response in
             try response.message
         }
     ) async throws -> Result where Result: Sendable {
-        try await self.checkFastAuth(
+        try await self.rejectFastAuth(
             request: request,
-            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Fast_Auth_CheckFastAuthRequest>(),
-            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Fast_Auth_CheckFastAuthResponse>(),
-            options: options,
-            onResponse: handleResponse
-        )
-    }
-
-    /// Call the "CreateFastAuth" method.
-    ///
-    /// > Source IDL Documentation:
-    /// >
-    /// > Создать запрос на быстрый вход по логину
-    /// > Authorization: без авторизации
-    ///
-    /// - Parameters:
-    ///   - request: A request containing a single `Barkfluff_Fast_Auth_CreateFastAuthRequest` message.
-    ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
-    /// - Returns: The result of `handleResponse`.
-    public func createFastAuth<Result>(
-        request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_CreateFastAuthRequest>,
-        options: GRPCCore.CallOptions = .defaults,
-        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_CreateFastAuthResponse>) async throws -> Result = { response in
-            try response.message
-        }
-    ) async throws -> Result where Result: Sendable {
-        try await self.createFastAuth(
-            request: request,
-            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Fast_Auth_CreateFastAuthRequest>(),
-            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Fast_Auth_CreateFastAuthResponse>(),
-            options: options,
-            onResponse: handleResponse
-        )
-    }
-
-    /// Call the "RemoveConnectedDevice" method.
-    ///
-    /// > Source IDL Documentation:
-    /// >
-    /// > Удалить подключенное устройство
-    /// > Authorization: xAuth access токен
-    ///
-    /// - Parameters:
-    ///   - request: A request containing a single `Barkfluff_Fast_Auth_RemoveConnectedDeviceRequest` message.
-    ///   - options: Options to apply to this RPC.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
-    /// - Returns: The result of `handleResponse`.
-    public func removeConnectedDevice<Result>(
-        request: GRPCCore.ClientRequest<Barkfluff_Fast_Auth_RemoveConnectedDeviceRequest>,
-        options: GRPCCore.CallOptions = .defaults,
-        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_RemoveConnectedDeviceResponse>) async throws -> Result = { response in
-            try response.message
-        }
-    ) async throws -> Result where Result: Sendable {
-        try await self.removeConnectedDevice(
-            request: request,
-            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Fast_Auth_RemoveConnectedDeviceRequest>(),
-            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Fast_Auth_RemoveConnectedDeviceResponse>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Fast_Auth_RejectFastAuthRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Fast_Auth_RejectFastAuthResponse>(),
             options: options,
             onResponse: handleResponse
         )
@@ -1279,179 +593,13 @@ extension Barkfluff_Fast_Auth_FastAuthApi.ClientProtocol {
 // Helpers providing sugared APIs for 'ClientProtocol' methods.
 @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
 extension Barkfluff_Fast_Auth_FastAuthApi.ClientProtocol {
-    /// Call the "GenerateConnectDeviceToken" method.
-    ///
-    /// > Source IDL Documentation:
-    /// >
-    /// > Сгенерировать токен для подключения устройства 
-    /// > Authorization: xAuth access токен
-    ///
-    /// - Parameters:
-    ///   - message: request message to send.
-    ///   - metadata: Additional metadata to send, defaults to empty.
-    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
-    /// - Returns: The result of `handleResponse`.
-    public func generateConnectDeviceToken<Result>(
-        _ message: Barkfluff_Fast_Auth_GenerateConnectDeviceTokenRequest,
-        metadata: GRPCCore.Metadata = [:],
-        options: GRPCCore.CallOptions = .defaults,
-        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_GenerateConnectDeviceTokenResponse>) async throws -> Result = { response in
-            try response.message
-        }
-    ) async throws -> Result where Result: Sendable {
-        let request = GRPCCore.ClientRequest<Barkfluff_Fast_Auth_GenerateConnectDeviceTokenRequest>(
-            message: message,
-            metadata: metadata
-        )
-        return try await self.generateConnectDeviceToken(
-            request: request,
-            options: options,
-            onResponse: handleResponse
-        )
-    }
-
-    /// Call the "ConnectDevice" method.
-    ///
-    /// > Source IDL Documentation:
-    /// >
-    /// > Подключить устройство для быстрого входа 
-    /// > Authorization: fastAuth токен
-    ///
-    /// - Parameters:
-    ///   - message: request message to send.
-    ///   - metadata: Additional metadata to send, defaults to empty.
-    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
-    /// - Returns: The result of `handleResponse`.
-    public func connectDevice<Result>(
-        _ message: Barkfluff_Fast_Auth_ConnectDeviceRequest,
-        metadata: GRPCCore.Metadata = [:],
-        options: GRPCCore.CallOptions = .defaults,
-        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_ConnectDeviceResponse>) async throws -> Result = { response in
-            try response.message
-        }
-    ) async throws -> Result where Result: Sendable {
-        let request = GRPCCore.ClientRequest<Barkfluff_Fast_Auth_ConnectDeviceRequest>(
-            message: message,
-            metadata: metadata
-        )
-        return try await self.connectDevice(
-            request: request,
-            options: options,
-            onResponse: handleResponse
-        )
-    }
-
-    /// Call the "AcceptConnectDevice" method.
-    ///
-    /// > Source IDL Documentation:
-    /// >
-    /// > Подтвердить подключение устройства
-    /// > Authorization: xAuth access токен
-    ///
-    /// - Parameters:
-    ///   - message: request message to send.
-    ///   - metadata: Additional metadata to send, defaults to empty.
-    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
-    /// - Returns: The result of `handleResponse`.
-    public func acceptConnectDevice<Result>(
-        _ message: Barkfluff_Fast_Auth_AcceptConnectDeviceRequest,
-        metadata: GRPCCore.Metadata = [:],
-        options: GRPCCore.CallOptions = .defaults,
-        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_AcceptConnectDeviceResponse>) async throws -> Result = { response in
-            try response.message
-        }
-    ) async throws -> Result where Result: Sendable {
-        let request = GRPCCore.ClientRequest<Barkfluff_Fast_Auth_AcceptConnectDeviceRequest>(
-            message: message,
-            metadata: metadata
-        )
-        return try await self.acceptConnectDevice(
-            request: request,
-            options: options,
-            onResponse: handleResponse
-        )
-    }
-
-    /// Call the "SubscribeConnectDeviceStatus" method.
-    ///
-    /// > Source IDL Documentation:
-    /// >
-    /// > Подписаться на измение статуса подключенного устройства
-    /// > Authorization: fastAuth токен
-    ///
-    /// - Parameters:
-    ///   - message: request message to send.
-    ///   - metadata: Additional metadata to send, defaults to empty.
-    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
-    /// - Returns: The result of `handleResponse`.
-    public func subscribeConnectDeviceStatus<Result>(
-        _ message: Barkfluff_Fast_Auth_SubscribeConnectDeviceStatusRequest,
-        metadata: GRPCCore.Metadata = [:],
-        options: GRPCCore.CallOptions = .defaults,
-        onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Barkfluff_Fast_Auth_ConnectDeviceStatus>) async throws -> Result
-    ) async throws -> Result where Result: Sendable {
-        let request = GRPCCore.ClientRequest<Barkfluff_Fast_Auth_SubscribeConnectDeviceStatusRequest>(
-            message: message,
-            metadata: metadata
-        )
-        return try await self.subscribeConnectDeviceStatus(
-            request: request,
-            options: options,
-            onResponse: handleResponse
-        )
-    }
-
-    /// Call the "ListConnectedDevices" method.
-    ///
-    /// > Source IDL Documentation:
-    /// >
-    /// > Получить список устройств подключенных к аккаунту
-    /// > Authorization: xAuth access токен
-    ///
-    /// - Parameters:
-    ///   - message: request message to send.
-    ///   - metadata: Additional metadata to send, defaults to empty.
-    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
-    /// - Returns: The result of `handleResponse`.
-    public func listConnectedDevices<Result>(
-        _ message: Barkfluff_Fast_Auth_ListConnectedDevicesRequest,
-        metadata: GRPCCore.Metadata = [:],
-        options: GRPCCore.CallOptions = .defaults,
-        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_ListConnectedDevicesResponse>) async throws -> Result = { response in
-            try response.message
-        }
-    ) async throws -> Result where Result: Sendable {
-        let request = GRPCCore.ClientRequest<Barkfluff_Fast_Auth_ListConnectedDevicesRequest>(
-            message: message,
-            metadata: metadata
-        )
-        return try await self.listConnectedDevices(
-            request: request,
-            options: options,
-            onResponse: handleResponse
-        )
-    }
-
     /// Call the "GenerateFastAuthToken" method.
     ///
     /// > Source IDL Documentation:
     /// >
-    /// > Сгенерировать токен для быстрого входа
+    /// > Шаг 1. Анонимный клиент запрашивает QR-токен.
+    /// > Метаданные нового устройства сервер забирает из gRPC headers
+    /// > (x-device-name, x-os-name, x-app-name, x-app-version, x-ip-address).
     /// > Authorization: без авторизации
     ///
     /// - Parameters:
@@ -1481,12 +629,81 @@ extension Barkfluff_Fast_Auth_FastAuthApi.ClientProtocol {
         )
     }
 
+    /// Call the "SubscribeFastAuthResult" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Шаг 2. Анонимный клиент подписывается на real-time статус.
+    /// > Стрим живёт до финального статуса (ACCEPTED / REJECTED / EXPIRED).
+    /// > На ACCEPTED отправляются access_token и refresh_token.
+    /// > Authorization: без авторизации
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func subscribeFastAuthResult<Result>(
+        _ message: Barkfluff_Fast_Auth_SubscribeFastAuthResultRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Barkfluff_Fast_Auth_FastAuthResult>) async throws -> Result
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Fast_Auth_SubscribeFastAuthResultRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.subscribeFastAuthResult(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ScanFastAuth" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Шаг 3. Авторизованный мобильный клиент сканирует QR.
+    /// > В ответе — метаданные нового устройства + одноразовый confirmation_code (GUID).
+    /// > Authorization: User token
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func scanFastAuth<Result>(
+        _ message: Barkfluff_Fast_Auth_ScanFastAuthRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_ScanFastAuthResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Fast_Auth_ScanFastAuthRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.scanFastAuth(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
     /// Call the "AcceptFastAuth" method.
     ///
     /// > Source IDL Documentation:
     /// >
-    /// > Подтвердить быстрый вход
-    /// > Authorization: fastAuth токен
+    /// > Шаг 4a. Подтвердить вход. Передаются fast_auth_id и confirmation_code из ScanFastAuth.
+    /// > Authorization: User token
     ///
     /// - Parameters:
     ///   - message: request message to send.
@@ -1515,12 +732,12 @@ extension Barkfluff_Fast_Auth_FastAuthApi.ClientProtocol {
         )
     }
 
-    /// Call the "SubscribeFastAuthRequests" method.
+    /// Call the "RejectFastAuth" method.
     ///
     /// > Source IDL Documentation:
     /// >
-    /// > Подписаться на запросы быстрого входа
-    /// > Authorization: fastAuth токен
+    /// > Шаг 4b. Отклонить вход. Закрывает стрим со статусом REJECTED.
+    /// > Authorization: User token
     ///
     /// - Parameters:
     ///   - message: request message to send.
@@ -1530,151 +747,19 @@ extension Barkfluff_Fast_Auth_FastAuthApi.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    public func subscribeFastAuthRequests<Result>(
-        _ message: Barkfluff_Fast_Auth_SubscribeFastAuthRequestsRequest,
+    public func rejectFastAuth<Result>(
+        _ message: Barkfluff_Fast_Auth_RejectFastAuthRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
-        onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Barkfluff_Fast_Auth_FastAuthRequest>) async throws -> Result
-    ) async throws -> Result where Result: Sendable {
-        let request = GRPCCore.ClientRequest<Barkfluff_Fast_Auth_SubscribeFastAuthRequestsRequest>(
-            message: message,
-            metadata: metadata
-        )
-        return try await self.subscribeFastAuthRequests(
-            request: request,
-            options: options,
-            onResponse: handleResponse
-        )
-    }
-
-    /// Call the "SubscribeFastAuthResult" method.
-    ///
-    /// > Source IDL Documentation:
-    /// >
-    /// > Подписаться на результат быстрой авторизации
-    /// > Authorization: без авторизации
-    ///
-    /// - Parameters:
-    ///   - message: request message to send.
-    ///   - metadata: Additional metadata to send, defaults to empty.
-    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
-    /// - Returns: The result of `handleResponse`.
-    public func subscribeFastAuthResult<Result>(
-        _ message: Barkfluff_Fast_Auth_SubscribeFastAuthResultRequest,
-        metadata: GRPCCore.Metadata = [:],
-        options: GRPCCore.CallOptions = .defaults,
-        onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Barkfluff_Fast_Auth_FastAuthResult>) async throws -> Result
-    ) async throws -> Result where Result: Sendable {
-        let request = GRPCCore.ClientRequest<Barkfluff_Fast_Auth_SubscribeFastAuthResultRequest>(
-            message: message,
-            metadata: metadata
-        )
-        return try await self.subscribeFastAuthResult(
-            request: request,
-            options: options,
-            onResponse: handleResponse
-        )
-    }
-
-    /// Call the "CheckFastAuth" method.
-    ///
-    /// > Source IDL Documentation:
-    /// >
-    /// > Проверить, есть ли возможность быстрого входа
-    /// > Authorization: без авторизации
-    ///
-    /// - Parameters:
-    ///   - message: request message to send.
-    ///   - metadata: Additional metadata to send, defaults to empty.
-    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
-    /// - Returns: The result of `handleResponse`.
-    public func checkFastAuth<Result>(
-        _ message: Barkfluff_Fast_Auth_CheckFastAuthRequest,
-        metadata: GRPCCore.Metadata = [:],
-        options: GRPCCore.CallOptions = .defaults,
-        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_CheckFastAuthResponse>) async throws -> Result = { response in
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_RejectFastAuthResponse>) async throws -> Result = { response in
             try response.message
         }
     ) async throws -> Result where Result: Sendable {
-        let request = GRPCCore.ClientRequest<Barkfluff_Fast_Auth_CheckFastAuthRequest>(
+        let request = GRPCCore.ClientRequest<Barkfluff_Fast_Auth_RejectFastAuthRequest>(
             message: message,
             metadata: metadata
         )
-        return try await self.checkFastAuth(
-            request: request,
-            options: options,
-            onResponse: handleResponse
-        )
-    }
-
-    /// Call the "CreateFastAuth" method.
-    ///
-    /// > Source IDL Documentation:
-    /// >
-    /// > Создать запрос на быстрый вход по логину
-    /// > Authorization: без авторизации
-    ///
-    /// - Parameters:
-    ///   - message: request message to send.
-    ///   - metadata: Additional metadata to send, defaults to empty.
-    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
-    /// - Returns: The result of `handleResponse`.
-    public func createFastAuth<Result>(
-        _ message: Barkfluff_Fast_Auth_CreateFastAuthRequest,
-        metadata: GRPCCore.Metadata = [:],
-        options: GRPCCore.CallOptions = .defaults,
-        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_CreateFastAuthResponse>) async throws -> Result = { response in
-            try response.message
-        }
-    ) async throws -> Result where Result: Sendable {
-        let request = GRPCCore.ClientRequest<Barkfluff_Fast_Auth_CreateFastAuthRequest>(
-            message: message,
-            metadata: metadata
-        )
-        return try await self.createFastAuth(
-            request: request,
-            options: options,
-            onResponse: handleResponse
-        )
-    }
-
-    /// Call the "RemoveConnectedDevice" method.
-    ///
-    /// > Source IDL Documentation:
-    /// >
-    /// > Удалить подключенное устройство
-    /// > Authorization: xAuth access токен
-    ///
-    /// - Parameters:
-    ///   - message: request message to send.
-    ///   - metadata: Additional metadata to send, defaults to empty.
-    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
-    ///   - handleResponse: A closure which handles the response, the result of which is
-    ///       returned to the caller. Returning from the closure will cancel the RPC if it
-    ///       hasn't already finished.
-    /// - Returns: The result of `handleResponse`.
-    public func removeConnectedDevice<Result>(
-        _ message: Barkfluff_Fast_Auth_RemoveConnectedDeviceRequest,
-        metadata: GRPCCore.Metadata = [:],
-        options: GRPCCore.CallOptions = .defaults,
-        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Fast_Auth_RemoveConnectedDeviceResponse>) async throws -> Result = { response in
-            try response.message
-        }
-    ) async throws -> Result where Result: Sendable {
-        let request = GRPCCore.ClientRequest<Barkfluff_Fast_Auth_RemoveConnectedDeviceRequest>(
-            message: message,
-            metadata: metadata
-        )
-        return try await self.removeConnectedDevice(
+        return try await self.rejectFastAuth(
             request: request,
             options: options,
             onResponse: handleResponse
@@ -1700,7 +785,8 @@ public enum Barkfluff_Fast_Auth_FastAuthServerApi: Sendable {
             /// Descriptor for "GetFastAuthInfo".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.fast.auth.FastAuthServerApi"),
-                method: "GetFastAuthInfo"
+                method: "GetFastAuthInfo",
+                type: .unary
             )
         }
         /// Descriptors for all methods in the "barkfluff.fast.auth.FastAuthServerApi" service.
@@ -1729,8 +815,8 @@ extension Barkfluff_Fast_Auth_FastAuthServerApi {
         ///
         /// > Source IDL Documentation:
         /// >
-        /// > Получить инфу о токене
-        /// > Authorization: xAuth server токен
+        /// > Получить инфу о fast-auth сессии.
+        /// > Authorization: xAuth Service токен
         ///
         /// - Parameters:
         ///   - request: A request containing a single `Barkfluff_Fast_Auth_GetFastAuthInfoRequest` message.
@@ -1770,8 +856,8 @@ extension Barkfluff_Fast_Auth_FastAuthServerApi {
         ///
         /// > Source IDL Documentation:
         /// >
-        /// > Получить инфу о токене
-        /// > Authorization: xAuth server токен
+        /// > Получить инфу о fast-auth сессии.
+        /// > Authorization: xAuth Service токен
         ///
         /// - Parameters:
         ///   - request: A request containing a single `Barkfluff_Fast_Auth_GetFastAuthInfoRequest` message.
@@ -1810,8 +896,8 @@ extension Barkfluff_Fast_Auth_FastAuthServerApi.ClientProtocol {
     ///
     /// > Source IDL Documentation:
     /// >
-    /// > Получить инфу о токене
-    /// > Authorization: xAuth server токен
+    /// > Получить инфу о fast-auth сессии.
+    /// > Authorization: xAuth Service токен
     ///
     /// - Parameters:
     ///   - request: A request containing a single `Barkfluff_Fast_Auth_GetFastAuthInfoRequest` message.
@@ -1844,8 +930,8 @@ extension Barkfluff_Fast_Auth_FastAuthServerApi.ClientProtocol {
     ///
     /// > Source IDL Documentation:
     /// >
-    /// > Получить инфу о токене
-    /// > Authorization: xAuth server токен
+    /// > Получить инфу о fast-auth сессии.
+    /// > Authorization: xAuth Service токен
     ///
     /// - Parameters:
     ///   - message: request message to send.

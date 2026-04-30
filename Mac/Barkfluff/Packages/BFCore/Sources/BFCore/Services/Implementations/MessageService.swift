@@ -129,6 +129,8 @@ public actor MessageService: MessageServiceProtocol {
         case .gif: return .gif
         case .document: return .document
         case .audio: return .audio
+        case .voice: return .voice
+        case .sticker: return .sticker
         }
     }
 }

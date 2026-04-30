@@ -29,7 +29,8 @@ public enum Barkfluff_Navigator_NavigatorApi: Sendable {
             /// Descriptor for "ListServers".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.navigator.NavigatorApi"),
-                method: "ListServers"
+                method: "ListServers",
+                type: .unary
             )
         }
         /// Namespace for "RegisterServer" metadata.
@@ -41,7 +42,8 @@ public enum Barkfluff_Navigator_NavigatorApi: Sendable {
             /// Descriptor for "RegisterServer".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.navigator.NavigatorApi"),
-                method: "RegisterServer"
+                method: "RegisterServer",
+                type: .unary
             )
         }
         /// Descriptors for all methods in the "barkfluff.navigator.NavigatorApi" service.

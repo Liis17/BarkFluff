@@ -29,7 +29,8 @@ public enum Barkfluff_Updates_UpdatesApi: Sendable {
             /// Descriptor for "SubscribeNewMessages".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.updates.UpdatesApi"),
-                method: "SubscribeNewMessages"
+                method: "SubscribeNewMessages",
+                type: .serverStreaming
             )
         }
         /// Namespace for "SubscribeMessagesRead" metadata.
@@ -41,7 +42,8 @@ public enum Barkfluff_Updates_UpdatesApi: Sendable {
             /// Descriptor for "SubscribeMessagesRead".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.updates.UpdatesApi"),
-                method: "SubscribeMessagesRead"
+                method: "SubscribeMessagesRead",
+                type: .serverStreaming
             )
         }
         /// Descriptors for all methods in the "barkfluff.updates.UpdatesApi" service.

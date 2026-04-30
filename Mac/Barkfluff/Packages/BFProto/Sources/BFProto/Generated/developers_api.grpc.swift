@@ -22,47 +22,67 @@ public enum Barkfluff_Developers_DevelopersApi: Sendable {
     public enum Method: Sendable {
         /// Namespace for "GetDocumentationSections" metadata.
         public enum GetDocumentationSections: Sendable {
+            /// Request type for "GetDocumentationSections".
             public typealias Input = Barkfluff_Developers_GetDocumentationSectionsRequest
+            /// Response type for "GetDocumentationSections".
             public typealias Output = Barkfluff_Developers_GetDocumentationSectionsResponse
+            /// Descriptor for "GetDocumentationSections".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.developers.DevelopersApi"),
-                method: "GetDocumentationSections"
+                method: "GetDocumentationSections",
+                type: .unary
             )
         }
         /// Namespace for "GetDocumentationSection" metadata.
         public enum GetDocumentationSection: Sendable {
+            /// Request type for "GetDocumentationSection".
             public typealias Input = Barkfluff_Developers_GetDocumentationSectionRequest
+            /// Response type for "GetDocumentationSection".
             public typealias Output = Barkfluff_Developers_DocumentationSection
+            /// Descriptor for "GetDocumentationSection".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.developers.DevelopersApi"),
-                method: "GetDocumentationSection"
+                method: "GetDocumentationSection",
+                type: .unary
             )
         }
         /// Namespace for "GetProtoFiles" metadata.
         public enum GetProtoFiles: Sendable {
+            /// Request type for "GetProtoFiles".
             public typealias Input = Barkfluff_Developers_GetProtoFilesRequest
+            /// Response type for "GetProtoFiles".
             public typealias Output = Barkfluff_Developers_GetProtoFilesResponse
+            /// Descriptor for "GetProtoFiles".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.developers.DevelopersApi"),
-                method: "GetProtoFiles"
+                method: "GetProtoFiles",
+                type: .unary
             )
         }
         /// Namespace for "GetProtoFileContent" metadata.
         public enum GetProtoFileContent: Sendable {
+            /// Request type for "GetProtoFileContent".
             public typealias Input = Barkfluff_Developers_GetProtoFileContentRequest
+            /// Response type for "GetProtoFileContent".
             public typealias Output = Barkfluff_Developers_GetProtoFileContentResponse
+            /// Descriptor for "GetProtoFileContent".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.developers.DevelopersApi"),
-                method: "GetProtoFileContent"
+                method: "GetProtoFileContent",
+                type: .unary
             )
         }
         /// Namespace for "GetErrorCodes" metadata.
         public enum GetErrorCodes: Sendable {
+            /// Request type for "GetErrorCodes".
             public typealias Input = Barkfluff_Developers_GetErrorCodesRequest
+            /// Response type for "GetErrorCodes".
             public typealias Output = Barkfluff_Developers_GetErrorCodesResponse
+            /// Descriptor for "GetErrorCodes".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.developers.DevelopersApi"),
-                method: "GetErrorCodes"
+                method: "GetErrorCodes",
+                type: .unary
             )
         }
         /// Descriptors for all methods in the "barkfluff.developers.DevelopersApi" service.
@@ -87,7 +107,21 @@ extension GRPCCore.ServiceDescriptor {
 @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
 extension Barkfluff_Developers_DevelopersApi {
     /// Generated client protocol for the "barkfluff.developers.DevelopersApi" service.
+    ///
+    /// You don't need to implement this protocol directly, use the generated
+    /// implementation, ``Client``.
     public protocol ClientProtocol: Sendable {
+        /// Call the "GetDocumentationSections" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Developers_GetDocumentationSectionsRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Developers_GetDocumentationSectionsRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Developers_GetDocumentationSectionsResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         func getDocumentationSections<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Developers_GetDocumentationSectionsRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Developers_GetDocumentationSectionsRequest>,
@@ -96,6 +130,17 @@ extension Barkfluff_Developers_DevelopersApi {
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Developers_GetDocumentationSectionsResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
+        /// Call the "GetDocumentationSection" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Developers_GetDocumentationSectionRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Developers_GetDocumentationSectionRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Developers_DocumentationSection` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         func getDocumentationSection<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Developers_GetDocumentationSectionRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Developers_GetDocumentationSectionRequest>,
@@ -104,6 +149,17 @@ extension Barkfluff_Developers_DevelopersApi {
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Developers_DocumentationSection>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
+        /// Call the "GetProtoFiles" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Developers_GetProtoFilesRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Developers_GetProtoFilesRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Developers_GetProtoFilesResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         func getProtoFiles<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Developers_GetProtoFilesRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Developers_GetProtoFilesRequest>,
@@ -112,6 +168,17 @@ extension Barkfluff_Developers_DevelopersApi {
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Developers_GetProtoFilesResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
+        /// Call the "GetProtoFileContent" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Developers_GetProtoFileContentRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Developers_GetProtoFileContentRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Developers_GetProtoFileContentResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         func getProtoFileContent<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Developers_GetProtoFileContentRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Developers_GetProtoFileContentRequest>,
@@ -120,6 +187,17 @@ extension Barkfluff_Developers_DevelopersApi {
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Developers_GetProtoFileContentResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
+        /// Call the "GetErrorCodes" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Developers_GetErrorCodesRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Developers_GetErrorCodesRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Developers_GetErrorCodesResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         func getErrorCodes<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Developers_GetErrorCodesRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Developers_GetErrorCodesRequest>,
@@ -130,13 +208,32 @@ extension Barkfluff_Developers_DevelopersApi {
     }
 
     /// Generated client for the "barkfluff.developers.DevelopersApi" service.
+    ///
+    /// The ``Client`` provides an implementation of ``ClientProtocol`` which wraps
+    /// a `GRPCCore.GRPCCClient`. The underlying `GRPCClient` provides the long-lived
+    /// means of communication with the remote peer.
     public struct Client<Transport>: ClientProtocol where Transport: GRPCCore.ClientTransport {
         private let client: GRPCCore.GRPCClient<Transport>
 
+        /// Creates a new client wrapping the provided `GRPCCore.GRPCClient`.
+        ///
+        /// - Parameters:
+        ///   - client: A `GRPCCore.GRPCClient` providing a communication channel to the service.
         public init(wrapping client: GRPCCore.GRPCClient<Transport>) {
             self.client = client
         }
 
+        /// Call the "GetDocumentationSections" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Developers_GetDocumentationSectionsRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Developers_GetDocumentationSectionsRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Developers_GetDocumentationSectionsResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         public func getDocumentationSections<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Developers_GetDocumentationSectionsRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Developers_GetDocumentationSectionsRequest>,
@@ -156,6 +253,17 @@ extension Barkfluff_Developers_DevelopersApi {
             )
         }
 
+        /// Call the "GetDocumentationSection" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Developers_GetDocumentationSectionRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Developers_GetDocumentationSectionRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Developers_DocumentationSection` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         public func getDocumentationSection<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Developers_GetDocumentationSectionRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Developers_GetDocumentationSectionRequest>,
@@ -175,6 +283,17 @@ extension Barkfluff_Developers_DevelopersApi {
             )
         }
 
+        /// Call the "GetProtoFiles" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Developers_GetProtoFilesRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Developers_GetProtoFilesRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Developers_GetProtoFilesResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         public func getProtoFiles<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Developers_GetProtoFilesRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Developers_GetProtoFilesRequest>,
@@ -194,6 +313,17 @@ extension Barkfluff_Developers_DevelopersApi {
             )
         }
 
+        /// Call the "GetProtoFileContent" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Developers_GetProtoFileContentRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Developers_GetProtoFileContentRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Developers_GetProtoFileContentResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         public func getProtoFileContent<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Developers_GetProtoFileContentRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Developers_GetProtoFileContentRequest>,
@@ -213,6 +343,17 @@ extension Barkfluff_Developers_DevelopersApi {
             )
         }
 
+        /// Call the "GetErrorCodes" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Developers_GetErrorCodesRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Developers_GetErrorCodesRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Developers_GetErrorCodesResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
         public func getErrorCodes<Result>(
             request: GRPCCore.ClientRequest<Barkfluff_Developers_GetErrorCodesRequest>,
             serializer: some GRPCCore.MessageSerializer<Barkfluff_Developers_GetErrorCodesRequest>,
@@ -237,6 +378,15 @@ extension Barkfluff_Developers_DevelopersApi {
 // Helpers providing default arguments to 'ClientProtocol' methods.
 @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
 extension Barkfluff_Developers_DevelopersApi.ClientProtocol {
+    /// Call the "GetDocumentationSections" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Developers_GetDocumentationSectionsRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func getDocumentationSections<Result>(
         request: GRPCCore.ClientRequest<Barkfluff_Developers_GetDocumentationSectionsRequest>,
         options: GRPCCore.CallOptions = .defaults,
@@ -253,6 +403,15 @@ extension Barkfluff_Developers_DevelopersApi.ClientProtocol {
         )
     }
 
+    /// Call the "GetDocumentationSection" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Developers_GetDocumentationSectionRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func getDocumentationSection<Result>(
         request: GRPCCore.ClientRequest<Barkfluff_Developers_GetDocumentationSectionRequest>,
         options: GRPCCore.CallOptions = .defaults,
@@ -269,6 +428,15 @@ extension Barkfluff_Developers_DevelopersApi.ClientProtocol {
         )
     }
 
+    /// Call the "GetProtoFiles" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Developers_GetProtoFilesRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func getProtoFiles<Result>(
         request: GRPCCore.ClientRequest<Barkfluff_Developers_GetProtoFilesRequest>,
         options: GRPCCore.CallOptions = .defaults,
@@ -285,6 +453,15 @@ extension Barkfluff_Developers_DevelopersApi.ClientProtocol {
         )
     }
 
+    /// Call the "GetProtoFileContent" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Developers_GetProtoFileContentRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func getProtoFileContent<Result>(
         request: GRPCCore.ClientRequest<Barkfluff_Developers_GetProtoFileContentRequest>,
         options: GRPCCore.CallOptions = .defaults,
@@ -301,6 +478,15 @@ extension Barkfluff_Developers_DevelopersApi.ClientProtocol {
         )
     }
 
+    /// Call the "GetErrorCodes" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Developers_GetErrorCodesRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func getErrorCodes<Result>(
         request: GRPCCore.ClientRequest<Barkfluff_Developers_GetErrorCodesRequest>,
         options: GRPCCore.CallOptions = .defaults,
@@ -321,6 +507,16 @@ extension Barkfluff_Developers_DevelopersApi.ClientProtocol {
 // Helpers providing sugared APIs for 'ClientProtocol' methods.
 @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
 extension Barkfluff_Developers_DevelopersApi.ClientProtocol {
+    /// Call the "GetDocumentationSections" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func getDocumentationSections<Result>(
         _ message: Barkfluff_Developers_GetDocumentationSectionsRequest,
         metadata: GRPCCore.Metadata = [:],
@@ -340,6 +536,16 @@ extension Barkfluff_Developers_DevelopersApi.ClientProtocol {
         )
     }
 
+    /// Call the "GetDocumentationSection" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func getDocumentationSection<Result>(
         _ message: Barkfluff_Developers_GetDocumentationSectionRequest,
         metadata: GRPCCore.Metadata = [:],
@@ -359,6 +565,16 @@ extension Barkfluff_Developers_DevelopersApi.ClientProtocol {
         )
     }
 
+    /// Call the "GetProtoFiles" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func getProtoFiles<Result>(
         _ message: Barkfluff_Developers_GetProtoFilesRequest,
         metadata: GRPCCore.Metadata = [:],
@@ -378,6 +594,16 @@ extension Barkfluff_Developers_DevelopersApi.ClientProtocol {
         )
     }
 
+    /// Call the "GetProtoFileContent" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func getProtoFileContent<Result>(
         _ message: Barkfluff_Developers_GetProtoFileContentRequest,
         metadata: GRPCCore.Metadata = [:],
@@ -397,6 +623,16 @@ extension Barkfluff_Developers_DevelopersApi.ClientProtocol {
         )
     }
 
+    /// Call the "GetErrorCodes" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
     public func getErrorCodes<Result>(
         _ message: Barkfluff_Developers_GetErrorCodesRequest,
         metadata: GRPCCore.Metadata = [:],

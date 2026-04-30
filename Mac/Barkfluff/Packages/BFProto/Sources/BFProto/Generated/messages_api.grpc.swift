@@ -29,7 +29,8 @@ public enum Barkfluff_Messages_MessagesApi: Sendable {
             /// Descriptor for "ListChats".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesApi"),
-                method: "ListChats"
+                method: "ListChats",
+                type: .unary
             )
         }
         /// Namespace for "ListMessages" metadata.
@@ -41,7 +42,8 @@ public enum Barkfluff_Messages_MessagesApi: Sendable {
             /// Descriptor for "ListMessages".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesApi"),
-                method: "ListMessages"
+                method: "ListMessages",
+                type: .unary
             )
         }
         /// Namespace for "ListChatMembers" metadata.
@@ -53,7 +55,8 @@ public enum Barkfluff_Messages_MessagesApi: Sendable {
             /// Descriptor for "ListChatMembers".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesApi"),
-                method: "ListChatMembers"
+                method: "ListChatMembers",
+                type: .unary
             )
         }
         /// Namespace for "SendMessage" metadata.
@@ -65,7 +68,8 @@ public enum Barkfluff_Messages_MessagesApi: Sendable {
             /// Descriptor for "SendMessage".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesApi"),
-                method: "SendMessage"
+                method: "SendMessage",
+                type: .unary
             )
         }
         /// Namespace for "CreateGroupChat" metadata.
@@ -77,7 +81,8 @@ public enum Barkfluff_Messages_MessagesApi: Sendable {
             /// Descriptor for "CreateGroupChat".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesApi"),
-                method: "CreateGroupChat"
+                method: "CreateGroupChat",
+                type: .unary
             )
         }
         /// Namespace for "KickUser" metadata.
@@ -89,7 +94,8 @@ public enum Barkfluff_Messages_MessagesApi: Sendable {
             /// Descriptor for "KickUser".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesApi"),
-                method: "KickUser"
+                method: "KickUser",
+                type: .unary
             )
         }
         /// Namespace for "MarkAsRead" metadata.
@@ -101,7 +107,8 @@ public enum Barkfluff_Messages_MessagesApi: Sendable {
             /// Descriptor for "MarkAsRead".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesApi"),
-                method: "MarkAsRead"
+                method: "MarkAsRead",
+                type: .unary
             )
         }
         /// Namespace for "ListChatAttachments" metadata.
@@ -113,7 +120,8 @@ public enum Barkfluff_Messages_MessagesApi: Sendable {
             /// Descriptor for "ListChatAttachments".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesApi"),
-                method: "ListChatAttachments"
+                method: "ListChatAttachments",
+                type: .unary
             )
         }
         /// Namespace for "GetPersonChatId" metadata.
@@ -125,7 +133,8 @@ public enum Barkfluff_Messages_MessagesApi: Sendable {
             /// Descriptor for "GetPersonChatId".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesApi"),
-                method: "GetPersonChatId"
+                method: "GetPersonChatId",
+                type: .unary
             )
         }
         /// Namespace for "GetChatInfo" metadata.
@@ -137,7 +146,8 @@ public enum Barkfluff_Messages_MessagesApi: Sendable {
             /// Descriptor for "GetChatInfo".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesApi"),
-                method: "GetChatInfo"
+                method: "GetChatInfo",
+                type: .unary
             )
         }
         /// Descriptors for all methods in the "barkfluff.messages.MessagesApi" service.
@@ -1406,7 +1416,8 @@ public enum Barkfluff_Messages_MessagesServerApi: Sendable {
             /// Descriptor for "GetUserAllMessages".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesServerApi"),
-                method: "GetUserAllMessages"
+                method: "GetUserAllMessages",
+                type: .unary
             )
         }
         /// Descriptors for all methods in the "barkfluff.messages.MessagesServerApi" service.

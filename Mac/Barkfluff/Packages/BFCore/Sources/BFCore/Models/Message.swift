@@ -120,6 +120,8 @@ public enum AttachmentType: String, Sendable, Codable, CaseIterable {
     case gif
     case document
     case audio
+    case voice
+    case sticker
 
     public var displayName: String {
         switch self {
@@ -128,15 +130,17 @@ public enum AttachmentType: String, Sendable, Codable, CaseIterable {
         case .gif: return "GIF"
         case .document: return "Документ"
         case .audio: return "Аудио"
+        case .voice: return "Голосовое"
+        case .sticker: return "Стикер"
         }
     }
 
     public var systemImage: String {
         switch self {
-        case .image, .gif: return "photo"
+        case .image, .gif, .sticker: return "photo"
         case .video: return "video"
         case .document: return "doc"
-        case .audio: return "waveform"
+        case .audio, .voice: return "waveform"
         }
     }
 
@@ -147,6 +151,8 @@ public enum AttachmentType: String, Sendable, Codable, CaseIterable {
         case .gif: return "GIF"
         case .document: return "\u{1F4CE} \(fileName.isEmpty ? "Документ" : fileName)"
         case .audio: return "\u{1F3B5} Аудио"
+        case .voice: return "\u{1F3A4} Голосовое"
+        case .sticker: return "Стикер"
         }
     }
 }

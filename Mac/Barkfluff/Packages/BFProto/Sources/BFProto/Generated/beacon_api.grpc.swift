@@ -29,7 +29,8 @@ public enum Barkfluff_Beacon_BeaconApi: Sendable {
             /// Descriptor for "GetServerInfo".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.beacon.BeaconApi"),
-                method: "GetServerInfo"
+                method: "GetServerInfo",
+                type: .unary
             )
         }
         /// Descriptors for all methods in the "barkfluff.beacon.BeaconApi" service.

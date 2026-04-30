@@ -14,11 +14,11 @@ struct MessageAttachmentView: View {
     var body: some View {
         Group {
             switch attachment.type {
-            case .image, .gif:
+            case .image, .gif, .sticker:
                 imageAttachment
             case .video:
                 videoAttachment
-            case .document, .audio:
+            case .document, .audio, .voice:
                 fileAttachment
             }
         }

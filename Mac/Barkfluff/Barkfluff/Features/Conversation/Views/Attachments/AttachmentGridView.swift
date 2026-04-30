@@ -98,9 +98,21 @@ struct AttachmentGridView: View {
                 y: frame.midY
             )
 
-        case .audio:
+        case .audio, .voice:
             AudioAttachmentView(
                 attachment: attachment,
+                onTap: { onTap(attachment) }
+            )
+            .frame(width: frame.width, height: frame.height)
+            .position(
+                x: frame.midX,
+                y: frame.midY
+            )
+
+        case .sticker:
+            ImageAttachmentView(
+                attachment: attachment,
+                targetSize: size,
                 onTap: { onTap(attachment) }
             )
             .frame(width: frame.width, height: frame.height)

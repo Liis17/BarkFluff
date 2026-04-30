@@ -272,7 +272,9 @@ public actor MessagesRepository: MessagesRepositoryProtocol {
         case .video: return .video
         case .gif: return .gif
         case .document: return .document
-        case .audio: return .unknown // аудио не поддерживается в фильтре
+        case .audio: return .unknown
+        case .voice: return .unknown
+        case .sticker: return .unknown
         }
     }
 

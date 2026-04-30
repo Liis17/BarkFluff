@@ -171,6 +171,16 @@ public struct Barkfluff_Beacon_GetServerInfoResponse: @unchecked Sendable {
   /// Clears the value of `onliner`. Subsequent reads from it will return its default value.
   public mutating func clearOnliner() {_uniqueStorage()._onliner = nil}
 
+  /// Микросервис fast_auth
+  public var fastAuth: Barkfluff_Beacon_Service {
+    get {_storage._fastAuth ?? Barkfluff_Beacon_Service()}
+    set {_uniqueStorage()._fastAuth = newValue}
+  }
+  /// Returns true if `fastAuth` has been explicitly set.
+  public var hasFastAuth: Bool {_storage._fastAuth != nil}
+  /// Clears the value of `fastAuth`. Subsequent reads from it will return its default value.
+  public mutating func clearFastAuth() {_uniqueStorage()._fastAuth = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -273,7 +283,7 @@ extension Barkfluff_Beacon_GetServerInfoRequest: SwiftProtobuf.Message, SwiftPro
 
 extension Barkfluff_Beacon_GetServerInfoResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".GetServerInfoResponse"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}description\0\u{1}color\0\u{1}identity\0\u{1}users\0\u{1}files\0\u{1}messages\0\u{1}updates\0\u{1}onliner\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}description\0\u{1}color\0\u{1}identity\0\u{1}users\0\u{1}files\0\u{1}messages\0\u{1}updates\0\u{1}onliner\0\u{3}fast_auth\0")
 
   fileprivate class _StorageClass {
     var _name: String = String()
@@ -285,6 +295,7 @@ extension Barkfluff_Beacon_GetServerInfoResponse: SwiftProtobuf.Message, SwiftPr
     var _messages: Barkfluff_Beacon_Service? = nil
     var _updates: Barkfluff_Beacon_Service? = nil
     var _onliner: Barkfluff_Beacon_Service? = nil
+    var _fastAuth: Barkfluff_Beacon_Service? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -304,6 +315,7 @@ extension Barkfluff_Beacon_GetServerInfoResponse: SwiftProtobuf.Message, SwiftPr
       _messages = source._messages
       _updates = source._updates
       _onliner = source._onliner
+      _fastAuth = source._fastAuth
     }
   }
 
@@ -331,6 +343,7 @@ extension Barkfluff_Beacon_GetServerInfoResponse: SwiftProtobuf.Message, SwiftPr
         case 7: try { try decoder.decodeSingularMessageField(value: &_storage._messages) }()
         case 8: try { try decoder.decodeSingularMessageField(value: &_storage._updates) }()
         case 9: try { try decoder.decodeSingularMessageField(value: &_storage._onliner) }()
+        case 10: try { try decoder.decodeSingularMessageField(value: &_storage._fastAuth) }()
         default: break
         }
       }
@@ -370,6 +383,9 @@ extension Barkfluff_Beacon_GetServerInfoResponse: SwiftProtobuf.Message, SwiftPr
       try { if let v = _storage._onliner {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 9)
       } }()
+      try { if let v = _storage._fastAuth {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -388,6 +404,7 @@ extension Barkfluff_Beacon_GetServerInfoResponse: SwiftProtobuf.Message, SwiftPr
         if _storage._messages != rhs_storage._messages {return false}
         if _storage._updates != rhs_storage._updates {return false}
         if _storage._onliner != rhs_storage._onliner {return false}
+        if _storage._fastAuth != rhs_storage._fastAuth {return false}
         return true
       }
       if !storagesAreEqual {return false}

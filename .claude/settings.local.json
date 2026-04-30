@@ -46,7 +46,17 @@
       "Read(//c/Users/daske/.nuget/packages/grpc.aspnetcore.web/2.71.0/lib/net9.0/**)",
       "Bash(dotnet-ildasm Grpc.AspNetCore.Web.dll)",
       "Bash(npm run *)",
-      "Bash(npx buf *)"
+      "Bash(npx buf *)",
+      "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -configuration Debug build)",
+      "Bash(sudo xcode-select *)",
+      "Bash(xcodebuild -project /Users/liis/Projects/BarkFluff/Mac/Barkfluff/Barkfluff.xcodeproj -scheme Barkfluff -configuration Debug build)",
+      "Bash(brew list *)",
+      "Bash(brew install *)",
+      "Bash(make generate *)",
+      "Bash(ln -sf /opt/homebrew/opt/protoc-gen-grpc-swift/bin/protoc-gen-grpc-swift-2 /opt/homebrew/bin/protoc-gen-grpc-swift)",
+      "Bash(protoc-gen-grpc-swift --help)",
+      "Bash(git ls-remote *)",
+      "Bash(brew info *)"
     ],
     "deny": [],
     "ask": []
