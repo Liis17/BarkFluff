@@ -4,6 +4,7 @@
 **Нет gRPC API** — только обработка очереди.
 
 Расположение: `Backend/BarkFluff.Notification/`
+Карта файлов: [[Backend/Notification-ProjectMap]]
 
 ## Сборка
 
@@ -27,6 +28,7 @@ RabbitMQ: notifications-email-handler
 - **`EmailQueueConsumer`** — единственный entrypoint. При ошибке перебрасывает исключение (MassTransit retry).
 - **`EmailSender`** — SMTP с SSL. Отключает проверку TLS-сертификата через `ServicePointManager.ServerCertificateValidationCallback` (намеренно, для self-signed).
 - **`HtmlEmailTemplateParser`** — загружает HTML из `Templates/` по `NotificationType`, заменяет плейсхолдеры `ꟿꟿꟿvariableNameꟿꟿꟿ`. Спецплейсхолдер `ꟿꟿꟿcurrentyearꟿꟿꟿ` — автоматически.
+- **MediatR** — зарегистрирован в `Program.cs` (`AddMediatR`), конкретных хендлеров в проекте пока нет (задел на будущее).
 
 ## Шаблоны и типы уведомлений
 

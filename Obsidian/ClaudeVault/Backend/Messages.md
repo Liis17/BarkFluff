@@ -4,6 +4,8 @@
 
 Расположение: `Backend/BarkFluff.Messages/`
 
+📁 **Карта файлов проекта:** [[Backend/Messages-ProjectMap]]
+
 ## Сборка
 
 ```bash
@@ -52,6 +54,7 @@ docker-compose -f docker-compose-dev.yml up -d messages
 **Потребляет:**
 - `user-changed-name-messages` → `UserChangedNameConsumer` → Redis-кеш имён
 - `user-changed-avatar-messages` → `UserChangedAvatarConsumer` → Redis-кеш аватаров
+- `session-revoked-messages` → `SessionRevokedConsumer` → инвалидация токена сессии (`TokenRevocationCache`, XAuth)
 
 ### Redis-кеш
 

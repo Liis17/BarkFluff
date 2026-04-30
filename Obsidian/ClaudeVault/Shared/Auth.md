@@ -28,6 +28,10 @@ builder.Services.AddGrpcClient<SomeApi.SomeApiClient>(o =>
     .AddInterceptor(() => new ExceptionClientInterceptor()); // из BarkFluff.Shared.Exceptions
 ```
 
+## Карта проекта
+
+Подробный список всех файлов и классов: [[Shared/Auth-ProjectMap]]
+
 ## Важные замечания
 
 - Только `JwtClientInterceptor` передаёт значение **без Base64** — JWT идёт напрямую

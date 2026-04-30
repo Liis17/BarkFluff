@@ -2,6 +2,8 @@
 
 QR-авторизация новых устройств (флоу как у WhatsApp Web). Порт **7008**.
 
+> 📂 Детальная карта файлов и классов → [[Backend/FastAuth-ProjectMap]]
+
 Расположение: `Backend/BarkFluff.FastAuth/`
 
 ## Описание

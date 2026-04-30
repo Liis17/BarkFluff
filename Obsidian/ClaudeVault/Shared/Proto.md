@@ -4,6 +4,8 @@
 
 Расположение: `Shared/BarkFluff.Proto/`
 
+→ [[Shared/Proto-ProjectMap]] — детальная карта всех файлов и RPC
+
 ## Сборка
 
 ```bash

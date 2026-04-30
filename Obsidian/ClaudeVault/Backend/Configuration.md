@@ -5,6 +5,8 @@
 
 Расположение: `Backend/BarkFluff.Configuration/`
 
+📄 **Детальная карта файлов:** [[Backend/Configuration-ProjectMap]]
+
 ## Сборка
 
 ```bash
@@ -29,7 +31,7 @@ CQRS через MediatR. gRPC API (`configuration_api.proto`):
 
 - `Domain/ConfigurationItem` — единственная сущность: Section, Key, Value, ServiceId, EditedAt/By/From
 - `Infrastructure/ConfigurationStorage` — read/upsert конфигураций + CRUD reserved names
-- `Infrastructure/ConfigurationDefaultsPopulator` — при старте заполняет пустые (`Value == ""`) конфигурации дефолтами (порты, JWT, RabbitMQ, Redis, S3, токены). Поддерживает секции: `UsersService`, `FilesService`, `MessagesService`, `IdentityService`. Генерирует JWT SecretKey и Service-токены автоматически.
+- `Infrastructure/ConfigurationDefaultsPopulator` — при старте заполняет пустые (`Value == ""`) конфигурации дефолтами (порты, JWT, RabbitMQ, Redis, Seq, S3, токены, строки подключения к БД, внешние эндпоинты). Поддерживает секции: `RunSettings`, `JwtSettings`, `RabbitMQ`, `Redis`, `Seq`, `S3Buckets:*`, `ExternalEndpoint`, `NavigatorUrl`, `UsersService`, `FilesService`, `MessagesService`, `IdentityService`, базы данных (Identity, Users, Files, Messages, Onliner). Генерирует JWT SecretKey (64 символа) и Service-токены (TTL 10 лет) автоматически.
 - `Infrastructure/ConfigurationContext` — EF Core DbContext, один DbSet: `Configurations`
 - `Host/ConfigurationApiService` — gRPC-сервис, делегирует в MediatR-команды
 

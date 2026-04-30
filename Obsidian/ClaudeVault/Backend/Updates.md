@@ -2,6 +2,8 @@
 
 Real-time сервис: доставляет события клиентам через gRPC server-side streaming. **Без БД** — всё в памяти. Порт: **7015**.
 
+📄 Детальная карта файлов: [[Backend/Updates-ProjectMap]]
+
 Расположение: `Backend/BarkFluff.Updates/`
 
 ## Сборка
@@ -19,6 +21,7 @@ docker-compose -f docker-compose-dev.yml up -d updates
 |----------|----------|----------------------|-----------|
 | `new-messages-updates-handler` | `NewMessageConsumer` | `NewMessageNotification` | `SubscribeNewMessages` |
 | `read-receipts-updates-handler` | `ReadByConsumer` | `ReadByNotification` | `SubscribeMessagesRead` |
+| `session-revoked-updates` | `SessionRevokedConsumer` | — | — (инвалидация токена через `TokenRevocationCache`) |
 
 ### Схема прохождения события
 
