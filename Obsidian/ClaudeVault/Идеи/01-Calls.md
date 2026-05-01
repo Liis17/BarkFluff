@@ -47,13 +47,13 @@
 
 ## Изменения в существующих сервисах
 
-| Сервис | Изменение |
-|--------|-----------|
-| [[../Backend/Updates]] | Новые события: IncomingCall, CallState |
+| Сервис                        | Изменение                                    |
+| ----------------------------- | -------------------------------------------- |
+| [[../Backend/Updates]]        | Новые события: IncomingCall, CallState       |
 | [[../Backend/CloudMessaging]] | Push при входящем вызове (высокий приоритет) |
-| [[../Shared/Proto]] | Новый `signaling.proto` |
-| [[../Клиенты/Android]] | WebRTC Android SDK, новый экран звонка |
-| [[../Клиенты/Windows-WPF]] | WebRTC .NET биндинг или нативный экран |
+| [[../Shared/Proto]]           | Новый `signaling.proto`                      |
+| [[../Клиенты/Android]]        | WebRTC Android SDK, новый экран звонка       |
+| [[../Клиенты/Windows-WPF]]    | WebRTC .NET биндинг или нативный экран       |
 
 ---
 
