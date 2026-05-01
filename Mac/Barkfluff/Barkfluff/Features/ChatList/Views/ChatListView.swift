@@ -101,7 +101,8 @@ struct ChatListView: View {
                     ForEach(viewModel.chats) { chat in
                         ChatRowView(
                             chat: chat,
-                            onlineStatus: viewModel.onlineStatus(for: chat)
+                            currentUserID: container.currentUserID,
+                            onlineStatusService: container.onlineStatusService
                         )
                         .tag(chat.id)
                         .onAppear {
