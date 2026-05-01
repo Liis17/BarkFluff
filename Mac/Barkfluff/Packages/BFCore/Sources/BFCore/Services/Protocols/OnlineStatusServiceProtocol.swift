@@ -7,39 +7,48 @@
 
 import Foundation
 
-/// Протокол сервиса онлайн-статусов
+/// Протокол сервиса онлайн-статусов.
+/// Single source of truth для онлайн-статусов всех отслеживаемых пользователей.
+///
+/// Контракт работы консумера (View / ViewModel):
+/// 1. `track(userID)` — гарантирует подписку на gRPC-стрим для этого пользователя и
+///    свежий fetch текущего статуса. Каждый track ОБЯЗАТЕЛЬНО парный untrack.
+/// 2. `currentStatus(for:)` — мгновенный snapshot из кеша.
+/// 3. `statusStream(for:)` — поток только diff-изменений конкретного пользователя.
 public protocol OnlineStatusServiceProtocol: Sendable {
 
-    /// Запустить сервис (heartbeat + подписка на статусы видимых пользователей)
+    /// Запустить сервис: heartbeat + подписку на статусы. Делает warmup-fetch для
+    /// initialUserIDs (помещает их статусы в кеш), но не активирует tracking refcount.
     func start(initialUserIDs: [Int64]) async
 
-    /// Остановить сервис
+    /// Остановить сервис.
     func stop() async
 
-    /// Получить текущий кешированный статус пользователя
-    func getStatus(for userID: Int64) async -> OnlineStatus
+    /// Snapshot статуса пользователя из кеша (без сети).
+    func currentStatus(for userID: Int64) async -> OnlineStatus
 
-    /// Получить статусы для нескольких пользователей (batch, с запросом на сервер если нет в кеше)
-    func fetchStatuses(for userIDs: [Int64]) async
+    /// Per-user поток изменений статуса. Только diff'ы (initial значение
+    /// консумер должен прочитать через `currentStatus(for:)` отдельно).
+    /// Стрим завершается при `stop()` сервиса.
+    func statusStream(for userID: Int64) async -> AsyncStream<OnlineStatus>
 
-    /// Добавить пользователей к отслеживаемым (инкрементально)
-    func addToTracking(_ userIDs: [Int64]) async
+    /// Ref-counted tracking: добавить пользователя в gRPC-подписку и сделать
+    /// authoritative fetch. Каждый `track` обязателен парный `untrack`.
+    func track(_ userID: Int64) async
 
-    /// Удалить пользователей из отслеживаемых (инкрементально)
-    func removeFromTracking(_ userIDs: [Int64]) async
+    /// Уменьшить refcount tracking'а. Когда refcount достигает 0 —
+    /// пользователь удаляется из gRPC-подписки.
+    func untrack(_ userID: Int64) async
 
-    /// Полная замена списка отслеживаемых пользователей
-    func replaceTrackedUsers(_ userIDs: [Int64]) async
+    /// Bulk-track (каждый ID +1 к refcount).
+    func track(_ userIDs: [Int64]) async
 
-    /// Получить текущий список отслеживаемых пользователей
-    func getTrackedUserIDs() async -> Set<Int64>
+    /// Bulk-untrack.
+    func untrack(_ userIDs: [Int64]) async
 
-    /// Поток событий изменения статусов (для UI подписки)
-    func getStatusEventsStream() async -> AsyncStream<OnlineStatusEvent>
-
-    /// Поток событий подключения
+    /// Поток событий подключения (для UI: показать/скрыть индикатор офлайна).
     func getConnectionEventsStream() async -> AsyncStream<OnlineStatusConnectionEvent>
 
-    /// Активен ли сервис
+    /// Активен ли сервис.
     func isActive() async -> Bool
 }
