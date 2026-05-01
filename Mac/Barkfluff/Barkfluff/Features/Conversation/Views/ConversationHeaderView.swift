@@ -61,13 +61,7 @@ struct ConversationHeaderView: View {
             } else {
                 // Для DM показываем статус вместо username
                 if case .unknown = onlineStatus {
-                    // Fallback: показываем username собеседника если статус неизвестен
-                    if let member = chat.members.first(where: { $0.userID != container.currentUserID }) {
-                        Text("@\(member.username)")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
+                    EmptyView()
                 } else {
                     OnlineStatusText(status: onlineStatus)
                 }

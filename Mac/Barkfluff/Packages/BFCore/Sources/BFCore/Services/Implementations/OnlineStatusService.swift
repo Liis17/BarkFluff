@@ -280,7 +280,7 @@ public actor OnlineStatusService: OnlineStatusServiceProtocol {
         case .online:
             status = .online
         case .offline:
-            status = .offline(lastSeen: info.lastSeen ?? Date())
+            status = .offline(lastSeen: info.lastSeen)
         case .unknown:
             status = .unknown
         }
