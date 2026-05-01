@@ -9,7 +9,16 @@ import Foundation
 import BFNetworking
 
 /// Сервис управления онлайн-статусами.
-/// Оркестрирует OnlinerStreamManager, OnlinerRepository и OnlineStatusCache.
+///
+/// Архитектура: per-user multicast + ref-counted tracking.
+///
+/// Каждый консумер (View / ViewModel) регистрирует свою заинтересованность через
+/// `track(userID)` (обязательный парный `untrack`) и подписывается на индивидуальный
+/// поток через `statusStream(for:)`. Когда статус меняется, broadcast идёт ТОЛЬКО
+/// подписчикам конкретного userID — это исключает массовые re-render'ы UI.
+///
+/// Все обновления статуса проходят через `applyStatus(userID:newStatus:)` с dedup'ом:
+/// если значение в кеше уже совпадает, событие не публикуется.
 public actor OnlineStatusService: OnlineStatusServiceProtocol {
 
     // MARK: - Dependencies
@@ -24,12 +33,17 @@ public actor OnlineStatusService: OnlineStatusServiceProtocol {
     private var forwardEventsTask: Task<Void, Never>?
     private var forwardConnectionTask: Task<Void, Never>?
 
-    // MARK: - Streams
+    // MARK: - Subscriptions
 
-    // Multicast: несколько подписчиков получают одни и те же события.
-    // AsyncStream — single-consumer, поэтому для каждого вызова getStatusEventsStream
-    // создаём отдельный стрим. UUID — ключ для удаления при завершении подписчика.
-    private var eventSubscribers: [UUID: AsyncStream<OnlineStatusEvent>.Continuation] = [:]
+    /// Per-user multicast: каждому userID соответствует словарь активных подписчиков.
+    /// При изменении статуса userID broadcast идёт ТОЛЬКО его подписчикам.
+    private var perUserSubscribers: [Int64: [UUID: AsyncStream<OnlineStatus>.Continuation]] = [:]
+
+    /// Ref-counted tracking: сколько UI-консумеров заинтересовано в конкретном userID.
+    /// Когда счётчик достигает 0 — пользователь удаляется из gRPC-подписки.
+    private var trackingRefcount: [Int64: Int] = [:]
+
+    // MARK: - Connection Stream
 
     private var connectionContinuation: AsyncStream<OnlineStatusConnectionEvent>.Continuation?
     private var connectionStream: AsyncStream<OnlineStatusConnectionEvent>?
@@ -50,34 +64,23 @@ public actor OnlineStatusService: OnlineStatusServiceProtocol {
 
     public func start(initialUserIDs: [Int64]) async {
         if isActiveValue {
-            // Уже запущен — просто добавляем новых пользователей
-            await addToTracking(initialUserIDs)
+            // Сервис уже работает — bootstrap-fetch для свежих юзеров,
+            // прогревает кеш до того как row'ы вызовут track.
+            await warmupCache(for: initialUserIDs)
             return
         }
         isActiveValue = true
 
-        // 1. Запрашиваем начальные статусы через GetOnlineStatus (batch)
-        if !initialUserIDs.isEmpty {
-            do {
-                let statuses = try await onlinerRepository.getOnlineStatus(userIDs: initialUserIDs)
-                let events = statuses.map { mapToEvent($0) }
-                await cache.updateStatuses(events)
-
-                // Прокидываем начальные статусы всем подписчикам
-                for event in events {
-                    broadcastStatusEvent(event)
-                }
-            } catch {
-                // Не критично — статусы придут по стриму
-            }
-        }
-
-        // 2. Запускаем стрим-менеджер (heartbeat + подписка)
+        // Запускаем стрим-менеджер (heartbeat + gRPC subscription).
         await streamManager.start(userIDs: initialUserIDs)
 
-        // 3. Форвардим события из стрим-менеджера в кеш и подписчикам
+        // Форвардим события из стрима через единую точку applyStatus (с dedup'ом).
         startForwardingEvents()
         startForwardingConnectionEvents()
+
+        // Warmup кеша: подписчики ещё не зарегистрированы, broadcast уйдёт в пустоту,
+        // зато currentStatus(for:) вернёт сразу актуальное значение.
+        await warmupCache(for: initialUserIDs)
     }
 
     public func stop() async {
@@ -90,17 +93,20 @@ public actor OnlineStatusService: OnlineStatusServiceProtocol {
         forwardConnectionTask?.cancel()
         forwardConnectionTask = nil
 
-        // Завершаем все subscriber continuations — освобождаем Task'и подписчиков
-        for continuation in eventSubscribers.values {
-            continuation.finish()
+        // Финализируем все per-user continuations — освобождаем Task'и подписчиков.
+        for bucket in perUserSubscribers.values {
+            for continuation in bucket.values {
+                continuation.finish()
+            }
         }
-        eventSubscribers.removeAll()
+        perUserSubscribers.removeAll()
+        trackingRefcount.removeAll()
 
         connectionContinuation?.finish()
         connectionContinuation = nil
         connectionStream = nil
 
-        // Сбрасываем кеш чтобы следующий start() получил свежие статусы
+        // Сбрасываем кеш чтобы следующий start() получил свежие статусы.
         await cache.removeAll()
 
         await streamManager.stop()
@@ -108,89 +114,101 @@ public actor OnlineStatusService: OnlineStatusServiceProtocol {
 
     // MARK: - Status Access
 
-    public func getStatus(for userID: Int64) async -> OnlineStatus {
+    public func currentStatus(for userID: Int64) async -> OnlineStatus {
         await cache.getStatus(for: userID)
     }
 
-    public func fetchStatuses(for userIDs: [Int64]) async {
-        // Определяем каких нет в кеше
-        var missingIDs: [Int64] = []
-        for id in userIDs {
-            let status = await cache.getStatus(for: id)
-            if case .unknown = status {
-                missingIDs.append(id)
-            }
-        }
+    // MARK: - Per-User Streams
 
-        guard !missingIDs.isEmpty else { return }
-
-        do {
-            let statuses = try await onlinerRepository.getOnlineStatus(userIDs: missingIDs)
-            let events = statuses.map { mapToEvent($0) }
-            await cache.updateStatuses(events)
-
-            for event in events {
-                broadcastStatusEvent(event)
-            }
-        } catch {
-            // Не критично — повторим при следующей возможности
-        }
-    }
-
-    // MARK: - Subscription Management
-
-    /// Добавить пользователей к отслеживаемым (инкрементально)
-    public func addToTracking(_ userIDs: [Int64]) async {
-        guard !userIDs.isEmpty else { return }
-
-        // Добавляем в стрим-менеджер
-        await streamManager.addToTracking(userIDs)
-
-        // Запрашиваем текущие статусы для новых пользователей
-        await fetchStatuses(for: userIDs)
-    }
-
-    /// Удалить пользователей из отслеживаемых (инкрементально)
-    public func removeFromTracking(_ userIDs: [Int64]) async {
-        await streamManager.removeFromTracking(userIDs)
-    }
-
-    /// Полная замена списка отслеживаемых пользователей
-    public func replaceTrackedUsers(_ userIDs: [Int64]) async {
-        // Обновляем подписку на стриме
-        await streamManager.replaceTrackedUsers(userIDs)
-
-        // Запрашиваем текущие статусы для новых пользователей
-        await fetchStatuses(for: userIDs)
-    }
-
-    /// Получить текущий список отслеживаемых пользователей
-    public func getTrackedUserIDs() async -> Set<Int64> {
-        await streamManager.getTrackedUserIDs()
-    }
-
-    // MARK: - Streams
-
-    public func getStatusEventsStream() async -> AsyncStream<OnlineStatusEvent> {
-        let id = UUID()
-        let stream = AsyncStream<OnlineStatusEvent> { continuation in
-            self.eventSubscribers[id] = continuation
+    public func statusStream(for userID: Int64) async -> AsyncStream<OnlineStatus> {
+        AsyncStream<OnlineStatus>(bufferingPolicy: .bufferingNewest(1)) { continuation in
+            let id = UUID()
+            // Регистрация — асинхронная (заходим в actor), но AsyncStream
+            // буферизует yield'и до момента когда консумер начнёт их читать.
+            Task { await self.registerSubscriber(userID: userID, id: id, continuation: continuation) }
             continuation.onTermination = { [weak self] _ in
-                Task { await self?.removeEventSubscriber(id: id) }
+                guard let self else { return }
+                Task { await self.unregisterSubscriber(userID: userID, id: id) }
             }
         }
-        return stream
     }
 
-    private func removeEventSubscriber(id: UUID) {
-        eventSubscribers.removeValue(forKey: id)
+    private func registerSubscriber(
+        userID: Int64,
+        id: UUID,
+        continuation: AsyncStream<OnlineStatus>.Continuation
+    ) {
+        var bucket = perUserSubscribers[userID, default: [:]]
+        bucket[id] = continuation
+        perUserSubscribers[userID] = bucket
     }
 
-    private func broadcastStatusEvent(_ event: OnlineStatusEvent) {
-        for continuation in eventSubscribers.values {
-            continuation.yield(event)
+    private func unregisterSubscriber(userID: Int64, id: UUID) {
+        guard var bucket = perUserSubscribers[userID] else { return }
+        bucket.removeValue(forKey: id)
+        if bucket.isEmpty {
+            perUserSubscribers.removeValue(forKey: userID)
+        } else {
+            perUserSubscribers[userID] = bucket
         }
     }
+
+    // MARK: - Tracking (Ref-Counted)
+
+    public func track(_ userID: Int64) async {
+        let prev = trackingRefcount[userID] ?? 0
+        trackingRefcount[userID] = prev + 1
+
+        // Только при первом track для этого userID — добавляем в gRPC-подписку
+        // и делаем authoritative fetch.
+        if prev == 0 {
+            await streamManager.addToTracking([userID])
+            await fetchStatusAuthoritative(userIDs: [userID])
+        }
+    }
+
+    public func untrack(_ userID: Int64) async {
+        guard let cur = trackingRefcount[userID], cur > 0 else { return }
+        if cur == 1 {
+            trackingRefcount.removeValue(forKey: userID)
+            await streamManager.removeFromTracking([userID])
+        } else {
+            trackingRefcount[userID] = cur - 1
+        }
+    }
+
+    public func track(_ userIDs: [Int64]) async {
+        guard !userIDs.isEmpty else { return }
+        var newToTrack: [Int64] = []
+        for id in userIDs {
+            let prev = trackingRefcount[id] ?? 0
+            trackingRefcount[id] = prev + 1
+            if prev == 0 { newToTrack.append(id) }
+        }
+        if !newToTrack.isEmpty {
+            await streamManager.addToTracking(newToTrack)
+            await fetchStatusAuthoritative(userIDs: newToTrack)
+        }
+    }
+
+    public func untrack(_ userIDs: [Int64]) async {
+        guard !userIDs.isEmpty else { return }
+        var toRemove: [Int64] = []
+        for id in userIDs {
+            guard let cur = trackingRefcount[id], cur > 0 else { continue }
+            if cur == 1 {
+                trackingRefcount.removeValue(forKey: id)
+                toRemove.append(id)
+            } else {
+                trackingRefcount[id] = cur - 1
+            }
+        }
+        if !toRemove.isEmpty {
+            await streamManager.removeFromTracking(toRemove)
+        }
+    }
+
+    // MARK: - Connection Stream
 
     public func getConnectionEventsStream() async -> AsyncStream<OnlineStatusConnectionEvent> {
         if let existing = connectionStream {
@@ -208,7 +226,46 @@ public actor OnlineStatusService: OnlineStatusServiceProtocol {
         isActiveValue
     }
 
-    // MARK: - Private
+    // MARK: - Private: Status Application
+
+    /// Единая точка применения статуса. Защищает от лишних re-render'ов через dedup:
+    /// если значение в кеше совпадает — событие не публикуется.
+    private func applyStatus(userID: Int64, newStatus: OnlineStatus) async {
+        let old = await cache.getStatus(for: userID)
+        guard old != newStatus else { return }
+        await cache.updateStatus(userID: userID, status: newStatus)
+
+        if let bucket = perUserSubscribers[userID] {
+            for continuation in bucket.values {
+                continuation.yield(newStatus)
+            }
+        }
+    }
+
+    /// Authoritative fetch: всегда перезаписывает кеш свежим значением с сервера.
+    /// В отличие от старого `fetchStatuses`, не пропускает уже закешированные значения —
+    /// stale `.online` будет корректно заменён свежим `.offline`.
+    private func fetchStatusAuthoritative(userIDs: [Int64]) async {
+        guard !userIDs.isEmpty else { return }
+        do {
+            let statuses = try await onlinerRepository.getOnlineStatus(userIDs: userIDs)
+            for info in statuses {
+                let event = mapToEvent(info)
+                await applyStatus(userID: event.userID, newStatus: event.status)
+            }
+        } catch {
+            // Не критично — повторим при следующей возможности (track / reconnect).
+        }
+    }
+
+    /// Прогрев кеша при старте сервиса: получаем статусы и кладём в кеш
+    /// (через applyStatus с dedup'ом — если кеш пуст, broadcast уйдёт в пустые
+    /// per-user buckets, что корректно).
+    private func warmupCache(for userIDs: [Int64]) async {
+        await fetchStatusAuthoritative(userIDs: userIDs)
+    }
+
+    // MARK: - Private: Forwarding
 
     private func startForwardingEvents() {
         forwardEventsTask = Task { [weak self] in
@@ -218,14 +275,8 @@ public actor OnlineStatusService: OnlineStatusServiceProtocol {
 
             for await info in managerStream {
                 if Task.isCancelled { break }
-
                 let event = self.mapToEvent(info)
-
-                // Обновляем кеш
-                await self.cache.updateStatus(userID: event.userID, status: event.status)
-
-                // Рассылаем всем подписчикам
-                await self.broadcastStatusEvent(event)
+                await self.applyStatus(userID: event.userID, newStatus: event.status)
             }
         }
     }
@@ -245,8 +296,10 @@ public actor OnlineStatusService: OnlineStatusServiceProtocol {
                     domainEvent = .connectionLost
                 case .reconnected:
                     domainEvent = .reconnected
-                    // Рефреш при переподключении: SubscribeToOnlineStatus — delta stream,
-                    // статусы изменившиеся во время разрыва теряются. Синхронизируем кеш.
+                    // Стрим — delta-only, после реконнекта статусы изменившиеся
+                    // во время разрыва теряются. Делаем authoritative refresh.
+                    // applyStatus с dedup'ом гарантирует, что не-изменившиеся
+                    // юзеры не вызовут лишних UI-обновлений.
                     await self.refreshAllTrackedStatuses()
                 }
 
@@ -256,23 +309,14 @@ public actor OnlineStatusService: OnlineStatusServiceProtocol {
         }
     }
 
-    /// Повторно запрашивает текущие статусы всех отслеживаемых пользователей.
-    /// Вызывается после переподключения стрима для исправления кеша.
+    /// Authoritative refresh всех отслеживаемых юзеров. Вызывается после reconnect.
     private func refreshAllTrackedStatuses() async {
-        let trackedIDs = await streamManager.getTrackedUserIDs()
+        let trackedIDs = Array(trackingRefcount.keys)
         guard !trackedIDs.isEmpty else { return }
-
-        do {
-            let statuses = try await onlinerRepository.getOnlineStatus(userIDs: Array(trackedIDs))
-            let events = statuses.map { mapToEvent($0) }
-            await cache.updateStatuses(events)
-            for event in events {
-                broadcastStatusEvent(event)
-            }
-        } catch {
-            // Не критично — следующее событие по стриму скорректирует статус
-        }
+        await fetchStatusAuthoritative(userIDs: trackedIDs)
     }
+
+    // MARK: - Private: Mapping
 
     private nonisolated func mapToEvent(_ info: UserOnlineStatusInfo) -> OnlineStatusEvent {
         let status: OnlineStatus

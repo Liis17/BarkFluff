@@ -563,6 +563,12 @@ final class ConversationViewModel {
         newMessagesTask = nil
         readEventsTask = nil
         onlineStatusTask = nil
+
+        // Парный untrack для track из startListeningForOnlineStatus.
+        if !chat.isGroupChat, let otherUserID = chat.otherUserID(excluding: currentUserID) {
+            let service = onlineStatusService
+            Task { await service.untrack(otherUserID) }
+        }
     }
 
     // MARK: - Online Status
@@ -570,21 +576,26 @@ final class ConversationViewModel {
     private func startListeningForOnlineStatus() async {
         guard !chat.isGroupChat, let otherUserID = chat.otherUserID(excluding: currentUserID) else { return }
 
-        let status = await onlineStatusService.getStatus(for: otherUserID)
+        // Snapshot из кеша — мгновенный показ.
+        let status = await onlineStatusService.currentStatus(for: otherUserID)
         await MainActor.run { self.otherUserOnlineStatus = status }
 
-        let stream = await onlineStatusService.getStatusEventsStream()
+        // Track + per-user stream. track обязателен парный untrack — делаем
+        // в stopListeningForUpdates(). При reconnect / переоткрытии чата
+        // refcount корректно балансируется.
+        await onlineStatusService.track(otherUserID)
 
-        // Отменяем предыдущую задачу перед заменой — предотвращает утечку подписчиков
+        // Свежее значение из кеша после track (track делает authoritative fetch).
+        let refreshed = await onlineStatusService.currentStatus(for: otherUserID)
+        await MainActor.run { self.otherUserOnlineStatus = refreshed }
+
+        // Отменяем предыдущую задачу — предотвращает утечку подписчиков.
         onlineStatusTask?.cancel()
-        onlineStatusTask = Task { [weak self] in
-            for await event in stream {
+        onlineStatusTask = Task { [weak self, onlineStatusService] in
+            let stream = await onlineStatusService.statusStream(for: otherUserID)
+            for await newStatus in stream {
                 guard let self else { break }
-                if event.userID == otherUserID {
-                    await MainActor.run {
-                        self.otherUserOnlineStatus = event.status
-                    }
-                }
+                await MainActor.run { self.otherUserOnlineStatus = newStatus }
             }
         }
     }

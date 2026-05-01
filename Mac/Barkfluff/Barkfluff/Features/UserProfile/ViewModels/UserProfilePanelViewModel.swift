@@ -33,6 +33,8 @@ final class UserProfilePanelViewModel {
 
     var onlineStatus: OnlineStatus = .unknown
     private var onlineStatusTask: Task<Void, Never>?
+    /// Текущий отслеживаемый userID (для парного untrack при stop).
+    private var trackedOnlineUserID: Int64?
 
     // MARK: - Computed Profile Properties
 
@@ -183,19 +185,24 @@ final class UserProfilePanelViewModel {
     // MARK: - Online Status
 
     private func startListeningForOnlineStatus(userID: Int64) async {
-        // Получить текущий статус
-        let status = await onlineStatusService.getStatus(for: userID)
+        // Snapshot из кеша.
+        let status = await onlineStatusService.currentStatus(for: userID)
         self.onlineStatus = status
 
-        // Подписаться на обновления
-        let stream = await onlineStatusService.getStatusEventsStream()
-        onlineStatusTask = Task { [weak self] in
-            for await event in stream {
-                if event.userID == userID {
-                    await MainActor.run {
-                        self?.onlineStatus = event.status
-                    }
-                }
+        // Track (ref-counted) + парный untrack через stopListeningForOnlineStatus.
+        await onlineStatusService.track(userID)
+        trackedOnlineUserID = userID
+
+        // Свежее значение после authoritative fetch внутри track.
+        let refreshed = await onlineStatusService.currentStatus(for: userID)
+        self.onlineStatus = refreshed
+
+        // Per-user поток изменений.
+        onlineStatusTask = Task { [weak self, onlineStatusService] in
+            let stream = await onlineStatusService.statusStream(for: userID)
+            for await newStatus in stream {
+                guard let self else { break }
+                await MainActor.run { self.onlineStatus = newStatus }
             }
         }
     }
@@ -203,6 +210,12 @@ final class UserProfilePanelViewModel {
     func stopListeningForOnlineStatus() {
         onlineStatusTask?.cancel()
         onlineStatusTask = nil
+
+        if let userID = trackedOnlineUserID {
+            let service = onlineStatusService
+            Task { await service.untrack(userID) }
+            trackedOnlineUserID = nil
+        }
     }
 
     // MARK: - Load All Members (Group, pagination)

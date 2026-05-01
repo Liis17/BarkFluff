@@ -69,6 +69,40 @@ Views → ViewModels → Services → Repositories → gRPC
 - `GlassEffectContainer` — обязателен при нескольких glass-элементах рядом
 - Glass — только для навигационного слоя, НИКОГДА для контента
 
+## Онлайн-статусы (per-user observation + ref-counted tracking)
+
+`OnlineStatusService` (actor, singleton) — single source of truth для статусов всех отслеживаемых пользователей. Бекенд: `OnlinerApi` (см. [[Backend/Onliner]]).
+
+Контракт для UI-консумера:
+- `currentStatus(for: userID)` — мгновенный snapshot из кеша.
+- `statusStream(for: userID)` — `AsyncStream` с diff-обновлениями ТОЛЬКО для этого `userID`.
+- `track(userID)` / `untrack(userID)` — ref-counted; первый track делает authoritative GET и добавляет юзера в gRPC-подписку, последний untrack — удаляет. Каждый `track` ОБЯЗАН быть парным.
+
+Консумер-паттерн в SwiftUI:
+```swift
+@State var status: OnlineStatus = .unknown
+
+.task(id: otherUserID) {
+    status = await service.currentStatus(for: otherUserID)
+    await service.track(otherUserID)
+    await withTaskCancellationHandler {
+        for await new in await service.statusStream(for: otherUserID) {
+            status = new
+        }
+    } onCancel: {
+        Task { await service.untrack(otherUserID) }
+    }
+}
+```
+
+Ключевые свойства:
+- **`applyStatus` с dedup'ом** — если новое значение совпадает с кешем, broadcast не идёт (предотвращает лишние UI-обновления).
+- **Per-user multicast** — никаких общих `@Observable` словарей в ViewModel'ях, чтобы изменение одного юзера не инвалидило весь список чатов.
+- **Authoritative fetch** — `track` всегда тащит свежий статус с сервера, даже если в кеше что-то есть (защита от stale-cached значений).
+- **Reconnect refresh** — после восстановления соединения `refreshAllTrackedStatuses` синхронизирует кеш через `applyStatus` (с dedup'ом, без flicker'а).
+
+Консумеры: `ChatRowView` (через `.task(id:)`), `ConversationViewModel.startListeningForOnlineStatus` (для статуса под именем в открытом чате), `UserProfilePanelViewModel`.
+
 ## Code Conventions
 
 - Комментарии на русском

@@ -18,9 +18,6 @@ final class ChatListViewModel {
     var searchResults: [User] = []
     var isSearching = false
 
-    /// Статусы онлайн для отображаемых чатов (userID → status)
-    var onlineStatuses: [Int64: OnlineStatus] = [:]
-
     /// Замыкание для проверки, открыт ли чат сейчас (активный)
     var isActiveChatChecker: ((String) -> Bool)?
 
@@ -37,7 +34,6 @@ final class ChatListViewModel {
     private var readEventsTask: Task<Void, Never>?
     private var connectionEventsTask: Task<Void, Never>?
     private var searchTask: Task<Void, Never>?
-    private var onlineStatusTask: Task<Void, Never>?
 
     init(
         chatService: ChatServiceProtocol,
@@ -80,7 +76,12 @@ final class ChatListViewModel {
             // Единственное обновление UI после загрузки всех страниц
             allChats = accumulated
             applyFilter()
-            await startOnlineStatusTracking()
+
+            // Прогрев кеша онлайн-статусов для видимых DM-чатов.
+            // Сами подписки на per-user изменения делают ChatRowView через
+            // .task(id:) — здесь только bootstrap сервиса.
+            let userIDs = collectUserIDsFromChats()
+            await onlineStatusService.start(initialUserIDs: userIDs)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -100,12 +101,8 @@ final class ChatListViewModel {
             totalCount = result.totalCount
             applyFilter()
 
-            // Добавляем новых пользователей к отслеживаемым (инкрементально)
-            let newUserIDs = newChats.compactMap { chat -> Int64? in
-                guard !chat.isGroupChat else { return nil }
-                return chat.otherUserID(excluding: currentUserID)
-            }
-            await addToOnlineStatusTracking(newUserIDs)
+            // Tracking новых юзеров делают ChatRowView через .task(id:) когда
+            // их строки появляются в SwiftUI List — отдельная регистрация не нужна.
         } catch {
             // Silently fail for pagination
         }
@@ -155,75 +152,19 @@ final class ChatListViewModel {
         newMessagesTask?.cancel()
         readEventsTask?.cancel()
         connectionEventsTask?.cancel()
-        onlineStatusTask?.cancel()
         newMessagesTask = nil
         readEventsTask = nil
         connectionEventsTask = nil
-        onlineStatusTask = nil
     }
 
     // MARK: - Online Status
 
-    /// Начать отслеживание онлайн-статусов для всех DM чатов
-    private func startOnlineStatusTracking() async {
-        let userIDs = collectUserIDsFromChats()
-
-        // 1. Регистрируем подписчика ДО start() — события из start() (batch fetch)
-        //    попадут в буфер стрима и будут обработаны задачей после запуска.
-        let stream = await onlineStatusService.getStatusEventsStream()
-
-        // 2. Отменяем предыдущую задачу перед заменой (предотвращает утечку подписчиков)
-        onlineStatusTask?.cancel()
-        onlineStatusTask = Task { [weak self] in
-            guard let self else { return }
-            for await event in stream {
-                await MainActor.run {
-                    self.onlineStatuses[event.userID] = event.status
-                }
-            }
-        }
-
-        // 3. Запускаем сервис — события идут в уже зарегистрированный подписчик
-        await onlineStatusService.start(initialUserIDs: userIDs)
-
-        // 4. Заполняем из кеша для немедленного отображения.
-        //    Задача асинхронно обработает буферизованные события.
-        for userID in userIDs {
-            let status = await onlineStatusService.getStatus(for: userID)
-            onlineStatuses[userID] = status
-        }
-    }
-
-    /// Добавить новых пользователей к отслеживаемым (инкрементально)
-    private func addToOnlineStatusTracking(_ newUserIDs: [Int64]) async {
-        guard !newUserIDs.isEmpty else { return }
-
-        // Получаем текущий список отслеживаемых
-        let currentTracked = await onlineStatusService.getTrackedUserIDs()
-
-        // Фильтруем только новых (которых ещё нет в отслеживаемых)
-        let usersToAdd = newUserIDs.filter { !currentTracked.contains($0) }
-
-        guard !usersToAdd.isEmpty else { return }
-
-        // Добавляем инкрементально
-        await onlineStatusService.addToTracking(usersToAdd)
-    }
-
-    /// Собрать ID пользователей из DM чатов
+    /// Собрать ID пользователей из DM чатов (для warmup кеша при старте).
     private func collectUserIDsFromChats() -> [Int64] {
         allChats.compactMap { chat -> Int64? in
             guard !chat.isGroupChat else { return nil }
             return chat.otherUserID(excluding: currentUserID)
         }
-    }
-
-    /// Получить статус для конкретного чата (для DM — статус собеседника)
-    func onlineStatus(for chat: Chat) -> OnlineStatus {
-        guard !chat.isGroupChat, let otherUserID = chat.otherUserID(excluding: currentUserID) else {
-            return .unknown
-        }
-        return onlineStatuses[otherUserID] ?? .unknown
     }
 
     // MARK: - Event Handling
@@ -238,12 +179,8 @@ final class ChatListViewModel {
             }
             applyFilter()
         } else {
-            // Новый чат — добавляем отправителя в отслеживаемые
-            let senderID = event.message.senderID
-            if senderID != currentUserID {
-                Task { await self.addToOnlineStatusTracking([senderID]) }
-            }
-            // И перезагружаем список чатов
+            // Новый чат — перезагружаем список чатов. Tracking нового
+            // собеседника произойдёт автоматически когда его row появится в List.
             Task { await loadChats() }
         }
     }
