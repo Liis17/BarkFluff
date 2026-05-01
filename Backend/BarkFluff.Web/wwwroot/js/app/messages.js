@@ -81,6 +81,15 @@
         var visible = Math.min(images.length, 4);
         grid.className = 'attach-image-grid grid-' + visible;
 
+        if (visible === 1) {
+            var w = images[0].imageWidth || 0;
+            var h = images[0].imageHeight || 0;
+            if (w > 0 && h > 0) {
+                grid.style.aspectRatio = w + ' / ' + h;
+                grid.style.maxHeight = '350px';
+            }
+        }
+
         for (var i = 0; i < visible; i++) {
             var a = images[i];
             var fd = BF.files.getCachedFileUrl(a.fileId);
