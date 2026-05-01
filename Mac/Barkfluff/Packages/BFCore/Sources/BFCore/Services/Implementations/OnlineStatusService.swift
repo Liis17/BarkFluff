@@ -90,6 +90,19 @@ public actor OnlineStatusService: OnlineStatusServiceProtocol {
         forwardConnectionTask?.cancel()
         forwardConnectionTask = nil
 
+        // Завершаем все subscriber continuations — освобождаем Task'и подписчиков
+        for continuation in eventSubscribers.values {
+            continuation.finish()
+        }
+        eventSubscribers.removeAll()
+
+        connectionContinuation?.finish()
+        connectionContinuation = nil
+        connectionStream = nil
+
+        // Сбрасываем кеш чтобы следующий start() получил свежие статусы
+        await cache.removeAll()
+
         await streamManager.stop()
     }
 

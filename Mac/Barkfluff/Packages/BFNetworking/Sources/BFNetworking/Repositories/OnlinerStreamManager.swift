@@ -87,6 +87,16 @@ public actor OnlinerStreamManager {
         isRunning = true
         trackedUserIDs = Set(userIDs)
 
+        // Пересоздаём стримы: после stop() старые continuations завершены навсегда,
+        // повторный start() должен получить свежие каналы.
+        var statusCont: AsyncStream<UserOnlineStatusInfo>.Continuation!
+        onlineStatusEvents = AsyncStream { statusCont = $0 }
+        statusContinuation = statusCont
+
+        var connCont: AsyncStream<ConnectionEvent>.Continuation!
+        connectionEvents = AsyncStream { connCont = $0 }
+        connectionContinuation = connCont
+
         startHeartbeat()
         startSubscription()
     }

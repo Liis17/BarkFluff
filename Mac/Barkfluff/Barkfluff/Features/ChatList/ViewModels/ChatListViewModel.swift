@@ -60,26 +60,26 @@ final class ChatListViewModel {
         errorMessage = nil
 
         do {
-            // Загружаем первую страницу
+            // Собираем все страницы во временный массив до обновления UI —
+            // это исключает моргание списка при реконнекте
+            var accumulated: [Chat] = []
             var result = try await chatService.listChats(offset: 0, size: PaginationHelper.defaultChatsPageSize)
-            allChats = result.items
+            accumulated.append(contentsOf: result.items)
             totalCount = result.totalCount
-            applyFilter()
 
-            // Догружаем все оставшиеся страницы, чтобы клиентская сортировка
-            // по времени последнего сообщения охватывала весь список чатов
             while result.hasMore {
                 let nextResult = try await chatService.listChats(
                     offset: result.nextOffset,
                     size: PaginationHelper.defaultChatsPageSize
                 )
-                allChats.append(contentsOf: nextResult.items)
+                accumulated.append(contentsOf: nextResult.items)
                 totalCount = nextResult.totalCount
                 result = nextResult
-                applyFilter()
             }
 
-            // Запускаем отслеживание онлайн-статусов для всех загруженных чатов
+            // Единственное обновление UI после загрузки всех страниц
+            allChats = accumulated
+            applyFilter()
             await startOnlineStatusTracking()
         } catch {
             errorMessage = error.localizedDescription
@@ -166,34 +166,31 @@ final class ChatListViewModel {
 
     /// Начать отслеживание онлайн-статусов для всех DM чатов
     private func startOnlineStatusTracking() async {
-        // Собираем ID пользователей из DM чатов
         let userIDs = collectUserIDsFromChats()
 
-        // Запускаем сервис с начальным списком
+        // 1. Регистрируем подписчика ДО start() — события из start() (batch fetch)
+        //    попадут в буфер стрима и будут обработаны задачей после запуска.
+        let stream = await onlineStatusService.getStatusEventsStream()
+
+        // 2. Отменяем предыдущую задачу перед заменой (предотвращает утечку подписчиков)
+        onlineStatusTask?.cancel()
+        onlineStatusTask = Task { [weak self] in
+            guard let self else { return }
+            for await event in stream {
+                await MainActor.run {
+                    self.onlineStatuses[event.userID] = event.status
+                }
+            }
+        }
+
+        // 3. Запускаем сервис — события идут в уже зарегистрированный подписчик
         await onlineStatusService.start(initialUserIDs: userIDs)
 
-        // Подписываемся на события изменения статусов
-        startListeningForOnlineStatusEvents()
-
-        // Заполняем начальные статусы из кеша
-        // (события из start() могут быть потеряны, т.к. continuation ещё не создан)
+        // 4. Заполняем из кеша для немедленного отображения.
+        //    Задача асинхронно обработает буферизованные события.
         for userID in userIDs {
             let status = await onlineStatusService.getStatus(for: userID)
             onlineStatuses[userID] = status
-        }
-    }
-
-    /// Подписаться на события изменения статусов
-    private func startListeningForOnlineStatusEvents() {
-        onlineStatusTask = Task { [weak self] in
-            let stream = await self?.onlineStatusService.getStatusEventsStream()
-            guard let stream else { return }
-
-            for await event in stream {
-                await MainActor.run {
-                    self?.onlineStatuses[event.userID] = event.status
-                }
-            }
         }
     }
 
