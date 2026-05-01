@@ -10,7 +10,8 @@ import Foundation
 /// Статус пользователя в сети
 public enum OnlineStatus: Sendable, Equatable, Hashable {
     case online
-    case offline(lastSeen: Date)
+    /// `lastSeen == nil` означает offline без известного времени последнего визита
+    case offline(lastSeen: Date?)
     case unknown
 
     /// Пользователь сейчас онлайн
@@ -25,6 +26,7 @@ public enum OnlineStatus: Sendable, Equatable, Hashable {
         case .online:
             return "В сети"
         case .offline(let lastSeen):
+            guard let lastSeen else { return "Был(а) давно" }
             return Self.formatLastSeen(lastSeen)
         case .unknown:
             return ""

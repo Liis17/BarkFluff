@@ -138,12 +138,15 @@ public struct ChatMember: Identifiable, Hashable, Sendable {
     }
 
     public var displayName: String {
-        "\(firstName) \(lastName)"
+        [firstName, lastName]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
     }
 
     public var initials: String {
-        let first = firstName.first.map(String.init) ?? ""
-        let last = lastName.first.map(String.init) ?? ""
+        let first = firstName.trimmingCharacters(in: .whitespacesAndNewlines).first.map(String.init) ?? ""
+        let last = lastName.trimmingCharacters(in: .whitespacesAndNewlines).first.map(String.init) ?? ""
         return first + last
     }
 }
@@ -194,12 +197,15 @@ public struct DetailedChatMember: Identifiable, Hashable, Sendable {
     }
 
     public var displayName: String {
-        "\(firstName) \(lastName)"
+        [firstName, lastName]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
     }
 
     public var initials: String {
-        let first = firstName.first.map(String.init) ?? ""
-        let last = lastName.first.map(String.init) ?? ""
+        let first = firstName.trimmingCharacters(in: .whitespacesAndNewlines).first.map(String.init) ?? ""
+        let last = lastName.trimmingCharacters(in: .whitespacesAndNewlines).first.map(String.init) ?? ""
         return first + last
     }
 }

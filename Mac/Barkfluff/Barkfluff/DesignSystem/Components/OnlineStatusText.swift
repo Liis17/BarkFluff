@@ -18,8 +18,8 @@ struct OnlineStatusText: View {
             Text("В сети")
                 .font(.caption)
                 .foregroundStyle(.green)
-        case .offline(let lastSeen):
-            Text(OnlineStatus.offline(lastSeen: lastSeen).displayText)
+        case .offline:
+            Text(status.displayText)
                 .font(.caption)
                 .foregroundStyle(.secondary)
         case .unknown:

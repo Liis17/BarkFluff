@@ -28,83 +28,15 @@ struct SessionsView: View {
                     Text("Нет активных сессий")
                         .foregroundStyle(.secondary)
                 } else {
-                    ForEach(viewModel.sessions) { session in
-                        let isCurrent = session.deviceId == viewModel.currentDeviceId
-                        let localMeta = DeviceMetadataProvider.shared
+                    let currentSession = viewModel.sessions.first { $0.deviceId == viewModel.currentDeviceId }
+                    let otherSessions = viewModel.sessions.filter { $0.deviceId != viewModel.currentDeviceId }
 
-                        // Фолбэк: для пустых полей подставляем локальные данные (для текущей сессии)
-                        let name = !session.displayName.isEmpty
-                            ? session.displayName
-                            : (isCurrent ? localMeta.deviceName : "Неизвестное устройство")
-                        let os = !session.operationSystem.isEmpty
-                            ? session.operationSystem
-                            : (isCurrent ? localMeta.osName : "")
-                        let app = !session.appName.isEmpty
-                            ? session.appName
-                            : (isCurrent ? localMeta.appName : "")
+                    if let current = currentSession {
+                        sessionRow(current, isCurrent: true)
+                    }
 
-                        HStack(spacing: 12) {
-                            Image(systemName: iconForOS(os))
-                                .font(.title2)
-                                .foregroundStyle(isCurrent ? Color.accentColor : .secondary)
-                                .frame(width: 36)
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                HStack(spacing: 6) {
-                                    Text(name)
-                                        .font(.headline)
-
-                                    if isCurrent {
-                                        Text("Текущая")
-                                            .font(.caption2)
-                                            .foregroundStyle(.white)
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 2)
-                                            .background(Color.accentColor)
-                                            .clipShape(Capsule())
-                                    }
-                                }
-
-                                if !app.isEmpty || !os.isEmpty {
-                                    HStack(spacing: 4) {
-                                        if !app.isEmpty {
-                                            Text(app)
-                                        }
-                                        if !os.isEmpty {
-                                            if !app.isEmpty {
-                                                Text("·")
-                                            }
-                                            Text(os)
-                                        }
-                                    }
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                }
-
-                                HStack(spacing: 4) {
-                                    if !session.location.isEmpty {
-                                        Text(session.location)
-                                        Text("·")
-                                    }
-                                    Text(session.createdAt, style: .date)
-                                }
-                                .font(.caption)
-                                .foregroundStyle(.tertiary)
-                            }
-
-                            Spacer()
-
-                            if !isCurrent {
-                                Button("Завершить", role: .destructive) {
-                                    Task {
-                                        await viewModel.terminateSession(deviceID: session.deviceId)
-                                    }
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(.red)
-                            }
-                        }
-                        .padding(.vertical, 4)
+                    ForEach(otherSessions) { session in
+                        sessionRow(session, isCurrent: false)
                     }
                 }
             } header: {
@@ -139,6 +71,83 @@ struct SessionsView: View {
     }
 
     // MARK: - Helpers
+
+    @ViewBuilder
+    private func sessionRow(_ session: SessionInfo, isCurrent: Bool) -> some View {
+        let localMeta = DeviceMetadataProvider.shared
+        let name = !session.displayName.isEmpty
+            ? session.displayName
+            : (isCurrent ? localMeta.deviceName : "Неизвестное устройство")
+        let os = !session.operationSystem.isEmpty
+            ? session.operationSystem
+            : (isCurrent ? localMeta.osName : "")
+        let app = !session.appName.isEmpty
+            ? session.appName
+            : (isCurrent ? localMeta.appName : "")
+
+        HStack(spacing: 12) {
+            Image(systemName: iconForOS(os))
+                .font(.title2)
+                .foregroundStyle(isCurrent ? Color.accentColor : .secondary)
+                .frame(width: 36)
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(name)
+                        .font(.headline)
+
+                    if isCurrent {
+                        Text("Текущая")
+                            .font(.caption2)
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.accentColor)
+                            .clipShape(Capsule())
+                    }
+                }
+
+                if !app.isEmpty || !os.isEmpty {
+                    HStack(spacing: 4) {
+                        if !app.isEmpty {
+                            Text(app)
+                        }
+                        if !os.isEmpty {
+                            if !app.isEmpty {
+                                Text("·")
+                            }
+                            Text(os)
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+
+                HStack(spacing: 4) {
+                    if !session.location.isEmpty {
+                        Text(session.location)
+                        Text("·")
+                    }
+                    Text(session.createdAt, style: .date)
+                }
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+            }
+
+            Spacer()
+
+            if !isCurrent {
+                Button("Завершить", role: .destructive) {
+                    Task {
+                        await viewModel.terminateSession(deviceID: session.deviceId)
+                    }
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.red)
+            }
+        }
+        .padding(.vertical, 4)
+    }
 
     private func iconForOS(_ os: String) -> String {
         let lower = os.lowercased()
