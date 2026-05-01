@@ -59,7 +59,12 @@
       "Bash(brew info *)",
       "Bash(xcodebuild -scheme Barkfluff -configuration Debug -destination 'platform=macOS' build)",
       "Bash(xcodebuild -project Mac/Barkfluff/Barkfluff.xcodeproj -scheme Barkfluff -configuration Debug build)",
-      "Bash(git *)"
+      "Bash(git *)",
+      "Bash(curl -fsSL \"https://github.com/grpc/grpc-web/releases/download/1.5.0/protoc-gen-grpc-web-1.5.0-darwin-aarch64\" -o /tmp/protoc-gen-grpc-web)",
+      "Bash(chmod +x /tmp/protoc-gen-grpc-web)",
+      "Bash(PATH=\"/tmp:$PATH\" bash *)",
+      "Bash(npm list *)",
+      "Bash(npm install *)"
     ],
     "deny": [],
     "ask": []

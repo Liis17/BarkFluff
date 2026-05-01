@@ -38,7 +38,9 @@
             previewUrl: a.getPreviewUrl(),
             attachmentSize: a.getAttachmentSize(),
             previewFileId: a.getPreviewFileId(),
-            fileName: a.getFileName()
+            fileName: a.getFileName(),
+            imageWidth: a.getImageWidth ? a.getImageWidth() : 0,
+            imageHeight: a.getImageHeight ? a.getImageHeight() : 0
         };
     }
 
