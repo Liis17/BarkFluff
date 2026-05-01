@@ -158,8 +158,9 @@ final class AppCoordinator {
     }
 
     /// Выход из аккаунта
-    func logout(authService: AuthServiceProtocol, updatesService: UpdatesServiceProtocol) async {
+    func logout(authService: AuthServiceProtocol, updatesService: UpdatesServiceProtocol, onlineStatusService: OnlineStatusServiceProtocol) async {
         await updatesService.stop()
+        await onlineStatusService.stop()
         await authService.logout()
         selectedChat = nil
         activeTab = .chats

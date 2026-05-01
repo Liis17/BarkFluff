@@ -568,15 +568,15 @@ final class ConversationViewModel {
     // MARK: - Online Status
 
     private func startListeningForOnlineStatus() async {
-        // Только для DM чатов
         guard !chat.isGroupChat, let otherUserID = chat.otherUserID(excluding: currentUserID) else { return }
 
-        // Запросить текущий статус
         let status = await onlineStatusService.getStatus(for: otherUserID)
         await MainActor.run { self.otherUserOnlineStatus = status }
 
-        // Подписаться на обновления
         let stream = await onlineStatusService.getStatusEventsStream()
+
+        // Отменяем предыдущую задачу перед заменой — предотвращает утечку подписчиков
+        onlineStatusTask?.cancel()
         onlineStatusTask = Task { [weak self] in
             for await event in stream {
                 guard let self else { break }
