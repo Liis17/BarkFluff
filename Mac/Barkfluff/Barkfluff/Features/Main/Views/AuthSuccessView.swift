@@ -26,7 +26,7 @@ struct AuthSuccessView: View {
 
             Button("Выйти") {
                 Task {
-                    await coordinator.logout(authService: container.authService, updatesService: container.updatesService)
+                    await coordinator.logout(authService: container.authService, updatesService: container.updatesService, onlineStatusService: container.onlineStatusService)
                 }
             }
             .buttonStyle(.bordered)

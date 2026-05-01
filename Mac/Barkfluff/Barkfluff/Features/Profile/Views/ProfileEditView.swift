@@ -151,7 +151,8 @@ struct ProfileEditView: View {
                         Task {
                             await coordinator.logout(
                                 authService: container.authService,
-                                updatesService: container.updatesService
+                                updatesService: container.updatesService,
+                                onlineStatusService: container.onlineStatusService
                             )
                         }
                     } label: {
