@@ -49,13 +49,16 @@ public struct User: Identifiable, Hashable, Sendable {
 
     /// Отображаемое имя: "Имя Фамилия"
     public var displayName: String {
-        "\(firstName) \(lastName)"
+        [firstName, lastName]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
     }
 
     /// Инициалы для аватара: "ИФ"
     public var initials: String {
-        let first = firstName.first.map(String.init) ?? ""
-        let last = lastName.first.map(String.init) ?? ""
+        let first = firstName.trimmingCharacters(in: .whitespacesAndNewlines).first.map(String.init) ?? ""
+        let last = lastName.trimmingCharacters(in: .whitespacesAndNewlines).first.map(String.init) ?? ""
         return first + last
     }
 
