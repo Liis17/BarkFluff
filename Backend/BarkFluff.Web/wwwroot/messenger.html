@@ -615,10 +615,10 @@
             max-width: 400px;
         }
         .attach-image-grid.grid-1 { grid-template-columns: 1fr; }
-        .attach-image-grid.grid-2 { grid-template-columns: 1fr 1fr; }
-        .attach-image-grid.grid-3 { grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; }
+        .attach-image-grid.grid-2 { grid-template-columns: 1fr 1fr; height: 200px; }
+        .attach-image-grid.grid-3 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; height: 280px; }
         .attach-image-grid.grid-3 img:first-child { grid-column: 1 / -1; }
-        .attach-image-grid.grid-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+        .attach-image-grid.grid-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; height: 280px; }
         .attach-image-grid img {
             width: 100%;
             height: 100%;
@@ -629,6 +629,9 @@
             display: block;
         }
         .attach-image-grid.grid-1 img { max-height: 350px; }
+        .attach-image-grid.grid-2 img,
+        .attach-image-grid.grid-3 img,
+        .attach-image-grid.grid-4 img { min-height: unset; max-height: unset; }
         .attach-image-grid .more-overlay {
             position: relative;
             cursor: pointer;
