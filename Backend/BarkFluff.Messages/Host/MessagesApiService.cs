@@ -109,7 +109,8 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
             Message = new OutgoingMessage
             {
                 FileIds = request.Message.FilesIds?.Select(x => Guid.Parse(x)).ToList(),
-                Text = request.Message.Text
+                Text = request.Message.Text,
+                ForwardedMessageId = request.Message.ForwardedMessageId == 0 ? null : request.Message.ForwardedMessageId
             },
         };
 
