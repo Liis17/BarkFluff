@@ -22,11 +22,6 @@
             </Border.Clip>
             <local:CachedImage
                 x:Name="CachedContentImage"
-                MaxWidth="400"
-                MaxHeight="300"
-                MinHeight="200"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
                 DecodePixelWidth="400"
                 Stretch="Uniform" />
         </Border>

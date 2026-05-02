@@ -9,6 +9,10 @@
         public string PreviewFileId { get; set; } = string.Empty;
         public string FileName { get; set; } = string.Empty;
         public long Size { get; set; } = 0;
+        /// <summary>Ширина изображения в пикселях (0 если не изображение)</summary>
+        public int ImageWidth { get; set; } = 0;
+        /// <summary>Высота изображения в пикселях (0 если не изображение)</summary>
+        public int ImageHeight { get; set; } = 0;
         public AttachmentsModel() { }
     }
 }

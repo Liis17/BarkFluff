@@ -6,6 +6,7 @@
     xmlns:local="clr-namespace:BarkFluff.Client.WPF.UserControls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    MinWidth="600"
     MaxWidth="600"
     HorizontalAlignment="Left"
     VerticalAlignment="Bottom"
