@@ -18,7 +18,7 @@ namespace BarkFluff.Messages.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.4")
+                .HasAnnotation("ProductVersion", "9.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -159,11 +159,19 @@ namespace BarkFluff.Messages.Persistence.Migrations
                                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b2.Property<long>("Id"));
 
                                     b2.Property<string>("FileId")
-                                        .IsRequired()
                                         .HasColumnType("text");
 
                                     b2.Property<long>("FileSize")
                                         .HasColumnType("bigint");
+
+                                    b2.Property<string>("ForwardedAuthorName")
+                                        .HasColumnType("text");
+
+                                    b2.Property<long?>("ForwardedOriginalMessageId")
+                                        .HasColumnType("bigint");
+
+                                    b2.Property<string>("ForwardedText")
+                                        .HasColumnType("text");
 
                                     b2.Property<long>("MessageId")
                                         .HasColumnType("bigint");
@@ -182,6 +190,42 @@ namespace BarkFluff.Messages.Persistence.Migrations
 
                                     b2.WithOwner()
                                         .HasForeignKey("MessageId");
+
+                                    b2.OwnsMany("BarkFluff.Messages.Domain.ForwardedMessageAttachment", "ForwardedAttachments", b3 =>
+                                        {
+                                            b3.Property<long>("Id")
+                                                .ValueGeneratedOnAdd()
+                                                .HasColumnType("bigint");
+
+                                            NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b3.Property<long>("Id"));
+
+                                            b3.Property<string>("FileId")
+                                                .IsRequired()
+                                                .HasColumnType("text");
+
+                                            b3.Property<long>("FileSize")
+                                                .HasColumnType("bigint");
+
+                                            b3.Property<long>("MessageAttachmentId")
+                                                .HasColumnType("bigint");
+
+                                            b3.Property<string>("PreviewUrl")
+                                                .HasColumnType("text");
+
+                                            b3.Property<int>("Type")
+                                                .HasColumnType("integer");
+
+                                            b3.HasKey("Id");
+
+                                            b3.HasIndex("MessageAttachmentId");
+
+                                            b3.ToTable("ForwardedMessageAttachment");
+
+                                            b3.WithOwner()
+                                                .HasForeignKey("MessageAttachmentId");
+                                        });
+
+                                    b2.Navigation("ForwardedAttachments");
                                 });
 
                             b1.Navigation("Attachments");
