@@ -50,7 +50,7 @@ struct ConversationHeaderView: View {
                 .font(.caption)
                 .foregroundStyle(.green)
         case .offline(let lastSeen):
-            Text("был(а) \(formatLastSeen(lastSeen))")
+            Text(lastSeen.map { "был(а) \(formatLastSeen($0))" } ?? "не в сети")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         case .unknown:
