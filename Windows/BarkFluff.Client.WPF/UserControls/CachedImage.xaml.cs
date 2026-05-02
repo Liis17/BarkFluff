@@ -124,6 +124,13 @@ namespace BarkFluff.Client.WPF.UserControls
         /// </summary>
         public ImageSource? ImageSource => ContentImage.Source;
 
+        /// <summary>
+        /// Срабатывает после успешной загрузки реального изображения (не плейсхолдера).
+        /// Передаёт пиксельные размеры, чтобы внешние компоненты могли подстроить контейнер
+        /// под пропорции, если они не были известны заранее.
+        /// </summary>
+        public event Action<int, int>? ImageLoaded;
+
         #endregion
 
         public CachedImage()
@@ -233,6 +240,14 @@ namespace BarkFluff.Client.WPF.UserControls
                 }
 
                 ContentImage.Source = bitmapImage;
+
+                // Для плейсхолдеров событие не вызываем — иначе подписчики
+                // зафиксируют размер контейнера по квадратному плейсхолдеру.
+                if (!FileCacheService.IsPlaceholder(imagePath)
+                    && bitmapImage.PixelWidth > 0 && bitmapImage.PixelHeight > 0)
+                {
+                    ImageLoaded?.Invoke(bitmapImage.PixelWidth, bitmapImage.PixelHeight);
+                }
             }
             catch
             {
@@ -272,6 +287,11 @@ namespace BarkFluff.Client.WPF.UserControls
                 }
 
                 ContentImage.Source = bitmapImage;
+
+                if (bitmapImage.PixelWidth > 0 && bitmapImage.PixelHeight > 0)
+                {
+                    ImageLoaded?.Invoke(bitmapImage.PixelWidth, bitmapImage.PixelHeight);
+                }
             }
             catch
             {

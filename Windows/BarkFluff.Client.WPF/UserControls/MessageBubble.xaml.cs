@@ -333,8 +333,9 @@ namespace BarkFluff.Client.WPF.UserControls
             MediaContentPresenter.Content = imageContent;
             SetMediaContentMargin(false);
 
-            this.MinWidth = IMAGE_MAX_WIDTH;
-            this.MinHeight = IMAGE_MAX_HEIGHT;
+            // Ширина облачка = реальная ширина картинки (с учётом text если есть)
+            var textWidth = string.IsNullOrEmpty(message.Text) ? 0 : CalculateLongestLineWidth(message.Text) + MIN_WIDTH_PADDING;
+            this.MinWidth = Math.Max(imageContent.ComputedWidth, textWidth);
         }
 
         private void SetupDocumentContent(MessageModel message)
