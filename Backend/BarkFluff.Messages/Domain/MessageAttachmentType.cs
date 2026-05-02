@@ -17,4 +17,6 @@ public enum MessageAttachmentType
     Voice = 6,
 
     Sticker = 7,
+
+    ForwardedMessage = 8,
 }

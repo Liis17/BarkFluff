@@ -22,6 +22,12 @@ public class MessageConfiguration : IEntityTypeConfiguration<Message>
             {
                 attachmentBuilder.WithOwner().HasForeignKey("MessageId");
                 attachmentBuilder.HasKey(a => a.Id);
+
+                attachmentBuilder.OwnsMany(a => a.ForwardedAttachments, forwardedBuilder =>
+                {
+                    forwardedBuilder.WithOwner().HasForeignKey("MessageAttachmentId");
+                    forwardedBuilder.HasKey(fa => fa.Id);
+                });
             });
         });
 

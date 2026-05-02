@@ -4,17 +4,20 @@ using System.Collections.Generic;
 using BarkFluff.Messages.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace BarkFluff.Messages.Persistence.Migrations
+namespace BarkFluff.Messages.Migrations
 {
     [DbContext(typeof(MessagesContext))]
-    partial class MessagesContextModelSnapshot : ModelSnapshot
+    [Migration("20260502205903_AddForwardedMessageAttachment")]
+    partial class AddForwardedMessageAttachment
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

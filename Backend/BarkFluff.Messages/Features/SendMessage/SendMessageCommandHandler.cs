@@ -63,7 +63,10 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             request.UserId
         );
 
-        if (request.Message is null || request.Message.Text is null && request.Message.FileIds is null)
+        if (request.Message is null ||
+            request.Message.Text is null &&
+            request.Message.FileIds is null &&
+            request.Message.ForwardedMessageId is null)
         {
             _logger.LogWarning(
                 "Попытка отправки пустого сообщения от пользователя {UserId}",
@@ -151,7 +154,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
             }
         }
 
-        List<Domain.MessageAttachment>? attachments = new List<MessageAttachment>();
+        List<Domain.MessageAttachment> attachments = new();
         Dictionary<string, UploadFileInfo> filesInfoMap = new();
 
         if (request.Message.FileIds != null && request.Message.FileIds.Any())
@@ -186,11 +189,85 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                 "Добавлено {AttachmentCount} вложений к сообщению",
                 attachments.Count
             );
+        }
 
-            if (!attachments.Any())
+        if (request.Message.ForwardedMessageId.HasValue)
+        {
+            _logger.LogDebug(
+                "Обработка пересланного сообщения {OriginalMessageId} от пользователя {UserId}",
+                request.Message.ForwardedMessageId.Value,
+                _userContext.UserId
+            );
+
+            var originalMessages = await _messagesStorage.GetMessagesByIds([request.Message.ForwardedMessageId.Value]);
+            var originalMessage = originalMessages.FirstOrDefault();
+
+            if (originalMessage is null)
             {
-                attachments = new List<MessageAttachment>();
+                _logger.LogWarning(
+                    "Оригинальное сообщение {MessageId} для пересылки не найдено",
+                    request.Message.ForwardedMessageId.Value
+                );
+                throw new MessageNotFoundException();
             }
+
+            var hasAccessToOriginal = await _chatsStorage.CheckAccessToChat(originalMessage.ChatId, _userContext.UserId);
+            if (!hasAccessToOriginal)
+            {
+                _logger.LogWarning(
+                    "Пользователь {UserId} не имеет доступа к чату {ChatId} оригинального сообщения",
+                    _userContext.UserId,
+                    originalMessage.ChatId
+                );
+                throw new NoAccessToChatException();
+            }
+
+            var authorResponse = await _usersServerApiClient.GetByIdAsync(new GetByIdRequest { UserId = originalMessage.SenderId });
+            var authorName = $"{authorResponse.User.FirstName} {authorResponse.User.LastName}";
+
+            var forwardedAttachments = originalMessage.Content?.Attachments?
+                .Where(a => a.Type != Domain.MessageAttachmentType.ForwardedMessage)
+                .Select(a => new Domain.ForwardedMessageAttachment
+                {
+                    Type = a.Type,
+                    FileId = a.FileId ?? string.Empty,
+                    PreviewUrl = a.PreviewUrl,
+                    FileSize = a.FileSize
+                })
+                .ToList();
+
+            // Загружаем метаданные файлов из вложений оригинального сообщения
+            var forwardedFileIds = forwardedAttachments?
+                .Where(fa => !string.IsNullOrEmpty(fa.FileId))
+                .Select(fa => fa.FileId)
+                .ToList();
+
+            if (forwardedFileIds is { Count: > 0 })
+            {
+                var forwardedFilesInfo = await _filesServerApiClient.GetFilesDataAsync(
+                    new GetFilesDataRequest { FileIds = { forwardedFileIds } });
+
+                foreach (var fi in forwardedFilesInfo.FilesInfos)
+                {
+                    filesInfoMap.TryAdd(fi.Id, fi);
+                }
+            }
+
+            attachments.Add(new Domain.MessageAttachment
+            {
+                Type = Domain.MessageAttachmentType.ForwardedMessage,
+                FileId = string.Empty,
+                ForwardedAuthorName = authorName,
+                ForwardedOriginalMessageId = originalMessage.Id,
+                ForwardedText = originalMessage.Content?.Text,
+                ForwardedAttachments = forwardedAttachments
+            });
+
+            _logger.LogInformation(
+                "Добавлено пересланное сообщение {OriginalMessageId} от автора {AuthorName}",
+                originalMessage.Id,
+                authorName
+            );
         }
 
         var message = new Message
