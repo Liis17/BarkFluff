@@ -112,7 +112,9 @@ public actor AuthService: AuthServiceProtocol {
     public func logout() async {
         try? await identityRepository.logout()
         await tokenProvider.clearAll()
-        await connectionManager.shutdown()
+        // connectionManager.shutdown() не вызываем — эндпоинты сервисов не привязаны к
+        // пользователю и должны оставаться актуальными для повторного входа на тот же сервер.
+        // Смена сервера обрабатывается через ServerDiscoveryService.disconnect().
     }
 
     public func setPassword(password: String) async throws {

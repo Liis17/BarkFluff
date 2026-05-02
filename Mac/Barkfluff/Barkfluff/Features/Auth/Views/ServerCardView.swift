@@ -8,7 +8,6 @@
 import SwiftUI
 import BFCore
 
-/// Карточка сервера из списка Navigator
 struct ServerCardView: View {
     let server: NavigatorServer
     let isConnecting: Bool
@@ -17,25 +16,16 @@ struct ServerCardView: View {
 
     var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 12) {
-                // Иконка сервера (первая буква имени)
-                Text(serverInitial)
-                    .font(.title3)
-                    .fontWeight(.bold)
-                    .foregroundStyle(.white)
-                    .frame(width: 40, height: 40)
-                    .background(
-                        Circle()
-                            .fill(serverColor)
-                    )
+            HStack(spacing: 14) {
+                // Иконка сервера
+                serverIcon
 
-                VStack(alignment: .leading, spacing: 2) {
-                    // Название сервера
+                // Информация
+                VStack(alignment: .leading, spacing: 3) {
                     Text(server.name)
                         .font(.headline)
                         .foregroundStyle(.primary)
 
-                    // Описание
                     if let description = server.description, !description.isEmpty {
                         Text(description)
                             .font(.subheadline)
@@ -43,47 +33,76 @@ struct ServerCardView: View {
                             .lineLimit(1)
                     }
 
-                    // Локация и юзернейм сервера
-                    HStack(spacing: 8) {
-                        Label(server.host, systemImage: "location")
-                            .font(.caption)
-
-                        Text("•")
+                    HStack(spacing: 6) {
+                        Image(systemName: "globe")
                             .font(.caption2)
-
-                        Text("@\(server.serverPublicName)")
+                        Text(server.host)
                             .font(.caption)
-                            .fontWeight(.medium)
+
+                        if !server.serverPublicName.isEmpty {
+                            Text("·")
+                                .font(.caption2)
+                            Text("@\(server.serverPublicName)")
+                                .font(.caption)
+                                .fontWeight(.medium)
+                        }
                     }
                     .foregroundStyle(.tertiary)
                 }
 
                 Spacer()
 
+                // Правая часть: статус или шеврон
                 if isConnecting {
                     ProgressView()
                         .controlSize(.small)
+                        .tint(serverColor)
                 } else {
                     Image(systemName: "chevron.right")
-                        .font(.caption)
+                        .font(.caption.weight(.semibold))
                         .foregroundStyle(.tertiary)
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .background {
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color(.controlBackgroundColor))
+        .background(cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .opacity(isDisabled ? 0.45 : 1.0)
+        .disabled(isDisabled || isConnecting)
+        .scaleEffect(isConnecting ? 0.99 : 1.0)
+        .animation(.easeInOut(duration: 0.15), value: isConnecting)
+    }
+
+    // MARK: - Subviews
+
+    private var serverIcon: some View {
+        ZStack {
+            Circle()
+                .fill(serverColor.opacity(0.15))
+                .frame(width: 44, height: 44)
+            Text(serverInitial)
+                .font(.title3.bold())
+                .foregroundStyle(serverColor)
         }
-        .overlay {
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(Color(.separatorColor), lineWidth: 0.5)
-        }
-        .opacity(isDisabled ? 0.5 : 1.0)
-        .disabled(isDisabled)
+    }
+
+    private var cardBackground: some View {
+        RoundedRectangle(cornerRadius: 14)
+            .fill(.regularMaterial)
+            .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: 4)
+            .shadow(color: .black.opacity(0.03), radius: 2, x: 0, y: 1)
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .strokeBorder(
+                        isConnecting
+                            ? serverColor.opacity(0.4)
+                            : Color.primary.opacity(0.06),
+                        lineWidth: 1
+                    )
+            )
     }
 
     // MARK: - Helpers
@@ -92,35 +111,23 @@ struct ServerCardView: View {
         String(server.name.prefix(1)).uppercased()
     }
 
-    /// Детерминированный цвет на основе имени сервера
     private var serverColor: Color {
-        let colors: [Color] = [.blue, .purple, .green, .orange, .pink, .cyan, .indigo, .mint]
-        let hash = abs(server.name.hashValue)
-        return colors[hash % colors.count]
-    }
-
-    private var formattedAccountsCount: String {
-        let count = server.accountsCount
-        if count >= 1_000_000 {
-            return String(format: "%.1fM", Double(count) / 1_000_000)
-        } else if count >= 1_000 {
-            return String(format: "%.1fK", Double(count) / 1_000)
-        }
-        return "\(count)"
+        let palette: [Color] = [.blue, .purple, .green, .orange, .pink, .cyan, .indigo, .mint]
+        return palette[abs(server.name.hashValue) % palette.count]
     }
 }
 
 #Preview {
-    VStack(spacing: 12) {
+    VStack(spacing: 10) {
         ServerCardView(
             server: NavigatorServer(
                 id: "1",
-                name: "Main Server",
+                name: "BarkFluff Main",
                 host: "main.barkfluff.com",
                 port: 7004,
-                description: "Основной сервер BarkFluff",
+                description: "Основной сервер",
                 accountsCount: 12500,
-                serverPublicName: ""
+                serverPublicName: "barkfluff"
             ),
             isConnecting: false,
             isDisabled: false,
@@ -130,18 +137,33 @@ struct ServerCardView: View {
         ServerCardView(
             server: NavigatorServer(
                 id: "2",
-                name: "dev",
+                name: "Dev Server",
                 host: "dev.barkfluff.com",
                 port: 7004,
                 description: "Сервер для разработки",
                 accountsCount: 12,
-                serverPublicName: "Dev Server"
+                serverPublicName: "dev"
             ),
             isConnecting: true,
             isDisabled: false,
             onTap: {}
         )
+
+        ServerCardView(
+            server: NavigatorServer(
+                id: "3",
+                name: "Community",
+                host: "community.barkfluff.com",
+                port: 7004,
+                description: nil,
+                accountsCount: 3400,
+                serverPublicName: "comm"
+            ),
+            isConnecting: false,
+            isDisabled: true,
+            onTap: {}
+        )
     }
-    .padding()
-    .frame(width: 400)
+    .padding(20)
+    .frame(width: 460)
 }
