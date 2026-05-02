@@ -58,6 +58,12 @@ Views → ViewModels → Services → Repositories → gRPC
 - Caches: `UserCache`, `ChatCache` (in-memory)
 - `TokenRefreshCoordinator` — автоматический рефреш через `AuthInterceptor`
 
+## Паттерн: logout + повторный вход
+
+`AuthService.logout()` **не вызывает** `connectionManager.shutdown()` — эндпоинты сервисов не привязаны к пользователю и остаются валидными для повторного входа на тот же сервер. Шатдаун нужен только при смене сервера (через `ServerDiscoveryService.disconnect()`).
+
+`UpdatesStreamManager.start()` **пересоздаёт AsyncStream-ы** при каждом запуске: после `stop()` continuations завершаются (`.finish()`), и старые потоки мертвы — без пересоздания `forwardNewMessagesTask` в `UpdatesService` сразу завершался бы без событий.
+
 ## Liquid Glass (macOS 26 / iOS 26)
 
 **ВАЖНО**: При работе с UI-эффектами читать `LiquidGlassGuide.md` в корне проекта.
