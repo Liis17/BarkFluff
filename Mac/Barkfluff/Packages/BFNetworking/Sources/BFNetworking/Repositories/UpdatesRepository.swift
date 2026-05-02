@@ -165,6 +165,20 @@ public actor UpdatesStreamManager {
         isRunning = true
         print("🔄 [UpdatesStreamManager] Starting streams...")
 
+        // Пересоздаём потоки: после stop() continuations мертвы, новые Task-и не смогут
+        // forward-ить события в старые завершённые потоки.
+        var newMsgCont: AsyncStream<NewMessageEvent>.Continuation!
+        newMessages = AsyncStream { continuation in newMsgCont = continuation }
+        newMessagesContinuation = newMsgCont
+
+        var readCont: AsyncStream<MessageReadEvent>.Continuation!
+        messageReads = AsyncStream { continuation in readCont = continuation }
+        messagesReadContinuation = readCont
+
+        var connCont: AsyncStream<ConnectionEvent>.Continuation!
+        connectionEvents = AsyncStream { continuation in connCont = continuation }
+        connectionContinuation = connCont
+
         newMessagesTask = Task { [weak self] in
             guard let self else { return }
             var backoff: TimeInterval = 1
