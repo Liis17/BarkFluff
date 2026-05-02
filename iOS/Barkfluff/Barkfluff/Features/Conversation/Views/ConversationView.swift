@@ -172,7 +172,7 @@ struct ConversationView: View {
                     .font(.caption2)
                     .foregroundStyle(.green)
             case .offline(let lastSeen):
-                Text("был(а) \(formatLastSeen(lastSeen))")
+                Text(lastSeen.map { "был(а) \(formatLastSeen($0))" } ?? "не в сети")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             case .unknown:

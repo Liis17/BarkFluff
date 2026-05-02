@@ -37,7 +37,7 @@ final class ChatListViewModel {
     private var readEventsTask: Task<Void, Never>?
     private var connectionEventsTask: Task<Void, Never>?
     private var searchTask: Task<Void, Never>?
-    private var onlineStatusTask: Task<Void, Never>?
+    private var onlineStatusTasks: [Int64: Task<Void, Never>] = [:]
 
     init(
         chatService: ChatServiceProtocol,
@@ -139,11 +139,16 @@ final class ChatListViewModel {
         newMessagesTask?.cancel()
         readEventsTask?.cancel()
         connectionEventsTask?.cancel()
-        onlineStatusTask?.cancel()
         newMessagesTask = nil
         readEventsTask = nil
         connectionEventsTask = nil
-        onlineStatusTask = nil
+
+        let trackedIDs = Array(onlineStatusTasks.keys)
+        onlineStatusTasks.values.forEach { $0.cancel() }
+        onlineStatusTasks = [:]
+        if !trackedIDs.isEmpty {
+            Task { await onlineStatusService.untrack(trackedIDs) }
+        }
     }
 
     // MARK: - Online Status
@@ -151,22 +156,22 @@ final class ChatListViewModel {
     private func startOnlineStatusTracking() async {
         let userIDs = collectUserIDsFromChats()
         await onlineStatusService.start(initialUserIDs: userIDs)
-        startListeningForOnlineStatusEvents()
-
         for userID in userIDs {
-            let status = await onlineStatusService.getStatus(for: userID)
+            let status = await onlineStatusService.currentStatus(for: userID)
             onlineStatuses[userID] = status
+            await startTrackingUser(userID)
         }
     }
 
-    private func startListeningForOnlineStatusEvents() {
-        onlineStatusTask = Task { [weak self] in
-            let stream = await self?.onlineStatusService.getStatusEventsStream()
-            guard let stream else { return }
-
-            for await event in stream {
+    private func startTrackingUser(_ userID: Int64) async {
+        guard onlineStatusTasks[userID] == nil else { return }
+        await onlineStatusService.track(userID)
+        onlineStatusTasks[userID] = Task { [weak self] in
+            guard let self else { return }
+            let stream = await self.onlineStatusService.statusStream(for: userID)
+            for await status in stream {
                 await MainActor.run {
-                    self?.onlineStatuses[event.userID] = event.status
+                    self.onlineStatuses[userID] = status
                 }
             }
         }
@@ -174,13 +179,13 @@ final class ChatListViewModel {
 
     private func addToOnlineStatusTracking(_ newUserIDs: [Int64]) async {
         guard !newUserIDs.isEmpty else { return }
-
-        let currentTracked = await onlineStatusService.getTrackedUserIDs()
-        let usersToAdd = newUserIDs.filter { !currentTracked.contains($0) }
-
-        guard !usersToAdd.isEmpty else { return }
-
-        await onlineStatusService.addToTracking(usersToAdd)
+        let toAdd = newUserIDs.filter { onlineStatusTasks[$0] == nil }
+        guard !toAdd.isEmpty else { return }
+        for userID in toAdd {
+            let status = await onlineStatusService.currentStatus(for: userID)
+            await MainActor.run { self.onlineStatuses[userID] = status }
+            await startTrackingUser(userID)
+        }
     }
 
     private func collectUserIDsFromChats() -> [Int64] {

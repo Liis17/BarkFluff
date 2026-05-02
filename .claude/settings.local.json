@@ -64,7 +64,9 @@
       "Bash(chmod +x /tmp/protoc-gen-grpc-web)",
       "Bash(PATH=\"/tmp:$PATH\" bash *)",
       "Bash(npm list *)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=iOS Simulator,name=iPhone 16' build)",
+      "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=iOS Simulator,name=iPhone 17' build)"
     ],
     "deny": [],
     "ask": []

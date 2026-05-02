@@ -573,18 +573,16 @@ final class ConversationViewModel {
         guard !chat.isGroupChat, let otherUserID = chat.otherUserID(excluding: currentUserID) else { return }
 
         // Запросить текущий статус
-        let status = await onlineStatusService.getStatus(for: otherUserID)
+        let status = await onlineStatusService.currentStatus(for: otherUserID)
         await MainActor.run { self.otherUserOnlineStatus = status }
 
         // Подписаться на обновления
-        let stream = await onlineStatusService.getStatusEventsStream()
+        let stream = await onlineStatusService.statusStream(for: otherUserID)
         onlineStatusTask = Task { [weak self] in
-            for await event in stream {
+            for await status in stream {
                 guard let self else { break }
-                if event.userID == otherUserID {
-                    await MainActor.run {
-                        self.otherUserOnlineStatus = event.status
-                    }
+                await MainActor.run {
+                    self.otherUserOnlineStatus = status
                 }
             }
         }
