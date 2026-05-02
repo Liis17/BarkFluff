@@ -300,7 +300,11 @@ namespace BarkFluff.Client.WPF.Services.App
                             Type = a.Type,
                             FileId = a.FileId,
                             PreviewUrl = a.PreviewUrl,
-                            Size = a.AttachmentSize
+                            PreviewFileId = a.PreviewFileId,
+                            FileName = a.FileName,
+                            Size = a.AttachmentSize,
+                            ImageWidth = a.ImageWidth,
+                            ImageHeight = a.ImageHeight,
                         }).ToList(),
                     IsSystemMessage = messageEvent.Message.Type == MessageContentType.System,
                     ReadBy = messageEvent.Message.ReadBy.ToList(),

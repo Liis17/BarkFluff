@@ -118,6 +118,22 @@ Mutex `BarkFluffMutex`. Второй экземпляр передаёт args ч
 
 Light/Dark XAML resource dictionaries в `Resources/Styles/Themes/`. Toggle F8 в DEBUG. Hex-цвета в `GlobalParam.Colors`.
 
+## MessageBubble — отображение сообщений
+
+`UserControls/MessageBubble.xaml.cs` — пузырь сообщения. Поддерживает типы: Text, Image, Gif, Video, Audio, Voice, Document, Sticker, а также множественные вложения (MultiImageGrid, MultiVideoGrid, MultiDocumentList, AudioPanel).
+
+### Изображения с placeholder'ом правильного размера
+
+`ImageMessageContent` использует поля `ImageWidth`/`ImageHeight` из `AttachmentsModel` для задания размеров до загрузки картинки:
+- При создании контрола вычисляется масштаб (`maxWidth=400, maxHeight=500`) с сохранением соотношения сторон
+- `CachedImage.Width`/`Height` задаются сразу → облачко принимает финальный размер без прыжков
+- Если размеры неизвестны (0) — fallback 300×200
+
+`AttachmentsModel` содержит поля `ImageWidth` и `ImageHeight`, которые маппируются из proto `MessageAttachment.image_width` / `image_height`.
+Маппинг присутствует в: `WebApiMessageManager` (SendMessage, GetMessages, GetMessagesWithOffset), `RealtimeUpdateService`.
+
+
+
 ## Система обновлений
 
 **`UpdateService`** (`Services/App/Update/UpdateService.cs`) — запускается из `App.MainPageLoaded()`:
