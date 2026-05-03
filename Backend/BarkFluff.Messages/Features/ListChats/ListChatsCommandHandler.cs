@@ -85,7 +85,8 @@ public class ListChatsCommandHandler : IRequestHandler<ListChatsCommand, ListCha
         var fileIds = chats
             .Where(c => c.LastMessage?.Content?.Attachments != null)
             .SelectMany(c => c.LastMessage!.Content!.Attachments!)
-            .Select(a => a.FileId)
+            .Where(a => !string.IsNullOrEmpty(a.FileId))
+            .Select(a => a.FileId!)
             .Distinct()
             .ToList();
 
