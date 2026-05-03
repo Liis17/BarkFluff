@@ -19,6 +19,10 @@ struct MessageBubbleView: View {
     var onRetry: ((String) -> Void)?
     /// Callback для удаления неотправленного (localID)
     var onDeleteFailed: ((String) -> Void)?
+    /// Callback на «Ответить» (форвард в текущий чат)
+    var onReply: ((Message) -> Void)?
+    /// Callback на «Переслать» (открыть выбор чата) — передаётся id сообщения
+    var onForward: ((Int64) -> Void)?
 
     /// Радиус скругления углов (как у облачка)
     static let bubbleCornerRadius: CGFloat = 18
@@ -43,7 +47,7 @@ struct MessageBubbleView: View {
         return false
     }
 
-    /// Только медиа вложения без текста
+    /// Только медиа вложения без текста (forwarded сюда не попадает — у него своя «карточка»)
     private var isMediaOnly: Bool {
         !message.content.hasText && message.content.hasAttachments &&
         message.content.attachments.allSatisfy {
@@ -113,6 +117,17 @@ struct MessageBubbleView: View {
             if isFailed, let localID = message.localID {
                 Button("Повторить отправку") { onRetry?(localID) }
                 Button("Удалить сообщение", role: .destructive) { onDeleteFailed?(localID) }
+            } else if !message.isSystem && message.id > 0 {
+                Button {
+                    onReply?(message)
+                } label: {
+                    Label("Ответить", systemImage: "arrowshape.turn.up.left")
+                }
+                Button {
+                    onForward?(message.id)
+                } label: {
+                    Label("Переслать", systemImage: "arrowshape.turn.up.right")
+                }
             }
         }
     }
@@ -187,12 +202,23 @@ struct MessageBubbleView: View {
 
     @ViewBuilder
     private var attachmentsView: some View {
-        // Разделяем вложения на медиа и документы
+        // Forwarded-сообщения отрисовываются отдельной карточкой со снимком оригинала
+        let forwardedAttachments = message.content.attachments.filter {
+            $0.type == .forwardedMessage && $0.forwarded != nil
+        }
+        // Разделяем остальные вложения на медиа и документы
         let mediaAttachments = message.content.attachments.filter {
             $0.type == .image || $0.type == .video || $0.type == .gif
         }
         let documentAttachments = message.content.attachments.filter {
             $0.type == .document || $0.type == .audio
+        }
+
+        // Карточки пересланных сообщений
+        ForEach(forwardedAttachments) { attachment in
+            if let payload = attachment.forwarded {
+                ForwardedMessageView(payload: payload, isOwn: isOwn)
+            }
         }
 
         // Медиа вложения в сетке

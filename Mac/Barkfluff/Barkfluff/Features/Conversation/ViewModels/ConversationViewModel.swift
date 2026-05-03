@@ -197,7 +197,8 @@ final class ConversationViewModel {
                     chatID: nil,
                     userID: userID,
                     text: text,
-                    fileIDs: fileIDs
+                    fileIDs: fileIDs,
+                    forwardedMessageID: nil
                 )
                 await resolveNewConversation(firstMessage: message)
             } catch {
@@ -230,7 +231,8 @@ final class ConversationViewModel {
                 chatID: chat.id,
                 userID: nil,
                 text: trimmedText,
-                fileIDs: fileIDs
+                fileIDs: fileIDs,
+                forwardedMessageID: nil
             )
             replacePendingWithConfirmed(localID: localID, confirmed: confirmed)
             onMessageSent?(confirmed)
@@ -271,7 +273,7 @@ final class ConversationViewModel {
                 }
                 let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
                 let message = try await messageService.sendMessage(
-                    chatID: nil, userID: userID, text: trimmedText, fileIDs: fileIDs
+                    chatID: nil, userID: userID, text: trimmedText, fileIDs: fileIDs, forwardedMessageID: nil
                 )
                 await resolveNewConversation(firstMessage: message)
                 uploadProgress.removeAll()
@@ -355,7 +357,7 @@ final class ConversationViewModel {
             }
 
             let confirmed = try await messageService.sendMessage(
-                chatID: chat.id, userID: nil, text: trimmedText, fileIDs: fileIDs
+                chatID: chat.id, userID: nil, text: trimmedText, fileIDs: fileIDs, forwardedMessageID: nil
             )
 
             // 3. Заменить pending на confirmed
@@ -369,6 +371,80 @@ final class ConversationViewModel {
                 msg.uploadProgress = nil
             }
         }
+    }
+
+    // MARK: - Reply / Forward
+
+    /// Ответить на сообщение в текущем чате — отправить пересланное сообщение в этот же чат.
+    /// Optimistic flow с placeholder-attachment, который потом заменится серверным.
+    func replyToMessage(_ originalMessage: Message) async {
+        // В новом диалоге чата на сервере ещё нет — replay невозможен (id оригинала тоже < 0).
+        guard !isNewConversation, originalMessage.id > 0 else { return }
+
+        let localID = UUID().uuidString
+        let pendingID = Self.nextPendingID()
+        let placeholder = Self.makeForwardedPlaceholder(from: originalMessage)
+
+        let pendingMessage = Message(
+            id: pendingID,
+            chatID: chat.id,
+            senderID: currentUserID,
+            content: MessageContent(text: "", attachments: [placeholder]),
+            sentAt: Date(),
+            sendingState: .sending,
+            localID: localID
+        )
+
+        withAnimation(.spring(duration: 0.3)) {
+            messages.append(pendingMessage)
+        }
+
+        do {
+            let confirmed = try await messageService.sendMessage(
+                chatID: chat.id,
+                userID: nil,
+                text: "",
+                fileIDs: [],
+                forwardedMessageID: originalMessage.id
+            )
+            replacePendingWithConfirmed(localID: localID, confirmed: confirmed)
+            onMessageSent?(confirmed)
+            await markVisibleMessagesAsRead()
+        } catch {
+            updatePendingMessage(localID: localID) { msg in
+                msg.sendingState = .failed(error.localizedDescription)
+            }
+        }
+    }
+
+    /// Переслать сообщение из текущего чата в произвольный целевой чат.
+    /// Без optimistic UI — пользователь не находится в целевом чате.
+    func forwardMessage(_ messageID: Int64, toChat targetChatID: String) async throws -> Message {
+        try await messageService.sendMessage(
+            chatID: targetChatID,
+            userID: nil,
+            text: "",
+            fileIDs: [],
+            forwardedMessageID: messageID
+        )
+    }
+
+    /// Локальный placeholder forwarded-attachment для optimistic UI до подтверждения сервером.
+    private static func makeForwardedPlaceholder(from original: Message) -> MessageAttachment {
+        let snippet = String(original.content.text.prefix(80))
+        return MessageAttachment(
+            id: -Int64.random(in: 1...Int64.max / 2),
+            type: .forwardedMessage,
+            fileID: "",
+            fileName: "",
+            fileSize: 0,
+            forwarded: ForwardedMessagePayload(
+                authorName: original.senderName ?? "Неизвестный",
+                originalMessageID: original.id,
+                text: snippet,
+                attachments: []
+            )
+        )
     }
 
     // MARK: - Local Attachment Previews
@@ -446,7 +522,7 @@ final class ConversationViewModel {
         Task {
             do {
                 let confirmed = try await messageService.sendMessage(
-                    chatID: chat.id, userID: nil, text: text, fileIDs: []
+                    chatID: chat.id, userID: nil, text: text, fileIDs: [], forwardedMessageID: nil
                 )
                 replacePendingWithConfirmed(localID: localID, confirmed: confirmed)
                 onMessageSent?(confirmed)

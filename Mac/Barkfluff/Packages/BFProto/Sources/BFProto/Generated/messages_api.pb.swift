@@ -406,6 +406,9 @@ public struct Barkfluff_Messages_OutgoingMessage: Sendable {
   /// Идентификаторы файлов
   public var filesIds: [String] = []
 
+  /// ID пересылаемого сообщения (0 = не пересылка)
+  public var forwardedMessageID: Int64 = 0
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -484,46 +487,54 @@ public struct Barkfluff_Messages_ListChatAttachmentsResponse: Sendable {
   public init() {}
 }
 
-public struct Barkfluff_Messages_ChatAttachmentInfo: Sendable {
+public struct Barkfluff_Messages_ChatAttachmentInfo: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
   /// ID сообщения для перехода к нему
-  public var messageID: Int64 = 0
+  public var messageID: Int64 {
+    get {_storage._messageID}
+    set {_uniqueStorage()._messageID = newValue}
+  }
 
   /// ID вложения
-  public var attachmentID: Int64 = 0
+  public var attachmentID: Int64 {
+    get {_storage._attachmentID}
+    set {_uniqueStorage()._attachmentID = newValue}
+  }
 
   /// Данные вложения
   public var attachment: Barkfluff_Shared_MessageAttachment {
-    get {_attachment ?? Barkfluff_Shared_MessageAttachment()}
-    set {_attachment = newValue}
+    get {_storage._attachment ?? Barkfluff_Shared_MessageAttachment()}
+    set {_uniqueStorage()._attachment = newValue}
   }
   /// Returns true if `attachment` has been explicitly set.
-  public var hasAttachment: Bool {self._attachment != nil}
+  public var hasAttachment: Bool {_storage._attachment != nil}
   /// Clears the value of `attachment`. Subsequent reads from it will return its default value.
-  public mutating func clearAttachment() {self._attachment = nil}
+  public mutating func clearAttachment() {_uniqueStorage()._attachment = nil}
 
   /// Дата отправки
   public var sentAt: SwiftProtobuf.Google_Protobuf_Timestamp {
-    get {_sentAt ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
-    set {_sentAt = newValue}
+    get {_storage._sentAt ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
+    set {_uniqueStorage()._sentAt = newValue}
   }
   /// Returns true if `sentAt` has been explicitly set.
-  public var hasSentAt: Bool {self._sentAt != nil}
+  public var hasSentAt: Bool {_storage._sentAt != nil}
   /// Clears the value of `sentAt`. Subsequent reads from it will return its default value.
-  public mutating func clearSentAt() {self._sentAt = nil}
+  public mutating func clearSentAt() {_uniqueStorage()._sentAt = nil}
 
   /// ID отправителя
-  public var senderID: Int64 = 0
+  public var senderID: Int64 {
+    get {_storage._senderID}
+    set {_uniqueStorage()._senderID = newValue}
+  }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
-  fileprivate var _attachment: Barkfluff_Shared_MessageAttachment? = nil
-  fileprivate var _sentAt: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 public struct Barkfluff_Messages_GetChatInfoRequest: Sendable {
@@ -1349,7 +1360,7 @@ extension Barkfluff_Messages_ChatMember: SwiftProtobuf.Message, SwiftProtobuf._M
 
 extension Barkfluff_Messages_OutgoingMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".OutgoingMessage"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}text\0\u{3}files_ids\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}text\0\u{3}files_ids\0\u{3}forwarded_message_id\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1359,6 +1370,7 @@ extension Barkfluff_Messages_OutgoingMessage: SwiftProtobuf.Message, SwiftProtob
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.text) }()
       case 2: try { try decoder.decodeRepeatedStringField(value: &self.filesIds) }()
+      case 3: try { try decoder.decodeSingularInt64Field(value: &self.forwardedMessageID) }()
       default: break
       }
     }
@@ -1371,12 +1383,16 @@ extension Barkfluff_Messages_OutgoingMessage: SwiftProtobuf.Message, SwiftProtob
     if !self.filesIds.isEmpty {
       try visitor.visitRepeatedStringField(value: self.filesIds, fieldNumber: 2)
     }
+    if self.forwardedMessageID != 0 {
+      try visitor.visitSingularInt64Field(value: self.forwardedMessageID, fieldNumber: 3)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: Barkfluff_Messages_OutgoingMessage, rhs: Barkfluff_Messages_OutgoingMessage) -> Bool {
     if lhs.text != rhs.text {return false}
     if lhs.filesIds != rhs.filesIds {return false}
+    if lhs.forwardedMessageID != rhs.forwardedMessageID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -1530,51 +1546,95 @@ extension Barkfluff_Messages_ChatAttachmentInfo: SwiftProtobuf.Message, SwiftPro
   public static let protoMessageName: String = _protobuf_package + ".ChatAttachmentInfo"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}message_id\0\u{3}attachment_id\0\u{1}attachment\0\u{3}sent_at\0\u{3}sender_id\0")
 
+  fileprivate class _StorageClass {
+    var _messageID: Int64 = 0
+    var _attachmentID: Int64 = 0
+    var _attachment: Barkfluff_Shared_MessageAttachment? = nil
+    var _sentAt: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
+    var _senderID: Int64 = 0
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _messageID = source._messageID
+      _attachmentID = source._attachmentID
+      _attachment = source._attachment
+      _sentAt = source._sentAt
+      _senderID = source._senderID
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularInt64Field(value: &self.messageID) }()
-      case 2: try { try decoder.decodeSingularInt64Field(value: &self.attachmentID) }()
-      case 3: try { try decoder.decodeSingularMessageField(value: &self._attachment) }()
-      case 4: try { try decoder.decodeSingularMessageField(value: &self._sentAt) }()
-      case 5: try { try decoder.decodeSingularInt64Field(value: &self.senderID) }()
-      default: break
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularInt64Field(value: &_storage._messageID) }()
+        case 2: try { try decoder.decodeSingularInt64Field(value: &_storage._attachmentID) }()
+        case 3: try { try decoder.decodeSingularMessageField(value: &_storage._attachment) }()
+        case 4: try { try decoder.decodeSingularMessageField(value: &_storage._sentAt) }()
+        case 5: try { try decoder.decodeSingularInt64Field(value: &_storage._senderID) }()
+        default: break
+        }
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    // The use of inline closures is to circumvent an issue where the compiler
-    // allocates stack space for every if/case branch local when no optimizations
-    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-    // https://github.com/apple/swift-protobuf/issues/1182
-    if self.messageID != 0 {
-      try visitor.visitSingularInt64Field(value: self.messageID, fieldNumber: 1)
-    }
-    if self.attachmentID != 0 {
-      try visitor.visitSingularInt64Field(value: self.attachmentID, fieldNumber: 2)
-    }
-    try { if let v = self._attachment {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
-    } }()
-    try { if let v = self._sentAt {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
-    } }()
-    if self.senderID != 0 {
-      try visitor.visitSingularInt64Field(value: self.senderID, fieldNumber: 5)
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if _storage._messageID != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._messageID, fieldNumber: 1)
+      }
+      if _storage._attachmentID != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._attachmentID, fieldNumber: 2)
+      }
+      try { if let v = _storage._attachment {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
+      } }()
+      try { if let v = _storage._sentAt {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+      } }()
+      if _storage._senderID != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._senderID, fieldNumber: 5)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: Barkfluff_Messages_ChatAttachmentInfo, rhs: Barkfluff_Messages_ChatAttachmentInfo) -> Bool {
-    if lhs.messageID != rhs.messageID {return false}
-    if lhs.attachmentID != rhs.attachmentID {return false}
-    if lhs._attachment != rhs._attachment {return false}
-    if lhs._sentAt != rhs._sentAt {return false}
-    if lhs.senderID != rhs.senderID {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._messageID != rhs_storage._messageID {return false}
+        if _storage._attachmentID != rhs_storage._attachmentID {return false}
+        if _storage._attachment != rhs_storage._attachment {return false}
+        if _storage._sentAt != rhs_storage._sentAt {return false}
+        if _storage._senderID != rhs_storage._senderID {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

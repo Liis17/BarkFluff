@@ -88,6 +88,8 @@ public struct MessageAttachment: Identifiable, Hashable, Sendable {
     public let fileSize: Int64
     public var previewURL: String?
     public var previewFileID: String?
+    /// Снимок пересланного сообщения. Заполнен только при `type == .forwardedMessage`.
+    public var forwarded: ForwardedMessagePayload?
 
     public init(
         id: Int64,
@@ -96,7 +98,8 @@ public struct MessageAttachment: Identifiable, Hashable, Sendable {
         fileName: String,
         fileSize: Int64,
         previewURL: String? = nil,
-        previewFileID: String? = nil
+        previewFileID: String? = nil,
+        forwarded: ForwardedMessagePayload? = nil
     ) {
         self.id = id
         self.type = type
@@ -105,11 +108,34 @@ public struct MessageAttachment: Identifiable, Hashable, Sendable {
         self.fileSize = fileSize
         self.previewURL = previewURL
         self.previewFileID = previewFileID
+        self.forwarded = forwarded
     }
 
     /// Форматированный размер файла
     public var formattedSize: String {
         ByteCountFormatter.string(fromByteCount: fileSize, countStyle: .file)
+    }
+}
+
+/// Снимок пересланного сообщения (для type == .forwardedMessage).
+/// Сервер формирует копию: имя автора, текст и вложения оригинала на момент пересылки.
+public struct ForwardedMessagePayload: Hashable, Sendable {
+    public let authorName: String
+    public let originalMessageID: Int64
+    public let text: String
+    /// Вложения оригинала. По контракту backend сюда не попадают вложения типа `.forwardedMessage`.
+    public let attachments: [MessageAttachment]
+
+    public init(
+        authorName: String,
+        originalMessageID: Int64,
+        text: String,
+        attachments: [MessageAttachment] = []
+    ) {
+        self.authorName = authorName
+        self.originalMessageID = originalMessageID
+        self.text = text
+        self.attachments = attachments
     }
 }
 
@@ -122,6 +148,7 @@ public enum AttachmentType: String, Sendable, Codable, CaseIterable {
     case audio
     case voice
     case sticker
+    case forwardedMessage
 
     public var displayName: String {
         switch self {
@@ -132,6 +159,7 @@ public enum AttachmentType: String, Sendable, Codable, CaseIterable {
         case .audio: return "Аудио"
         case .voice: return "Голосовое"
         case .sticker: return "Стикер"
+        case .forwardedMessage: return "Пересланное"
         }
     }
 
@@ -141,6 +169,7 @@ public enum AttachmentType: String, Sendable, Codable, CaseIterable {
         case .video: return "video"
         case .document: return "doc"
         case .audio, .voice: return "waveform"
+        case .forwardedMessage: return "arrowshape.turn.up.right"
         }
     }
 
@@ -153,6 +182,7 @@ public enum AttachmentType: String, Sendable, Codable, CaseIterable {
         case .audio: return "\u{1F3B5} Аудио"
         case .voice: return "\u{1F3A4} Голосовое"
         case .sticker: return "Стикер"
+        case .forwardedMessage: return "\u{21AA} Пересланное"
         }
     }
 }

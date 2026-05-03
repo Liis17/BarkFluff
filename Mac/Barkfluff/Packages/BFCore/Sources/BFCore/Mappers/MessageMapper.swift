@@ -35,6 +35,32 @@ public enum MessageMapper {
 
     /// Преобразовать Proto MessageAttachment в Domain MessageAttachment
     public static func toDomain(_ proto: Barkfluff_Shared_MessageAttachment) -> MessageAttachment {
+        let forwarded: ForwardedMessagePayload?
+        if proto.hasForwardedMessage {
+            let fwd = proto.forwardedMessage
+            forwarded = ForwardedMessagePayload(
+                authorName: fwd.authorName,
+                originalMessageID: fwd.originalMessageID,
+                text: fwd.text,
+                attachments: fwd.attachments.map { toDomainInner($0) }
+            )
+        } else {
+            forwarded = nil
+        }
+        return MessageAttachment(
+            id: proto.id,
+            type: toDomain(proto.type),
+            fileID: proto.fileID,
+            fileName: proto.fileName,
+            fileSize: proto.attachmentSize,
+            previewURL: proto.previewURL.isEmpty ? nil : proto.previewURL,
+            previewFileID: proto.previewFileID.isEmpty ? nil : proto.previewFileID,
+            forwarded: forwarded
+        )
+    }
+
+    /// Маппинг attachment внутри ForwardedMessage — рекурсия запрещена контрактом backend.
+    private static func toDomainInner(_ proto: Barkfluff_Shared_MessageAttachment) -> MessageAttachment {
         MessageAttachment(
             id: proto.id,
             type: toDomain(proto.type),
@@ -42,7 +68,8 @@ public enum MessageMapper {
             fileName: proto.fileName,
             fileSize: proto.attachmentSize,
             previewURL: proto.previewURL.isEmpty ? nil : proto.previewURL,
-            previewFileID: proto.previewFileID.isEmpty ? nil : proto.previewFileID
+            previewFileID: proto.previewFileID.isEmpty ? nil : proto.previewFileID,
+            forwarded: nil
         )
     }
 
@@ -63,6 +90,8 @@ public enum MessageMapper {
             return .voice
         case .sticker:
             return .sticker
+        case .forwardedMessage:
+            return .forwardedMessage
         case .unknown, .UNRECOGNIZED:
             return .document
         }

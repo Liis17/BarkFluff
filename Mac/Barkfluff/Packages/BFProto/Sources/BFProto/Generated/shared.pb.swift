@@ -46,6 +46,9 @@ public enum Barkfluff_Shared_MessageAttachmentType: SwiftProtobuf.Enum, Swift.Ca
 
   /// Стикер (WebP)
   case sticker // = 7
+
+  /// Пересланное сообщение
+  case forwardedMessage // = 8
   case UNRECOGNIZED(Int)
 
   public init() {
@@ -62,6 +65,7 @@ public enum Barkfluff_Shared_MessageAttachmentType: SwiftProtobuf.Enum, Swift.Ca
     case 5: self = .audio
     case 6: self = .voice
     case 7: self = .sticker
+    case 8: self = .forwardedMessage
     default: self = .UNRECOGNIZED(rawValue)
     }
   }
@@ -76,6 +80,7 @@ public enum Barkfluff_Shared_MessageAttachmentType: SwiftProtobuf.Enum, Swift.Ca
     case .audio: return 5
     case .voice: return 6
     case .sticker: return 7
+    case .forwardedMessage: return 8
     case .UNRECOGNIZED(let i): return i
     }
   }
@@ -90,6 +95,7 @@ public enum Barkfluff_Shared_MessageAttachmentType: SwiftProtobuf.Enum, Swift.Ca
     .audio,
     .voice,
     .sticker,
+    .forwardedMessage,
   ]
 
 }
@@ -247,6 +253,40 @@ public struct Barkfluff_Shared_MessageAttachment: Sendable {
   /// Высота изображения в пикселях (0 если не изображение)
   public var imageHeight: Int32 = 0
 
+  /// Данные пересланного сообщения (только для type = FORWARDED_MESSAGE)
+  public var forwardedMessage: Barkfluff_Shared_ForwardedMessageAttachment {
+    get {_forwardedMessage ?? Barkfluff_Shared_ForwardedMessageAttachment()}
+    set {_forwardedMessage = newValue}
+  }
+  /// Returns true if `forwardedMessage` has been explicitly set.
+  public var hasForwardedMessage: Bool {self._forwardedMessage != nil}
+  /// Clears the value of `forwardedMessage`. Subsequent reads from it will return its default value.
+  public mutating func clearForwardedMessage() {self._forwardedMessage = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _forwardedMessage: Barkfluff_Shared_ForwardedMessageAttachment? = nil
+}
+
+public struct Barkfluff_Shared_ForwardedMessageAttachment: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Имя и фамилия автора оригинального сообщения
+  public var authorName: String = String()
+
+  /// ID оригинального сообщения
+  public var originalMessageID: Int64 = 0
+
+  /// Текст оригинального сообщения
+  public var text: String = String()
+
+  /// Вложения оригинального сообщения (без FORWARDED_MESSAGE для исключения рекурсии)
+  public var attachments: [Barkfluff_Shared_MessageAttachment] = []
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -257,7 +297,7 @@ public struct Barkfluff_Shared_MessageAttachment: Sendable {
 fileprivate let _protobuf_package = "barkfluff.shared"
 
 extension Barkfluff_Shared_MessageAttachmentType: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0MESSAGE_ATTACHMENT_TYPE_UNKNOWN\0\u{1}IMAGE\0\u{1}VIDEO\0\u{1}GIF\0\u{1}DOCUMENT\0\u{1}AUDIO\0\u{1}VOICE\0\u{1}STICKER\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0MESSAGE_ATTACHMENT_TYPE_UNKNOWN\0\u{1}IMAGE\0\u{1}VIDEO\0\u{1}GIF\0\u{1}DOCUMENT\0\u{1}AUDIO\0\u{1}VOICE\0\u{1}STICKER\0\u{1}FORWARDED_MESSAGE\0")
 }
 
 extension Barkfluff_Shared_MessageContentType: SwiftProtobuf._ProtoNameProviding {
@@ -395,7 +435,7 @@ extension Barkfluff_Shared_MessageContent: SwiftProtobuf.Message, SwiftProtobuf.
 
 extension Barkfluff_Shared_MessageAttachment: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MessageAttachment"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}type\0\u{3}file_id\0\u{3}preview_url\0\u{3}attachment_size\0\u{3}preview_file_id\0\u{3}file_name\0\u{3}image_width\0\u{3}image_height\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}type\0\u{3}file_id\0\u{3}preview_url\0\u{3}attachment_size\0\u{3}preview_file_id\0\u{3}file_name\0\u{3}image_width\0\u{3}image_height\0\u{3}forwarded_message\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -412,12 +452,17 @@ extension Barkfluff_Shared_MessageAttachment: SwiftProtobuf.Message, SwiftProtob
       case 7: try { try decoder.decodeSingularStringField(value: &self.fileName) }()
       case 8: try { try decoder.decodeSingularInt32Field(value: &self.imageWidth) }()
       case 9: try { try decoder.decodeSingularInt32Field(value: &self.imageHeight) }()
+      case 10: try { try decoder.decodeSingularMessageField(value: &self._forwardedMessage) }()
       default: break
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
     if self.id != 0 {
       try visitor.visitSingularInt64Field(value: self.id, fieldNumber: 1)
     }
@@ -445,6 +490,9 @@ extension Barkfluff_Shared_MessageAttachment: SwiftProtobuf.Message, SwiftProtob
     if self.imageHeight != 0 {
       try visitor.visitSingularInt32Field(value: self.imageHeight, fieldNumber: 9)
     }
+    try { if let v = self._forwardedMessage {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -458,6 +506,52 @@ extension Barkfluff_Shared_MessageAttachment: SwiftProtobuf.Message, SwiftProtob
     if lhs.fileName != rhs.fileName {return false}
     if lhs.imageWidth != rhs.imageWidth {return false}
     if lhs.imageHeight != rhs.imageHeight {return false}
+    if lhs._forwardedMessage != rhs._forwardedMessage {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Shared_ForwardedMessageAttachment: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ForwardedMessageAttachment"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}author_name\0\u{3}original_message_id\0\u{1}text\0\u{1}attachments\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.authorName) }()
+      case 2: try { try decoder.decodeSingularInt64Field(value: &self.originalMessageID) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.text) }()
+      case 4: try { try decoder.decodeRepeatedMessageField(value: &self.attachments) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.authorName.isEmpty {
+      try visitor.visitSingularStringField(value: self.authorName, fieldNumber: 1)
+    }
+    if self.originalMessageID != 0 {
+      try visitor.visitSingularInt64Field(value: self.originalMessageID, fieldNumber: 2)
+    }
+    if !self.text.isEmpty {
+      try visitor.visitSingularStringField(value: self.text, fieldNumber: 3)
+    }
+    if !self.attachments.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.attachments, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Shared_ForwardedMessageAttachment, rhs: Barkfluff_Shared_ForwardedMessageAttachment) -> Bool {
+    if lhs.authorName != rhs.authorName {return false}
+    if lhs.originalMessageID != rhs.originalMessageID {return false}
+    if lhs.text != rhs.text {return false}
+    if lhs.attachments != rhs.attachments {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

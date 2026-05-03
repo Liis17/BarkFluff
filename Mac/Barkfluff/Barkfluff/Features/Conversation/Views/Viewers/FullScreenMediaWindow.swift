@@ -391,7 +391,7 @@ struct FullScreenMediaViewerView: View {
             FullScreenImageView(attachment: attachment, onClose: onClose)
         case .video:
             FullScreenVideoPlayerView(attachment: attachment, onClose: onClose)
-        case .document, .audio, .voice:
+        case .document, .audio, .voice, .forwardedMessage:
             EmptyView()
         }
     }

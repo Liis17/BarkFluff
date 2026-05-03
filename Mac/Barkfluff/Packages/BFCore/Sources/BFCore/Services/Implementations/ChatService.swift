@@ -99,13 +99,22 @@ public actor ChatService: ChatServiceProtocol {
     }
 
     private func toDomainAttachment(_ info: MessageAttachmentInfo) -> MessageAttachment {
-        MessageAttachment(
+        let forwarded = info.forwarded.map { dto in
+            ForwardedMessagePayload(
+                authorName: dto.authorName,
+                originalMessageID: dto.originalMessageID,
+                text: dto.text,
+                attachments: dto.attachments.map { toDomainAttachment($0) }
+            )
+        }
+        return MessageAttachment(
             id: info.id,
             type: toDomainAttachmentType(info.type),
             fileID: info.fileID,
             fileName: info.fileName,
             fileSize: info.fileSize,
-            previewURL: info.previewURL
+            previewURL: info.previewURL,
+            forwarded: forwarded
         )
     }
 
@@ -118,6 +127,7 @@ public actor ChatService: ChatServiceProtocol {
         case .audio: return .audio
         case .voice: return .voice
         case .sticker: return .sticker
+        case .forwardedMessage: return .forwardedMessage
         }
     }
 

@@ -120,6 +120,9 @@ struct AttachmentGridView: View {
                 x: frame.midX,
                 y: frame.midY
             )
+
+        case .forwardedMessage:
+            EmptyView() // отрисовывается отдельно в MessageBubbleView
         }
     }
 

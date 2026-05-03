@@ -43,13 +43,15 @@ public actor MessageService: MessageServiceProtocol {
         chatID: String?,
         userID: Int64?,
         text: String,
-        fileIDs: [String]
+        fileIDs: [String],
+        forwardedMessageID: Int64?
     ) async throws -> Message {
         let messageInfo = try await messagesRepository.sendMessage(
             chatID: chatID,
             userID: userID,
             text: text,
-            fileIDs: fileIDs
+            fileIDs: fileIDs,
+            forwardedMessageID: forwardedMessageID
         )
         return toDomainMessage(messageInfo)
     }
@@ -112,13 +114,22 @@ public actor MessageService: MessageServiceProtocol {
     }
 
     private func toDomainAttachment(_ info: MessageAttachmentInfo) -> MessageAttachment {
-        MessageAttachment(
+        let forwarded = info.forwarded.map { dto in
+            ForwardedMessagePayload(
+                authorName: dto.authorName,
+                originalMessageID: dto.originalMessageID,
+                text: dto.text,
+                attachments: dto.attachments.map { toDomainAttachment($0) }
+            )
+        }
+        return MessageAttachment(
             id: info.id,
             type: toDomainAttachmentType(info.type),
             fileID: info.fileID,
             fileName: info.fileName,
             fileSize: info.fileSize,
-            previewURL: info.previewURL
+            previewURL: info.previewURL,
+            forwarded: forwarded
         )
     }
 
@@ -131,6 +142,7 @@ public actor MessageService: MessageServiceProtocol {
         case .audio: return .audio
         case .voice: return .voice
         case .sticker: return .sticker
+        case .forwardedMessage: return .forwardedMessage
         }
     }
 }

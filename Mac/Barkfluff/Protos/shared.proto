@@ -43,18 +43,31 @@ message MessageAttachment {
   MessageAttachmentType type = 2; // Тип вложения
 
   string file_id = 3; // Индетификатор файла
-  
+
   string preview_url = 4; // Ссылка на превью файла (может быть пустым)
-  
+
   int64 attachment_size = 5; // Размер файла в байтах
-  
+
   string preview_file_id = 6; // Идентификатор файла превью (может быть пустым)
-  
+
   string file_name = 7; // Оригинальное имя файла
 
   int32 image_width = 8; // Ширина изображения в пикселях (0 если не изображение)
 
   int32 image_height = 9; // Высота изображения в пикселях (0 если не изображение)
+
+  ForwardedMessageAttachment forwarded_message = 10; // Данные пересланного сообщения (только для type = FORWARDED_MESSAGE)
+}
+
+message ForwardedMessageAttachment {
+
+  string author_name = 1; // Имя и фамилия автора оригинального сообщения
+
+  int64 original_message_id = 2; // ID оригинального сообщения
+
+  string text = 3; // Текст оригинального сообщения
+
+  repeated MessageAttachment attachments = 4; // Вложения оригинального сообщения (без FORWARDED_MESSAGE для исключения рекурсии)
 }
 
 enum MessageAttachmentType {
@@ -74,6 +87,8 @@ enum MessageAttachmentType {
   VOICE = 6; // Голосовое сообщение
 
   STICKER = 7; // Стикер (WebP)
+
+  FORWARDED_MESSAGE = 8; // Пересланное сообщение
 }
 
 enum MessageContentType {

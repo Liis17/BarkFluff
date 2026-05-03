@@ -381,6 +381,12 @@ struct ConversationView: View {
                 },
                 onDeleteFailed: { localID in
                     viewModel.deleteFailedMessage(localID: localID)
+                },
+                onReply: { message in
+                    Task { await viewModel.replyToMessage(message) }
+                },
+                onForward: { messageID in
+                    coordinator.presentedSheet = .forwardMessage(messageID: messageID, sourceChatID: chat.id)
                 }
             )
         }
