@@ -92,11 +92,17 @@ public class ListMessagesCommandHandler : IRequestHandler<ListMessagesCommand, L
                 messages = await _messagesStorage.GetChatMessages(request.ChatId, messageId, request.Count);
             }
 
-            // �������� ���������� � ������ ��� ���������� ��������
             var fileIds = messages
                 .Where(m => m.Content?.Attachments != null)
                 .SelectMany(m => m.Content!.Attachments!)
-                .Select(a => a.FileId)
+                .SelectMany(a =>
+                {
+                    var ids = new List<string>();
+                    if (!string.IsNullOrEmpty(a.FileId)) ids.Add(a.FileId!);
+                    if (a.ForwardedAttachments != null)
+                        ids.AddRange(a.ForwardedAttachments.Select(fa => fa.FileId).Where(id => !string.IsNullOrEmpty(id)));
+                    return ids;
+                })
                 .Distinct()
                 .ToList();
 
