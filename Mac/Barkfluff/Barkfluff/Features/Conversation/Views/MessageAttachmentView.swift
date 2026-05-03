@@ -20,6 +20,8 @@ struct MessageAttachmentView: View {
                 videoAttachment
             case .document, .audio, .voice:
                 fileAttachment
+            case .forwardedMessage:
+                EmptyView() // отрисовывается отдельно в MessageBubbleView
             }
         }
     }

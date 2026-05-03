@@ -134,6 +134,45 @@ public struct MessageAttachmentInfo: Sendable, Identifiable {
     public let previewURL: String?
     public let fileName: String
     public let fileSize: Int64
+    public let forwarded: ForwardedMessageDTO?
+
+    public init(
+        id: Int64,
+        type: AttachmentType,
+        fileID: String,
+        previewURL: String?,
+        fileName: String,
+        fileSize: Int64,
+        forwarded: ForwardedMessageDTO? = nil
+    ) {
+        self.id = id
+        self.type = type
+        self.fileID = fileID
+        self.previewURL = previewURL
+        self.fileName = fileName
+        self.fileSize = fileSize
+        self.forwarded = forwarded
+    }
+}
+
+/// Сетевой снимок пересланного сообщения. Заполняется только при `type == .forwardedMessage`.
+public struct ForwardedMessageDTO: Sendable {
+    public let authorName: String
+    public let originalMessageID: Int64
+    public let text: String
+    public let attachments: [MessageAttachmentInfo]
+
+    public init(
+        authorName: String,
+        originalMessageID: Int64,
+        text: String,
+        attachments: [MessageAttachmentInfo]
+    ) {
+        self.authorName = authorName
+        self.originalMessageID = originalMessageID
+        self.text = text
+        self.attachments = attachments
+    }
 }
 
 public enum AttachmentType: Sendable, Codable {
@@ -144,6 +183,7 @@ public enum AttachmentType: Sendable, Codable {
     case audio
     case voice
     case sticker
+    case forwardedMessage
 }
 
 public struct ChatMemberInfo: Sendable {

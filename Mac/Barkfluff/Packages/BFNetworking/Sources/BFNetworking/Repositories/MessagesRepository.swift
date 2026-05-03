@@ -66,7 +66,7 @@ public actor MessagesRepository: MessagesRepositoryProtocol {
         }
     }
 
-    public func sendMessage(chatID: String?, userID: Int64?, text: String, fileIDs: [String]) async throws -> MessageInfo {
+    public func sendMessage(chatID: String?, userID: Int64?, text: String, fileIDs: [String], forwardedMessageID: Int64?) async throws -> MessageInfo {
         var request = Barkfluff_Messages_SendMessageRequest()
         if let chatID {
             request.sourceID = .chatID(chatID)
@@ -76,6 +76,9 @@ public actor MessagesRepository: MessagesRepositoryProtocol {
         var outgoing = Barkfluff_Messages_OutgoingMessage()
         outgoing.text = text
         outgoing.filesIds = fileIDs
+        if let forwardedMessageID {
+            outgoing.forwardedMessageID = forwardedMessageID
+        }
         request.message = outgoing
         let req = request
 
@@ -275,6 +278,7 @@ public actor MessagesRepository: MessagesRepositoryProtocol {
         case .audio: return .unknown
         case .voice: return .unknown
         case .sticker: return .unknown
+        case .forwardedMessage: return .unknown
         }
     }
 
@@ -284,6 +288,7 @@ public actor MessagesRepository: MessagesRepositoryProtocol {
         case .video: return .video
         case .gif: return .gif
         case .document: return .document
+        case .forwardedMessage: return .forwardedMessage
         default: return nil // unknown и другие - пропускаем
         }
     }
@@ -298,16 +303,7 @@ public actor MessagesRepository: MessagesRepositoryProtocol {
             sentAt = Date()
         }
 
-        let attachments = msg.content.attachments.map { att in
-            MessageAttachmentInfo(
-                id: att.id,
-                type: mapAttachmentType(att.type),
-                fileID: att.fileID,
-                previewURL: att.previewURL.isEmpty ? nil : att.previewURL,
-                fileName: att.fileName,
-                fileSize: att.attachmentSize
-            )
-        }
+        let attachments = msg.content.attachments.map { mapAttachment($0) }
 
         return MessageInfo(
             id: msg.id,
@@ -322,12 +318,51 @@ public actor MessagesRepository: MessagesRepositoryProtocol {
         )
     }
 
+    private nonisolated func mapAttachment(_ att: Barkfluff_Shared_MessageAttachment) -> MessageAttachmentInfo {
+        let forwarded: ForwardedMessageDTO?
+        if att.hasForwardedMessage {
+            let fwd = att.forwardedMessage
+            forwarded = ForwardedMessageDTO(
+                authorName: fwd.authorName,
+                originalMessageID: fwd.originalMessageID,
+                text: fwd.text,
+                attachments: fwd.attachments.map { mapInnerAttachment($0) }
+            )
+        } else {
+            forwarded = nil
+        }
+        return MessageAttachmentInfo(
+            id: att.id,
+            type: mapAttachmentType(att.type),
+            fileID: att.fileID,
+            previewURL: att.previewURL.isEmpty ? nil : att.previewURL,
+            fileName: att.fileName,
+            fileSize: att.attachmentSize,
+            forwarded: forwarded
+        )
+    }
+
+    /// Маппинг attachment внутри ForwardedMessage — рекурсия запрещена контрактом backend,
+    /// поэтому никогда не читаем `hasForwardedMessage` повторно.
+    private nonisolated func mapInnerAttachment(_ att: Barkfluff_Shared_MessageAttachment) -> MessageAttachmentInfo {
+        MessageAttachmentInfo(
+            id: att.id,
+            type: mapAttachmentType(att.type),
+            fileID: att.fileID,
+            previewURL: att.previewURL.isEmpty ? nil : att.previewURL,
+            fileName: att.fileName,
+            fileSize: att.attachmentSize,
+            forwarded: nil
+        )
+    }
+
     private nonisolated func mapAttachmentType(_ type: Barkfluff_Shared_MessageAttachmentType) -> AttachmentType {
         switch type {
         case .image: return .image
         case .video: return .video
         case .gif: return .gif
         case .document: return .document
+        case .forwardedMessage: return .forwardedMessage
         default: return .document
         }
     }

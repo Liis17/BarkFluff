@@ -18,11 +18,13 @@ public protocol MessageServiceProtocol: Sendable {
     ) async throws -> [Message]
 
     /// Отправить сообщение
+    /// - Parameter forwardedMessageID: если задан — сервер прикрепит снимок оригинала как FORWARDED_MESSAGE attachment
     func sendMessage(
         chatID: String?,
         userID: Int64?,
         text: String,
-        fileIDs: [String]
+        fileIDs: [String],
+        forwardedMessageID: Int64?
     ) async throws -> Message
 
     /// Пометить сообщения как прочитанные
