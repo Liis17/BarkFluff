@@ -68,11 +68,14 @@ docker-compose -f docker-compose-dev.yml up -d messages
 | `ChatMember` | Индекс `(ChatId, UserId)`, каскадное удаление |
 | `Message` | `Content` — owned type, `ReadBy` — PostgreSQL array |
 | `MessageAttachment` | Owned collection в отдельной таблице `MessageAttachments` |
-| `MessageAttachmentType` | Unknown, Image, Video, Gif, Document, Audio, Voice, Sticker |
+| `MessageAttachmentType` | Unknown, Image, Video, Gif, Document, Audio, Voice, Sticker, ForwardedMessage |
+| `ForwardedMessageAttachment` | Owned collection в таблице `ForwardedMessageAttachments`; вложения внутри пересланного сообщения (без ForwardedMessage рекурсии) |
 | `GroupChatInfo` | `UsersCanKick` — PostgreSQL array |
 
 ## Важные нюансы
 
+- **Пересланные сообщения**: `MessageAttachmentType.ForwardedMessage` (8) — снапшот оригинала. `ForwardedAuthorName`, `ForwardedOriginalMessageId`, `ForwardedText` хранятся в `MessageAttachments`; вложения оригинала — в `ForwardedMessageAttachments`
+- **ListChatAttachments без фильтра**: тип 8 (ForwardedMessage) исключён из медиа-галереи автоматически
 - **Системные сообщения**: `MessageContentType.System` — для событий чата (создание группы, кик)
 - **Маппинг файлов**: `MessageMapping.ToGrpc(filesInfoMap?)` — словарь `fileId → FileData` для вложений. Если не передан — поля preview/filename пустые
 - **Пагинация**: `GetChatMessagesWithOffset` — двунаправленная загрузка вокруг `fromMessageId` (по 50 в каждую сторону)

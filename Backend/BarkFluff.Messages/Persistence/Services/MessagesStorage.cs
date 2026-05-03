@@ -165,7 +165,7 @@ public class MessagesStorage
         }
         else
         {
-            attachmentTypeFilter = "";
+            attachmentTypeFilter = "AND a.\"Type\" != 8";
         }
 
         var sortOrder = sortDescending ? "DESC" : "ASC";
