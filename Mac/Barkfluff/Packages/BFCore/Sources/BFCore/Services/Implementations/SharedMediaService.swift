@@ -91,6 +91,7 @@ public actor SharedMediaService: SharedMediaServiceProtocol {
         case .audio: return .audio
         case .voice: return .voice
         case .sticker: return .sticker
+        case .forwardedMessage: return .forwardedMessage
         }
     }
 }

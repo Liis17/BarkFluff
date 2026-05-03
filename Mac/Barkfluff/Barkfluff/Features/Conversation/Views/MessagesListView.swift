@@ -22,6 +22,8 @@ struct MessagesListView: View {
     let scrollPosition: ScrollPositionManager
     var onRetry: ((String) -> Void)?
     var onDeleteFailed: ((String) -> Void)?
+    var onReply: ((Message) -> Void)?
+    var onForward: ((Int64) -> Void)?
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -50,7 +52,9 @@ struct MessagesListView: View {
                                 groupInfo: groupInfo,
                                 showSenderName: isGroupChat,
                                 onRetry: onRetry,
-                                onDeleteFailed: onDeleteFailed
+                                onDeleteFailed: onDeleteFailed,
+                                onReply: onReply,
+                                onForward: onForward
                             )
                             .transition(.asymmetric(
                                 insertion: .move(edge: .bottom).combined(with: .opacity),

@@ -90,6 +90,17 @@ struct MainSplitView: View {
                 columnVisibility = .all
             }
         }
+        // Модальные окна (создание группового чата, поиск пользователей, выбор чата для пересылки)
+        .sheet(item: Bindable(coordinator).presentedSheet) { sheet in
+            switch sheet {
+            case .createGroupChat:
+                CreateGroupChatView()
+            case .userSearch:
+                UserSearchView()
+            case .forwardMessage(let messageID, let sourceChatID):
+                ForwardChatPickerView(messageID: messageID, sourceChatID: sourceChatID)
+            }
+        }
     }
 }
 

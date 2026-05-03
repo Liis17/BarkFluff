@@ -77,6 +77,9 @@ struct MediaViewerView: View {
 
         case .document, .audio, .voice:
             DocumentViewerPlaceholder(attachment: attachment)
+
+        case .forwardedMessage:
+            EmptyView()
         }
     }
 

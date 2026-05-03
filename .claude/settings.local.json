@@ -66,7 +66,13 @@
       "Bash(npm list *)",
       "Bash(npm install *)",
       "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=iOS Simulator,name=iPhone 16' build)",
-      "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=iOS Simulator,name=iPhone 17' build)"
+      "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=iOS Simulator,name=iPhone 17' build)",
+      "Bash(/opt/homebrew/bin/protoc-gen-grpc-swift --version)",
+      "Bash(/opt/homebrew/bin/protoc-gen-grpc-swift-2 --version)",
+      "Bash(xcodebuild -scheme Barkfluff -destination 'platform=macOS' -quiet build)",
+      "Bash(xcodebuild -scheme Barkfluff -destination 'platform=macOS' build)",
+      "Bash(open /Users/liis/Library/Developer/Xcode/DerivedData/Barkfluff-bwsujifbcrzrfjaketcorzhoutjr/Build/Products/Debug/Barkfluff.app)",
+      "Bash(echo \"Exit: $?\")"
     ],
     "deny": [],
     "ask": []

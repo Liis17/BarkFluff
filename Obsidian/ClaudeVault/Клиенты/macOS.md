@@ -109,6 +109,19 @@ Views → ViewModels → Services → Repositories → gRPC
 
 Консумеры: `ChatRowView` (через `.task(id:)`), `ConversationViewModel.startListeningForOnlineStatus` (для статуса под именем в открытом чате), `UserProfilePanelViewModel`.
 
+## Пересылка и ответ на сообщение
+
+Контекстное меню на пузыре (`MessageBubbleView.contextMenu`) для подтверждённых сообщений (`message.id > 0`, не failed, не system) показывает «Ответить» и «Переслать».
+
+- **Ответить** — `ConversationViewModel.replyToMessage(_:)`. Optimistic-flow: добавляет pending-сообщение с placeholder `MessageAttachment(type: .forwardedMessage, forwarded: ForwardedMessagePayload(...))` (имя автора + первые 80 символов оригинала), затем вызывает `messageService.sendMessage(chatID:..., text: "", forwardedMessageID: id)`. Серверный ответ заменяет pending. Текстовое поле не используется.
+- **Переслать** — `coordinator.presentedSheet = .forwardMessage(messageID:, sourceChatID:)`. Sheet смонтирован в `MainSplitView` через `.sheet(item: Bindable(coordinator).presentedSheet)` (одновременно фиксит существующий баг — `createGroupChat` тоже не открывался). View `ForwardChatPickerView` берёт snapshot чатов из `coordinator.chatListViewModel?.chats`, фильтрует по поиску и исключает источник; на «Переслать» вызывает `MessageService.sendMessage(chatID: target, ..., forwardedMessageID:)` без optimistic UI. lastMessage в sidebar обновляется через стрим `NewMessages`.
+
+Контракт с сервером (см. [[Backend/Messages]]):
+- Клиент шлёт только `OutgoingMessage.forwardedMessageID` — backend сам формирует attachment типа `FORWARDED_MESSAGE` со снимком автора/текста/вложений оригинала.
+- Доменная модель в BFCore — `MessageAttachment.forwarded: ForwardedMessagePayload?`. Отрисовка: `ForwardedMessageView` (вертикальная цветная полоса слева, имя автора, текст, мини-список вложений).
+
+Регенерация proto: `make generate` в `Packages/BFProto/` (источник — `Mac/Barkfluff/Protos/`, синхронизируется с `Shared/BarkFluff.Proto/`).
+
 ## Code Conventions
 
 - Комментарии на русском

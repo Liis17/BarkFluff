@@ -61,7 +61,7 @@ public protocol UsersRepositoryProtocol: Sendable {
 public protocol MessagesRepositoryProtocol: Sendable {
     func listChats(offset: Int32, size: Int32) async throws -> (chats: [ChatInfo], totalCount: Int32)
     func listMessages(chatID: String, fromMessageID: Int64, offsetBefore: Int32, offsetAfter: Int32) async throws -> [MessageInfo]
-    func sendMessage(chatID: String?, userID: Int64?, text: String, fileIDs: [String]) async throws -> MessageInfo
+    func sendMessage(chatID: String?, userID: Int64?, text: String, fileIDs: [String], forwardedMessageID: Int64?) async throws -> MessageInfo
     func createGroupChat(userIDs: [Int64], title: String, pictureFileID: String?) async throws -> ChatInfo
     func kickUser(chatID: String, userID: Int64) async throws
     func markAsRead(messageIDs: [Int64]) async throws

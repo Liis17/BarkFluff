@@ -75,11 +75,14 @@ final class AppCoordinator {
     enum SheetType: Identifiable {
         case createGroupChat
         case userSearch
+        /// Переслать сообщение `messageID` из чата `sourceChatID` в выбранный пользователем чат
+        case forwardMessage(messageID: Int64, sourceChatID: String)
 
         var id: String {
             switch self {
             case .createGroupChat: return "createGroupChat"
             case .userSearch: return "userSearch"
+            case .forwardMessage(let id, _): return "forwardMessage_\(id)"
             }
         }
     }
