@@ -36,6 +36,7 @@ import com.barkfluff.client.databinding.ItemAttachmentVideoBinding
 import com.barkfluff.client.databinding.ItemMessageDateSeparatorBinding
 import com.barkfluff.client.databinding.ItemMessageReceivedBinding
 import com.barkfluff.client.databinding.ItemMessageSentBinding
+import com.barkfluff.client.databinding.ViewMessageQuoteBinding
 import com.barkfluff.client.utils.AudioCallbacks
 import com.barkfluff.client.utils.AudioPlayerHelper
 import com.barkfluff.client.utils.FileCache
@@ -66,8 +67,23 @@ class MessageAdapter(
     private val downloadToCache: suspend (fileId: String, onProgress: (Int) -> Unit) -> java.io.File? = { _, _ -> null },
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main),
     /** Закругление облачков сообщений в dp (0..30). */
-    var messageCornerRadiusDp: Int = 20
+    var messageCornerRadiusDp: Int = 20,
+    /** Вызывается при клике на сообщение (по контейнеру вне bubble) — должен показать меню действий. */
+    private val onMessageActionRequested: ((anchor: View, item: MessageItem) -> Unit)? = null
 ) : ListAdapter<MessageItem, RecyclerView.ViewHolder>(MessageDiffCallback()) {
+
+    /** Проверяет, есть ли сообщение с указанным ID в текущем загруженном списке (для эвристики reply vs forward). */
+    fun hasMessageInCurrentList(messageId: Long): Boolean {
+        if (messageId <= 0L) return false
+        return currentList.any { it.type == MessageType.MESSAGE && it.messageId == messageId }
+    }
+
+    /** Возвращает MessageItem по позиции для обработчика свайпа (ItemTouchHelper). null если позиция вне диапазона или не сообщение. */
+    fun getMessageAt(position: Int): MessageItem? {
+        if (position < 0 || position >= itemCount) return null
+        val item = getItem(position)
+        return if (item.type == MessageType.MESSAGE) item else null
+    }
 
     companion object {
         private const val VIEW_TYPE_SENT = 1
@@ -156,10 +172,23 @@ class MessageAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(item: MessageItem) {
+            // Click по корневому FrameLayout (вне bubble) — открывает action menu
+            binding.root.setOnClickListener { v ->
+                onMessageActionRequested?.invoke(v, item)
+            }
+
+            // Цитата forward/reply (если есть)
+            bindMessageQuote(binding.messageQuote, item.attachments)
+
+            // Вложения для основного отображения (без FORWARDED_MESSAGE — он рендерится через quote)
+            val displayedAttachments = item.attachments.filter {
+                it.type != Shared.MessageAttachmentType.FORWARDED_MESSAGE
+            }
+
             // Определяем, является ли сообщение «чистым стикером»
             val isPureSticker = item.text.isBlank() &&
-                item.attachments.size == 1 &&
-                item.attachments[0].type == Shared.MessageAttachmentType.STICKER
+                displayedAttachments.size == 1 &&
+                displayedAttachments[0].type == Shared.MessageAttachmentType.STICKER
 
             if (isPureSticker) {
                 // Показать стикер без облачка
@@ -167,7 +196,7 @@ class MessageAdapter(
                 binding.stickerImageView.visibility = View.VISIBLE
                 binding.stickerTimeStatusLayout.visibility = View.VISIBLE
 
-                val attachment = item.attachments[0]
+                val attachment = displayedAttachments[0]
                 loadStickerImage(binding.stickerImageView, attachment)
 
                 binding.stickerTimeTextView.text = formatTime(item.timestamp)
@@ -213,8 +242,8 @@ class MessageAdapter(
                     ReadStatus.NONE -> binding.readStatusImageView.visibility = View.GONE
                 }
 
-                if (item.attachments.isNotEmpty()) {
-                    val hasMedia = item.attachments.any {
+                if (displayedAttachments.isNotEmpty()) {
+                    val hasMedia = displayedAttachments.any {
                         it.type == Shared.MessageAttachmentType.IMAGE ||
                         it.type == Shared.MessageAttachmentType.GIF  ||
                         it.type == Shared.MessageAttachmentType.VIDEO
@@ -223,7 +252,7 @@ class MessageAdapter(
                     binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
                         it.width = if (mediaWidthPx > 0) mediaWidthPx else ViewGroup.LayoutParams.WRAP_CONTENT
                     }
-                    setupAttachmentsContainer(binding.attachmentsContainer, item.attachments, mediaWidthPx, isSentByMe = true)
+                    setupAttachmentsContainer(binding.attachmentsContainer, displayedAttachments, mediaWidthPx, isSentByMe = true)
                     binding.attachmentsContainer.visibility = View.VISIBLE
                 } else {
                     binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
@@ -243,6 +272,19 @@ class MessageAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(item: MessageItem) {
+            // Click по корневому FrameLayout (вне bubble) — открывает action menu
+            binding.root.setOnClickListener { v ->
+                onMessageActionRequested?.invoke(v, item)
+            }
+
+            // Цитата forward/reply (если есть)
+            bindMessageQuote(binding.messageQuote, item.attachments)
+
+            // Вложения для основного отображения (без FORWARDED_MESSAGE — рендерится через quote)
+            val displayedAttachments = item.attachments.filter {
+                it.type != Shared.MessageAttachmentType.FORWARDED_MESSAGE
+            }
+
             if (isGroupChat) {
                 binding.senderInfoLayout.visibility = View.VISIBLE
                 binding.senderNameTextView.text = item.senderName
@@ -276,8 +318,8 @@ class MessageAdapter(
 
             // Определяем, является ли сообщение «чистым стикером»
             val isPureSticker = item.text.isBlank() &&
-                item.attachments.size == 1 &&
-                item.attachments[0].type == Shared.MessageAttachmentType.STICKER
+                displayedAttachments.size == 1 &&
+                displayedAttachments[0].type == Shared.MessageAttachmentType.STICKER
 
             if (isPureSticker) {
                 // Показать стикер без облачка
@@ -285,7 +327,7 @@ class MessageAdapter(
                 binding.stickerImageView.visibility = View.VISIBLE
                 binding.stickerTimeTextView.visibility = View.VISIBLE
 
-                val attachment = item.attachments[0]
+                val attachment = displayedAttachments[0]
                 loadStickerImage(binding.stickerImageView, attachment)
 
                 binding.stickerTimeTextView.text = formatTime(item.timestamp)
@@ -308,8 +350,8 @@ class MessageAdapter(
 
                 binding.timeTextView.text = formatTime(item.timestamp)
 
-                if (item.attachments.isNotEmpty()) {
-                    val hasMedia = item.attachments.any {
+                if (displayedAttachments.isNotEmpty()) {
+                    val hasMedia = displayedAttachments.any {
                         it.type == Shared.MessageAttachmentType.IMAGE ||
                         it.type == Shared.MessageAttachmentType.GIF  ||
                         it.type == Shared.MessageAttachmentType.VIDEO
@@ -318,7 +360,7 @@ class MessageAdapter(
                     binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
                         it.width = if (mediaWidthPx > 0) mediaWidthPx else ViewGroup.LayoutParams.WRAP_CONTENT
                     }
-                    setupAttachmentsContainer(binding.attachmentsContainer, item.attachments, mediaWidthPx)
+                    setupAttachmentsContainer(binding.attachmentsContainer, displayedAttachments, mediaWidthPx)
                     binding.attachmentsContainer.visibility = View.VISIBLE
                 } else {
                     binding.attachmentsContainer.layoutParams = binding.attachmentsContainer.layoutParams.also {
@@ -343,6 +385,104 @@ class MessageAdapter(
         private val binding: ItemMessageDateSeparatorBinding
     ) : RecyclerView.ViewHolder(binding.root) {
         fun bind(item: MessageItem) { binding.dateTextView.text = item.dateText }
+    }
+
+    // ─── Forward / Reply Quote ────────────────────────────────────────────────
+
+    /**
+     * Биндит цитату (forward или reply) в облачко сообщения.
+     * Эвристика выбора:
+     *   - reply: оригинал есть в текущем загруженном списке сообщений (тот же чат) → компактная полоска
+     *   - forward: оригинал не найден локально → полный CardView блок
+     */
+    private fun bindMessageQuote(quote: ViewMessageQuoteBinding, attachments: List<Shared.MessageAttachment>) {
+        val forwardedAtt = attachments.firstOrNull {
+            it.type == Shared.MessageAttachmentType.FORWARDED_MESSAGE
+        }
+        if (forwardedAtt == null || !forwardedAtt.hasForwardedMessage()) {
+            quote.quoteContainer.visibility = View.GONE
+            quote.replyView.visibility = View.GONE
+            quote.forwardView.visibility = View.GONE
+            return
+        }
+
+        val data = forwardedAtt.forwardedMessage
+        val isReply = hasMessageInCurrentList(data.originalMessageId)
+
+        quote.quoteContainer.visibility = View.VISIBLE
+
+        if (isReply) {
+            quote.replyView.visibility = View.VISIBLE
+            quote.forwardView.visibility = View.GONE
+
+            quote.replyAuthorTextView.text = data.authorName.ifBlank { "Сообщение" }
+            quote.replyPreviewTextView.text = buildPreviewLine(data.text, data.attachmentsList)
+        } else {
+            quote.replyView.visibility = View.GONE
+            quote.forwardView.visibility = View.VISIBLE
+
+            quote.forwardAuthorTextView.text = data.authorName.ifBlank { "Пересланное сообщение" }
+
+            if (data.text.isNotBlank()) {
+                quote.forwardTextTextView.text = data.text
+                quote.forwardTextTextView.visibility = View.VISIBLE
+            } else {
+                quote.forwardTextTextView.visibility = View.GONE
+            }
+
+            // Медиа-вложения внутри пересланного сообщения
+            val nestedAtts = data.attachmentsList
+            if (nestedAtts.isNotEmpty()) {
+                quote.forwardAttachmentsContainer.removeAllViews()
+                val ctx = quote.forwardAttachmentsContainer.context
+                val maxWidthPx = (calcMediaWidthPx(ctx) * 0.85f).toInt()
+                setupAttachmentsContainer(
+                    quote.forwardAttachmentsContainer,
+                    nestedAtts,
+                    maxWidthPx,
+                    isSentByMe = false
+                )
+                quote.forwardAttachmentsContainer.visibility = View.VISIBLE
+            } else {
+                quote.forwardAttachmentsContainer.visibility = View.GONE
+                quote.forwardAttachmentsContainer.removeAllViews()
+            }
+        }
+    }
+
+    /** Формирует короткое превью для reply: 1 строка текста ИЛИ "📷 N фото" / "📎 N файлов" если текста нет. */
+    private fun buildPreviewLine(text: String, attachments: List<Shared.MessageAttachment>): String {
+        if (text.isNotBlank()) return text
+        if (attachments.isEmpty()) return ""
+        val photos = attachments.count {
+            it.type == Shared.MessageAttachmentType.IMAGE ||
+            it.type == Shared.MessageAttachmentType.GIF
+        }
+        val videos = attachments.count { it.type == Shared.MessageAttachmentType.VIDEO }
+        val docs = attachments.count { it.type == Shared.MessageAttachmentType.DOCUMENT }
+        val audios = attachments.count {
+            it.type == Shared.MessageAttachmentType.AUDIO ||
+            it.type == Shared.MessageAttachmentType.VOICE
+        }
+        val stickers = attachments.count { it.type == Shared.MessageAttachmentType.STICKER }
+        return when {
+            photos > 0 -> "📷 ${photos} ${pluralize(photos, "фото", "фото", "фото")}"
+            videos > 0 -> "🎬 ${videos} ${pluralize(videos, "видео", "видео", "видео")}"
+            audios > 0 -> "🎵 ${audios} ${pluralize(audios, "аудио", "аудио", "аудио")}"
+            docs > 0 -> "📎 ${docs} ${pluralize(docs, "файл", "файла", "файлов")}"
+            stickers > 0 -> "Стикер"
+            else -> ""
+        }
+    }
+
+    private fun pluralize(n: Int, one: String, few: String, many: String): String {
+        val mod10 = n % 10
+        val mod100 = n % 100
+        return when {
+            mod10 == 1 && mod100 != 11 -> one
+            mod10 in 2..4 && mod100 !in 12..14 -> few
+            else -> many
+        }
     }
 
     // ─── Sticker Helper ───────────────────────────────────────────────────────

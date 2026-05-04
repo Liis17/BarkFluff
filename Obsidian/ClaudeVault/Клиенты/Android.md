@@ -101,6 +101,32 @@ androidx.media3:media3-exoplayer:1.3.1
 androidx.media3:media3-ui:1.3.1
 ```
 
+## Пересылка и ответы (Forward / Reply)
+
+Технически на бэкенде reply и forward — **одно и то же**: оба используют `OutgoingMessage.forwarded_message_id` (см. `messages_api.proto`). Различие чисто визуальное на клиенте.
+
+**Эвристика выбора UI** (в `MessageAdapter.bindMessageQuote`): если `ForwardedMessageAttachment.original_message_id` найден в текущей загруженной истории чата (`hasMessageInCurrentList`), отображается компактный **reply-блок** (вертикальная полоска `?attr/colorPrimary` + автор + 1 строка превью). Иначе — полный **forward-блок** в `MaterialCardView` (с заголовком автора, текстом и медиа-сеткой через `setupAttachmentsContainer`).
+
+Layout цитаты: `view_message_quote.xml` (включается в `item_message_sent.xml` и `item_message_received.xml` через `<include android:id="@+id/messageQuote">`). Универсальный — переключается между `replyView` / `forwardView` по visibility.
+
+При рендере основного бабла FORWARDED_MESSAGE-вложения **исключаются** из `setupAttachmentsContainer` (фильтр `displayedAttachments`), чтобы не задвоить.
+
+### Ответ (reply) в открытом чате
+
+- **Action menu**: клик по корневому `FrameLayout` строки сообщения (вне bubble — там, где padding 80dp слева/справа) открывает `PopupMenu` (`menu_message_actions.xml`) с пунктами Ответить / Изменить / Удалить / Переслать / Закрепить. Изменить/Удалить/Закрепить — заглушки `Toast "Скоро будет"`.
+- **Свайп влево**: `ReplySwipeCallback : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT)`. При сдвиге `>= 64dp` — haptic + триггер. После отпускания bubble возвращается на место (`onSwiped` пуст, `clearView` сбрасывает `translationX`). Иконка стрелки рисуется справа в `onChildDraw` с alpha по прогрессу.
+- **Reply preview bar**: `replyPreviewBar` в `activity_chat.xml` — `MaterialCardView` над `attachmentPreviewBar`, показывается при `pendingReplyMessageId != 0L`. Содержит автора, превью текста (или "📷 N фото" / "📎 N файлов"), кнопку отмены `clearReplyButton`.
+- **Отправка**: `ChatRepository.sendMessage(..., forwardedMessageId = pendingReplyMessageId)`. После успеха — `clearPendingReply()`.
+
+### Пересылка в другие чаты (forward)
+
+`ForwardChatPickerBottomSheet` (`dialog/ForwardChatPickerBottomSheet.kt`):
+- `BottomSheetDialogFragment` с `STATE_EXPANDED` + `skipCollapsed=true`.
+- Загружает чаты через `grpcManager.getChats()` (та же сортировка по `lastMessage.sentAt`, что в `ChatsFragment`).
+- `ForwardChatPickerAdapter` — multi-select через `selectedIds: LinkedHashSet<String>`, click тоглит CheckBox и вызывает `notifyItemChanged`.
+- Кнопка "Переслать (N)" активируется при `count > 0`. При нажатии — параллельный `async/awaitAll` вызов `chatRepository.sendMessage` для каждого выбранного чата с тем же `forwardedMessageId`, опциональным комментарием.
+- Layouts: `bottom_sheet_forward_chats.xml`, `item_chat_forward_picker.xml`.
+
 ## UI — Экран чата (ChatActivity + activity_chat.xml)
 
 - `activity_chat.xml`: ConstraintLayout, слои по z-order (снизу вверх):
