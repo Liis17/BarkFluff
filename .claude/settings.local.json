@@ -73,7 +73,8 @@
       "Bash(xcodebuild -scheme Barkfluff -destination 'platform=macOS' build)",
       "Bash(open /Users/liis/Library/Developer/Xcode/DerivedData/Barkfluff-bwsujifbcrzrfjaketcorzhoutjr/Build/Products/Debug/Barkfluff.app)",
       "Bash(echo \"Exit: $?\")",
-      "Bash(Get-ChildItem *)"
+      "Bash(Get-ChildItem *)",
+      "Bash(./gradlew :app:assembleDebug)"
     ],
     "deny": [],
     "ask": []
