@@ -101,6 +101,10 @@ class ChatActivity : AppCompatActivity() {
     private val pendingDocumentUris = mutableListOf<Uri>()
     private val pendingCropQueue = ArrayDeque<Uri>()
 
+    // Активный ответ (reply): ID оригинального сообщения для отправки в forwarded_message_id.
+    // 0 = нет активного ответа.
+    private var pendingReplyMessageId: Long = 0L
+
     // Inline стикер-панель
     private enum class InputPanelState { NONE, KEYBOARD, STICKER_PANEL }
     private var inputPanelState = InputPanelState.NONE
@@ -397,7 +401,10 @@ class ChatActivity : AppCompatActivity() {
                 chatRepository.downloadFile(fileId, onProgress)
             },
             scope = scope,
-            messageCornerRadiusDp = globalParam.chatMessageCornerRadius
+            messageCornerRadiusDp = globalParam.chatMessageCornerRadius,
+            onMessageActionRequested = { anchor, item ->
+                showMessageActionMenu(anchor, item)
+            }
         )
 
         binding.messagesRecyclerView.apply {
@@ -412,6 +419,13 @@ class ChatActivity : AppCompatActivity() {
                     largeSpacingPx = (10 * resources.displayMetrics.density).toInt()  // 10dp
                 )
             )
+
+            // Свайп влево по сообщению — триггер reply
+            val swipeCallback = com.barkfluff.client.adapter.ReplySwipeCallback(this@ChatActivity) { position ->
+                val item = messageAdapter.getMessageAt(position) ?: return@ReplySwipeCallback
+                setPendingReply(item)
+            }
+            androidx.recyclerview.widget.ItemTouchHelper(swipeCallback).attachToRecyclerView(this)
 
             // Обработчик скролла для пагинации и кнопки "вниз"
             addOnScrollListener(object : RecyclerView.OnScrollListener() {
@@ -616,6 +630,10 @@ class ChatActivity : AppCompatActivity() {
             pendingStickerUris.clear()
             pendingDocumentUris.clear()
             updateAttachmentPreview()
+        }
+
+        binding.clearReplyButton.setOnClickListener {
+            clearPendingReply()
         }
 
         // Обработка вставки изображений из буфера обмена
@@ -1192,20 +1210,24 @@ class ChatActivity : AppCompatActivity() {
 
     private fun sendMessage(text: String = binding.messageEditText.text.toString(), fileIds: List<String> = emptyList()) {
         val messageText = text.trim()
-        if (messageText.isBlank() && fileIds.isEmpty()) return
+        // Reply без текста и без файлов — отправляем сам факт пересылки
+        val replyId = pendingReplyMessageId
+        if (messageText.isBlank() && fileIds.isEmpty() && replyId == 0L) return
 
-        Log.d(TAG, "sendMessage: text='$messageText', fileIds=$fileIds")
+        Log.d(TAG, "sendMessage: text='$messageText', fileIds=$fileIds, replyId=$replyId")
 
         lifecycleScope.launch {
             try {
                 val result = chatRepository.sendMessage(
                     chatId = chatId,
                     text = messageText,
-                    fileIds = fileIds
+                    fileIds = fileIds,
+                    forwardedMessageId = replyId
                 )
 
                 if (result.isSuccess) {
                     binding.messageEditText.text?.clear()
+                    clearPendingReply()
                     // Не закрываем клавиатуру и не забираем фокус — пользователь может продолжать печатать
                 } else {
                     Toast.makeText(
@@ -1223,6 +1245,99 @@ class ChatActivity : AppCompatActivity() {
                 ).show()
             }
         }
+    }
+
+    // ─── Reply / Forward UX ────────────────────────────────────────────────────
+
+    private fun setPendingReply(item: MessageItem) {
+        pendingReplyMessageId = item.messageId
+
+        val author = item.senderName?.takeIf { it.isNotBlank() }
+            ?: if (item.senderId == currentUserId) "Вы" else "Сообщение"
+        val preview = if (item.text.isNotBlank()) {
+            item.text
+        } else {
+            buildAttachmentSummary(item.attachments)
+        }
+
+        binding.replyPreviewAuthorText.text = "Ответ $author"
+        binding.replyPreviewContentText.text = preview
+        binding.replyPreviewBar.visibility = View.VISIBLE
+        binding.messageEditText.requestFocus()
+    }
+
+    private fun clearPendingReply() {
+        pendingReplyMessageId = 0L
+        binding.replyPreviewBar.visibility = View.GONE
+    }
+
+    /** Краткое описание вложений для reply preview (когда текста нет). */
+    private fun buildAttachmentSummary(attachments: List<barkfluff.shared.Shared.MessageAttachment>): String {
+        if (attachments.isEmpty()) return ""
+        val photos = attachments.count {
+            it.type == barkfluff.shared.Shared.MessageAttachmentType.IMAGE ||
+            it.type == barkfluff.shared.Shared.MessageAttachmentType.GIF
+        }
+        val videos = attachments.count { it.type == barkfluff.shared.Shared.MessageAttachmentType.VIDEO }
+        val docs = attachments.count { it.type == barkfluff.shared.Shared.MessageAttachmentType.DOCUMENT }
+        val audios = attachments.count {
+            it.type == barkfluff.shared.Shared.MessageAttachmentType.AUDIO ||
+            it.type == barkfluff.shared.Shared.MessageAttachmentType.VOICE
+        }
+        val stickers = attachments.count { it.type == barkfluff.shared.Shared.MessageAttachmentType.STICKER }
+        return when {
+            photos > 0 -> "📷 $photos фото"
+            videos > 0 -> "🎬 $videos видео"
+            audios > 0 -> "🎵 $audios аудио"
+            docs > 0 -> "📎 $docs файл(ов)"
+            stickers > 0 -> "Стикер"
+            else -> ""
+        }
+    }
+
+    private fun showMessageActionMenu(anchor: View, item: MessageItem) {
+        val popup = android.widget.PopupMenu(this, anchor)
+        popup.menuInflater.inflate(R.menu.menu_message_actions, popup.menu)
+        try {
+            // Включаем показ иконок в PopupMenu (приватный API)
+            val popupField = popup.javaClass.getDeclaredField("mPopup")
+            popupField.isAccessible = true
+            val popupHelper = popupField.get(popup)
+            popupHelper.javaClass
+                .getMethod("setForceShowIcon", Boolean::class.javaPrimitiveType)
+                .invoke(popupHelper, true)
+        } catch (_: Exception) {
+            // Не критично, иконки просто не будут показаны
+        }
+
+        popup.setOnMenuItemClickListener { menuItem ->
+            when (menuItem.itemId) {
+                R.id.action_reply -> {
+                    setPendingReply(item)
+                    true
+                }
+                R.id.action_forward -> {
+                    com.barkfluff.client.dialog.ForwardChatPickerBottomSheet
+                        .newInstance(item.messageId)
+                        .show(supportFragmentManager, "forward_picker")
+                    true
+                }
+                R.id.action_edit -> {
+                    Toast.makeText(this, "Скоро будет", Toast.LENGTH_SHORT).show()
+                    true
+                }
+                R.id.action_delete -> {
+                    Toast.makeText(this, "Скоро будет", Toast.LENGTH_SHORT).show()
+                    true
+                }
+                R.id.action_pin -> {
+                    Toast.makeText(this, "Скоро будет", Toast.LENGTH_SHORT).show()
+                    true
+                }
+                else -> false
+            }
+        }
+        popup.show()
     }
 
     private fun loadChatInfoAndMessages() {
