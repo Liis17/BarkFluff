@@ -33,9 +33,9 @@
                 android:orientation="vertical"
                 android:minWidth="80dp">
 
-                <!-- Цитата forward/reply -->
+                <!-- Цитата reply (выше основного текста) -->
                 <include
-                    android:id="@+id/messageQuote"
+                    android:id="@+id/replyQuote"
                     layout="@layout/view_message_quote" />
 
                 <!-- Контейнер для вложений (картинки edge-to-edge, аудио/видео/файлы с паддингом) -->
@@ -61,6 +61,11 @@
                     android:visibility="gone"
                     tools:text="Привет! Как дела?"
                     tools:visibility="visible" />
+
+                <!-- Цитата forward (ниже основного текста) -->
+                <include
+                    android:id="@+id/forwardQuote"
+                    layout="@layout/view_message_quote" />
 
                 <!-- Время и статус (внутри облачка) -->
                 <LinearLayout
