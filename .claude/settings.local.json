@@ -72,7 +72,8 @@
       "Bash(xcodebuild -scheme Barkfluff -destination 'platform=macOS' -quiet build)",
       "Bash(xcodebuild -scheme Barkfluff -destination 'platform=macOS' build)",
       "Bash(open /Users/liis/Library/Developer/Xcode/DerivedData/Barkfluff-bwsujifbcrzrfjaketcorzhoutjr/Build/Products/Debug/Barkfluff.app)",
-      "Bash(echo \"Exit: $?\")"
+      "Bash(echo \"Exit: $?\")",
+      "Bash(Get-ChildItem *)"
     ],
     "deny": [],
     "ask": []

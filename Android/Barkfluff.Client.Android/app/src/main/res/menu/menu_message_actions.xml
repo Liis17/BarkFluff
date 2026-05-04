@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/action_reply"
+        android:icon="@drawable/ic_reply"
+        android:title="Ответить" />
+    <item
+        android:id="@+id/action_edit"
+        android:icon="@drawable/ic_edit"
+        android:title="Изменить" />
+    <item
+        android:id="@+id/action_delete"
+        android:icon="@drawable/ic_delete"
+        android:title="Удалить" />
+    <item
+        android:id="@+id/action_forward"
+        android:icon="@drawable/ic_forward"
+        android:title="Переслать" />
+    <item
+        android:id="@+id/action_pin"
+        android:icon="@drawable/ic_pin"
+        android:title="Закрепить" />
+</menu>

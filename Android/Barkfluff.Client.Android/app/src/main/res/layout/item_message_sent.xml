@@ -33,6 +33,11 @@
                 android:orientation="vertical"
                 android:minWidth="80dp">
 
+                <!-- Цитата forward/reply -->
+                <include
+                    android:id="@+id/messageQuote"
+                    layout="@layout/view_message_quote" />
+
                 <!-- Контейнер для вложений (картинки edge-to-edge, аудио/видео/файлы с паддингом) -->
                 <FrameLayout
                     android:id="@+id/attachmentsContainer"

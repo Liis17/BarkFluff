@@ -85,11 +85,13 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
      * @param chatId ID чата
      * @param text Текст сообщения
      * @param fileIds Список ID файлов для прикрепления
+     * @param forwardedMessageId ID пересылаемого сообщения (0 = не пересылка). Используется и для reply, и для forward — backend различает по контексту.
      */
     suspend fun sendMessage(
         chatId: String,
         text: String,
-        fileIds: List<String> = emptyList()
+        fileIds: List<String> = emptyList(),
+        forwardedMessageId: Long = 0L
     ): Result<Shared.Message> = withContext(Dispatchers.IO) {
         try {
             if (grpcManager.messagesClient == null) {
@@ -99,10 +101,10 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
             val outgoingMessage = MessagesApiOuterClass.OutgoingMessage.newBuilder()
                 .setText(text)
                 .addAllFilesIds(fileIds)
+                .setForwardedMessageId(forwardedMessageId)
                 .build()
 
-            Log.d(TAG, "sendMessage: chatId=$chatId, text='$text', fileIds=$fileIds")
-            Log.d(TAG, "sendMessage: outgoingMessage.filesIdsCount=${outgoingMessage.filesIdsCount}, filesIdsList=${outgoingMessage.filesIdsList}")
+            Log.d(TAG, "sendMessage: chatId=$chatId, text='$text', fileIds=$fileIds, forwardedMessageId=$forwardedMessageId")
 
             val request = MessagesApiOuterClass.SendMessageRequest.newBuilder()
                 .setChatId(chatId)

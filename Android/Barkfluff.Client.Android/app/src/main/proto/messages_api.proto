@@ -161,6 +161,8 @@ message OutgoingMessage {
   string text = 1; //Текст сообщения
 
   repeated string files_ids = 2; // Идентификаторы файлов
+
+  int64 forwarded_message_id = 3; // ID пересылаемого сообщения (0 = не пересылка)
 }
 
 message GetPersonChatIdRequest {
