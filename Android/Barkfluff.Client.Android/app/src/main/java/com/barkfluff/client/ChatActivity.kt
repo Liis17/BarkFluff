@@ -402,8 +402,11 @@ class ChatActivity : AppCompatActivity() {
             },
             scope = scope,
             messageCornerRadiusDp = globalParam.chatMessageCornerRadius,
-            onMessageActionRequested = { anchor, item ->
-                showMessageActionMenu(anchor, item)
+            onMessageActionRequested = { anchor, item, rawX, rawY ->
+                showMessageActionMenu(anchor, item, rawX, rawY)
+            },
+            onReplyQuoteClick = { originalMessageId ->
+                scrollToAndHighlightMessage(originalMessageId)
             }
         )
 
@@ -1295,49 +1298,138 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
-    private fun showMessageActionMenu(anchor: View, item: MessageItem) {
-        val popup = android.widget.PopupMenu(this, anchor)
-        popup.menuInflater.inflate(R.menu.menu_message_actions, popup.menu)
-        try {
-            // Включаем показ иконок в PopupMenu (приватный API)
-            val popupField = popup.javaClass.getDeclaredField("mPopup")
-            popupField.isAccessible = true
-            val popupHelper = popupField.get(popup)
-            popupHelper.javaClass
-                .getMethod("setForceShowIcon", Boolean::class.javaPrimitiveType)
-                .invoke(popupHelper, true)
-        } catch (_: Exception) {
-            // Не критично, иконки просто не будут показаны
+    /**
+     * Скролл к сообщению с указанным ID и кратковременная подсветка bubble.
+     * Если сообщение не загружено в адаптер — показываем Toast.
+     */
+    private fun scrollToAndHighlightMessage(messageId: Long) {
+        if (messageId <= 0L) return
+        val list = messageAdapter.currentList
+        val position = list.indexOfFirst {
+            it.type == MessageType.MESSAGE && it.messageId == messageId
+        }
+        if (position < 0) {
+            Toast.makeText(this, "Сообщение не загружено", Toast.LENGTH_SHORT).show()
+            return
         }
 
-        popup.setOnMenuItemClickListener { menuItem ->
-            when (menuItem.itemId) {
-                R.id.action_reply -> {
-                    setPendingReply(item)
-                    true
-                }
-                R.id.action_forward -> {
-                    com.barkfluff.client.dialog.ForwardChatPickerBottomSheet
-                        .newInstance(item.messageId)
-                        .show(supportFragmentManager, "forward_picker")
-                    true
-                }
-                R.id.action_edit -> {
-                    Toast.makeText(this, "Скоро будет", Toast.LENGTH_SHORT).show()
-                    true
-                }
-                R.id.action_delete -> {
-                    Toast.makeText(this, "Скоро будет", Toast.LENGTH_SHORT).show()
-                    true
-                }
-                R.id.action_pin -> {
-                    Toast.makeText(this, "Скоро будет", Toast.LENGTH_SHORT).show()
-                    true
-                }
-                else -> false
-            }
+        val rv = binding.messagesRecyclerView
+        val lm = rv.layoutManager as? LinearLayoutManager ?: return
+
+        val smoothScroller = object : LinearSmoothScroller(this) {
+            override fun getVerticalSnapPreference(): Int = SNAP_TO_ANY
         }
-        popup.show()
+        smoothScroller.targetPosition = position
+        lm.startSmoothScroll(smoothScroller)
+
+        // Подсветка после прокрутки: ждём один кадр, чтобы ViewHolder стал видимым
+        rv.post {
+            highlightMessageAt(position)
+        }
+    }
+
+    private fun highlightMessageAt(position: Int) {
+        val rv = binding.messagesRecyclerView
+        val holder = rv.findViewHolderForAdapterPosition(position)
+        val bubble = holder?.itemView?.findViewById<View>(R.id.messageCard) ?: holder?.itemView ?: return
+
+        val tv = android.util.TypedValue()
+        theme.resolveAttribute(androidx.appcompat.R.attr.colorPrimary, tv, true)
+        val baseColor = tv.data
+        val startAlpha = 90  // ~35%
+        val startColor = (baseColor and 0x00FFFFFF) or (startAlpha shl 24)
+        val endColor = baseColor and 0x00FFFFFF  // alpha 0
+
+        val originalForeground = bubble.foreground
+        val animator = ValueAnimator.ofArgb(startColor, endColor).apply {
+            duration = 1500
+            addUpdateListener { va ->
+                bubble.foreground = android.graphics.drawable.ColorDrawable(va.animatedValue as Int)
+            }
+            addListener(object : android.animation.AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: android.animation.Animator) {
+                    bubble.foreground = originalForeground
+                }
+            })
+        }
+        animator.start()
+    }
+
+    private fun showMessageActionMenu(anchor: View, item: MessageItem, rawX: Float, rawY: Float) {
+        val inflater = layoutInflater
+        val popupView = inflater.inflate(R.layout.popup_message_actions, null, false)
+
+        val popup = android.widget.PopupWindow(
+            popupView,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+            true
+        ).apply {
+            isOutsideTouchable = true
+            isFocusable = true
+            elevation = 12f * resources.displayMetrics.density
+            // Прозрачный фон, чтобы скругления MaterialCardView были видны
+            setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        }
+
+        val dismiss = { popup.dismiss() }
+
+        val onClickWithDismiss: (Int) -> Unit = { actionId ->
+            when (actionId) {
+                R.id.actionReply -> setPendingReply(item)
+                R.id.actionForward -> {
+                    // Если сообщение само является пересланным — пересылаем оригинал, а не текущий snapshot
+                    val sourceId = item.attachments
+                        .firstOrNull { it.type == barkfluff.shared.Shared.MessageAttachmentType.FORWARDED_MESSAGE && it.hasForwardedMessage() }
+                        ?.forwardedMessage
+                        ?.originalMessageId
+                        ?.takeIf { it > 0 }
+                        ?: item.messageId
+                    com.barkfluff.client.dialog.ForwardChatPickerBottomSheet
+                        .newInstance(sourceId)
+                        .show(supportFragmentManager, "forward_picker")
+                }
+                R.id.actionEdit, R.id.actionDelete, R.id.actionPin -> {
+                    Toast.makeText(this, "Скоро будет", Toast.LENGTH_SHORT).show()
+                }
+            }
+            dismiss()
+        }
+
+        popupView.findViewById<View>(R.id.actionReply).setOnClickListener { onClickWithDismiss(R.id.actionReply) }
+        popupView.findViewById<View>(R.id.actionEdit).setOnClickListener { onClickWithDismiss(R.id.actionEdit) }
+        popupView.findViewById<View>(R.id.actionDelete).setOnClickListener { onClickWithDismiss(R.id.actionDelete) }
+        popupView.findViewById<View>(R.id.actionForward).setOnClickListener { onClickWithDismiss(R.id.actionForward) }
+        popupView.findViewById<View>(R.id.actionPin).setOnClickListener { onClickWithDismiss(R.id.actionPin) }
+
+        // Измеряем popup чтобы аккуратно расположить относительно точки касания и краёв экрана
+        popupView.measure(
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+        val popupW = popupView.measuredWidth
+        val popupH = popupView.measuredHeight
+
+        val dm = resources.displayMetrics
+        val margin = (8 * dm.density).toInt()
+
+        // X: открываем правее точки касания, если не помещается — левее
+        val proposedX = rawX.toInt() + margin
+        val x = if (proposedX + popupW + margin > dm.widthPixels) {
+            (rawX.toInt() - popupW - margin).coerceAtLeast(margin)
+        } else {
+            proposedX
+        }
+
+        // Y: ниже точки касания, если не помещается — выше
+        val proposedY = rawY.toInt() + margin
+        val y = if (proposedY + popupH + margin > dm.heightPixels) {
+            (rawY.toInt() - popupH - margin).coerceAtLeast(margin)
+        } else {
+            proposedY
+        }
+
+        popup.showAtLocation(anchor, android.view.Gravity.NO_GRAVITY or android.view.Gravity.START or android.view.Gravity.TOP, x, y)
     }
 
     private fun loadChatInfoAndMessages() {

@@ -68,8 +68,10 @@ class MessageAdapter(
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main),
     /** Закругление облачков сообщений в dp (0..30). */
     var messageCornerRadiusDp: Int = 20,
-    /** Вызывается при клике на сообщение (по контейнеру вне bubble) — должен показать меню действий. */
-    private val onMessageActionRequested: ((anchor: View, item: MessageItem) -> Unit)? = null
+    /** Вызывается при клике на сообщение — открыть меню действий. rawX/rawY = абсолютные координаты касания на экране. */
+    private val onMessageActionRequested: ((anchor: View, item: MessageItem, rawX: Float, rawY: Float) -> Unit)? = null,
+    /** Вызывается при клике на reply-цитату внутри сообщения — переход к оригиналу. */
+    private val onReplyQuoteClick: ((originalMessageId: Long) -> Unit)? = null
 ) : ListAdapter<MessageItem, RecyclerView.ViewHolder>(MessageDiffCallback()) {
 
     /** Проверяет, есть ли сообщение с указанным ID в текущем загруженном списке (для эвристики reply vs forward). */
@@ -171,14 +173,26 @@ class MessageAdapter(
         private val binding: ItemMessageSentBinding
     ) : RecyclerView.ViewHolder(binding.root) {
 
+        private var lastTouchRawX: Float = 0f
+        private var lastTouchRawY: Float = 0f
+
+        @android.annotation.SuppressLint("ClickableViewAccessibility")
         fun bind(item: MessageItem) {
-            // Click по корневому FrameLayout (вне bubble) — открывает action menu
+            // Перехват raw координат касания для позиционирования popup
+            binding.root.setOnTouchListener { _, event ->
+                if (event.action == android.view.MotionEvent.ACTION_DOWN) {
+                    lastTouchRawX = event.rawX
+                    lastTouchRawY = event.rawY
+                }
+                false
+            }
+            // Click по корневому FrameLayout (вне bubble) — открывает action menu в точке касания
             binding.root.setOnClickListener { v ->
-                onMessageActionRequested?.invoke(v, item)
+                onMessageActionRequested?.invoke(v, item, lastTouchRawX, lastTouchRawY)
             }
 
-            // Цитата forward/reply (если есть)
-            bindMessageQuote(binding.messageQuote, item.attachments)
+            // Цитата reply (выше текста) и forward (ниже текста) — выбираем какую показать
+            bindQuoteSplit(binding.replyQuote, binding.forwardQuote, item.attachments)
 
             // Вложения для основного отображения (без FORWARDED_MESSAGE — он рендерится через quote)
             val displayedAttachments = item.attachments.filter {
@@ -271,14 +285,24 @@ class MessageAdapter(
         private val binding: ItemMessageReceivedBinding
     ) : RecyclerView.ViewHolder(binding.root) {
 
+        private var lastTouchRawX: Float = 0f
+        private var lastTouchRawY: Float = 0f
+
+        @android.annotation.SuppressLint("ClickableViewAccessibility")
         fun bind(item: MessageItem) {
-            // Click по корневому FrameLayout (вне bubble) — открывает action menu
+            binding.root.setOnTouchListener { _, event ->
+                if (event.action == android.view.MotionEvent.ACTION_DOWN) {
+                    lastTouchRawX = event.rawX
+                    lastTouchRawY = event.rawY
+                }
+                false
+            }
             binding.root.setOnClickListener { v ->
-                onMessageActionRequested?.invoke(v, item)
+                onMessageActionRequested?.invoke(v, item, lastTouchRawX, lastTouchRawY)
             }
 
-            // Цитата forward/reply (если есть)
-            bindMessageQuote(binding.messageQuote, item.attachments)
+            // Цитата reply (выше текста) и forward (ниже текста)
+            bindQuoteSplit(binding.replyQuote, binding.forwardQuote, item.attachments)
 
             // Вложения для основного отображения (без FORWARDED_MESSAGE — рендерится через quote)
             val displayedAttachments = item.attachments.filter {
@@ -390,63 +414,89 @@ class MessageAdapter(
     // ─── Forward / Reply Quote ────────────────────────────────────────────────
 
     /**
-     * Биндит цитату (forward или reply) в облачко сообщения.
-     * Эвристика выбора:
-     *   - reply: оригинал есть в текущем загруженном списке сообщений (тот же чат) → компактная полоска
-     *   - forward: оригинал не найден локально → полный CardView блок
+     * Биндит цитату в нужный include в зависимости от эвристики:
+     *   - reply: оригинал есть в текущем загруженном списке сообщений (тот же чат)
+     *     → компактный блок в [replyBinding] (выше основного текста), forward скрыт
+     *   - forward: оригинал не найден локально
+     *     → полный блок в [forwardBinding] (ниже основного текста), reply скрыт
+     *
+     * Когда forward-attachment нет вообще — оба контейнера скрыты.
      */
-    private fun bindMessageQuote(quote: ViewMessageQuoteBinding, attachments: List<Shared.MessageAttachment>) {
+    private fun bindQuoteSplit(
+        replyBinding: ViewMessageQuoteBinding,
+        forwardBinding: ViewMessageQuoteBinding,
+        attachments: List<Shared.MessageAttachment>
+    ) {
         val forwardedAtt = attachments.firstOrNull {
             it.type == Shared.MessageAttachmentType.FORWARDED_MESSAGE
         }
         if (forwardedAtt == null || !forwardedAtt.hasForwardedMessage()) {
-            quote.quoteContainer.visibility = View.GONE
-            quote.replyView.visibility = View.GONE
-            quote.forwardView.visibility = View.GONE
+            hideQuote(replyBinding)
+            hideQuote(forwardBinding)
             return
         }
 
         val data = forwardedAtt.forwardedMessage
         val isReply = hasMessageInCurrentList(data.originalMessageId)
 
-        quote.quoteContainer.visibility = View.VISIBLE
-
         if (isReply) {
-            quote.replyView.visibility = View.VISIBLE
-            quote.forwardView.visibility = View.GONE
-
-            quote.replyAuthorTextView.text = data.authorName.ifBlank { "Сообщение" }
-            quote.replyPreviewTextView.text = buildPreviewLine(data.text, data.attachmentsList)
+            hideQuote(forwardBinding)
+            renderReply(replyBinding, data)
         } else {
-            quote.replyView.visibility = View.GONE
-            quote.forwardView.visibility = View.VISIBLE
+            hideQuote(replyBinding)
+            renderForward(forwardBinding, data)
+        }
+    }
 
-            quote.forwardAuthorTextView.text = data.authorName.ifBlank { "Пересланное сообщение" }
+    private fun hideQuote(quote: ViewMessageQuoteBinding) {
+        quote.quoteContainer.visibility = View.GONE
+        quote.replyView.visibility = View.GONE
+        quote.forwardView.visibility = View.GONE
+    }
 
-            if (data.text.isNotBlank()) {
-                quote.forwardTextTextView.text = data.text
-                quote.forwardTextTextView.visibility = View.VISIBLE
-            } else {
-                quote.forwardTextTextView.visibility = View.GONE
-            }
+    private fun renderReply(quote: ViewMessageQuoteBinding, data: Shared.ForwardedMessageAttachment) {
+        quote.quoteContainer.visibility = View.VISIBLE
+        quote.replyView.visibility = View.VISIBLE
+        quote.forwardView.visibility = View.GONE
+        quote.replyAuthorTextView.text = data.authorName.ifBlank { "Сообщение" }
+        quote.replyPreviewTextView.text = buildPreviewLine(data.text, data.attachmentsList)
 
-            // Медиа-вложения внутри пересланного сообщения
-            val nestedAtts = data.attachmentsList
-            if (nestedAtts.isNotEmpty()) {
-                quote.forwardAttachmentsContainer.removeAllViews()
-                val ctx = quote.forwardAttachmentsContainer.context
-                val maxWidthPx = (calcMediaWidthPx(ctx) * 0.85f).toInt()
-                setupAttachmentsContainer(
-                    quote.forwardAttachmentsContainer,
-                    nestedAtts,
-                    maxWidthPx,
-                    isSentByMe = false
-                )
-                quote.forwardAttachmentsContainer.visibility = View.VISIBLE
-            } else {
-                quote.forwardAttachmentsContainer.visibility = View.GONE
-                quote.forwardAttachmentsContainer.removeAllViews()
-            }
+        // Click по reply-блоку — переход к оригиналу
+        val origId = data.originalMessageId
+        quote.replyView.setOnClickListener {
+            onReplyQuoteClick?.invoke(origId)
+        }
+    }
+
+    private fun renderForward(quote: ViewMessageQuoteBinding, data: Shared.ForwardedMessageAttachment) {
+        quote.quoteContainer.visibility = View.VISIBLE
+        quote.replyView.visibility = View.GONE
+        quote.forwardView.visibility = View.VISIBLE
+        quote.forwardAuthorTextView.text = data.authorName.ifBlank { "Пересланное сообщение" }
+
+        // Медиа-вложения внутри пересланного сообщения (картинки/видео)
+        val nestedAtts = data.attachmentsList
+        if (nestedAtts.isNotEmpty()) {
+            quote.forwardAttachmentsContainer.removeAllViews()
+            val ctx = quote.forwardAttachmentsContainer.context
+            val maxWidthPx = (calcMediaWidthPx(ctx) * 0.85f).toInt()
+            setupAttachmentsContainer(
+                quote.forwardAttachmentsContainer,
+                nestedAtts,
+                maxWidthPx,
+                isSentByMe = false
+            )
+            quote.forwardAttachmentsContainer.visibility = View.VISIBLE
+        } else {
+            quote.forwardAttachmentsContainer.visibility = View.GONE
+            quote.forwardAttachmentsContainer.removeAllViews()
+        }
+
+        if (data.text.isNotBlank()) {
+            quote.forwardTextTextView.text = data.text
+            quote.forwardTextTextView.visibility = View.VISIBLE
+        } else {
+            quote.forwardTextTextView.visibility = View.GONE
         }
     }
 

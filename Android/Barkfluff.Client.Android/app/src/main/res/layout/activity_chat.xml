@@ -197,7 +197,10 @@
         app:layout_constraintStart_toStartOf="@id/messagesRecyclerView"
         app:layout_constraintEnd_toEndOf="@id/messagesRecyclerView" />
 
-    <!-- Кнопка прокрутки вниз -->
+    <!-- Кнопка прокрутки вниз — закреплена над панелью reply, которая в свою очередь
+         якорится к attachmentPreviewBar → inputRowBarrier. Это создаёт цепочку gone-fallback:
+         когда обе панели скрыты, кнопка оказывается над input; когда панели появляются,
+         кнопка автоматически поднимается. -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/scrollToBottomButton"
         android:layout_width="wrap_content"
@@ -209,7 +212,7 @@
         android:elevation="6dp"
         app:fabSize="mini"
         app:srcCompat="@drawable/ic_arrow_down"
-        app:layout_constraintBottom_toTopOf="@id/inputRowBottom"
+        app:layout_constraintBottom_toTopOf="@id/replyPreviewBar"
         app:layout_constraintEnd_toEndOf="parent" />
 
     <!-- ═══════════════════════════════════════════
