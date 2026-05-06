@@ -42,6 +42,14 @@
     var chatListTotal = 0;
     var chatListLoading = false;
 
+    // Reply / Forward / Context menu state
+    var pendingReply = null;
+    var contextMenuTarget = null;
+    var forwardSelection = new Set();
+    var knownMessageIds = new Set();
+    var cmenuShownAt = 0;
+    var mqlMobile = window.matchMedia('(max-width: 768px), (pointer: coarse)');
+
     // --- DOM refs ---
     var $ = function (sel) { return document.querySelector(sel); };
     var chatListEl = $('#chatList');
@@ -66,6 +74,20 @@
 
     // Scroll-to-bottom button
     var scrollToBottomBtn = $('#scrollToBottomBtn');
+
+    // Reply / Forward / Context menu DOM refs
+    var msgContextMenu = $('#msgContextMenu');
+    var replyPreviewBar = $('#replyPreviewBar');
+    var rpbAuthor = $('#rpbAuthor');
+    var rpbText = $('#rpbText');
+    var rpbCloseBtn = $('#rpbClose');
+    var forwardOverlay = $('#forwardOverlay');
+    var forwardCloseBtn = $('#forwardClose');
+    var forwardChatListEl = $('#forwardChatList');
+    var forwardCommentEl = $('#forwardComment');
+    var forwardSendBtn = $('#forwardSendBtn');
+    var forwardCounterEl = $('#forwardCounter');
+    var soonToastEl = $('#soonToast');
 
     // Settings and confirm overlays are managed by BF.settings module
 
@@ -166,6 +188,9 @@
         currentChatId = chatId;
         messages = [];
         noMoreOlder = false;
+        knownMessageIds = new Set();
+        clearPendingReply();
+        closeContextMenu();
         if (scrollToBottomBtn) scrollToBottomBtn.classList.remove('visible');
         chatEmpty.style.display = 'none';
         chatHeader.classList.add('visible');
@@ -222,11 +247,26 @@
 
     // ========== RENDER MESSAGES ==========
 
+    function collectFwdAttachments(msg) {
+        var atts = (msg.content && msg.content.attachments) || [];
+        var inner = [];
+        atts.forEach(function (a) {
+            if (a.forwardedMessage && a.forwardedMessage.attachments) {
+                a.forwardedMessage.attachments.forEach(function (ia) { inner.push(ia); });
+            }
+        });
+        return inner;
+    }
+
     function renderMessages() {
         messagesInner.innerHTML = '';
+        knownMessageIds = new Set(messages.map(function (m) { return m.id; }));
         var allFileIds = [];
         messages.forEach(function (msg) {
             ((msg.content && msg.content.attachments) || []).forEach(function (a) {
+                if (a.fileId && !BF.files.getCachedFileUrl(a.fileId)) allFileIds.push(a.fileId);
+            });
+            collectFwdAttachments(msg).forEach(function (a) {
                 if (a.fileId && !BF.files.getCachedFileUrl(a.fileId)) allFileIds.push(a.fileId);
             });
         });
@@ -236,6 +276,7 @@
         return p.then(function () {
             var chain = Promise.resolve();
             var lastDate = null;
+            var bldOpts = { knownMessageIds: knownMessageIds, onReplyClick: scrollToMessage };
             messages.forEach(function (msg) {
                 chain = chain.then(function () {
                     var msgDate = u.formatDate(msg.sentAt);
@@ -246,7 +287,7 @@
                         sep.innerHTML = '<span>' + u.escapeHtml(msgDate) + '</span>';
                         messagesInner.appendChild(sep);
                     }
-                    return BF.messages.buildMessageElement(msg, myUserId, !!(currentChatInfo && currentChatInfo.isGroupChat), getUser, showMediaOverlay).then(function (el) {
+                    return BF.messages.buildMessageElement(msg, myUserId, !!(currentChatInfo && currentChatInfo.isGroupChat), getUser, showMediaOverlay, bldOpts).then(function (el) {
                         messagesInner.appendChild(el);
                     });
                 });
@@ -258,7 +299,12 @@
     function scrollToBottom() { messagesArea.scrollTop = messagesArea.scrollHeight; }
 
     function appendMessageToView(msg) {
-        var fileIds = ((msg.content && msg.content.attachments) || []).map(function (a) { return a.fileId; }).filter(function (id) { return id && !BF.files.getCachedFileUrl(id); });
+        if (msg && msg.id) knownMessageIds.add(msg.id);
+        var atts = (msg.content && msg.content.attachments) || [];
+        var fileIds = atts.map(function (a) { return a.fileId; }).filter(function (id) { return id && !BF.files.getCachedFileUrl(id); });
+        collectFwdAttachments(msg).forEach(function (a) {
+            if (a.fileId && !BF.files.getCachedFileUrl(a.fileId)) fileIds.push(a.fileId);
+        });
         var p = fileIds.length > 0 ? BF.files.getFileUrls(fileIds) : Promise.resolve();
 
         return p.then(function () {
@@ -272,7 +318,8 @@
                 sep.innerHTML = '<span>' + u.escapeHtml(msgDate) + '</span>';
                 messagesInner.appendChild(sep);
             }
-            return BF.messages.buildMessageElement(msg, myUserId, !!(currentChatInfo && currentChatInfo.isGroupChat), getUser, showMediaOverlay);
+            var bldOpts = { knownMessageIds: knownMessageIds, onReplyClick: scrollToMessage };
+            return BF.messages.buildMessageElement(msg, myUserId, !!(currentChatInfo && currentChatInfo.isGroupChat), getUser, showMediaOverlay, bldOpts);
         }).then(function (el) {
             el.dataset.date = u.formatDate(msg.sentAt);
             messagesInner.appendChild(el);
@@ -313,12 +360,14 @@
 
         sendBtn.disabled = true;
         var sentChatId = currentChatId;
+        var replyId = pendingReply ? pendingReply.messageId : 0;
 
-        BF.api.sendMessage({ chatId: sentChatId, text: text, fileIds: null }).then(function (resp) {
+        BF.api.sendMessage({ chatId: sentChatId, text: text, fileIds: null, forwardedMessageId: replyId }).then(function (resp) {
             messageInput.value = '';
             messageInput.style.height = 'auto';
             sendBtn.disabled = false;
             messageInput.focus();
+            clearPendingReply();
 
             if (resp && resp.message) {
                 var msg = resp.message;
@@ -352,17 +401,20 @@
             });
         }, Promise.resolve([]));
 
+        var replyId = pendingReply ? pendingReply.messageId : 0;
         uploadChain.then(function (fileIds) {
             if (fileIds.length === 0) { sendBtn.disabled = false; return; }
             return BF.api.sendMessage({
                 chatId: sentChatId,
                 text: text || null,
-                fileIds: fileIds
+                fileIds: fileIds,
+                forwardedMessageId: replyId
             }).then(function (resp) {
                 messageInput.value = '';
                 messageInput.style.height = 'auto';
                 sendBtn.disabled = false;
                 messageInput.focus();
+                clearPendingReply();
                 if (resp && resp.message) {
                     var msg = resp.message;
                     if (sentChatId === currentChatId && !messages.some(function (m) { return m.id === msg.id; })) {
@@ -1085,6 +1137,380 @@
             }
         }).catch(function () {});
     }
+
+    // ========== REPLY / FORWARD / CONTEXT MENU ==========
+
+    function showSoonToast() {
+        if (!soonToastEl) return;
+        soonToastEl.classList.add('visible');
+        if (showSoonToast._t) clearTimeout(showSoonToast._t);
+        showSoonToast._t = setTimeout(function () {
+            soonToastEl.classList.remove('visible');
+        }, 1800);
+    }
+
+    function buildReplyPreviewText(msg) {
+        if (msg.content && msg.content.text) return msg.content.text;
+        var atts = (msg.content && msg.content.attachments) || [];
+        for (var i = 0; i < atts.length; i++) {
+            var t = atts[i].type;
+            if (t === 8 || t === '8' || t === 'FORWARDED_MESSAGE') continue;
+            return u.attachmentEmoji(t === 7 || t === '7' ? 'STICKER' : t);
+        }
+        return '';
+    }
+
+    function setPendingReply(msg) {
+        if (!msg) return;
+        pendingReply = {
+            messageId: msg.id,
+            authorName: '',
+            previewText: buildReplyPreviewText(msg)
+        };
+        if (msg.senderId === myUserId) {
+            pendingReply.authorName = 'Вы';
+            renderReplyPreview();
+        } else {
+            getUser(msg.senderId).then(function (sender) {
+                if (!pendingReply || pendingReply.messageId !== msg.id) return;
+                if (sender) {
+                    pendingReply.authorName = ((sender.firstName || '') + ' ' + (sender.lastName || '')).trim() || sender.username || '';
+                }
+                renderReplyPreview();
+            });
+            renderReplyPreview();
+        }
+        if (messageInput) {
+            try { messageInput.focus(); } catch (e) { }
+        }
+    }
+
+    function renderReplyPreview() {
+        if (!replyPreviewBar) return;
+        if (!pendingReply) {
+            replyPreviewBar.classList.remove('visible');
+            return;
+        }
+        rpbAuthor.textContent = pendingReply.authorName || '';
+        rpbText.textContent = pendingReply.previewText || '';
+        replyPreviewBar.classList.add('visible');
+    }
+
+    function clearPendingReply() {
+        pendingReply = null;
+        if (replyPreviewBar) replyPreviewBar.classList.remove('visible');
+    }
+
+    function openContextMenu(x, y, msgEl) {
+        if (!msgContextMenu || !msgEl) return;
+        var msgId = Number(msgEl.dataset.msgId);
+        if (!msgId) return;
+        contextMenuTarget = { messageId: msgId, isOutgoing: msgEl.classList.contains('outgoing') };
+        msgContextMenu.classList.add('visible');
+
+        var vw = window.innerWidth;
+        var vh = window.innerHeight;
+        var rect = msgContextMenu.getBoundingClientRect();
+        var w = rect.width, h = rect.height;
+        var left = Math.max(8, Math.min(x, vw - w - 8));
+        var top = (y + h > vh) ? Math.max(8, y - h) : y;
+        msgContextMenu.style.left = left + 'px';
+        msgContextMenu.style.top = top + 'px';
+        cmenuShownAt = Date.now();
+    }
+
+    function closeContextMenu() {
+        if (!msgContextMenu) return;
+        msgContextMenu.classList.remove('visible');
+        contextMenuTarget = null;
+    }
+
+    function chatAvatarMarkup(chat) {
+        var initial = (chat.title || '?')[0].toUpperCase();
+        if (chat.picture) return '<img src="' + u.escapeHtml(chat.picture) + '" alt="">';
+        return initial;
+    }
+
+    function updateForwardCounter() {
+        if (!forwardCounterEl) return;
+        var n = forwardSelection.size;
+        if (n === 0) forwardCounterEl.textContent = 'Не выбрано чатов';
+        else forwardCounterEl.textContent = 'Выбрано: ' + n;
+        if (forwardSendBtn) forwardSendBtn.disabled = n === 0;
+    }
+
+    function openForwardModal(originalMsgId) {
+        if (!forwardOverlay || !originalMsgId) return;
+        forwardSelection = new Set();
+        if (forwardCommentEl) forwardCommentEl.value = '';
+        forwardChatListEl.innerHTML = '';
+
+        chats.forEach(function (chat) {
+            var item = document.createElement('div');
+            item.className = 'forward-chat-item';
+            item.dataset.chatId = chat.id;
+            item.innerHTML =
+                '<div class="fwd-avatar">' + chatAvatarMarkup(chat) + '</div>' +
+                '<div class="fwd-name">' + u.escapeHtml(chat.title || 'Чат') + '</div>' +
+                '<div class="fwd-check">&#10003;</div>';
+            item.addEventListener('click', function () {
+                var id = chat.id;
+                if (forwardSelection.has(id)) {
+                    forwardSelection.delete(id);
+                    item.classList.remove('selected');
+                } else {
+                    forwardSelection.add(id);
+                    item.classList.add('selected');
+                }
+                updateForwardCounter();
+            });
+            forwardChatListEl.appendChild(item);
+        });
+        updateForwardCounter();
+
+        forwardOverlay.classList.add('visible');
+        forwardSendBtn.onclick = function () { forwardSubmit(originalMsgId); };
+    }
+
+    function closeForwardModal() {
+        if (!forwardOverlay) return;
+        forwardOverlay.classList.remove('visible');
+        forwardSelection = new Set();
+        if (forwardSendBtn) forwardSendBtn.onclick = null;
+    }
+
+    function forwardSubmit(originalMsgId) {
+        if (forwardSelection.size === 0 || !originalMsgId) return;
+        var comment = forwardCommentEl ? forwardCommentEl.value.trim() : '';
+        var ids = Array.from(forwardSelection);
+        forwardSendBtn.disabled = true;
+        var originalLabel = forwardSendBtn.textContent;
+        forwardSendBtn.textContent = 'Отправка...';
+
+        var chain = ids.reduce(function (p, chatId) {
+            return p.then(function () {
+                return BF.api.sendMessage({
+                    chatId: chatId,
+                    text: comment || null,
+                    forwardedMessageId: originalMsgId
+                }).catch(function () { });
+            });
+        }, Promise.resolve());
+
+        chain.then(function () {
+            forwardSendBtn.disabled = false;
+            forwardSendBtn.textContent = originalLabel;
+            closeForwardModal();
+            if (soonToastEl) {
+                soonToastEl.textContent = 'Переслано в ' + ids.length + ' ' + (ids.length === 1 ? 'чат' : 'чатов');
+                soonToastEl.classList.add('visible');
+                setTimeout(function () {
+                    soonToastEl.classList.remove('visible');
+                    soonToastEl.textContent = 'Скоро будет';
+                }, 1800);
+            }
+        });
+    }
+
+    function scrollToMessage(id) {
+        if (!id) return;
+        var el = messagesInner.querySelector('[data-msg-id="' + id + '"]');
+        if (el) {
+            el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            el.classList.add('highlight');
+            setTimeout(function () { el.classList.remove('highlight'); }, 1500);
+            return;
+        }
+        if (!currentChatId) return;
+        BF.api.listMessages(currentChatId, id, 25, 25).then(function (data) {
+            if (!data || !data.messages || data.messages.length === 0) return;
+            var existingIds = new Set(messages.map(function (m) { return m.id; }));
+            var merged = messages.slice();
+            data.messages.forEach(function (m) {
+                if (!existingIds.has(m.id)) merged.push(m);
+            });
+            merged.sort(function (a, b) { return (a.sentAt || 0) - (b.sentAt || 0); });
+            messages = merged;
+            renderMessages().then(function () {
+                var el2 = messagesInner.querySelector('[data-msg-id="' + id + '"]');
+                if (el2) {
+                    el2.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                    el2.classList.add('highlight');
+                    setTimeout(function () { el2.classList.remove('highlight'); }, 1500);
+                }
+            });
+        });
+    }
+
+    // --- Reply preview close handler ---
+    if (rpbCloseBtn) rpbCloseBtn.addEventListener('click', clearPendingReply);
+
+    // --- Forward modal close ---
+    if (forwardCloseBtn) forwardCloseBtn.addEventListener('click', closeForwardModal);
+    if (forwardOverlay) {
+        forwardOverlay.addEventListener('click', function (e) {
+            if (e.target === forwardOverlay) closeForwardModal();
+        });
+    }
+
+    // --- Context menu actions ---
+    if (msgContextMenu) {
+        msgContextMenu.addEventListener('click', function (e) {
+            var btn = e.target.closest('button[data-act]');
+            if (!btn || !contextMenuTarget) return;
+            var act = btn.dataset.act;
+            var msgId = contextMenuTarget.messageId;
+            var msg = messages.find(function (m) { return m.id === msgId; });
+            closeContextMenu();
+            if (act === 'reply') {
+                if (msg) setPendingReply(msg);
+            } else if (act === 'forward') {
+                openForwardModal(msgId);
+            } else {
+                showSoonToast();
+            }
+        });
+    }
+
+    // --- Global close handlers for context menu ---
+    document.addEventListener('click', function (e) {
+        if (!msgContextMenu || !msgContextMenu.classList.contains('visible')) return;
+        if (msgContextMenu.contains(e.target)) return;
+        if (Date.now() - cmenuShownAt < 300) return;
+        closeContextMenu();
+    }, true);
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            if (msgContextMenu && msgContextMenu.classList.contains('visible')) closeContextMenu();
+            if (forwardOverlay && forwardOverlay.classList.contains('visible')) closeForwardModal();
+        }
+    });
+    window.addEventListener('resize', closeContextMenu);
+    if (messagesArea) messagesArea.addEventListener('scroll', closeContextMenu);
+
+    // --- contextmenu (desktop right-click + system long-press) ---
+    if (messagesInner) {
+        messagesInner.addEventListener('contextmenu', function (e) {
+            var grp = e.target.closest('.msg-group');
+            if (!grp || !grp.dataset.msgId) return;
+            e.preventDefault();
+            openContextMenu(e.clientX, e.clientY, grp);
+        });
+    }
+
+    // --- Touch handlers: long-press + swipe-left to reply ---
+    (function () {
+        if (!messagesInner) return;
+
+        var pressTimer = null;
+        var startX = 0, startY = 0;
+        var lastX = 0, lastY = 0;
+        var pressTarget = null;
+        var swiping = false;
+        var swipeLockedForReply = false;
+        var axisLocked = false;
+        var INTERACTIVE_SEL = 'img, video, a, button, .audio-play-btn, .attach-doc';
+
+        function cancelPressTimer() {
+            if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+        }
+
+        function resetSwipe(grp) {
+            if (!grp) return;
+            grp.classList.remove('swiping');
+            grp.style.transform = '';
+        }
+
+        messagesInner.addEventListener('touchstart', function (e) {
+            if (e.touches.length !== 1) return;
+            var grp = e.target.closest('.msg-group');
+            if (!grp || !grp.dataset.msgId) return;
+            // Skip swipe init if interactive child
+            var skipSwipe = !!e.target.closest(INTERACTIVE_SEL);
+
+            pressTarget = grp;
+            startX = lastX = e.touches[0].clientX;
+            startY = lastY = e.touches[0].clientY;
+            swiping = false;
+            swipeLockedForReply = false;
+            axisLocked = false;
+
+            cancelPressTimer();
+            pressTimer = setTimeout(function () {
+                pressTimer = null;
+                if (!pressTarget) return;
+                if (swiping) return;
+                try { if (navigator.vibrate) navigator.vibrate(20); } catch (e2) { }
+                var rect = pressTarget.getBoundingClientRect();
+                var cx = Math.min(Math.max(startX, rect.left), rect.right);
+                var cy = Math.min(Math.max(startY, rect.top), rect.bottom);
+                openContextMenu(cx, cy, pressTarget);
+            }, 500);
+
+            grp._skipSwipe = skipSwipe;
+        }, { passive: true });
+
+        messagesInner.addEventListener('touchmove', function (e) {
+            if (!pressTarget) return;
+            if (e.touches.length !== 1) return;
+            lastX = e.touches[0].clientX;
+            lastY = e.touches[0].clientY;
+            var dx = lastX - startX;
+            var dy = lastY - startY;
+
+            if (!axisLocked) {
+                if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+                    axisLocked = true;
+                    if (Math.abs(dy) > Math.abs(dx)) {
+                        // vertical scroll — abort everything
+                        cancelPressTimer();
+                        pressTarget = null;
+                        return;
+                    } else {
+                        cancelPressTimer();
+                    }
+                } else {
+                    return;
+                }
+            }
+
+            // Only horizontal swipe, only on mobile, only left, only if not on interactive
+            if (!mqlMobile.matches) return;
+            if (pressTarget._skipSwipe) return;
+            if (dx >= 0) {
+                resetSwipe(pressTarget);
+                return;
+            }
+
+            if (e.cancelable) e.preventDefault();
+            swiping = true;
+            pressTarget.classList.add('swiping');
+            var translate = Math.max(dx, -90);
+            pressTarget.style.transform = 'translateX(' + translate + 'px)';
+            if (dx <= -60) swipeLockedForReply = true; else swipeLockedForReply = false;
+        }, { passive: false });
+
+        messagesInner.addEventListener('touchend', function () {
+            cancelPressTimer();
+            var t = pressTarget;
+            pressTarget = null;
+            if (!t) return;
+            if (swiping) {
+                if (swipeLockedForReply) {
+                    var msgId = Number(t.dataset.msgId);
+                    var msg = messages.find(function (m) { return m.id === msgId; });
+                    if (msg) setPendingReply(msg);
+                }
+                resetSwipe(t);
+            }
+        });
+
+        messagesInner.addEventListener('touchcancel', function () {
+            cancelPressTimer();
+            if (pressTarget) resetSwipe(pressTarget);
+            pressTarget = null;
+        });
+    })();
 
     // ========== PROACTIVE TOKEN REFRESH ==========
 

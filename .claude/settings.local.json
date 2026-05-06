@@ -74,7 +74,8 @@
       "Bash(open /Users/liis/Library/Developer/Xcode/DerivedData/Barkfluff-bwsujifbcrzrfjaketcorzhoutjr/Build/Products/Debug/Barkfluff.app)",
       "Bash(echo \"Exit: $?\")",
       "Bash(Get-ChildItem *)",
-      "Bash(./gradlew :app:assembleDebug)"
+      "Bash(./gradlew :app:assembleDebug)",
+      "Bash(pwsh scripts/generate-proto.ps1)"
     ],
     "deny": [],
     "ask": []
