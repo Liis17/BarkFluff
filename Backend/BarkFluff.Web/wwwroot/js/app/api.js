@@ -30,6 +30,16 @@
         return ts.toDate().getTime();
     }
 
+    function mapForwarded(fm) {
+        if (!fm) return null;
+        return {
+            authorName: fm.getAuthorName ? fm.getAuthorName() : '',
+            originalMessageId: fm.getOriginalMessageId ? fm.getOriginalMessageId() : 0,
+            text: fm.getText ? fm.getText() : '',
+            attachments: fm.getAttachmentsList ? fm.getAttachmentsList().map(mapAttachment) : []
+        };
+    }
+
     function mapAttachment(a) {
         return {
             id: a.getId(),
@@ -40,7 +50,8 @@
             previewFileId: a.getPreviewFileId(),
             fileName: a.getFileName(),
             imageWidth: a.getImageWidth ? a.getImageWidth() : 0,
-            imageHeight: a.getImageHeight ? a.getImageHeight() : 0
+            imageHeight: a.getImageHeight ? a.getImageHeight() : 0,
+            forwardedMessage: a.getForwardedMessage ? mapForwarded(a.getForwardedMessage()) : null
         };
     }
 
@@ -52,6 +63,7 @@
             readBy: m.getReadByList(),
             sentAt: tsToMs(m.getSentAt()),
             type: enumName(m.getType()),
+            forwardedMessageId: m.getForwardedMessageId ? m.getForwardedMessageId() : 0,
             content: {
                 text: content ? content.getText() : '',
                 attachments: content ? content.getAttachmentsList().map(mapAttachment) : []
@@ -172,6 +184,9 @@
         msg.setText(opts.text || '');
         if (opts.fileIds && opts.fileIds.length > 0) {
             msg.setFilesIdsList(opts.fileIds);
+        }
+        if (opts.forwardedMessageId && msg.setForwardedMessageId) {
+            msg.setForwardedMessageId(opts.forwardedMessageId);
         }
         req.setMessage(msg);
 
