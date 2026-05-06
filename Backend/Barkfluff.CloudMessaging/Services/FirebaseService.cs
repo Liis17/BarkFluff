@@ -67,10 +67,10 @@ public class FirebaseService
     }
 
     /// <summary>
-    /// Отправляет push-уведомление на указанное устройство.
+    /// Отправляет push-уведомление батчем на список FCM-токенов одним запросом к FCM (до 500 токенов).
     /// </summary>
-    public async Task SendNotificationAsync(
-        string fcmToken,
+    public async Task SendNotificationBatchAsync(
+        IReadOnlyList<string> fcmTokens,
         string senderName,
         string messagePreview,
         string chatId,
@@ -82,7 +82,8 @@ public class FirebaseService
         bool isGroupChat,
         int contentType,
         string? imagePreviewUrl,
-        int attachmentCount)
+        int attachmentCount,
+        CancellationToken cancellationToken = default)
     {
         if (_messaging == null)
         {
@@ -90,63 +91,83 @@ public class FirebaseService
             return;
         }
 
+        if (fcmTokens.Count == 0)
+            return;
+
+        // Data-only сообщение: без блока Notification, чтобы onMessageReceived
+        // всегда вызывался (и в foreground, и в background).
+        var multicastMessage = new MulticastMessage
+        {
+            Tokens = [.. fcmTokens],
+            Data = new Dictionary<string, string>
+            {
+                ["chat_id"] = chatId,
+                ["sender_id"] = senderId.ToString(),
+                ["type"] = "new_message",
+                ["sender_name"] = senderName,
+                ["avatar_url"] = avatarUrl ?? "",
+                ["chat_title"] = chatTitle ?? "",
+                ["chat_avatar_url"] = chatAvatarUrl ?? "",
+                ["is_group_chat"] = isGroupChat.ToString().ToLowerInvariant(),
+                ["content_type"] = contentType.ToString(),
+                ["image_url"] = imagePreviewUrl ?? "",
+                ["message_id"] = messageId.ToString(),
+                ["message_text"] = TruncateMessage(messagePreview, 100),
+                ["attachment_count"] = attachmentCount.ToString()
+            },
+            Android = new AndroidConfig
+            {
+                Priority = Priority.High
+            }
+        };
+
         try
         {
-            // Data-only сообщение: без блока Notification, чтобы onMessageReceived
-            // всегда вызывался (и в foreground, и в background).
-            // Это позволяет Android-клиенту самому формировать уведомление
-            // с аватаром, эмодзи-форматированием и правильным PendingIntent.
-            var message = new Message
-            {
-                Token = fcmToken,
-                Data = new Dictionary<string, string>
-                {
-                    ["chat_id"] = chatId,
-                    ["sender_id"] = senderId.ToString(),
-                    ["type"] = "new_message",
-                    ["sender_name"] = senderName,
-                    ["avatar_url"] = avatarUrl ?? "",
-                    ["chat_title"] = chatTitle ?? "",
-                    ["chat_avatar_url"] = chatAvatarUrl ?? "",
-                    ["is_group_chat"] = isGroupChat.ToString().ToLowerInvariant(),
-                    ["content_type"] = contentType.ToString(),
-                    ["image_url"] = imagePreviewUrl ?? "",
-                    ["message_id"] = messageId.ToString(),
-                    ["message_text"] = TruncateMessage(messagePreview, 100),
-                    ["attachment_count"] = attachmentCount.ToString()
-                },
-                Android = new AndroidConfig
-                {
-                    Priority = Priority.High
-                }
-            };
-
-            var resultMessageId = await _messaging.SendAsync(message);
+            var response = await _messaging.SendEachForMulticastAsync(multicastMessage, cancellationToken);
 
             _logger.LogInformation(
-                "Push-уведомление отправлено. MessageId: {MessageId}, Token: {TokenPrefix}...",
-                resultMessageId,
-                fcmToken[..Math.Min(10, fcmToken.Length)]);
-        }
-        catch (FirebaseMessagingException ex)
-        {
-            if (ex.MessagingErrorCode == MessagingErrorCode.Unregistered)
+                "Push-уведомления отправлены батчем. Success: {Success}, Failure: {Failure}, Total: {Total}",
+                response.SuccessCount,
+                response.FailureCount,
+                fcmTokens.Count);
+
+            if (response.FailureCount > 0)
             {
-                _logger.LogWarning(
-                    "FCM токен невалиден или истёк: {TokenPrefix}...",
-                    fcmToken[..Math.Min(10, fcmToken.Length)]);
-            }
-            else
-            {
-                _logger.LogError(
-                    ex,
-                    "Ошибка отправки push-уведомления. Token: {TokenPrefix}...",
-                    fcmToken[..Math.Min(10, fcmToken.Length)]);
+                var unregisteredTokens = new List<string>();
+                for (var i = 0; i < response.Responses.Count; i++)
+                {
+                    var resp = response.Responses[i];
+                    if (resp.IsSuccess)
+                        continue;
+
+                    var token = fcmTokens[i];
+                    var ex = resp.Exception;
+
+                    if (ex?.MessagingErrorCode == MessagingErrorCode.Unregistered)
+                    {
+                        unregisteredTokens.Add(token);
+                    }
+                    else
+                    {
+                        _logger.LogError(
+                            ex,
+                            "Ошибка отправки push-уведомления. Token: {TokenPrefix}...",
+                            token[..Math.Min(10, token.Length)]);
+                    }
+                }
+
+                if (unregisteredTokens.Count > 0)
+                {
+                    _logger.LogWarning(
+                        "Невалидные FCM-токены ({Count}): требуется очистка в БД",
+                        unregisteredTokens.Count);
+                    // TODO: отправить событие на удаление токенов из БД
+                }
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Неожиданная ошибка при отправке push-уведомления");
+            _logger.LogError(ex, "Неожиданная ошибка при батч-отправке push-уведомлений");
         }
     }
 

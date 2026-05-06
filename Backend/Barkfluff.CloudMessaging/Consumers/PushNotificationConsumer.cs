@@ -79,7 +79,8 @@ public class PushNotificationConsumer : IConsumer<PushNotificationEvent>
                 new GetDevicesWithFirebaseTokensRequest
                 {
                     UserIds = { message.RecipientUserIds }
-                });
+                },
+                cancellationToken: context.CancellationToken);
 
             if (tokensResponse.Tokens.Count == 0)
             {
@@ -87,39 +88,43 @@ public class PushNotificationConsumer : IConsumer<PushNotificationEvent>
                 return;
             }
 
-            // Отправляем push-уведомления
-            foreach (var token in tokensResponse.Tokens)
-            {
-                await _firebaseService.SendNotificationAsync(
-                    token.FirebaseToken,
-                    senderName,
-                    message.MessageText ?? string.Empty,
-                    message.ChatId.ToString(),
-                    message.SenderId,
-                    message.MessageId,
-                    senderAvatarUrl,
-                    chatTitle,
-                    chatAvatarUrl,
-                    isGroupChat,
-                    message.ContentType,
-                    message.ImagePreviewUrl,
-                    message.AttachmentCount);
-            }
+            var fcmTokens = tokensResponse.Tokens
+                .Select(t => t.FirebaseToken)
+                .Where(t => !string.IsNullOrEmpty(t))
+                .ToList();
+
+            // Один батч-запрос к FCM вместо N последовательных
+            await _firebaseService.SendNotificationBatchAsync(
+                fcmTokens,
+                senderName,
+                message.MessageText ?? string.Empty,
+                message.ChatId.ToString(),
+                message.SenderId,
+                message.MessageId,
+                senderAvatarUrl,
+                chatTitle,
+                chatAvatarUrl,
+                isGroupChat,
+                message.ContentType,
+                message.ImagePreviewUrl,
+                message.AttachmentCount,
+                context.CancellationToken);
 
             _logger.LogInformation(
                 "Push-уведомления отправлены. Отправитель: {SenderName}, Устройств: {Count}, IsGroupChat: {IsGroupChat}",
                 senderName,
-                tokensResponse.Tokens.Count,
+                fcmTokens.Count,
                 isGroupChat);
         }
         catch (Exception ex)
         {
+            // Логируем и не пробрасываем — иначе MassTransit будет ретраить, а мы хотим
+            // чтобы сообщение считалось обработанным даже при ошибке отправки push.
             _logger.LogError(
                 ex,
                 "Ошибка при обработке push-уведомления. ChatId: {ChatId}, MessageId: {MessageId}",
                 message.ChatId,
                 message.MessageId);
-            throw;
         }
     }
 }
