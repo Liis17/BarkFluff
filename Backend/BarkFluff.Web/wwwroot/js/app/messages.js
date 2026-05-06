@@ -35,14 +35,19 @@
 
     // --- Attachment rendering ---
 
+    function normType(a) {
+        if (a.type === 7 || a.type === '7') return 'STICKER';
+        if (a.type === 8 || a.type === '8') return 'FORWARDED_MESSAGE';
+        return a.type;
+    }
+
     function renderAttachments(attachments, bubble, onMediaClick) {
         if (!attachments || attachments.length === 0) return;
 
         var images = [], videos = [], audios = [], docs = [];
         attachments.forEach(function (a) {
-            // Нормализация числового значения типа стикера (7) на случай, если bundle
-            // вернул число вместо строки из enum MessageAttachmentType
-            var t = (a.type === 7 || a.type === '7') ? 'STICKER' : a.type;
+            var t = normType(a);
+            if (t === 'FORWARDED_MESSAGE') return;
             var norm = (t !== a.type) ? Object.assign({}, a, { type: t }) : a;
             switch (t) {
                 case 'IMAGE': case 'GIF': case 'STICKER': images.push(norm); break;
@@ -51,6 +56,8 @@
                 default: docs.push(norm); break;
             }
         });
+
+        if (images.length === 0 && videos.length === 0 && audios.length === 0 && docs.length === 0) return;
 
         var div = document.createElement('div');
         div.className = 'msg-attachments';
@@ -61,6 +68,70 @@
         if (docs.length > 0) renderDocs(docs, div);
 
         bubble.appendChild(div);
+    }
+
+    function attachmentSummary(att) {
+        var t = normType(att);
+        switch (t) {
+            case 'IMAGE': case 'GIF': return '\u{1F4F7} Фото';
+            case 'VIDEO': return '\u{1F3AC} Видео';
+            case 'AUDIO': return '\u{1F3B5} Аудио';
+            case 'VOICE': return '\u{1F3A4} Голосовое';
+            case 'STICKER': return '\u{1F92A} Стикер';
+            case 'DOCUMENT': return '\u{1F4C4} ' + (att.fileName || 'Документ');
+            default: return '\u{1F4CE} Вложение';
+        }
+    }
+
+    function renderForwardedBlock(fwd, container, onMediaClick) {
+        if (!fwd) return;
+        var box = document.createElement('div');
+        box.className = 'fwd-block';
+        var author = document.createElement('div');
+        author.className = 'fwd-author';
+        author.textContent = fwd.authorName || '';
+        box.appendChild(author);
+
+        if (fwd.text) {
+            var txt = document.createElement('div');
+            txt.className = 'fwd-text';
+            txt.textContent = fwd.text;
+            box.appendChild(txt);
+        }
+
+        if (fwd.attachments && fwd.attachments.length > 0) {
+            renderAttachments(fwd.attachments, box, onMediaClick);
+        }
+
+        container.appendChild(box);
+    }
+
+    function renderReplyQuote(fwd, container, onClick) {
+        if (!fwd) return;
+        var q = document.createElement('div');
+        q.className = 'reply-quote';
+        if (fwd.originalMessageId) q.dataset.origId = fwd.originalMessageId;
+        var au = document.createElement('div');
+        au.className = 'rq-author';
+        au.textContent = fwd.authorName || '';
+        q.appendChild(au);
+
+        var preview = '';
+        if (fwd.text) preview = fwd.text;
+        else if (fwd.attachments && fwd.attachments.length > 0) preview = attachmentSummary(fwd.attachments[0]);
+        var t = document.createElement('div');
+        t.className = 'rq-text';
+        t.textContent = preview;
+        q.appendChild(t);
+
+        if (typeof onClick === 'function') {
+            q.addEventListener('click', function (e) {
+                e.stopPropagation();
+                onClick(fwd.originalMessageId);
+            });
+        }
+
+        container.appendChild(q);
     }
 
     function renderImageGrid(images, container, onMediaClick) {
@@ -231,14 +302,29 @@
      * @param {boolean} isGroupChat
      * @param {Function} [getUserFn] — async function(userId) → user
      * @param {Function} [onMediaClick] — function(type, url)
+     * @param {Object} [opts] — { knownMessageIds: Set, onReplyClick: function(originalMessageId) }
      * @returns {Promise<HTMLElement>}
      */
-    function buildMessageElement(msg, myUserId, isGroupChat, getUserFn, onMediaClick) {
+    function buildMessageElement(msg, myUserId, isGroupChat, getUserFn, onMediaClick, opts) {
         var isOutgoing = msg.senderId === myUserId;
         var direction = isOutgoing ? 'outgoing' : 'incoming';
-        var _firstAtt = msg.content && msg.content.attachments && msg.content.attachments[0];
-        var _firstAttType = _firstAtt ? ((_firstAtt.type === 7 || _firstAtt.type === '7') ? 'STICKER' : _firstAtt.type) : null;
-        var isSticker = msg.content && msg.content.attachments && msg.content.attachments.length === 1 && _firstAttType === 'STICKER';
+        var allAtts = (msg.content && msg.content.attachments) || [];
+        var fwdAtt = null;
+        var mediaAtts = [];
+        for (var i = 0; i < allAtts.length; i++) {
+            if (normType(allAtts[i]) === 'FORWARDED_MESSAGE') {
+                if (!fwdAtt) fwdAtt = allAtts[i];
+            } else {
+                mediaAtts.push(allAtts[i]);
+            }
+        }
+        var fwd = fwdAtt && fwdAtt.forwardedMessage;
+        var _firstAtt = mediaAtts[0];
+        var _firstAttType = _firstAtt ? normType(_firstAtt) : null;
+        var isSticker = mediaAtts.length === 1 && _firstAttType === 'STICKER' && !fwd;
+
+        var knownIds = opts && opts.knownMessageIds;
+        var isReply = !!(fwd && knownIds && fwd.originalMessageId && knownIds.has(fwd.originalMessageId));
 
         var group = document.createElement('div');
         group.className = 'msg-group ' + direction;
@@ -259,10 +345,21 @@
 
         return promise.then(function () {
             var bubble = document.createElement('div');
-            var attachments = (msg.content && msg.content.attachments) || [];
-            var hasImages = isOutgoing && attachments.some(function (a) { return a.type === 'IMAGE' || a.type === 'GIF'; });
+            var hasImages = isOutgoing && mediaAtts.some(function (a) {
+                var t = normType(a);
+                return t === 'IMAGE' || t === 'GIF';
+            });
             bubble.className = 'msg-bubble ' + direction + (isSticker ? ' sticker' : '') + (hasImages ? ' has-images' : '');
-            if (attachments.length > 0) renderAttachments(attachments, bubble, onMediaClick);
+
+            if (fwd) {
+                if (isReply) {
+                    renderReplyQuote(fwd, bubble, opts && opts.onReplyClick);
+                } else {
+                    renderForwardedBlock(fwd, bubble, onMediaClick);
+                }
+            }
+
+            if (mediaAtts.length > 0) renderAttachments(mediaAtts, bubble, onMediaClick);
 
             var text = msg.content && msg.content.text;
             if (text) {
@@ -297,6 +394,8 @@
 
     window.BF.messages = {
         buildMessageElement: buildMessageElement,
-        renderAttachments: renderAttachments
+        renderAttachments: renderAttachments,
+        renderForwardedBlock: renderForwardedBlock,
+        renderReplyQuote: renderReplyQuote
     };
 })();
