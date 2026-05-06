@@ -274,12 +274,22 @@ public class ClientStorageController : ControllerBase
         var cachedPath = _cache.GetCachedFilePath(clientType, releaseChannel);
         if (cachedPath != null)
         {
-            var fs = new FileStream(cachedPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            return new FileStreamResult(fs, clientFile.ContentType)
+            FileStream? fs = null;
+            try
             {
-                FileDownloadName      = clientFile.OriginalFileName,
-                EnableRangeProcessing = true
-            };
+                fs = new FileStream(cachedPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                return new FileStreamResult(fs, clientFile.ContentType)
+                {
+                    FileDownloadName      = clientFile.OriginalFileName,
+                    EnableRangeProcessing = true
+                };
+                // FileStreamResult сам вызовет Dispose(fs) после отправки ответа
+            }
+            catch
+            {
+                fs?.Dispose();
+                throw;
+            }
         }
 
         // Кеша нет → стримим напрямую из S3

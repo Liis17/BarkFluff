@@ -23,7 +23,16 @@ public class LocalFileCache
     public string? GetCachedFilePath(ClientType clientType, ReleaseChannel channel)
     {
         var path = CachePath(clientType, channel);
-        return File.Exists(path) ? path : null;
+        if (!File.Exists(path)) return null;
+
+        var info = new FileInfo(path);
+        if (info.Length == 0)
+        {
+            _logger.LogWarning("Кеш-файл пустой, игнорируем: {Path}", path);
+            return null;
+        }
+
+        return path;
     }
 
     public async Task UpdateAsync(ClientType clientType, ReleaseChannel channel, Stream source)
