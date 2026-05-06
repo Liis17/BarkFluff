@@ -10,6 +10,8 @@ public class CacheWarmupService : IHostedService
 {
     private readonly IServiceProvider _services;
     private readonly ILogger<CacheWarmupService> _logger;
+    private Task? _warmupTask;
+    private CancellationTokenSource? _cts;
 
     public CacheWarmupService(IServiceProvider services, ILogger<CacheWarmupService> logger)
     {
@@ -19,7 +21,8 @@ public class CacheWarmupService : IHostedService
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        _ = Task.Run(() => WarmUpAsync(cancellationToken), cancellationToken);
+        _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _warmupTask = Task.Run(() => WarmUpAsync(_cts.Token), _cts.Token);
         return Task.CompletedTask;
     }
 
@@ -72,5 +75,23 @@ public class CacheWarmupService : IHostedService
         }
     }
 
-    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    public async Task StopAsync(CancellationToken cancellationToken)
+    {
+        if (_cts != null)
+            await _cts.CancelAsync();
+
+        if (_warmupTask != null)
+        {
+            try
+            {
+                await _warmupTask.WaitAsync(cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                // нормальное завершение при shutdown
+            }
+        }
+
+        _cts?.Dispose();
+    }
 }

@@ -37,9 +37,12 @@ public class S3StorageService : IDisposable
             ForcePathStyle = true
         };
 
-        var credentials = new BasicAWSCredentials(
-            configuration["S3_ACCESS_KEY"] ?? "",
-            configuration["S3_SECRET_KEY"] ?? "");
+        var accessKey = configuration["S3_ACCESS_KEY"]
+            ?? throw new InvalidOperationException("S3_ACCESS_KEY environment variable is required");
+        var secretKey = configuration["S3_SECRET_KEY"]
+            ?? throw new InvalidOperationException("S3_SECRET_KEY environment variable is required");
+
+        var credentials = new BasicAWSCredentials(accessKey, secretKey);
 
         _client = new AmazonS3Client(credentials, config);
     }
@@ -89,9 +92,13 @@ public class S3StorageService : IDisposable
 
         if (!string.IsNullOrEmpty(rangeHeader))
         {
-            // Парсим "bytes=start-end" → ByteRange для SDK
+            // Парсим "bytes=start-end" или "bytes=start-" → ByteRange для SDK
             if (TryParseRange(rangeHeader, out var from, out var to))
-                request.ByteRange = new ByteRange(from, to);
+            {
+                request.ByteRange = to >= 0
+                    ? new ByteRange(from, to)
+                    : new ByteRange(from, long.MaxValue); // open-ended: до конца объекта
+            }
         }
 
         var response = await _client.GetObjectAsync(request);
@@ -100,15 +107,24 @@ public class S3StorageService : IDisposable
 
     private static bool TryParseRange(string header, out long from, out long to)
     {
-        from = 0; to = 0;
-        // "bytes=1234-5678"
+        from = 0; to = -1; // -1 означает «до конца объекта»
+        // "bytes=1234-5678" или "bytes=1234-"
         if (!header.StartsWith("bytes=", StringComparison.OrdinalIgnoreCase)) return false;
         var span = header.AsSpan(6);
         var dash = span.IndexOf('-');
         if (dash < 0) return false;
-        return long.TryParse(span[..dash], out from)
-            && long.TryParse(span[(dash + 1)..], out to)
-            && to >= from;
+
+        if (!long.TryParse(span[..dash], out from)) return false;
+
+        var toSpan = span[(dash + 1)..];
+        if (toSpan.IsEmpty)
+        {
+            to = -1;
+            return true;
+        }
+
+        if (!long.TryParse(toSpan, out to)) return false;
+        return to >= from;
     }
 
     public void Dispose()
