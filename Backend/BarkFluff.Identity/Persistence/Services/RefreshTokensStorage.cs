@@ -40,20 +40,6 @@ public class RefreshTokensStorage(IdentityContext context)
         return await context.RefreshTokens.Where(x => x.UserId == userId).ToListAsync();
     }
 
-    public async Task DeleteRefreshToken(long id, long userId)
-    {
-        var refreshToken = await context.RefreshTokens.FirstOrDefaultAsync(x => x.Id == id);
-
-        if (refreshToken is null)
-        {
-            throw new RefreshTokenNotFoundException();
-        }
-
-        context.RefreshTokens.Remove(refreshToken);
-
-        await context.SaveChangesAsync();
-    }
-
     public async Task DeleteRefreshTokensByDeviceId(string deviceId, long userId)
     {
         var refreshTokens = await context.RefreshTokens
