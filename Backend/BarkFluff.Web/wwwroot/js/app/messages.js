@@ -92,15 +92,15 @@
         author.textContent = fwd.authorName || '';
         box.appendChild(author);
 
+        if (fwd.attachments && fwd.attachments.length > 0) {
+            renderAttachments(fwd.attachments, box, onMediaClick);
+        }
+
         if (fwd.text) {
             var txt = document.createElement('div');
             txt.className = 'fwd-text';
             txt.textContent = fwd.text;
             box.appendChild(txt);
-        }
-
-        if (fwd.attachments && fwd.attachments.length > 0) {
-            renderAttachments(fwd.attachments, box, onMediaClick);
         }
 
         container.appendChild(box);
