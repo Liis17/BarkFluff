@@ -19,8 +19,8 @@ docker-compose -f Backend/docker-compose-dev.yml up -d cloudmessaging
 Три компонента:
 
 1. **Program.cs** — startup: загрузка конфигурации (`ServiceId.CloudMessaging`), регистрация gRPC-клиентов (Users, Messages) и MassTransit consumer.
-2. **PushNotificationConsumer** — MassTransit consumer для `PushNotificationEvent`. Параллельно запрашивает данные отправителя (Users) и чата (Messages), рассылает push на все устройства через FirebaseService.
-3. **FirebaseService** — singleton над Firebase Admin SDK. Отправляет **data-only** сообщения (без `Notification` блока) — Android-клиент сам строит уведомления.
+2. **PushNotificationConsumer** — MassTransit consumer для `PushNotificationEvent`. Параллельно запрашивает данные отправителя (Users) и чата (Messages), рассылает push **батчем** на все устройства одним запросом к FCM. При ошибке логирует и не пробрасывает — сообщение считается обработанным (без MassTransit retry).
+3. **FirebaseService** — singleton над Firebase Admin SDK. Отправляет **data-only** сообщения (без `Notification` блока) — Android-клиент сам строит уведомления. Метод `SendNotificationBatchAsync` использует `SendEachForMulticastAsync` (один HTTP-запрос на до 500 токенов), обрабатывает `Unregistered`-ошибки для последующей очистки токенов.
 
 ## Event Flow
 
@@ -30,7 +30,7 @@ Messages service → PushNotificationEvent → RabbitMQ
   → PushNotificationConsumer
   → parallel: Users.GetById + Messages.GetChatInfo
   → Users.GetDevicesWithFirebaseTokens
-  → FirebaseService.SendNotificationAsync (per device)
+  → FirebaseService.SendNotificationBatchAsync (один батч-запрос на все токены)
 ```
 
 > ⚠️ Задержки отправки **нет** — обработка немедленная после получения события из очереди.
