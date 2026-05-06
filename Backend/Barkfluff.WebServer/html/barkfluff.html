@@ -458,6 +458,107 @@
       .chat-support-btn { bottom: 16px; right: 16px; }
     }
 
+    /* ===== MOBILE ENHANCEMENTS (≤700px) ===== */
+    @media (max-width: 700px) {
+      .home-page { padding: 28px 16px 32px; }
+
+      /* Nav: prioritize logo + telegram CTA */
+      .home-nav { margin-bottom: 28px; gap: 10px; }
+      .home-nav-right { gap: 10px; }
+      .home-nav-right .home-nav-link { display: none; }
+      .brand-mark { font-size: 15px; }
+      .brand-mark .glyph { width: 26px; height: 26px; }
+
+      /* Hero */
+      .hero { gap: 28px; margin-bottom: 36px; }
+      .hero-text { gap: 16px; }
+      .hero-title { font-size: clamp(36px, 11.5vw, 56px); line-height: 0.98; }
+      .hero-sub { font-size: 15px; line-height: 1.55; max-width: 100%; }
+      .hero-sub br { display: none; }
+      .hero-eyebrow { font-size: 10px; padding: 5px 10px; letter-spacing: 0.16em; }
+
+      /* Hero meta — wrap as chips */
+      .hero-meta { flex-wrap: wrap; gap: 8px 12px; font-size: 11px; }
+      .hero-meta .divider { display: none; }
+      .hero-meta > span {
+        padding: 5px 10px; border-radius: 999px;
+        background: rgba(255,240,220,0.04);
+        border: 1px solid var(--line);
+      }
+
+      /* Preview stack */
+      .preview-stack { aspect-ratio: 1 / 0.78; }
+      .preview-frame.peek-left  { transform: translate(-6%, 4%) rotate(-3deg) scale(0.88); }
+      .preview-frame.peek-right { transform: translate(6%, -4%) rotate(3deg) scale(0.88); }
+      .device-tag { top: 10px; left: 10px; padding: 5px 8px; font-size: 10px; }
+      .preview-caption {
+        right: 0; left: 0; bottom: -14px; max-width: none;
+        font-size: 10.5px; padding: 8px 12px; border-radius: 12px; text-align: center;
+      }
+
+      /* Downloads cards */
+      .downloads-section { gap: 12px; margin-bottom: 32px; }
+      .platform-card {
+        min-width: 230px; padding: 18px; border-radius: 16px;
+        min-height: 178px; gap: 12px;
+      }
+      .pc-title { font-size: 17px; }
+      .pc-title small { font-size: 11px; }
+      .pc-icon { width: 36px; height: 36px; border-radius: 10px; }
+      .pc-icon svg { width: 18px; height: 18px; }
+      .pc-actions .btn { padding: 9px 10px; font-size: 11.5px; }
+
+      /* CLI block */
+      .cli-block { padding: 14px; border-radius: 14px; gap: 10px; margin-bottom: 28px; }
+      .cli-head { flex-direction: column; align-items: stretch; gap: 10px; }
+      .cli-head > div { flex-wrap: wrap; gap: 8px; }
+      .cli-os-pills, .cli-channel-pills { flex-wrap: wrap; }
+      .cli-os-pills button, .cli-channel-pills button { font-size: 10.5px; padding: 4px 8px; }
+      .cli-line { padding: 12px; gap: 8px; font-size: 11.5px; border-radius: 10px; }
+      .cli-line .cmd { font-size: 11.5px; }
+      .copy-btn { width: 28px; height: 28px; }
+
+      /* Dev block */
+      .dev-block { padding: 16px; border-radius: 14px; }
+      .dev-block-icon { width: 34px; height: 34px; }
+      .dev-block-title { font-size: 13.5px; }
+      .dev-block-sub { font-size: 12px; }
+
+      /* Features */
+      .features-strip { gap: 10px; margin-bottom: 32px; }
+      .feature { padding: 14px; border-radius: 12px; }
+      .feature .f-title { font-size: 12.5px; }
+      .feature .f-body { font-size: 11.5px; }
+
+      /* Footer */
+      .home-footer { font-size: 11.5px; padding-top: 20px; }
+      .home-footer .home-footer-links { flex-wrap: wrap; justify-content: center; gap: 10px 16px; }
+    }
+
+    /* ===== VERY SMALL PHONES (≤480px) ===== */
+    @media (max-width: 480px) {
+      .features-strip { grid-template-columns: 1fr; }
+      .hero-title { font-size: clamp(34px, 12.5vw, 50px); }
+      .hero-meta { font-size: 10.5px; }
+      .cli-line { flex-wrap: nowrap; }
+      .cli-line .cmd { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    }
+
+    /* iOS safe-area for notched devices */
+    @supports (padding: max(0px)) {
+      @media (max-width: 700px) {
+        .home-page {
+          padding-left: max(16px, env(safe-area-inset-left));
+          padding-right: max(16px, env(safe-area-inset-right));
+          padding-bottom: max(32px, env(safe-area-inset-bottom));
+        }
+        .chat-support-btn {
+          right: max(16px, env(safe-area-inset-right));
+          bottom: max(16px, env(safe-area-inset-bottom));
+        }
+      }
+    }
+
     /* ===== LANG TOGGLE ===== */
     .lang-btn {
       all: unset; font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
@@ -765,7 +866,7 @@
             <svg viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 11.944 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
             Поддержка
           </a>
-          <a href="mailto:support@barkfluff.com">support@barkfluff.com</a>
+          <a href="/cdn-cgi/l/email-protection#abd8dedbdbc4d9dfebc9cad9c0cdc7decdcd85c8c4c6"><span class="__cf_email__" data-cfemail="72010702021d00063210130019141e0714145c111d1f">[email&#160;protected]</span></a>
           <a href="/legal/privacy-policy" id="footerPrivacy">Конфиденциальность</a>
         </div>
       </footer>
@@ -797,7 +898,7 @@
     </div>
   </div>
 
-  <script>
+  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
     /* Platform switcher */
     const previewOrder = ['windows', 'android', 'web'];
     let currentPlatform = 'windows';
