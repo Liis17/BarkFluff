@@ -59,19 +59,25 @@ public class GetTempDownloadUrlCommandHandler : IRequestHandler<GetTempDownloadU
 
         var baseUrl = FileUrlHelper.GetPublicBaseUrl(_configuration, _runSettings);
 
-        foreach (var file in files)
-        {
-            var tempFile = await _tempFilesStorage.CreateTempFile(file.Id);
+        // Один INSERT на все TempFile вместо N round-trip'ов к БД
+        var tempFiles = await _tempFilesStorage.CreateTempFilesBatchAsync(
+            files.Select(f => f.Id), cancellationToken);
 
+        foreach (var tempFile in tempFiles)
+        {
             var url = FileUrlHelper.GenerateDownloadUrl(baseUrl, tempFile.Id);
 
             _logger.LogDebug(
                 "Создана временная ссылка для файла {FileId}: {TempFileId}",
-                file.Id,
+                tempFile.OriginalFileId,
                 tempFile.Id
             );
 
-            response.FileUrls.Add(new GetTempDownloadUrlResponse.Types.DownloadFileData() { FileId = file.Id.ToString(), Url = url });
+            response.FileUrls.Add(new GetTempDownloadUrlResponse.Types.DownloadFileData()
+            {
+                FileId = tempFile.OriginalFileId.ToString(),
+                Url = url
+            });
         }
 
         _logger.LogInformation(

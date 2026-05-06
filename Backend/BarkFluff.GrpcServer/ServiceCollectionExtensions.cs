@@ -20,7 +20,8 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddBarkFluffGrpc(this IServiceCollection services)
     {
-        services.AddScoped<RequestContext>();
+        services.AddScoped<IRequestContextAccessor, RequestContextAccessor>();
+        services.AddScoped<RequestContext>(sp => sp.GetRequiredService<IRequestContextAccessor>().Current);
 
         services.AddGrpc(options =>
         {

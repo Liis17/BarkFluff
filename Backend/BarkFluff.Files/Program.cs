@@ -57,7 +57,8 @@ public class Program
         builder.Services.AddScoped<BadgeImagesStorage>();
         builder.Services.AddScoped<StickerPacksStorage>();
         builder.Services.AddScoped<StickersStorage>();
-        builder.Services.AddScoped<ImageCompressor>();
+        builder.Services.AddSingleton<ImageCompressor>();
+        builder.Services.AddHostedService<TempFileCleanupService>();
 
         builder.Services.AddMinioS3(builder.Configuration);
         builder.Services.AddFileTypeDetection();

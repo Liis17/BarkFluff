@@ -14,7 +14,7 @@ Shared-библиотека инфраструктуры. Подключаетс
 | Файл | Назначение |
 |------|-----------|
 | `WebApplicationBuilderExtensions.cs` | Extension-методы для `WebApplicationBuilder`: `LoadConfiguration(ServiceId)` — загружает конфиг из Configuration service по gRPC; `SetRunningAddress()` — настраивает Kestrel (порт, TLS, HTTP/2, опциональный HTTP/1). |
-| `ServiceCollectionExtensions.cs` | Extension-методы для `IServiceCollection`: `AddSettings<T>()` — регистрирует `IOptions<T>` и `T` как singleton; `AddBarkFluffGrpc()` — регистрирует gRPC с двумя interceptors (`ServerExceptionInterceptor`, `RequestContextInterceptor`) и scoped `RequestContext`. |
+| `ServiceCollectionExtensions.cs` | Extension-методы для `IServiceCollection`: `AddSettings<T>()` — регистрирует `IOptions<T>` и `T` как singleton; `AddBarkFluffGrpc()` — регистрирует gRPC с двумя interceptors (`ServerExceptionInterceptor`, `RequestContextInterceptor`), scoped `IRequestContextAccessor` (writer) и scoped-фабрику `RequestContext`, делегирующую accessor'у. |
 | `SerilogExtensions.cs` | Extension-методы для Serilog: `AddBarkFluffSerilog(serviceName)` — настраивает Serilog → Console + Seq (дуральный sink с файловым буфером `logs/seq-buffer`, лимит 100MB); `AddBarkFluffMetrics(serviceName)` — регистрирует `MetricsCollector` (singleton) и `MetricsReporterService` (HostedService). |
 | `ServerExceptionInterceptor.cs` | gRPC Unary interceptor. Перехватывает `BaseGrpcException` → `RpcException(FailedPrecondition)` с trailer `x-error-code`; необработанные исключения → `RpcException(Unknown)`. Инкрементирует метрики `grpc_requests_total`, `grpc_requests_failed`, `grpc_requests_errors`. |
 
@@ -42,8 +42,9 @@ Shared-библиотека инфраструктуры. Подключаетс
 
 | Файл | Назначение |
 |------|-----------|
-| `RequestContext.cs` | Scoped POCO-контейнер метаданных входящего запроса: `OperationSystem`, `IpAddress`, `DeviceName`, `AppName`, `AppVersion`, `DeviceId`. Заполняется interceptor'ом. |
-| `RequestContextInterceptor.cs` | gRPC Unary interceptor. Извлекает клиентские metadata-заголовки (Base64) в `RequestContext`. IP-адрес резолвится по приоритету: 1) `x-ip-address` из gRPC metadata, 2) `X-Forwarded-For` HTTP-заголовок (первый IP), 3) `X-Real-IP` (nginx), 4) `RemoteIpAddress` TCP-соединения. |
+| `RequestContext.cs` | Иммутабельный POCO-контейнер метаданных входящего запроса: `OperationSystem`, `IpAddress`, `DeviceName`, `AppName`, `AppVersion`, `DeviceId`. Все свойства `init`-only. Создаётся interceptor'ом, читается бизнес-кодом. |
+| `IRequestContextAccessor.cs` | Scoped-accessor: `Current` возвращает текущий `RequestContext` (бросает `InvalidOperationException`, если ещё не инициализирован), `Set(...)` вызывается из interceptor'а один раз за scope. Бизнес-код инжектит `RequestContext` напрямую через scoped-фабрику в DI. |
+| `RequestContextInterceptor.cs` | gRPC Unary interceptor. Создаёт новый `RequestContext` по metadata-заголовкам (Base64) и регистрирует через `IRequestContextAccessor.Set()`. IP-адрес резолвится по приоритету: 1) `x-ip-address` из gRPC metadata, 2) `X-Forwarded-For` HTTP-заголовок (первый IP), 3) `X-Real-IP` (nginx), 4) `RemoteIpAddress` TCP-соединения. |
 
 ---
 

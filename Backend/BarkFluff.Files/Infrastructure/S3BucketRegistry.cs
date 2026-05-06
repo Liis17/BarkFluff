@@ -4,6 +4,9 @@ using Amazon.S3;
 using BarkFluff.Files.Configurations;
 using BarkFluff.Files.Domain;
 
+using System.Security.Cryptography;
+using System.Text;
+
 namespace BarkFluff.Files.Infrastructure;
 
 /// <summary>
@@ -91,7 +94,9 @@ public class S3BucketRegistry : IDisposable
 
         foreach (var (bucketId, opts) in _bucketConfigs)
         {
-            var clientKey = $"{opts.ServiceUrl}|{opts.AccessKey}|{opts.SecretKey}";
+            // SecretKey не должен попадать в строку, хранящуюся в словаре (защита от дампа памяти)
+            var rawKey = $"{opts.ServiceUrl}|{opts.AccessKey}|{opts.SecretKey}";
+            var clientKey = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawKey)));
 
             if (!clientCache.TryGetValue(clientKey, out var client))
             {

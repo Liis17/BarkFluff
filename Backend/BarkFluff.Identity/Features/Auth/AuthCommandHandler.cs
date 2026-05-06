@@ -64,10 +64,9 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
         }
 
         // Если DeviceId не передан, генерируем временный для обратной совместимости
-        if (string.IsNullOrEmpty(requestContext.DeviceId))
-        {
-            requestContext.DeviceId = Guid.NewGuid().ToString();
-        }
+        var deviceId = string.IsNullOrEmpty(requestContext.DeviceId)
+            ? Guid.NewGuid().ToString()
+            : requestContext.DeviceId;
 
         var usersRequest = new FindByLoginRequest();
 
@@ -256,10 +255,10 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
         logger.LogDebug("Генерация refresh token для пользователя {UserId}", user.User.Id);
 
         // Удаляем старые токены для этого устройства перед созданием нового
-        await refreshTokensStorage.DeleteRefreshTokensByDeviceIdSafe(requestContext.DeviceId, user.User.Id);
+        await refreshTokensStorage.DeleteRefreshTokensByDeviceIdSafe(deviceId, user.User.Id);
 
         var refreshTokenString = RefreshTokenGenerator.GenerateRefreshToken();
-        await refreshTokensStorage.CreateNewRefreshToken(refreshTokenString, user.User.Id, requestContext.DeviceId, ExpDaysRefreshToken);
+        await refreshTokensStorage.CreateNewRefreshToken(refreshTokenString, user.User.Id, deviceId, ExpDaysRefreshToken);
 
         var accessTokenResponse = await mediator.Send(new CreateTokenCommand { RefreshToken = refreshTokenString }, cancellationToken);
 
@@ -278,7 +277,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
         {
             await usersClient.RegisterDeviceAsync(new RegisterDeviceRequest
             {
-                DeviceId = requestContext.DeviceId,
+                DeviceId = deviceId,
                 UserId = user.User.Id,
                 OriginalName = requestContext.DeviceName ?? "Unknown",
                 AppName = $"{requestContext.AppName} v.{requestContext.AppVersion}",
@@ -289,7 +288,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Не удалось зарегистрировать устройство {DeviceId} для пользователя {UserId}",
-                requestContext.DeviceId, user.User.Id);
+                deviceId, user.User.Id);
         }
 
         // Отправка уведомления об успешном входе

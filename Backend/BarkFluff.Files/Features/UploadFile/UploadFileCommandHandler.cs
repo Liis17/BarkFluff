@@ -219,6 +219,9 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
                     await _filesStorage.AddUploaderToFile(existingFileId.Value, uploaderId);
 
                 await _filesStorage.DeleteFile(file.Id);
+                // Подчищаем возможный висячий хеш для удаляемого file.Id
+                // (защита на случай если запись попала в FileHashes от прошлой попытки загрузки)
+                await _hashesStorage.DeleteHashByFileId(file.Id, cancellationToken);
                 await originalStream.DisposeAsync();
 
                 return existingFileId.Value.ToString();
@@ -231,24 +234,69 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
 
         try
         {
-            // Принудительное сжатие оригинала изображения по требованиям дизайн-документа
-            if (file.Type == UploadFileType.MessageAttachmentImage && contentType.StartsWith("image/"))
+            // Объединённая обработка изображения за один Image.LoadAsync:
+            // получаем размеры, опционально сжатый оригинал и опционально превью.
+            // Пришло на смену трём отдельным декодированиям одного и того же изображения
+            // (EnforceOriginalLimitsAsync + Image.IdentifyAsync + CompressImageAsync).
+            var isImageContent = contentType.StartsWith("image/");
+            var needsDimensions = ImageTypesForDimensions.Contains(file.Type) && isImageContent;
+            var needsPreview = _filesToNeedGeneratePreview.Contains(file.Type) && isImageContent;
+            var needsEnforceLimits = file.Type == UploadFileType.MessageAttachmentImage && isImageContent;
+
+            Guid? previewId = null;
+            byte[]? previewBytes = null;
+
+            if (needsDimensions || needsPreview || needsEnforceLimits)
             {
                 originalStream.Position = 0;
+                int? previewWidth = needsPreview
+                    ? _customFileTypeWidth.GetValueOrDefault(file.Type, 1024)
+                    : null;
 
-                var (compressedBytes, wasCompressed) =
-                    await _imageCompressor.EnforceOriginalLimitsAsync(originalStream);
-
-                if (wasCompressed)
+                ImageProcessingResult? imageResult = null;
+                try
                 {
-                    _logger.LogInformation(
-                        "Изображение {FileId} сжато сервером (превышены лимиты: 2500px / 2МБ). Новый размер: {NewSize} байт",
-                        file.Id, compressedBytes!.Length);
+                    imageResult = await _imageCompressor.ProcessImageAllInOneAsync(
+                        originalStream, needsEnforceLimits, previewWidth, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    // Файл может быть помечен как изображение, но не быть валидным — продолжаем загрузку оригинала.
+                    _logger.LogWarning(ex, "Не удалось обработать изображение {FileId} — обработка пропущена", file.Id);
+                }
 
-                    await originalStream.DisposeAsync();
-                    originalStream = new MemoryStream(compressedBytes);
-                    fileSize = originalStream.Length;
-                    contentType = "image/jpeg";
+                if (imageResult is not null)
+                {
+                    if (needsDimensions)
+                    {
+                        file.ImageWidth = imageResult.Width;
+                        file.ImageHeight = imageResult.Height;
+                        _logger.LogInformation(
+                            "Размеры изображения {FileId}: {Width}x{Height}",
+                            file.Id, imageResult.Width, imageResult.Height);
+                    }
+
+                    if (imageResult.CompressedOriginal is not null)
+                    {
+                        _logger.LogInformation(
+                            "Изображение {FileId} сжато сервером (превышены лимиты: 2500px / 2МБ). Новый размер: {NewSize} байт",
+                            file.Id, imageResult.CompressedOriginal.Length);
+
+                        await originalStream.DisposeAsync();
+                        originalStream = new MemoryStream(imageResult.CompressedOriginal);
+                        fileSize = originalStream.Length;
+                        contentType = "image/jpeg";
+                    }
+                    else
+                    {
+                        originalStream.Position = 0;
+                    }
+
+                    if (imageResult.PreviewBytes is not null)
+                    {
+                        previewId = Guid.NewGuid();
+                        previewBytes = imageResult.PreviewBytes;
+                    }
                 }
                 else
                 {
@@ -266,59 +314,28 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, strin
 
             _logger.LogInformation("Файл успешно загружен в S3, получен Etag: {Etag}", etag);
 
-            // Извлекаем размеры изображения для графических типов файлов
-            if (ImageTypesForDimensions.Contains(file.Type))
-            {
-                try
-                {
-                    originalStream.Position = 0;
-                    var imageInfo = await Image.IdentifyAsync(originalStream, cancellationToken);
-                    if (imageInfo is not null)
-                    {
-                        file.ImageWidth = imageInfo.Width;
-                        file.ImageHeight = imageInfo.Height;
-                        _logger.LogInformation(
-                            "Размеры изображения {FileId}: {Width}x{Height}",
-                            file.Id, imageInfo.Width, imageInfo.Height);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Не удалось определить размеры изображения {FileId}", file.Id);
-                }
-            }
-
-            // Если это изображение — сжимаем и сохраняем с другим ключом
-            if (_filesToNeedGeneratePreview.Contains(file.Type) && contentType.StartsWith("image/"))
+            // Загружаем превью (если было сгенерировано)
+            if (previewId.HasValue && previewBytes is not null)
             {
                 _logger.LogInformation("Создание превью для изображения с ID {FileId}", file.Id);
                 try
                 {
-                    var previewId = Guid.NewGuid();
-
-                    originalStream.Position = 0;
-
-                    var customWidth = _customFileTypeWidth.GetValueOrDefault(file.Type, 1024);
-                    // Сжимаем
-                    var compressedBytes = await _imageCompressor.CompressImageAsync(originalStream, customWidth);
-
-                    using var compressedStream = new MemoryStream(compressedBytes);
+                    using var compressedStream = new MemoryStream(previewBytes);
 
                     await _s3Uploader.UploadAsync(
                         bucketName,
-                        $"{previewId}", // ключ для сжатой версии
+                        $"{previewId.Value}", // ключ для сжатой версии
                         compressedStream,
                         "image/jpeg" // сохраняем как JPEG
                     );
 
-                    file.PreviewId = previewId;
-                    _logger.LogInformation("Превью успешно создано с ID: {PreviewId}", previewId);
+                    file.PreviewId = previewId.Value;
+                    _logger.LogInformation("Превью успешно создано с ID: {PreviewId}", previewId.Value);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Ошибка при создании превью для изображения с ID {FileId}", file.Id);
+                    _logger.LogError(ex, "Ошибка при загрузке превью для изображения с ID {FileId}", file.Id);
                 }
-
             }
 
             // Обновляем метаданные файла

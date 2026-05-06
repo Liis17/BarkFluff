@@ -2,15 +2,15 @@ namespace BarkFluff.GrpcServer.Tracker;
 
 public class RequestContext
 {
-    public string? OperationSystem { get; set; }
+    public string? OperationSystem { get; init; }
 
-    public string? IpAddress { get; set; }
+    public string? IpAddress { get; init; }
 
-    public string? DeviceName { get; set; }
+    public string? DeviceName { get; init; }
 
-    public string? AppName { get; set; }
+    public string? AppName { get; init; }
 
-    public string? AppVersion { get; set; }
+    public string? AppVersion { get; init; }
 
-    public string? DeviceId { get; set; }
+    public string? DeviceId { get; init; }
 }
