@@ -64,7 +64,7 @@ public class Program
 
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
 
-        builder.Services.AddTransient<ConfigurationStorage>();
+        builder.Services.AddScoped<ConfigurationStorage>();
 
         var app = builder.Build();
 
@@ -91,9 +91,15 @@ public class Program
                         // Извлекаем данные postgres из connection string Configuration-сервиса
                         var pgHostOnly = host.Contains(':') ? host.Split(':')[0] : host;
 
+                        // Креды RabbitMQ пробрасываются в контейнер через env_file: .env,
+                        // совпадают с RABBITMQ_DEFAULT_USER/PASS, с которыми стартует брокер
+                        var rabbitUsername = builder.Configuration["RABBITMQ_DEFAULT_USER"] ?? "guest";
+                        var rabbitPassword = builder.Configuration["RABBITMQ_DEFAULT_PASS"] ?? "guest";
+
                         var populatorLogger = scope.ServiceProvider.GetRequiredService<ILogger<ConfigurationDefaultsPopulator>>();
                         var populator = new ConfigurationDefaultsPopulator(
-                            ctx, populatorLogger, pgHostOnly, username, password);
+                            ctx, populatorLogger, pgHostOnly, username, password,
+                            rabbitUsername, rabbitPassword);
 
                         populator.PopulateDefaultsAsync().GetAwaiter().GetResult();
                     }

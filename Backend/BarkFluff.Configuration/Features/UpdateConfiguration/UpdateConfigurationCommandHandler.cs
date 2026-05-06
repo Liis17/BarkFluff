@@ -19,6 +19,20 @@ public class UpdateConfigurationCommandHandler : IRequestHandler<UpdateConfigura
 
     public async Task<UpdateConfigurationResponse> Handle(UpdateConfigurationCommand request, CancellationToken cancellationToken)
     {
+        if (!Enum.IsDefined(typeof(ServiceId), request.ServiceId))
+        {
+            _logger.LogWarning(
+                "Отклонено обновление конфигурации {Section}.{Key}: неизвестный ServiceId={ServiceId}",
+                request.Section, request.Key, request.ServiceId
+            );
+
+            return new UpdateConfigurationResponse
+            {
+                Success = false,
+                Message = $"Неизвестный ServiceId: {request.ServiceId}"
+            };
+        }
+
         _logger.LogInformation(
             "Обновление конфигурации: {Section}.{Key} для сервиса {ServiceId}",
             request.Section, request.Key, (ServiceId)request.ServiceId
