@@ -194,14 +194,6 @@ message SearchUsersResponse {
   int32 total_count = 2; // Общее количество чатов
 }
 
-message ChangeUserPasswordRequest {
-  string new_password = 1; // новый пароль
-  int64 user_id = 2; // идентификатор пользователя
-}
-
-message ChangeUserPasswordResponse { 
-  string password_hash = 1;
-}
 
 message ChangeBioRequest {
   string bio = 1; // Новое био
