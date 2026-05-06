@@ -33,7 +33,12 @@ public class GetTempDownloadUrlCommandHandler : IRequestHandler<GetTempDownloadU
         );
 
         var files = await _uploadedFilesStorage.GetFiles(request.FileIds);
-
+        
+        if (files is null)
+        {
+            throw new FileNotFoundException();
+        }
+        
         if (files.Count != request.FileIds.Count)
         {
             _logger.LogWarning(
@@ -42,10 +47,7 @@ public class GetTempDownloadUrlCommandHandler : IRequestHandler<GetTempDownloadU
                 request.FileIds.Count()
             );
 
-            if (files is null)
-            {
-                throw new FileNotFoundException();
-            }
+            
         }
 
         var response = new GetTempDownloadUrlResponse()
