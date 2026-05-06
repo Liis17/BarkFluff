@@ -66,7 +66,7 @@ public static class WebApplicationBuilderExtensions
 
         builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
 
-        var channel = GrpcChannel.ForAddress(configurationServiceAddress);
+        using var channel = GrpcChannel.ForAddress(configurationServiceAddress);
         var configurationApiClient = new ConfigurationApi.ConfigurationApiClient(channel);
 
         var config = configurationApiClient.GetConfiguration(new GetConfigurationRequest { ServiceId = (int)serviceId });

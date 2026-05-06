@@ -155,4 +155,75 @@ public class ImageCompressor
 
         return outputStream.ToArray();
     }
+
+    /// <summary>
+    /// Объединённая обработка изображения за один <c>Image.LoadAsync</c>:
+    /// возвращает размеры, опционально сжатый оригинал (если включён enforceOriginalLimits)
+    /// и опционально превью (если задан previewWidth).
+    /// Заменяет связку <see cref="EnforceOriginalLimitsAsync"/> + <see cref="CompressImageAsync"/>
+    /// + <c>Image.IdentifyAsync</c>, делавшую несколько полных декодирований.
+    /// </summary>
+    public async Task<ImageProcessingResult> ProcessImageAllInOneAsync(
+        Stream inputStream,
+        bool enforceOriginalLimits,
+        int? previewWidth,
+        CancellationToken cancellationToken = default)
+    {
+        var inputLength = inputStream.CanSeek ? inputStream.Length : 0L;
+
+        using var image = await Image.LoadAsync(inputStream, cancellationToken);
+
+        byte[]? compressedOriginal = null;
+
+        if (enforceOriginalLimits)
+        {
+            var needsResize = image.Width > MaxOriginalSide || image.Height > MaxOriginalSide;
+            var needsCompress = inputLength > MaxOriginalSizeBytes;
+
+            if (needsResize || needsCompress)
+            {
+                if (needsResize)
+                {
+                    image.Mutate(x => x.Resize(new ResizeOptions
+                    {
+                        Mode = ResizeMode.Max,
+                        Size = new Size(MaxOriginalSide, MaxOriginalSide)
+                    }));
+                }
+
+                image.Mutate(x => x.BackgroundColor(Color.White));
+
+                using var origStream = new MemoryStream();
+                await image.SaveAsync(origStream, new JpegEncoder { Quality = OriginalJpegQuality }, cancellationToken);
+                compressedOriginal = origStream.ToArray();
+            }
+        }
+
+        byte[]? previewBytes = null;
+        if (previewWidth.HasValue)
+        {
+            // Превью генерируется из текущего состояния image (уже ресайзнутого, если был enforce) —
+            // это ожидаемое поведение: превью описывает то, что реально лежит в S3.
+            using var preview = image.Clone(x => x
+                .Resize(new ResizeOptions { Mode = ResizeMode.Max, Size = new Size(previewWidth.Value, 0) })
+                .BackgroundColor(Color.White));
+
+            using var previewStream = new MemoryStream();
+            await preview.SaveAsync(previewStream, new JpegEncoder { Quality = PreviewJpegQuality }, cancellationToken);
+            previewBytes = previewStream.ToArray();
+        }
+
+        return new ImageProcessingResult(
+            CompressedOriginal: compressedOriginal,
+            PreviewBytes: previewBytes,
+            Width: image.Width,
+            Height: image.Height
+        );
+    }
 }
+
+public record ImageProcessingResult(
+    byte[]? CompressedOriginal,
+    byte[]? PreviewBytes,
+    int Width,
+    int Height);

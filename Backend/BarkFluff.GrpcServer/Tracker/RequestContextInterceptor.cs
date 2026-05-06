@@ -28,16 +28,21 @@ public class RequestContextInterceptor : Interceptor
         UnaryServerMethod<TRequest, TResponse> continuation)
     {
         var httpContext = context.GetHttpContext();
-        var requestContext = httpContext.RequestServices.GetRequiredService<RequestContext>();
+        var accessor = httpContext.RequestServices.GetRequiredService<IRequestContextAccessor>();
 
         var metadata = context.RequestHeaders;
-        requestContext.DeviceName = GetMetadataValue(metadata, MetadataKeys.DeviceName);
-        requestContext.OperationSystem = GetMetadataValue(metadata, MetadataKeys.OsName);
-        requestContext.AppName = GetMetadataValue(metadata, MetadataKeys.AppName);
-        requestContext.AppVersion = GetMetadataValue(metadata, MetadataKeys.AppVersion);
-        requestContext.DeviceId = GetMetadataValue(metadata, MetadataKeys.DeviceId);
 
-        requestContext.IpAddress = ResolveIpAddress(metadata, httpContext);
+        var requestContext = new RequestContext
+        {
+            DeviceName = GetMetadataValue(metadata, MetadataKeys.DeviceName),
+            OperationSystem = GetMetadataValue(metadata, MetadataKeys.OsName),
+            AppName = GetMetadataValue(metadata, MetadataKeys.AppName),
+            AppVersion = GetMetadataValue(metadata, MetadataKeys.AppVersion),
+            DeviceId = GetMetadataValue(metadata, MetadataKeys.DeviceId),
+            IpAddress = ResolveIpAddress(metadata, httpContext),
+        };
+
+        accessor.Set(requestContext);
 
         _logger.LogDebug(
             "Входящий gRPC запрос {Method} от устройства: {DeviceName} ({OS}), IP: {IpAddress}, DeviceID: {DeviceId}, Приложение: {AppName} v{AppVersion}",
