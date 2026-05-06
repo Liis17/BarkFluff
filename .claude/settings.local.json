@@ -75,7 +75,8 @@
       "Bash(echo \"Exit: $?\")",
       "Bash(Get-ChildItem *)",
       "Bash(./gradlew :app:assembleDebug)",
-      "Bash(pwsh scripts/generate-proto.ps1)"
+      "Bash(pwsh scripts/generate-proto.ps1)",
+      "mcp__context7__resolve-library-id"
     ],
     "deny": [],
     "ask": []

@@ -22,6 +22,8 @@ public class ConfigurationDefaultsPopulator
     private readonly string _postgresHost;
     private readonly string _postgresUsername;
     private readonly string _postgresPassword;
+    private readonly string _rabbitUsername;
+    private readonly string _rabbitPassword;
 
     /// <summary>
     /// Маппинг ServiceId → имя контейнера в Docker
@@ -93,13 +95,17 @@ public class ConfigurationDefaultsPopulator
         ILogger<ConfigurationDefaultsPopulator> logger,
         string postgresHost,
         string postgresUsername,
-        string postgresPassword)
+        string postgresPassword,
+        string rabbitUsername,
+        string rabbitPassword)
     {
         _context = context;
         _logger = logger;
         _postgresHost = postgresHost;
         _postgresUsername = postgresUsername;
         _postgresPassword = postgresPassword;
+        _rabbitUsername = rabbitUsername;
+        _rabbitPassword = rabbitPassword;
     }
 
     public async Task PopulateDefaultsAsync()
@@ -108,7 +114,7 @@ public class ConfigurationDefaultsPopulator
             .Where(c => c.Value == "" || c.Value == null)
             .ToListAsync();
 
-        if (!emptyConfigs.Any())
+        if (emptyConfigs.Count == 0)
         {
             _logger.LogInformation("Все конфигурации уже заполнены, авто-заполнение не требуется");
             return;
@@ -224,8 +230,8 @@ public class ConfigurationDefaultsPopulator
             return config.Key switch
             {
                 "Host" => "rabbitmq",
-                "Username" => "guest",
-                "Password" => "guest",
+                "Username" => _rabbitUsername,
+                "Password" => _rabbitPassword,
                 "VirtualHost" => "/",
                 _ => null
             };
