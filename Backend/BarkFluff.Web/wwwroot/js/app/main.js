@@ -1239,6 +1239,18 @@
         if (forwardSendBtn) forwardSendBtn.disabled = n === 0;
     }
 
+    function resolveForwardSourceId(msg, fallbackId) {
+        if (!msg || !msg.content || !msg.content.attachments) return fallbackId;
+        for (var i = 0; i < msg.content.attachments.length; i++) {
+            var a = msg.content.attachments[i];
+            var t = a.type;
+            if ((t === 'FORWARDED_MESSAGE' || t === 8 || t === '8') && a.forwardedMessage && a.forwardedMessage.originalMessageId) {
+                return a.forwardedMessage.originalMessageId;
+            }
+        }
+        return fallbackId;
+    }
+
     function openForwardModal(originalMsgId) {
         if (!forwardOverlay || !originalMsgId) return;
         forwardSelection = new Set();
@@ -1365,7 +1377,7 @@
             if (act === 'reply') {
                 if (msg) setPendingReply(msg);
             } else if (act === 'forward') {
-                openForwardModal(msgId);
+                openForwardModal(resolveForwardSourceId(msg, msgId));
             } else {
                 showSoonToast();
             }
