@@ -60,11 +60,11 @@ public class ServerExceptionInterceptor : Interceptor
                 ex.GetType().Name
             );
 
-            var baseExcetion = new BaseGrpcException();
+            var baseException = new BaseGrpcException();
 
             var trailers = new Metadata
             {
-                { "x-error-code", baseExcetion.ErrorCode }
+                { "x-error-code", baseException.ErrorCode }
             };
             throw new RpcException(new Status(StatusCode.Unknown, ex.Message), trailers);
         }

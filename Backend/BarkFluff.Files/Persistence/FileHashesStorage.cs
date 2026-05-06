@@ -53,4 +53,15 @@ public class FileHashesStorage
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.FileId == fileId);
     }
+
+    /// <summary>
+    /// Удаляет запись хеша по FileId. Идемпотентно: возвращает количество удалённых строк.
+    /// Используется при дедупликации, чтобы не оставлять висячие хеши при удалении файла.
+    /// </summary>
+    public Task<int> DeleteHashByFileId(Guid fileId, CancellationToken cancellationToken = default)
+    {
+        return _context.FileHashes
+            .Where(x => x.FileId == fileId)
+            .ExecuteDeleteAsync(cancellationToken);
+    }
 }

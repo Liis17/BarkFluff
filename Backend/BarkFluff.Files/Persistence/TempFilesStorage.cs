@@ -21,7 +21,7 @@ public class TempFilesStorage
         var file = new TempFile()
         {
             OriginalFileId = fileId,
-            ExpiresAt = DateTime.UtcNow + TimeSpan.FromMinutes(int.Parse(_configuration["TempFiles:ExpiresAt"]))
+            ExpiresAt = GetExpiresAt()
         };
 
         await _context.TempFiles.AddAsync(file);
@@ -31,10 +31,46 @@ public class TempFilesStorage
         return file;
     }
 
+    /// <summary>
+    /// Пакетное создание временных ссылок одним SaveChangesAsync.
+    /// Избавляет от N round-trip'ов к БД при запросе ссылок на множество файлов.
+    /// </summary>
+    public async Task<List<TempFile>> CreateTempFilesBatchAsync(IEnumerable<Guid> fileIds, CancellationToken cancellationToken = default)
+    {
+        var expiresAt = GetExpiresAt();
+
+        var tempFiles = fileIds
+            .Select(id => new TempFile { OriginalFileId = id, ExpiresAt = expiresAt })
+            .ToList();
+
+        if (tempFiles.Count == 0)
+            return tempFiles;
+
+        await _context.TempFiles.AddRangeAsync(tempFiles, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return tempFiles;
+    }
+
     public async Task<TempFile?> GetTempFile(Guid tempFileId)
     {
         return await _context.TempFiles
             .Where(x => x.ExpiresAt > DateTime.UtcNow)
             .FirstOrDefaultAsync(x => x.Id == tempFileId);
+    }
+
+    /// <summary>
+    /// Bulk-удаление просроченных временных ссылок. Используется фоновым сервисом очистки.
+    /// </summary>
+    public Task<int> DeleteExpiredAsync(CancellationToken cancellationToken = default)
+    {
+        return _context.TempFiles
+            .Where(x => x.ExpiresAt < DateTime.UtcNow)
+            .ExecuteDeleteAsync(cancellationToken);
+    }
+
+    private DateTime GetExpiresAt()
+    {
+        return DateTime.UtcNow + TimeSpan.FromMinutes(int.Parse(_configuration["TempFiles:ExpiresAt"]));
     }
 }
