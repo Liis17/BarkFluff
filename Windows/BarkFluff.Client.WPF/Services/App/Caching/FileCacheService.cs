@@ -3,6 +3,7 @@ using LiteDB;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
@@ -23,6 +24,12 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
         private readonly HttpClient _httpClient = new HttpClient();
         private readonly SemaphoreSlim _downloadSemaphore = new SemaphoreSlim(5); // Ограничение на 5 параллельных загрузок
         private bool _disposed = false;
+
+        // In-memory hot cache (fileId → physical path). Заполняется лениво из LiteDB в фоне
+        // и синхронно при каждом успешном Upsert/чтении. Позволяет UI-потоку получать путь
+        // к закешированному файлу без LiteDB-запроса и без захвата _lock.
+        private readonly ConcurrentDictionary<string, string> _memoryIndex = new();
+        private int _memoryIndexInitialized; // 0 = нет, 1 = идёт, 2 = готово (Interlocked)
 
         // Placeholders для разных типов файлов
         /// <summary>
@@ -86,6 +93,42 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
             _files = _db.GetCollection<CachedFile>("cached_files");
             _files.EnsureIndex(x => x.Hash);
             _files.EnsureIndex(x => x.FileType);
+
+            // Ленивая инициализация memory-индекса в фоне сразу при старте сервиса.
+            // Не ждём — UI может работать параллельно через fallback на LiteDB-FindOne.
+            _ = Task.Run(EnsureMemoryIndexInitialized);
+        }
+
+        /// <summary>
+        /// Однократно загружает все известные пути из LiteDB в memory-индекс.
+        /// Безопасно вызывать многократно — повторные вызовы превращаются в no-op.
+        /// </summary>
+        private void EnsureMemoryIndexInitialized()
+        {
+            if (Interlocked.CompareExchange(ref _memoryIndexInitialized, 1, 0) != 0)
+            {
+                return;
+            }
+
+            try
+            {
+                List<CachedFile> all;
+                lock (_lock)
+                {
+                    all = _files.FindAll().ToList();
+                }
+                foreach (var f in all)
+                {
+                    if (!string.IsNullOrEmpty(f.Hash) && !string.IsNullOrEmpty(f.Path))
+                    {
+                        _memoryIndex[f.Hash] = f.Path;
+                    }
+                }
+            }
+            finally
+            {
+                Volatile.Write(ref _memoryIndexInitialized, 2);
+            }
         }
 
         /// <summary>
@@ -143,12 +186,25 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
                 return GetPlaceholder(fileType);
             }
 
-            lock (_lock)
+            // Hot path: memory-индекс. Ни LiteDB, ни _lock не трогаем.
+            if (_memoryIndex.TryGetValue(fileId, out var memoryPath) && File.Exists(memoryPath))
             {
-                var cached = _files.FindOne(x => x.Hash == fileId);
-                if (cached != null && File.Exists(cached.Path))
+                return memoryPath;
+            }
+
+            // Memory-индекс ещё не успел инициализироваться (короткое окно при старте) —
+            // делаем точечный FindOne под _lock, чтобы не вернуть placeholder для уже
+            // закешированного файла.
+            if (Volatile.Read(ref _memoryIndexInitialized) != 2)
+            {
+                lock (_lock)
                 {
-                    return cached.Path;
+                    var cached = _files.FindOne(x => x.Hash == fileId);
+                    if (cached != null && !string.IsNullOrEmpty(cached.Path) && File.Exists(cached.Path))
+                    {
+                        _memoryIndex[fileId] = cached.Path;
+                        return cached.Path;
+                    }
                 }
             }
 
@@ -173,12 +229,21 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
                 return GetPlaceholder(fileType);
             }
 
-            lock (_lock)
+            if (_memoryIndex.TryGetValue(fileId, out var memoryPath) && File.Exists(memoryPath))
             {
-                var cached = _files.FindOne(x => x.Hash == fileId);
-                if (cached != null && File.Exists(cached.Path))
+                return memoryPath;
+            }
+
+            if (Volatile.Read(ref _memoryIndexInitialized) != 2)
+            {
+                lock (_lock)
                 {
-                    return cached.Path;
+                    var cached = _files.FindOne(x => x.Hash == fileId);
+                    if (cached != null && !string.IsNullOrEmpty(cached.Path) && File.Exists(cached.Path))
+                    {
+                        _memoryIndex[fileId] = cached.Path;
+                        return cached.Path;
+                    }
                 }
             }
 
@@ -299,12 +364,18 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
             await _downloadSemaphore.WaitAsync();
             try
             {
-                // Проверяем еще раз, возможно файл уже был загружен
+                // Проверяем еще раз, возможно файл уже был загружен — сначала memory, потом LiteDB.
+                if (_memoryIndex.TryGetValue(fileId, out var memoryPath) && File.Exists(memoryPath))
+                {
+                    Debug.WriteLine($"[FileCacheService] File already cached at: {memoryPath}");
+                    return memoryPath;
+                }
                 lock (_lock)
                 {
                     var cached = _files.FindOne(x => x.Hash == fileId);
                     if (cached != null && File.Exists(cached.Path))
                     {
+                        _memoryIndex[fileId] = cached.Path;
                         Debug.WriteLine($"[FileCacheService] File already cached at: {cached.Path}");
                         return cached.Path;
                     }
@@ -365,6 +436,7 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
                         FileType = fileType
                     });
                 }
+                _memoryIndex[fileId] = filePath;
 
                 // Вызываем событие
                 Debug.WriteLine($"[FileCacheService] Invoking FileCached event for fileId={fileId}, path={filePath}");
@@ -395,11 +467,17 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
             await _downloadSemaphore.WaitAsync();
             try
             {
+                if (_memoryIndex.TryGetValue(fileId, out var memoryPath) && File.Exists(memoryPath))
+                {
+                    progress.Report(1.0);
+                    return memoryPath;
+                }
                 lock (_lock)
                 {
                     var cached = _files.FindOne(x => x.Hash == fileId);
                     if (cached != null && File.Exists(cached.Path))
                     {
+                        _memoryIndex[fileId] = cached.Path;
                         progress.Report(1.0);
                         return cached.Path;
                     }
@@ -469,6 +547,7 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
                         FileType = fileType
                     });
                 }
+                _memoryIndex[fileId] = filePath;
 
                 FileCached?.Invoke(fileId, filePath, fileType);
                 return filePath;
@@ -549,10 +628,29 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
         {
             if (string.IsNullOrEmpty(fileId)) return false;
 
+            // Hot path: memory-индекс — без LiteDB и без _lock.
+            if (_memoryIndex.TryGetValue(fileId, out var memoryPath))
+            {
+                if (File.Exists(memoryPath)) return true;
+                // Файл удалён извне — синхронизируем индекс при следующих обращениях.
+                _memoryIndex.TryRemove(fileId, out _);
+            }
+
+            if (Volatile.Read(ref _memoryIndexInitialized) == 2)
+            {
+                // Memory-индекс полностью инициализирован — отсутствие там = отсутствие в кеше.
+                return false;
+            }
+
             lock (_lock)
             {
                 var cached = _files.FindOne(x => x.Hash == fileId);
-                return cached != null && File.Exists(cached.Path);
+                if (cached != null && File.Exists(cached.Path))
+                {
+                    _memoryIndex[fileId] = cached.Path;
+                    return true;
+                }
+                return false;
             }
         }
 
@@ -565,7 +663,7 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
             {
                 if (fileType.HasValue)
                 {
-                    var files = _files.Find(x => x.FileType == fileType.Value);
+                    var files = _files.Find(x => x.FileType == fileType.Value).ToList();
                     foreach (var file in files)
                     {
                         try
@@ -576,6 +674,10 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
                             }
                         }
                         catch { }
+                        if (!string.IsNullOrEmpty(file.Hash))
+                        {
+                            _memoryIndex.TryRemove(file.Hash, out _);
+                        }
                     }
                     _files.DeleteMany(x => x.FileType == fileType.Value);
                 }
@@ -594,6 +696,7 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
                         catch { }
                     }
                     _files.DeleteAll();
+                    _memoryIndex.Clear();
                 }
             }
         }
