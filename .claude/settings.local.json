@@ -89,7 +89,9 @@
       "Bash(xcodebuild -project /Users/liis/Projects/BarkFluff/Mac/Barkfluff/Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=macOS' build)",
       "Bash(swift build *)",
       "Bash(xcodebuild -scheme Barkfluff -destination 'platform=macOS' -configuration Debug build -quiet)",
-      "Bash(echo \"EXIT=$?\")"
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(xcodebuild -workspace Barkfluff.xcworkspace -scheme Barkfluff -destination 'platform=macOS' -configuration Debug build)",
+      "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=macOS' -configuration Debug build)"
     ],
     "deny": [],
     "ask": []
