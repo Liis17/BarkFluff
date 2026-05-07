@@ -202,34 +202,6 @@ public struct Barkfluff_Users_SearchUsersResponse: Sendable {
   public init() {}
 }
 
-public struct Barkfluff_Users_ChangeUserPasswordRequest: Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  /// новый пароль
-  public var newPassword: String = String()
-
-  /// идентификатор пользователя
-  public var userID: Int64 = 0
-
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public init() {}
-}
-
-public struct Barkfluff_Users_ChangeUserPasswordResponse: Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  public var passwordHash: String = String()
-
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public init() {}
-}
-
 public struct Barkfluff_Users_ChangeBioRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -1993,71 +1965,6 @@ extension Barkfluff_Users_SearchUsersResponse: SwiftProtobuf.Message, SwiftProto
   public static func ==(lhs: Barkfluff_Users_SearchUsersResponse, rhs: Barkfluff_Users_SearchUsersResponse) -> Bool {
     if lhs.users != rhs.users {return false}
     if lhs.totalCount != rhs.totalCount {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
-}
-
-extension Barkfluff_Users_ChangeUserPasswordRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".ChangeUserPasswordRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}new_password\0\u{3}user_id\0")
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self.newPassword) }()
-      case 2: try { try decoder.decodeSingularInt64Field(value: &self.userID) }()
-      default: break
-      }
-    }
-  }
-
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if !self.newPassword.isEmpty {
-      try visitor.visitSingularStringField(value: self.newPassword, fieldNumber: 1)
-    }
-    if self.userID != 0 {
-      try visitor.visitSingularInt64Field(value: self.userID, fieldNumber: 2)
-    }
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  public static func ==(lhs: Barkfluff_Users_ChangeUserPasswordRequest, rhs: Barkfluff_Users_ChangeUserPasswordRequest) -> Bool {
-    if lhs.newPassword != rhs.newPassword {return false}
-    if lhs.userID != rhs.userID {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
-}
-
-extension Barkfluff_Users_ChangeUserPasswordResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".ChangeUserPasswordResponse"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}password_hash\0")
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self.passwordHash) }()
-      default: break
-      }
-    }
-  }
-
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if !self.passwordHash.isEmpty {
-      try visitor.visitSingularStringField(value: self.passwordHash, fieldNumber: 1)
-    }
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  public static func ==(lhs: Barkfluff_Users_ChangeUserPasswordResponse, rhs: Barkfluff_Users_ChangeUserPasswordResponse) -> Bool {
-    if lhs.passwordHash != rhs.passwordHash {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
