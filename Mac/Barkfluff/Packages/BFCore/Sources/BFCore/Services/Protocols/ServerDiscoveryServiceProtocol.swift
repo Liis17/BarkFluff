@@ -26,6 +26,13 @@ public protocol ServerDiscoveryServiceProtocol: Sendable {
 
     /// Отключиться от сервера
     func disconnect() async
+
+    /// Сохранённый адрес Beacon (host, port) текущего сервера, если есть.
+    func currentServerEndpoint() async -> (host: String, port: Int)?
+
+    /// Пинг текущего Beacon: повторно вызывает `GetServerInfo` и измеряет задержку.
+    /// Возвращает время ответа в секундах, либо ошибку.
+    func pingCurrentServer() async throws -> TimeInterval
 }
 
 /// Информация о сервере из Navigator

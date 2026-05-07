@@ -8,6 +8,7 @@
 import SwiftUI
 import Observation
 import BFNetworking
+import BFCore
 
 @Observable
 final class SettingsViewModel {
@@ -33,18 +34,22 @@ final class SettingsViewModel {
         // Загружаем настройки хранилища
         let settings = TokenStorageSettings()
         self.selectedStorageType = settings.storageType
-
-        self.serverInfo = ServerInfo(
-            name: "BarkFluff Server",
-            version: "1.0.0",
-            description: "Основной сервер BarkFluff"
-        )
     }
 
     func loadSettings() async {
         isLoading = true
         await loadSessions()
+        await loadServerInfo()
         isLoading = false
+    }
+
+    /// Подтянуть актуальные данные о сервере из ServerDiscoveryService.
+    /// Если соединение ещё не установлено — оставляет `serverInfo` как есть (UI покажет «Не подключено»).
+    func loadServerInfo() async {
+        guard let dc = dependencyContainer else { return }
+        if let info = await dc.serverDiscoveryService.getCurrentServer() {
+            self.serverInfo = info
+        }
     }
 
     // MARK: - Sessions
@@ -157,8 +162,3 @@ final class SettingsViewModel {
     }
 }
 
-struct ServerInfo {
-    let name: String
-    let version: String
-    let description: String?
-}

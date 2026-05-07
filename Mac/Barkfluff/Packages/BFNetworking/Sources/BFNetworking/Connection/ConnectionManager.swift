@@ -48,6 +48,11 @@ public actor ConnectionManager {
     public private(set) var serverInfo: ServerInfoDTO?
     public private(set) var isBootstrapped = false
 
+    /// Снимок известных эндпоинтов сервисов. Возвращается копией, чтобы не делиться внутренним состоянием.
+    public func endpoints() -> [ServiceKind: ServiceEndpoint] {
+        serviceEndpoints
+    }
+
     /// DeviceMetadataInterceptor — добавляет метаданные устройства во ВСЕ запросы
     private var deviceMetadataInterceptor: (any ClientInterceptor)?
 
@@ -128,7 +133,9 @@ public actor ConnectionManager {
             name: response.name,
             version: "",
             description: response.description_p.isEmpty ? nil : response.description_p,
-            color: response.hasColor ? response.color.mainHex : nil
+            color: response.hasColor ? response.color.mainHex : nil,
+            publicName: response.publicName.isEmpty ? nil : response.publicName,
+            location: response.location.isEmpty ? nil : response.location
         )
         serverInfo = info
         isBootstrapped = true

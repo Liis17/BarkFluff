@@ -46,7 +46,9 @@ public actor ServerDiscoveryService: ServerDiscoveryServiceProtocol {
             name: serverInfo.name,
             version: serverInfo.version,
             description: serverInfo.description,
-            color: serverInfo.color.map { ServerColor(hex: $0) }
+            color: serverInfo.color.map { ServerColor(hex: $0) },
+            publicName: serverInfo.publicName,
+            location: serverInfo.location
         )
 
         currentServerValue = server
@@ -94,5 +96,22 @@ public actor ServerDiscoveryService: ServerDiscoveryServiceProtocol {
     public func disconnect() async {
         await connectionManager.shutdown()
         currentServerValue = nil
+    }
+
+    public func currentServerEndpoint() async -> (host: String, port: Int)? {
+        guard let host = await tokenProvider.savedServerHost,
+              let port = await tokenProvider.savedServerPort else {
+            return nil
+        }
+        return (host, port)
+    }
+
+    public func pingCurrentServer() async throws -> TimeInterval {
+        guard let endpoint = await currentServerEndpoint() else {
+            throw ConnectionError.notBootstrapped
+        }
+        let start = Date()
+        _ = try await beaconRepository.getServerInfo(host: endpoint.host, port: endpoint.port)
+        return Date().timeIntervalSince(start)
     }
 }

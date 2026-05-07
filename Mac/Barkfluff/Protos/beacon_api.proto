@@ -35,6 +35,10 @@ message GetServerInfoResponse {
   Service onliner = 9; // Микросервис onliner
 
   Service fast_auth = 10; // Микросервис fast_auth
+
+  string public_name = 11; // Публичное имя сервера (@servername)
+
+  string location = 12; // Локация сервера
 }
 
 message ServerColor {

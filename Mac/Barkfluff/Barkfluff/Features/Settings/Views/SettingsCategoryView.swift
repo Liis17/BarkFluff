@@ -23,7 +23,7 @@ struct SettingsCategoryView: View {
         case .general:
             GeneralSettingsView()
         case .notifications:
-            SettingsPlaceholderView(category: .notifications)
+            NotificationsSettingsView()
         case .privacy:
             SecuritySettingsView(viewModel: container.settingsViewModel)
         case .cloud:
@@ -32,8 +32,10 @@ struct SettingsCategoryView: View {
             CacheSettingsView()
         case .activeSessions:
             SessionsView(viewModel: container.settingsViewModel)
-        case .about:
-            AboutSettingsView(viewModel: container.settingsViewModel)
+        case .aboutApp:
+            AboutAppSettingsView()
+        case .aboutServer:
+            AboutServerSettingsView(serverViewModel: container.settingsViewModel)
         }
     }
 }

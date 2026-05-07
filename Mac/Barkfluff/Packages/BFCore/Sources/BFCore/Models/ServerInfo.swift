@@ -14,19 +14,31 @@ public struct ServerInfo: Identifiable, Hashable, Sendable {
     public let version: String
     public let description: String?
     public let color: ServerColor?
+    public let publicName: String?
+    public let location: String?
+
+    /// Отображаемое публичное имя в формате `@servername`. Пусто, если бэкенд его не отдал.
+    public var publicHandle: String? {
+        guard let name = publicName, !name.isEmpty else { return nil }
+        return name.hasPrefix("@") ? name : "@\(name)"
+    }
 
     public init(
         id: String = UUID().uuidString,
         name: String,
         version: String,
         description: String? = nil,
-        color: ServerColor? = nil
+        color: ServerColor? = nil,
+        publicName: String? = nil,
+        location: String? = nil
     ) {
         self.id = id
         self.name = name
         self.version = version
         self.description = description
         self.color = color
+        self.publicName = publicName
+        self.location = location
     }
 }
 
