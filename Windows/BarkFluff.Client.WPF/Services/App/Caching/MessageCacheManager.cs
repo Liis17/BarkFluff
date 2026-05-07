@@ -85,6 +85,21 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
             return placeholder;
         }
 
+        /// <summary>
+        /// Async-версия <see cref="GetMessages"/>. Выполняет LiteDB-запрос в пуле потоков,
+        /// чтобы не блокировать UI на чтении истории сообщений из локального кеша.
+        /// </summary>
+        public Task<List<MessageModel>> GetMessagesAsync(string chatId, long fromMessageId, int offset)
+            => Task.Run(() => GetMessages(chatId, fromMessageId, offset));
+
+        /// <summary>
+        /// Async-версия <see cref="GetChatList"/>. Выполняет LiteDB-запрос в пуле потоков,
+        /// чтобы не блокировать UI.
+        /// </summary>
+        public Task<List<ChatCacheClass>> GetChatListAsync()
+            => Task.Run(() => GetChatList());
+
+        [Obsolete("Используйте GetMessagesAsync, чтобы не блокировать UI-поток LiteDB-запросом.")]
         public List<MessageModel> GetMessages(string chatId, long fromMessageId, int offset)
         {
             lock (_lock)
@@ -115,6 +130,7 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
                 return new List<MessageModel>();
             }
         }
+        [Obsolete("Используйте GetChatListAsync, чтобы не блокировать UI-поток LiteDB-запросом.")]
         public List<ChatCacheClass> GetChatList()
         {
             lock (_lock)
@@ -122,6 +138,27 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
                 return _chats.FindAll().ToList();
             }
         }
+        /// <summary>
+        /// Batch-сохранение сообщений в кеш в фоновом потоке.
+        /// Используется в горячих путях UI (открытие чата, пагинация истории),
+        /// чтобы не блокировать поток UI N последовательными LiteDB-апсёртами.
+        /// </summary>
+        public Task SaveMessagesBatchAsync(string chatId, string chatName, IEnumerable<MessageModel> messages, MessageOperation operation)
+        {
+            if (messages == null) return Task.CompletedTask;
+            // Материализуем коллекцию заранее, чтобы исключить параллельную модификацию вызывающим кодом.
+            var snapshot = messages as IList<MessageModel> ?? messages.ToList();
+            if (snapshot.Count == 0) return Task.CompletedTask;
+
+            return Task.Run(() =>
+            {
+                foreach (var msg in snapshot)
+                {
+                    SaveMessage(chatId, chatName, msg, operation);
+                }
+            });
+        }
+
         public void SaveMessage(string chatId, string chatName, MessageModel message, MessageOperation operation)
         {
             lock (_lock)
