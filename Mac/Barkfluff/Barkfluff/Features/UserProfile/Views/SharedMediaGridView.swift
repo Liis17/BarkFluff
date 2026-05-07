@@ -64,29 +64,21 @@ struct SharedMediaThumbnailView: View {
     let allItems: [SharedMediaItem]
 
     @Environment(DependencyContainer.self) private var container
-    @State private var imageURL: URL?
-    @State private var isLoading = true
 
     var body: some View {
         Color.clear
             .overlay {
-                if let imageURL {
-                    LazyImage(url: imageURL) { state in
-                        if let image = state.image {
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                        } else if state.isLoading {
-                            loadingPlaceholder
-                        } else {
-                            errorPlaceholder
-                        }
-                    }
-                } else if isLoading {
-                    loadingPlaceholder
-                } else {
-                    errorPlaceholder
-                }
+                CachedImageView(
+                    fileID: previewCacheFileID,
+                    type: .preview,
+                    presignedURLHint: item.previewURL,
+                    content: { image in
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    },
+                    placeholder: { loadingPlaceholder }
+                )
             }
             .clipped()
             .overlay {
@@ -116,12 +108,19 @@ struct SharedMediaThumbnailView: View {
                 }
             }
             .contentShape(Rectangle())
-            .task {
-                await resolvePreviewURL()
-            }
             .onTapGesture {
                 openMediaViewer()
             }
+    }
+
+    private var previewCacheFileID: String {
+        if let previewFileID = item.previewFileID, !previewFileID.isEmpty {
+            return previewFileID
+        }
+        if let url = item.previewURL, let fid = S3URLParser.fileID(from: url) {
+            return fid
+        }
+        return item.fileID
     }
 
     private var loadingPlaceholder: some View {
@@ -135,24 +134,6 @@ struct SharedMediaThumbnailView: View {
                 Image(systemName: "photo")
                     .foregroundStyle(.quaternary)
             }
-    }
-
-    private func resolvePreviewURL() async {
-        // 1. Попробовать previewURL напрямую
-        if let preview = item.previewURL, !preview.isEmpty {
-            imageURL = URL(string: preview)
-            isLoading = false
-            return
-        }
-
-        // 2. Если нет — запросить через FileService
-        do {
-            let urlString = try await fileService.getDownloadURL(fileID: item.fileID)
-            imageURL = URL(string: urlString)
-        } catch {
-            // Ошибка — покажем placeholder
-        }
-        isLoading = false
     }
 
     private func openMediaViewer() {

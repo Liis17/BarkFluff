@@ -408,7 +408,9 @@ struct FullScreenMediaViewerView: View {
                 try await FileDownloadHelper.downloadToDownloads(
                     fileID: attachment.fileID,
                     fileName: attachment.fileName,
-                    fileService: container.fileService
+                    fileService: container.fileService,
+                    mediaCacheManager: container.mediaCacheManager,
+                    cacheType: attachment.type.cacheType
                 )
             } catch {
                 // Ошибка скачивания — можно добавить алерт
@@ -424,7 +426,9 @@ struct FullScreenMediaViewerView: View {
                 let fileURL = try await FileDownloadHelper.downloadToTemp(
                     fileID: attachment.fileID,
                     fileName: attachment.fileName,
-                    fileService: container.fileService
+                    fileService: container.fileService,
+                    mediaCacheManager: container.mediaCacheManager,
+                    cacheType: attachment.type.cacheType
                 )
 
                 guard let window = FullScreenMediaWindowManager.shared.currentWindow,
@@ -492,27 +496,22 @@ struct ThumbnailView: View {
     let attachment: MessageAttachment
     let isSelected: Bool
 
-    @Environment(DependencyContainer.self) private var container
-    @State private var thumbnailURL: URL?
-
     private let thumbnailSize: CGFloat = 52
 
     var body: some View {
         ZStack {
-            if let url = thumbnailURL {
-                LazyImage(url: url) { state in
-                    if let image = state.image {
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } else {
-                        placeholderView
-                    }
-                }
-                .processors([.resize(size: CGSize(width: thumbnailSize * 2, height: thumbnailSize * 2))])
-            } else {
-                placeholderView
-            }
+            CachedImageView(
+                fileID: previewCacheFileID,
+                type: .preview,
+                presignedURLHint: attachment.previewURL,
+                processors: [.resize(size: CGSize(width: thumbnailSize * 2, height: thumbnailSize * 2))],
+                content: { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                },
+                placeholder: { placeholderView }
+            )
 
             // Бейдж для видео
             if attachment.type == .video {
@@ -528,9 +527,6 @@ struct ThumbnailView: View {
                 .stroke(isSelected ? .white : .clear, lineWidth: 2)
         )
         .opacity(isSelected ? 1 : 0.6)
-        .task {
-            await loadThumbnail()
-        }
     }
 
     private var placeholderView: some View {
@@ -543,22 +539,14 @@ struct ThumbnailView: View {
             }
     }
 
-    private func loadThumbnail() async {
-        do {
-            let fileID: String
-            if let previewFileID = attachment.previewFileID, !previewFileID.isEmpty {
-                fileID = previewFileID
-            } else {
-                fileID = attachment.fileID
-            }
-
-            if let previewURL = attachment.previewURL, !previewURL.isEmpty {
-                thumbnailURL = URL(string: previewURL)
-            } else {
-                let urlString = try await container.fileService.getDownloadURL(fileID: fileID)
-                thumbnailURL = URL(string: urlString)
-            }
-        } catch {}
+    private var previewCacheFileID: String {
+        if let previewFileID = attachment.previewFileID, !previewFileID.isEmpty {
+            return previewFileID
+        }
+        if let url = attachment.previewURL, let fid = S3URLParser.fileID(from: url) {
+            return fid
+        }
+        return attachment.fileID
     }
 }
 
@@ -672,12 +660,19 @@ struct FullScreenImageView: View {
 
     private func loadImage() async {
         do {
-            if let previewURL = attachment.previewURL, !previewURL.isEmpty {
-                imageURL = URL(string: previewURL)
-            } else {
-                let urlString = try await container.fileService.getDownloadURL(fileID: attachment.fileID)
-                imageURL = URL(string: urlString)
+            // Оригинал — всегда через кеш-менеджер по fileID.
+            // Для GIF/стикеров тип кеша другой, но логика та же.
+            let cacheType: CachedFileType
+            switch attachment.type {
+            case .gif: cacheType = .gif
+            case .sticker: cacheType = .sticker
+            default: cacheType = .image
             }
+            let url = try await container.mediaCacheManager.resolveURL(
+                for: attachment.fileID,
+                type: cacheType
+            )
+            imageURL = url
         } catch {}
         isLoading = false
     }
