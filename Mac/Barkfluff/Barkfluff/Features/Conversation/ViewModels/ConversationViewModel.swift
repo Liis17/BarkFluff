@@ -309,12 +309,16 @@ final class ConversationViewModel {
                 for attachment in attachments {
                     uploadProgress[attachment.id] = 0.0
                     var data = try attachment.loadData()
+                    var fileName = attachment.displayName
                     uploadProgress[attachment.id] = 0.1
                     if attachment.uploadFileType == .messageAttachmentImage {
-                        if let optimized = optimizeImage(data) { data = optimized }
+                        if let optimized = optimizeImage(data) {
+                            data = optimized
+                            fileName = jpegFileName(from: fileName)
+                        }
                     }
                     let fileID = try await fileService.uploadFile(
-                        data: data, fileName: attachment.displayName, fileType: attachment.uploadFileType
+                        data: data, fileName: fileName, fileType: attachment.uploadFileType
                     )
                     fileIDs.append(fileID)
                     uploadProgress[attachment.id] = 1.0
@@ -370,9 +374,13 @@ final class ConversationViewModel {
 
             for (index, attachment) in attachments.enumerated() {
                 var data = try attachment.loadData()
+                var fileName = attachment.displayName
 
                 if attachment.uploadFileType == .messageAttachmentImage {
-                    if let optimized = optimizeImage(data) { data = optimized }
+                    if let optimized = optimizeImage(data) {
+                        data = optimized
+                        fileName = jpegFileName(from: fileName)
+                    }
                 }
 
                 let baseProgress = Double(index) / totalAttachments
@@ -393,7 +401,7 @@ final class ConversationViewModel {
                 }
 
                 let fileID = try await fileService.uploadFile(
-                    data: data, fileName: attachment.displayName, fileType: attachment.uploadFileType
+                    data: data, fileName: fileName, fileType: attachment.uploadFileType
                 )
                 fileIDs.append(fileID)
                 progressTask.cancel()
@@ -580,34 +588,49 @@ final class ConversationViewModel {
 
     // MARK: - Image Optimization
 
-    /// Оптимизация изображения перед отправкой
-    /// - Ресайз до max 2048px по большей стороне
-    /// - Сжатие JPEG с качеством 0.85
-    /// - Возврат оптимизированных данных
+    /// Параметры обработки изображений согласно dd.md (раздел «Изображения»):
+    /// макс. 2500 px по длинной стороне, JPEG 90%, итоговый размер ≤ 2 МБ.
+    private static let maxImageDimension: CGFloat = 2500
+    private static let maxImageBytes: Int = 2 * 1024 * 1024
+    /// Стартуем с 0.9 (целевое качество). При превышении 2 МБ — пошагово вниз.
+    private static let jpegQualitySteps: [CGFloat] = [0.9, 0.8, 0.7, 0.6, 0.5]
+
+    /// Оптимизация изображения перед отправкой:
+    /// - ресайз до 2500 px по большей стороне с сохранением пропорций;
+    /// - JPEG 90%, при превышении 2 МБ — пошаговое снижение качества до укладывания в лимит.
     private func optimizeImage(_ data: Data) -> Data? {
-        guard let image = NSImage(data: data) else { return nil }
+        guard let source = NSImage(data: data) else { return nil }
 
-        let maxDimension: CGFloat = 2048
-        let size = image.size
-
-        // Нужен ли ресайз?
-        guard size.width > maxDimension || size.height > maxDimension else {
-            // Просто пережимаем в JPEG
-            return image.jpegData(compressionQuality: 0.85) ?? data
+        let size = source.size
+        let scaled: NSImage
+        if size.width > Self.maxImageDimension || size.height > Self.maxImageDimension {
+            let ratio = min(Self.maxImageDimension / size.width, Self.maxImageDimension / size.height)
+            let newSize = CGSize(width: size.width * ratio, height: size.height * ratio)
+            scaled = NSImage(size: newSize)
+            scaled.lockFocus()
+            source.draw(in: NSRect(origin: .zero, size: newSize),
+                        from: NSRect(origin: .zero, size: size),
+                        operation: .copy,
+                        fraction: 1.0)
+            scaled.unlockFocus()
+        } else {
+            scaled = source
         }
 
-        let ratio = min(maxDimension / size.width, maxDimension / size.height)
-        let newSize = CGSize(width: size.width * ratio, height: size.height * ratio)
+        var lastEncoded: Data?
+        for quality in Self.jpegQualitySteps {
+            guard let encoded = scaled.jpegData(compressionQuality: quality) else { continue }
+            lastEncoded = encoded
+            if encoded.count <= Self.maxImageBytes { return encoded }
+        }
+        return lastEncoded ?? data
+    }
 
-        let resizedImage = NSImage(size: newSize)
-        resizedImage.lockFocus()
-        image.draw(in: NSRect(origin: .zero, size: newSize),
-                   from: NSRect(origin: .zero, size: size),
-                   operation: .copy,
-                   fraction: 1.0)
-        resizedImage.unlockFocus()
-
-        return resizedImage.jpegData(compressionQuality: 0.85) ?? data
+    /// Заменяет расширение в имени файла на `.jpg` — после `optimizeImage`
+    /// байты гарантированно JPEG, и Content-Type на multipart-загрузке должен совпасть.
+    private func jpegFileName(from original: String) -> String {
+        let stem = (original as NSString).deletingPathExtension
+        return stem.isEmpty ? "image.jpg" : "\(stem).jpg"
     }
 
     // MARK: - Real-time Updates
