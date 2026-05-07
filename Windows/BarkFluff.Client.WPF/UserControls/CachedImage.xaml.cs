@@ -206,96 +206,142 @@ namespace BarkFluff.Client.WPF.UserControls
         }
 
         /// <summary>
-        /// Устанавливает изображение по пути
+        /// Устанавливает изображение по пути.
+        /// Декодирование (включая WebP→PNG) выполняется в фоновом потоке через Task.Run,
+        /// чтобы не блокировать UI на больших картинках; готовый <see cref="BitmapImage"/>
+        /// замораживается и устанавливается в источник из UI-потока.
         /// </summary>
-        private void SetImage(string imagePath)
+        private async void SetImage(string imagePath)
         {
+            // Placeholder — pack:// URI: декод дешёвый, ставим синхронно.
+            if (FileCacheService.IsPlaceholder(imagePath))
+            {
+                SetPlaceholderFromPath(imagePath);
+                return;
+            }
+
+            // Считаем целевой DecodePixelWidth до ухода в фон — VisualTreeHelper.GetDpi
+            // должен вызываться на UI-потоке.
+            var decodeWidth = ResolveDecodePixelWidth();
+            var isWebP = imagePath.EndsWith(".webp", StringComparison.OrdinalIgnoreCase);
+
+            BitmapImage? bitmapImage;
             try
             {
-                // WebP-файлы (старый кеш или внешние) конвертируем в PNG на лету,
-                // т.к. WPF BitmapImage через WIC может отображать WebP без прозрачности
-                if (!FileCacheService.IsPlaceholder(imagePath)
-                    && imagePath.EndsWith(".webp", StringComparison.OrdinalIgnoreCase)
-                    && File.Exists(imagePath))
+                bitmapImage = await Task.Run(() =>
                 {
-                    SetImageFromWebP(imagePath);
-                    return;
-                }
-
-                var bitmapImage = new BitmapImage();
-                bitmapImage.BeginInit();
-                bitmapImage.UriSource = new Uri(imagePath, UriKind.RelativeOrAbsolute);
-                bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
-
-                if (DecodePixelWidth.HasValue && DecodePixelWidth.Value > 0)
-                {
-                    bitmapImage.DecodePixelWidth = DecodePixelWidth.Value;
-                }
-
-                bitmapImage.EndInit();
-
-                if (bitmapImage.CanFreeze)
-                {
-                    bitmapImage.Freeze();
-                }
-
-                ContentImage.Source = bitmapImage;
-
-                // Для плейсхолдеров событие не вызываем — иначе подписчики
-                // зафиксируют размер контейнера по квадратному плейсхолдеру.
-                if (!FileCacheService.IsPlaceholder(imagePath)
-                    && bitmapImage.PixelWidth > 0 && bitmapImage.PixelHeight > 0)
-                {
-                    ImageLoaded?.Invoke(bitmapImage.PixelWidth, bitmapImage.PixelHeight);
-                }
+                    try
+                    {
+                        return isWebP && File.Exists(imagePath)
+                            ? DecodeWebPToBitmap(imagePath, decodeWidth)
+                            : DecodeBitmap(imagePath, decodeWidth);
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                });
             }
             catch
             {
+                bitmapImage = null;
+            }
+
+            // Контрол мог быть выгружен или _fileId сменился — не подменяем актуальное изображение.
+            if (!IsLoaded) return;
+
+            if (bitmapImage == null)
+            {
                 SetPlaceholder();
+                return;
+            }
+
+            ContentImage.Source = bitmapImage;
+
+            if (bitmapImage.PixelWidth > 0 && bitmapImage.PixelHeight > 0)
+            {
+                ImageLoaded?.Invoke(bitmapImage.PixelWidth, bitmapImage.PixelHeight);
             }
         }
 
         /// <summary>
-        /// Загружает WebP-файл, конвертирует в PNG через ImageSharp (сохраняя прозрачность)
-        /// и устанавливает результат как источник изображения.
+        /// Считает целевой <c>DecodePixelWidth</c>: если задан явно — используем его,
+        /// иначе берём ActualWidth контрола, скорректированный на DPI монитора.
         /// </summary>
-        private void SetImageFromWebP(string webpPath)
+        private int ResolveDecodePixelWidth()
         {
+            if (DecodePixelWidth.HasValue && DecodePixelWidth.Value > 0)
+            {
+                return DecodePixelWidth.Value;
+            }
+
             try
             {
-                var webpBytes = File.ReadAllBytes(webpPath);
-                using var image = SixLabors.ImageSharp.Image.Load<Rgba32>(webpBytes);
-                using var ms = new MemoryStream();
-                image.SaveAsPng(ms);
-                ms.Position = 0;
+                double w = ActualWidth > 0 ? ActualWidth : Width;
+                if (double.IsNaN(w) || w <= 0) return 0;
 
-                var bitmapImage = new BitmapImage();
-                bitmapImage.BeginInit();
-                bitmapImage.StreamSource = ms;
-                bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
-
-                if (DecodePixelWidth.HasValue && DecodePixelWidth.Value > 0)
-                {
-                    bitmapImage.DecodePixelWidth = DecodePixelWidth.Value;
-                }
-
-                bitmapImage.EndInit();
-
-                if (bitmapImage.CanFreeze)
-                {
-                    bitmapImage.Freeze();
-                }
-
-                ContentImage.Source = bitmapImage;
-
-                if (bitmapImage.PixelWidth > 0 && bitmapImage.PixelHeight > 0)
-                {
-                    ImageLoaded?.Invoke(bitmapImage.PixelWidth, bitmapImage.PixelHeight);
-                }
+                var dpi = VisualTreeHelper.GetDpi(this);
+                var scale = dpi.DpiScaleX > 0 ? dpi.DpiScaleX : 1.0;
+                var px = (int)Math.Ceiling(w * scale);
+                return px > 0 ? px : 0;
             }
             catch
             {
-                SetPlaceholder();
+                return 0;
+            }
+        }
+
+        private static BitmapImage DecodeBitmap(string path, int decodePixelWidth)
+        {
+            var bitmapImage = new BitmapImage();
+            bitmapImage.BeginInit();
+            bitmapImage.UriSource = new Uri(path, UriKind.RelativeOrAbsolute);
+            bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+            if (decodePixelWidth > 0)
+            {
+                bitmapImage.DecodePixelWidth = decodePixelWidth;
+            }
+            bitmapImage.EndInit();
+            if (bitmapImage.CanFreeze)
+            {
+                bitmapImage.Freeze();
+            }
+            return bitmapImage;
+        }
+
+        private static BitmapImage DecodeWebPToBitmap(string webpPath, int decodePixelWidth)
+        {
+            var webpBytes = File.ReadAllBytes(webpPath);
+            using var image = SixLabors.ImageSharp.Image.Load<Rgba32>(webpBytes);
+            using var ms = new MemoryStream();
+            image.SaveAsPng(ms);
+            ms.Position = 0;
+
+            var bitmapImage = new BitmapImage();
+            bitmapImage.BeginInit();
+            bitmapImage.StreamSource = ms;
+            bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+            if (decodePixelWidth > 0)
+            {
+                bitmapImage.DecodePixelWidth = decodePixelWidth;
+            }
+            bitmapImage.EndInit();
+            if (bitmapImage.CanFreeze)
+            {
+                bitmapImage.Freeze();
+            }
+            return bitmapImage;
+        }
+
+        private void SetPlaceholderFromPath(string placeholderPath)
+        {
+            try
+            {
+                ContentImage.Source = new BitmapImage(new Uri(placeholderPath, UriKind.RelativeOrAbsolute));
+            }
+            catch
+            {
+                // Если даже placeholder не загрузился — оставляем как есть.
             }
         }
 

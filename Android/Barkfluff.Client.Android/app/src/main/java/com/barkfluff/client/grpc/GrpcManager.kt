@@ -701,13 +701,13 @@ class GrpcManager {
                     response.color.mainHex,
                     response.color.hardHex
                 ),
-                identityEndpoint = "${response.identity.endpoint.host}:${response.identity.endpoint.port}",
-                usersEndpoint = "${response.users.endpoint.host}:${response.users.endpoint.port}",
-                filesEndpoint = "${response.files.endpoint.host}:${response.files.endpoint.port}",
-                messagesEndpoint = "${response.messages.endpoint.host}:${response.messages.endpoint.port}",
-                updatesEndpoint = "${response.updates.endpoint.host}:${response.updates.endpoint.port}",
-                onlinerEndpoint = "${response.onliner.endpoint.host}:${response.onliner.endpoint.port}",
-                fastAuthEndpoint = "${response.fastAuth.endpoint.host}:${response.fastAuth.endpoint.port}"
+                identityEndpoint = buildEndpointUrl(response.identity.endpoint.host, response.identity.endpoint.port, response.identity.tlsEnabled),
+                usersEndpoint = buildEndpointUrl(response.users.endpoint.host, response.users.endpoint.port, response.users.tlsEnabled),
+                filesEndpoint = buildEndpointUrl(response.files.endpoint.host, response.files.endpoint.port, response.files.tlsEnabled),
+                messagesEndpoint = buildEndpointUrl(response.messages.endpoint.host, response.messages.endpoint.port, response.messages.tlsEnabled),
+                updatesEndpoint = buildEndpointUrl(response.updates.endpoint.host, response.updates.endpoint.port, response.updates.tlsEnabled),
+                onlinerEndpoint = buildEndpointUrl(response.onliner.endpoint.host, response.onliner.endpoint.port, response.onliner.tlsEnabled),
+                fastAuthEndpoint = buildEndpointUrl(response.fastAuth.endpoint.host, response.fastAuth.endpoint.port, response.fastAuth.tlsEnabled)
             )
 
             Log.d(TAG, "Получена информация о сервере: ${serverInfo.name}")
@@ -721,6 +721,23 @@ class GrpcManager {
             }
             Result.failure(Exception("Ошибка получения информации о сервере: ${e.message}"))
         }
+    }
+
+    /**
+     * Собирает URL вида {scheme}://{host}:{port}, где scheme выбирается
+     * по флагу tlsEnabled. Если в host уже есть схема — она срезается,
+     * чтобы избежать двойного префикса.
+     */
+    private fun buildEndpointUrl(host: String, port: Int, tlsEnabled: Boolean): String {
+        var cleanHost = host
+        if (cleanHost.startsWith("https://", ignoreCase = true)) {
+            cleanHost = cleanHost.substring(8)
+        } else if (cleanHost.startsWith("http://", ignoreCase = true)) {
+            cleanHost = cleanHost.substring(7)
+        }
+        cleanHost = cleanHost.trimEnd('/')
+        val scheme = if (tlsEnabled) "https" else "http"
+        return "$scheme://$cleanHost:$port"
     }
 
     private fun createChannel(address: String): ManagedChannel {
