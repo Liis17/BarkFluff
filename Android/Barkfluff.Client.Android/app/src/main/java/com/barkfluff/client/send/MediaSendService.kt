@@ -33,6 +33,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.isActive
 import java.io.File
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.resume
@@ -99,7 +101,11 @@ class MediaSendService : Service() {
         if (processor?.isActive == true) return
         processor = scope.launch {
             try {
-                for (job in queue) {
+                while (isActive) {
+                    // Ждём job до 1 секунды; если ничего нет — выходим и останавливаем сервис.
+                    // Race-кейс с новым enqueue: enqueue вызовет startForegroundService → onStartCommand → startProcessor()
+                    // снова, который запустит новую корутину (предыдущая уже completed).
+                    val job = withTimeoutOrNull(1000L) { queue.receive() } ?: break
                     activeJob.set(job)
                     runCatching { processJob(job) }
                         .onFailure { Log.e(TAG, "Job ${job.jobId} failed", it) }
@@ -247,6 +253,8 @@ class MediaSendService : Service() {
                 val clip = MediaItem.ClippingConfiguration.Builder()
                     .setStartPositionMs(spec.trimStartMs.coerceAtLeast(0))
                 if (spec.trimEndMs > 0) clip.setEndPositionMs(spec.trimEndMs)
+                // Frame-accurate cut вместо округления до ближайшего key-frame
+                clip.setStartsAtKeyFrame(false)
                 mediaItemBuilder.setClippingConfiguration(clip.build())
             }
             val mediaItem = mediaItemBuilder.build()

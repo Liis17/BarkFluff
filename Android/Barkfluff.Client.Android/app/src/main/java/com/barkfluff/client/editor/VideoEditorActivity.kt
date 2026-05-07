@@ -124,13 +124,13 @@ class VideoEditorActivity : AppCompatActivity() {
 
     private fun applyInsets() {
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
-            val top = insets.getInsets(WindowInsetsCompat.Type.systemBars()).top
-            val bottom = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom
+            val sysBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
             binding.topBar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                updateMargins(top = top)
+                updateMargins(top = sysBars.top)
             }
             binding.bottomBar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                updateMargins(bottom = bottom)
+                updateMargins(bottom = maxOf(ime, sysBars.bottom))
             }
             insets
         }
@@ -197,10 +197,8 @@ class VideoEditorActivity : AppCompatActivity() {
                 if (state == androidx.media3.common.Player.STATE_READY) {
                     val duration = p.duration.coerceAtLeast(0L)
                     binding.trimmer.setVideo(uri, duration)
-                    val curSpec = VideoEditCache.get(uri) ?: EditedVideoSpec(uri = uri)
-                    if (curSpec.trimEndMs <= 0) {
-                        VideoEditCache.put(curSpec.copy(trimEndMs = duration))
-                    }
+                    // НЕ записываем trimEndMs=duration в кеш — оставляем -1 чтобы Transformer
+                    // не пытался клиппить до конца файла (frame-drift в последней секунде).
                     p.removeListener(this)
                 }
             }
@@ -220,7 +218,14 @@ class VideoEditorActivity : AppCompatActivity() {
         binding.trimmer.onRangeChanged = { startMs, endMs ->
             currentUri()?.let { uri ->
                 val cur = VideoEditCache.get(uri) ?: EditedVideoSpec(uri = uri)
-                VideoEditCache.put(cur.copy(trimStartMs = startMs, trimEndMs = endMs))
+                val total = binding.trimmer.totalDurationMs()
+                val isFullRange = startMs <= 0 && (total <= 0 || endMs >= total - 50)
+                val newSpec = if (isFullRange) {
+                    cur.copy(trimStartMs = 0L, trimEndMs = -1L)
+                } else {
+                    cur.copy(trimStartMs = startMs, trimEndMs = endMs)
+                }
+                VideoEditCache.put(newSpec)
             }
         }
         binding.trimmer.onSeekRequested = { timeMs ->
