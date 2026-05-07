@@ -207,10 +207,7 @@
   function show() {
     loadAll();
     if (refreshTimer) clearInterval(refreshTimer);
-    refreshTimer = setInterval(() => {
-      if (App.getTweak("live") !== "on") return;
-      loadAll();
-    }, 15000);
+    refreshTimer = setInterval(() => loadAll(), 15000);
   }
 
   App.registerScreen("services", { render: build, show });

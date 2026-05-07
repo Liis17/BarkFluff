@@ -155,9 +155,6 @@
           <span class="pulse-dot"></span>
           <span id="systemPulseText">SYS · OK</span>
         </div>
-        <button class="icon-btn" id="tweaksToggleBtn" data-tip="Tweaks">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
-        </button>
         <button class="icon-btn" id="switchToLegacyBtn" data-tip="Старая версия">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
         </button>
@@ -205,61 +202,6 @@
   </div>
 
   <!-- ============================================ -->
-  <!-- TWEAKS PANEL -->
-  <!-- ============================================ -->
-  <div class="tweaks-panel" id="tweaksPanel">
-    <div class="tweaks-head" id="tweaksHead">
-      <div class="tweaks-title">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>
-        Tweaks
-      </div>
-      <button class="icon-btn" id="tweaksCloseBtn" style="width:22px;height:22px;">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
-      </button>
-    </div>
-    <div class="tweaks-body">
-
-      <div class="tweak-row">
-        <div class="tweak-label">Акцент <span class="tweak-val mono" id="tweakAccentVal">indigo</span></div>
-        <div class="tweak-swatches" id="tweakAccent">
-          <div class="tweak-sw active" data-val="indigo" style="background:linear-gradient(135deg,#5d6cff,#8a5cff);color:#5d6cff"></div>
-          <div class="tweak-sw" data-val="violet" style="background:linear-gradient(135deg,#8a5cff,#b557ff);color:#8a5cff"></div>
-          <div class="tweak-sw" data-val="cyan" style="background:linear-gradient(135deg,#00d6c1,#3ad6ff);color:#00d6c1"></div>
-          <div class="tweak-sw" data-val="amber" style="background:linear-gradient(135deg,#ffae3b,#ff7a3b);color:#ffae3b"></div>
-          <div class="tweak-sw" data-val="lime" style="background:linear-gradient(135deg,#9eff5d,#3aff9d);color:#9eff5d"></div>
-        </div>
-      </div>
-
-      <div class="tweak-row">
-        <div class="tweak-label">Плотность <span class="tweak-val mono" id="tweakDensityVal">cozy</span></div>
-        <div class="seg" id="tweakDensity">
-          <button data-val="comfy">Просторно</button>
-          <button class="active" data-val="cozy">Уютно</button>
-          <button data-val="dense">Плотно</button>
-        </div>
-      </div>
-
-      <div class="tweak-row">
-        <div class="tweak-label">Радиусы <span class="tweak-val mono" id="tweakRadiusVal">default</span></div>
-        <div class="seg" id="tweakRadius">
-          <button data-val="sharp">Острые</button>
-          <button class="active" data-val="default">Обычные</button>
-          <button data-val="soft">Мягкие</button>
-        </div>
-      </div>
-
-      <div class="tweak-row">
-        <div class="tweak-label">Live-данные <span class="tweak-val mono" id="tweakLiveVal">on</span></div>
-        <div class="seg" id="tweakLive">
-          <button class="active" data-val="on">Вкл</button>
-          <button data-val="off">Выкл</button>
-        </div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- ============================================ -->
   <!-- TOAST -->
   <!-- ============================================ -->
   <div class="toast-stack" id="toastStack"></div>
@@ -267,14 +209,6 @@
   <!-- ============================================ -->
   <!-- SCRIPTS -->
   <!-- ============================================ -->
-  <script id="tweaks-defaults" type="application/json">
-    /*EDITMODE-BEGIN*/{
-      "accent": "amber",
-      "density": "comfy",
-      "radius": "default",
-      "live": "on"
-    }/*EDITMODE-END*/
-  </script>
 
   <!-- shared util & shell -->
   <script src="app.js"></script>

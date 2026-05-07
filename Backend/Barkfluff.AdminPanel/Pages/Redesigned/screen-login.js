@@ -191,7 +191,7 @@
               date.setTime(date.getTime() + 7 * 24 * 60 * 60 * 1000);
               document.cookie = "auth_token=" + encodeURIComponent(data.token) + "; expires=" + date.toUTCString() + "; path=/";
             }
-            setTimeout(() => { window.location.href = "/v2"; }, 600);
+            setTimeout(() => { window.location.href = "/v2/"; }, 600);
           } else if (data.status === 2) {
             stopPolling();
             resetForm();

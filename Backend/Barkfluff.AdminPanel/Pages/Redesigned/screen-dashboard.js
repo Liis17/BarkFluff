@@ -324,10 +324,7 @@
       loadServiceMetrics();
     }
     if (refreshTimer) clearInterval(refreshTimer);
-    refreshTimer = setInterval(() => {
-      if (App.getTweak("live") !== "on") return;
-      loadKpisAndTraffic();
-    }, 30000);
+    refreshTimer = setInterval(() => loadKpisAndTraffic(), 30000);
     if (uptimeTimer) clearInterval(uptimeTimer);
     uptimeTimer = setInterval(updateUptime, 1000);
   }

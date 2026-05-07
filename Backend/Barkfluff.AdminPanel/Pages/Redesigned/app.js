@@ -1,5 +1,5 @@
 /* =====================================================
-   BarkFluff Admin — App shell, router, kbar, tweaks, helpers
+   BarkFluff Admin — App shell, router, kbar, helpers
    ===================================================== */
 (function () {
   "use strict";
@@ -317,36 +317,6 @@
     if (it) it.click();
   }
 
-  /* ---------- tweaks ---------- */
-  const tweakState = { accent: "indigo", density: "cozy", radius: "default", live: "on" };
-  function applyTweaks() {
-    const app = $("#app");
-    app.dataset.accent = tweakState.accent;
-    app.dataset.density = tweakState.density;
-    app.dataset.radius = tweakState.radius;
-    app.dataset.live = tweakState.live;
-    $("#tweakAccentVal").textContent = tweakState.accent;
-    $("#tweakDensityVal").textContent = tweakState.density;
-    $("#tweakRadiusVal").textContent = tweakState.radius;
-    $("#tweakLiveVal").textContent = tweakState.live;
-    $$("#tweakAccent .tweak-sw").forEach(s => s.classList.toggle("active", s.dataset.val === tweakState.accent));
-    $$("#tweakDensity button").forEach(b => b.classList.toggle("active", b.dataset.val === tweakState.density));
-    $$("#tweakRadius button").forEach(b => b.classList.toggle("active", b.dataset.val === tweakState.radius));
-    $$("#tweakLive button").forEach(b => b.classList.toggle("active", b.dataset.val === tweakState.live));
-  }
-  function setTweak(k, v) {
-    tweakState[k] = v;
-    applyTweaks();
-    try {
-      window.parent.postMessage({ type: "__edit_mode_set_keys", edits: { [k]: v } }, "*");
-    } catch (_) {}
-  }
-  function openTweaks() { $("#tweaksPanel").classList.add("open"); }
-  function closeTweaks() {
-    $("#tweaksPanel").classList.remove("open");
-    try { window.parent.postMessage({ type: "__edit_mode_dismissed" }, "*"); } catch (_) {}
-  }
-
   /* ---------- sidebar collapse ---------- */
   function toggleSidebar() {
     const app = $("#app");
@@ -356,13 +326,6 @@
 
   /* ---------- init ---------- */
   function init() {
-    // load tweak defaults
-    try {
-      const raw = $("#tweaks-defaults").textContent.replace(/\/\*EDITMODE-(BEGIN|END)\*\//g, "").trim();
-      Object.assign(tweakState, JSON.parse(raw));
-    } catch (e) {}
-    applyTweaks();
-
     // sidebar nav
     $$("#sidebarNav .nav-item, #sidebarNav .nav-sub-item").forEach(a => {
       a.addEventListener("click", (e) => {
@@ -405,22 +368,6 @@
     $("#kbarTrigger").addEventListener("click", openKbar);
     $("#kbarOverlay").addEventListener("click", (e) => { if (e.target.id === "kbarOverlay") closeKbar(); });
     $("#kbarInput").addEventListener("input", (e) => renderKbarList(e.target.value));
-
-    // tweaks
-    $("#tweaksToggleBtn").addEventListener("click", () => $("#tweaksPanel").classList.toggle("open"));
-    $("#tweaksCloseBtn").addEventListener("click", closeTweaks);
-    $$("#tweakAccent .tweak-sw").forEach(s => s.addEventListener("click", () => setTweak("accent", s.dataset.val)));
-    $$("#tweakDensity button").forEach(b => b.addEventListener("click", () => setTweak("density", b.dataset.val)));
-    $$("#tweakRadius button").forEach(b => b.addEventListener("click", () => setTweak("radius", b.dataset.val)));
-    $$("#tweakLive button").forEach(b => b.addEventListener("click", () => setTweak("live", b.dataset.val)));
-
-    // edit-mode protocol
-    window.addEventListener("message", (e) => {
-      if (!e.data || typeof e.data !== "object") return;
-      if (e.data.type === "__activate_edit_mode") $("#tweaksPanel").classList.add("open");
-      if (e.data.type === "__deactivate_edit_mode") $("#tweaksPanel").classList.remove("open");
-    });
-    try { window.parent.postMessage({ type: "__edit_mode_available" }, "*"); } catch (_) {}
 
     // global keys
     document.addEventListener("keydown", (e) => {
@@ -534,8 +481,6 @@
     init, go, registerScreen,
     el, $, $$, fmt, icon, ICONS, toast,
     seedRng, sparkPath,
-    setTweak, getTweak: (k) => tweakState[k],
-    onTweakChange: (cb) => { window.addEventListener("__tweak", e => cb(e.detail)); },
     checkAuth, fillAuthInfo, fetchJson,
   };
 })();

@@ -254,7 +254,6 @@
     if (pollTimer) clearInterval(pollTimer);
     pollTimer = setInterval(() => {
       if (isPaused) return;
-      if (App.getTweak("live") !== "on") return;
       loadLogs();
     }, 5000);
   }
