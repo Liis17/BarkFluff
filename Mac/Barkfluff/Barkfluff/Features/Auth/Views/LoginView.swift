@@ -11,6 +11,7 @@ struct LoginView: View {
     @Environment(AppCoordinator.self) private var coordinator
     @Environment(DependencyContainer.self) private var container
     @State private var viewModel: LoginViewModel?
+    @State private var fastAuthViewModel: FastAuthViewModel?
     @State private var appeared = false
 
     var body: some View {
@@ -19,7 +20,17 @@ struct LoginView: View {
 
             VStack(spacing: Theme.Spacing.xxl) {
                 logoSection
-                if let viewModel { formCard(viewModel) }
+                if let viewModel {
+                    HStack(alignment: .top, spacing: Theme.Spacing.xxl) {
+                        formCard(viewModel)
+                        if let fastAuthViewModel {
+                            QRPanelView(viewModel: fastAuthViewModel)
+                                .opacity(appeared ? 1 : 0)
+                                .offset(y: appeared ? 0 : 12)
+                                .animation(.easeOut(duration: 0.4).delay(0.25), value: appeared)
+                        }
+                    }
+                }
             }
             .padding(Theme.Spacing.xxl)
         }
@@ -30,6 +41,21 @@ struct LoginView: View {
                     authService: container.authService,
                     coordinator: coordinator
                 )
+            }
+            if fastAuthViewModel == nil {
+                let vm = FastAuthViewModel(
+                    fastAuthService: container.fastAuthService,
+                    authService: container.authService
+                )
+                let coordinatorRef = coordinator
+                let containerRef = container
+                vm.onAuthenticated = {
+                    Task { @MainActor in
+                        await containerRef.loadCurrentUser()
+                        coordinatorRef.currentState = .main
+                    }
+                }
+                fastAuthViewModel = vm
             }
             appeared = false
             Task {
