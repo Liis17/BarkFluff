@@ -114,15 +114,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                 await authPropertiesStorage.UpdateLastEmailAuthCode(userContactInfo.User.Id, code);
 
                 // Получаем данные о местоположении IP-адреса
-                string locationInfo = "-";
-                if (!string.IsNullOrEmpty(requestContext.IpAddress))
-                {
-                    var ipLocation = await locationClient.GetLocation(requestContext.IpAddress);
-                    if (ipLocation != null)
-                    {
-                        locationInfo = $"{ipLocation.Country}, {ipLocation.RegionName}, {ipLocation.City}";
-                    }
-                }
+                var locationInfo = await locationClient.GetLocationString(requestContext.IpAddress);
 
                 var emailNotification = new EmailNotification
                 {
@@ -195,9 +187,8 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
         logger.LogDebug("Проверка пароля для пользователя {UserId}", user.User.Id);
 
         var currentPasswordHash = await passwordsStorage.GetUserPasswordHash(user.User.Id);
-        var enteredPasswordHash = PasswordHasher.HashPassword(request.Password);
 
-        if (!string.Equals(currentPasswordHash, enteredPasswordHash))
+        if (!PasswordHasher.VerifyPassword(request.Password, currentPasswordHash))
         {
             logger.LogWarning(
                 "Неудачная попытка входа: неверный пароль для пользователя {UserId}. Логин: {Login}, IP: {IpAddress}",
@@ -209,15 +200,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
             // Отправка уведомления о неудачной попытке входа
             var userContactInfo = await usersClient.GetUserContactsAsync(new GetUserContactsRequest { UserId = user.User.Id });
 
-            string locationInfo = "-";
-            if (!string.IsNullOrEmpty(requestContext.IpAddress))
-            {
-                var ipLocation = await locationClient.GetLocation(requestContext.IpAddress);
-                if (ipLocation != null)
-                {
-                    locationInfo = $"{ipLocation.Country}, {ipLocation.RegionName}, {ipLocation.City}";
-                }
-            }
+            var locationInfo = await locationClient.GetLocationString(requestContext.IpAddress);
 
             var failedLoginNotification = new EmailNotification
             {
@@ -263,15 +246,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
         var accessTokenResponse = await mediator.Send(new CreateTokenCommand { RefreshToken = refreshTokenString }, cancellationToken);
 
         // Регистрация устройства в Users сервисе
-        string successLocationInfo = "-";
-        if (!string.IsNullOrEmpty(requestContext.IpAddress))
-        {
-            var ipLocation = await locationClient.GetLocation(requestContext.IpAddress);
-            if (ipLocation != null)
-            {
-                successLocationInfo = $"{ipLocation.Country}, {ipLocation.RegionName}, {ipLocation.City}";
-            }
-        }
+        var successLocationInfo = await locationClient.GetLocationString(requestContext.IpAddress);
 
         try
         {

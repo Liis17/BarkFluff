@@ -86,11 +86,14 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
 
         if (user.User is null)
         {
+            // Защита от энумерации: не раскрываем факт существования пользователя.
+            // Why: endpoint сброса пароля не должен позволять перебирать логины/email.
             _logger.LogWarning(
-                "Попытка сброса пароля для несуществующего пользователя: {Login}",
+                "Запрос сброса пароля для несуществующего пользователя: {Login}",
                 login
             );
-            throw new UserNotFoundException();
+            await Task.Delay(Random.Shared.Next(100, 300), cancellationToken);
+            return new ResetPasswordResponse { ResetId = Guid.NewGuid().ToString() };
         }
 
         _logger.LogDebug("Пользователь {UserId} найден, проверка настроек OTP", user.User.Id);
@@ -116,6 +119,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
             var resetPassword = new Domain.ResetPassword()
             {
                 CreatedAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(15),
                 IsApproved = false,
                 OtpType = request.OtpType,
                 UserId = user.User.Id
@@ -146,22 +150,14 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
         var resetEmailPassword = new Domain.ResetPassword()
         {
             CreatedAt = DateTime.UtcNow,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(5),
             OtpCode = code,
             IsApproved = false,
             OtpType = request.OtpType,
             UserId = user.User.Id
         };
 
-        // Получаем данные о местоположении IP-адреса
-        string locationInfo = "-";
-        if (!string.IsNullOrEmpty(_requestContext.IpAddress))
-        {
-            var ipLocation = await _locationClient.GetLocation(_requestContext.IpAddress);
-            if (ipLocation != null)
-            {
-                locationInfo = $"{ipLocation.Country}, {ipLocation.RegionName}, {ipLocation.City}";
-            }
-        }
+        var locationInfo = await _locationClient.GetLocationString(_requestContext.IpAddress);
 
         var emailNotification = new EmailNotification()
         {

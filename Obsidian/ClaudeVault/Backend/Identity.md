@@ -37,7 +37,7 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 - `Infrastructure/` — `LocationClient` (ip-api.com, геолокация по IP), `NotificationQueueSender` (RabbitMQ/MassTransit)
 - `Persistence/Contexts/` — `IdentityContext` (EF Core + Npgsql)
 - `Persistence/Services/` — `RefreshTokensStorage`, `AuthPropertiesStorage`, `ConfirmationCodesStorage`, `PasswordsStorage`, `ResetPasswordsStorage`
-- `Services/` — `JwtService`, `PasswordHasher` (SHA-256), `CodeGenerator` (6-значный цифровой), `RefreshTokenGenerator` (20-символьный)
+- `Services/` — `JwtService`, `PasswordHasher` (BCrypt workFactor=12, с поддержкой legacy SHA-256 на verify), `CodeGenerator` (6-значный цифровой, CSPRNG), `RefreshTokenGenerator` (32 байта, URL-safe Base64, CSPRNG)
 - `Settings/` — `JwtSettings` (SecretKey, Issuer, Audience, ExpiryMinutes)
 - `Consumers/` — `SessionRevokedConsumer` (MassTransit, слушает `session-revoked-identity`)
 
@@ -53,7 +53,8 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 **`ConfirmationCode`** — код подтверждения регистрации (TTL 6 часов)
 
 **`ResetPassword`** — запись на сброс пароля:
-- `OtpType`, `OtpCode`, `IsApproved`, `UserId`, `CreatedAt`
+- `OtpType`, `OtpCode`, `IsApproved`, `UserId`, `CreatedAt`, `ExpiresAt`
+- TTL: 5 минут для Email OTP, 15 минут для Authenticator OTP
 
 ## gRPC-эндпоинты
 
@@ -107,7 +108,7 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
    - Если включена но `OtpCode` не передан → Email OTP высылается, бросается `OtpCodeNeedException`
    - TOTP (Authenticator) → `Totp.VerifyTotp` (OtpNet, RFC window)
    - Email OTP → сравнение с `LastEmailAuthCode`
-4. Проверка пароля SHA-256 vs `UserPassword.PasswordHash`
+4. Проверка пароля через `PasswordHasher.VerifyPassword` (BCrypt; legacy SHA-256 поддерживается для старых хешей до смены пароля)
 5. Удаление старого `RefreshToken` для данного DeviceId
 6. Создание нового `RefreshToken` (TTL 9999 дней) + JWT access token
 7. Регистрация/обновление устройства в Users-сервисе (`RegisterDevice`)
@@ -120,9 +121,11 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 
 ### Сброс пароля (2 шага)
 1. `ResetPassword` → поиск пользователя, создание `ResetPassword`-записи:
-   - **Authenticator OTP**: запись сохраняется без кода (клиент использует TOTP-приложение)
-   - **Email OTP**: генерируется 6-значный код, высылается на email, код сохраняется в `ResetPassword.OtpCode`
-2. `ConfirmResetPassword` → валидация OTP-кода по типу → `IsApproved = true`, обнуление `PasswordHash`, выдача новых токенов
+   - **Authenticator OTP**: запись сохраняется без кода (клиент использует TOTP-приложение), `ExpiresAt` = +15 мин
+   - **Email OTP**: генерируется 6-значный код, высылается на email, код сохраняется в `ResetPassword.OtpCode`, `ExpiresAt` = +5 мин
+   - Для несуществующего пользователя возвращается фейковый `ResetId` (защита от энумерации)
+2. `ConfirmResetPassword` → проверка `ExpiresAt`, валидация OTP-кода по типу → `IsApproved = true`, обнуление `PasswordHash`, выдача новых токенов
+   - Если `DeviceId` не передан — генерируется UUID
 
 ### Разлогин (`Logout`) — `[Authorize]`
 1. `DeviceId` берётся из JWT-claim (`UserContext.DeviceId`) — аргументов нет
@@ -131,8 +134,9 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 4. Устройство удаляется из Users-сервиса (`DeleteUserDevice`), ошибка — только warning в логах
 
 ### Установка/смена пароля (`SetPassword`) — `[Authorize]`
-- Если пароль ранее установлен: требует `OldPassword` (SHA-256 сравнение)
+- Если пароль ранее установлен: требует `OldPassword` (`PasswordHasher.VerifyPassword`, поддерживает BCrypt и legacy SHA-256)
 - Если первая установка (после сброса): `OldPassword` не нужен
+- Новый пароль хешируется BCrypt-ом (workFactor=12)
 - После смены отправляется уведомление `PasswordChanged`
 
 ### 2FA — включение (TOTP)

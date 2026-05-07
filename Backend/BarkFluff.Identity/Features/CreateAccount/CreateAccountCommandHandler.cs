@@ -84,16 +84,7 @@ public class CreateAccountCommandHandler(UsersServerApi.UsersServerApiClient use
 
         confirmationCode = await confirationCodesStorage.AddCode(confirmationCode);
 
-        // Получаем данные о местоположении IP-адреса
-        string locationInfo = "-";
-        if (!string.IsNullOrEmpty(requestContext.IpAddress))
-        {
-            var ipLocation = await locationClient.GetLocation(requestContext.IpAddress);
-            if (ipLocation != null)
-            {
-                locationInfo = $"{ipLocation.Country}, {ipLocation.RegionName}, {ipLocation.City}";
-            }
-        }
+        var locationInfo = await locationClient.GetLocationString(requestContext.IpAddress);
 
         var payload = new Dictionary<string, string>()
         {

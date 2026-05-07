@@ -1,4 +1,5 @@
 using BarkFluff.GrpcServer.Tracker;
+using BarkFluff.Identity.Domain;
 using BarkFluff.Identity.Infrastructure;
 using BarkFluff.Identity.Persistence.Services;
 using BarkFluff.Identity.Services;
@@ -47,6 +48,17 @@ public class ConfirmAccountCommandHandler(ConfirmationCodesStorage confirmationC
             throw new ConfirmationCodeNotFoundException();
         }
 
+        if (code.Type != ConfirmationCodeType.Registration)
+        {
+            // Why: защита от использования кода другого типа на endpoint подтверждения регистрации.
+            logger.LogWarning(
+                "Код подтверждения {CodeId} имеет неожиданный тип {Type}, ожидается Registration",
+                codeId,
+                code.Type
+            );
+            throw new ConfirmationCodeNotFoundException();
+        }
+
         if (code.Expires < DateTime.UtcNow)
         {
             logger.LogWarning(
@@ -75,19 +87,14 @@ public class ConfirmAccountCommandHandler(ConfirmationCodesStorage confirmationC
 
         await usersClient.ConfirmUserAsync(confirmRequest);
 
+        // Удаляем использованный код, чтобы предотвратить повторное использование.
+        await confirmationCodesStorage.DeleteCode(codeId);
+
         // Отправка уведомления об успешной регистрации
         var userInfo = await usersClient.GetByIdAsync(new GetByIdRequest { UserId = code.OwnerId!.Value });
         var userContacts = await usersClient.GetUserContactsAsync(new GetUserContactsRequest { UserId = code.OwnerId!.Value });
 
-        string locationInfo = "-";
-        if (!string.IsNullOrEmpty(requestContext.IpAddress))
-        {
-            var ipLocation = await locationClient.GetLocation(requestContext.IpAddress);
-            if (ipLocation != null)
-            {
-                locationInfo = $"{ipLocation.Country}, {ipLocation.RegionName}, {ipLocation.City}";
-            }
-        }
+        var locationInfo = await locationClient.GetLocationString(requestContext.IpAddress);
 
         var successfulRegistrationNotification = new EmailNotification
         {
