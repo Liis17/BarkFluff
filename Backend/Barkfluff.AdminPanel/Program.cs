@@ -156,6 +156,20 @@ public class Program
             }
         });
 
+        // Редирект /v2 → /v2/ (без trailing slash относительные пути styles.css/app.js
+        // резолвятся как /styles.css вместо /v2/styles.css). Делаем через middleware,
+        // т.к. MapGet("/v2") и MapGet("/v2/") дают AmbiguousMatchException — роутер
+        // рассматривает их как одну каноническую точку.
+        app.Use(async (ctx, next) =>
+        {
+            if (ctx.Request.Path.Value == "/v2")
+            {
+                ctx.Response.Redirect("/v2/");
+                return;
+            }
+            await next();
+        });
+
         // Add Token Authentication Middleware
         app.UseTokenAuth();
 
@@ -223,13 +237,6 @@ public class Program
         });
 
         // Page routes
-        // /v2 без слеша — редирект на /v2/, иначе относительные пути в index.html (styles.css, app.js)
-        // резолвятся как /styles.css вместо /v2/styles.css.
-        app.MapGet("/v2", context =>
-        {
-            context.Response.Redirect("/v2/");
-            return Task.CompletedTask;
-        });
         app.MapGet("/v2/", async context => await ServeHtmlFile(context, Path.Combine("Redesigned", "index.html")));
         app.MapGet("/services", async context => await ServeHtmlFile(context, "services.html"));
         app.MapGet("/logs", async context => await ServeHtmlFile(context, "logs.html"));
