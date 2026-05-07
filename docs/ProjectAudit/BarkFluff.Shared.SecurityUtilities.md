@@ -10,144 +10,13 @@
 
 ## Содержание
 
-- [🔴 Безопасность](#-безопасность)
-  - [SEC-01 — Дублирование логики между платформами](#sec-01--дублирование-логики-оценки-надёжности-между-платформами)
-  - [SEC-02 — Отсутствие проверки на распространённые пароли](#sec-02--отсутствие-проверки-на-распространённые-пароли)
-  - [SEC-03 — Обход MinStrengthScore через короткий пароль ровно в 8 символов](#sec-03--порог-minstrengthscore-достижим-при-коротком-пароле)
-  - [SEC-04 — Дублирующая логика требований в PasswordValidator.cs](#sec-04--дублирующая-логика-требований-в-passwordvalidatorscs)
-- [🟡 Оптимизация](#-оптимизация)
-  - [OPT-01 — Множественные проходы по строке в EvaluatePasswordStrength](#opt-01--множественные-проходы-по-строке-в-evaluatepasswordstrength)
-  - [OPT-02 — BrushConverter создаётся на каждый вызов в CreateAccount](#opt-02--brushconverter-создаётся-на-каждый-вызов-в-createaccount)
-  - [OPT-03 — EvaluatePasswordStrength вызывается дважды на одно событие](#opt-03--evaluatepasswordstrength-вызывается-дважды-на-одно-событие)
-- [🔵 Баги и недоработки](#-баги-и-недоработки)
-  - [BUG-01 — Пробел засчитывается как спецсимвол в оценке силы](#bug-01--пробел-засчитывается-как-спецсимвол-в-оценке-силы)
-  - [BUG-02 — ValidationState.InvalidCharacters используется для слабого пароля](#bug-02--validationstateinvalidcharacters-используется-для-слабого-пароля)
-  - [BUG-03 — Отсутствует проверка на повторяющиеся паттерны](#bug-03--отсутствует-проверка-на-повторяющиеся-паттерны)
-- [⚪ Прочее / Качество кода](#-прочее--качество-кода)
-  - [QA-01 — Класс не sealed и не static, методы только static](#qa-01--класс-не-sealed-и-не-static-методы-только-static)
-  - [QA-02 — Нет документации XML на публичных методах](#qa-02--нет-документации-xml-на-публичных-методах)
-  - [QA-03 — Нет юнит-тестов](#qa-03--нет-юнит-тестов)
 
----
 
 ## 🔴 Безопасность
 
 ---
 
-### SEC-01 — Дублирование логики оценки надёжности между платформами
-
-**Проблема / Описание**  
-Логика оценки силы пароля реализована независимо в двух местах: в C# (.NET, WPF) и в C++ (Qt, Linux-клиент). Алгоритмы дают **разные результаты** для одного и того же пароля — порог «достаточно надёжного» пароля неодинаков на разных платформах.
-
-**Конкретно в чём проблема**  
-Пороги и веса различаются:
-
-| Критерий | C# score | C++ score |
-|----------|----------|-----------|
-| Длина ≥8 | +10 | +20 |
-| Длина ≥12 | +20 (иначе) | +10 (cumulative) |
-| Длина ≥16 | +30 (иначе) | +10 (cumulative) |
-| Верхний регистр | +10–20 | +15 |
-| Нижний регистр | включён в upper | +15 (отдельно) |
-| Цифры | +10–20 | +15 |
-| Спецсимволы | +10–20 | +15 |
-| Уникальность | +5–10 | ❌ нет |
-
-Пароль `abc12345` получит score ~30 в C# и ~50 в C++. Пользователь, зарегистрировавшийся через Linux-клиент, может использовать пароль, который WPF-клиент сочтёт недостаточно надёжным при смене пароля.
-
-**Путь к файлу:**  
-- `Shared/BarkFluff.Shared.SecurityUtilities/SecurityUtilities.cs` : 5–47  
-- `Linux/src/Utils/Validators.cpp` : 156–171
-
-```csharp
-// SecurityUtilities.cs — C# логика (кумулятивные ветки if/else if)
-if (password.Length >= 16)
-    score += 30;          // +30 только если >=16
-else if (password.Length >= 12)
-    score += 20;          // +20 только если >=12 и <16
-else if (password.Length >= 8)
-    score += 10;          // +10 только если >=8 и <12
-```
-
-```cpp
-// Validators.cpp — C++ логика (накопительные if, не else if!)
-if (password.length() >= 8)  score += 20;  // всегда если >=8
-if (password.length() >= 12) score += 10;  // дополнительно если >=12
-if (password.length() >= 16) score += 10;  // дополнительно если >=16
-// Итого для пароля >=16: C++=40, C#=30
-```
-
-**Варианты решения**
-
-1. Вынести общую логику в Shared-библиотеку и использовать через WASM / gRPC-метод `/auth/password-strength` с бэкенда.
-2. Задокументировать единую спецификацию алгоритма и привести обе реализации к одинаковым весам.
-
-```csharp
-// Вариант решения 2 — единая спецификация весов (C# эталон)
-// Рекомендуемые веса, синхронизированные с C++:
-// Length >=16 → +40 cumulative (8+10+10+10... или фиксированные ступени)
-// Задокументировать как константы:
-public static class PasswordScoringWeights
-{
-    public const int LengthBase = 10;   // за >=8
-    public const int LengthMedium = 10; // доп. за >=12
-    public const int LengthLong = 10;   // доп. за >=16
-    public const int CaseUpper = 15;
-    public const int CaseLower = 15;
-    public const int Digits = 15;
-    public const int Specials = 15;
-    // Итого max без уникальности: 80, с уникальностью: 100
-}
-```
-
----
-
-### SEC-02 — Отсутствие проверки на распространённые пароли
-
-**Проблема / Описание**  
-Алгоритм оценивает структурные свойства пароля, но не проверяет его на вхождение в списки наиболее распространённых паролей (top-10000, haveibeenpwned API и т.п.).
-
-**Конкретно в чём проблема**  
-Пароль `P@ssw0rd1` наберёт score ≈ 70–80 (длина 9, оба регистра, цифра, спецсимвол) и пройдёт валидацию, несмотря на то что он является одним из самых распространённых паролей в мире.
-
-**Путь к файлу:**  
-`Shared/BarkFluff.Shared.SecurityUtilities/SecurityUtilities.cs` : 5–47
-
-```csharp
-// Текущий код — нет никакой проверки на словарные пароли
-int specialCount = password.Count(c => !char.IsLetterOrDigit(c));
-if (specialCount >= 2)
-    score += 20;
-else if (specialCount == 1)
-    score += 10;
-// P@ssw0rd1 → specialCount=1, digitCount=1, оба регистра → score ~60-70 → ПРОХОДИТ
-```
-
-**Варианты решения**
-
-1. Добавить встроенный компактный список самых распространённых паролей (топ-500).
-2. Интегрировать проверку через [HaveIBeenPwned Passwords API](https://haveibeenpwned.com/API/v3#PwnedPasswords) (k-anonymity, безопасно).
-
-```csharp
-// Вариант 1 — встроенный HashSet распространённых паролей
-private static readonly HashSet<string> CommonPasswords = new(StringComparer.OrdinalIgnoreCase)
-{
-    "password", "p@ssw0rd", "P@ssw0rd1", "qwerty123", "abc12345", // ... топ-500
-};
-
-public static int EvaluatePasswordStrength(string password)
-{
-    if (string.IsNullOrEmpty(password)) return 0;
-
-    // Штраф за словарный пароль — возвращаем сразу 0
-    if (CommonPasswords.Contains(password))
-        return 0;
-
-    // ... остальная логика
-}
-```
-
----
+### ---
 
 ### SEC-03 — Порог MinStrengthScore достижим при коротком пароле
 
@@ -661,18 +530,18 @@ public class EvaluatePasswordStrengthTests
 
 ## Итоговая таблица
 
-| ID | Категория | Критичность | Файл |
-|----|-----------|-------------|------|
-| SEC-01 | Безопасность | 🔴 Высокая | SecurityUtilities.cs + Validators.cpp |
-| SEC-02 | Безопасность | 🔴 Высокая | SecurityUtilities.cs |
-| SEC-03 | Безопасность | 🟠 Средняя | SecurityUtilities.cs |
-| SEC-04 | Безопасность | 🟠 Средняя | SecurityUtilities.cs + PasswordValidator.cs |
-| OPT-01 | Оптимизация | 🟡 Низкая | SecurityUtilities.cs |
-| OPT-02 | Оптимизация | 🟡 Низкая | CreateAccount.xaml.cs |
-| OPT-03 | Оптимизация | 🟡 Низкая | CreateAccount.xaml.cs + PasswordReset.xaml.cs |
-| BUG-01 | Баг | 🟠 Средняя | SecurityUtilities.cs + PasswordValidator.cs |
-| BUG-02 | Баг | 🟡 Низкая | PasswordValidator.cs |
-| BUG-03 | Баг | 🟠 Средняя | SecurityUtilities.cs |
-| QA-01 | Качество | ⚪ Низкая | SecurityUtilities.cs |
-| QA-02 | Качество | ⚪ Низкая | SecurityUtilities.cs |
-| QA-03 | Качество | 🟠 Средняя | — (тестов нет) |
+| ID     | Категория    | Критичность | Файл                                          |
+| ------ | ------------ | ----------- | --------------------------------------------- |
+| SEC-01 | Безопасность | 🔴 Высокая  | SecurityUtilities.cs + Validators.cpp         |
+| SEC-02 | Безопасность | 🔴 Высокая  | SecurityUtilities.cs                          |
+| SEC-03 | Безопасность | 🟠 Средняя  | SecurityUtilities.cs                          |
+| SEC-04 | Безопасность | 🟠 Средняя  | SecurityUtilities.cs + PasswordValidator.cs   |
+| OPT-01 | Оптимизация  | 🟡 Низкая   | SecurityUtilities.cs                          |
+| OPT-02 | Оптимизация  | 🟡 Низкая   | CreateAccount.xaml.cs                         |
+| OPT-03 | Оптимизация  | 🟡 Низкая   | CreateAccount.xaml.cs + PasswordReset.xaml.cs |
+| BUG-01 | Баг          | 🟠 Средняя  | SecurityUtilities.cs + PasswordValidator.cs   |
+| BUG-02 | Баг          | 🟡 Низкая   | PasswordValidator.cs                          |
+| BUG-03 | Баг          | 🟠 Средняя  | SecurityUtilities.cs                          |
+| QA-01  | Качество     | ⚪ Низкая    | SecurityUtilities.cs                          |
+| QA-02  | Качество     | ⚪ Низкая    | SecurityUtilities.cs                          |
+| QA-03  | Качество     | 🟠 Средняя  | — (тестов нет)                                |
