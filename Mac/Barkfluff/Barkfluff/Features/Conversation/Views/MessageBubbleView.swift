@@ -124,7 +124,8 @@ struct MessageBubbleView: View {
                     Label("Ответить", systemImage: "arrowshape.turn.up.left")
                 }
                 Button {
-                    onForward?(message.id)
+                    // Если сообщение само пересланное — пересылаем оригинал, не wrapper
+                    onForward?(message.forwardSourceID)
                 } label: {
                     Label("Переслать", systemImage: "arrowshape.turn.up.right")
                 }

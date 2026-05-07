@@ -71,6 +71,10 @@ final class AppCoordinator {
     /// Weak ссылка на ChatListViewModel для уведомлений о прочтении
     weak var chatListViewModel: ChatListViewModel?
 
+    /// Weak ссылка на NotificationService — нужна, чтобы при открытии чата
+    /// снять уже показанные системные уведомления из этого чата.
+    weak var notificationService: NotificationService?
+
     /// Тип модального окна
     enum SheetType: Identifiable {
         case createGroupChat
@@ -153,6 +157,9 @@ final class AppCoordinator {
     /// Уведомить о прочтении чата (вызывается при открытии чата)
     func notifyChatOpened(_ chatID: String) {
         chatListViewModel?.markChatAsReadLocally(chatID: chatID)
+        if let service = notificationService {
+            Task { await service.clearDelivered(for: chatID) }
+        }
     }
 
     /// Уведомить об отправке сообщения (вызывается для обновления lastMessage в списке чатов)
