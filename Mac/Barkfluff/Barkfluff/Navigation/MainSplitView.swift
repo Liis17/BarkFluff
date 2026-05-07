@@ -38,25 +38,8 @@ struct MainSplitView: View {
             case .profile:
                 // Профиль: зависит от выбранной категории настроек
                 if let category = coordinator.selectedSettingsCategory {
-                    switch category {
-                    case .editProfile:
-                        ProfileEditView(
-                            userService: container.userService,
-                            fileService: container.fileService,
-                            container: container
-                        )
+                    SettingsCategoryView(category: category)
                         .navigationTitle("")
-                    case .privacy:
-                        // Конфиденциальность - настройки безопасности и хранилища токенов
-                        SecuritySettingsView(viewModel: container.settingsViewModel)
-                            .navigationTitle("")
-                    case .activeSessions:
-                        SessionsView(viewModel: container.settingsViewModel)
-                            .navigationTitle("")
-                    case .general, .notifications, .dataAndStorage:
-                        SettingsPlaceholderView(category: category)
-                            .navigationTitle("")
-                    }
                 } else {
                     ContentUnavailableView(
                         "Выберите раздел",

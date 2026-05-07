@@ -73,8 +73,13 @@ struct ConversationView: View {
                         )
                     }
                 )
+                if let viewModel, viewModel.isRefreshing && !viewModel.messages.isEmpty {
+                    RefreshingIndicatorView()
+                        .transition(.opacity)
+                }
                 Spacer()
             }
+            .animation(.easeInOut(duration: 0.2), value: viewModel?.isRefreshing)
 
             // Слой 3: Плавающий ввод снизу
             VStack(spacing: 0) {

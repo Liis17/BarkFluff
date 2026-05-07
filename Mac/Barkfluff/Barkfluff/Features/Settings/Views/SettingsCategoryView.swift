@@ -1,0 +1,39 @@
+//
+//  SettingsCategoryView.swift
+//  Barkfluff
+//
+//  Единый источник истины для рендера экрана настроек по `SettingsCategory`.
+//  Используется и в верхнем меню (Settings-сцена), и в сайдбаре профиля.
+//
+
+import SwiftUI
+
+struct SettingsCategoryView: View {
+    @Environment(DependencyContainer.self) private var container
+    let category: SettingsCategory
+
+    var body: some View {
+        switch category {
+        case .editProfile:
+            ProfileEditView(
+                userService: container.userService,
+                fileService: container.fileService,
+                container: container
+            )
+        case .general:
+            GeneralSettingsView()
+        case .notifications:
+            SettingsPlaceholderView(category: .notifications)
+        case .privacy:
+            SecuritySettingsView(viewModel: container.settingsViewModel)
+        case .cloud:
+            CloudSettingsView()
+        case .cache:
+            CacheSettingsView()
+        case .activeSessions:
+            SessionsView(viewModel: container.settingsViewModel)
+        case .about:
+            AboutSettingsView(viewModel: container.settingsViewModel)
+        }
+    }
+}

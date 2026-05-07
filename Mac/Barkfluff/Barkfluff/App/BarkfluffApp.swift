@@ -25,6 +25,7 @@ struct BarkfluffApp: App {
         Settings {
             SettingsView()
                 .environment(container)
+                .environment(coordinator)
         }
         .commands {
             // Keyboard shortcuts для навигации по сайдбару
