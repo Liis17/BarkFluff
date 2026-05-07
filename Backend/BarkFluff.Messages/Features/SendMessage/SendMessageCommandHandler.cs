@@ -19,6 +19,9 @@ using Infrastructure;
 
 public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, SendMessageResponse>
 {
+    private const int MaxTextLength = 4096;
+    private const int MaxAttachmentsPerMessage = 10;
+
     private readonly ChatsStorage _chatsStorage;
     private readonly UsersServerApi.UsersServerApiClient _usersServerApiClient;
     private readonly FilesServerApi.FilesServerApiClient _filesServerApiClient;
@@ -73,6 +76,28 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                 _userContext.UserId
             );
             throw new MessageNotContainContextException();
+        }
+
+        if (request.Message.Text is { Length: > MaxTextLength })
+        {
+            _logger.LogWarning(
+                "Текст сообщения от пользователя {UserId} превышает лимит {MaxTextLength} символов: {ActualLength}",
+                _userContext.UserId,
+                MaxTextLength,
+                request.Message.Text.Length
+            );
+            throw new MessageTextTooLongException();
+        }
+
+        if (request.Message.FileIds is { } fileIds && fileIds.Count > MaxAttachmentsPerMessage)
+        {
+            _logger.LogWarning(
+                "Сообщение от пользователя {UserId} содержит {AttachmentCount} вложений (лимит: {MaxAttachments})",
+                _userContext.UserId,
+                fileIds.Count,
+                MaxAttachmentsPerMessage
+            );
+            throw new TooManyAttachmentsException();
         }
 
         var chatId = request.ChatId;
