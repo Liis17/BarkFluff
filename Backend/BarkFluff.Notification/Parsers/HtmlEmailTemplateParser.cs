@@ -1,9 +1,13 @@
 using BarkFluff.Shared.Queue.Notifications;
 
+using System.Net;
+using System.Text.RegularExpressions;
+
 namespace BarkFluff.Notification.Parsers;
 
-public class HtmlEmailTemplateParser
+public partial class HtmlEmailTemplateParser
 {
+    private static readonly Regex PlaceholderRegex = MyRegex();
 
     private readonly Dictionary<NotificationType, string> _templatesMap = new()
     {
@@ -26,13 +30,20 @@ public class HtmlEmailTemplateParser
 
         var fileContent = await File.ReadAllTextAsync(fileName);
 
-        foreach (var payloadItem in payload)
+        var allPayload = new Dictionary<string, string>(payload)
         {
-            fileContent = fileContent.Replace($"ꟿꟿꟿ{payloadItem.Key}ꟿꟿꟿ", payloadItem.Value);
-        }
+            ["currentyear"] = DateTime.UtcNow.Year.ToString(),
+        };
 
-        fileContent = fileContent.Replace("ꟿꟿꟿcurrentyearꟿꟿꟿ", DateTime.UtcNow.Year.ToString());
-
-        return fileContent;
+        return PlaceholderRegex.Replace(fileContent, match =>
+        {
+            var key = match.Groups[1].Value;
+            return allPayload.TryGetValue(key, out var value)
+                ? WebUtility.HtmlEncode(value)
+                : match.Value;
+        });
     }
+
+    [GeneratedRegex(@"ꟿꟿꟿ(\w+)ꟿꟿꟿ", RegexOptions.Compiled)]
+    private static partial Regex MyRegex();
 }

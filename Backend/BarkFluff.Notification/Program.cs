@@ -22,8 +22,6 @@ public class Program
         builder.SetRunningAddress(builder.Configuration);
         builder.Services.AddBarkFluffMetrics("BarkFluff.Notification");
 
-        builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
-
         builder.Services.AddSettings<EmailConfiguration>(builder.Configuration, "Email");
         builder.Services.AddMassTransit(x =>
         {

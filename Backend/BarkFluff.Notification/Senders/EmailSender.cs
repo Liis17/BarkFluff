@@ -1,4 +1,5 @@
 using BarkFluff.Notification.Configurations;
+using BarkFluff.Notification.Helpers;
 using BarkFluff.Notification.Parsers;
 using BarkFluff.Shared.Queue.Notifications;
 
@@ -27,7 +28,7 @@ public class EmailSender
     {
         _logger.LogInformation(
             "Начало отправки email на {Email} с темой '{Subject}'",
-            notification.Address,
+            EmailMasker.Mask(notification.Address),
             notification.Title
         );
 
@@ -67,7 +68,7 @@ public class EmailSender
 
             _logger.LogInformation(
                 "Email успешно отправлен на {Email}",
-                notification.Address
+                EmailMasker.Mask(notification.Address)
             );
         }
         catch (SmtpException ex)
@@ -75,7 +76,7 @@ public class EmailSender
             _logger.LogError(
                 ex,
                 "SMTP ошибка при отправке email на {Email}. StatusCode: {StatusCode}",
-                notification.Address,
+                EmailMasker.Mask(notification.Address),
                 ex.StatusCode
             );
             throw;
@@ -85,7 +86,7 @@ public class EmailSender
             _logger.LogError(
                 ex,
                 "Неожиданная ошибка при отправке email на {Email}",
-                notification.Address
+                EmailMasker.Mask(notification.Address)
             );
             throw;
         }

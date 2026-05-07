@@ -25,10 +25,10 @@ RabbitMQ: notifications-email-handler
 
 ## Ключевые компоненты
 
-- **`EmailQueueConsumer`** — единственный entrypoint. При ошибке перебрасывает исключение (MassTransit retry).
-- **`EmailSender`** — SMTP с SSL. Отключает проверку TLS-сертификата через `ServicePointManager.ServerCertificateValidationCallback` (намеренно, для self-signed).
-- **`HtmlEmailTemplateParser`** — загружает HTML из `Templates/` по `NotificationType`, заменяет плейсхолдеры `ꟿꟿꟿvariableNameꟿꟿꟿ`. Спецплейсхолдер `ꟿꟿꟿcurrentyearꟿꟿꟿ` — автоматически.
-- **MediatR** — зарегистрирован в `Program.cs` (`AddMediatR`), конкретных хендлеров в проекте пока нет (задел на будущее).
+- **`EmailQueueConsumer`** — единственный entrypoint. При ошибке перебрасывает исключение (MassTransit retry). Email-адрес в логах маскируется через `EmailMasker.Mask()` (PII).
+- **`EmailSender`** — SMTP с SSL. Отключает проверку TLS-сертификата через `ServicePointManager.ServerCertificateValidationCallback` (намеренно, для self-signed). Email-адрес в логах маскируется через `EmailMasker.Mask()`.
+- **`HtmlEmailTemplateParser`** — загружает HTML из `Templates/` по `NotificationType`, одним проходом регулярки `ꟿꟿꟿ(\w+)ꟿꟿꟿ` заменяет плейсхолдеры. Значения `payload` обрабатываются через `WebUtility.HtmlEncode` (защита от HTML/XSS-инъекций). Спецплейсхолдер `ꟿꟿꟿcurrentyearꟿꟿꟿ` — автоматически.
+- **`EmailMasker`** (`Helpers/`) — статический хелпер маскирования email в логах: `***@domain`.
 
 ## Шаблоны и типы уведомлений
 

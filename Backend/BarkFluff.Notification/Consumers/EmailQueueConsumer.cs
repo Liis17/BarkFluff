@@ -1,4 +1,5 @@
 using BarkFluff.GrpcServer.Metrics;
+using BarkFluff.Notification.Helpers;
 using BarkFluff.Notification.Senders;
 using BarkFluff.Shared.Queue.Notifications;
 
@@ -26,7 +27,7 @@ public class EmailQueueConsumer : IConsumer<EmailNotification>
 
         _logger.LogInformation(
             "Получено уведомление для отправки email. Адрес: {Email}, Тип: {Type}, Заголовок: '{Title}'",
-            notification.Address,
+            EmailMasker.Mask(notification.Address),
             notification.Type,
             notification.Title
         );
@@ -38,7 +39,7 @@ public class EmailQueueConsumer : IConsumer<EmailNotification>
 
             _logger.LogInformation(
                 "Email успешно отправлен на адрес {Email}",
-                notification.Address
+                EmailMasker.Mask(notification.Address)
             );
         }
         catch (Exception ex)
@@ -47,7 +48,7 @@ public class EmailQueueConsumer : IConsumer<EmailNotification>
             _logger.LogError(
                 ex,
                 "Ошибка при отправке email на адрес {Email}",
-                notification.Address
+                EmailMasker.Mask(notification.Address)
             );
             throw; // MassTransit обработает retry
         }
