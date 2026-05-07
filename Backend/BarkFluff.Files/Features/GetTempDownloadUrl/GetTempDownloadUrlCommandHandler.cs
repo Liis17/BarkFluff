@@ -46,8 +46,6 @@ public class GetTempDownloadUrlCommandHandler : IRequestHandler<GetTempDownloadU
                 files.Count,
                 request.FileIds.Count()
             );
-
-            
         }
 
         var response = new GetTempDownloadUrlResponse()
