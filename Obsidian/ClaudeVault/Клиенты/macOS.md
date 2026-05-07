@@ -64,9 +64,36 @@ Views → ViewModels → Services → Repositories → gRPC
 - Кеш медиа на диске: `MediaCacheManager`, типизация — `CachedFileType`, статистика — `CacheStats`, парсинг ключей S3 — `S3URLParser`
 - `TokenRefreshCoordinator` — автоматический рефреш через `AuthInterceptor`
 
-## Паттерн: logout + повторный вход
+## Паттерн: logout — полный wipe
 
-`AuthService.logout()` **не вызывает** `connectionManager.shutdown()` — эндпоинты сервисов не привязаны к пользователю и остаются валидными для повторного входа на тот же сервер. Шатдаун нужен только при смене сервера (через `ServerDiscoveryService.disconnect()`).
+Logout строится по «server-first, fail-loud» схеме: если серверный шаг упал, локальные данные **не трогаются**, чтобы пользователь мог повторить или сознательно выйти принудительно.
+
+**Цепочка:**
+
+1. `AppCoordinator.logout(container:) async throws` — вызывает `AuthService.logout()`. На успехе — `performLocalWipe(container:)`.
+2. `AuthService.logout() async throws`:
+   - `IdentityRepository.logout()` → gRPC `Identity.Logout` (на бэке `LogoutCommandHandler` удаляет refresh-токены устройства, публикует `SessionRevokedEvent` → инвалидируется access-токен по сервисам через шину, и зовёт `Users.DeleteUserDevice` для удаления записи устройства).
+   - При ошибке — пробрасывается наружу, токены **не** очищаются.
+   - При успехе — `tokenProvider.purgeAll()` (полная очистка, включая `device_id` и `server_host/port`).
+3. `DependencyContainer.reset()` (вызывается из `performLocalWipe`):
+   - `updatesService.stop()`, `onlineStatusService.stop()` — закрывают gRPC-стримы и AsyncStream-ы.
+   - `userCache`/`chatCache`/`onlineStatusCache.removeAll()` — in-memory кеши.
+   - `mediaCacheManager.clearAll()` — файловый медиа-кеш с диска.
+   - `fileURLCache.clear()` — runtime + UserDefaults-домен `com.barkfluff.fileURLCache`.
+   - `database.truncateAll()` — SQLite (`cached_message`, `cached_chat`, `cached_file`).
+   - `tokenProvider.purgeAll()` — токены, даты истечения, `server_host`/`server_port`, `device_id`.
+   - `serverDiscoveryService.disconnect()` + `connectionManager.shutdown()` — gRPC-эндпоинты и `ServerInfo`.
+4. UI-state в `AppCoordinator` сбрасывается, `currentState = .serverSelection` (не `.authentication` — после полного wipe нужен новый bootstrap через Beacon).
+
+**Force-вариант** (`AppCoordinator.forceLogout(container:)`): пропускает серверный шаг, локальный wipe идентичный. Используется UI-фолбэком при ошибке `logout()`. Сессия на сервере при этом остаётся «висящей» до истечения срока действия — её можно будет завершить позже через «Активные сессии» (`Identity.RemoveActiveSession`).
+
+**UI-обработка ошибки**: `ProfileEditView` ловит throw из `coordinator.logout(container:)` и показывает алерт «Не удалось разлогиниться» с тремя кнопками — «Повторить» / «Выйти всё равно» (→ `forceLogout`) / «Отмена».
+
+**TokenProvider.clearAll() vs purgeAll()**:
+- `clearAll()` — стирает только токены и их даты (используется в `tryRestoreSession` при провале refresh, чтобы юзер потерял сессию, но сохранил `device_id` и адрес сервера для повторного логина).
+- `purgeAll()` — стирает всё, включая `device_id` и эндпоинт сервера. Используется только при logout/reset.
+
+**Сохраняется** после полного wipe: настройка `com.barkfluff.tokenStorage.type` (выбор хранилища токенов: UserDefaults / Keychain / Keychain+iCloud) — это user preference, не account data.
 
 `UpdatesStreamManager.start()` **пересоздаёт AsyncStream-ы** при каждом запуске: после `stop()` continuations завершаются (`.finish()`), и старые потоки мертвы — без пересоздания `forwardNewMessagesTask` в `UpdatesService` сразу завершался бы без событий.
 
