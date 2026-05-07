@@ -150,17 +150,19 @@ struct MessageBubbleView: View {
             let padding = isMediaOnly ? CGFloat(4) : Theme.Spacing.md
             let verticalPadding = isMediaOnly ? CGFloat(4) : Theme.Spacing.sm
 
-            VStack(alignment: .trailing, spacing: Theme.Spacing.xs) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                // Вложения сверху
+                if message.content.hasAttachments {
+                    attachmentsView
+                }
+
                 if message.content.hasText {
                     Text(message.content.text)
                         .font(.body)
                         .foregroundStyle(.white)
                         .textSelection(.enabled)
-                }
-
-                // Вложения
-                if message.content.hasAttachments {
-                    attachmentsView
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
             }
             .padding(.horizontal, padding)
@@ -178,16 +180,18 @@ struct MessageBubbleView: View {
             let verticalPadding = isMediaOnly ? CGFloat(4) : Theme.Spacing.sm
 
             VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                // Вложения сверху
+                if message.content.hasAttachments {
+                    attachmentsView
+                }
+
                 if message.content.hasText {
                     Text(message.content.text)
                         .font(.body)
                         .foregroundStyle(.primary)
                         .textSelection(.enabled)
-                }
-
-                // Вложения
-                if message.content.hasAttachments {
-                    attachmentsView
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
             }
             .padding(.horizontal, padding)

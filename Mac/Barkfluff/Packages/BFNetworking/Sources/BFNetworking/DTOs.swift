@@ -75,6 +75,7 @@ public struct UserInfo: Sendable, Identifiable {
     public let bio: String?
     public let profilePictureURL: String?
     public let profilePicturePreviewURL: String?
+    public let profilePosterFileID: String?
     public let registrationDate: Date
 }
 

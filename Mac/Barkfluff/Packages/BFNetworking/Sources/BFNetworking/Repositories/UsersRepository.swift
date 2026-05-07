@@ -193,6 +193,7 @@ public actor UsersRepository: UsersRepositoryProtocol {
             bio: user.bio.isEmpty ? nil : user.bio,
             profilePictureURL: user.profilePicture.isEmpty ? nil : user.profilePicture,
             profilePicturePreviewURL: user.profilePicturePreview.isEmpty ? nil : user.profilePicturePreview,
+            profilePosterFileID: user.profilePosterFileID.isEmpty ? nil : user.profilePosterFileID,
             registrationDate: registrationDate
         )
     }

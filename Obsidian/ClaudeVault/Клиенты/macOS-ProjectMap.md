@@ -218,7 +218,7 @@
 |------|-----------|
 | `UserProfile/ViewModels/UserProfilePanelViewModel.swift` | VM панели профиля другого пользователя |
 | `UserProfile/Views/UserProfilePanelView.swift` | Боковая панель с профилем собеседника |
-| `UserProfile/Views/ProfileHeaderSection.swift` | Шапка с аватаром и именем |
+| `UserProfile/Views/ProfileHeaderSection.swift` | Шапка: постер 3:1 (для DM, через `CachedImageView` + `User.profilePosterFileID`), аватар с -48 оверлапом и обводкой, имя, юзернейм, статус |
 | `UserProfile/Views/ProfileInfoSection.swift` | Секция с информацией (bio, username) |
 | `UserProfile/Views/ProfileActionsSection.swift` | Действия (написать, заблокировать) |
 | `UserProfile/Views/SharedMediaSection.swift` | Секция общих медиафайлов |
