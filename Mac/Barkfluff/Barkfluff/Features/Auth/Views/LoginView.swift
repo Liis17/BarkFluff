@@ -21,7 +21,7 @@ struct LoginView: View {
             VStack(spacing: Theme.Spacing.xxl) {
                 logoSection
                 if let viewModel {
-                    HStack(alignment: .top, spacing: Theme.Spacing.xxl) {
+                    HStack(alignment: .center, spacing: Theme.Spacing.xxl) {
                         formCard(viewModel)
                         if let fastAuthViewModel {
                             QRPanelView(viewModel: fastAuthViewModel)
