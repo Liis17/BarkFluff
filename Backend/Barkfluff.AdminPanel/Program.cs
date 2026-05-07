@@ -211,7 +211,7 @@ public class Program
                 if (context.Request.Cookies.TryGetValue("ui_version", out var ver) &&
                     string.Equals(ver, "v2", StringComparison.OrdinalIgnoreCase))
                 {
-                    context.Response.Redirect("/v2");
+                    context.Response.Redirect("/v2/");
                     return;
                 }
                 await ServeHtmlFile(context, "dashboard.html");
@@ -223,7 +223,14 @@ public class Program
         });
 
         // Page routes
-        app.MapGet("/v2", async context => await ServeHtmlFile(context, Path.Combine("Redesigned", "index.html")));
+        // /v2 без слеша — редирект на /v2/, иначе относительные пути в index.html (styles.css, app.js)
+        // резолвятся как /styles.css вместо /v2/styles.css.
+        app.MapGet("/v2", context =>
+        {
+            context.Response.Redirect("/v2/");
+            return Task.CompletedTask;
+        });
+        app.MapGet("/v2/", async context => await ServeHtmlFile(context, Path.Combine("Redesigned", "index.html")));
         app.MapGet("/services", async context => await ServeHtmlFile(context, "services.html"));
         app.MapGet("/logs", async context => await ServeHtmlFile(context, "logs.html"));
         app.MapGet("/badges", async context => await ServeHtmlFile(context, "badges.html"));
