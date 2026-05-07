@@ -58,6 +58,7 @@ final class ConversationViewModel {
     private let onlineStatusService: OnlineStatusServiceProtocol
     private let fileService: FileServiceProtocol
     private let chatService: ChatServiceProtocol?
+    private let localMessageRepository: LocalMessageRepository?
     let currentUserID: Int64
 
     /// ID пользователя для нового диалога (когда чат ещё не создан на сервере)
@@ -87,7 +88,8 @@ final class ConversationViewModel {
         onlineStatusService: OnlineStatusServiceProtocol,
         fileService: FileServiceProtocol,
         currentUserID: Int64,
-        chatService: ChatServiceProtocol? = nil
+        chatService: ChatServiceProtocol? = nil,
+        localMessageRepository: LocalMessageRepository? = nil
     ) {
         self.chat = chat
         self.messageService = messageService
@@ -96,6 +98,7 @@ final class ConversationViewModel {
         self.fileService = fileService
         self.currentUserID = currentUserID
         self.chatService = chatService
+        self.localMessageRepository = localMessageRepository
         self.targetUserID = chat.newConversationUserID
     }
 
@@ -111,6 +114,13 @@ final class ConversationViewModel {
         }
 
         guard !isLoading else { return }
+
+        // 1. Stale: показать кешированные сообщения сразу.
+        if messages.isEmpty, let local = localMessageRepository {
+            if let cached = try? await local.loadCachedMessages(chatID: chat.id), !cached.isEmpty {
+                messages = cached
+            }
+        }
 
         isLoading = true
         errorMessage = nil
@@ -128,6 +138,11 @@ final class ConversationViewModel {
             let uniqueMessages = loadedMessages.filter { seenIDs.insert($0.id).inserted }
             messages = uniqueMessages.sorted { $0.sentAt < $1.sentAt }
             hasMoreMessages = loadedMessages.count >= PaginationHelper.defaultMessagesPageSize
+
+            // 2. Сохраняем актуальный снимок в БД.
+            if let local = localMessageRepository {
+                try? await local.upsertMessages(messages, chatID: chat.id)
+            }
 
             // Определяем первое непрочитанное сообщение (до пометки прочитанными)
             firstUnreadMessageID = messages.first(where: {
@@ -697,6 +712,7 @@ final class ConversationViewModel {
             }
             // Своё сообщение с другого устройства — добавляем без анимации
             messages.append(event.message)
+            persistIncoming(event.message)
             return
         }
 
@@ -704,10 +720,16 @@ final class ConversationViewModel {
         withAnimation(.spring(duration: 0.3)) {
             messages.append(event.message)
         }
+        persistIncoming(event.message)
 
         Task {
             await markMessageAsRead(event.message)
         }
+    }
+
+    private func persistIncoming(_ message: Message) {
+        guard let local = localMessageRepository else { return }
+        Task { try? await local.append(message) }
     }
 
     private func handleMessageRead(_ event: MessageReadEvent) {

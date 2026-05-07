@@ -81,7 +81,12 @@
       "Bash(Select-String -Pattern 'BarkFluff\\\\.Files' -SimpleMatch)",
       "Bash(Select-String -Pattern 'error')",
       "Bash(Select-Object -First 50)",
+<<<<<<< Updated upstream
       "Bash(taskkill //F //IM dotnet.exe)"
+=======
+      "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -resolvePackageDependencies)",
+      "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -configuration Debug -destination 'platform=macOS' build)"
+>>>>>>> Stashed changes
     ],
     "deny": [],
     "ask": []

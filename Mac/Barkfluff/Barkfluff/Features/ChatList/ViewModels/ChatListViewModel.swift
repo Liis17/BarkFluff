@@ -29,6 +29,7 @@ final class ChatListViewModel {
     private let userService: UserServiceProtocol
     private let updatesService: UpdatesServiceProtocol
     private let onlineStatusService: OnlineStatusServiceProtocol
+    private let localChatRepository: LocalChatRepository?
 
     private var newMessagesTask: Task<Void, Never>?
     private var readEventsTask: Task<Void, Never>?
@@ -40,24 +41,34 @@ final class ChatListViewModel {
         userService: UserServiceProtocol,
         updatesService: UpdatesServiceProtocol,
         onlineStatusService: OnlineStatusServiceProtocol,
-        currentUserID: Int64
+        currentUserID: Int64,
+        localChatRepository: LocalChatRepository? = nil
     ) {
         self.chatService = chatService
         self.userService = userService
         self.updatesService = updatesService
         self.onlineStatusService = onlineStatusService
         self.currentUserID = currentUserID
+        self.localChatRepository = localChatRepository
     }
 
     // MARK: - Loading
 
     func loadChats() async {
-        isLoading = true
         errorMessage = nil
 
+        // 1. Stale: отображаем кешированные чаты сразу, до сетевого запроса.
+        if allChats.isEmpty, let local = localChatRepository {
+            if let cached = try? await local.loadCachedChats(), !cached.isEmpty {
+                allChats = cached
+                applyFilter()
+            }
+        }
+
+        isLoading = true
+
+        // 2. Revalidate: тянем актуальные данные с сервера.
         do {
-            // Собираем все страницы во временный массив до обновления UI —
-            // это исключает моргание списка при реконнекте
             var accumulated: [Chat] = []
             var result = try await chatService.listChats(offset: 0, size: PaginationHelper.defaultChatsPageSize)
             accumulated.append(contentsOf: result.items)
@@ -77,13 +88,20 @@ final class ChatListViewModel {
             allChats = accumulated
             applyFilter()
 
+            // 3. Сохраняем актуальный снимок в БД.
+            if let local = localChatRepository {
+                try? await local.replaceAll(accumulated)
+            }
+
             // Прогрев кеша онлайн-статусов для видимых DM-чатов.
-            // Сами подписки на per-user изменения делают ChatRowView через
-            // .task(id:) — здесь только bootstrap сервиса.
             let userIDs = collectUserIDsFromChats()
             await onlineStatusService.start(initialUserIDs: userIDs)
         } catch {
-            errorMessage = error.localizedDescription
+            // Если оффлайн, но в БД были чаты — UI уже их показывает; иначе
+            // прокидываем ошибку.
+            if allChats.isEmpty {
+                errorMessage = error.localizedDescription
+            }
         }
 
         isLoading = false

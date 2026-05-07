@@ -45,9 +45,15 @@ final class DependencyContainer {
 
     let userCache: UserCache
     let chatCache: ChatCache
-    let fileCacheService: FileCacheService
+    let mediaCacheManager: MediaCacheManager
     let onlineStatusCache: OnlineStatusCache
     let fileURLCache: FileURLCache
+
+    // MARK: - Local Persistence
+
+    let database: Database
+    let localChatRepository: LocalChatRepository
+    let localMessageRepository: LocalMessageRepository
 
     // MARK: - Services (BFCore)
 
@@ -146,9 +152,18 @@ final class DependencyContainer {
         // Cache
         self.userCache = UserCache()
         self.chatCache = ChatCache()
-        self.fileCacheService = FileCacheService()
         self.onlineStatusCache = OnlineStatusCache()
         self.fileURLCache = FileURLCache()
+
+        // Local persistence (SQLite через GRDB).
+        // Если открыть БД не удалось — падаем сразу, чтобы не работать с битым стейтом.
+        do {
+            self.database = try Database()
+        } catch {
+            fatalError("Failed to open local cache database: \(error)")
+        }
+        self.localChatRepository = LocalChatRepository(database: database)
+        self.localMessageRepository = LocalMessageRepository(database: database)
 
         // Streaming
         self.updatesStreamManager = UpdatesStreamManager(
@@ -180,6 +195,11 @@ final class DependencyContainer {
         )
 
         self.fileService = FileService(filesRepository: filesRepository, fileURLCache: fileURLCache)
+
+        self.mediaCacheManager = MediaCacheManager(
+            database: database,
+            fileService: fileService
+        )
 
         self.updatesService = UpdatesService(
             updatesRepository: updatesRepository,
@@ -240,8 +260,9 @@ final class DependencyContainer {
         await userCache.removeAll()
         await chatCache.removeAll()
         await onlineStatusCache.removeAll()
-        await fileCacheService.clearCache()
+        await mediaCacheManager.clearAll()
         await fileURLCache.clear()
+        try? await database.truncateAll()
         await serverDiscoveryService.disconnect()
         currentUserID = 0
         currentUser = nil
