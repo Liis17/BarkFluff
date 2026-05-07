@@ -153,12 +153,14 @@ namespace BarkFluff.WebApi.Core
 
         #region Обслуживание
         /// <summary>
-        /// Добавляет http:// или https:// к URL, если он не начинается с них.
+        /// Добавляет схему к URL, если её нет. По умолчанию — https://, потому что
+        /// production-сервера BarkFluff работают по TLS. Для локального plaintext-сервера
+        /// нужно явно передать http:// в адресе.
         /// </summary>
         public static string EnsureHttpPrefix(string _url)
         {
             return !_url.StartsWith("http://") && !_url.StartsWith("https://")
-                   ? "http://" + _url
+                   ? "https://" + _url
                    : _url;
         }
 
