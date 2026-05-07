@@ -65,6 +65,8 @@ public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand,
         {
             Name = _serverPropsSettings.Name,
             Description = _serverPropsSettings.Description,
+            PublicName = _serverPropsSettings.PublicName,
+            Location = _serverPropsSettings.Location,
 
             Color = new ServerColor
             {

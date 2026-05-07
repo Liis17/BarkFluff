@@ -17,7 +17,8 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
     case cloud
     case cache
     case activeSessions
-    case about
+    case aboutApp
+    case aboutServer
 
     var id: String { rawValue }
 
@@ -30,7 +31,8 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .cloud: "Облако"
         case .cache: "Кеш"
         case .activeSessions: "Активные сессии"
-        case .about: "О сервере"
+        case .aboutApp: "О приложении"
+        case .aboutServer: "О сервере"
         }
     }
 
@@ -43,7 +45,8 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .cloud: "cloud.fill"
         case .cache: "internaldrive.fill"
         case .activeSessions: "laptopcomputer.and.iphone"
-        case .about: "info.circle.fill"
+        case .aboutApp: "app.badge.fill"
+        case .aboutServer: "server.rack"
         }
     }
 
@@ -56,7 +59,8 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .cloud: .indigo
         case .cache: .purple
         case .activeSessions: .orange
-        case .about: .teal
+        case .aboutApp: .mint
+        case .aboutServer: .teal
         }
     }
 }
