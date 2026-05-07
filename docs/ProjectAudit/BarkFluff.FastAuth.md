@@ -6,15 +6,6 @@
 
 ---
 
-## Содержание
-
-- [🔴 Безопасность](#-безопасность)
-- [🟠 Баги и недоработки](#-баги-и-недоработки)
-- [🔵 Оптимизация](#-оптимизация)
-- [🟡 Прочее / Качество кода](#-прочее--качество-кода)
-
----
-
 ## 🔴 Безопасность
 
 ---
@@ -202,6 +193,7 @@ await foreach (var evt in session.Events.ReadAllAsync(request.CancellationToken)
 `DeviceName`, `OperationSystem`, `AppName`, `AppVersion`, `IpAddress` принимаются из заголовков gRPC без какой-либо валидации длины или содержимого и сохраняются в сессию, а затем возвращаются в `ScanFastAuthResponse`.
 
 **В чём проблема:**  
+
 - Поле `DeviceName` длиной в 1 МБ будет храниться в памяти до удаления сессии
 - При отображении в UI возможен XSS если эти поля рендерятся без экранирования
 - `IpAddress` не валидируется — можно подменить произвольной строкой
@@ -684,6 +676,7 @@ public string IdString => Id.ToString("N"); // без дефисов — кор�
 Остальные handlers реализуют `IRequestHandler<TRequest, TResponse>` из MediatR и регистрируются автоматически. `SubscribeFastAuthResultQueryHandler` — нет, он регистрируется вручную через `AddScoped<>` и инжектируется напрямую в `FastAuthApiService`.
 
 **В чём проблема:**  
+
 - Нарушение единообразия архитектуры (одни handlers через MediatR, другой — напрямую)
 - Нет pipeline behaviors для этого handler (логирование, трейсинг, exception handling)
 - `AddScoped` при Singleton-зависимостях (`FastAuthSessionsManager`) — `SubscribeFastAuthResultQueryHandler` создаётся на каждый gRPC-запрос, хотя мог бы быть Singleton
@@ -809,26 +802,26 @@ throw new RpcException(new Status(StatusCode.Unimplemented, "GetFastAuthInfo is 
 
 ## Сводная таблица проблем
 
-| ID | Категория | Проблема | Критичность |
-|----|-----------|----------|-------------|
-| SEC-01 | 🔴 Безопасность | SubscribeFastAuthResult без авторизации — утечка токенов | 🔴 Критическая |
-| SEC-02 | 🔴 Безопасность | Нет Rate Limiting на GenerateFastAuthToken — DoS | 🔴 Критическая |
-| SEC-03 | 🔴 Безопасность | Токены в plain-text в памяти (Channel) | 🟠 Высокая |
-| SEC-04 | 🔴 Безопасность | Нет валидации длины/содержимого входных строк | 🟠 Высокая |
-| SEC-05 | 🔴 Безопасность | TOCTOU в AcceptFastAuth / RejectFastAuth | 🟡 Средняя |
-| BUG-01 | 🟠 Баг | Утечка токенов при отключении подписчика до Accept | 🔴 Критическая |
-| BUG-02 | 🟠 Баг | Метрика active_subscriptions может «протечь» | 🟡 Низкая |
-| BUG-03 | 🟠 Баг | QRCodeGenerator пересоздаётся на каждый запрос | 🟡 Средняя |
-| BUG-04 | 🟠 Баг | Нет лимита сессий в памяти — OOM при нагрузке | 🔴 Критическая |
-| BUG-05 | 🟠 Баг | FinalRetention не оптимален для сессий без подписчика | 🟡 Низкая |
-| OPT-01 | 🔵 Оптимизация | Snapshot() создаёт полную копию словаря O(n) | 🟡 Средняя |
-| OPT-02 | 🔵 Оптимизация | QR-генерация CPU-bound блокирует thread pool | 🟡 Средняя |
-| OPT-03 | 🔵 Оптимизация | Guid хранится как string — лишние аллокации | 🟢 Низкая |
-| MISC-01 | 🟡 Качество | SubscribeHandler вне MediatR pipeline | 🟡 Средняя |
-| MISC-02 | 🟡 Качество | Опечатка: XAppInfoIsRequiedException | 🟢 Низкая |
-| MISC-03 | 🟡 Качество | IpAddress не пишется в лог при Accept | 🟢 Низкая |
-| MISC-04 | 🟡 Качество | Опечатка в имени поля: OperationSystem | 🟢 Низкая |
-| MISC-05 | 🟡 Качество | GetFastAuthInfo без TODO и спецификации | 🟢 Низкая |
+| ID      | Категория       | Проблема                                                 | Критичность    |
+| ------- | --------------- | -------------------------------------------------------- | -------------- |
+| SEC-01  | 🔴 Безопасность | SubscribeFastAuthResult без авторизации — утечка токенов | 🔴 Критическая |
+| SEC-02  | 🔴 Безопасность | Нет Rate Limiting на GenerateFastAuthToken — DoS         | 🔴 Критическая |
+| SEC-03  | 🔴 Безопасность | Токены в plain-text в памяти (Channel)                   | 🟠 Высокая     |
+| SEC-04  | 🔴 Безопасность | Нет валидации длины/содержимого входных строк            | 🟠 Высокая     |
+| SEC-05  | 🔴 Безопасность | TOCTOU в AcceptFastAuth / RejectFastAuth                 | 🟡 Средняя     |
+| BUG-01  | 🟠 Баг          | Утечка токенов при отключении подписчика до Accept       | 🔴 Критическая |
+| BUG-02  | 🟠 Баг          | Метрика active_subscriptions может «протечь»             | 🟡 Низкая      |
+| BUG-03  | 🟠 Баг          | QRCodeGenerator пересоздаётся на каждый запрос           | 🟡 Средняя     |
+| BUG-04  | 🟠 Баг          | Нет лимита сессий в памяти — OOM при нагрузке            | 🔴 Критическая |
+| BUG-05  | 🟠 Баг          | FinalRetention не оптимален для сессий без подписчика    | 🟡 Низкая      |
+| OPT-01  | 🔵 Оптимизация  | Snapshot() создаёт полную копию словаря O(n)             | 🟡 Средняя     |
+| OPT-02  | 🔵 Оптимизация  | QR-генерация CPU-bound блокирует thread pool             | 🟡 Средняя     |
+| OPT-03  | 🔵 Оптимизация  | Guid хранится как string — лишние аллокации              | 🟢 Низкая      |
+| MISC-01 | 🟡 Качество     | SubscribeHandler вне MediatR pipeline                    | 🟡 Средняя     |
+| MISC-02 | 🟡 Качество     | Опечатка: XAppInfoIsRequiedException                     | 🟢 Низкая      |
+| MISC-03 | 🟡 Качество     | IpAddress не пишется в лог при Accept                    | 🟢 Низкая      |
+| MISC-04 | 🟡 Качество     | Опечатка в имени поля: OperationSystem                   | 🟢 Низкая      |
+| MISC-05 | 🟡 Качество     | GetFastAuthInfo без TODO и спецификации                  | 🟢 Низкая      |
 
 ---
 

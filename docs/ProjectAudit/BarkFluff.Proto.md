@@ -100,33 +100,6 @@ service DevelopersIdentityApi {
 
 ---
 
-### SEC-03 — `ChangeUserPasswordResponse` возвращает `password_hash` клиенту
-
-**Проблема:**
-Метод сервера `ChangeUserPassword` (в `UsersServerApi`) возвращает `password_hash` в ответе. Хеш пароля — это чувствительные данные. Возвращать их по gRPC означает, что хеш может попасть в логи вызывающего сервиса, трейсы, или быть сохранён в промежуточном звене.
-
-**Файл:** `Shared\BarkFluff.Proto\users_api.proto` : строки 200–204
-
-```protobuf
-message ChangeUserPasswordResponse {
-  string password_hash = 1; // ⚠️ хеш пароля не должен покидать сервис Users
-}
-```
-
-**Варианты решения:**
-
-1. Убрать `password_hash` из ответа. Никакой вызывающей стороне не нужен хеш — это внутренняя деталь реализации сервиса Users.
-2. Если вызывающему сервису нужно подтверждение — вернуть `bool success`.
-
-```protobuf
-message ChangeUserPasswordResponse {
-  // password_hash удалён — внутренняя деталь реализации Users-сервиса
-  bool success = 1;
-}
-```
-
----
-
 ### SEC-04 — `beacon_api.proto` раскрывает внутреннюю топологию сети (host + port всех микросервисов)
 
 **Проблема:**
