@@ -2,160 +2,97 @@
 //  FastAuthQRView.swift
 //  Barkfluff
 //
-//  Быстрая авторизация через QR-код
+//  Встраиваемая панель быстрой авторизации через QR-код.
 //
 
 import SwiftUI
 import BFCore
 
-struct FastAuthQRView: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var token: FastAuthToken?
-    @State private var status: FastAuthStatus = .pending
-    @State private var timeRemaining: Int = 0
-
-    var onAuthenticated: ((AuthTokens) -> Void)?
+struct QRPanelView: View {
+    @Bindable var viewModel: FastAuthViewModel
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 24) {
-                if let token {
-                    // QR-код
-                    VStack(spacing: 16) {
-                        Text("Отсканируйте QR-код")
-                            .font(.title2)
-                            .fontWeight(.semibold)
+        VStack(spacing: Theme.Spacing.md) {
+            Text("Войти через QR")
+                .font(.headline)
 
-                        Text("Используйте камеру телефона в приложении BarkFluff")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
+            Text("Отсканируйте код в мобильном BarkFluff")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
 
-                        // TODO: Показать реальный QR-код
-                        QRCodePlaceholder(token: token.token)
-                            .frame(width: 200, height: 200)
+            qrContent
+                .frame(width: 220, height: 220)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.white)
+                )
 
-                        // Код для ручного ввода
-                        VStack(spacing: 4) {
-                            Text("Или введите код:")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+            statusLine
 
-                            Text(token.token)
-                                .font(.system(.title2, design: .monospaced))
-                                .fontWeight(.medium)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(Color.secondary.opacity(0.1))
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
-                        }
-
-                        // Статус
-                        statusView(for: status)
-
-                        // Таймер
-                        if timeRemaining > 0 {
-                            Text("Код действителен \(timeRemaining) сек")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                } else {
-                    ProgressView("Генерация кода...")
-                }
+            if let message = viewModel.errorMessage {
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .multilineTextAlignment(.center)
             }
-            .padding()
-            .navigationTitle("Быстрый вход")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Отмена") {
-                        dismiss()
-                    }
-                }
-            }
-            .task {
-                await generateToken()
-            }
+        }
+        .padding(Theme.Spacing.xxl)
+        .frame(width: 280)
+        .background(
+            RoundedRectangle(cornerRadius: 18)
+                .fill(.regularMaterial)
+                .shadow(color: .black.opacity(0.08), radius: 24, x: 0, y: 8)
+                .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
+        )
+        .onAppear { viewModel.startSession() }
+        .onDisappear { viewModel.cancel() }
+    }
+
+    @ViewBuilder
+    private var qrContent: some View {
+        if let image = viewModel.currentTokenImage {
+            Image(nsImage: image)
+                .interpolation(.none)
+                .resizable()
+                .scaledToFit()
+                .padding(8)
+        } else if viewModel.isLoading {
+            ProgressView()
+        } else {
+            Image(systemName: "qrcode")
+                .font(.system(size: 64))
+                .foregroundStyle(.tertiary)
         }
     }
 
     @ViewBuilder
-    private func statusView(for status: FastAuthStatus) -> some View {
-        switch status {
+    private var statusLine: some View {
+        switch viewModel.currentStatus {
         case .pending:
-            HStack(spacing: 8) {
-                ProgressView()
-                    .scaleEffect(0.8)
-                Text("Ожидание сканирования...")
+            HStack(spacing: 6) {
+                ProgressView().scaleEffect(0.6)
+                Text(viewModel.timeRemaining > 0
+                     ? "Действителен ещё \(viewModel.timeRemaining) с"
+                     : "Ожидание сканирования…")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-            .foregroundStyle(.secondary)
-
         case .accepted:
-            HStack(spacing: 8) {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-                Text("Успешно!")
+            HStack(spacing: 6) {
+                Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                Text("Вход подтверждён").font(.caption.weight(.medium))
             }
-            .font(.headline)
-
         case .rejected:
-            HStack(spacing: 8) {
-                Image(systemName: "xmark.circle.fill")
-                    .foregroundStyle(.red)
-                Text("Отклонено")
+            HStack(spacing: 6) {
+                Image(systemName: "xmark.circle.fill").foregroundStyle(.red)
+                Text("Отклонено, обновляем…").font(.caption)
             }
-            .font(.headline)
-
         case .expired:
-            VStack(spacing: 8) {
-                HStack(spacing: 8) {
-                    Image(systemName: "clock.fill")
-                        .foregroundStyle(.orange)
-                    Text("Время истекло")
-                }
-
-                Button("Получить новый код") {
-                    Task {
-                        await generateToken()
-                    }
-                }
-                .buttonStyle(.borderedProminent)
+            HStack(spacing: 6) {
+                Image(systemName: "clock.fill").foregroundStyle(.orange)
+                Text("Срок истёк, обновляем…").font(.caption)
             }
         }
     }
-
-    private func generateToken() async {
-        // TODO: Реализовать через FastAuthService
-        // token = try? await fastAuthService.generateToken(type: .qr)
-    }
-}
-
-struct QRCodePlaceholder: View {
-    let token: String
-
-    var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.white)
-
-            // Заглушка QR-кода
-            Grid(horizontalSpacing: 2, verticalSpacing: 2) {
-                ForEach(0..<21, id: \.self) { _ in
-                    GridRow {
-                        ForEach(0..<21, id: \.self) { _ in
-                            Rectangle()
-                                .fill(Bool.random() ? Color.black : Color.clear)
-                                .frame(width: 8, height: 8)
-                        }
-                    }
-                }
-            }
-            .padding(8)
-        }
-        .shadow(radius: 4)
-    }
-}
-
-#Preview {
-    FastAuthQRView()
 }

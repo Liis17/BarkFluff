@@ -42,4 +42,12 @@ public protocol AuthServiceProtocol: Sendable {
 
     /// Подтвердить включение 2FA
     func confirmOTP(code: String) async throws
+
+    /// Сохранить пару токенов, выпущенных через FastAuth (QR-логин).
+    /// Серверный шаг создания сессии происходит в FastAuth-микросервисе при `AcceptFastAuth`,
+    /// здесь только локально применяем уже выданные токены — аналогично сохранению после `login()`.
+    func applyFastAuthTokens(
+        accessToken: String, accessExpiresAt: Date,
+        refreshToken: String, refreshExpiresAt: Date
+    ) async
 }

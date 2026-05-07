@@ -97,6 +97,32 @@ Logout строится по «server-first, fail-loud» схеме: если с
 
 `UpdatesStreamManager.start()` **пересоздаёт AsyncStream-ы** при каждом запуске: после `stop()` continuations завершаются (`.finish()`), и старые потоки мертвы — без пересоздания `forwardNewMessagesTask` в `UpdatesService` сразу завершался бы без событий.
 
+## Быстрый вход через QR (FastAuth)
+
+Параллельно паролёвой форме `LoginView` показывает `QRPanelView` (правая колонка `HStack`), повторяющий поведение WPF-клиента (`Windows/.../Pages/SetupPages/Login.xaml`). Сценарий точно совпадает с серверным контрактом из [[Backend/FastAuth]]:
+
+1. При появлении панели `FastAuthViewModel.startSession()` вызывает `FastAuthService.generateToken(.qr)` → `FastAuthRepository.generateFastAuthToken` → `connectionManager.withPublicClient(for: .fastauth)` (анонимно, без `AuthInterceptor`, но с `DeviceMetadataInterceptor`, который кладёт `x-device-name`, `x-os-name`, `x-app-name`, `x-app-version`, `x-ip-address`, `x-device-id` в gRPC-метаданные — backend забирает их в `GenerateFastAuthTokenCommandHandler`).
+2. Сервер возвращает `fast_auth_id`, PNG-base64 (`token.value`) и `expires_at` (TTL 5 мин). PNG декодируется в `NSImage` через `Data(base64Encoded:)`/`NSImage(data:)` и кладётся в `currentTokenImage`. Параллельно стартует посекундный countdown-таймер.
+3. Тут же подписываемся на server-stream: `FastAuthRepository.subscribeFastAuthResult` → `connectionManager.withPublicClient(for: .fastauth)` + `client.subscribeFastAuthResult(req) { for try await event in response.messages { ... } }`. Стримерные события мапятся в доменный `FastAuthResult` (поля `accessTokenExpiresAt` / `refreshTokenExpiresAt` пробрасываются и через BFNetworking-DTO, и через BFCore-модель, чтобы дойти до ViewModel).
+4. Реакция на статусы:
+   - `.pending` (включая серверный `SCANNED`, который мы сводим к `pending` — у macOS-логина нет отдельного промежуточного UI) — продолжаем ждать.
+   - `.accepted` — `AuthService.applyFastAuthTokens(...)` сохраняет пару токенов через `tokenProvider.saveTokens`, ставит `hasFinished = true` и зовёт `onAuthenticated` колбэк, который из `LoginView` вызывает `container.loadCurrentUser()` и переключает `coordinator.currentState = .main`. Никакого отдельного `Identity.Auth` шага не нужно — токены уже выпустил FastAuth-сервис через `IdentityServerApi.CreateSessionForUserServer`.
+   - `.rejected` — показываем `errorMessage` «Вход через QR отклонён на мобильном устройстве» и автоматически перезапускаем `runSession()` (новый QR), идентично WPF.
+   - `.expired` — тихий перезапрос QR.
+5. При уходе со страницы (`.onDisappear` у `QRPanelView`) — `viewModel.cancel()` отменяет `sessionTask` и `timerTask`, gRPC-стрим закрывается через `continuation.onTermination` в `BFCore.FastAuthService.subscribeToResult`.
+
+Ключевые файлы:
+- UI: `Features/FastAuth/Views/FastAuthQRView.swift` — встраиваемый `QRPanelView`. Старый модальный `FastAuthQRView` удалён, как и `QRCodePlaceholder` (PNG приходит готовый с сервера, локальный `CIFilter.qrCodeGenerator` не нужен).
+- ViewModel: `Features/FastAuth/ViewModels/FastAuthViewModel.swift` — `@Observable @MainActor`, держит `sessionTask` и `timerTask`, авто-перезапуск при rejected/expired.
+- Репозиторий: `Packages/BFNetworking/.../Repositories/FastAuthRepository.swift` — `generateFastAuthToken` + server-streaming `subscribeFastAuthResult`. Остальные методы (Scan/Accept/Reject/connectDevice…) — заглушки: это мобильный сценарий, на macOS-клиенте не используется.
+- Сервис: `Packages/BFCore/.../Services/Implementations/AuthService.swift` метод `applyFastAuthTokens` — сохраняет уже выданные токены через `tokenProvider.saveTokens`, без серверного шага.
+- Интеграция в логин: `Features/Auth/Views/LoginView.swift` — `HStack` из `formCard(viewModel)` слева и `QRPanelView(viewModel: fastAuthViewModel)` справа.
+
+Ошибки/edge-cases:
+- Если эндпоинт `.fastauth` не получен из Beacon (`mapServiceEndpoints`), `withPublicClient` бросит `ConnectionError.serviceNotConfigured(.fastauth)` — `FastAuthViewModel` покажет это через `errorMessage`, паролёвая форма продолжает работать.
+- Если стрим оборвался до финального статуса — `runSession()` спит 1 секунду и пробует заново (без вспышки QR — UI остаётся со старым изображением до момента, когда новый QR будет получен).
+- `hasFinished == true` после `.accepted` гарантирует, что повторный вызов `runSession()` не сработает после успешного входа (защита от race с автоперезапуском).
+
 ## Liquid Glass (macOS 26 / iOS 26)
 
 **ВАЖНО**: При работе с UI-эффектами читать `LiquidGlassGuide.md` в корне проекта.

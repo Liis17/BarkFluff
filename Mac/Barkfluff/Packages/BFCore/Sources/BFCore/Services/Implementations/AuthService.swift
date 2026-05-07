@@ -151,6 +151,20 @@ public actor AuthService: AuthServiceProtocol {
         }
     }
 
+    // MARK: - FastAuth (QR-логин)
+
+    public func applyFastAuthTokens(
+        accessToken: String, accessExpiresAt: Date,
+        refreshToken: String, refreshExpiresAt: Date
+    ) async {
+        await tokenProvider.saveTokens(
+            accessToken: accessToken,
+            accessExpiresAt: accessExpiresAt,
+            refreshToken: refreshToken,
+            refreshExpiresAt: refreshExpiresAt
+        )
+    }
+
     // MARK: - Error Mapping
 
     private static func mapError(_ error: BFNetworkingError) -> BFError {

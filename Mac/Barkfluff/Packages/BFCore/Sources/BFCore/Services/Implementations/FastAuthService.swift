@@ -42,7 +42,9 @@ public actor FastAuthService: FastAuthServiceProtocol {
                         fastAuthID: event.fastAuthID,
                         status: toDomainStatus(event.status),
                         accessToken: event.accessToken,
-                        refreshToken: event.refreshToken
+                        accessTokenExpiresAt: event.accessTokenExpiresAt,
+                        refreshToken: event.refreshToken,
+                        refreshTokenExpiresAt: event.refreshTokenExpiresAt
                     )
                     continuation.yield(domainResult)
                 }

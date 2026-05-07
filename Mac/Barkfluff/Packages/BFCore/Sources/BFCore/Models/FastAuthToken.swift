@@ -58,13 +58,24 @@ public struct FastAuthResult: Hashable, Sendable {
     public let fastAuthID: String
     public let status: FastAuthStatus
     public let accessToken: String?
+    public let accessTokenExpiresAt: Date?
     public let refreshToken: String?
+    public let refreshTokenExpiresAt: Date?
 
-    public init(fastAuthID: String, status: FastAuthStatus, accessToken: String? = nil, refreshToken: String? = nil) {
+    public init(
+        fastAuthID: String,
+        status: FastAuthStatus,
+        accessToken: String? = nil,
+        accessTokenExpiresAt: Date? = nil,
+        refreshToken: String? = nil,
+        refreshTokenExpiresAt: Date? = nil
+    ) {
         self.fastAuthID = fastAuthID
         self.status = status
         self.accessToken = accessToken
+        self.accessTokenExpiresAt = accessTokenExpiresAt
         self.refreshToken = refreshToken
+        self.refreshTokenExpiresAt = refreshTokenExpiresAt
     }
 }
 

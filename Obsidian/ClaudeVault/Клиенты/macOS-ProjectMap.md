@@ -150,9 +150,9 @@
 
 | Файл | Назначение |
 |------|-----------|
-| `FastAuth/ViewModels/FastAuthViewModel.swift` | VM QR-авторизации: генерация QR, polling статуса |
-| `FastAuth/Views/FastAuthQRView.swift` | Экран отображения QR-кода |
-| `FastAuth/Views/FastAuthApprovalView.swift` | Экран подтверждения авторизации на другом устройстве |
+| `FastAuth/ViewModels/FastAuthViewModel.swift` | VM QR-логина: запрос токена, server-stream подписка, авто-перезапуск при rejected/expired, сохранение токенов через AuthService |
+| `FastAuth/Views/FastAuthQRView.swift` | `QRPanelView` — встраиваемая панель QR-кода для `LoginView` (PNG приходит готовый из base64) |
+| `FastAuth/Views/FastAuthApprovalView.swift` | Экран подтверждения авторизации на другом устройстве (мобильный сценарий, на macOS-логине не используется) |
 
 ---
 
