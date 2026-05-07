@@ -47,27 +47,33 @@ public class OnlinerApiService : OnlinerApi.OnlinerApiBase
         SetOnlineStatusRequest request,
         ServerCallContext context)
     {
-        _metrics.Increment("status_changes");
         var command = new SetOnlineStatusCommand();
 
         return _mediator.Send(command, context.CancellationToken);
     }
 
-    public override Task SubscribeToOnlineStatus(
+    public override async Task SubscribeToOnlineStatus(
         SubscribeToOnlineStatusRequest request,
         IServerStreamWriter<UserOnlineStatus> responseStream,
         ServerCallContext context)
     {
         _metrics.Increment("active_subscriptions");
-        var query = new SubscribeToOnlineStatusQuery
+        try
         {
-            UserIds = request.UserIds.ToList(),
-            ResponseStream = responseStream,
-            CancellationToken = context.CancellationToken
-        };
+            var query = new SubscribeToOnlineStatusQuery
+            {
+                UserIds = request.UserIds.ToList(),
+                ResponseStream = responseStream,
+                CancellationToken = context.CancellationToken
+            };
 
-        // Не используем MediatR для streaming - прямой вызов handler
-        return _subscribeHandler.Handle(query);
+            // Не используем MediatR для streaming - прямой вызов handler
+            await _subscribeHandler.Handle(query);
+        }
+        finally
+        {
+            _metrics.Add("active_subscriptions", -1);
+        }
     }
 
     public override async Task<ChangeUsersInSubscriptionResponse> ChangeUsersInSubscription(

@@ -35,18 +35,24 @@ Client → SetOnlineStatus (gRPC)
 
 | Класс | Назначение |
 |-------|-----------|
-| `OnlineStatusStorage` | In-memory кэш `ConcurrentDictionary<long, UserOnlineStatus>` |
-| `OnlineStatusSubscriptionsManager` | Реестр gRPC-стримов по userId и subscriptionId |
+| `OnlineStatusStorage` | In-memory кэш `ConcurrentDictionary<long, UserOnlineStatus>`. `UserOnlineStatus` — иммутабельный `record`; `UpdateStatus`/`SetOffline` обновляют запись через CAS (`TryGetValue` + `TryUpdate`/`TryAdd`), не мутируя существующий объект |
+| `OnlineStatusSubscriptionsManager` | Реестр gRPC-стримов по userId и subscriptionId. Дополнительно держит обратный индекс `trackedUserId → (connectionId → Stream)`, благодаря чему `GetStreamsTrackingUser` работает за O(1) |
 | `OnlineStatusNotifier` | Рассылает изменения по стримам, отслеживающим пользователя |
 
 ### Приватность онлайн-статуса
 
-`Services/OnlineVisibilityFilter` (Scoped) запрашивает у [[Backend/Users]] `UsersServerApi.GetUserPrivacy`. Пропускает только `OnlineVisibility.All` или самого вызывающего. `OnlineVisibility.Friends` трактуется как `None` (сервис отношений ещё не реализован). Применяется в `GetOnlineStatusQueryHandler`, `SubscribeToOnlineStatusQueryHandler`, `ChangeUsersInSubscriptionCommandHandler`.
+`Services/OnlineVisibilityFilter` (Scoped) запрашивает у [[Backend/Users]] `UsersServerApi.GetUserPrivacy`. Пропускает только `OnlineVisibility.All` или самого вызывающего. `OnlineVisibility.Friends` трактуется как `None` (сервис отношений ещё не реализован). При ошибке gRPC-вызова — **fail-closed**: статус считается скрытым. Применяется в `GetOnlineStatusQueryHandler`, `SubscribeToOnlineStatusQueryHandler`, `ChangeUsersInSubscriptionCommandHandler`.
 
 ### Фоновые сервисы
 
-- **OfflineDetectionService**: каждую секунду — пользователи без активности >5 сек → Offline. Инкрементирует метрику через `MetricsCollector`
-- **DatabasePersistenceService**: каждые 10 минут — сохранение всех статусов в PostgreSQL
+- **OfflineDetectionService**: каждую секунду — пользователи без активности >5 сек → Offline. Инкрементирует `status_changes.offline` через `MetricsCollector`
+- **DatabasePersistenceService**: каждые 10 минут — сохранение всех статусов в PostgreSQL. Update существующих записей идёт через `Entry().CurrentValues.SetValues()` (свойства `UserOnlineStatus` — `init`-only)
+
+### Метрики
+
+- `active_subscriptions` — `Increment` при подключении SubscribeToOnlineStatus, `Add(-1)` в `finally` при отключении (декремент через `Add` за неимением `Decrement` в `MetricsCollector`)
+- `status_changes.online` — инкрементируется в `SetOnlineStatusCommandHandler` только при реальном переходе Offline/Unknown → Online
+- `status_changes.offline` — инкрементируется в `OfflineDetectionService` только при реальном переходе Online → Offline
 
 ### MassTransit Consumer
 

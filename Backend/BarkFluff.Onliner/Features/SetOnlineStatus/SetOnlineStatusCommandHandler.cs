@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Onliner.Services;
 using BarkFluff.Proto.Onliner;
@@ -11,17 +12,20 @@ public class SetOnlineStatusCommandHandler : IRequestHandler<SetOnlineStatusComm
     private readonly UserContext _userContext;
     private readonly OnlineStatusStorage _storage;
     private readonly OnlineStatusNotifier _notifier;
+    private readonly MetricsCollector _metrics;
     private readonly ILogger<SetOnlineStatusCommandHandler> _logger;
 
     public SetOnlineStatusCommandHandler(
         UserContext userContext,
         OnlineStatusStorage storage,
         OnlineStatusNotifier notifier,
+        MetricsCollector metrics,
         ILogger<SetOnlineStatusCommandHandler> logger)
     {
         _userContext = userContext;
         _storage = storage;
         _notifier = notifier;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -41,6 +45,8 @@ public class SetOnlineStatusCommandHandler : IRequestHandler<SetOnlineStatusComm
         // Переход Online → Offline обрабатывается в OfflineDetectionService
         if (statusChanged)
         {
+            _metrics.Increment("status_changes.online");
+
             var currentStatus = _storage.GetStatus(userId);
 
             if (currentStatus != null)

@@ -7,26 +7,32 @@ using System.Collections.Concurrent;
 namespace BarkFluff.Onliner.Services;
 
 /// <summary>
-/// Управляет подписками на изменения онлайн-статусов
-/// Singleton сервис
+/// Управляет подписками на изменения онлайн-статусов.
+/// Singleton сервис.
+/// Поддерживает обратный индекс trackedUserId -> подписки для O(1) выборки в GetStreamsTrackingUser.
 /// </summary>
 public class OnlineStatusSubscriptionsManager
 {
-    // SubscriberId (UserId подписчика) -> (ConnectionId -> SubscriptionData)
+    // Прямой индекс: SubscriberId (UserId подписчика) -> (ConnectionId -> SubscriptionData)
     private readonly ConcurrentDictionary<long, ConcurrentDictionary<Guid, SubscriptionData>>
         _subscriptions = new();
 
+    // Обратный индекс: TrackedUserId -> (ConnectionId -> Stream).
+    // Позволяет получать список stream'ов, отслеживающих конкретного пользователя, без перебора всех подписок.
+    private readonly ConcurrentDictionary<long, ConcurrentDictionary<Guid, IServerStreamWriter<UserOnlineStatus>>>
+        _reverseIndex = new();
+
     /// <summary>
-    /// Данные подписки
+    /// Данные подписки.
     /// </summary>
     public class SubscriptionData
     {
         public required IServerStreamWriter<UserOnlineStatus> Stream { get; init; }
-        public required HashSet<long> TrackedUserIds { get; init; } // Список userId за которыми следим
+        public required HashSet<long> TrackedUserIds { get; init; }
     }
 
     /// <summary>
-    /// Регистрация новой подписки
+    /// Регистрация новой подписки.
     /// </summary>
     public Guid RegisterSubscription(
         long subscriberId,
@@ -34,6 +40,7 @@ public class OnlineStatusSubscriptionsManager
         IServerStreamWriter<UserOnlineStatus> responseStream)
     {
         var connectionId = Guid.NewGuid();
+        var trackedSet = new HashSet<long>(trackedUserIds);
 
         var userSubscriptions = _subscriptions.GetOrAdd(
             subscriberId,
@@ -43,55 +50,52 @@ public class OnlineStatusSubscriptionsManager
         userSubscriptions[connectionId] = new SubscriptionData
         {
             Stream = responseStream,
-            TrackedUserIds = new HashSet<long>(trackedUserIds)
+            TrackedUserIds = trackedSet
         };
+
+        AddToReverseIndex(connectionId, trackedSet, responseStream);
 
         return connectionId;
     }
 
     /// <summary>
-    /// Удаление подписки при отключении клиента
+    /// Удаление подписки при отключении клиента.
     /// </summary>
     public void RemoveSubscription(long subscriberId, Guid connectionId)
     {
-        if (_subscriptions.TryGetValue(subscriberId, out var userSubscriptions))
+        if (!_subscriptions.TryGetValue(subscriberId, out var userSubscriptions))
         {
-            userSubscriptions.TryRemove(connectionId, out _);
+            return;
+        }
 
-            // Очистка пустых записей
-            if (userSubscriptions.IsEmpty)
-            {
-                _subscriptions.TryRemove(subscriberId, out _);
-            }
+        if (userSubscriptions.TryRemove(connectionId, out var removed))
+        {
+            RemoveFromReverseIndex(connectionId, removed.TrackedUserIds);
+        }
+
+        // Очистка пустых записей
+        if (userSubscriptions.IsEmpty)
+        {
+            _subscriptions.TryRemove(subscriberId, out _);
         }
     }
 
     /// <summary>
-    /// Получить все streams которые отслеживают данного пользователя
+    /// Получить все streams которые отслеживают данного пользователя.
+    /// O(1) за счёт обратного индекса.
     /// </summary>
     public List<IServerStreamWriter<UserOnlineStatus>> GetStreamsTrackingUser(long userId)
     {
-        var streams = new List<IServerStreamWriter<UserOnlineStatus>>();
-
-        foreach (var subscriberKvp in _subscriptions)
+        if (!_reverseIndex.TryGetValue(userId, out var connectionStreams))
         {
-            foreach (var subscriptionKvp in subscriberKvp.Value)
-            {
-                var subscription = subscriptionKvp.Value;
-
-                // Проверяем интересуется ли эта подписка данным userId
-                if (subscription.TrackedUserIds.Contains(userId))
-                {
-                    streams.Add(subscription.Stream);
-                }
-            }
+            return [];
         }
 
-        return streams;
+        return connectionStreams.Values.ToList();
     }
 
     /// <summary>
-    /// Обновить TrackedUserIds во всех активных подписках пользователя
+    /// Обновить TrackedUserIds во всех активных подписках пользователя.
     /// </summary>
     /// <param name="subscriberId">ID пользователя-подписчика</param>
     /// <param name="newUserIds">Новый список отслеживаемых пользователей</param>
@@ -103,20 +107,57 @@ public class OnlineStatusSubscriptionsManager
             return 0;
         }
 
-        // Обновляем каждую подписку пользователя
         foreach (var (connectionId, oldSubscription) in userSubscriptions.ToList())
         {
-            // Создаем новый SubscriptionData с обновленным списком
+            // Создаём свой набор для каждой подписки, чтобы внутренние HashSet'ы не шарились
+            var newSet = new HashSet<long>(newUserIds);
+
             var newSubscription = new SubscriptionData
             {
                 Stream = oldSubscription.Stream,
-                TrackedUserIds = new HashSet<long>(newUserIds)
+                TrackedUserIds = newSet
             };
 
             // Атомарная замена подписки
-            userSubscriptions.TryUpdate(connectionId, newSubscription, oldSubscription);
+            if (userSubscriptions.TryUpdate(connectionId, newSubscription, oldSubscription))
+            {
+                // Синхронизируем обратный индекс с новым набором отслеживаемых пользователей
+                RemoveFromReverseIndex(connectionId, oldSubscription.TrackedUserIds);
+                AddToReverseIndex(connectionId, newSet, oldSubscription.Stream);
+            }
         }
 
         return userSubscriptions.Count;
+    }
+
+    private void AddToReverseIndex(
+        Guid connectionId,
+        IEnumerable<long> trackedUserIds,
+        IServerStreamWriter<UserOnlineStatus> stream)
+    {
+        foreach (var trackedId in trackedUserIds)
+        {
+            var connections = _reverseIndex.GetOrAdd(
+                trackedId,
+                _ => new ConcurrentDictionary<Guid, IServerStreamWriter<UserOnlineStatus>>());
+
+            connections[connectionId] = stream;
+        }
+    }
+
+    private void RemoveFromReverseIndex(Guid connectionId, IEnumerable<long> trackedUserIds)
+    {
+        foreach (var trackedId in trackedUserIds)
+        {
+            if (_reverseIndex.TryGetValue(trackedId, out var connections))
+            {
+                connections.TryRemove(connectionId, out _);
+
+                if (connections.IsEmpty)
+                {
+                    _reverseIndex.TryRemove(trackedId, out _);
+                }
+            }
+        }
     }
 }

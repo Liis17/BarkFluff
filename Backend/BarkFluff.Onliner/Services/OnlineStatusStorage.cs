@@ -7,122 +7,103 @@ namespace BarkFluff.Onliner.Services;
 
 /// <summary>
 /// In-memory хранилище для быстрого доступа к онлайн-статусам
-/// Потокобезопасное, singleton
+/// Потокобезопасное, singleton. Записи иммутабельны — обновление через CAS-замену.
 /// </summary>
 public class OnlineStatusStorage
 {
-    // UserId -> UserOnlineStatus
     private readonly ConcurrentDictionary<long, UserOnlineStatus> _statuses = new();
 
     /// <summary>
-    /// Обновить статус пользователя (Online)
+    /// Обновить статус пользователя (Online).
     /// </summary>
-    /// <returns>True если статус изменился с Offline/Unknown на Online</returns>
+    /// <returns>True если статус изменился с Offline/Unknown на Online.</returns>
     public bool UpdateStatus(long userId)
     {
-        bool statusChanged = false;
+        while (true)
+        {
+            var now = DateTime.UtcNow;
 
-        _statuses.AddOrUpdate(
-            userId,
-            // Add: новая запись
-            _ =>
+            if (_statuses.TryGetValue(userId, out var existing))
             {
-                statusChanged = true;
-                return new UserOnlineStatus
+                var updated = existing with { Status = StatusTypeId.Online, LastSeen = now };
+
+                if (_statuses.TryUpdate(userId, updated, existing))
+                {
+                    return existing.Status != StatusTypeId.Online;
+                }
+            }
+            else
+            {
+                var newStatus = new UserOnlineStatus
                 {
                     UserId = userId,
                     Status = StatusTypeId.Online,
-                    LastSeen = DateTime.UtcNow
+                    LastSeen = now
                 };
-            },
-            // Update: существующая запись
-            (_, existing) =>
-            {
-                // Проверяем изменился ли статус
-                if (existing.Status != StatusTypeId.Online)
+
+                if (_statuses.TryAdd(userId, newStatus))
                 {
-                    statusChanged = true;
+                    return true;
                 }
-
-                existing.Status = StatusTypeId.Online;
-                existing.LastSeen = DateTime.UtcNow;
-                return existing;
             }
-        );
-
-        return statusChanged;
+        }
     }
 
     /// <summary>
-    /// Установить статус Offline
+    /// Установить статус Offline.
     /// </summary>
-    /// <returns>True если статус изменился с Online на Offline</returns>
+    /// <returns>True если статус изменился с Online на Offline.</returns>
     public bool SetOffline(long userId)
     {
-        bool statusChanged = false;
+        while (true)
+        {
+            var now = DateTime.UtcNow;
 
-        _statuses.AddOrUpdate(
-            userId,
-            // Add: если пользователя нет - создаём с Offline статусом (не должно происходить)
-            _ =>
+            if (_statuses.TryGetValue(userId, out var existing))
             {
-                return new UserOnlineStatus
+                var updated = existing with { Status = StatusTypeId.Offline, LastSeen = now };
+
+                if (_statuses.TryUpdate(userId, updated, existing))
+                {
+                    return existing.Status == StatusTypeId.Online;
+                }
+            }
+            else
+            {
+                var newStatus = new UserOnlineStatus
                 {
                     UserId = userId,
                     Status = StatusTypeId.Offline,
-                    LastSeen = DateTime.UtcNow
+                    LastSeen = now
                 };
-            },
-            // Update: существующая запись
-            (_, existing) =>
-            {
-                // Проверяем изменился ли статус
-                if (existing.Status == StatusTypeId.Online)
+
+                if (_statuses.TryAdd(userId, newStatus))
                 {
-                    statusChanged = true;
+                    return false;
                 }
-
-                existing.Status = StatusTypeId.Offline;
-                existing.LastSeen = DateTime.UtcNow;
-                return existing;
             }
-        );
-
-        return statusChanged;
+        }
     }
 
     /// <summary>
-    /// Получить статус пользователя
+    /// Получить статус пользователя.
     /// </summary>
     public UserOnlineStatus? GetStatus(long userId)
     {
-        return _statuses.TryGetValue(userId, out var status)
-            ? new UserOnlineStatus
-            {
-                UserId = status.UserId,
-                Status = status.Status,
-                LastSeen = status.LastSeen
-            }
-            : null;
+        return _statuses.TryGetValue(userId, out var status) ? status : null;
     }
 
     /// <summary>
-    /// Получить все статусы (для bulk save в БД)
+    /// Получить все статусы (для bulk save в БД).
+    /// Возвращает иммутабельные снимки — копировать не требуется.
     /// </summary>
-    public List<UserOnlineStatus> GetAllStatuses()
+    public IReadOnlyCollection<UserOnlineStatus> GetAllStatuses()
     {
-        return _statuses.Values
-            .Select(s => new UserOnlineStatus
-            {
-                UserId = s.UserId,
-                Status = s.Status,
-                LastSeen = s.LastSeen
-            })
-            .ToList();
+        return _statuses.Values.ToList();
     }
 
     /// <summary>
-    /// Получить пользователей которые Online дольше заданного времени
+    /// Получить пользователей которые Online дольше заданного времени.
     /// </summary>
     public List<long> GetOnlineUsersOlderThan(TimeSpan threshold)
     {
