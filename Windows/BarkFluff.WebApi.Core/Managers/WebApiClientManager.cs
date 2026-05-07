@@ -43,6 +43,7 @@ namespace BarkFluff.WebApi.Core.Managers
             try
             {
                 gParam.SocketBeacon = WebApi.EnsureHttpPrefix(gParam.SocketBeacon);
+                _webApi.BeaconChannel?.Dispose();
                 _webApi.BeaconChannel = GrpcChannel.ForAddress(gParam.SocketBeacon);
                 _webApi.BeaconAC = new Proto.Beacon.BeaconApi.BeaconApiClient(_webApi.BeaconChannel);
                 UpdateManagerClients();
@@ -61,6 +62,7 @@ namespace BarkFluff.WebApi.Core.Managers
 
             try
             {
+                _webApi.NavigatorChannel?.Dispose();
                 _webApi.NavigatorChannel = GrpcChannel.ForAddress(WebApi.EnsureHttpPrefix(navigatorUrl));
                 _webApi.NavigatorAC = new Proto.Navigator.NavigatorApi.NavigatorApiClient(_webApi.NavigatorChannel);
                 UpdateManagerClients();
@@ -133,6 +135,14 @@ namespace BarkFluff.WebApi.Core.Managers
                 _gParam.SocketUsers = WebApi.EnsureHttpPrefix(_gParam.SocketUsers);
                 _gParam.SocketUpdates = WebApi.EnsureHttpPrefix(_gParam.SocketUpdates);
                 _gParam.SocketOnliner = WebApi.EnsureHttpPrefix(_gParam.SocketOnliner);
+
+                _webApi.MessagesChannel?.Dispose();
+                _webApi.FilesChannel?.Dispose();
+                _webApi.IdentityChannel?.Dispose();
+                _webApi.BeaconChannel?.Dispose();
+                _webApi.UserChannel?.Dispose();
+                _webApi.UpdatesChannel?.Dispose();
+                _webApi.OnlinerChannel?.Dispose();
 
                 _webApi.MessagesChannel = GrpcChannel.ForAddress(_gParam.SocketMessages);
                 _webApi.FilesChannel = GrpcChannel.ForAddress(_gParam.SocketFiles);
