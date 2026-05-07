@@ -1,5 +1,6 @@
 namespace BarkFluff.Updates.Features.SubscribeNewMessages.Handlers;
 
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Updates;
 using BarkFluff.Updates.Features.SubscribeNewMessages;
 
@@ -14,13 +15,16 @@ public class NewMessageNotificationHandler : INotificationHandler<NewMessageNoti
 {
     private readonly StreamSubscriptionsManager _subscriptionsManager;
     private readonly ILogger<NewMessageNotificationHandler> _logger;
+    private readonly MetricsCollector _metrics;
 
     public NewMessageNotificationHandler(
         StreamSubscriptionsManager subscriptionsManager,
-        ILogger<NewMessageNotificationHandler> logger)
+        ILogger<NewMessageNotificationHandler> logger,
+        MetricsCollector metrics)
     {
         _subscriptionsManager = subscriptionsManager;
         _logger = logger;
+        _metrics = metrics;
     }
 
     public async Task Handle(NewMessageNotification notification, CancellationToken cancellationToken)
@@ -51,11 +55,16 @@ public class NewMessageNotificationHandler : INotificationHandler<NewMessageNoti
                         };
                         await stream.WriteAsync(newMessageEvent, cancellationToken);
 
+                        _metrics.Increment("new_messages_broadcast");
+                        _metrics.Increment("events_broadcast"); // обратная совместимость
+
                         _logger.LogDebug("Successfully sent message {MessageId} to user {UserId}",
                             message.Id, memberId);
                     }
                     catch (Exception ex)
                     {
+                        _metrics.Increment("new_messages_broadcast_errors");
+                        _metrics.Increment("events_broadcast_errors");
                         // Если произошла ошибка при записи в поток, логируем и продолжаем
                         // Отключение подписки произойдет в gRPC сервисе при отмене запроса
                         _logger.LogWarning(ex, "Failed to send message {MessageId} to user {UserId} stream",

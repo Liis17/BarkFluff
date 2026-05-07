@@ -1,4 +1,5 @@
 using BarkFluff.Configuration.Domain;
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Shared.Identity;
 
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +20,7 @@ public class ConfigurationDefaultsPopulator
 {
     private readonly ConfigurationContext _context;
     private readonly ILogger<ConfigurationDefaultsPopulator> _logger;
+    private readonly MetricsCollector? _metrics;
     private readonly string _postgresHost;
     private readonly string _postgresUsername;
     private readonly string _postgresPassword;
@@ -97,10 +99,12 @@ public class ConfigurationDefaultsPopulator
         string postgresUsername,
         string postgresPassword,
         string rabbitUsername,
-        string rabbitPassword)
+        string rabbitPassword,
+        MetricsCollector? metrics = null)
     {
         _context = context;
         _logger = logger;
+        _metrics = metrics;
         _postgresHost = postgresHost;
         _postgresUsername = postgresUsername;
         _postgresPassword = postgresPassword;
@@ -114,19 +118,26 @@ public class ConfigurationDefaultsPopulator
             .Where(c => c.Value == "" || c.Value == null)
             .ToListAsync();
 
+        // Стартовый gauge — общее число записей
+        var totalConfigs = await _context.Configurations.CountAsync();
+        _metrics?.Set("configurations_total", totalConfigs);
+
         if (emptyConfigs.Count == 0)
         {
             _logger.LogInformation("Все конфигурации уже заполнены, авто-заполнение не требуется");
+            _metrics?.Set("configurations_empty_at_startup", 0);
             return;
         }
 
         _logger.LogInformation("Найдено {Count} пустых конфигураций, запуск авто-заполнения", emptyConfigs.Count);
+        _metrics?.Set("configurations_empty_at_startup", emptyConfigs.Count);
 
         // Сначала заполняем JWT SecretKey, т.к. он нужен для генерации сервисных токенов
         var jwtSecret = await GetOrGenerateJwtSecret(emptyConfigs);
         var jwtIssuer = await GetOrGenerateValue(emptyConfigs, "JwtSettings", "Issuer", "BarkFluff");
         var jwtAudience = await GetOrGenerateValue(emptyConfigs, "JwtSettings", "Audience", "BarkFluffMicroservices");
 
+        var populatedCount = 0;
         foreach (var config in emptyConfigs)
         {
             var defaultValue = ResolveDefault(config, jwtSecret, jwtIssuer, jwtAudience);
@@ -136,6 +147,7 @@ public class ConfigurationDefaultsPopulator
                 config.EditedAt = DateTime.UtcNow;
                 config.EditedBy = "system";
                 config.EditedFrom = "auto-populate";
+                populatedCount++;
                 _logger.LogDebug("Авто-заполнение: [{ServiceId}] {Section}:{Key} = {Value}",
                     config.ServiceId, config.Section, config.Key,
                     IsSensitive(config) ? "***" : defaultValue);
@@ -143,7 +155,9 @@ public class ConfigurationDefaultsPopulator
         }
 
         await _context.SaveChangesAsync();
-        _logger.LogInformation("Авто-заполнение завершено");
+        _metrics?.Add("defaults_populated_total", populatedCount);
+        _metrics?.Set("configurations_total", await _context.Configurations.CountAsync());
+        _logger.LogInformation("Авто-заполнение завершено. Заполнено: {Count}", populatedCount);
     }
 
     private async Task<string> GetOrGenerateJwtSecret(List<ConfigurationItem> emptyConfigs)

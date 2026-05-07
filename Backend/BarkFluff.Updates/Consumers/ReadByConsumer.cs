@@ -24,7 +24,7 @@ public class ReadByConsumer : IConsumer<MessageReadEvent>
     public async Task Consume(ConsumeContext<MessageReadEvent> context)
     {
         _metrics.Increment("rabbitmq_events_consumed");
-        _metrics.Increment("events_broadcast");
+        _metrics.Increment("read_by_events_consumed");
         _logger.LogInformation(
             "Получено событие прочтения сообщения {MessageId} в чате {ChatId}. Прочитано пользователями: {ReadByCount}",
             context.Message.MessageId,
@@ -52,6 +52,7 @@ public class ReadByConsumer : IConsumer<MessageReadEvent>
         }
         catch (Exception ex)
         {
+            _metrics.Increment("read_by_events_errors");
             _logger.LogError(
                 ex,
                 "Ошибка при обработке события прочтения сообщения {MessageId} в чате {ChatId}",

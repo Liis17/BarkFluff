@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.Identity.Features.CreateToken;
 using BarkFluff.Identity.Infrastructure;
@@ -21,7 +22,7 @@ namespace BarkFluff.Identity.Features.Auth;
 public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
     IMediator mediator, AuthPropertiesStorage authPropertiesStorage, NotificationQueueSender notificationQueueSender,
     RefreshTokensStorage refreshTokensStorage, RequestContext requestContext, PasswordsStorage passwordsStorage,
-    LocationClient locationClient, ILogger<AuthCommandHandler> logger) : IRequestHandler<AuthCommand, AuthResponse>
+    LocationClient locationClient, MetricsCollector metrics, ILogger<AuthCommandHandler> logger) : IRequestHandler<AuthCommand, AuthResponse>
 {
 
     private const int ExpDaysRefreshToken = 9999;
@@ -85,6 +86,8 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
 
         if (user.User is null)
         {
+            metrics.Increment("auth_login_failed");
+            metrics.Increment("auth_login_failed_user_not_found");
             logger.LogWarning(
                 "Неудачная попытка входа: пользователь не найден. Логин: {Login}, IP: {IpAddress}",
                 login,
@@ -138,8 +141,10 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                 };
 
                 await notificationQueueSender.SendNotification(emailNotification);
+                metrics.Increment("otp_email_codes_sent");
             }
 
+            metrics.Increment("auth_otp_required");
             throw new OtpCodeNeedException();
         }
 
@@ -155,6 +160,8 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
 
             if (!isValid)
             {
+                metrics.Increment("auth_login_failed");
+                metrics.Increment("otp_authenticator_failed");
                 logger.LogWarning(
                     "Неверный TOTP код для пользователя {UserId}, IP: {IpAddress}",
                     user.User.Id,
@@ -163,6 +170,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                 throw new NotValidOtpCodeException();
             }
 
+            metrics.Increment("otp_authenticator_verified");
             logger.LogDebug("TOTP код успешно проверен для пользователя {UserId}", user.User.Id);
         }
 
@@ -173,6 +181,8 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
             if (!string.Equals(optOptions.LastEmailAuthCode, request.OtpCode,
                     StringComparison.InvariantCultureIgnoreCase))
             {
+                metrics.Increment("auth_login_failed");
+                metrics.Increment("otp_email_failed");
                 logger.LogWarning(
                     "Неверный Email OTP код для пользователя {UserId}, IP: {IpAddress}",
                     user.User.Id,
@@ -181,6 +191,7 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
                 throw new NotValidOtpCodeException();
             }
 
+            metrics.Increment("otp_email_verified");
             logger.LogDebug("Email OTP код успешно проверен для пользователя {UserId}", user.User.Id);
         }
 
@@ -190,6 +201,8 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
 
         if (!PasswordHasher.VerifyPassword(request.Password, currentPasswordHash))
         {
+            metrics.Increment("auth_login_failed");
+            metrics.Increment("auth_login_failed_invalid_password");
             logger.LogWarning(
                 "Неудачная попытка входа: неверный пароль для пользователя {UserId}. Логин: {Login}, IP: {IpAddress}",
                 user.User.Id,
@@ -290,6 +303,9 @@ public class AuthCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
         };
 
         await notificationQueueSender.SendNotification(successfulLoginNotification);
+
+        metrics.Increment("auth_login_success");
+        metrics.Increment("sessions_created");
 
         logger.LogInformation(
             "Аутентификация завершена успешно для пользователя {UserId}. Токены сгенерированы, уведомление отправлено",

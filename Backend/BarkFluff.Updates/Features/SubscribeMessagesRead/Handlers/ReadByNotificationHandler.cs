@@ -1,3 +1,5 @@
+using BarkFluff.GrpcServer.Metrics;
+
 using MediatR;
 
 namespace BarkFluff.Updates.Features.SubscribeMessagesRead.Handlers;
@@ -6,11 +8,16 @@ public class ReadByNotificationHandler : INotificationHandler<ReadByNotification
 {
     private readonly StreamSubscriptionsManager _subscriptionsManager;
     private readonly ILogger<ReadByNotificationHandler> _logger;
+    private readonly MetricsCollector _metrics;
 
-    public ReadByNotificationHandler(StreamSubscriptionsManager subscriptionsManager, ILogger<ReadByNotificationHandler> logger)
+    public ReadByNotificationHandler(
+        StreamSubscriptionsManager subscriptionsManager,
+        ILogger<ReadByNotificationHandler> logger,
+        MetricsCollector metrics)
     {
         _subscriptionsManager = subscriptionsManager;
         _logger = logger;
+        _metrics = metrics;
     }
 
     public async Task Handle(ReadByNotification notification, CancellationToken cancellationToken)
@@ -52,10 +59,12 @@ public class ReadByNotificationHandler : INotificationHandler<ReadByNotification
                             NewReadBy = { notification.NewReadBy },
                         };
                         await stream.WriteAsync(newReadEvent, cancellationToken);
+                        _metrics.Increment("read_by_broadcast");
                         return true;
                     }
                     catch (Exception ex)
                     {
+                        _metrics.Increment("read_by_broadcast_errors");
                         _logger.LogWarning(
                             ex,
                             "Ошибка при отправке события прочтения пользователю {UserId}. ChatId: {ChatId}, MessageId: {MessageId}",

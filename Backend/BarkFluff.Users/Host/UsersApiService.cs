@@ -52,20 +52,25 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
         return await _mediator.Send(query);
     }
 
-    public override Task<SetProfilePictureResponse> SetProfilePicture(SetProfilePictureRequest request, ServerCallContext context)
+    public override async Task<SetProfilePictureResponse> SetProfilePicture(SetProfilePictureRequest request, ServerCallContext context)
     {
-        _metrics.Increment("profile_updates");
+        if (string.IsNullOrEmpty(request.FileId))
+            _metrics.Increment("profile_avatar_removals");
+        else
+            _metrics.Increment("profile_avatar_updates");
+
         var command = new SetProfilePictureCommand
         {
             FileId = string.IsNullOrEmpty(request.FileId) ? null : Guid.Parse(request.FileId)
         };
 
-        return _mediator.Send(command);
+        return await _mediator.Send(command);
     }
 
     [AllowAnonymous]
     public override Task<CheckExistResponse> CheckExistEmail(CheckExistEmailRequest request, ServerCallContext context)
     {
+        _metrics.Increment("existence_checks");
         var command = new CheckExistEmailQuery() { Email = request.Email?.Trim() };
 
         return _mediator.Send(command);
@@ -75,6 +80,7 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
     public override Task<CheckExistResponse> CheckExistUsername(CheckExistUsernameRequest request,
         ServerCallContext context)
     {
+        _metrics.Increment("existence_checks");
         var command = new CheckExistUsernameQuery() { Username = request.Username?.Trim() };
 
         return _mediator.Send(command);
@@ -82,7 +88,7 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
 
     public override async Task<ChangeNameResponse> ChangeName(ChangeNameRequest request, ServerCallContext context)
     {
-        _metrics.Increment("profile_updates");
+        _metrics.Increment("profile_name_updates");
         var command = new ChangeNameCommand()
         {
             FirstName = request.FirstName?.Trim(),
@@ -96,7 +102,7 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
 
     public override async Task<ChangeUsernameResponse> ChangeUsername(ChangeUsernameRequest request, ServerCallContext context)
     {
-        _metrics.Increment("profile_updates");
+        _metrics.Increment("profile_username_updates");
         var command = new ChangeUsernameCommand()
         {
             Username = request.Username?.Trim()
@@ -109,7 +115,7 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
 
     public override async Task<ChangeBioResponse> ChangeBio(ChangeBioRequest request, ServerCallContext context)
     {
-        _metrics.Increment("profile_updates");
+        _metrics.Increment("profile_bio_updates");
         var command = new ChangeBioCommand() { Bio = request.Bio };
 
         await _mediator.Send(command);
@@ -117,22 +123,35 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
         return new ChangeBioResponse();
     }
 
-    public override Task<SearchUsersResponse> SearchUsers(SearchUsersRequest request, ServerCallContext context)
+    public override async Task<SearchUsersResponse> SearchUsers(SearchUsersRequest request, ServerCallContext context)
     {
         _metrics.Increment("user_searches");
-        request.Pagination ??= new PageRequest()
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        try
         {
-            Size = 10,
-            Offset = 0
-        };
+            request.Pagination ??= new PageRequest()
+            {
+                Size = 10,
+                Offset = 0
+            };
 
-        var command = new SearchUsersQuery { Query = request.Query, Size = request.Pagination.Size, Skip = request.Pagination.Offset };
+            var command = new SearchUsersQuery { Query = request.Query, Size = request.Pagination.Size, Skip = request.Pagination.Offset };
 
-        return _mediator.Send(command);
+            var response = await _mediator.Send(command);
+            _metrics.Add("user_search_duration_ms_total", sw.ElapsedMilliseconds);
+            _metrics.Set("last_user_search_unix", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            return response;
+        }
+        catch
+        {
+            _metrics.Increment("user_search_errors");
+            throw;
+        }
     }
 
     public override Task<GetUserBadgesResponse> GetUserBadges(GetUserBadgesRequest request, ServerCallContext context)
     {
+        _metrics.Increment("badge_lookups");
         var query = new GetUserBadgesQuery
         {
             UserId = request.UserId,
@@ -146,18 +165,21 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
 
     public override Task<GetDevicesResponse> GetDevices(GetDevicesRequest request, ServerCallContext context)
     {
+        _metrics.Increment("device_lookups");
         var query = new GetDevicesQuery();
         return _mediator.Send(query);
     }
 
     public override Task<GetCurrentDeviceResponse> GetCurrentDevice(GetCurrentDeviceRequest request, ServerCallContext context)
     {
+        _metrics.Increment("device_lookups");
         var query = new GetCurrentDeviceQuery();
         return _mediator.Send(query);
     }
 
     public override Task<RenameDeviceResponse> RenameDevice(RenameDeviceRequest request, ServerCallContext context)
     {
+        _metrics.Increment("device_renames");
         var command = new RenameDeviceCommand
         {
             DeviceId = Guid.Parse(request.DeviceId),
@@ -182,6 +204,7 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
 
     public override async Task<SetNotificationsEnabledResponse> SetNotificationsEnabled(SetNotificationsEnabledRequest request, ServerCallContext context)
     {
+        _metrics.Increment("notifications_toggles");
         var command = new SetNotificationsEnabledCommand
         {
             Enabled = request.Enabled
@@ -199,6 +222,7 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
 
     public override async Task<UpdatePrivacySettingsResponse> UpdatePrivacySettings(UpdatePrivacySettingsRequest request, ServerCallContext context)
     {
+        _metrics.Increment("privacy_updates");
         await _mediator.Send(new UpdatePrivacySettingsCommand { Settings = request.Settings });
         return new UpdatePrivacySettingsResponse();
     }
@@ -210,6 +234,7 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
 
     public override async Task<UpdatePersonalizationResponse> UpdatePersonalization(UpdatePersonalizationRequest request, ServerCallContext context)
     {
+        _metrics.Increment("personalization_updates");
         await _mediator.Send(new UpdatePersonalizationCommand { Personalization = request.Personalization });
         return new UpdatePersonalizationResponse();
     }
@@ -221,6 +246,7 @@ public class UsersApiService : BarkFluff.Proto.Users.UsersApi.UsersApiBase
 
     public override async Task<SetProfilePosterResponse> SetProfilePoster(SetProfilePosterRequest request, ServerCallContext context)
     {
+        _metrics.Increment("profile_poster_updates");
         var fileId = string.IsNullOrEmpty(request.ProfilePosterFileId) ? null : request.ProfilePosterFileId;
         await _mediator.Send(new SetProfilePosterCommand { ProfilePosterFileId = fileId });
         return new SetProfilePosterResponse();

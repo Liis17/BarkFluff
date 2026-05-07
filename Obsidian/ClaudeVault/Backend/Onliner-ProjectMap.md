@@ -66,6 +66,7 @@
 |------|-------|---------|
 | `BackgroundServices/OfflineDetectionService.cs` | `OfflineDetectionService` | Каждую **1 секунду** проверяет пользователей: `LastSeen > 5 сек` → переводит в `Offline`, уведомляет через `OnlineStatusNotifier`. Использует `MetricsCollector` |
 | `BackgroundServices/DatabasePersistenceService.cs` | `DatabasePersistenceService` | Каждые **10 минут** сохраняет все статусы из in-memory в PostgreSQL через `OnlineStatusContext` |
+| `BackgroundServices/MetricsSnapshotService.cs` | `MetricsSnapshotService` | Каждые **2 секунды** снимает gauge-показатели (`active_subscriptions`, `tracked_unique_users`, `online_users_count`, `storage_total_count`) в `MetricsCollector.Set`. Без него gauge-метрики обнулялись бы каждые 5 сек в `SnapshotAndReset` |
 
 ---
 

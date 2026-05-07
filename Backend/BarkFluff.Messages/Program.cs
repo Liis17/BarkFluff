@@ -1,7 +1,9 @@
 using BarkFluff.GrpcServer;
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Messages.Host;
 using BarkFluff.Messages.Infrastructure;
+using BarkFluff.Messages.Infrastructure.Behaviors;
 using BarkFluff.Messages.Persistence;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Files;
@@ -46,7 +48,11 @@ public class Program
             options.InstanceName = "Messages_";
         });
 
-        builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
+        builder.Services.AddMediatR(cfg =>
+        {
+            cfg.RegisterServicesFromAssemblyContaining<Program>();
+            cfg.AddOpenBehavior(typeof(MetricsBehavior<,>));
+        });
 
         builder.Services.AddXAuth(builder.Configuration);
 
@@ -114,6 +120,9 @@ public class Program
 
         app.MapGrpcService<MessagesApiService>();
         app.MapGrpcService<MessagesServerApiService>();
+
+        var startupMetrics = app.Services.GetRequiredService<MetricsCollector>();
+        startupMetrics.Set("service_started_unix", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
 
         app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
         app.Run();

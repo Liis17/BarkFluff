@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Shared;
 using BarkFluff.Shared.Queue.Messages;
 using BarkFluff.Updates.Features.SubscribeNewMessages;
@@ -17,15 +18,18 @@ public class PushNotificationSchedulerHandler : INotificationHandler<NewMessageN
     private readonly PendingPushTracker _pendingPushTracker;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<PushNotificationSchedulerHandler> _logger;
+    private readonly MetricsCollector _metrics;
 
     public PushNotificationSchedulerHandler(
         PendingPushTracker pendingPushTracker,
         IServiceScopeFactory scopeFactory,
-        ILogger<PushNotificationSchedulerHandler> logger)
+        ILogger<PushNotificationSchedulerHandler> logger,
+        MetricsCollector metrics)
     {
         _pendingPushTracker = pendingPushTracker;
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _metrics = metrics;
     }
 
     public async Task Handle(NewMessageNotification notification, CancellationToken cancellationToken)
@@ -49,6 +53,7 @@ public class PushNotificationSchedulerHandler : INotificationHandler<NewMessageN
         foreach (var userId in recipients)
         {
             var cts = _pendingPushTracker.RegisterPending(notification.Message.Id, userId);
+            _metrics.Increment("push_notifications_scheduled");
 
             _ = Task.Run(async () =>
             {
@@ -93,6 +98,7 @@ public class PushNotificationSchedulerHandler : INotificationHandler<NewMessageN
                         AttachmentCount = notification.Message.Content?.Attachments.Count ?? 0
                     });
 
+                    _metrics.Increment("push_notifications_sent");
                     _logger.LogInformation(
                         "Push-уведомление отправлено для сообщения {MessageId} пользователю {UserId}",
                         notification.Message.Id,
@@ -101,6 +107,7 @@ public class PushNotificationSchedulerHandler : INotificationHandler<NewMessageN
                 catch (OperationCanceledException)
                 {
                     // Прочитано — отменяем отправку push
+                    _metrics.Increment("push_notifications_cancelled");
                     _logger.LogDebug(
                         "Push-уведомление отменено для сообщения {MessageId} пользователю {UserId} (прочитано)",
                         notification.Message.Id,
@@ -108,6 +115,7 @@ public class PushNotificationSchedulerHandler : INotificationHandler<NewMessageN
                 }
                 catch (Exception ex)
                 {
+                    _metrics.Increment("push_notifications_errors");
                     _logger.LogError(
                         ex,
                         "Ошибка при отправке push-уведомления для сообщения {MessageId} пользователю {UserId}",

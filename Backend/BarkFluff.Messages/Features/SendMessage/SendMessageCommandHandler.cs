@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Messages.Mapping;
 using BarkFluff.Messages.Persistence.Services;
@@ -29,6 +30,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
     private readonly ChatCache _chatCache;
     private readonly MessagesStorage _messagesStorage;
     private readonly MessageQueueSender _messageQueueSender;
+    private readonly MetricsCollector _metrics;
     private readonly ILogger<SendMessageCommandHandler> _logger;
 
     private readonly Dictionary<UploadFileType, Domain.MessageAttachmentType> _attachmentMap =
@@ -45,7 +47,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
 
     public SendMessageCommandHandler(ChatsStorage chatsStorage, UsersServerApi.UsersServerApiClient usersServerApiClient,
         UserContext userContext, FilesServerApi.FilesServerApiClient filesServerApiClient, ChatCache chatCache, MessagesStorage messagesStorage,
-        MessageQueueSender messageQueueSender, ILogger<SendMessageCommandHandler> logger)
+        MessageQueueSender messageQueueSender, MetricsCollector metrics, ILogger<SendMessageCommandHandler> logger)
     {
         _chatsStorage = chatsStorage;
         _usersServerApiClient = usersServerApiClient;
@@ -54,6 +56,7 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
         _chatCache = chatCache;
         _messagesStorage = messagesStorage;
         _messageQueueSender = messageQueueSender;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -161,6 +164,8 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
 
                 await _chatCache.SetChatImage(chatId.Value, _userContext.UserId, personRepose.User.ProfilePicture);
                 await _chatCache.SetChatImage(chatId.Value, personRepose.User.Id, userResponse.User.ProfilePicture);
+
+                _metrics.Increment("chats_created_person");
 
                 _logger.LogInformation(
                     "Личный чат {ChatId} создан между пользователями {UserId} и {TargetUserId}",
@@ -288,6 +293,8 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
                 ForwardedAttachments = forwardedAttachments
             });
 
+            _metrics.Increment("messages_forwarded");
+
             _logger.LogInformation(
                 "Добавлено пересланное сообщение {OriginalMessageId} от автора {AuthorName}",
                 originalMessage.Id,
@@ -330,6 +337,16 @@ public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, Sen
 
         await _messageQueueSender.SendMessage(message, chatId.Value, members
             .Select(x => x.UserId).ToList(), filesInfoMap);
+
+        _metrics.Increment("messages_sent");
+        if (!string.IsNullOrEmpty(request.Message.Text))
+            _metrics.Increment("messages_sent_with_text");
+        if (attachments.Count > 0)
+        {
+            _metrics.Increment("messages_sent_with_attachments");
+            _metrics.Add("attachments_total", attachments.Count);
+        }
+        _metrics.Set("last_message_sent_unix", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
 
         _logger.LogInformation(
             "Сообщение {MessageId} успешно отправлено в чат {ChatId} от пользователя {UserId}",

@@ -66,6 +66,7 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
 
     public override Task<CheckExistResponse> CheckExistEmail(CheckExistEmailRequest request, ServerCallContext context)
     {
+        _metrics.Increment("existence_checks");
         var command = new CheckExistEmailQuery() { Email = request.Email?.Trim() };
 
         return _mediator.Send(command);
@@ -73,6 +74,7 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
 
     public override Task<CheckExistResponse> CheckExistUsername(CheckExistUsernameRequest request, ServerCallContext context)
     {
+        _metrics.Increment("existence_checks");
         var command = new CheckExistUsernameQuery() { Username = request.Username?.Trim() };
 
         return _mediator.Send(command);
@@ -80,25 +82,46 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
 
     public override Task<FindByLoginResponse> FindByLogin(FindByLoginRequest request, ServerCallContext context)
     {
+        _metrics.Increment("login_lookups");
         var command = new FindByLoginQuery() { Username = request.Username?.Trim(), Email = request.Email?.Trim() };
 
         return _mediator.Send(command);
     }
 
-    public override Task<AddDraftUserResponse> AddDraftUser(AddDraftUserRequest request, ServerCallContext context)
+    public override async Task<AddDraftUserResponse> AddDraftUser(AddDraftUserRequest request, ServerCallContext context)
     {
-        var command = new AddDraftUserCommand() { Username = request.Username?.Trim(), Email = request.Email?.Trim(), FirstName = request.FirstName?.Trim(), LastName = request.LastName?.Trim() };
-
-        return _mediator.Send(command);
+        _metrics.Increment("drafts_create_requests");
+        try
+        {
+            var command = new AddDraftUserCommand() { Username = request.Username?.Trim(), Email = request.Email?.Trim(), FirstName = request.FirstName?.Trim(), LastName = request.LastName?.Trim() };
+            var response = await _mediator.Send(command);
+            _metrics.Increment("drafts_created");
+            _metrics.Set("last_draft_created_unix", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            return response;
+        }
+        catch
+        {
+            _metrics.Increment("drafts_create_errors");
+            throw;
+        }
     }
 
     public override async Task<ConfirmUserResponse> ConfirmUser(ConfirmUserRequest request, ServerCallContext context)
     {
-        var command = new ConfirmUserCommand() { UserId = request.UserId };
-
-        await _mediator.Send(command);
-
-        return new ConfirmUserResponse();
+        _metrics.Increment("users_confirm_requests");
+        try
+        {
+            var command = new ConfirmUserCommand() { UserId = request.UserId };
+            await _mediator.Send(command);
+            _metrics.Increment("users_confirmed");
+            _metrics.Set("last_user_confirmed_unix", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            return new ConfirmUserResponse();
+        }
+        catch
+        {
+            _metrics.Increment("users_confirm_errors");
+            throw;
+        }
     }
 
     public override async Task<GetByIdResponse> GetById(GetByIdRequest request, ServerCallContext context)
@@ -112,6 +135,7 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
 
     public override Task<GetUserContactsResponse> GetUserContacts(GetUserContactsRequest request, ServerCallContext context)
     {
+        _metrics.Increment("contact_lookups");
         var command = new GetUserContactsCommand()
         {
             UserId = request.UserId
@@ -122,6 +146,7 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
 
     public override Task<AddDraftUserResponse> OverrideDraftUser(AddDraftUserRequest request, ServerCallContext context)
     {
+        _metrics.Increment("drafts_overridden");
         var command = new OverrideDraftUserCommand()
         {
             LastName = request.LastName?.Trim(),
@@ -148,6 +173,7 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
 
     public override Task<AssignUserBadgeResponse> AssignUserBadge(AssignUserBadgeRequest request, ServerCallContext context)
     {
+        _metrics.Increment("badges_assigned");
         var command = new AssignUserBadgeCommand
         {
             UserId = request.UserId,
@@ -160,6 +186,7 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
 
     public override Task<RemoveUserBadgeResponse> RemoveUserBadge(RemoveUserBadgeRequest request, ServerCallContext context)
     {
+        _metrics.Increment("badges_removed");
         var command = new RemoveUserBadgeCommand
         {
             UserId = request.UserId,
@@ -171,6 +198,7 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
 
     public override Task<UpdateUserBadgePriorityResponse> UpdateUserBadgePriority(UpdateUserBadgePriorityRequest request, ServerCallContext context)
     {
+        _metrics.Increment("badges_priority_updated");
         var command = new UpdateUserBadgePriorityCommand
         {
             UserId = request.UserId,
@@ -183,6 +211,7 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
 
     public override Task<CreateBadgeResponse> CreateBadge(CreateBadgeRequest request, ServerCallContext context)
     {
+        _metrics.Increment("badges_created");
         var command = new CreateBadgeCommand
         {
             Name = request.Name,
@@ -195,6 +224,7 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
 
     public override Task<GetAllBadgesResponse> GetAllBadges(GetAllBadgesRequest request, ServerCallContext context)
     {
+        _metrics.Increment("badge_lookups");
         var query = new GetAllBadgesQuery
         {
             IncludeInactive = request.IncludeInactive
@@ -205,6 +235,7 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
 
     public override Task<UpdateBadgeResponse> UpdateBadge(UpdateBadgeRequest request, ServerCallContext context)
     {
+        _metrics.Increment("badges_updated");
         var command = new UpdateBadgeCommand
         {
             Id = request.Id,
@@ -219,6 +250,7 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
 
     public override Task<DeleteBadgeResponse> DeleteBadge(DeleteBadgeRequest request, ServerCallContext context)
     {
+        _metrics.Increment("badges_deleted");
         var command = new DeleteBadgeCommand
         {
             Id = request.Id
@@ -227,22 +259,35 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
         return _mediator.Send(command);
     }
 
-    public override Task<ExportDataResponse> ExportData(ExportDataRequest request, ServerCallContext context)
+    public override async Task<ExportDataResponse> ExportData(ExportDataRequest request, ServerCallContext context)
     {
-        var command = new ExportDataCommand
+        _metrics.Increment("data_exports");
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        try
         {
-            UserId = request.UserId
-        };
+            var command = new ExportDataCommand
+            {
+                UserId = request.UserId
+            };
 
-        return _mediator.Send(command);
+            var response = await _mediator.Send(command);
+            _metrics.Add("data_export_duration_ms_total", sw.ElapsedMilliseconds);
+            _metrics.Set("last_data_export_unix", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            return response;
+        }
+        catch
+        {
+            _metrics.Increment("data_export_errors");
+            throw;
+        }
     }
 
     // Методы для работы с устройствами
 
-    public override Task<RegisterDeviceResponse> RegisterDevice(RegisterDeviceRequest request, ServerCallContext context)
+    public override async Task<RegisterDeviceResponse> RegisterDevice(RegisterDeviceRequest request, ServerCallContext context)
     {
         _metrics.Increment("device_registrations");
-        var command = new RegisterDeviceCommand
+        var response = await _mediator.Send(new RegisterDeviceCommand
         {
             DeviceId = Guid.Parse(request.DeviceId),
             UserId = request.UserId,
@@ -250,13 +295,14 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
             AppName = request.AppName,
             OperationSystem = request.OperationSystem,
             Location = request.Location
-        };
-
-        return _mediator.Send(command);
+        });
+        _metrics.Set("last_device_registered_unix", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+        return response;
     }
 
     public override Task<GetUserDevicesResponse> GetUserDevices(GetUserDevicesRequest request, ServerCallContext context)
     {
+        _metrics.Increment("device_lookups");
         var query = new GetUserDevicesQuery
         {
             UserId = request.UserId
@@ -267,6 +313,7 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
 
     public override Task<DeleteUserDeviceResponse> DeleteUserDevice(DeleteUserDeviceRequest request, ServerCallContext context)
     {
+        _metrics.Increment("device_deletions");
         var command = new DeleteUserDeviceCommand
         {
             DeviceId = Guid.Parse(request.DeviceId),
@@ -281,10 +328,12 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
     public override async Task<GetUserByUsernameResponse> GetUserByUsername(
         GetUserByUsernameRequest request, ServerCallContext context)
     {
+        _metrics.Increment("public_profile_views");
         var user = await _usersStorage.GetUserByUsername(request.Username?.Trim());
 
         if (user is null || user.IsDraft)
         {
+            _metrics.Increment("public_profile_not_found");
             return new GetUserByUsernameResponse { Found = false };
         }
 
@@ -294,6 +343,7 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
 
         if (!privacy.ProfileVisibleOnSite)
         {
+            _metrics.Increment("public_profile_hidden");
             return new GetUserByUsernameResponse { Found = false };
         }
 
@@ -315,10 +365,12 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
                 var fileDataResponse = await _filesClient.GetFileDataAsync(
                     new GetFileDataRequest { FileId = personalization.ProfilePosterFileId });
                 posterUrl = fileDataResponse.FileInfo.FileUrl ?? string.Empty;
+                _metrics.Increment("files_fetch_success");
             }
         }
         catch (Exception)
         {
+            _metrics.Increment("files_fetch_errors");
             // Не блокируем ответ, если постер недоступен
             posterUrl = string.Empty;
         }
@@ -344,6 +396,7 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
 
     public override Task<SearchUsersServerResponse> SearchUsersServer(SearchUsersServerRequest request, ServerCallContext context)
     {
+        _metrics.Increment("user_searches");
         var query = new SearchUsersServerQuery
         {
             Query = request.Query,
@@ -356,6 +409,7 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
 
     public override Task<UpdateStorageLimitResponse> UpdateStorageLimit(UpdateStorageLimitRequest request, ServerCallContext context)
     {
+        _metrics.Increment("storage_limit_updates");
         var command = new UpdateStorageLimitCommand
         {
             UserId = request.UserId,
@@ -367,6 +421,7 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
 
     public override Task<SetProfilePictureServerResponse> SetProfilePictureServer(SetProfilePictureServerRequest request, ServerCallContext context)
     {
+        _metrics.Increment("profile_avatar_updates");
         var command = new SetProfilePictureServerCommand
         {
             UserId = request.UserId,
@@ -379,6 +434,7 @@ public class UsersServerApiService : UsersServerApi.UsersServerApiBase
 
     public override Task<GetDevicesWithFirebaseTokensResponse> GetDevicesWithFirebaseTokens(GetDevicesWithFirebaseTokensRequest request, ServerCallContext context)
     {
+        _metrics.Increment("device_lookups");
         var query = new GetDevicesWithFirebaseTokensQuery
         {
             UserIds = request.UserIds.ToList()

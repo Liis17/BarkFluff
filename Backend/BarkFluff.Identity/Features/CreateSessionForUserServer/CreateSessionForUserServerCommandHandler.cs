@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Identity.Features.CreateToken;
 using BarkFluff.Identity.Infrastructure;
 using BarkFluff.Identity.Persistence.Services;
@@ -21,6 +22,7 @@ public class CreateSessionForUserServerCommandHandler(
     NotificationQueueSender notificationQueueSender,
     RefreshTokensStorage refreshTokensStorage,
     LocationClient locationClient,
+    MetricsCollector metrics,
     ILogger<CreateSessionForUserServerCommandHandler> logger)
     : IRequestHandler<CreateSessionForUserServerCommand, CreateSessionForUserServerResponse>
 {
@@ -116,6 +118,9 @@ public class CreateSessionForUserServerCommandHandler(
                 "Не удалось отправить уведомление об успешном входе для пользователя {UserId}",
                 request.UserId);
         }
+
+        metrics.Increment("server_sessions_created");
+        metrics.Increment("sessions_created");
 
         logger.LogInformation(
             "Серверная сессия успешно создана для пользователя {UserId}, устройство {DeviceId}",

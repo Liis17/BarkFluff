@@ -46,7 +46,11 @@ public class UpdatesApiService : BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiBa
 
         // Регистрируем подписку и получаем уникальный идентификатор
         var subscriptionId = _newMessagesSubscriptionsManager.RegisterSubscription(userId, responseStream);
-        _metrics.Increment("active_subscriptions");
+        _metrics.Increment("new_messages_subscriptions_opened");
+        _metrics.Increment("active_subscriptions"); // обратная совместимость
+        _metrics.Set("new_messages_subscriptions_active", _newMessagesSubscriptionsManager.ActiveCount);
+        _metrics.Set("subscriptions_active_total",
+            _newMessagesSubscriptionsManager.ActiveCount + _newReadBySubscriptionsManager.ActiveCount);
 
         try
         {
@@ -61,7 +65,11 @@ public class UpdatesApiService : BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiBa
         {
             // Удаляем подписку при завершении по идентификатору
             _newMessagesSubscriptionsManager.RemoveSubscription(userId, subscriptionId);
-            _metrics.Increment("active_subscriptions_removed");
+            _metrics.Increment("new_messages_subscriptions_closed");
+            _metrics.Increment("active_subscriptions_removed"); // обратная совместимость
+            _metrics.Set("new_messages_subscriptions_active", _newMessagesSubscriptionsManager.ActiveCount);
+            _metrics.Set("subscriptions_active_total",
+                _newMessagesSubscriptionsManager.ActiveCount + _newReadBySubscriptionsManager.ActiveCount);
         }
     }
 
@@ -72,7 +80,11 @@ public class UpdatesApiService : BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiBa
 
         // Регистрируем подписку и получаем уникальный идентификатор
         var subscriptionId = _newReadBySubscriptionsManager.RegisterSubscription(userId, responseStream);
-        _metrics.Increment("active_subscriptions");
+        _metrics.Increment("read_by_subscriptions_opened");
+        _metrics.Increment("active_subscriptions"); // обратная совместимость
+        _metrics.Set("read_by_subscriptions_active", _newReadBySubscriptionsManager.ActiveCount);
+        _metrics.Set("subscriptions_active_total",
+            _newMessagesSubscriptionsManager.ActiveCount + _newReadBySubscriptionsManager.ActiveCount);
 
         try
         {
@@ -87,7 +99,11 @@ public class UpdatesApiService : BarkFluff.Proto.Updates.UpdatesApi.UpdatesApiBa
         {
             // Удаляем подписку при завершении по идентификатору
             _newReadBySubscriptionsManager.RemoveSubscription(userId, subscriptionId);
-            _metrics.Increment("active_subscriptions_removed");
+            _metrics.Increment("read_by_subscriptions_closed");
+            _metrics.Increment("active_subscriptions_removed"); // обратная совместимость
+            _metrics.Set("read_by_subscriptions_active", _newReadBySubscriptionsManager.ActiveCount);
+            _metrics.Set("subscriptions_active_total",
+                _newMessagesSubscriptionsManager.ActiveCount + _newReadBySubscriptionsManager.ActiveCount);
         }
     }
 }

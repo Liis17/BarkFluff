@@ -3,6 +3,7 @@
 Real-time сервис: доставляет события клиентам через gRPC server-side streaming. **Без БД** — всё в памяти. Порт: **7015**.
 
 📄 Детальная карта файлов: [[Backend/Updates-ProjectMap]]
+📊 Реестр метрик: [[Backend/Updates-Metrics]]
 
 Расположение: `Backend/BarkFluff.Updates/`
 

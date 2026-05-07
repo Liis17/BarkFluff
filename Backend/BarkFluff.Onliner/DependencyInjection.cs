@@ -18,6 +18,7 @@ public static class DependencyInjection
         // Background Services
         services.AddHostedService<OfflineDetectionService>();
         services.AddHostedService<DatabasePersistenceService>();
+        services.AddHostedService<MetricsSnapshotService>();
 
         // MediatR handlers
         services.AddMediatR(cfg =>
