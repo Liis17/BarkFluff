@@ -22,6 +22,7 @@ public enum UserMapper {
             registrationDate: proto.registrationDate.date,
             profilePictureURL: proto.profilePicture.isEmpty ? nil : proto.profilePicture,
             profilePicturePreviewURL: proto.profilePicturePreview.isEmpty ? nil : proto.profilePicturePreview,
+            profilePosterFileID: proto.profilePosterFileID.isEmpty ? nil : proto.profilePosterFileID,
             badges: proto.badges.map { toDomain($0) },
             storageLimitBytes: Int64(proto.storageLimitGb) * 1_073_741_824
         )

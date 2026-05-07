@@ -2,82 +2,138 @@
 //  ProfileHeaderSection.swift
 //  Barkfluff
 //
-//  Секция шапки профиля с аватаром и именем
+//  Секция шапки профиля с постером, аватаром и именем
 //
 
 import SwiftUI
 import BFCore
 
-/// Шапка профиля: аватар, имя, юзернейм
+/// Шапка профиля: постер (для DM), аватар, имя, юзернейм
 struct ProfileHeaderSection: View {
     let viewModel: UserProfilePanelViewModel
 
     @Environment(DependencyContainer.self) private var container
     @State private var isHoveringAvatar = false
 
+    private static let avatarSize: CGFloat = 96
+    private static let avatarOverlap: CGFloat = avatarSize / 2
+
     var body: some View {
-        VStack(spacing: Theme.Spacing.sm) {
-            // Большой аватар (96pt), кликабельный для полного размера
-            Button {
-                openFullSizeAvatar()
-            } label: {
-                AvatarView(
-                    imageURL: viewModel.avatarURL,
-                    initials: viewModel.initials,
-                    size: 96
-                )
-                .overlay {
-                    if isHoveringAvatar {
-                        RoundedRectangle(cornerRadius: 48)
-                            .fill(Color.black.opacity(0.3))
-                            .overlay {
-                                Image(systemName: "arrow.up.left.and.arrow.down.right")
-                                    .font(.title2)
-                                    .foregroundStyle(.white)
-                            }
-                    }
+        VStack(spacing: 0) {
+            // Постер 3:1 — только для DM. У групп постера нет.
+            if !viewModel.isGroupChat {
+                posterView
+            }
+
+            // Аватар: для DM перекрывает нижнюю половину постера через отрицательный top padding.
+            avatarButton
+                .padding(.top, viewModel.isGroupChat ? 0 : -Self.avatarOverlap)
+                .padding(.bottom, Theme.Spacing.sm)
+
+            // Текстовый блок: имя, @username, статус / счётчик участников
+            VStack(spacing: Theme.Spacing.sm) {
+                Text(viewModel.displayName)
+                    .font(.title2.bold())
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+
+                if let username = viewModel.username {
+                    Text("@\(username)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                if !viewModel.isGroupChat {
+                    OnlineStatusText(status: viewModel.onlineStatus)
+                }
+
+                if viewModel.isGroupChat {
+                    Text("\(viewModel.memberCount) участников")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
                 }
             }
-            .buttonStyle(.plain)
-            .onHover { hovering in
-                isHoveringAvatar = hovering
-            }
-            .disabled(viewModel.avatarURL == nil)
+            .padding(.horizontal, Theme.Spacing.md)
+            .padding(.bottom, Theme.Spacing.md)
+        }
+        .frame(maxWidth: .infinity)
+    }
 
-            // Имя и фамилия
-            Text(viewModel.displayName)
-                .font(.title2.bold())
-                .lineLimit(2)
-                .multilineTextAlignment(.center)
+    // MARK: - Subviews
 
-            // Юзернейм
-            if let username = viewModel.username {
-                Text("@\(username)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-
-            // Онлайн-статус (только для DM)
-            if !viewModel.isGroupChat {
-                OnlineStatusText(status: viewModel.onlineStatus)
-            }
-
-            // Количество участников (для группы)
-            if viewModel.isGroupChat {
-                Text("\(viewModel.memberCount) участников")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
+    @ViewBuilder
+    private var posterView: some View {
+        Group {
+            if let fileID = viewModel.posterFileID {
+                CachedImageView(
+                    fileID: fileID,
+                    type: .image,
+                    content: { image in
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    },
+                    placeholder: { posterPlaceholder }
+                )
+            } else {
+                posterPlaceholder
             }
         }
-        .padding(.horizontal, Theme.Spacing.md)
-        .padding(.bottom, Theme.Spacing.md)
         .frame(maxWidth: .infinity)
+        .aspectRatio(3.0, contentMode: .fit)
+        .clipped()
+    }
+
+    private var posterPlaceholder: some View {
+        LinearGradient(
+            colors: [
+                Color.accentColor.opacity(0.25),
+                Color.accentColor.opacity(0.10)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    private var avatarButton: some View {
+        Button {
+            openFullSizeAvatar()
+        } label: {
+            AvatarView(
+                imageURL: viewModel.avatarURL,
+                initials: viewModel.initials,
+                size: Self.avatarSize
+            )
+            .overlay {
+                // Обводка цветом фона панели — визуальный «вырез» аватара из постера.
+                if !viewModel.isGroupChat {
+                    Circle()
+                        .strokeBorder(Color(nsColor: .windowBackgroundColor), lineWidth: 3)
+                }
+            }
+            .overlay {
+                if isHoveringAvatar {
+                    RoundedRectangle(cornerRadius: Self.avatarSize / 2)
+                        .fill(Color.black.opacity(0.3))
+                        .overlay {
+                            Image(systemName: "arrow.up.left.and.arrow.down.right")
+                                .font(.title2)
+                                .foregroundStyle(.white)
+                        }
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .contentShape(Circle())
+        .onHover { hovering in
+            isHoveringAvatar = hovering
+        }
+        .disabled(viewModel.avatarURL == nil)
     }
 
     private func openFullSizeAvatar() {
         guard let avatarURL = viewModel.fullSizeAvatarURL else { return }
 
-        // Создаем attachment для просмотра
         let attachment = MessageAttachment(
             id: 0,
             type: .image,
@@ -114,5 +170,5 @@ struct ProfileHeaderSection: View {
         )
     )
     .padding()
-    .frame(width: 300)
+    .frame(width: 320)
 }

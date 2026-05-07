@@ -92,11 +92,12 @@
       "Bash(echo \"EXIT=$?\")",
       "Bash(xcodebuild -workspace Barkfluff.xcworkspace -scheme Barkfluff -destination 'platform=macOS' -configuration Debug build)",
       "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=macOS' -configuration Debug build)",
-
       "Bash(Select-Object -First 20)",
       "Bash(Select-Object Name)",
       "PowerShell(pwsh -File K:\\\\source\\\\BarkFluff\\\\Backend\\\\BarkFluff.Web\\\\scripts\\\\generate-proto.ps1)",
-      "PowerShell(dotnet build *)"
+      "PowerShell(dotnet build *)",
+      "Bash(xcodebuild -project Barkfluff.xcodeproj -list)",
+      "Bash(xcodebuild -project /Users/liis/Projects/BarkFluff/Mac/Barkfluff/Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=macOS' -configuration Debug build)"
     ],
     "deny": [],
     "ask": []

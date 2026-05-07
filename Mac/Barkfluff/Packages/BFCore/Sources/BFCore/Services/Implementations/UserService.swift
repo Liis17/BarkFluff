@@ -90,6 +90,7 @@ public actor UserService: UserServiceProtocol {
             registrationDate: info.registrationDate,
             profilePictureURL: info.profilePictureURL,
             profilePicturePreviewURL: info.profilePicturePreviewURL,
+            profilePosterFileID: info.profilePosterFileID,
             badges: []
         )
     }

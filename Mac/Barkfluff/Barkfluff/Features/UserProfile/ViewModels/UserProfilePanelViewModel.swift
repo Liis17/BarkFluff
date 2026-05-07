@@ -67,6 +67,13 @@ final class UserProfilePanelViewModel {
         return user?.profilePictureURL ?? chat.pictureURL
     }
 
+    /// fileID постера профиля (баннер 3:1 над шапкой DM-профиля).
+    /// У групп всегда nil — у группового чата нет постера.
+    var posterFileID: String? {
+        guard !chat.isGroupChat else { return nil }
+        return user?.profilePosterFileID
+    }
+
     var initials: String {
         if let user = user {
             return user.initials

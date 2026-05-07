@@ -50,7 +50,6 @@ struct UserProfilePanelView: View {
                         // 5. Shared Media
                         SharedMediaSection(viewModel: viewModel)
                     }
-                    .padding(.top, Theme.Spacing.lg)
                     .padding(.bottom, Theme.Spacing.xl)
                 }
             } else {

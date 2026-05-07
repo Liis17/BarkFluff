@@ -18,6 +18,7 @@ public struct User: Identifiable, Hashable, Sendable {
     public var registrationDate: Date
     public var profilePictureURL: String?
     public var profilePicturePreviewURL: String?
+    public var profilePosterFileID: String?
     public var badges: [UserBadge]
     public var storageLimitBytes: Int64
 
@@ -31,6 +32,7 @@ public struct User: Identifiable, Hashable, Sendable {
         registrationDate: Date,
         profilePictureURL: String? = nil,
         profilePicturePreviewURL: String? = nil,
+        profilePosterFileID: String? = nil,
         badges: [UserBadge] = [],
         storageLimitBytes: Int64 = 0
     ) {
@@ -43,6 +45,7 @@ public struct User: Identifiable, Hashable, Sendable {
         self.registrationDate = registrationDate
         self.profilePictureURL = profilePictureURL
         self.profilePicturePreviewURL = profilePicturePreviewURL
+        self.profilePosterFileID = profilePosterFileID
         self.badges = badges
         self.storageLimitBytes = storageLimitBytes
     }
