@@ -122,8 +122,15 @@ namespace BarkFluff.Client.WPF.Pages.Messenger.Controllers
             var chatId = _page.ChatId.Value;
             App.ErideMessage.AddMessage($"Загрузка сообщений чата с ID: {chatId}", new Erida { Type = MType.Debug });
 
-            // Сначала показываем кешированные сообщения
-            var cachedMessages = App.CacheManager.GetMessages(chatId, _history.OpenedLastMessageId, 50);
+            // Сначала показываем кешированные сообщения (LiteDB-чтение в фоне).
+            var cachedMessages = await App.CacheManager.GetMessagesAsync(chatId, _history.OpenedLastMessageId, 50);
+
+            // Чат мог переключиться, пока ждали кеш — игнорируем устаревший результат.
+            if (_page.ChatId.Value != chatId)
+            {
+                return;
+            }
+
             var cachedShown = cachedMessages != null && cachedMessages.Count > 0;
             if (cachedShown)
             {

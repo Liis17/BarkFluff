@@ -67,8 +67,8 @@ namespace BarkFluff.Client.WPF.Pages.Messenger.Controllers
             {
                 App.ErideMessage.AddMessage($"Загрузка истории сообщений (from ID: {OldestLoadedMessageId})", new Erida { Type = MType.Debug });
 
-                // Сначала пробуем загрузить из кеша
-                var cachedMessages = App.CacheManager.GetMessages(_page.ChatId.Value, OldestLoadedMessageId, HISTORY_PAGE_SIZE);
+                // Сначала пробуем загрузить из кеша (LiteDB-чтение в фоне).
+                var cachedMessages = await App.CacheManager.GetMessagesAsync(_page.ChatId.Value, OldestLoadedMessageId, HISTORY_PAGE_SIZE);
                 var hasLoadedFromCache = false;
 
                 if (cachedMessages != null && cachedMessages.Count > 0)
