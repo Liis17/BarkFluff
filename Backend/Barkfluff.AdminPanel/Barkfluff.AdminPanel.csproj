@@ -11,6 +11,15 @@
     <None Remove="Pages\dashboard.html" />
     <None Remove="Pages\Login.html" />
     <None Remove="Pages\logs.html" />
+    <None Remove="Pages\Redesigned\app.js" />
+    <None Remove="Pages\Redesigned\index.html" />
+    <None Remove="Pages\Redesigned\screen-content.js" />
+    <None Remove="Pages\Redesigned\screen-dashboard.js" />
+    <None Remove="Pages\Redesigned\screen-login.js" />
+    <None Remove="Pages\Redesigned\screen-logs.js" />
+    <None Remove="Pages\Redesigned\screen-s3.js" />
+    <None Remove="Pages\Redesigned\screen-services.js" />
+    <None Remove="Pages\Redesigned\styles.css" />
     <None Remove="Pages\restarting.html" />
     <None Remove="Pages\s3-storage.html" />
     <None Remove="Pages\services.html" />
@@ -34,6 +43,33 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Pages\logs.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\Redesigned\app.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\Redesigned\index.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\Redesigned\screen-content.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\Redesigned\screen-dashboard.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\Redesigned\screen-login.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\Redesigned\screen-logs.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\Redesigned\screen-s3.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\Redesigned\screen-services.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Pages\Redesigned\styles.css">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Pages\restarting.html">
@@ -84,36 +120,6 @@
     <ProjectReference Include="..\..\Shared\BarkFluff.Shared.Auth\BarkFluff.Shared.Auth.csproj" />
     <ProjectReference Include="..\..\Shared\BarkFluff.Shared.Identity\BarkFluff.Shared.Identity.csproj" />
     <ProjectReference Include="..\BarkFluff.GrpcServer\BarkFluff.GrpcServer.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="Pages\Redesigned\app.js">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Pages\Redesigned\index.html">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Pages\Redesigned\screen-content.js">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Pages\Redesigned\screen-dashboard.js">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Pages\Redesigned\screen-login.js">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Pages\Redesigned\screen-logs.js">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Pages\Redesigned\screen-s3.js">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Pages\Redesigned\screen-services.js">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Pages\Redesigned\styles.css">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
 
 </Project>
