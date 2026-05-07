@@ -58,9 +58,9 @@ public class OnlineVisibilityFilter
         catch (Exception ex)
         {
             _logger.LogWarning(ex,
-                "Failed to fetch privacy for user {UserId}, defaulting to visible",
+                "Failed to fetch privacy for user {UserId}, defaulting to hidden (fail-closed)",
                 targetUserId);
-            return true;
+            return false;
         }
     }
 }

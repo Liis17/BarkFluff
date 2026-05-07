@@ -53,8 +53,8 @@
 
 | Файл | Класс | Lifetime | Описание |
 |------|-------|----------|---------|
-| `Services/OnlineStatusStorage.cs` | `OnlineStatusStorage` | Singleton | In-memory `ConcurrentDictionary<long, UserOnlineStatus>`. Методы: `UpdateStatus`, `SetOffline`, `GetAll`, `GetStatus`. Источник истины |
-| `Services/OnlineStatusSubscriptionsManager.cs` | `OnlineStatusSubscriptionsManager` | Singleton | Реестр подписок: `ConcurrentDictionary<long (subscriberId), ConcurrentDictionary<Guid (connectionId), SubscriptionData>>`. Методы: `RegisterSubscription`, `RemoveSubscription`, `GetStreamsTrackingUser`, `UpdateTrackedUsers` |
+| `Services/OnlineStatusStorage.cs` | `OnlineStatusStorage` | Singleton | In-memory `ConcurrentDictionary<long, UserOnlineStatus>` (значения — иммутабельные `record`). Обновление через CAS-цикл `TryGetValue` + `TryUpdate`/`TryAdd`. Методы: `UpdateStatus`, `SetOffline`, `GetAllStatuses`, `GetStatus`, `GetOnlineUsersOlderThan`. Источник истины |
+| `Services/OnlineStatusSubscriptionsManager.cs` | `OnlineStatusSubscriptionsManager` | Singleton | Прямой индекс `subscriberId → (connectionId → SubscriptionData)` + обратный индекс `trackedUserId → (connectionId → Stream)` для O(1) выборки в `GetStreamsTrackingUser`. Методы: `RegisterSubscription`, `RemoveSubscription`, `GetStreamsTrackingUser`, `UpdateAllSubscriptions` |
 | `Services/OnlineStatusNotifier.cs` | `OnlineStatusNotifier` | Singleton | Рассылает изменения статусов по зарегистрированным стримам параллельно через `Task.WhenAll` |
 | `Services/OnlineVisibilityFilter.cs` | `OnlineVisibilityFilter` | Scoped | Фильтрует userId по настройке `OnlineVisibility` через gRPC-клиент `UsersServerApi`. `FRIENDS` трактуется как `NONE` (до появления сервиса отношений). Всегда пропускает самого вызывающего |
 
@@ -81,7 +81,7 @@
 
 | Файл | Класс | Описание |
 |------|-------|---------|
-| `Domain/Entities/UserOnlineStatus.cs` | `UserOnlineStatus` | Entity: `UserId` (long), `Status` (StatusTypeId), `LastSeen` (DateTime) |
+| `Domain/Entities/UserOnlineStatus.cs` | `UserOnlineStatus` | Иммутабельный `record class`: `UserId` (long), `Status` (StatusTypeId), `LastSeen` (DateTime). Все свойства `init`-only |
 | `Domain/Enums/StatusTypeId.cs` | `StatusTypeId` | `Unknown = 0`, `Online = 1`, `Offline = 2` |
 
 ---

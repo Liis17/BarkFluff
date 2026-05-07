@@ -71,7 +71,7 @@ public class OfflineDetectionService : BackgroundService
 
             if (statusChanged)
             {
-                _metrics.Increment("offline_detections");
+                _metrics.Increment("status_changes.offline");
                 // Получаем обновленный статус для уведомления
                 var status = _storage.GetStatus(userId);
 

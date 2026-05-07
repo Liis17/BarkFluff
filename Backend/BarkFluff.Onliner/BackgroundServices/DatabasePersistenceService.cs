@@ -76,9 +76,9 @@ public class DatabasePersistenceService : BackgroundService
 
                 if (existing != null)
                 {
-                    // Update
-                    existing.Status = status.Status;
-                    existing.LastSeen = status.LastSeen;
+                    // Update — UserOnlineStatus имеет init-only свойства, поэтому
+                    // обновляем значения через EF Change Tracker
+                    dbContext.Entry(existing).CurrentValues.SetValues(status);
                 }
                 else
                 {
