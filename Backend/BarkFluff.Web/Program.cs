@@ -289,6 +289,7 @@ static IReadOnlyList<RouteConfig> BuildRoutes()
         ("files",     "files",     "/barkfluff.files.FilesApi/{**catchall}"),
         ("updates",   "updates",   "/barkfluff.updates.UpdatesApi/{**catchall}"),
         ("onliner",   "onliner",   "/barkfluff.onliner.OnlinerApi/{**catchall}"),
+        ("fast-auth", "fast-auth", "/barkfluff.fast.auth.FastAuthApi/{**catchall}"),
     };
 
     var routes = new List<RouteConfig>();
@@ -340,10 +341,11 @@ static IReadOnlyList<ClusterConfig> BuildClusters(IConfiguration config)
         ("files",     "FilesService:Host",     "http://files:7005"),
         ("updates",   "UpdatesService:Host",   "http://updates:7015"),
         ("onliner",   "OnlinerService:Host",   "http://onliner:7009"),
+        ("fast-auth", "FastAuthService:Host",  "http://fast-auth:7008"),
     };
 
     // Сервисы с server-streaming RPC: YARP не должен убивать долгоживущие соединения.
-    var streamingServices = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "updates", "onliner" };
+    var streamingServices = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "updates", "onliner", "fast-auth" };
 
     var clusters = new List<ClusterConfig>();
     foreach (var (clusterId, configKey, defaultHost) in grpcClusters)
