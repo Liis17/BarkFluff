@@ -58,8 +58,7 @@ public class SetPasswordCommandHandler : IRequestHandler<SetPasswordCommand>
             if (string.IsNullOrEmpty(request.OldPassword))
                 throw new InvalidOldPasswordException();
 
-            var oldHash = PasswordHasher.HashPassword(request.OldPassword);
-            if (!string.Equals(currentHash, oldHash))
+            if (!PasswordHasher.VerifyPassword(request.OldPassword, currentHash))
                 throw new InvalidOldPasswordException();
         }
 
@@ -73,15 +72,7 @@ public class SetPasswordCommandHandler : IRequestHandler<SetPasswordCommand>
         var userInfo = await _usersClient.GetByIdAsync(new GetByIdRequest { UserId = _userContext.UserId });
         var userContacts = await _usersClient.GetUserContactsAsync(new GetUserContactsRequest { UserId = _userContext.UserId });
 
-        string locationInfo = "-";
-        if (!string.IsNullOrEmpty(_requestContext.IpAddress))
-        {
-            var ipLocation = await _locationClient.GetLocation(_requestContext.IpAddress);
-            if (ipLocation != null)
-            {
-                locationInfo = $"{ipLocation.Country}, {ipLocation.RegionName}, {ipLocation.City}";
-            }
-        }
+        var locationInfo = await _locationClient.GetLocationString(_requestContext.IpAddress);
 
         if (!isNewUser)
         {

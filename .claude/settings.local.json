@@ -80,7 +80,8 @@
       "mcp__context7__query-docs",
       "Bash(Select-String -Pattern 'BarkFluff\\\\.Files' -SimpleMatch)",
       "Bash(Select-String -Pattern 'error')",
-      "Bash(Select-Object -First 50)"
+      "Bash(Select-Object -First 50)",
+      "Bash(taskkill //F //IM dotnet.exe)"
     ],
     "deny": [],
     "ask": []

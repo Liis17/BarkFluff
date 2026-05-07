@@ -84,6 +84,17 @@ namespace BarkFluff.Identity.Features.ConfirmResetPassword
                 throw new ResetIdHasIsApprovedException();
             }
 
+            if (resetPasswordInfo.ExpiresAt < DateTime.UtcNow)
+            {
+                _logger.LogWarning(
+                    "Reset ID {ResetId} истёк для пользователя {UserId}. ExpiresAt: {ExpiresAt}",
+                    request.ResetId,
+                    resetPasswordInfo.UserId,
+                    resetPasswordInfo.ExpiresAt
+                );
+                throw new ResetIdExpiredException();
+            }
+
             _logger.LogDebug(
                 "Проверка OTP кода для пользователя {UserId}, тип OTP: {OtpType}",
                 resetPasswordInfo.UserId,
@@ -125,8 +136,12 @@ namespace BarkFluff.Identity.Features.ConfirmResetPassword
 
             _logger.LogDebug("Генерация refresh token для пользователя {UserId}", resetPasswordInfo.UserId);
 
+            var deviceId = string.IsNullOrEmpty(requestContext.DeviceId)
+                ? Guid.NewGuid().ToString()
+                : requestContext.DeviceId;
+
             var refreshTokenString = RefreshTokenGenerator.GenerateRefreshToken();
-            await refreshTokensStorage.CreateNewRefreshToken(refreshTokenString, resetPasswordInfo.UserId, requestContext.DeviceId ?? requestContext.DeviceName, ExpDaysRefreshToken);
+            await refreshTokensStorage.CreateNewRefreshToken(refreshTokenString, resetPasswordInfo.UserId, deviceId, ExpDaysRefreshToken);
 
             var accessTokenResponse = await _mediator.Send(new CreateTokenCommand { RefreshToken = refreshTokenString }, cancellationToken);
 

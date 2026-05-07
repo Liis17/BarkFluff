@@ -27,4 +27,14 @@ public class ConfirmationCodesStorage
     {
         return await _context.ConfirmationCodes.FirstOrDefaultAsync(x => x.Id == id);
     }
+
+    public async Task DeleteCode(Guid id)
+    {
+        var code = await _context.ConfirmationCodes.FirstOrDefaultAsync(x => x.Id == id);
+        if (code is null)
+            return;
+
+        _context.ConfirmationCodes.Remove(code);
+        await _context.SaveChangesAsync();
+    }
 }

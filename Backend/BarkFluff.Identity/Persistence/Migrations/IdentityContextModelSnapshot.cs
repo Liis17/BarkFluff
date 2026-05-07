@@ -17,7 +17,7 @@ namespace BarkFluff.Identity.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.4")
+                .HasAnnotation("ProductVersion", "9.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -104,6 +104,9 @@ namespace BarkFluff.Identity.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Value")
+                        .IsUnique();
+
                     b.ToTable("RefreshTokens");
                 });
 
@@ -114,6 +117,9 @@ namespace BarkFluff.Identity.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("IsApproved")

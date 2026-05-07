@@ -10,6 +10,8 @@ public class ResetPassword
 
     public DateTime CreatedAt { get; set; }
 
+    public DateTime ExpiresAt { get; set; }
+
     public OtpType OtpType { get; set; }
 
     public string? OtpCode { get; set; }

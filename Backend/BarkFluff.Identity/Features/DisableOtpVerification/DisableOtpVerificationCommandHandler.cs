@@ -106,15 +106,7 @@ public class DisableOtpVerificationCommandHandler : IRequestHandler<DisableOtpVe
         var userInfo = await _usersClient.GetByIdAsync(new GetByIdRequest { UserId = _userContext.UserId });
         var userContacts = await _usersClient.GetUserContactsAsync(new GetUserContactsRequest { UserId = _userContext.UserId });
 
-        string locationInfo = "-";
-        if (!string.IsNullOrEmpty(_requestContext.IpAddress))
-        {
-            var ipLocation = await _locationClient.GetLocation(_requestContext.IpAddress);
-            if (ipLocation != null)
-            {
-                locationInfo = $"{ipLocation.Country}, {ipLocation.RegionName}, {ipLocation.City}";
-            }
-        }
+        var locationInfo = await _locationClient.GetLocationString(_requestContext.IpAddress);
 
         var twoFactorChangedNotification = new EmailNotification
         {

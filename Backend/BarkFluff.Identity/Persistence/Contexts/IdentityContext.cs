@@ -21,5 +21,9 @@ public class IdentityContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<RefreshToken>()
+            .HasIndex(x => x.Value)
+            .IsUnique();
     }
 }
