@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Identity;
 using BarkFluff.Shared.Exceptions.Users;
@@ -13,12 +14,18 @@ public class AddDraftUserCommandHandler : IRequestHandler<AddDraftUserCommand, A
 
     private readonly UsersStorage _usersStorage;
     private readonly ReservedUsernamesService _reservedUsernamesService;
+    private readonly MetricsCollector _metrics;
     private readonly ILogger<AddDraftUserCommandHandler> _logger;
 
-    public AddDraftUserCommandHandler(UsersStorage usersStorage, ReservedUsernamesService reservedUsernamesService, ILogger<AddDraftUserCommandHandler> logger)
+    public AddDraftUserCommandHandler(
+        UsersStorage usersStorage,
+        ReservedUsernamesService reservedUsernamesService,
+        MetricsCollector metrics,
+        ILogger<AddDraftUserCommandHandler> logger)
     {
         _usersStorage = usersStorage;
         _reservedUsernamesService = reservedUsernamesService;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -43,6 +50,7 @@ public class AddDraftUserCommandHandler : IRequestHandler<AddDraftUserCommand, A
 
         if (userByEmail != null)
         {
+            _metrics.Increment("users_email_conflicts");
             if (userByEmail.IsDraft)
             {
                 _logger.LogWarning(
@@ -61,6 +69,7 @@ public class AddDraftUserCommandHandler : IRequestHandler<AddDraftUserCommand, A
 
         if (_reservedUsernamesService.IsReserved(username))
         {
+            _metrics.Increment("users_reserved_username_blocked");
             _logger.LogWarning("Username {Username} является зарезервированным именем", username);
             throw new UsernameReservedException();
         }
@@ -71,6 +80,7 @@ public class AddDraftUserCommandHandler : IRequestHandler<AddDraftUserCommand, A
 
         if (userByUsername != null)
         {
+            _metrics.Increment("users_username_conflicts");
             if (userByUsername.IsDraft)
             {
                 _logger.LogWarning(

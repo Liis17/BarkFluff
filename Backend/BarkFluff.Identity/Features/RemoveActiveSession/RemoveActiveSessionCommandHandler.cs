@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Identity.Persistence.Exceptions;
 using BarkFluff.Identity.Persistence.Services;
@@ -20,11 +21,12 @@ public class RemoveActiveSessionCommandHandler : IRequestHandler<RemoveActiveSes
     private readonly UsersServerApi.UsersServerApiClient _usersClient;
     private readonly IPublishEndpoint _publishEndpoint;
     private readonly JwtSettings _jwtSettings;
+    private readonly MetricsCollector _metrics;
     private readonly ILogger<RemoveActiveSessionCommandHandler> _logger;
 
     public RemoveActiveSessionCommandHandler(RefreshTokensStorage refreshTokensStorage, UserContext userContext,
         UsersServerApi.UsersServerApiClient usersClient, IPublishEndpoint publishEndpoint,
-        JwtSettings jwtSettings,
+        JwtSettings jwtSettings, MetricsCollector metrics,
         ILogger<RemoveActiveSessionCommandHandler> logger)
     {
         _refreshTokensStorage = refreshTokensStorage;
@@ -32,6 +34,7 @@ public class RemoveActiveSessionCommandHandler : IRequestHandler<RemoveActiveSes
         _usersClient = usersClient;
         _publishEndpoint = publishEndpoint;
         _jwtSettings = jwtSettings;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -47,6 +50,9 @@ public class RemoveActiveSessionCommandHandler : IRequestHandler<RemoveActiveSes
         {
             await _refreshTokensStorage.DeleteRefreshTokensByDeviceId(request.DeviceId, _userContext.UserId);
 
+            _metrics.Increment("sessions_removed");
+            _metrics.Increment("sessions_revoked");
+
             _logger.LogInformation(
                 "Сессия для устройства {DeviceId} успешно удалена для пользователя {UserId}",
                 request.DeviceId,
@@ -55,6 +61,7 @@ public class RemoveActiveSessionCommandHandler : IRequestHandler<RemoveActiveSes
         }
         catch (RefreshTokenNotFoundException ex)
         {
+            _metrics.Increment("session_removal_failed_not_found");
             _logger.LogWarning(
                 ex,
                 "Сессия для устройства {DeviceId} не найдена для пользователя {UserId}",

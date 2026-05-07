@@ -5,6 +5,7 @@
 Расположение: `Backend/BarkFluff.Messages/`
 
 📁 **Карта файлов проекта:** [[Backend/Messages-ProjectMap]]
+📊 **Реестр метрик:** [[Backend/Messages-Metrics]]
 
 ## Сборка
 

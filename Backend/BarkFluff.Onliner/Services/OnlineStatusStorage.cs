@@ -115,4 +115,23 @@ public class OnlineStatusStorage
             .Select(kvp => kvp.Key)
             .ToList();
     }
+
+    /// <summary>
+    /// Текущее количество пользователей со статусом Online (для метрик).
+    /// </summary>
+    public int GetOnlineCount()
+    {
+        var count = 0;
+        foreach (var kvp in _statuses)
+        {
+            if (kvp.Value.Status == StatusTypeId.Online)
+                count++;
+        }
+        return count;
+    }
+
+    /// <summary>
+    /// Общее количество отслеживаемых записей (Online + Offline) в storage (для метрик).
+    /// </summary>
+    public int GetTotalCount() => _statuses.Count;
 }

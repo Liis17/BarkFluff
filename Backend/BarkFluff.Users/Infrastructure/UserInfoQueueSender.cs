@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Shared.Queue.Users;
 
 using MassTransit;
@@ -7,10 +8,12 @@ namespace BarkFluff.Users.Infrastructure;
 public class UserInfoQueueSender
 {
     private readonly IPublishEndpoint _publishEndpoint;
+    private readonly MetricsCollector _metrics;
 
-    public UserInfoQueueSender(IPublishEndpoint publishEndpoint)
+    public UserInfoQueueSender(IPublishEndpoint publishEndpoint, MetricsCollector metrics)
     {
         _publishEndpoint = publishEndpoint;
+        _metrics = metrics;
     }
 
 
@@ -25,6 +28,8 @@ public class UserInfoQueueSender
         };
 
         await _publishEndpoint.Publish(userChangeNameEvent);
+        _metrics.Increment("user_events_published");
+        _metrics.Increment("user_name_changed_published");
     }
 
     public async Task UsernameChangedEvent(long userId, string newUsername)
@@ -36,6 +41,8 @@ public class UserInfoQueueSender
         };
 
         await _publishEndpoint.Publish(usernameChangedEvent);
+        _metrics.Increment("user_events_published");
+        _metrics.Increment("user_username_changed_published");
     }
 
     public async Task UserChangedAvatarEvent(long userId, string profilePictureUrl, string profilePicturePreviewUrl)
@@ -48,6 +55,8 @@ public class UserInfoQueueSender
         };
 
         await _publishEndpoint.Publish(userChangedAvatarEvent);
+        _metrics.Increment("user_events_published");
+        _metrics.Increment("user_avatar_changed_published");
     }
 
     public async Task UserChangedPasswordEvent(long userId)
@@ -58,6 +67,8 @@ public class UserInfoQueueSender
         };
 
         await _publishEndpoint.Publish(userChangedPasswordEvent);
+        _metrics.Increment("user_events_published");
+        _metrics.Increment("user_password_changed_published");
     }
 
     public async Task UserBioChangedEvent(long userId, string newUsername)
@@ -69,5 +80,7 @@ public class UserInfoQueueSender
         };
 
         await _publishEndpoint.Publish(usernameChangedEvent);
+        _metrics.Increment("user_events_published");
+        _metrics.Increment("user_bio_changed_published");
     }
 }

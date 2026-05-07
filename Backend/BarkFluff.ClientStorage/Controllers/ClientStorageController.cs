@@ -15,19 +15,34 @@ public class ClientStorageController : ControllerBase
     private readonly ClientStorageContext _db;
     private readonly S3StorageService _s3;
     private readonly LocalFileCache _cache;
+    private readonly MetricsCollector _metrics;
     private readonly ILogger<ClientStorageController> _logger;
 
     public ClientStorageController(
         ClientStorageContext db,
         S3StorageService s3,
         LocalFileCache cache,
+        MetricsCollector metrics,
         ILogger<ClientStorageController> logger)
     {
         _db = db;
         _s3 = s3;
         _cache = cache;
+        _metrics = metrics;
         _logger = logger;
     }
+
+    private static string ClientSlug(ClientType c) => c switch
+    {
+        ClientType.Windows => "windows",
+        ClientType.Kotlin  => "kotlin",
+        ClientType.MacOS   => "macos",
+        ClientType.iOS     => "ios",
+        _                  => "unknown"
+    };
+
+    private static string ChannelSlug(ReleaseChannel c) =>
+        c == ReleaseChannel.Release ? "release" : "beta";
 
     [HttpGet("/get/barkfluffwindows")]
     public Task<IActionResult> GetWindows()
@@ -181,28 +196,40 @@ public class ClientStorageController : ControllerBase
     private Task<IActionResult> ParseChannelAndDownload(ClientType clientType, string channel)
     {
         if (!TryParseChannel(channel, out var rc))
+        {
+            _metrics.Increment("invalid_channel_total");
             return Task.FromResult<IActionResult>(BadRequest(new { error = "Неизвестный канал. Допустимые значения: release, beta" }));
+        }
         return DownloadClient(clientType, rc);
     }
 
     private Task<IActionResult> ParseChannelAndGetVersion(ClientType clientType, string channel)
     {
         if (!TryParseChannel(channel, out var rc))
+        {
+            _metrics.Increment("invalid_channel_total");
             return Task.FromResult<IActionResult>(BadRequest(new { error = "Неизвестный канал. Допустимые значения: release, beta" }));
+        }
         return GetVersion(clientType, rc);
     }
 
     private Task<IActionResult> ParseChannelAndUpload(IFormFile file, ClientType clientType, string channel)
     {
         if (!TryParseChannel(channel, out var rc))
+        {
+            _metrics.Increment("invalid_channel_total");
             return Task.FromResult<IActionResult>(BadRequest(new { error = "Неизвестный канал. Допустимые значения: release, beta" }));
+        }
         return UploadClient(file, clientType, rc);
     }
 
     private Task<IActionResult> ParseChannelAndGetBitsUrl(ClientType clientType, string channel)
     {
         if (!TryParseChannel(channel, out var rc))
+        {
+            _metrics.Increment("invalid_channel_total");
             return Task.FromResult<IActionResult>(BadRequest(new { error = "Неизвестный канал. Допустимые значения: release, beta" }));
+        }
         return GetBitsUrl(clientType, rc);
     }
 
@@ -214,13 +241,19 @@ public class ClientStorageController : ControllerBase
     /// </summary>
     private async Task<IActionResult> GetBitsUrl(ClientType clientType, ReleaseChannel releaseChannel)
     {
+        _metrics.Increment("bitsurl_requests_total");
+        _metrics.Increment($"bitsurl_requests_{ClientSlug(clientType)}_{ChannelSlug(releaseChannel)}");
+
         var clientFile = await _db.ClientFiles
             .Where(f => f.ClientType == clientType && f.ReleaseChannel == releaseChannel)
             .OrderByDescending(f => f.UploadedAt)
             .FirstOrDefaultAsync();
 
         if (clientFile == null)
+        {
+            _metrics.Increment("file_not_found_total");
             return NotFound(new { error = "Файл клиента не найден" });
+        }
 
         var downloadUrl = BuildPublicUrl(GetDownloadPath(clientType, releaseChannel));
 
@@ -237,13 +270,19 @@ public class ClientStorageController : ControllerBase
 
     private async Task<IActionResult> GetVersion(ClientType clientType, ReleaseChannel releaseChannel)
     {
+        _metrics.Increment("version_requests_total");
+        _metrics.Increment($"version_requests_{ClientSlug(clientType)}_{ChannelSlug(releaseChannel)}");
+
         var clientFile = await _db.ClientFiles
             .Where(f => f.ClientType == clientType && f.ReleaseChannel == releaseChannel)
             .OrderByDescending(f => f.UploadedAt)
             .FirstOrDefaultAsync();
 
         if (clientFile == null)
+        {
+            _metrics.Increment("file_not_found_total");
             return NotFound(new { error = "Файл клиента не найден" });
+        }
 
         return Ok(new
         {
@@ -260,13 +299,23 @@ public class ClientStorageController : ControllerBase
     /// </summary>
     private async Task<IActionResult> DownloadClient(ClientType clientType, ReleaseChannel releaseChannel)
     {
+        _metrics.Increment("downloads_total");
+        _metrics.Increment($"downloads_{ClientSlug(clientType)}_{ChannelSlug(releaseChannel)}");
+
+        var hasRange = !string.IsNullOrEmpty(Request.Headers.Range.FirstOrDefault());
+        if (hasRange)
+            _metrics.Increment("range_requests_total");
+
         var clientFile = await _db.ClientFiles
             .Where(f => f.ClientType == clientType && f.ReleaseChannel == releaseChannel)
             .OrderByDescending(f => f.UploadedAt)
             .FirstOrDefaultAsync();
 
         if (clientFile == null)
+        {
+            _metrics.Increment("file_not_found_total");
             return NotFound(new { error = "Файл клиента не найден" });
+        }
 
         Response.Headers.AcceptRanges = "bytes";
 
@@ -278,6 +327,8 @@ public class ClientStorageController : ControllerBase
             try
             {
                 fs = new FileStream(cachedPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                _metrics.Increment("downloads_cache_hit_total");
+                _metrics.Add("download_bytes_total", clientFile.FileSize);
                 return new FileStreamResult(fs, clientFile.ContentType)
                 {
                     FileDownloadName      = clientFile.OriginalFileName,
@@ -293,11 +344,14 @@ public class ClientStorageController : ControllerBase
         }
 
         // Кеша нет → стримим напрямую из S3
+        _metrics.Increment("downloads_cache_miss_total");
         _logger.LogWarning("Кеш отсутствует для {ClientType} {Channel}, стриминг из S3", clientType, releaseChannel);
         try
         {
             var rangeHeader = Request.Headers.Range.FirstOrDefault();
             var result      = await _s3.DownloadAsync(clientFile.S3Key, rangeHeader);
+            _metrics.Increment("s3_download_total");
+            _metrics.Add("download_bytes_total", clientFile.FileSize);
             return new FileStreamResult(result.Stream, clientFile.ContentType)
             {
                 FileDownloadName      = clientFile.OriginalFileName,
@@ -306,6 +360,7 @@ public class ClientStorageController : ControllerBase
         }
         catch (Exception ex)
         {
+            _metrics.Increment("s3_download_errors_total");
             _logger.LogError(ex, "Ошибка стриминга из S3 для {S3Key}", clientFile.S3Key);
             return StatusCode(500, new { error = "Ошибка при скачивании файла" });
         }
@@ -317,8 +372,14 @@ public class ClientStorageController : ControllerBase
     /// </summary>
     private async Task<IActionResult> UploadClient(IFormFile? file, ClientType clientType, ReleaseChannel releaseChannel)
     {
+        _metrics.Increment("uploads_total");
+        _metrics.Increment($"uploads_{ClientSlug(clientType)}_{ChannelSlug(releaseChannel)}");
+
         if (file == null || file.Length == 0)
+        {
+            _metrics.Increment("uploads_empty_total");
             return BadRequest(new { error = "Файл не предоставлен" });
+        }
 
         var s3Key = Guid.NewGuid().ToString();
         string checksum;
@@ -336,9 +397,13 @@ public class ClientStorageController : ControllerBase
 
             sourceStream.Position = 0;
             await _s3.UploadAsync(s3Key, sourceStream, file.ContentType ?? "application/octet-stream");
+            _metrics.Increment("s3_upload_total");
+            _metrics.Add("upload_bytes_total", file.Length);
         }
         catch (Exception ex)
         {
+            _metrics.Increment("uploads_failed_total");
+            _metrics.Increment("s3_upload_errors_total");
             _logger.LogError(ex, "Ошибка загрузки файла {ClientType} в S3", clientType);
             return StatusCode(500, new { error = "Ошибка при загрузке файла" });
         }
@@ -383,9 +448,11 @@ public class ClientStorageController : ControllerBase
         {
             using var result = await _s3.DownloadAsync(s3Key);
             await _cache.UpdateAsync(clientType, channel, result.Stream);
+            _metrics.Increment("cache_updates_total");
         }
         catch (Exception ex)
         {
+            _metrics.Increment("cache_update_errors_total");
             _logger.LogError(ex, "Ошибка обновления кеша после загрузки: {ClientType} {Channel}", clientType, channel);
         }
     }

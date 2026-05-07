@@ -52,14 +52,12 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
             Password = request.Password,
         };
 
-        var result = await _mediator.Send(command);
-        _metrics.Increment("auth_login_success");
-        return result;
+        return await _mediator.Send(command);
     }
 
     public override async Task<CreateTokenResponse> CreateToken(CreateTokenRequest request, ServerCallContext context)
     {
-        _metrics.Increment("tokens_refreshed");
+        _metrics.Increment("tokens_refresh_attempts");
 
         var command = new CreateTokenCommand
         {
@@ -71,7 +69,7 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
 
     public override async Task<CreateAccountResponse> CreateAccount(CreateAccountRequest request, ServerCallContext context)
     {
-        _metrics.Increment("sessions_created");
+        _metrics.Increment("account_creation_attempts");
 
         var command = new CreateAccountCommand
         {
@@ -106,7 +104,7 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
     [Authorize(Policy = nameof(TokenType.User))]
     public override Task<RemoveActiveSessionResponse> RemoveActiveSession(RemoveActiveSessionRequest request, ServerCallContext context)
     {
-        _metrics.Increment("sessions_removed");
+        _metrics.Increment("session_removal_attempts");
 
         var command = new RemoveActiveSessionCommand()
         {
@@ -162,7 +160,7 @@ public class IdentityApiService : BarkFluff.Proto.Identity.IdentityApi.IdentityA
     public override async Task<ResetPasswordResponse> ResetPassword(ResetPasswordRequest request,
         ServerCallContext context)
     {
-        _metrics.Increment("otp_codes_sent");
+        _metrics.Increment("password_reset_requests");
 
         var command = new ResetPasswordCommand()
         {

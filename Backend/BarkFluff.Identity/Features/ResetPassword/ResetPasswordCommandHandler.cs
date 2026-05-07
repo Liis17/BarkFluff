@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.Identity.Domain;
 using BarkFluff.Identity.Infrastructure;
@@ -22,12 +23,13 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
     private readonly RequestContext _requestContext;
     private readonly NotificationQueueSender _notificationQueueSender;
     private readonly LocationClient _locationClient;
+    private readonly MetricsCollector _metrics;
     private readonly ILogger<ResetPasswordCommandHandler> _logger;
 
     public ResetPasswordCommandHandler(ResetPasswordsStorage resetPasswordsStorage,
         AuthPropertiesStorage authPropertiesStorage, UsersServerApi.UsersServerApiClient usersApiClient,
         RequestContext requestContext, NotificationQueueSender notificationQueueSender, LocationClient locationClient,
-        ILogger<ResetPasswordCommandHandler> logger)
+        MetricsCollector metrics, ILogger<ResetPasswordCommandHandler> logger)
     {
         _resetPasswordsStorage = resetPasswordsStorage;
         _authPropertiesStorage = authPropertiesStorage;
@@ -35,6 +37,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
         _requestContext = requestContext;
         _notificationQueueSender = notificationQueueSender;
         _locationClient = locationClient;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -88,6 +91,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
         {
             // Защита от энумерации: не раскрываем факт существования пользователя.
             // Why: endpoint сброса пароля не должен позволять перебирать логины/email.
+            _metrics.Increment("password_reset_user_not_found");
             _logger.LogWarning(
                 "Запрос сброса пароля для несуществующего пользователя: {Login}",
                 login
@@ -126,6 +130,8 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
             };
 
             var resp = await _resetPasswordsStorage.AddResetPassword(resetPassword);
+
+            _metrics.Increment("password_reset_initiated_authenticator");
 
             _logger.LogInformation(
                 "Запрос на сброс пароля создан. ResetId: {ResetId}, UserId: {UserId}",
@@ -189,6 +195,9 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
         );
 
         await _notificationQueueSender.SendNotification(emailNotification);
+
+        _metrics.Increment("password_reset_initiated_email");
+        _metrics.Increment("otp_email_codes_sent");
 
         _logger.LogInformation(
             "Запрос на сброс пароля создан. ResetId: {ResetId}, UserId: {UserId}, Email: {Email}",

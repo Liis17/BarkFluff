@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Users;
@@ -15,17 +16,20 @@ public class SetProfilePictureCommandHandler : IRequestHandler<SetProfilePicture
     private readonly UsersStorage _usersStorage;
     private readonly UserContext _userContext;
     private readonly UserInfoQueueSender _userInfoQueueSender;
+    private readonly MetricsCollector _metrics;
     private readonly ILogger<SetProfilePictureCommandHandler> _logger;
 
     public SetProfilePictureCommandHandler(
         FilesServerApi.FilesServerApiClient filesServerApiClient,
         UsersStorage usersStorage, UserContext userContext, UserInfoQueueSender userInfoQueueSender,
+        MetricsCollector metrics,
         ILogger<SetProfilePictureCommandHandler> logger)
     {
         _filesServerApiClient = filesServerApiClient;
         _usersStorage = usersStorage;
         _userContext = userContext;
         _userInfoQueueSender = userInfoQueueSender;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -50,7 +54,17 @@ public class SetProfilePictureCommandHandler : IRequestHandler<SetProfilePicture
                 FileId = request.FileId.ToString()
             };
 
-            var fileDataResponse = await _filesServerApiClient.GetFileDataAsync(fileDataRequest, cancellationToken: cancellationToken);
+            GetFileDataResponse fileDataResponse;
+            try
+            {
+                fileDataResponse = await _filesServerApiClient.GetFileDataAsync(fileDataRequest, cancellationToken: cancellationToken);
+                _metrics.Increment("files_fetch_success");
+            }
+            catch
+            {
+                _metrics.Increment("files_fetch_errors");
+                throw;
+            }
 
             if (fileDataResponse.FileInfo.Type != UploadFileType.UserAvatar)
             {

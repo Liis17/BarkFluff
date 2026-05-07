@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Messages.Domain;
 using BarkFluff.Messages.Persistence.Services;
@@ -17,17 +18,19 @@ public class KickUserCommandHandler : IRequestHandler<KickUserCommand>
     private readonly MessagesStorage _messagesStorage;
     private readonly UsersServerApi.UsersServerApiClient _usersServerApiClient;
     private readonly MessageQueueSender _messageQueueSender;
+    private readonly MetricsCollector _metrics;
     private readonly ILogger<KickUserCommandHandler> _logger;
 
     public KickUserCommandHandler(ChatsStorage chatsStorage, UserContext userContext, MessagesStorage messagesStorage,
         UsersServerApi.UsersServerApiClient usersServerApiClient, MessageQueueSender messageQueueSender,
-        ILogger<KickUserCommandHandler> logger)
+        MetricsCollector metrics, ILogger<KickUserCommandHandler> logger)
     {
         _chatsStorage = chatsStorage;
         _userContext = userContext;
         _messagesStorage = messagesStorage;
         _usersServerApiClient = usersServerApiClient;
         _messageQueueSender = messageQueueSender;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -115,6 +118,8 @@ public class KickUserCommandHandler : IRequestHandler<KickUserCommand>
 
         await _messageQueueSender.SendMessage(kickSystemMessage, request.ChatId, chatInfo.Members!
             .Select(x => x.UserId).ToList());
+
+        _metrics.Increment("users_kicked");
 
         _logger.LogInformation(
             "Пользователь {KickedUser} ({KickedUserId}) успешно исключен из чата {ChatId} администратором {AdminUser} ({AdminId})",

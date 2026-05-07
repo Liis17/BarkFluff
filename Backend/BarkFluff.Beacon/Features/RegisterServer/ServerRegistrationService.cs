@@ -66,12 +66,18 @@ public class ServerRegistrationService : BackgroundService
                 };
 
                 var request = new RegisterServerRequest { Server = serverInfo };
+                var sw = System.Diagnostics.Stopwatch.StartNew();
                 await navigatorClient.RegisterServerAsync(request, cancellationToken: stoppingToken);
                 _metrics.Increment("navigator_registrations");
+                _metrics.Add("navigator_registration_duration_ms_total", sw.ElapsedMilliseconds);
+                _metrics.Set("last_navigator_registration_unix", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                _metrics.Set("navigator_registration_healthy", 1);
                 _logger.LogInformation("RegisterServer успешно отправлен в Navigator");
             }
             catch (Exception ex)
             {
+                _metrics.Increment("navigator_registration_errors");
+                _metrics.Set("navigator_registration_healthy", 0);
                 _logger.LogError(ex, "Ошибка при отправке RegisterServer");
             }
 

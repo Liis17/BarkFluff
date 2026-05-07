@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Identity.Infrastructure;
@@ -25,12 +26,13 @@ public class DisableOtpVerificationCommandHandler : IRequestHandler<DisableOtpVe
     private readonly LocationClient _locationClient;
     private readonly UsersServerApi.UsersServerApiClient _usersClient;
     private readonly RequestContext _requestContext;
+    private readonly MetricsCollector _metrics;
     private readonly ILogger<DisableOtpVerificationCommandHandler> _logger;
 
     public DisableOtpVerificationCommandHandler(UserContext userContext, AuthPropertiesStorage authPropertiesStorage,
         NotificationQueueSender notificationQueueSender, LocationClient locationClient,
         UsersServerApi.UsersServerApiClient usersClient, RequestContext requestContext,
-        ILogger<DisableOtpVerificationCommandHandler> logger)
+        MetricsCollector metrics, ILogger<DisableOtpVerificationCommandHandler> logger)
     {
         _userContext = userContext;
         _authPropertiesStorage = authPropertiesStorage;
@@ -38,6 +40,7 @@ public class DisableOtpVerificationCommandHandler : IRequestHandler<DisableOtpVe
         _locationClient = locationClient;
         _usersClient = usersClient;
         _requestContext = requestContext;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -82,6 +85,8 @@ public class DisableOtpVerificationCommandHandler : IRequestHandler<DisableOtpVe
 
             if (!isValid)
             {
+                _metrics.Increment("otp_authenticator_failed");
+                _metrics.Increment("otp_disable_failed");
                 _logger.LogWarning(
                     "Неверный OTP код при попытке отключения Authenticator 2FA для пользователя {UserId}",
                     _userContext.UserId
@@ -92,6 +97,7 @@ public class DisableOtpVerificationCommandHandler : IRequestHandler<DisableOtpVe
             _logger.LogDebug("Отключение Authenticator 2FA для пользователя {UserId}", _userContext.UserId);
 
             await _authPropertiesStorage.DisableOtp(_userContext.UserId);
+            _metrics.Increment("otp_disabled_authenticator");
         }
 
         if (request.OptType == OtpTypeId.Email)
@@ -100,6 +106,7 @@ public class DisableOtpVerificationCommandHandler : IRequestHandler<DisableOtpVe
 
             oldMethod = "Email";
             await _authPropertiesStorage.DisableEmailOtp(_userContext.UserId);
+            _metrics.Increment("otp_disabled_email");
         }
 
         // Отправка уведомления об изменении метода 2FA (отключении)
