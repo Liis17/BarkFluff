@@ -167,6 +167,19 @@ public actor UserDefaultsTokenProvider: TokenProvider {
         // НЕ очищаем server host/port и device_id
     }
 
+    /// Полная очистка: токены + server host/port + device_id. Сбрасывает in-memory cache целиком.
+    public func purgeAll() {
+        cache = TokenCache(isLoaded: true)
+
+        userDefaults.removeObject(forKey: UDKeys.accessToken)
+        userDefaults.removeObject(forKey: UDKeys.accessTokenExpiresAt)
+        userDefaults.removeObject(forKey: UDKeys.refreshToken)
+        userDefaults.removeObject(forKey: UDKeys.refreshTokenExpiresAt)
+        userDefaults.removeObject(forKey: UDKeys.serverHost)
+        userDefaults.removeObject(forKey: UDKeys.serverPort)
+        userDefaults.removeObject(forKey: UDKeys.deviceId)
+    }
+
     // MARK: - Server Endpoint
 
     public var savedServerHost: String? {

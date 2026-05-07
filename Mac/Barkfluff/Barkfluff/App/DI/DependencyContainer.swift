@@ -275,17 +275,33 @@ final class DependencyContainer {
 
     // MARK: - Helpers
 
-    /// Сбросить все данные (при выходе из аккаунта)
+    /// Полная очистка всех данных текущего инстанса: стримы, кеши, БД, токены, device_id, эндпоинты.
+    /// После вызова приложение должно перейти на экран выбора сервера (`.serverSelection`).
     func reset() async {
+        // 1. Останавливаем все стримы и фоновые подписки
+        await updatesService.stop()
         await onlineStatusService.stop()
-        await tokenProvider.clearAll()
+
+        // 2. Чистим in-memory кеши
         await userCache.removeAll()
         await chatCache.removeAll()
         await onlineStatusCache.removeAll()
+
+        // 3. Чистим файловый и URL-кеши
         await mediaCacheManager.clearAll()
         await fileURLCache.clear()
+
+        // 4. Чистим локальную БД
         try? await database.truncateAll()
+
+        // 5. Полностью стираем токены, device_id и адрес сервера
+        await tokenProvider.purgeAll()
+
+        // 6. Сбрасываем gRPC-эндпоинты и информацию о сервере
         await serverDiscoveryService.disconnect()
+        await connectionManager.shutdown()
+
+        // 7. Сбрасываем флаги текущего пользователя
         currentUserID = 0
         currentUser = nil
     }

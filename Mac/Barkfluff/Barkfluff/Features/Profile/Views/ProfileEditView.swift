@@ -15,6 +15,11 @@ struct ProfileEditView: View {
     @Environment(DependencyContainer.self) private var container
     @State private var viewModel: ProfileEditViewModel
 
+    /// Состояние диалога подтверждения при ошибке серверного logout.
+    @State private var showLogoutFailureAlert: Bool = false
+    @State private var logoutFailureMessage: String = ""
+    @State private var isLoggingOut: Bool = false
+
     init(userService: UserServiceProtocol, fileService: FileServiceProtocol, container: DependencyContainer) {
         let vm = ProfileEditViewModel(
             userService: userService,
@@ -148,19 +153,14 @@ struct ProfileEditView: View {
 
                     // Выход из аккаунта
                     Button(role: .destructive) {
-                        Task {
-                            await coordinator.logout(
-                                authService: container.authService,
-                                updatesService: container.updatesService,
-                                onlineStatusService: container.onlineStatusService
-                            )
-                        }
+                        Task { await performLogout() }
                     } label: {
                         Text("Выйти из аккаунта")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.bordered)
                     .tint(.red)
+                    .disabled(isLoggingOut)
                 }
                 .padding(.horizontal, 24)
             }
@@ -191,5 +191,39 @@ struct ProfileEditView: View {
         } message: {
             Text(viewModel.errorMessage)
         }
+        .alert("Не удалось разлогиниться на сервере", isPresented: $showLogoutFailureAlert) {
+            Button("Повторить") {
+                Task { await performLogout() }
+            }
+            Button("Выйти всё равно", role: .destructive) {
+                Task { await performForceLogout() }
+            }
+            Button("Отмена", role: .cancel) { }
+        } message: {
+            Text("\(logoutFailureMessage)\n\nЕсли выйти принудительно — сессия на сервере останется активной до истечения срока действия. Завершить её можно позже через «Активные сессии».")
+        }
+    }
+
+    // MARK: - Logout
+
+    private func performLogout() async {
+        guard !isLoggingOut else { return }
+        isLoggingOut = true
+        defer { isLoggingOut = false }
+
+        do {
+            try await coordinator.logout(container: container)
+        } catch {
+            logoutFailureMessage = (error as? LocalizedError)?.errorDescription ?? "\(error)"
+            showLogoutFailureAlert = true
+        }
+    }
+
+    private func performForceLogout() async {
+        guard !isLoggingOut else { return }
+        isLoggingOut = true
+        defer { isLoggingOut = false }
+
+        await coordinator.forceLogout(container: container)
     }
 }

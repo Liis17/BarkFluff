@@ -109,12 +109,22 @@ public actor AuthService: AuthServiceProtocol {
         }
     }
 
-    public func logout() async {
-        try? await identityRepository.logout()
-        await tokenProvider.clearAll()
-        // connectionManager.shutdown() не вызываем — эндпоинты сервисов не привязаны к
-        // пользователю и должны оставаться актуальными для повторного входа на тот же сервер.
-        // Смена сервера обрабатывается через ServerDiscoveryService.disconnect().
+    public func logout() async throws {
+        // 1. Серверный шаг — ОБЯЗАТЕЛЕН: удаляет refresh-токены и устройство из БД,
+        //    публикует SessionRevokedEvent → инвалидирует access-токены на остальных сервисах.
+        do {
+            try await identityRepository.logout()
+        } catch let error as BFNetworkingError {
+            throw Self.mapError(error)
+        }
+
+        // 2. Только при успехе серверного шага — стираем токены и device_id локально.
+        //    Очистка остальных кешей/БД делается на уровне DependencyContainer.reset().
+        await tokenProvider.purgeAll()
+    }
+
+    public func forceLocalLogout() async {
+        await tokenProvider.purgeAll()
     }
 
     public func setPassword(password: String) async throws {

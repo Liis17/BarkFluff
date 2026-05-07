@@ -25,8 +25,14 @@ public protocol AuthServiceProtocol: Sendable {
     /// Возвращает true, если удалось восстановить, false если нужна авторизация.
     func tryRestoreSession() async -> Bool
 
-    /// Выйти из аккаунта (очистка токенов и отключение)
-    func logout() async
+    /// Выйти из аккаунта: уведомить сервер (`Identity.Logout`) и стереть все токены.
+    /// Бросает ошибку, если серверный шаг не удался — локальные токены при этом НЕ трогаются,
+    /// чтобы вызывающий мог решить (повторить / выйти принудительно через `forceLocalLogout`).
+    func logout() async throws
+
+    /// Принудительная локальная очистка токенов без обращения к серверу.
+    /// Используется как fallback после неудачного `logout()`.
+    func forceLocalLogout() async
 
     /// Установить пароль после регистрации
     func setPassword(password: String) async throws

@@ -26,7 +26,12 @@ struct AuthSuccessView: View {
 
             Button("Выйти") {
                 Task {
-                    await coordinator.logout(authService: container.authService, updatesService: container.updatesService, onlineStatusService: container.onlineStatusService)
+                    do {
+                        try await coordinator.logout(container: container)
+                    } catch {
+                        // На dev-экране не показываем диалог — просто принудительно выходим.
+                        await coordinator.forceLogout(container: container)
+                    }
                 }
             }
             .buttonStyle(.bordered)
