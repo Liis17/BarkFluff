@@ -347,39 +347,87 @@ namespace BarkFluff.Client.WPF.UserControls
         }
 
         /// <summary>
-        /// Показывает реальное изображение из файла и переключает видимость на AvatarBorder
+        /// Показывает реальное изображение из файла и переключает видимость на AvatarBorder.
+        /// Декод BitmapImage выполняется в фоновом потоке с DecodePixelWidth под реальный
+        /// размер аватара (50/35/23/110 px × DPI), чтобы не декодировать большое
+        /// исходное изображение на UI-потоке.
         /// </summary>
-        private void ShowImageFromPath(string imagePath)
+        private async void ShowImageFromPath(string imagePath)
         {
+            // DPI и целевая ширина — вычисляем на UI-потоке до ухода в фон.
+            int decodeWidth = ResolveAvatarDecodePixelWidth();
+
+            BitmapImage? bitmapImage;
             try
             {
-                var bitmapImage = new BitmapImage();
-                bitmapImage.BeginInit();
-                bitmapImage.UriSource = new Uri(imagePath, UriKind.RelativeOrAbsolute);
-                bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
-                bitmapImage.EndInit();
-
-                if (bitmapImage.CanFreeze)
+                bitmapImage = await Task.Run(() =>
                 {
-                    bitmapImage.Freeze();
-                }
-
-                AvatarBrush.ImageSource = bitmapImage;
-
-                // Показываем Border с изображением, скрываем иконки
-                AvatarBorder.Visibility = Visibility.Visible;
-                UserWithoutAvatar.Visibility = Visibility.Collapsed;
-                SavedChatAvatar.Visibility = Visibility.Collapsed;
-
-                // Обновляем динамическую тень если включено
-                if (EnableDynamicShadow)
-                {
-                    _ = UpdateDynamicShadow(imagePath);
-                }
+                    try
+                    {
+                        var bm = new BitmapImage();
+                        bm.BeginInit();
+                        bm.UriSource = new Uri(imagePath, UriKind.RelativeOrAbsolute);
+                        bm.CacheOption = BitmapCacheOption.OnLoad;
+                        if (decodeWidth > 0)
+                        {
+                            bm.DecodePixelWidth = decodeWidth;
+                        }
+                        bm.EndInit();
+                        if (bm.CanFreeze) bm.Freeze();
+                        return bm;
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                });
             }
             catch
             {
-                SetPlaceholder();
+                bitmapImage = null;
+            }
+
+            if (!IsLoaded || bitmapImage == null)
+            {
+                if (bitmapImage == null) SetPlaceholder();
+                return;
+            }
+
+            AvatarBrush.ImageSource = bitmapImage;
+
+            // Показываем Border с изображением, скрываем иконки.
+            AvatarBorder.Visibility = Visibility.Visible;
+            UserWithoutAvatar.Visibility = Visibility.Collapsed;
+            SavedChatAvatar.Visibility = Visibility.Collapsed;
+
+            // Обновляем динамическую тень если включено.
+            if (EnableDynamicShadow)
+            {
+                _ = UpdateDynamicShadow(imagePath);
+            }
+        }
+
+        private int ResolveAvatarDecodePixelWidth()
+        {
+            try
+            {
+                double w = MainAvatar.Width;
+                if (double.IsNaN(w) || w <= 0)
+                {
+                    w = AvatarBorder.Width;
+                }
+                if (double.IsNaN(w) || w <= 0)
+                {
+                    return 0;
+                }
+
+                var dpi = VisualTreeHelper.GetDpi(this);
+                var scale = dpi.DpiScaleX > 0 ? dpi.DpiScaleX : 1.0;
+                return (int)Math.Ceiling(w * scale);
+            }
+            catch
+            {
+                return 0;
             }
         }
 

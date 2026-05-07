@@ -161,6 +161,25 @@ namespace BarkFluff.WebApi.Core
                    ? "http://" + _url
                    : _url;
         }
+
+        /// <summary>
+        /// Собирает URL вида {scheme}://{host}:{port}, где scheme выбирается
+        /// по флагу tlsEnabled. Если в host уже есть схема — она срезается,
+        /// чтобы избежать двойного префикса.
+        /// </summary>
+        public static string BuildEndpointUrl(string host, int port, bool tlsEnabled)
+        {
+            var cleanHost = host ?? string.Empty;
+            if (cleanHost.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                cleanHost = cleanHost.Substring(8);
+            else if (cleanHost.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+                cleanHost = cleanHost.Substring(7);
+
+            cleanHost = cleanHost.TrimEnd('/');
+
+            var scheme = tlsEnabled ? "https" : "http";
+            return $"{scheme}://{cleanHost}:{port}";
+        }
         #endregion
 
         #region Получение информации о сервере (делегирование к ServerManager)

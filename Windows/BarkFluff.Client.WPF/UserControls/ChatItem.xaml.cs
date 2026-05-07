@@ -184,6 +184,94 @@ namespace BarkFluff.Client.WPF.UserControls
             OnlineIndicator.Visibility = Visibility.Collapsed;
         }
 
+        /// <summary>
+        /// Идемпотентное обновление существующего ChatItem без пересоздания контрола.
+        /// Используется ChatListController при diff-обновлении списка чатов: если чат
+        /// уже был в UI, мы освежаем только его данные, не вызывая Unloaded/Loaded
+        /// и не сбрасывая подписку CachedAvatar на FileCached.
+        /// </summary>
+        public void ApplySnapshot(
+            string imageUrl,
+            string title,
+            BarkFluff.Proto.Shared.Message? lastMessage,
+            long unread,
+            long firstUnreadId)
+        {
+            // Заголовок (для self-chat принудительно «Избранное»).
+            if (_isSelfChat)
+            {
+                title = "Избранное";
+            }
+            if (_title != title)
+            {
+                _title = title;
+                Title.Text = title;
+            }
+
+            // Аватар: трогаем CachedAvatar только если URL реально изменился —
+            // иначе LoadImage будет вызван повторно и моргнёт картинка.
+            if (!string.Equals(_url, imageUrl, StringComparison.Ordinal))
+            {
+                _url = imageUrl;
+                _avatarFileId = (!string.IsNullOrEmpty(imageUrl) && !FileCacheService.IsPlaceholder(imageUrl))
+                    ? FileCacheService.ExtractFileIdFromUrl(imageUrl)
+                    : null;
+
+                if (imageUrl != "UserWithoutAvatar" && imageUrl != "SavedChat" && !string.IsNullOrEmpty(imageUrl))
+                {
+                    AvatarControl.FileId = _avatarFileId;
+                    AvatarControl.FileUrl = imageUrl;
+                    AvatarControl.AvatarType = AvatarType.Image;
+                }
+                else if (imageUrl == "SavedChat")
+                {
+                    AvatarControl.FileId = null;
+                    AvatarControl.FileUrl = null;
+                    AvatarControl.AvatarType = AvatarType.SavedChat;
+                }
+                else
+                {
+                    AvatarControl.FileId = null;
+                    AvatarControl.FileUrl = null;
+                    AvatarControl.AvatarType = AvatarType.UserWithoutAvatar;
+                }
+            }
+
+            // ID первого непрочитанного и счётчик.
+            _firstUnreadId = firstUnreadId;
+            SetUnreadCount((int)unread);
+
+            // Последнее сообщение / время / галочки прочтения.
+            _lastMessageId = lastMessage?.Id ?? 0;
+            if (lastMessage != null)
+            {
+                TransferMessage = new MessageModel
+                {
+                    MessageId = lastMessage.Id,
+                    SenderId = lastMessage.SenderId,
+                    ReadBy = lastMessage.ReadBy.ToList(),
+                    Text = lastMessage.Content.Text,
+                    SentAt = lastMessage.SentAt,
+                    ChatId = ChatId,
+                    Attachments = lastMessage.Content.Attachments?
+                        .Select(a => new AttachmentsModel
+                        {
+                            Id = a.Id,
+                            Type = a.Type,
+                            FileId = a.FileId,
+                            PreviewUrl = a.PreviewUrl,
+                            Size = a.AttachmentSize
+                        }).ToList() ?? new List<AttachmentsModel>()
+                };
+                UpdateMessage();
+            }
+            else
+            {
+                LastMessage.Text = string.Empty;
+                TimeMessage.Text = string.Empty;
+            }
+        }
+
         public void UpdateMessage()
         {
             // Update the last message ID so pagination works correctly
@@ -459,8 +547,8 @@ namespace BarkFluff.Client.WPF.UserControls
                     );
                 }
 
-                // КРИТИЧНО: Делаем отдельный запрос для немедленного получения статуса
-                _ = FetchAndUpdateOnlineStatusAsync(_userId);
+                // Индивидуальный gRPC-запрос статуса убран — ChatListController
+                // делает один батч-запрос на весь список после ChatUpdateAsync.
             }
         }
 

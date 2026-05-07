@@ -96,7 +96,7 @@ public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand,
         {
             externalHost = settings
                 .FirstOrDefault(x => x.Section == "RunSettings" && x.Key == "Host")?.Value
-                ?? $"https://{id.ToString().ToLower()}.example.com";
+                ?? $"{id.ToString().ToLower()}.example.com";
         }
 
         return new Service
@@ -104,11 +104,21 @@ public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand,
             Name = id.ToString(),
             Endpoint = new ServiceEndpoint
             {
-                Host = externalHost,
+                Host = NormalizeHost(externalHost),
                 Port = 443
             },
             Status = ServiceStatus.Healthy,
             TlsEnabled = true
         };
+    }
+
+    private static string NormalizeHost(string value)
+    {
+        if (Uri.TryCreate(value, UriKind.Absolute, out var uri) && !string.IsNullOrEmpty(uri.Host))
+        {
+            return uri.Host;
+        }
+
+        return value.Trim().TrimEnd('/');
     }
 }

@@ -38,7 +38,6 @@ namespace BarkFluff.Client.WPF.Pages.Messenger.Controllers
         public async Task ChatUpdateAsync()
         {
             var response = await App.ServerCommunication.GetChats(App.GParam);
-            _chatList.Children.Clear(); // Очищаем список перед добавлением
             if (response.error == null) { return; }
             if (!response.error.IsSuccess)
             {
@@ -46,44 +45,34 @@ namespace BarkFluff.Client.WPF.Pages.Messenger.Controllers
                 return;
             }
 
-            // Очищаем буфер последних сообщений чатов
-            lock (_chatBufferLock)
-            {
-                _chatLastMessageBuffer.Clear();
-            }
-
-            if (response.chats.Count == 0)
-            {
-                return;
-            }
-
-
-            // Сортировка чатов по времени последнего сообщения (новые выше)
+            // Сортировка чатов по времени последнего сообщения (новые выше).
             var sortedChats = response.chats
+                .Where(c => !c.IsGroupChat)
                 .OrderByDescending(chat => chat.LastMessage?.SentAt.ToDateTime() ?? DateTime.MinValue)
                 .ToList();
 
+            // Снапшот существующих ChatItem-ов: переиспользуем их при diff —
+            // не пересоздаём контролы, не вызываем Unloaded/Loaded и не отписываем CachedAvatar.
+            var existingItems = _chatList.Children.OfType<ChatItem>().ToDictionary(ci => ci.ChatId);
+
+            // Перестраиваем буфер последних сообщений (под локом).
+            var newBuffer = new Dictionary<string, long>(sortedChats.Count);
+            var personalUserIds = new List<long>(sortedChats.Count);
+            var orderedItems = new List<ChatItem>(sortedChats.Count);
+
             foreach (var item in sortedChats)
             {
-                if (item.IsGroupChat)
-                {
-                    App.ErideMessage.AddMessage($"Пропущен Gruppowy chat {item.Title}", new Erida { Type = MType.Debug });
-                    continue;
-                }
-
-                // Определяем статус чтения и заголовок
-                var isRead = ChatItem.ReadingStatus.ForMe;
                 var title = item.Title.Trim();
                 var membersId = item.Members.Select(m => m.UserId).ToList();
                 bool isSelfChat = (item.Members.Count >= 2 &&
                                    App.GParam.UserId == item.Members[0].UserId &&
                                    App.GParam.UserId == item.Members[1].UserId);
 
+                var isRead = ChatItem.ReadingStatus.ForMe;
                 long userId;
                 string avatar;
                 if (isSelfChat)
                 {
-                    // Для чата с собой используем id текущего пользователя
                     isRead = ChatItem.ReadingStatus.My;
                     title = "Избранное";
                     avatar = "SavedChat";
@@ -91,11 +80,9 @@ namespace BarkFluff.Client.WPF.Pages.Messenger.Controllers
                 }
                 else
                 {
-                    avatar = string.IsNullOrEmpty(item.Picture)
-                        ? "UserWithoutAvatar"
-                        : item.Picture;
+                    avatar = string.IsNullOrEmpty(item.Picture) ? "UserWithoutAvatar" : item.Picture;
                     membersId.Remove(App.GParam.UserId);
-                    userId = membersId.FirstOrDefault(); // Возвращаем 0, если список пуст
+                    userId = membersId.FirstOrDefault();
 
                     if (userId == 0)
                     {
@@ -104,54 +91,144 @@ namespace BarkFluff.Client.WPF.Pages.Messenger.Controllers
                     }
                 }
 
-                var messageItem = new ChatItem(
-                    avatar,
-                    title,
-                    ChatItem.GetDisplayTextFromProto(item.LastMessage),
-                    time: item.LastMessage?.SentAt.ToString() ?? string.Empty,
-                    reading: isRead,
-                    readBy: item.LastMessage?.ReadBy.ToList() ?? new List<long>(),
-                    unReaded: item.CountUnread,
-                    chatId: item.Id,
-                    lastMessageId: item.LastMessage?.Id ?? 0,
-                    firstUnreadId: item.FirstUnreadMessageId,
-                    isGroupChat: item.IsGroupChat,
-                    userId: userId
-                );
-
-                // Set the sender ID for the last message to enable proper read status display
-                if (item.LastMessage != null)
+                ChatItem chatItem;
+                if (existingItems.TryGetValue(item.Id, out var existing))
                 {
-                    messageItem.TransferMessage = new MessageModel
-                    {
-                        MessageId = item.LastMessage.Id,
-                        SenderId = item.LastMessage.SenderId,
-                        ReadBy = item.LastMessage.ReadBy.ToList(),
-                        Text = item.LastMessage.Content.Text,
-                        SentAt = item.LastMessage.SentAt,
-                        ChatId = item.Id,
-                        Attachments = item.LastMessage.Content.Attachments?
-                            .Select(a => new AttachmentsModel
-                            {
-                                Id = a.Id,
-                                Type = a.Type,
-                                FileId = a.FileId,
-                                PreviewUrl = a.PreviewUrl,
-                                Size = a.AttachmentSize
-                            }).ToList() ?? new List<AttachmentsModel>()
-                    };
+                    // Чат уже в UI — обновляем in-place.
+                    existing.ApplySnapshot(avatar, title, item.LastMessage, item.CountUnread, item.FirstUnreadMessageId);
+                    existingItems.Remove(item.Id);
+                    chatItem = existing;
+                }
+                else
+                {
+                    chatItem = new ChatItem(
+                        avatar,
+                        title,
+                        ChatItem.GetDisplayTextFromProto(item.LastMessage),
+                        time: item.LastMessage?.SentAt.ToString() ?? string.Empty,
+                        reading: isRead,
+                        readBy: item.LastMessage?.ReadBy.ToList() ?? new List<long>(),
+                        unReaded: item.CountUnread,
+                        chatId: item.Id,
+                        lastMessageId: item.LastMessage?.Id ?? 0,
+                        firstUnreadId: item.FirstUnreadMessageId,
+                        isGroupChat: item.IsGroupChat,
+                        userId: userId
+                    );
 
-                    // Инициализируем статус прочтения (галочки)
-                    messageItem.UpdateMessage();
-
-                    // Добавляем в буфер для быстрого поиска при обновлении статуса прочтения
-                    lock (_chatBufferLock)
+                    if (item.LastMessage != null)
                     {
-                        _chatLastMessageBuffer[item.Id] = item.LastMessage.Id;
+                        chatItem.TransferMessage = new MessageModel
+                        {
+                            MessageId = item.LastMessage.Id,
+                            SenderId = item.LastMessage.SenderId,
+                            ReadBy = item.LastMessage.ReadBy.ToList(),
+                            Text = item.LastMessage.Content.Text,
+                            SentAt = item.LastMessage.SentAt,
+                            ChatId = item.Id,
+                            Attachments = item.LastMessage.Content.Attachments?
+                                .Select(a => new AttachmentsModel
+                                {
+                                    Id = a.Id,
+                                    Type = a.Type,
+                                    FileId = a.FileId,
+                                    PreviewUrl = a.PreviewUrl,
+                                    Size = a.AttachmentSize
+                                }).ToList() ?? new List<AttachmentsModel>()
+                        };
+                        chatItem.UpdateMessage();
                     }
                 }
 
-                _chatList.Children.Add(messageItem);
+                orderedItems.Add(chatItem);
+
+                if (item.LastMessage != null)
+                {
+                    newBuffer[item.Id] = item.LastMessage.Id;
+                }
+                if (!isSelfChat && userId > 0)
+                {
+                    personalUserIds.Add(userId);
+                }
+            }
+
+            // Удаляем ChatItem-ы для чатов, которых больше нет в ответе.
+            foreach (var (_, stale) in existingItems)
+            {
+                _chatList.Children.Remove(stale);
+            }
+
+            // Применяем новый порядок без полного Clear: двигаем только реально съехавшие элементы.
+            for (int i = 0; i < orderedItems.Count; i++)
+            {
+                var target = orderedItems[i];
+                var currentIdx = _chatList.Children.IndexOf(target);
+                if (currentIdx < 0)
+                {
+                    _chatList.Children.Insert(i, target);
+                }
+                else if (currentIdx != i)
+                {
+                    _chatList.Children.RemoveAt(currentIdx);
+                    _chatList.Children.Insert(i, target);
+                }
+            }
+
+            // Обновляем буфер последних сообщений.
+            lock (_chatBufferLock)
+            {
+                _chatLastMessageBuffer.Clear();
+                foreach (var (k, v) in newBuffer)
+                {
+                    _chatLastMessageBuffer[k] = v;
+                }
+            }
+
+            // Один батч-запрос онлайн-статусов вместо N индивидуальных из ChatItem_Loaded.
+            if (personalUserIds.Count > 0)
+            {
+                _ = FetchOnlineStatusesBatchAsync(personalUserIds);
+            }
+        }
+
+        /// <summary>
+        /// Один батч-запрос статусов для всех видимых приватных чатов.
+        /// Заменяет N индивидуальных <c>FetchAndUpdateOnlineStatusAsync</c>
+        /// из <c>ChatItem.Loaded</c>, которые при первой загрузке списка
+        /// устраивали шторм gRPC-вызовов.
+        /// </summary>
+        private async Task FetchOnlineStatusesBatchAsync(List<long> userIds)
+        {
+            try
+            {
+                var distinctIds = userIds.Distinct().ToList();
+                if (distinctIds.Count == 0) return;
+
+                var (error, response) = await App.ServerCommunication.GetOnlineStatus(distinctIds, App.GParam);
+                if (!error.IsSuccess || response == null) return;
+
+                await _page.Dispatcher.InvokeAsync(() =>
+                {
+                    foreach (var status in response.UsersStatuses)
+                    {
+                        App.OnlineStatusService.UpdateCachedStatus(status);
+
+                        foreach (var child in _chatList.Children)
+                        {
+                            if (child is ChatItem ci && ci.UserId == status.UserId)
+                            {
+                                ci.UpdateOnlineStatus(
+                                    status.Status == BarkFluff.Proto.Onliner.StatusTypeId.StatusOnline,
+                                    status.LastSeen?.ToDateTime());
+                                break;
+                            }
+                        }
+                    }
+                });
+            }
+            catch
+            {
+                // Stream-обновления подхватят актуальные статусы — игнорируем разовую ошибку.
             }
         }
 

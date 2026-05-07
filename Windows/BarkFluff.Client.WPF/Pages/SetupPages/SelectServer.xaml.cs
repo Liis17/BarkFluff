@@ -172,13 +172,13 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
         {
             App.GParam.ServerName = serverInfo.Name;
             App.GParam.ServerDescription = serverInfo.Description;
-            App.GParam.SocketIdentity = WebApi.Core.WebApi.EnsureHttpPrefix($"{serverInfo.Identity.Endpoint.Host}:{serverInfo.Identity.Endpoint.Port}");
-            App.GParam.SocketUsers = WebApi.Core.WebApi.EnsureHttpPrefix($"{serverInfo.Users.Endpoint.Host}:{serverInfo.Users.Endpoint.Port}");
-            App.GParam.SocketFiles = WebApi.Core.WebApi.EnsureHttpPrefix($"{serverInfo.Files.Endpoint.Host}:{serverInfo.Files.Endpoint.Port}");
-            App.GParam.SocketMessages = WebApi.Core.WebApi.EnsureHttpPrefix($"{serverInfo.Messages.Endpoint.Host}:{serverInfo.Messages.Endpoint.Port}");
-            App.GParam.SocketUpdates = WebApi.Core.WebApi.EnsureHttpPrefix($"{serverInfo.Updates.Endpoint.Host}:{serverInfo.Updates.Endpoint.Port}");
-            App.GParam.SocketOnliner = WebApi.Core.WebApi.EnsureHttpPrefix(serverInfo.Onliner.Endpoint.Host + ":" + serverInfo.Onliner.Endpoint.Port);
-            App.GParam.SocketFastAuth = WebApi.Core.WebApi.EnsureHttpPrefix($"{serverInfo.FastAuth.Endpoint.Host}:{serverInfo.FastAuth.Endpoint.Port}");
+            App.GParam.SocketIdentity = WebApi.Core.WebApi.BuildEndpointUrl(serverInfo.Identity.Endpoint.Host, serverInfo.Identity.Endpoint.Port, serverInfo.Identity.TlsEnabled);
+            App.GParam.SocketUsers = WebApi.Core.WebApi.BuildEndpointUrl(serverInfo.Users.Endpoint.Host, serverInfo.Users.Endpoint.Port, serverInfo.Users.TlsEnabled);
+            App.GParam.SocketFiles = WebApi.Core.WebApi.BuildEndpointUrl(serverInfo.Files.Endpoint.Host, serverInfo.Files.Endpoint.Port, serverInfo.Files.TlsEnabled);
+            App.GParam.SocketMessages = WebApi.Core.WebApi.BuildEndpointUrl(serverInfo.Messages.Endpoint.Host, serverInfo.Messages.Endpoint.Port, serverInfo.Messages.TlsEnabled);
+            App.GParam.SocketUpdates = WebApi.Core.WebApi.BuildEndpointUrl(serverInfo.Updates.Endpoint.Host, serverInfo.Updates.Endpoint.Port, serverInfo.Updates.TlsEnabled);
+            App.GParam.SocketOnliner = WebApi.Core.WebApi.BuildEndpointUrl(serverInfo.Onliner.Endpoint.Host, serverInfo.Onliner.Endpoint.Port, serverInfo.Onliner.TlsEnabled);
+            App.GParam.SocketFastAuth = WebApi.Core.WebApi.BuildEndpointUrl(serverInfo.FastAuth.Endpoint.Host, serverInfo.FastAuth.Endpoint.Port, serverInfo.FastAuth.TlsEnabled);
             App.GParam.Colors = new ClientColors
             {
                 LiteHex = serverInfo.Color.LiteHex,
