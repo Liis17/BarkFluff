@@ -13,6 +13,9 @@ import BFCore
 final class ChatListViewModel {
     var chats: [Chat] = []
     var isLoading = false
+    /// Идёт фоновый запрос к серверу при уже показанном кэше
+    /// (stale-while-revalidate). Используется для индикатора «Обновление…».
+    var isRefreshing = false
     var errorMessage: String?
     var searchText = ""
     var searchResults: [User] = []
@@ -58,14 +61,23 @@ final class ChatListViewModel {
         errorMessage = nil
 
         // 1. Stale: отображаем кешированные чаты сразу, до сетевого запроса.
+        var hasCachedData = false
         if allChats.isEmpty, let local = localChatRepository {
             if let cached = try? await local.loadCachedChats(), !cached.isEmpty {
                 allChats = cached
                 applyFilter()
+                hasCachedData = true
             }
+        } else if !allChats.isEmpty {
+            hasCachedData = true
         }
 
-        isLoading = true
+        // Полный спиннер только если кэша нет; иначе — небольшой индикатор обновления.
+        if hasCachedData {
+            isRefreshing = true
+        } else {
+            isLoading = true
+        }
 
         // 2. Revalidate: тянем актуальные данные с сервера.
         do {
@@ -105,6 +117,7 @@ final class ChatListViewModel {
         }
 
         isLoading = false
+        isRefreshing = false
     }
 
     func loadMoreChats() async {

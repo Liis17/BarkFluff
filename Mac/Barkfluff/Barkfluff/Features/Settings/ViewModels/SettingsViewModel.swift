@@ -13,7 +13,6 @@ import BFNetworking
 final class SettingsViewModel {
     var sessions: [SessionInfo] = []
     var currentDeviceId: String = ""
-    var storageInfo: StorageInfo?
     var serverInfo: ServerInfo?
     var twoFactorEnabled = false
     var isLoading = false
@@ -35,7 +34,6 @@ final class SettingsViewModel {
         let settings = TokenStorageSettings()
         self.selectedStorageType = settings.storageType
 
-        self.storageInfo = StorageInfo(usedGB: 2.5, limitGB: 10)
         self.serverInfo = ServerInfo(
             name: "BarkFluff Server",
             version: "1.0.0",
@@ -156,16 +154,6 @@ final class SettingsViewModel {
         }
 
         isMigratingStorage = false
-    }
-}
-
-// Preview data models
-struct StorageInfo {
-    let usedGB: Double
-    let limitGB: Int
-
-    var usedPercentage: Double {
-        usedGB / Double(limitGB)
     }
 }
 

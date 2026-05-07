@@ -17,6 +17,9 @@ final class ConversationViewModel {
     let chat: Chat
     var messages: [Message] = []
     var isLoading = false
+    /// Идёт фоновое обновление сообщений с сервера, когда кэш уже показан
+    /// (stale-while-revalidate). Используется для индикатора «Обновление…».
+    var isRefreshing = false
     var isLoadingMore = false
     var errorMessage: String?
     var hasMoreMessages = true
@@ -116,13 +119,19 @@ final class ConversationViewModel {
         guard !isLoading else { return }
 
         // 1. Stale: показать кешированные сообщения сразу.
+        var hasCachedData = false
         if messages.isEmpty, let local = localMessageRepository {
             if let cached = try? await local.loadCachedMessages(chatID: chat.id), !cached.isEmpty {
                 messages = cached
+                hasCachedData = true
             }
         }
 
-        isLoading = true
+        if hasCachedData {
+            isRefreshing = true
+        } else {
+            isLoading = true
+        }
         errorMessage = nil
 
         do {
@@ -136,12 +145,16 @@ final class ConversationViewModel {
             // Убираем дубликаты по ID
             var seenIDs = Set<Int64>()
             let uniqueMessages = loadedMessages.filter { seenIDs.insert($0.id).inserted }
-            messages = uniqueMessages.sorted { $0.sentAt < $1.sentAt }
+            let serverMessages = uniqueMessages.sorted { $0.sentAt < $1.sentAt }
             hasMoreMessages = loadedMessages.count >= PaginationHelper.defaultMessagesPageSize
+
+            // Слияние: сохраняем pending (id < 0, локальные) + берём актуальные с сервера.
+            let pending = messages.filter { $0.id < 0 }
+            messages = serverMessages + pending
 
             // 2. Сохраняем актуальный снимок в БД.
             if let local = localMessageRepository {
-                try? await local.upsertMessages(messages, chatID: chat.id)
+                try? await local.upsertMessages(serverMessages, chatID: chat.id)
             }
 
             // Определяем первое непрочитанное сообщение (до пометки прочитанными)
@@ -154,16 +167,21 @@ final class ConversationViewModel {
                let unreadIndex = messages.firstIndex(where: { $0.id == unreadID }),
                unreadIndex < 5, hasMoreMessages {
                 isLoading = false
+                isRefreshing = false
                 await loadMoreMessages()
             }
 
             // Пометить как прочитанные
             await markVisibleMessagesAsRead()
         } catch {
-            errorMessage = error.localizedDescription
+            // Ошибку показываем только если кеш пустой; иначе кэш виден в UI.
+            if messages.isEmpty {
+                errorMessage = error.localizedDescription
+            }
         }
 
         isLoading = false
+        isRefreshing = false
     }
 
     /// Загрузить старые сообщения (пагинация)

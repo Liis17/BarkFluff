@@ -19,6 +19,7 @@ struct CachedChatRecord: Codable, FetchableRecord, PersistableRecord, Hashable {
     var unreadCount: Int64
     var membersJson: Data?
     var updatedAt: Int64
+    var lastMessageJson: Data?
 
     enum Columns {
         static let id = Column(CodingKeys.id)

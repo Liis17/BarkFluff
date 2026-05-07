@@ -51,6 +51,12 @@ enum Migrations {
             )
         }
 
+        migrator.registerMigration("v2_chat_last_message") { db in
+            try db.alter(table: "cached_chat") { t in
+                t.add(column: "last_message_json", .blob)
+            }
+        }
+
         return migrator
     }
 }
