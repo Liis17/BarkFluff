@@ -198,6 +198,12 @@ public actor ConnectionManager {
                 host: cleanHost(ep.host), port: Int(ep.port), useTLS: response.onliner.tlsEnabled
             )
         }
+        if response.hasFastAuth, response.fastAuth.hasEndpoint {
+            let ep = response.fastAuth.endpoint
+            serviceEndpoints[.fastauth] = ServiceEndpoint(
+                host: cleanHost(ep.host), port: Int(ep.port), useTLS: response.fastAuth.tlsEnabled
+            )
+        }
     }
 
     // MARK: - Client Execution
