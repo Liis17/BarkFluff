@@ -155,10 +155,12 @@ namespace BarkFluff.WebApi.Core
         /// <summary>
         /// Добавляет схему к URL, если её нет. По умолчанию — https://, потому что
         /// production-сервера BarkFluff работают по TLS. Для локального plaintext-сервера
-        /// нужно явно передать http:// в адресе.
+        /// нужно явно передать http:// в адресе. Пустая строка возвращается как есть —
+        /// иначе на выходе получится мусор вида "https://" без хоста.
         /// </summary>
         public static string EnsureHttpPrefix(string _url)
         {
+            if (string.IsNullOrWhiteSpace(_url)) return _url;
             return !_url.StartsWith("http://") && !_url.StartsWith("https://")
                    ? "https://" + _url
                    : _url;
