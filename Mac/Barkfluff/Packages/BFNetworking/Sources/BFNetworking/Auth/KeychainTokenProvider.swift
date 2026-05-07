@@ -202,6 +202,19 @@ public actor KeychainTokenProvider: TokenProvider {
         keychain[Keys.refreshTokenExpiresAt] = nil
     }
 
+    /// Полная очистка: токены + server host/port + device_id. Сбрасывает in-memory cache целиком.
+    public func purgeAll() {
+        cache = TokenCache(isLoaded: true)
+
+        keychain[Keys.accessToken] = nil
+        keychain[Keys.accessTokenExpiresAt] = nil
+        keychain[Keys.refreshToken] = nil
+        keychain[Keys.refreshTokenExpiresAt] = nil
+        keychain[Keys.serverHost] = nil
+        keychain[Keys.serverPort] = nil
+        keychain[Keys.deviceId] = nil
+    }
+
     // MARK: - Server Endpoint
 
     public var savedServerHost: String? {

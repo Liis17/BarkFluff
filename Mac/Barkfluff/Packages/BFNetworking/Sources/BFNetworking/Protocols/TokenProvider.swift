@@ -38,6 +38,10 @@ public protocol TokenProvider: Sendable {
     /// Очистить все токены (logout). НЕ очищает server host/port и device_id.
     func clearAll() async
 
+    /// Полная очистка хранилища: токены + server host/port + device_id + in-memory cache.
+    /// Используется при «жёстком» logout, когда не должно остаться ни единого следа от старого инстанса.
+    func purgeAll() async
+
     /// Есть ли сохранённый refresh-токен
     var hasRefreshToken: Bool { get async }
 

@@ -167,15 +167,38 @@ final class AppCoordinator {
         chatListViewModel?.updateLastMessage(chatID: chatID, message: message)
     }
 
-    /// Выход из аккаунта
-    func logout(authService: AuthServiceProtocol, updatesService: UpdatesServiceProtocol, onlineStatusService: OnlineStatusServiceProtocol) async {
-        await updatesService.stop()
-        await onlineStatusService.stop()
-        await authService.logout()
+    /// Выход из аккаунта.
+    ///
+    /// Сначала уведомляет сервер (`Identity.Logout`) — он удаляет refresh-токены и устройство из БД,
+    /// инвалидирует access-токен через шину. Только при успехе серверного шага выполняется
+    /// полный локальный wipe (кеши, БД, токены, device_id, эндпоинты) и переход на экран выбора сервера.
+    ///
+    /// Если серверный шаг падает — бросает ошибку. Локальные данные при этом остаются нетронутыми,
+    /// чтобы UI мог предложить «Повторить» или вызвать `forceLogout(...)` для выхода без сервера.
+    func logout(container: DependencyContainer) async throws {
+        try await container.authService.logout()
+        await performLocalWipe(container: container)
+    }
+
+    /// Принудительный выход без серверного шага. Локальные данные стираются полностью.
+    /// На сервере при этом остаётся «висящая» сессия — она протухнет естественным образом,
+    /// либо её можно будет завершить позже через «Активные сессии».
+    func forceLogout(container: DependencyContainer) async {
+        await container.authService.forceLocalLogout()
+        await performLocalWipe(container: container)
+    }
+
+    private func performLocalWipe(container: DependencyContainer) async {
+        await container.reset()
+
         selectedChat = nil
         activeTab = .chats
         selectedSettingsCategory = nil
-        currentState = .authentication
+        presentedSheet = nil
+        showProfilePanel = false
+        profilePanelChat = nil
+
+        currentState = .serverSelection
         authScreen = .login
     }
 }
