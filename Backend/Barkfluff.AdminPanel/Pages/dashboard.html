@@ -160,11 +160,18 @@
                     Система активна
                 </span>
             </div>
-            <button id="logout-btn"
-                    class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-red-600 hover:border-red-300 transition-colors">
-                <i data-lucide="log-out" class="w-4 h-4"></i>
-                Выйти
-            </button>
+            <div class="flex items-center gap-2">
+                <button id="switch-to-v2-btn"
+                        class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-blue-600 rounded-lg hover:bg-blue-700 hover:border-blue-700 transition-colors">
+                    <i data-lucide="sparkles" class="w-4 h-4"></i>
+                    Новая версия
+                </button>
+                <button id="logout-btn"
+                        class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-red-600 hover:border-red-300 transition-colors">
+                    <i data-lucide="log-out" class="w-4 h-4"></i>
+                    Выйти
+                </button>
+            </div>
         </header>
 
         <!-- Content -->
@@ -692,6 +699,12 @@
                 }
             }
         }
+
+        // ---- Switch to new version ----
+        document.getElementById('switch-to-v2-btn').addEventListener('click', () => {
+            document.cookie = 'ui_version=v2; path=/; max-age=' + (60 * 60 * 24 * 365);
+            window.location.href = '/v2';
+        });
 
         // ---- Logout ----
         document.getElementById('logout-btn').addEventListener('click', async () => {

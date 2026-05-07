@@ -81,6 +81,18 @@ dotnet run --project Barkfluff.AdminPanel.csproj
 | `s3-browser.html` | Браузер S3-объектов с presigned URL |
 | `restarting.html` | Заглушка на время перезагрузки |
 | `updating.html` | Заглушка на время обновления |
+| `Redesigned/` | Новая SPA-версия (`/v2`) — index.html + app.js + screen-*.js + styles.css |
+
+### Параллельная UI v2 (Redesigned)
+
+В `Pages/Redesigned/` живёт SPA-вариант админки (одна страница со screen-*.js модулями). Обслуживается на маршруте `/v2`:
+- `app.MapGet("/v2", ...)` отдаёт `Pages/Redesigned/index.html` через `ServeHtmlFile` (placeholder `{{SERVER_STARTED_AT_UTC}}` подставляется).
+- Второй `UseStaticFiles` с `RequestPath = "/v2"` маппится на `Pages/Redesigned/`.
+- Cookie `ui_version=v2` на корневом `/`: при наличии — редирект на `/v2`. На /v2 можно зайти и без cookie (если есть auth_token).
+- Кнопки переключения: «Новая версия» в шапке `dashboard.html` ставит cookie + редирект на /v2; «Старая версия» в topbar redesigned ui стирает cookie + редирект на /.
+- Старые маршруты (`/services`, `/logs`, `/badges`, `/stickers`, `/users`, `/s3-storage`, `/s3-browser`) продолжают работать независимо.
+
+Auth внутри SPA: на старте `App.checkAuth()` дёргает `/api/auth/me`; при 401 → `screen-login` (Telegram-флоу `/api/auth/request` + polling `/api/auth/status`). Все экраны используют те же `/api/*` endpoints что и старая версия.
 
 ## Важные константы
 
