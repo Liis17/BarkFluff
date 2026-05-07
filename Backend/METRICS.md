@@ -50,12 +50,42 @@ They are sent to Seq and can be queried by `Application` property or metric name
 
 ## Updates (BarkFluff.Updates)
 
+**Counters:**
+
 | Metric | Type | Description |
 |--------|------|-------------|
-| `active_subscriptions` | counter | New stream subscriptions registered |
-| `active_subscriptions_removed` | counter | Stream subscriptions removed |
-| `events_broadcast` | counter | Events forwarded to subscribers |
-| `rabbitmq_events_consumed` | counter | RabbitMQ events processed (NewMessage, ReadBy) |
+| `new_messages_subscriptions_opened` | counter | gRPC `SubscribeNewMessages` подписки открыты |
+| `new_messages_subscriptions_closed` | counter | gRPC `SubscribeNewMessages` подписки закрыты |
+| `read_by_subscriptions_opened` | counter | gRPC `SubscribeMessagesRead` подписки открыты |
+| `read_by_subscriptions_closed` | counter | gRPC `SubscribeMessagesRead` подписки закрыты |
+| `active_subscriptions` | counter | (legacy) суммарный счётчик открытых подписок |
+| `active_subscriptions_removed` | counter | (legacy) суммарный счётчик закрытых подписок |
+| `rabbitmq_events_consumed` | counter | Все события из RabbitMQ (NewMessage + ReadBy + SessionRevoked) |
+| `new_message_events_consumed` | counter | События NewMessage из RabbitMQ |
+| `new_message_events_errors` | counter | Ошибки парсинга/публикации NewMessage |
+| `read_by_events_consumed` | counter | События MessageRead из RabbitMQ |
+| `read_by_events_errors` | counter | Ошибки обработки MessageRead |
+| `session_revoked_events_consumed` | counter | События SessionRevoked из RabbitMQ |
+| `sessions_revoked` | counter | Сессии, отозванные через TokenRevocationCache |
+| `new_messages_broadcast` | counter | Успешно доставленных NewMessage в gRPC-стримы |
+| `new_messages_broadcast_errors` | counter | Ошибки записи NewMessage в стрим |
+| `events_broadcast` | counter | (legacy) синоним `new_messages_broadcast` |
+| `events_broadcast_errors` | counter | (legacy) синоним `new_messages_broadcast_errors` |
+| `read_by_broadcast` | counter | Успешно доставленных MessageRead в gRPC-стримы |
+| `read_by_broadcast_errors` | counter | Ошибки записи MessageRead в стрим |
+| `push_notifications_scheduled` | counter | Запланированных push-уведомлений (через 5 сек) |
+| `push_notifications_sent` | counter | Успешно опубликованных PushNotificationEvent в RabbitMQ |
+| `push_notifications_cancelled` | counter | Push-уведомлений, отменённых из-за прочтения |
+| `push_notifications_errors` | counter | Ошибки при публикации push-уведомления |
+
+**Gauges:**
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `service_started_unix` | gauge | Unix-timestamp старта сервиса (для uptime) |
+| `new_messages_subscriptions_active` | gauge | Текущее число активных gRPC-стримов NewMessage |
+| `read_by_subscriptions_active` | gauge | Текущее число активных gRPC-стримов MessageRead |
+| `subscriptions_active_total` | gauge | Сумма активных подписок обоих типов |
 
 ## Notification (BarkFluff.Notification)
 

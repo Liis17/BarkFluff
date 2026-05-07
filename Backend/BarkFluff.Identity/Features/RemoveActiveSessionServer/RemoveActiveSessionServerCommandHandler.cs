@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Identity.Persistence.Exceptions;
 using BarkFluff.Identity.Persistence.Services;
 using BarkFluff.Identity.Settings;
@@ -18,17 +19,19 @@ public class RemoveActiveSessionServerCommandHandler : IRequestHandler<RemoveAct
     private readonly UsersServerApi.UsersServerApiClient _usersClient;
     private readonly IPublishEndpoint _publishEndpoint;
     private readonly JwtSettings _jwtSettings;
+    private readonly MetricsCollector _metrics;
     private readonly ILogger<RemoveActiveSessionServerCommandHandler> _logger;
 
     public RemoveActiveSessionServerCommandHandler(RefreshTokensStorage refreshTokensStorage,
         UsersServerApi.UsersServerApiClient usersClient, IPublishEndpoint publishEndpoint,
-        JwtSettings jwtSettings,
+        JwtSettings jwtSettings, MetricsCollector metrics,
         ILogger<RemoveActiveSessionServerCommandHandler> logger)
     {
         _refreshTokensStorage = refreshTokensStorage;
         _usersClient = usersClient;
         _publishEndpoint = publishEndpoint;
         _jwtSettings = jwtSettings;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -41,9 +44,12 @@ public class RemoveActiveSessionServerCommandHandler : IRequestHandler<RemoveAct
         try
         {
             await _refreshTokensStorage.DeleteRefreshTokensByDeviceId(request.DeviceId, request.UserId);
+            _metrics.Increment("server_sessions_removed");
+            _metrics.Increment("sessions_revoked");
         }
         catch (RefreshTokenNotFoundException ex)
         {
+            _metrics.Increment("server_session_removal_failed_not_found");
             _logger.LogWarning(ex,
                 "Сессия для устройства {DeviceId} не найдена для пользователя {UserId}",
                 request.DeviceId, request.UserId);

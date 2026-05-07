@@ -18,12 +18,14 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
-import com.barkfluff.client.PreviewImageActivity
-import com.barkfluff.client.PreviewVideoActivity
 import com.barkfluff.client.R
 import com.barkfluff.client.adapter.ImagePickerAdapter
 import com.barkfluff.client.adapter.MediaItem
 import com.barkfluff.client.databinding.BottomSheetImagePickerBinding
+import com.barkfluff.client.editor.MediaEditCache
+import com.barkfluff.client.editor.MediaEditorActivity
+import com.barkfluff.client.editor.VideoEditCache
+import com.barkfluff.client.editor.VideoEditorActivity
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import kotlinx.coroutines.Dispatchers
@@ -64,8 +66,17 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
         val uri = pendingCameraUri
         pendingCameraUri = null
         if (success && uri != null) {
-            // Открываем простой просмотр снимка; в будущем здесь будет редактирование/отправка.
-            startActivity(PreviewImageActivity.createIntent(requireContext(), uri))
+            // Камера → отправляем как pasted image через ChatActivity (тот сам положит в pendingPastedImages)
+            onResult?.invoke(
+                ImagePickerResult(
+                    uris = listOf(uri),
+                    sendAsFile = false,
+                    sendSeparately = false,
+                    fromCamera = true,
+                    captionText = "",
+                    isDocuments = false
+                )
+            )
             dismiss()
         }
     }
@@ -394,13 +405,55 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
         }
     }
 
+    private val editorLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { res ->
+        if (res.resultCode != android.app.Activity.RESULT_OK) return@registerForActivityResult
+        val data = res.data ?: return@registerForActivityResult
+
+        val uris: ArrayList<android.net.Uri>? =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                data.getParcelableArrayListExtra(
+                    MediaEditorActivity.EXTRA_RESULT_URIS,
+                    android.net.Uri::class.java
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                data.getParcelableArrayListExtra(MediaEditorActivity.EXTRA_RESULT_URIS)
+            }
+        val caption = data.getStringExtra(MediaEditorActivity.EXTRA_RESULT_CAPTION) ?: ""
+        val send = data.getBooleanExtra(MediaEditorActivity.EXTRA_RESULT_SEND, false)
+
+        // Применяем результат к UI пикера
+        adapter.setSelectionFromUris(uris ?: emptyList())
+        binding.captionEditText.setText(caption)
+        adapter.refreshEditedIndicators()
+        updateSelectionUI()
+
+        if (send) sendSelected()
+    }
+
     private fun openPreview(item: MediaItem) {
+        val caption = binding.captionEditText.text?.toString().orEmpty()
+        val preselected = adapter.getSelectedUrisForSending()
         val intent = if (item.isVideo) {
-            PreviewVideoActivity.createIntent(requireContext(), item.uri)
+            VideoEditorActivity.newIntent(
+                requireContext(),
+                allUris = adapter.getAllVideoUris(),
+                startUri = item.uri,
+                preselected = preselected,
+                caption = caption
+            )
         } else {
-            PreviewImageActivity.createIntent(requireContext(), item.uri)
+            MediaEditorActivity.newIntent(
+                requireContext(),
+                allUris = adapter.getAllImageUris(),
+                startUri = item.uri,
+                preselected = preselected,
+                caption = caption
+            )
         }
-        startActivity(intent)
+        editorLauncher.launch(intent)
     }
 
     private fun updateSelectionUI() {
@@ -481,6 +534,13 @@ class ImagePickerBottomSheet : BottomSheetDialogFragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // При закрытии пикера очищаем кеши правок (требование задачи)
+        MediaEditCache.clearAll()
+        VideoEditCache.clearAll()
     }
 }
 

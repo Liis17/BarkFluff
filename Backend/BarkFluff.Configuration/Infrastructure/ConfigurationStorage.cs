@@ -1,4 +1,5 @@
 using BarkFluff.Configuration.Domain;
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Shared.Identity;
 
 using Microsoft.EntityFrameworkCore;
@@ -8,10 +9,12 @@ namespace BarkFluff.Configuration.Infrastructure;
 public class ConfigurationStorage
 {
     private readonly ConfigurationContext _context;
+    private readonly MetricsCollector _metrics;
 
-    public ConfigurationStorage(ConfigurationContext context)
+    public ConfigurationStorage(ConfigurationContext context, MetricsCollector metrics)
     {
         _context = context;
+        _metrics = metrics;
     }
 
     public async Task<List<ConfigurationItem>> GetConfiguration(ServiceId serviceId)
@@ -52,6 +55,12 @@ public class ConfigurationStorage
         }
 
         await _context.SaveChangesAsync();
+        _metrics.Increment("configurations_db_writes");
+
+        // Обновляем gauge общего числа записей. Делаем после каждой записи —
+        // изменения редкие (UpdateConfiguration вызывается админом, не клиентами).
+        var total = await _context.Configurations.CountAsync();
+        _metrics.Set("configurations_total", total);
     }
 
     // ─── Reserved Names ─────────────────────────────────────────────────────────
@@ -82,7 +91,9 @@ public class ConfigurationStorage
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Section == ReservedNamesSection && x.Key == ReservedNamesKey);
 
-        return row == null ? new List<string>() : ParseNames(row.Value);
+        var names = row == null ? new List<string>() : ParseNames(row.Value);
+        _metrics.Set("reserved_names_count", names.Count);
+        return names;
     }
 
     public async Task AddReservedNameAsync(string name)
@@ -118,6 +129,7 @@ public class ConfigurationStorage
         }
 
         await _context.SaveChangesAsync();
+        await UpdateReservedNamesGaugeAsync();
     }
 
     public async Task UpdateReservedNameAsync(string oldName, string newName)
@@ -143,6 +155,7 @@ public class ConfigurationStorage
         row.EditedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+        await UpdateReservedNamesGaugeAsync();
     }
 
     public async Task DeleteReservedNameAsync(string name)
@@ -160,5 +173,16 @@ public class ConfigurationStorage
         row.EditedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+        await UpdateReservedNamesGaugeAsync();
+    }
+
+    private async Task UpdateReservedNamesGaugeAsync()
+    {
+        var row = await _context.Configurations
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Section == ReservedNamesSection && x.Key == ReservedNamesKey);
+
+        var count = row == null ? 0 : ParseNames(row.Value).Count;
+        _metrics.Set("reserved_names_count", count);
     }
 }

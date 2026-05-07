@@ -1,6 +1,7 @@
 
 namespace BarkFluff.Identity.Features.SetPassword;
 
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.Proto.Users;
 using BarkFluff.Shared.Exceptions.Identity;
@@ -28,12 +29,13 @@ public class SetPasswordCommandHandler : IRequestHandler<SetPasswordCommand>
     private readonly LocationClient _locationClient;
     private readonly UsersServerApi.UsersServerApiClient _usersClient;
     private readonly RequestContext _requestContext;
+    private readonly MetricsCollector _metrics;
     private readonly ILogger<SetPasswordCommandHandler> _logger;
 
     public SetPasswordCommandHandler(UserContext userContext, PasswordsStorage passwordsStorage,
         RefreshTokensStorage refreshTokensStorage, NotificationQueueSender notificationQueueSender,
         LocationClient locationClient, UsersServerApi.UsersServerApiClient usersClient, RequestContext requestContext,
-        ILogger<SetPasswordCommandHandler> logger)
+        MetricsCollector metrics, ILogger<SetPasswordCommandHandler> logger)
     {
         _userContext = userContext;
         _passwordsStorage = passwordsStorage;
@@ -42,6 +44,7 @@ public class SetPasswordCommandHandler : IRequestHandler<SetPasswordCommand>
         _locationClient = locationClient;
         _usersClient = usersClient;
         _requestContext = requestContext;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -56,10 +59,16 @@ public class SetPasswordCommandHandler : IRequestHandler<SetPasswordCommand>
         if (currentHash != null)
         {
             if (string.IsNullOrEmpty(request.OldPassword))
+            {
+                _metrics.Increment("password_change_failed_invalid_old");
                 throw new InvalidOldPasswordException();
+            }
 
             if (!PasswordHasher.VerifyPassword(request.OldPassword, currentHash))
+            {
+                _metrics.Increment("password_change_failed_invalid_old");
                 throw new InvalidOldPasswordException();
+            }
         }
 
         var passwordHash = PasswordHasher.HashPassword(request.NewPassword);
@@ -67,6 +76,12 @@ public class SetPasswordCommandHandler : IRequestHandler<SetPasswordCommand>
         _logger.LogDebug("Обновление хэша пароля в БД для пользователя {UserId}", _userContext.UserId);
 
         var isNewUser = await _passwordsStorage.UpdateUserPasswordHash(_userContext.UserId, passwordHash);
+
+        _metrics.Increment("password_changes");
+        if (isNewUser)
+        {
+            _metrics.Increment("password_changes_initial");
+        }
 
         // Отправка уведомления об изменении пароля
         var userInfo = await _usersClient.GetByIdAsync(new GetByIdRequest { UserId = _userContext.UserId });

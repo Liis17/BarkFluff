@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Onliner.Services;
 
@@ -8,17 +9,20 @@ public class SubscribeToOnlineStatusQueryHandler
     private readonly UserContext _userContext;
     private readonly OnlineStatusSubscriptionsManager _subscriptionsManager;
     private readonly OnlineVisibilityFilter _visibilityFilter;
+    private readonly MetricsCollector _metrics;
     private readonly ILogger<SubscribeToOnlineStatusQueryHandler> _logger;
 
     public SubscribeToOnlineStatusQueryHandler(
         UserContext userContext,
         OnlineStatusSubscriptionsManager subscriptionsManager,
         OnlineVisibilityFilter visibilityFilter,
+        MetricsCollector metrics,
         ILogger<SubscribeToOnlineStatusQueryHandler> logger)
     {
         _userContext = userContext;
         _subscriptionsManager = subscriptionsManager;
         _visibilityFilter = visibilityFilter;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -36,8 +40,10 @@ public class SubscribeToOnlineStatusQueryHandler
 
         var filteredUserIds = request.UserIds.Where(visibleIds.Contains).ToList();
 
-        if (filteredUserIds.Count < request.UserIds.Count)
+        var hiddenByPrivacy = request.UserIds.Count - filteredUserIds.Count;
+        if (hiddenByPrivacy > 0)
         {
+            _metrics.Add("subscriptions_hidden_by_privacy", hiddenByPrivacy);
             _logger.LogDebug(
                 "User {UserId} subscription filtered from {Requested} to {Visible} users by privacy",
                 userId, request.UserIds.Count, filteredUserIds.Count);
@@ -48,6 +54,7 @@ public class SubscribeToOnlineStatusQueryHandler
             userId,
             filteredUserIds,
             request.ResponseStream);
+        _metrics.Increment("subscriptions_registered");
 
         try
         {
@@ -63,6 +70,7 @@ public class SubscribeToOnlineStatusQueryHandler
         {
             // Cleanup при отключении
             _subscriptionsManager.RemoveSubscription(userId, connectionId);
+            _metrics.Increment("subscriptions_disconnected");
             _logger.LogDebug("User {UserId} subscription {ConnectionId} removed", userId, connectionId);
         }
     }

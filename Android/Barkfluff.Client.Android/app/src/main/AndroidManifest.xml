@@ -11,6 +11,10 @@
     <!-- Notification permission for Android 13+ (API 33+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Foreground service for media send queue (compress/upload/send) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
     <!-- Full storage access for Android 11+ (API 30+) -->
     <uses-permission
         android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
@@ -149,16 +153,18 @@
             android:screenOrientation="unspecified" />
 
         <activity
-            android:name=".PreviewImageActivity"
+            android:name=".editor.MediaEditorActivity"
             android:exported="false"
             android:theme="@style/Theme.BarkfluffClientAndroid"
-            android:screenOrientation="unspecified" />
+            android:windowSoftInputMode="adjustResize"
+            android:screenOrientation="portrait" />
 
         <activity
-            android:name=".PreviewVideoActivity"
+            android:name=".editor.VideoEditorActivity"
             android:exported="false"
             android:theme="@style/Theme.BarkfluffClientAndroid"
-            android:screenOrientation="unspecified" />
+            android:windowSoftInputMode="adjustResize"
+            android:screenOrientation="portrait" />
 
         <activity
             android:name=".AccountSettingsActivity"
@@ -245,6 +251,12 @@
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
+
+        <!-- Foreground service for outgoing media (compress/upload/send queue) -->
+        <service
+            android:name=".send.MediaSendService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <!-- FileProvider for sharing camera images -->
         <provider

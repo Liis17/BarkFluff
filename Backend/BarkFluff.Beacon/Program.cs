@@ -1,6 +1,7 @@
 using BarkFluff.Beacon.Configurations;
 using BarkFluff.Beacon.Host;
 using BarkFluff.GrpcServer;
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Configuration;
 using BarkFluff.Shared.Identity;
 
@@ -56,6 +57,11 @@ public class Program
         builder.Services.AddHostedService<BarkFluff.Beacon.Features.RegisterServer.ServerRegistrationService>();
 
         var app = builder.Build();
+
+        // Гейдж со временем старта сервиса — позволяет админке вычислять uptime.
+        var startupMetrics = app.Services.GetRequiredService<MetricsCollector>();
+        startupMetrics.Set("service_started_unix", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+        startupMetrics.Set("navigator_registration_healthy", 0);
 
         app.MapGrpcReflectionService();
         app.UseRouting();

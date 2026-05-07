@@ -6,6 +6,8 @@ using Grpc.Core.Interceptors;
 
 using Microsoft.Extensions.Logging;
 
+using System.Diagnostics;
+
 namespace BarkFluff.GrpcServer;
 
 public class ServerExceptionInterceptor : Interceptor
@@ -27,12 +29,18 @@ public class ServerExceptionInterceptor : Interceptor
         var methodName = context.Method;
         _metrics?.Increment("grpc_requests_total");
 
+        var sw = Stopwatch.StartNew();
         try
         {
-            return await continuation(request, context);
+            var response = await continuation(request, context);
+            sw.Stop();
+            _metrics?.Add("grpc_request_duration_ms_total", sw.ElapsedMilliseconds);
+            return response;
         }
         catch (BaseGrpcException ex)
         {
+            sw.Stop();
+            _metrics?.Add("grpc_request_duration_ms_total", sw.ElapsedMilliseconds);
             _metrics?.Increment("grpc_requests_failed");
 
             _logger.LogWarning(
@@ -51,6 +59,8 @@ public class ServerExceptionInterceptor : Interceptor
         }
         catch (Exception ex)
         {
+            sw.Stop();
+            _metrics?.Add("grpc_request_duration_ms_total", sw.ElapsedMilliseconds);
             _metrics?.Increment("grpc_requests_errors");
 
             _logger.LogError(

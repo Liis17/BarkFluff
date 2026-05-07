@@ -1,4 +1,5 @@
 using BarkFluff.GrpcServer;
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Onliner.Consumers;
 using BarkFluff.Onliner.Features.SubscribeToOnlineStatus;
@@ -74,6 +75,9 @@ public class Program
         });
 
         var app = builder.Build();
+
+        var startupMetrics = app.Services.GetRequiredService<MetricsCollector>();
+        startupMetrics.Set("service_started_unix", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
 
         using (var scope = app.Services.CreateScope())
         {

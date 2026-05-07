@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Onliner.Persistence.Contexts;
 using BarkFluff.Onliner.Services;
 
@@ -13,6 +14,7 @@ public class DatabasePersistenceService : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly OnlineStatusStorage _storage;
+    private readonly MetricsCollector _metrics;
     private readonly ILogger<DatabasePersistenceService> _logger;
 
     private static readonly TimeSpan SaveInterval = TimeSpan.FromMinutes(10);
@@ -20,10 +22,12 @@ public class DatabasePersistenceService : BackgroundService
     public DatabasePersistenceService(
         IServiceProvider serviceProvider,
         OnlineStatusStorage storage,
+        MetricsCollector metrics,
         ILogger<DatabasePersistenceService> logger)
     {
         _serviceProvider = serviceProvider;
         _storage = storage;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -37,12 +41,14 @@ public class DatabasePersistenceService : BackgroundService
         {
             await Task.Delay(SaveInterval, stoppingToken);
 
+            _metrics.Increment("db_persistence_runs");
             try
             {
                 await SaveStatusesToDatabaseAsync(stoppingToken);
             }
             catch (Exception ex)
             {
+                _metrics.Increment("db_persistence_errors");
                 _logger.LogError(ex, "Error during database persistence cycle");
             }
         }
@@ -88,6 +94,7 @@ public class DatabasePersistenceService : BackgroundService
             }
 
             var savedCount = await dbContext.SaveChangesAsync(cancellationToken);
+            _metrics.Add("db_records_saved_total", savedCount);
             _logger.LogInformation("Successfully saved {Count} status records to database", savedCount);
         }
         catch (Exception ex)

@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Messages.Infrastructure;
 using BarkFluff.Messages.Persistence.Services;
@@ -13,18 +14,21 @@ public class MarkAsReadCommandHandler : IRequestHandler<MarkAsReadCommand>
     private readonly ChatsStorage _chatsStorage;
     private readonly UserContext _userContext;
     private readonly ReadByQueueSender _readByQueueSender;
+    private readonly MetricsCollector _metrics;
     private readonly ILogger<MarkAsReadCommandHandler> _logger;
 
     public MarkAsReadCommandHandler(
         MessagesStorage messagesStorage,
         ChatsStorage chatsStorage,
         UserContext userContext, ReadByQueueSender readByQueueSender,
+        MetricsCollector metrics,
         ILogger<MarkAsReadCommandHandler> logger)
     {
         _messagesStorage = messagesStorage;
         _chatsStorage = chatsStorage;
         _userContext = userContext;
         _readByQueueSender = readByQueueSender;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -101,6 +105,8 @@ public class MarkAsReadCommandHandler : IRequestHandler<MarkAsReadCommand>
         }
 
         await Task.WhenAll(sendTasks);
+
+        _metrics.Add("messages_marked_as_read", messages.Count);
 
         _logger.LogInformation(
             "Успешно отмечено {MessageCount} сообщений как прочитанные пользователем {UserId}",

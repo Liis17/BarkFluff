@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Users;
 
 namespace BarkFluff.Onliner.Services;
@@ -9,13 +10,16 @@ namespace BarkFluff.Onliner.Services;
 public class OnlineVisibilityFilter
 {
     private readonly UsersServerApi.UsersServerApiClient _usersClient;
+    private readonly MetricsCollector _metrics;
     private readonly ILogger<OnlineVisibilityFilter> _logger;
 
     public OnlineVisibilityFilter(
         UsersServerApi.UsersServerApiClient usersClient,
+        MetricsCollector metrics,
         ILogger<OnlineVisibilityFilter> logger)
     {
         _usersClient = usersClient;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -45,6 +49,7 @@ public class OnlineVisibilityFilter
 
     public async Task<bool> IsVisibleToCaller(long targetUserId, CancellationToken cancellationToken = default)
     {
+        _metrics.Increment("visibility_checks");
         try
         {
             var response = await _usersClient.GetUserPrivacyAsync(
@@ -57,6 +62,7 @@ public class OnlineVisibilityFilter
         }
         catch (Exception ex)
         {
+            _metrics.Increment("visibility_check_errors");
             _logger.LogWarning(ex,
                 "Failed to fetch privacy for user {UserId}, defaulting to hidden (fail-closed)",
                 targetUserId);
