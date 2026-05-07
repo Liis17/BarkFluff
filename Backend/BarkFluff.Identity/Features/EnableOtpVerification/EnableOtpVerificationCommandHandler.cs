@@ -134,16 +134,7 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
 
             await _authPropertiesStorage.UpdateOptType(Domain.OtpType.Email, userContactInfo.User.Id);
 
-            // Получаем данные о местоположении IP-адреса
-            string locationInfo = "-";
-            if (!string.IsNullOrEmpty(_requestContext.IpAddress))
-            {
-                var ipLocation = await _locationClient.GetLocation(_requestContext.IpAddress);
-                if (ipLocation != null)
-                {
-                    locationInfo = $"{ipLocation.Country}, {ipLocation.RegionName}, {ipLocation.City}";
-                }
-            }
+            var locationInfo = await _locationClient.GetLocationString(_requestContext.IpAddress);
 
             var emailNotification = new EmailNotification()
             {

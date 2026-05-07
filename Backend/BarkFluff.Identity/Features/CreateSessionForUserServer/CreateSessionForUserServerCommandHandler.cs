@@ -64,15 +64,7 @@ public class CreateSessionForUserServerCommandHandler(
 
         var accessTokenResponse = await mediator.Send(new CreateTokenCommand { RefreshToken = refreshTokenString }, cancellationToken);
 
-        string locationInfo = "-";
-        if (!string.IsNullOrEmpty(request.IpAddress))
-        {
-            var ipLocation = await locationClient.GetLocation(request.IpAddress);
-            if (ipLocation != null)
-            {
-                locationInfo = $"{ipLocation.Country}, {ipLocation.RegionName}, {ipLocation.City}";
-            }
-        }
+        var locationInfo = await locationClient.GetLocationString(request.IpAddress);
 
         try
         {
