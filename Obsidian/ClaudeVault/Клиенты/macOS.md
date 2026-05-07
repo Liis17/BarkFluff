@@ -181,6 +181,20 @@ Logout строится по «server-first, fail-loud» схеме: если с
 
 Регенерация proto: `make generate` в `Packages/BFProto/` (источник — `Mac/Barkfluff/Protos/`, синхронизируется с `Shared/BarkFluff.Proto/`).
 
+## Отправка изображений (клиентская оптимизация)
+
+Перед загрузкой на сервер вложения с `uploadFileType == .messageAttachmentImage` (PNG/JPEG/WebP/HEIC/BMP по расширению) проходят пайплайн в `ConversationViewModel.optimizeImage(_:)` в соответствии с разделом «Изображения» из [[Клиенты/DesignDocument]]:
+
+1. Если длинная сторона > 2500 px — пропорциональный downscale до 2500 px (`NSImage.lockFocus` + `draw`).
+2. Кодирование в JPEG через `NSBitmapImageRep.representation(using: .jpeg, properties: [.compressionFactor:])`. Стартовое качество **0.9**; если результат > 2 МБ — пошагово 0.9 → 0.8 → 0.7 → 0.6 → 0.5, пока не уложится. На последнем шаге (0.5) возвращается то, что получилось, даже при превышении.
+3. После успешной оптимизации имя файла нормализуется в `*.jpg` через `jpegFileName(from:)`. Это нужно, потому что `FilesRepository.contentType(for:)` определяет `Content-Type` по расширению — без переименования multipart-загрузка PNG-имени с JPEG-байтами уехала бы как `image/png`. Сервер всё равно классифицирует тип по magic bytes, но MIME-заголовок должен соответствовать содержимому.
+
+Видео, документы, GIF, аудио и голосовые сообщения через `optimizeImage` **не проходят** — `if attachment.uploadFileType == .messageAttachmentImage` фильтрует только IMAGE.
+
+Точки вызова: `ConversationViewModel.sendMessageWithAttachments` — отдельные ветки для нового диалога (без optimistic) и существующего чата (optimistic flow с `uploadProgress`). Логика одинаковая, продублирована намеренно — общий progress-таск завязан на индекс в массиве, выносить хелпер пока избыточно.
+
+Превью медиа в `MediaPreviewCard` отображает **исходные** данные, не оптимизированные — пользователь видит то, что выбрал, а сжатие происходит уже в момент отправки.
+
 ## Настройки (категории-вкладки)
 
 `SettingsView` — корневой контейнер с навигацией по `SettingsCategory` (enum в `Navigation/SettingsCategory.swift`). Каждая категория — отдельный View + при необходимости свой `@Observable` ViewModel:
