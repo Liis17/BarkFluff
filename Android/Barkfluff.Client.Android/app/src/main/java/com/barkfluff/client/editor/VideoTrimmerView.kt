@@ -9,6 +9,7 @@ import android.graphics.Rect
 import android.graphics.RectF
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.os.Build
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
@@ -99,8 +100,17 @@ class VideoTrimmerView @JvmOverloads constructor(
         invalidate()
     }
 
-    fun startMs(): Long = (startFrac * durationMs).toLong()
-    fun endMs(): Long = (endFrac * durationMs).toLong()
+    fun startMs(): Long = Math.round(startFrac * durationMs.toDouble())
+    fun endMs(): Long = Math.round(endFrac * durationMs.toDouble())
+    fun totalDurationMs(): Long = durationMs
+
+    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+        super.onLayout(changed, left, top, right, bottom)
+        // System gesture exclusion на всю область — иначе ручки трим у краёв экрана триггерят back/recents
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            systemGestureExclusionRects = listOf(android.graphics.Rect(0, 0, right - left, bottom - top))
+        }
+    }
 
     private suspend fun extractFrames(uri: Uri, durationMs: Long, count: Int): List<Bitmap> {
         if (durationMs <= 0 || count <= 0) return emptyList()

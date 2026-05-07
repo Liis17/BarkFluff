@@ -22,6 +22,8 @@ import androidx.viewpager2.widget.ViewPager2
 import com.barkfluff.client.R
 import com.barkfluff.client.databinding.ActivityMediaEditorBinding
 import com.yalantis.ucrop.callback.BitmapCropCallback
+import com.yalantis.ucrop.view.CropImageView
+import com.yalantis.ucrop.view.OverlayView
 import com.yalantis.ucrop.view.UCropView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -128,16 +130,18 @@ class MediaEditorActivity : AppCompatActivity() {
 
     private fun applyStatusBarInsets() {
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
-            val top = insets.getInsets(WindowInsetsCompat.Type.systemBars()).top
-            val bottom = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom
+            val sysBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
             binding.topBar.updateLayoutParams<android.view.ViewGroup.MarginLayoutParams> {
-                updateMargins(top = top)
+                updateMargins(top = sysBars.top)
             }
             binding.confirmFab.updateLayoutParams<android.view.ViewGroup.MarginLayoutParams> {
-                updateMargins(top = top + dp(8))
+                updateMargins(top = sysBars.top + dp(8))
             }
+            // Когда клавиатура поднята — поле ввода и инструменты сидят над ней
+            val bottomMargin = maxOf(ime, sysBars.bottom)
             binding.bottomBar.updateLayoutParams<android.view.ViewGroup.MarginLayoutParams> {
-                updateMargins(bottom = bottom)
+                updateMargins(bottom = bottomMargin)
             }
             insets
         }
@@ -271,13 +275,30 @@ class MediaEditorActivity : AppCompatActivity() {
     }
 
     private fun showEditModeUi(editing: Boolean, tool: Tool = Tool.NONE) {
+        // bottomBar (caption + send) скрываем во время редактирования, чтобы случайно не отправить
         binding.bottomBar.visibility = if (editing) View.GONE else View.VISIBLE
-        binding.toolsBar.visibility = if (editing) View.GONE else View.VISIBLE
+        // toolsBar (crop/rotate/flip/draw) — ВСЕГДА виден, чтобы пользователь мог переключаться между инструментами
+        binding.toolsBar.visibility = View.VISIBLE
         binding.confirmFab.visibility = if (editing) View.VISIBLE else View.GONE
         binding.btnUndo.visibility = if (editing && tool == Tool.DRAW) View.VISIBLE else View.GONE
         binding.colorPalette.visibility = if (editing && tool == Tool.DRAW) View.VISIBLE else View.GONE
         binding.brushSlider.visibility = if (editing && tool == Tool.DRAW) View.VISIBLE else View.GONE
         binding.checkboxTouchTarget.visibility = if (editing) View.GONE else View.VISIBLE
+
+        // Подсветка активной кнопки в toolsBar (alpha)
+        binding.btnCrop.alpha = if (editing && tool == Tool.CROP) 1f else 0.6f
+        binding.btnRotate.alpha = if (editing && tool == Tool.ROTATE) 1f else 0.6f
+        binding.btnFlip.alpha = if (editing && tool == Tool.FLIP) 1f else 0.6f
+        binding.btnDraw.alpha = if (editing && tool == Tool.DRAW) 1f else 0.6f
+        if (!editing) {
+            binding.btnCrop.alpha = 1f
+            binding.btnRotate.alpha = 1f
+            binding.btnFlip.alpha = 1f
+            binding.btnDraw.alpha = 1f
+        }
+
+        // Блокировка свайпа pager в режиме редактирования
+        binding.viewPager.isUserInputEnabled = !editing
     }
 
     private fun cancelTool() {
@@ -330,7 +351,20 @@ class MediaEditorActivity : AppCompatActivity() {
             val overlayView = uCropView.overlayView
             overlayView.setShowCropFrame(true)
             overlayView.setShowCropGrid(true)
+            // Freestyle: каждая сторона/угол двигается независимо, без жёстких пропорций
+            overlayView.setFreestyleCropMode(OverlayView.FREESTYLE_CROP_MODE_ENABLE)
+            cropImageView.targetAspectRatio = CropImageView.SOURCE_IMAGE_ASPECT_RATIO
             cropImageView.setImageUri(Uri.fromFile(inFile), Uri.fromFile(outFile))
+
+            // Отступы от краёв — чтобы ручки не были вплотную к рёбрам, где Android ловит back-swipe / recents
+            val pad = dp(28)
+            holder.cropContainer.setPadding(pad, pad, pad, pad)
+            // Доп. защита: explicit system gesture exclusion на всю область UCropView
+            uCropView.addOnLayoutChangeListener { v, l, t, r, b, _, _, _, _ ->
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    v.systemGestureExclusionRects = listOf(android.graphics.Rect(0, 0, r - l, b - t))
+                }
+            }
 
             holder.cropContainer.removeAllViews()
             holder.cropContainer.addView(uCropView)
@@ -344,6 +378,10 @@ class MediaEditorActivity : AppCompatActivity() {
     }
 
     private fun teardownCrop(holder: MediaEditorPagerAdapter.PageHolder?) {
+        if (holder != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            activeUCropView?.systemGestureExclusionRects = emptyList()
+        }
+        holder?.cropContainer?.setPadding(0, 0, 0, 0)
         holder?.cropContainer?.removeAllViews()
         holder?.cropContainer?.visibility = View.GONE
         holder?.photoView?.visibility = View.VISIBLE
@@ -418,11 +456,12 @@ class MediaEditorActivity : AppCompatActivity() {
 
     // ----- DRAW -----
     private fun startDraw(holder: MediaEditorPagerAdapter.PageHolder, src: Bitmap) {
-        // Скрываем PhotoView (чтобы не интерферировать с тач-событиями), а bitmap рендерим внутри overlay
+        // DrawingOverlayView сам рисует bitmap (с pinch-zoom/pan) — PhotoView под ней нужно скрыть
         holder.drawingOverlay.setSourceBitmap(src)
         holder.drawingOverlay.brushColor = binding.colorPalette.selectedColor()
         holder.drawingOverlay.brushWidthPx = binding.brushSlider.currentWidthPx()
         holder.drawingOverlay.visibility = View.VISIBLE
+        holder.photoView.visibility = View.GONE
 
         binding.colorPalette.onColorSelected = { c ->
             holder.drawingOverlay.brushColor = c
@@ -432,17 +471,13 @@ class MediaEditorActivity : AppCompatActivity() {
             holder.drawingOverlay.brushWidthPx = w
         }
         binding.brushSlider.brushColor = binding.colorPalette.selectedColor()
-
-        // Под overlay нужно видеть оригинал — оставляем PhotoView с тем же bitmap, но disable-zoom
-        holder.photoView.setImageBitmap(src)
-        holder.photoView.isZoomable = false
     }
 
     private fun teardownDraw(holder: MediaEditorPagerAdapter.PageHolder?) {
         holder?.drawingOverlay?.visibility = View.GONE
         holder?.drawingOverlay?.clearAll()
         holder?.drawingOverlay?.setSourceBitmap(null)
-        holder?.photoView?.isZoomable = true
+        holder?.photoView?.visibility = View.VISIBLE
         binding.colorPalette.onColorSelected = null
         binding.brushSlider.onWidthChanged = null
     }
