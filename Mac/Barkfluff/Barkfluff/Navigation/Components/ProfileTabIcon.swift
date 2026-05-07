@@ -7,6 +7,7 @@
 
 import SwiftUI
 import NukeUI
+import BFCore
 
 /// Иконка профиля для панели вкладок
 struct ProfileTabIcon: View {
@@ -16,16 +17,19 @@ struct ProfileTabIcon: View {
 
     var body: some View {
         Group {
-            if let url = avatarURL, let imageURL = URL(string: url) {
-                LazyImage(url: imageURL) { state in
-                    if let image = state.image {
+            if let url = avatarURL,
+               let fileID = S3URLParser.fileID(from: url) {
+                CachedImageView(
+                    fileID: fileID,
+                    type: .avatar,
+                    presignedURLHint: url,
+                    content: { image in
                         image
                             .resizable()
                             .aspectRatio(contentMode: .fill)
-                    } else {
-                        initialsView
-                    }
-                }
+                    },
+                    placeholder: { initialsView }
+                )
             } else {
                 initialsView
             }

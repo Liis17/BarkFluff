@@ -8,6 +8,7 @@
 import SwiftUI
 import Nuke
 import NukeUI
+import BFCore
 
 struct AvatarView: View {
     let imageURL: String?
@@ -27,19 +28,20 @@ struct AvatarView: View {
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             Group {
-                if let urlString = imageURL, let url = URL(string: urlString) {
-                    LazyImage(url: url) { state in
-                        if let image = state.image {
+                if let urlString = imageURL,
+                   let fileID = S3URLParser.fileID(from: urlString) {
+                    CachedImageView(
+                        fileID: fileID,
+                        type: .avatar,
+                        presignedURLHint: urlString,
+                        processors: [.resize(size: CGSize(width: size * 2, height: size * 2))],
+                        content: { image in
                             image
                                 .resizable()
                                 .aspectRatio(contentMode: .fill)
-                        } else if state.isLoading {
-                            placeholderView
-                        } else {
-                            placeholderView
-                        }
-                    }
-                    .processors([.resize(size: CGSize(width: size * 2, height: size * 2))])
+                        },
+                        placeholder: { placeholderView }
+                    )
                 } else {
                     placeholderView
                 }

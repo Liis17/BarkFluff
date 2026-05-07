@@ -33,6 +33,11 @@ struct SettingsView: View {
                     Label("Хранилище", systemImage: "externaldrive")
                 }
 
+            CacheSettingsView()
+                .tabItem {
+                    Label("Кеш", systemImage: "internaldrive")
+                }
+
             AboutView(viewModel: viewModel)
                 .tabItem {
                     Label("О сервере", systemImage: "info.circle")

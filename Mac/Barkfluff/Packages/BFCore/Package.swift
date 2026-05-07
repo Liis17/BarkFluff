@@ -9,11 +9,15 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../BFNetworking"),
+        .package(url: "https://github.com/groue/GRDB.swift.git", from: "7.0.0"),
     ],
     targets: [
         .target(
             name: "BFCore",
-            dependencies: ["BFNetworking"]
+            dependencies: [
+                "BFNetworking",
+                .product(name: "GRDB", package: "GRDB.swift"),
+            ]
         ),
     ]
 )
