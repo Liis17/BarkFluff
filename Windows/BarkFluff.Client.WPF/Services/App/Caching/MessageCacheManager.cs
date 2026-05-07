@@ -122,6 +122,27 @@ namespace BarkFluff.Client.WPF.Services.App.Caching
                 return _chats.FindAll().ToList();
             }
         }
+        /// <summary>
+        /// Batch-сохранение сообщений в кеш в фоновом потоке.
+        /// Используется в горячих путях UI (открытие чата, пагинация истории),
+        /// чтобы не блокировать поток UI N последовательными LiteDB-апсёртами.
+        /// </summary>
+        public Task SaveMessagesBatchAsync(string chatId, string chatName, IEnumerable<MessageModel> messages, MessageOperation operation)
+        {
+            if (messages == null) return Task.CompletedTask;
+            // Материализуем коллекцию заранее, чтобы исключить параллельную модификацию вызывающим кодом.
+            var snapshot = messages as IList<MessageModel> ?? messages.ToList();
+            if (snapshot.Count == 0) return Task.CompletedTask;
+
+            return Task.Run(() =>
+            {
+                foreach (var msg in snapshot)
+                {
+                    SaveMessage(chatId, chatName, msg, operation);
+                }
+            });
+        }
+
         public void SaveMessage(string chatId, string chatName, MessageModel message, MessageOperation operation)
         {
             lock (_lock)

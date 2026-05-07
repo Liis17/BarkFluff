@@ -90,11 +90,8 @@ namespace BarkFluff.Client.WPF.Pages.Messenger.Controllers
                 {
                     App.ErideMessage.AddMessage($"Загружено {response.messages.Count} сообщений с сервера", new Erida { Type = MType.Debug });
 
-                    // Сохраняем в кеш
-                    foreach (var msg in response.messages)
-                    {
-                        App.CacheManager.SaveMessage(_page.ChatId.Value, _page.TitleChat, msg, MessageOperation.Added);
-                    }
+                    // Batch-сохранение в кеш в фоне — не держим UI на N×LiteDB-апсёртах.
+                    _ = App.CacheManager.SaveMessagesBatchAsync(_page.ChatId.Value, _page.TitleChat, response.messages, MessageOperation.Added);
 
                     // Вставляем в UI (будет удаление дубликатов)
                     await InsertHistoryMessagesAsync(response.messages);
@@ -189,6 +186,55 @@ namespace BarkFluff.Client.WPF.Pages.Messenger.Controllers
                     App.ErideMessage.AddMessage($"Добавлено {insertedCount} сообщений в историю", new Erida { Type = MType.Debug });
                 }
             });
+        }
+
+        /// <summary>
+        /// Доливает в уже отрисованный (из кеша) список сообщений только те,
+        /// которые пришли с сервера и ещё не присутствуют в UI. Используется,
+        /// чтобы не перерисовывать всю область сообщений второй раз после
+        /// получения серверного ответа.
+        /// </summary>
+        public void MergeServerMessages(List<MessageModel> messages)
+        {
+            if (messages == null || messages.Count == 0) return;
+
+            var existingIds = new HashSet<long>();
+            long maxLocalMessageId = 0;
+            foreach (var child in _messageArea.Children)
+            {
+                if (child is MessageBubble bubble && long.TryParse(bubble.MessageId, out long id))
+                {
+                    existingIds.Add(id);
+                    if (id > maxLocalMessageId) maxLocalMessageId = id;
+                }
+            }
+
+            // Берём только реально новые сообщения и сортируем по времени отправки.
+            var newMessages = messages
+                .Where(m => !existingIds.Contains(m.MessageId))
+                .OrderBy(m => m.SentAt.ToDateTime())
+                .ToList();
+            if (newMessages.Count == 0) return;
+
+            foreach (var item in newMessages)
+            {
+                AddDateSeparatorIfNeeded(item.SentAt.ToDateTime().ToLocalTime());
+                var owner = item.SenderId == App.GParam.UserId ? MessageBubble.MessageOwner.Me : MessageBubble.MessageOwner.Interlocutor;
+                var type = MessageTypeMapper.GetMessageType(item);
+                var messageItem = new MessageBubble(owner, type, item, _page.IsGroup);
+                AddMessageWithoutScroll(messageItem);
+
+                if (item.MessageId < OldestLoadedMessageId || OldestLoadedMessageId == 0)
+                {
+                    OldestLoadedMessageId = item.MessageId;
+                }
+            }
+
+            _page.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                _messageArea.UpdateLayout();
+                _read.MarkVisibleMessagesAsRead();
+            }), DispatcherPriority.ContextIdle);
         }
 
         /// <summary>

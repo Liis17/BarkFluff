@@ -113,25 +113,33 @@ namespace BarkFluff.Client.WPF.Pages.Messenger.Controllers
         private async void OnChatIdChanged(object? sender, PropertyChangedEventArgs e)
         {
             _messageArea.Children.Clear();
-            GC.Collect();
 
             if (string.IsNullOrEmpty(_page.ChatId.Value) || _page.IsOpenChatEmpty || _history.OpenedLastMessageId == 0)
             {
                 return;
             }
             _page.ChatIdbyUserId.Value = 0;
-            App.ErideMessage.AddMessage($"Загрузка сообщений чата с ID: {_page.ChatId.Value}", new Erida { Type = MType.Debug });
+            var chatId = _page.ChatId.Value;
+            App.ErideMessage.AddMessage($"Загрузка сообщений чата с ID: {chatId}", new Erida { Type = MType.Debug });
 
             // Сначала показываем кешированные сообщения
-            var cachedMessages = App.CacheManager.GetMessages(_page.ChatId.Value, _history.OpenedLastMessageId, 50);
-            if (cachedMessages != null && cachedMessages.Count > 0)
+            var cachedMessages = App.CacheManager.GetMessages(chatId, _history.OpenedLastMessageId, 50);
+            var cachedShown = cachedMessages != null && cachedMessages.Count > 0;
+            if (cachedShown)
             {
                 App.ErideMessage.AddMessage($"Показываем {cachedMessages.Count} кешированных сообщений", new Erida { Type = MType.Debug });
                 _history.DisplayMessages(cachedMessages, _history.FirstUnreadMessageId != 0);
             }
 
             // Затем загружаем актуальные сообщения с сервера
-            var response = await App.ServerCommunication.GetMessages(App.GParam, _page.ChatId.Value, _history.OpenedLastMessageId);
+            var response = await App.ServerCommunication.GetMessages(App.GParam, chatId, _history.OpenedLastMessageId);
+
+            // Чат мог переключиться, пока ждали ответ — игнорируем устаревший ответ.
+            if (_page.ChatId.Value != chatId)
+            {
+                return;
+            }
+
             if (!response.error.IsSuccess)
             {
                 if (response.error.ErrorCode != 1)
@@ -143,13 +151,18 @@ namespace BarkFluff.Client.WPF.Pages.Messenger.Controllers
 
             if (response.messages != null && response.messages.Count > 0)
             {
-                // Сохраняем сообщения в кеш
-                foreach (var msg in response.messages)
-                {
-                    App.CacheManager.SaveMessage(_page.ChatId.Value, _page.TitleChat, msg, MessageOperation.Added);
-                }
+                // Batch-сохранение в кеш в фоне — не блокируем UI N×LiteDB-апсёртами.
+                _ = App.CacheManager.SaveMessagesBatchAsync(chatId, _page.TitleChat, response.messages, MessageOperation.Added);
 
-                _history.DisplayMessages(response.messages, _history.FirstUnreadMessageId != 0);
+                if (cachedShown)
+                {
+                    // Кеш уже отрисован — мерджим только новые сообщения, не перерисовываем весь список.
+                    _history.MergeServerMessages(response.messages);
+                }
+                else
+                {
+                    _history.DisplayMessages(response.messages, _history.FirstUnreadMessageId != 0);
+                }
             }
         }
 
