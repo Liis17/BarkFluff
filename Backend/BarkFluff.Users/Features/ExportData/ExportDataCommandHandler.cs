@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Files;
 using BarkFluff.Proto.Messages;
 using BarkFluff.Proto.Users;
@@ -17,17 +18,20 @@ public class ExportDataCommandHandler : IRequestHandler<ExportDataCommand, Expor
     private readonly UsersStorage _usersStorage;
     private readonly FilesServerApiClient _filesClient;
     private readonly MessagesServerApiClient _messagesClient;
+    private readonly MetricsCollector _metrics;
     private readonly ILogger<ExportDataCommandHandler> _logger;
 
     public ExportDataCommandHandler(
         UsersStorage usersStorage,
         FilesServerApiClient filesClient,
         MessagesServerApiClient messagesClient,
+        MetricsCollector metrics,
         ILogger<ExportDataCommandHandler> logger)
     {
         _usersStorage = usersStorage;
         _filesClient = filesClient;
         _messagesClient = messagesClient;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -70,6 +74,7 @@ public class ExportDataCommandHandler : IRequestHandler<ExportDataCommand, Expor
             var messagesResponse = await _messagesClient.GetUserAllMessagesAsync(
                 messagesRequest,
                 cancellationToken: cancellationToken);
+            _metrics.Increment("messages_fetch_success");
 
             if (messagesResponse != null)
             {
@@ -123,6 +128,7 @@ public class ExportDataCommandHandler : IRequestHandler<ExportDataCommand, Expor
         }
         catch (Exception ex)
         {
+            _metrics.Increment("messages_fetch_errors");
             _logger.LogError(ex, "Ошибка при получении сообщений для пользователя {UserId}", request.UserId);
             // Добавляем информацию об ошибке в экспорт
             response.Files.Add(new JsonFile
@@ -139,6 +145,7 @@ public class ExportDataCommandHandler : IRequestHandler<ExportDataCommand, Expor
             var messagesData = await _messagesClient.GetUserAllMessagesAsync(
                 new GetUserAllMessagesRequest { UserId = request.UserId },
                 cancellationToken: cancellationToken);
+            _metrics.Increment("messages_fetch_success");
 
             var fileIds = new HashSet<string>();
             if (messagesData != null)
@@ -178,6 +185,7 @@ public class ExportDataCommandHandler : IRequestHandler<ExportDataCommand, Expor
                 var filesResponse = await _filesClient.GetFilesDataAsync(
                     filesRequest,
                     cancellationToken: cancellationToken);
+                _metrics.Increment("files_fetch_success");
 
                 if (filesResponse != null)
                 {
@@ -223,6 +231,7 @@ public class ExportDataCommandHandler : IRequestHandler<ExportDataCommand, Expor
         }
         catch (Exception ex)
         {
+            _metrics.Increment("files_fetch_errors");
             _logger.LogError(ex, "Ошибка при получении файлов для пользователя {UserId}", request.UserId);
             response.Files.Add(new JsonFile
             {

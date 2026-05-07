@@ -35,6 +35,9 @@ public class OnlinerApiService : OnlinerApi.OnlinerApiBase
         GetOnlineStatusRequest request,
         ServerCallContext context)
     {
+        _metrics.Increment("get_online_status_requests");
+        _metrics.Add("get_online_status_user_ids_total", request.UserIds.Count);
+
         var query = new GetOnlineStatusQuery
         {
             UserIds = request.UserIds.ToList()
@@ -47,6 +50,8 @@ public class OnlinerApiService : OnlinerApi.OnlinerApiBase
         SetOnlineStatusRequest request,
         ServerCallContext context)
     {
+        _metrics.Increment("set_online_status_requests");
+
         var command = new SetOnlineStatusCommand();
 
         return _mediator.Send(command, context.CancellationToken);
@@ -57,29 +62,27 @@ public class OnlinerApiService : OnlinerApi.OnlinerApiBase
         IServerStreamWriter<UserOnlineStatus> responseStream,
         ServerCallContext context)
     {
-        _metrics.Increment("active_subscriptions");
-        try
-        {
-            var query = new SubscribeToOnlineStatusQuery
-            {
-                UserIds = request.UserIds.ToList(),
-                ResponseStream = responseStream,
-                CancellationToken = context.CancellationToken
-            };
+        // active_subscriptions поддерживается как gauge через MetricsSnapshotService.
+        // Здесь считаем только factual events: новые подключения и отключения.
+        _metrics.Increment("subscribe_requests");
 
-            // Не используем MediatR для streaming - прямой вызов handler
-            await _subscribeHandler.Handle(query);
-        }
-        finally
+        var query = new SubscribeToOnlineStatusQuery
         {
-            _metrics.Add("active_subscriptions", -1);
-        }
+            UserIds = request.UserIds.ToList(),
+            ResponseStream = responseStream,
+            CancellationToken = context.CancellationToken
+        };
+
+        // Не используем MediatR для streaming - прямой вызов handler
+        await _subscribeHandler.Handle(query);
     }
 
     public override async Task<ChangeUsersInSubscriptionResponse> ChangeUsersInSubscription(
         ChangeUsersInSubscriptionRequest request,
         ServerCallContext context)
     {
+        _metrics.Increment("change_users_in_subscription_requests");
+
         var command = new ChangeUsersInSubscriptionCommand
         {
             UserIds = request.UserIds.ToList()

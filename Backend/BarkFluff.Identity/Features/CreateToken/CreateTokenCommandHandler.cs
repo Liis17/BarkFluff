@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Identity.Persistence.Services;
 using BarkFluff.Identity.Services;
 using BarkFluff.Proto.Identity;
@@ -8,7 +9,7 @@ using MediatR;
 namespace BarkFluff.Identity.Features.CreateToken;
 
 public class CreateTokenCommandHandler(RefreshTokensStorage refreshTokensStorage, JwtService jwtService,
-    ILogger<CreateTokenCommandHandler> logger)
+    MetricsCollector metrics, ILogger<CreateTokenCommandHandler> logger)
     : IRequestHandler<CreateTokenCommand, CreateTokenResponse>
 {
     public async Task<CreateTokenResponse> Handle(CreateTokenCommand request, CancellationToken cancellationToken)
@@ -21,6 +22,7 @@ public class CreateTokenCommandHandler(RefreshTokensStorage refreshTokensStorage
             || accessToken.ExpiresAt < DateTime.UtcNow
             || string.IsNullOrEmpty(accessToken.DeviceId))
         {
+            metrics.Increment("tokens_refresh_invalid");
             logger.LogWarning(
                 "Невалидный refresh token. Token найден: {TokenFound}, Истек: {IsExpired}",
                 accessToken != null,
@@ -32,6 +34,8 @@ public class CreateTokenCommandHandler(RefreshTokensStorage refreshTokensStorage
         logger.LogDebug("Генерация access token для пользователя {UserId}", accessToken.UserId);
 
         var token = jwtService.GenerateUserToken(accessToken.UserId, accessToken.DeviceId);
+
+        metrics.Increment("tokens_refreshed");
 
         logger.LogInformation(
             "Access token успешно обновлен для пользователя {UserId}, устройство: {DeviceId}",

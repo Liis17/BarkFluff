@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Messages.Persistence.Services;
 using BarkFluff.Proto.Messages;
@@ -13,6 +14,7 @@ public class GetPersonChatIdCommandHandler : IRequestHandler<GetPersonChatIdComm
     private readonly UsersServerApi.UsersServerApiClient _usersServerApiClient;
     private readonly UserContext _userContext;
     private readonly ChatCache _chatCache;
+    private readonly MetricsCollector _metrics;
     private readonly ILogger<GetPersonChatIdCommandHandler> _logger;
 
     public GetPersonChatIdCommandHandler(
@@ -20,12 +22,14 @@ public class GetPersonChatIdCommandHandler : IRequestHandler<GetPersonChatIdComm
         UsersServerApi.UsersServerApiClient usersServerApiClient,
         UserContext userContext,
         ChatCache chatCache,
+        MetricsCollector metrics,
         ILogger<GetPersonChatIdCommandHandler> logger)
     {
         _chatsStorage = chatsStorage;
         _usersServerApiClient = usersServerApiClient;
         _userContext = userContext;
         _chatCache = chatCache;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -66,6 +70,8 @@ public class GetPersonChatIdCommandHandler : IRequestHandler<GetPersonChatIdComm
 
             await _chatCache.SetChatImage(chatId, _userContext.UserId, personResponse.User.ProfilePicture);
             await _chatCache.SetChatImage(chatId, personResponse.User.Id, userResponse.User.ProfilePicture);
+
+            _metrics.Increment("chats_created_person");
 
             _logger.LogInformation(
                 "Создан новый личный чат {ChatId} между пользователями {UserId} и {TargetUserId}",

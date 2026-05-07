@@ -40,9 +40,9 @@ CQRS через MediatR: `GetServerInfoCommand` → `GetServerInfoCommandHandler
 
 ## Метрики
 
-Инкрементируются через `MetricsCollector` (из `BarkFluff.GrpcServer`):
-- `server_info_requests` — каждый вызов `GetServerInfo`
-- `navigator_registrations` — каждая успешная регистрация в Navigator
+> 📊 Полный реестр метрик: [[Backend/Beacon-Metrics]]
+
+Метрики собираются через `MetricsCollector` (из `BarkFluff.GrpcServer`) и каждые 5 секунд публикуются в Seq фоновым `MetricsReporterService` как структурированный лог `ServiceMetrics {@Metrics}`. AdminPanel читает эти логи и агрегирует их в LiteDB-кеш (`HourlyServiceMetrics`).
 
 ## Proto
 

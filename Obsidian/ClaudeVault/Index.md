@@ -18,6 +18,7 @@
 | [[Backend/Configuration-ProjectMap]] | Карта всех файлов и классов Configuration | — |
 | [[Backend/Beacon]] | Точка входа клиентов | 7002 |
 | [[Backend/Beacon-ProjectMap]] | Карта всех файлов и классов Beacon | — |
+| [[Backend/Beacon-Metrics]] | Реестр метрик Beacon (через ServiceMetrics-логи в Seq) | — |
 | [[Backend/Navigator]] | Реестр серверов BarkFluff | 7010 |
 | [[Backend/GrpcServer]] | Shared-библиотека инфраструктуры | — |
 | [[Backend/GrpcServer-ProjectMap]] | Карта всех файлов и классов GrpcServer | — |
@@ -25,12 +26,15 @@
 | [[Backend/Identity-ProjectMap]] | Карта всех файлов и классов Identity | — |
 | [[Backend/Users]] | Профили, устройства, бейджи | 7001 |
 | [[Backend/Users-ProjectMap]] | Карта всех файлов и классов Users | — |
+| [[Backend/Users-Metrics]] | Реестр метрик Users (через ServiceMetrics-логи в Seq) | — |
 | [[Backend/Messages]] | Чаты, сообщения, вложения | 7007 |
 | [[Backend/Messages-ProjectMap]] | Карта всех файлов и классов Messages | — |
+| [[Backend/Messages-Metrics]] | Реестр метрик Messages (auto MediatR + доменные + consumer-метрики) | — |
 | [[Backend/Files]] | Файлы, S3, стикеры | 7005 |
 | [[Backend/Files-ProjectMap]] | Карта всех файлов и классов BarkFluff.Files | — |
 | [[Backend/Updates]] | Real-time стриминг событий | 7015 |
 | [[Backend/Updates-ProjectMap]] | Карта всех файлов и классов Updates | — |
+| [[Backend/Updates-Metrics]] | Реестр метрик Updates (подписки, broadcast, push) | — |
 | [[Backend/Onliner]] | Онлайн-статусы | 7009 |
 | [[Backend/Onliner-ProjectMap]] | Карта всех файлов и классов Onliner | — |
 | [[Backend/Notification]] | Email-уведомления (RabbitMQ consumer) | 7004 |

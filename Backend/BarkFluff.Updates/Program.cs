@@ -1,4 +1,5 @@
 using BarkFluff.GrpcServer;
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Shared.Identity;
 using BarkFluff.Updates;
@@ -66,6 +67,13 @@ app.UseRouting();
 app.UseXAuth();
 
 app.MapGrpcService<UpdatesApiService>();
+
+// Стартовые gauges для метрик
+var startupMetrics = app.Services.GetRequiredService<MetricsCollector>();
+startupMetrics.Set("service_started_unix", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+startupMetrics.Set("new_messages_subscriptions_active", 0);
+startupMetrics.Set("read_by_subscriptions_active", 0);
+startupMetrics.Set("subscriptions_active_total", 0);
 
 app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
 app.Run();

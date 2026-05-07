@@ -184,6 +184,24 @@ dotnet ef migrations add <MigrationName> --project BarkFluff.Identity.csproj
 - `users_api.proto` — `GrpcServices="Client"`
 - `shared.proto` — `GrpcServices="None"`
 
+## Метрики (MetricsCollector)
+
+Регистрация: `builder.Services.AddBarkFluffMetrics("BarkFluff.Identity")` — каждые 5 сек публикует `ServiceMetrics {@Metrics}` в Seq → AdminPanel парсит. См. [[Архитектура]] про общую схему.
+
+Ключевые группы метрик:
+- **Auth**: `auth_login_attempts`, `auth_login_success`, `auth_login_failed[_user_not_found|_invalid_password]`, `auth_otp_required`
+- **Tokens**: `tokens_refresh_attempts`, `tokens_refreshed`, `tokens_refresh_invalid`
+- **Регистрация**: `account_creation_attempts`, `accounts_drafted`, `accounts_draft_overridden`, `accounts_confirmed`, `account_confirmation_failed[_not_found|_expired|_incorrect]`
+- **OTP/2FA**: `otp_email_codes_sent`, `otp_email_verified`/`failed`, `otp_authenticator_verified`/`failed`, `otp_setup_email`/`_authenticator`, `otp_enabled_email`/`_authenticator`, `otp_disabled_email`/`_authenticator`, `otp_confirmation_failed`, `otp_disable_failed`
+- **Сброс пароля**: `password_reset_requests`, `password_reset_user_not_found`, `password_reset_initiated_email`/`_authenticator`, `password_resets_confirmed`, `password_reset_confirmation_failed[_not_found|_already_used|_expired]`
+- **Изменение пароля**: `password_changes`, `password_changes_initial`, `password_change_failed_invalid_old`
+- **Сессии/logout**: `session_removal_attempts`, `sessions_removed`, `session_removal_failed_not_found`, `logouts`, `sessions_created`, `sessions_revoked`, `session_revocations_received`
+- **Server API**: `server_session_creation_attempts`/`server_sessions_created`, `server_session_removal_attempts`/`server_sessions_removed`/`server_session_removal_failed_not_found`, `server_session_lookups`, `server_otp_lookups`, `server_otp_disable_attempts`
+- **LocationClient**: `geolocation_requests`, `geolocation_success`, `geolocation_errors`
+- **Gauge**: `service_started_unix` (для uptime)
+
+Полный реестр и где они инкрементируются — см. файл памяти `project_identity_metrics.md`.
+
 ## Связанные файлы
 
 - [[Backend/Identity-ProjectMap]] — подробная карта всех файлов и классов проекта

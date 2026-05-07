@@ -96,6 +96,12 @@
       "Bash(Select-Object Name)",
       "PowerShell(pwsh -File K:\\\\source\\\\BarkFluff\\\\Backend\\\\BarkFluff.Web\\\\scripts\\\\generate-proto.ps1)",
       "PowerShell(dotnet build *)",
+      "Bash(break)",
+      "Bash(cat C:\\\\\\\\Users\\\\\\\\daske\\\\\\\\AppData\\\\\\\\Local\\\\\\\\Temp\\\\\\\\claude\\\\\\\\K--source-BarkFluff\\\\\\\\080ed6e3-59f8-47e9-8322-05fd88c8e3da\\\\\\\\tasks\\\\\\\\bl2qvrkd0.output)",
+      "Read(//k/source/BarkFluff/**)",
+      "Bash(dotnet build *)",
+      "Read(//tmp/**)",
+      "Bash(tasklist)"
       "Bash(xcodebuild -project Barkfluff.xcodeproj -list)",
       "Bash(xcodebuild -project /Users/liis/Projects/BarkFluff/Mac/Barkfluff/Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=macOS' -configuration Debug build)"
     ],
@@ -106,5 +112,6 @@
   "enabledMcpjsonServers": [
     "claude-flow"
   ],
-  "outputStyle": "default"
+  "outputStyle": "default",
+  "spinnerTipsEnabled": true
 }

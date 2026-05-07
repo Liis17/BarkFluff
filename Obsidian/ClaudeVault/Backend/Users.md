@@ -5,6 +5,7 @@
 Расположение: `Backend/BarkFluff.Users/`
 
 → [[Backend/Users-ProjectMap]] — карта всех файлов и классов проекта
+→ [[Backend/Users-Metrics]] — реестр метрик сервиса (через `ServiceMetrics`-логи в Seq)
 
 ## Сборка
 

@@ -14,6 +14,8 @@ services:
       S3_BUCKET_NAME: ${S3_BUCKET_NAME}
       UPLOAD_TOKEN: ${UPLOAD_TOKEN}
       CLIENTSTORAGE_PORT: ${CLIENTSTORAGE_PORT}
+      Seq__ServerUrl: ${SEQ_SERVER_URL:-http://seq:80}
+      Seq__ApiKey: ${SEQ_API_KEY:-}
     networks:
       - barkfluff-network
 
