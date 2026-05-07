@@ -34,8 +34,6 @@ builder.Services.AddXAuth(builder.Configuration);
 
 builder.Services.AddSingleton<ServersStorage>();
 
-builder.Services.AddMemoryCache();
-
 var app = builder.Build();
 
 app.MapGrpcReflectionService();

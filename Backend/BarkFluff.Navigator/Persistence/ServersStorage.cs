@@ -2,41 +2,28 @@ namespace BarkFluff.Navigator.Persistence;
 
 using Domain;
 
-using Microsoft.Extensions.Caching.Memory;
-
 using System.Collections.Concurrent;
 
 public class ServersStorage
 {
-    private readonly IMemoryCache _memoryCache;
-    private readonly IConfiguration _configuration;
+    private readonly ConcurrentDictionary<string, (ServerInfo server, DateTime lastSeen)> _servers = new();
     private readonly ConcurrentDictionary<string, DateTime> _lastRegistrationTimes = new();
     private readonly TimeSpan _serverActivePeriod;
     private readonly TimeSpan _throttlePeriod;
-    private const string ServersCacheKey = "ActiveServers";
 
-    public ServersStorage(IMemoryCache memoryCache, IConfiguration configuration)
+    public ServersStorage(IConfiguration configuration)
     {
-        _memoryCache = memoryCache;
-        _configuration = configuration;
         _serverActivePeriod = TimeSpan.FromMinutes(configuration.GetValue<int>("ServerRegistration:ActivePeriodMinutes", 10));
         _throttlePeriod = TimeSpan.FromMinutes(configuration.GetValue<int>("ServerRegistration:ThrottleMinutes", 2));
     }
 
-    public Task<List<ServerInfo>> GetServers()
+    public List<ServerInfo> GetServers()
     {
         var now = DateTime.UtcNow;
-        if (!_memoryCache.TryGetValue<ConcurrentDictionary<string, (ServerInfo server, DateTime lastSeen)>>(ServersCacheKey, out var servers))
-        {
-            return Task.FromResult(new List<ServerInfo>());
-        }
-
-        var activeServers = servers.Values
+        return _servers.Values
             .Where(s => (now - s.lastSeen) <= _serverActivePeriod)
             .Select(s => s.server)
             .ToList();
-
-        return Task.FromResult(activeServers);
     }
 
     public void RegisterServer(ServerInfo server)
@@ -44,26 +31,34 @@ public class ServersStorage
         var now = DateTime.UtcNow;
         var serverKey = $"{server.Name}:{server.BeaconHost}:{server.BeaconPort}";
 
-        if (_lastRegistrationTimes.TryGetValue(serverKey, out var lastTime))
+        if (_lastRegistrationTimes.TryGetValue(serverKey, out var lastTime)
+            && now - lastTime < _throttlePeriod)
         {
-            if (now - lastTime < _throttlePeriod)
-            {
-                throw new InvalidOperationException($"Ðåãèñòðàöèÿ ñåðâåðà ñëèøêîì ÷àñòàÿ. Ïîâòîðèòå ïîïûòêó ÷åðåç {(_throttlePeriod - (now - lastTime)).TotalSeconds:F0} ñåêóíä.");
-            }
+            var remainingSeconds = (_throttlePeriod - (now - lastTime)).TotalSeconds;
+            throw new InvalidOperationException(
+                $"Ð¡Ð»Ð¸ÑˆÐºÐ¾Ð¼ Ñ‡Ð°ÑÑ‚Ð°Ñ Ñ€ÐµÐ³Ð¸ÑÑ‚Ñ€Ð°Ñ†Ð¸Ñ ÑÐµÑ€Ð²ÐµÑ€Ð°. ÐŸÐ¾Ð²Ñ‚Ð¾Ñ€Ð½Ð°Ñ Ð¿Ð¾Ð¿Ñ‹Ñ‚ÐºÐ° Ð²Ð¾Ð·Ð¼Ð¾Ð¶Ð½Ð° Ñ‡ÐµÑ€ÐµÐ· {remainingSeconds:F0} ÑÐµÐºÑƒÐ½Ð´."
+            );
         }
 
-        var servers = _memoryCache.GetOrCreate(ServersCacheKey, entry =>
-        {
-            entry.Priority = CacheItemPriority.NeverRemove;
-            return new ConcurrentDictionary<string, (ServerInfo, DateTime)>();
-        });
-
-        servers.AddOrUpdate(
+        _servers.AddOrUpdate(
             serverKey,
             (server, now),
             (key, existing) => (server, now)
         );
 
-        _lastRegistrationTimes.AddOrUpdate(serverKey, now, (key, existing) => now);
+        _lastRegistrationTimes[serverKey] = now;
+
+        CleanupExpiredThrottleEntries(now);
+    }
+
+    private void CleanupExpiredThrottleEntries(DateTime now)
+    {
+        foreach (var entry in _lastRegistrationTimes)
+        {
+            if (now - entry.Value > _throttlePeriod)
+            {
+                _lastRegistrationTimes.TryRemove(entry.Key, out _);
+            }
+        }
     }
 }
