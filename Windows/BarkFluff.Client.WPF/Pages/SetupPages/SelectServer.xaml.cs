@@ -19,7 +19,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
         private const int MaxPort = 65535;
 
         private static readonly Regex ServerAddressPattern = new(
-            @"^([^:]+):(\d+)$",
+            @"^(?<scheme>https?://)?(?<host>[^:/\s]+):(?<port>\d+)$",
             RegexOptions.Compiled);
 
         private bool _isConnecting;
@@ -56,7 +56,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                 return;
             }
 
-            if (!ValidateServerAddress(ServerAddressTextBox.Text, out var host, out var port))
+            if (!ValidateServerAddress(ServerAddressTextBox.Text, out var host, out var port, out var scheme))
             {
                 return;
             }
@@ -65,7 +65,7 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
 
             try
             {
-                var socket = $"{host}:{port}";
+                var socket = string.IsNullOrEmpty(scheme) ? $"{host}:{port}" : $"{scheme}{host}:{port}";
                 App.GParam.SocketBeacon = socket;
                 App.ServerCommunication.CreateOnlyBeaconAC(App.GParam);
 
@@ -102,10 +102,11 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
             }
         }
 
-        private bool ValidateServerAddress(string input, out string host, out int port)
+        private bool ValidateServerAddress(string input, out string host, out int port, out string scheme)
         {
             host = string.Empty;
             port = 0;
+            scheme = string.Empty;
 
             var trimmedInput = input?.Trim() ?? string.Empty;
 
@@ -122,9 +123,10 @@ namespace BarkFluff.Client.WPF.Pages.SetupPages
                 return false;
             }
 
-            host = match.Groups[1].Value.Trim();
+            scheme = match.Groups["scheme"].Value;
+            host = match.Groups["host"].Value.Trim();
 
-            if (!int.TryParse(match.Groups[2].Value, out port) || port < MinPort || port > MaxPort)
+            if (!int.TryParse(match.Groups["port"].Value, out port) || port < MinPort || port > MaxPort)
             {
                 ShowError($"Порт должен быть числом от {MinPort} до {MaxPort}");
                 return false;

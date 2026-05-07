@@ -83,7 +83,10 @@
       "Bash(Select-Object -First 50)",
       "Bash(taskkill //F //IM dotnet.exe)",
       "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -resolvePackageDependencies)",
-      "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -configuration Debug -destination 'platform=macOS' build)"
+      "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -configuration Debug -destination 'platform=macOS' build)",
+      "Bash(xcodebuild -project /Users/liis/Projects/BarkFluff/Mac/Barkfluff/Barkfluff.xcodeproj -scheme Barkfluff -configuration Debug -destination 'platform=macOS' build)",
+      "Bash(xcodebuild -project /Users/liis/Projects/BarkFluff/Mac/Barkfluff/Barkfluff.xcodeproj -list)",
+      "Bash(xcodebuild -project /Users/liis/Projects/BarkFluff/Mac/Barkfluff/Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=macOS' build)"
     ],
     "deny": [],
     "ask": []
