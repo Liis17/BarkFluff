@@ -130,6 +130,24 @@ public class OnlineStatusSubscriptionsManager
         return userSubscriptions.Count;
     }
 
+    /// <summary>
+    /// Текущее количество активных подписок (gRPC streams) — для метрик.
+    /// </summary>
+    public int GetActiveSubscriptionsCount()
+    {
+        var count = 0;
+        foreach (var kvp in _subscriptions)
+        {
+            count += kvp.Value.Count;
+        }
+        return count;
+    }
+
+    /// <summary>
+    /// Количество уникальных отслеживаемых пользователей (размер обратного индекса) — для метрик.
+    /// </summary>
+    public int GetTrackedUniqueUsersCount() => _reverseIndex.Count;
+
     private void AddToReverseIndex(
         Guid connectionId,
         IEnumerable<long> trackedUserIds,

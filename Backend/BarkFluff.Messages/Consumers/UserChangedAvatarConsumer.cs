@@ -27,7 +27,7 @@ public class UserChangedAvatarConsumer : IConsumer<UserChangedAvatar>
 
     public async Task Consume(ConsumeContext<UserChangedAvatar> context)
     {
-        _metrics.Increment("rabbitmq_events_consumed");
+        _metrics.Increment("rabbitmq_avatar_consumed");
         var userId = context.Message.UserId;
         var profilePictureUrl = context.Message.ProfilePictureUrl;
 
@@ -62,6 +62,7 @@ public class UserChangedAvatarConsumer : IConsumer<UserChangedAvatar>
         }
         catch (Exception ex)
         {
+            _metrics.Increment("rabbitmq_avatar_errors");
             _logger.LogError(
                 ex,
                 "Ошибка при обработке изменения аватара пользователя {UserId}",

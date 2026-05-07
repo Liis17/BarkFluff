@@ -37,12 +37,14 @@ public class OfflineDetectionService : BackgroundService
 
         while (!stoppingToken.IsCancellationRequested)
         {
+            _metrics.Increment("offline_detection_runs");
             try
             {
                 await CheckAndUpdateOfflineStatusesAsync(stoppingToken);
             }
             catch (Exception ex)
             {
+                _metrics.Increment("offline_detection_errors");
                 _logger.LogError(ex, "Error during offline detection cycle");
             }
 

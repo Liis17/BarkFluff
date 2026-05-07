@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Identity.Features.CreateSessionForUserServer;
 using BarkFluff.Identity.Features.DisableOtpVerificationServer;
 using BarkFluff.Identity.Features.GetActiveSessionsServer;
@@ -18,15 +19,18 @@ namespace BarkFluff.Identity.Host;
 public class IdentityServerApiService : IdentityServerApi.IdentityServerApiBase
 {
     private readonly IMediator _mediator;
+    private readonly MetricsCollector _metrics;
 
-    public IdentityServerApiService(IMediator mediator)
+    public IdentityServerApiService(IMediator mediator, MetricsCollector metrics)
     {
         _mediator = mediator;
+        _metrics = metrics;
     }
 
     public override Task<ListOtpVerificationResponse> ListOtpVerificationServer(
         ListOtpVerificationServerRequest request, ServerCallContext context)
     {
+        _metrics.Increment("server_otp_lookups");
         var command = new ListOtpVerificationServerCommand
         {
             UserId = request.UserId
@@ -38,6 +42,7 @@ public class IdentityServerApiService : IdentityServerApi.IdentityServerApiBase
     public override Task<DisableOtpVerificationResponse> DisableOtpVerificationServer(
         DisableOtpVerificationServerRequest request, ServerCallContext context)
     {
+        _metrics.Increment("server_otp_disable_attempts");
         var command = new DisableOtpVerificationServerCommand
         {
             UserId = request.UserId,
@@ -50,6 +55,7 @@ public class IdentityServerApiService : IdentityServerApi.IdentityServerApiBase
     public override Task<GetActiveSessionsResponse> GetActiveSessionsServer(
         GetActiveSessionsServerRequest request, ServerCallContext context)
     {
+        _metrics.Increment("server_session_lookups");
         var command = new GetActiveSessionsServerCommand
         {
             UserId = request.UserId
@@ -61,6 +67,7 @@ public class IdentityServerApiService : IdentityServerApi.IdentityServerApiBase
     public override Task<RemoveActiveSessionResponse> RemoveActiveSessionServer(
         RemoveActiveSessionServerRequest request, ServerCallContext context)
     {
+        _metrics.Increment("server_session_removal_attempts");
         var command = new RemoveActiveSessionServerCommand
         {
             UserId = request.UserId,
@@ -73,6 +80,7 @@ public class IdentityServerApiService : IdentityServerApi.IdentityServerApiBase
     public override Task<CreateSessionForUserServerResponse> CreateSessionForUserServer(
         CreateSessionForUserServerRequest request, ServerCallContext context)
     {
+        _metrics.Increment("server_session_creation_attempts");
         var command = new CreateSessionForUserServerCommand
         {
             UserId = request.UserId,

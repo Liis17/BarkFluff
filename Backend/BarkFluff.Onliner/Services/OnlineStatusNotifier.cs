@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Onliner;
 
 using Google.Protobuf.WellKnownTypes;
@@ -11,13 +12,16 @@ namespace BarkFluff.Onliner.Services;
 public class OnlineStatusNotifier
 {
     private readonly OnlineStatusSubscriptionsManager _subscriptionsManager;
+    private readonly MetricsCollector _metrics;
     private readonly ILogger<OnlineStatusNotifier> _logger;
 
     public OnlineStatusNotifier(
         OnlineStatusSubscriptionsManager subscriptionsManager,
+        MetricsCollector metrics,
         ILogger<OnlineStatusNotifier> logger)
     {
         _subscriptionsManager = subscriptionsManager;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -62,11 +66,13 @@ public class OnlineStatusNotifier
         try
         {
             await stream.WriteAsync(status, cancellationToken);
+            _metrics.Increment("status_notifications_sent");
             _logger.LogTrace("Successfully sent status update for user {UserId}", userId);
         }
         catch (Exception ex)
         {
             // Stream может быть закрыт - это нормально, cleanup произойдет в gRPC service
+            _metrics.Increment("status_notification_errors");
             _logger.LogWarning(ex,
                 "Failed to send status update for user {UserId} - stream likely disconnected",
                 userId);

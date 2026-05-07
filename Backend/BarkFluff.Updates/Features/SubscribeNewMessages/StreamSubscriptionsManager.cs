@@ -5,17 +5,22 @@ using BarkFluff.Proto.Updates;
 using Grpc.Core;
 
 using System.Collections.Concurrent;
+using System.Threading;
 
 public class StreamSubscriptionsManager
 {
     // Поддержка нескольких клиентов на одного пользователя: userId -> (subscriptionId -> stream)
     private readonly ConcurrentDictionary<long, ConcurrentDictionary<Guid, IServerStreamWriter<NewMessageEvent>>> _userSubscriptions = new();
+    private long _activeSubscriptionsCount;
+
+    public long ActiveCount => Interlocked.Read(ref _activeSubscriptionsCount);
 
     public Guid RegisterSubscription(long userId, IServerStreamWriter<NewMessageEvent> responseStream)
     {
         var subscriptionId = Guid.NewGuid();
         var userStreams = _userSubscriptions.GetOrAdd(userId, _ => new ConcurrentDictionary<Guid, IServerStreamWriter<NewMessageEvent>>());
         userStreams[subscriptionId] = responseStream;
+        Interlocked.Increment(ref _activeSubscriptionsCount);
         return subscriptionId;
     }
 
@@ -23,7 +28,10 @@ public class StreamSubscriptionsManager
     {
         if (_userSubscriptions.TryGetValue(userId, out var userStreams))
         {
-            userStreams.TryRemove(subscriptionId, out _);
+            if (userStreams.TryRemove(subscriptionId, out _))
+            {
+                Interlocked.Decrement(ref _activeSubscriptionsCount);
+            }
 
             // Очищаем пустые записи пользователей
             if (userStreams.IsEmpty)
