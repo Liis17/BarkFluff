@@ -141,7 +141,8 @@ namespace BarkFluff.Messages.Persistence.Migrations
                                 .HasColumnType("bigint");
 
                             b1.Property<string>("Text")
-                                .HasColumnType("text");
+                                .HasMaxLength(4096)
+                                .HasColumnType("character varying(4096)");
 
                             b1.HasKey("MessageId");
 
