@@ -18,6 +18,7 @@
     var filesClient = new bf.FilesApiClient(origin);
     var updatesClient = new bf.UpdatesApiClient(origin);
     var onlinerClient = new bf.OnlinerApiClient(origin);
+    var fastAuthClient = new bf.FastAuthApiClient(origin);
 
     // Known error codes from x-error-code trailer
     var ERROR_CODES = {
@@ -124,6 +125,7 @@
         files: filesClient,
         updates: updatesClient,
         onliner: onlinerClient,
+        fastAuth: fastAuthClient,
         authCall: authCall,
         getValidToken: getValidToken,
         refreshToken: refreshToken,
