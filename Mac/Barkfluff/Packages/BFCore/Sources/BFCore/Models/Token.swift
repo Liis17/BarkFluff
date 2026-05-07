@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import BFNetworking
 
 /// Информация о загрузке файла
 public struct FileUploadInfo: Hashable, Sendable {
@@ -35,10 +36,18 @@ public struct FileCheckResult: Hashable, Sendable {
 public struct StorageInfo: Hashable, Sendable {
     public let usedBytes: Int64
     public let limitBytes: Int64
+    /// Использованное пространство по типам файлов (байты).
+    /// Может быть пустым, если сервер не вернул breakdown.
+    public let usedByType: [UploadFileType: Int64]
 
-    public init(usedBytes: Int64, limitBytes: Int64) {
+    public init(
+        usedBytes: Int64,
+        limitBytes: Int64,
+        usedByType: [UploadFileType: Int64] = [:]
+    ) {
         self.usedBytes = usedBytes
         self.limitBytes = limitBytes
+        self.usedByType = usedByType
     }
 
     /// Процент использованного места

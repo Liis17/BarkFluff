@@ -2,7 +2,8 @@
 //  SettingsCategory.swift
 //  Barkfluff
 //
-//  Категории настроек в профиле
+//  Категории настроек: единый источник истины для верхнего меню
+//  (Settings-сцена) и для сайдбара профиля.
 //
 
 import SwiftUI
@@ -13,8 +14,10 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
     case general
     case notifications
     case privacy
-    case dataAndStorage
+    case cloud
+    case cache
     case activeSessions
+    case about
 
     var id: String { rawValue }
 
@@ -24,8 +27,10 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .general: "Общие"
         case .notifications: "Уведомления и звук"
         case .privacy: "Конфиденциальность"
-        case .dataAndStorage: "Данные и Память"
+        case .cloud: "Облако"
+        case .cache: "Кеш"
         case .activeSessions: "Активные сессии"
+        case .about: "О сервере"
         }
     }
 
@@ -35,8 +40,10 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .general: "gear"
         case .notifications: "bell.fill"
         case .privacy: "lock.shield.fill"
-        case .dataAndStorage: "internaldrive.fill"
+        case .cloud: "cloud.fill"
+        case .cache: "internaldrive.fill"
         case .activeSessions: "laptopcomputer.and.iphone"
+        case .about: "info.circle.fill"
         }
     }
 
@@ -46,8 +53,10 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .general: .gray
         case .notifications: .red
         case .privacy: .green
-        case .dataAndStorage: .purple
+        case .cloud: .indigo
+        case .cache: .purple
         case .activeSessions: .orange
+        case .about: .teal
         }
     }
 }

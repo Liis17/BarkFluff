@@ -39,8 +39,11 @@ struct ChatListView: View {
                 viewModel = vm
                 // Устанавливаем ссылку в координатор для уведомлений о прочтении
                 coordinator.chatListViewModel = vm
-                await container.loadCurrentUser()
-                await vm.loadChats()
+                // Параллельно: выгрузка текущего пользователя (нужна для онлайн-статусов)
+                // и загрузка чатов (сразу из кэша + revalidate с сервера).
+                async let userLoad: Void = container.loadCurrentUser()
+                async let chatsLoad: Void = vm.loadChats()
+                _ = await (userLoad, chatsLoad)
                 await vm.startListeningForUpdates()
             }
         }
@@ -116,6 +119,13 @@ struct ChatListView: View {
             }
         }
         .listStyle(.sidebar)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if viewModel.isRefreshing && !viewModel.chats.isEmpty {
+                RefreshingIndicatorView()
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: viewModel.isRefreshing)
         .searchable(text: Binding(
             get: { viewModel.searchText },
             set: { newValue in

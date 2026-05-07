@@ -197,12 +197,18 @@ public actor FilesRepository: FilesRepositoryProtocol {
         let req = request
 
         do {
-            return try await connectionManager.withAuthorizedClient(for: .files) { client in
+            return try await connectionManager.withAuthorizedClient(for: .files) { [self] client in
                 let filesClient = Barkfluff_Files_FilesApi.Client(wrapping: client)
                 let response = try await filesClient.getUserStorageInfo(req)
+                var usedByType: [UploadFileType: Int64] = [:]
+                for entry in response.storageByTypes {
+                    let type = mapProtoFileType(entry.fileType)
+                    usedByType[type, default: 0] += entry.usedStorage
+                }
                 return StorageInfo(
                     usedBytes: response.totalUsedStorage,
-                    limitBytes: response.storageLimit
+                    limitBytes: response.storageLimit,
+                    usedByType: usedByType
                 )
             }
         } catch let error as RPCError {
@@ -215,6 +221,33 @@ public actor FilesRepository: FilesRepositoryProtocol {
     private nonisolated func mapFileType(_ fileType: UploadFileType) -> Barkfluff_Files_UploadFileType {
         switch fileType {
         case .unknown:
+            return .unknown
+        case .userAvatar:
+            return .userAvatar
+        case .messageAttachmentImage:
+            return .messageAttachmentImage
+        case .messageAttachmentVideo:
+            return .messageAttachmentVideo
+        case .messageAttachmentGif:
+            return .messageAttachmentGif
+        case .messageAttachmentDocument:
+            return .messageAttachmentDocument
+        case .chatPicture:
+            return .chatPicture
+        case .messageAttachmentAudio:
+            return .messageAttachmentAudio
+        case .messageAttachmentVoice:
+            return .messageAttachmentVoice
+        case .messageAttachmentSticker:
+            return .messageAttachmentSticker
+        case .userProfilePoster:
+            return .userProfilePoster
+        }
+    }
+
+    private nonisolated func mapProtoFileType(_ proto: Barkfluff_Files_UploadFileType) -> UploadFileType {
+        switch proto {
+        case .unknown, .UNRECOGNIZED:
             return .unknown
         case .userAvatar:
             return .userAvatar

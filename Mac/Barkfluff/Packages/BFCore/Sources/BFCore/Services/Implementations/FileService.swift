@@ -51,7 +51,11 @@ public actor FileService: FileServiceProtocol {
 
     public func getStorageInfo() async throws -> StorageInfo {
         let info = try await filesRepository.getUserStorageInfo()
-        return StorageInfo(usedBytes: info.usedBytes, limitBytes: info.limitBytes)
+        return StorageInfo(
+            usedBytes: info.usedBytes,
+            limitBytes: info.limitBytes,
+            usedByType: info.usedByType
+        )
     }
 
     /// Вычисляет SHA256 хеш данных (lowercase hex)

@@ -63,6 +63,12 @@ public actor LocalChatRepository {
         let membersDTO = chat.members.map(ChatMemberDTO.init(member:))
         let membersJson = try encoder.encode(membersDTO)
         let pictureFileId = S3URLParser.fileID(from: chat.pictureURL)
+        let lastMessageJson: Data?
+        if let last = chat.lastMessage {
+            lastMessageJson = try? encoder.encode(MessageDTO(message: last))
+        } else {
+            lastMessageJson = nil
+        }
         return CachedChatRecord(
             id: chat.id,
             title: chat.title,
@@ -72,7 +78,8 @@ public actor LocalChatRepository {
             lastMessageId: chat.lastMessage?.id,
             unreadCount: chat.unreadCount,
             membersJson: membersJson,
-            updatedAt: updatedAt
+            updatedAt: updatedAt,
+            lastMessageJson: lastMessageJson
         )
     }
 
@@ -84,12 +91,19 @@ public actor LocalChatRepository {
         } else {
             members = []
         }
+        let lastMessage: Message?
+        if let data = record.lastMessageJson,
+           let dto = try? decoder.decode(MessageDTO.self, from: data) {
+            lastMessage = dto.toMessage()
+        } else {
+            lastMessage = nil
+        }
         return Chat(
             id: record.id,
             title: record.title,
             pictureURL: record.pictureUrl,
             isGroupChat: record.isGroup,
-            lastMessage: nil,
+            lastMessage: lastMessage,
             unreadCount: record.unreadCount,
             members: members
         )

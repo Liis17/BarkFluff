@@ -31,9 +31,15 @@ public enum FileMapper {
 
     /// Преобразовать Proto GetUserStorageInfoResponse в Domain StorageInfo
     public static func toDomain(_ proto: Barkfluff_Files_GetUserStorageInfoResponse) -> StorageInfo {
-        StorageInfo(
+        var usedByType: [UploadFileType: Int64] = [:]
+        for entry in proto.storageByTypes {
+            let type = toDomain(entry.fileType)
+            usedByType[type, default: 0] += entry.usedStorage
+        }
+        return StorageInfo(
             usedBytes: proto.totalUsedStorage,
-            limitBytes: proto.storageLimit
+            limitBytes: proto.storageLimit,
+            usedByType: usedByType
         )
     }
 
