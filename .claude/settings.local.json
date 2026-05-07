@@ -91,7 +91,8 @@
       "Bash(xcodebuild -scheme Barkfluff -destination 'platform=macOS' -configuration Debug build -quiet)",
       "Bash(echo \"EXIT=$?\")",
       "Bash(xcodebuild -workspace Barkfluff.xcworkspace -scheme Barkfluff -destination 'platform=macOS' -configuration Debug build)",
-      "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=macOS' -configuration Debug build)"
+      "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=macOS' -configuration Debug build)",
+      "Bash(xcodebuild -project Barkfluff.xcodeproj -scheme Barkfluff -configuration Debug -quiet build)"
     ],
     "deny": [],
     "ask": []
