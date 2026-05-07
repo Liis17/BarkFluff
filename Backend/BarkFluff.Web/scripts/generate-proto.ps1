@@ -79,7 +79,8 @@ $protos = @(
     'messages_api.proto',
     'files_api.proto',
     'updates_api.proto',
-    'onliner_api.proto'
+    'onliner_api.proto',
+    'fast_auth_api.proto'
 )
 
 # --- 2. protoc → commonjs JS + gRPC-Web клиенты ---
@@ -119,6 +120,8 @@ const updatesPb   = require('./updates_api_pb.js');
 const updatesSvc  = require('./updates_api_grpc_web_pb.js');
 const onlinerPb   = require('./onliner_api_pb.js');
 const onlinerSvc  = require('./onliner_api_grpc_web_pb.js');
+const fastAuthPb  = require('./fast_auth_api_pb.js');
+const fastAuthSvc = require('./fast_auth_api_grpc_web_pb.js');
 
 // В protoc-gen-js (commonjs) сообщения экспортируются в global proto.<package>.<Message>
 // Мы прокидываем глобальный proto namespace наружу как window.barkfluff.proto
@@ -138,6 +141,8 @@ const barkfluff = {
     UpdatesApiPromiseClient:    updatesSvc.UpdatesApiPromiseClient,
     OnlinerApiClient:           onlinerSvc.OnlinerApiClient            || onlinerSvc.OnlinerApiPromiseClient,
     OnlinerApiPromiseClient:    onlinerSvc.OnlinerApiPromiseClient,
+    FastAuthApiClient:          fastAuthSvc.FastAuthApiClient          || fastAuthSvc.FastAuthApiPromiseClient,
+    FastAuthApiPromiseClient:   fastAuthSvc.FastAuthApiPromiseClient,
 };
 
 if (typeof window !== 'undefined') window.barkfluff = barkfluff;

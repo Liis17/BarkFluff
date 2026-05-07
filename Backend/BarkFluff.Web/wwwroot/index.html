@@ -245,8 +245,28 @@
             align-items: center;
             gap: 20px;
             width: 100%;
-            max-width: 420px;
+            max-width: 880px;
             animation: pageIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        /* ─────────────── LOGIN HEADER (общий заголовок над двумя карточками) ─────────────── */
+        .login-header {
+            text-align: center;
+            width: 100%;
+            max-width: 520px;
+        }
+
+        .login-header .card-title { margin-bottom: 4px; }
+        .login-header .card-subtitle { margin-bottom: 0; }
+
+        /* ─────────────── LOGIN ROW (форма + QR) ─────────────── */
+        .login-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+            justify-content: center;
+            align-items: stretch;
+            width: 100%;
         }
 
         @keyframes pageIn {
@@ -287,9 +307,86 @@
             border-radius: var(--radius-card);
             padding: 36px 32px;
             width: 100%;
+            max-width: 420px;
             box-shadow: var(--card-shadow);
             transition: background var(--transition), border-color var(--transition), box-shadow var(--transition);
         }
+
+        /* ─────────────── QR CARD (быстрый вход через мобильный) ─────────────── */
+        .qr-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-card);
+            padding: 32px 28px 28px;
+            width: 320px;
+            max-width: 100%;
+            box-shadow: var(--card-shadow);
+            transition: background var(--transition), border-color var(--transition), box-shadow var(--transition);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .qr-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 4px;
+            text-align: center;
+            letter-spacing: -0.2px;
+        }
+
+        .qr-subtitle {
+            font-size: 13px;
+            color: var(--text-sub);
+            text-align: center;
+            margin-bottom: 18px;
+            line-height: 1.4;
+        }
+
+        .qr-box {
+            position: relative;
+            width: 240px;
+            height: 240px;
+            background: #ffffff;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            margin-bottom: 14px;
+        }
+
+        .qr-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        .qr-spinner {
+            width: 42px;
+            height: 42px;
+            border: 3px solid rgba(0,0,0,0.10);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.85s linear infinite;
+        }
+
+        .qr-status {
+            font-size: 13px;
+            color: var(--text-sub);
+            text-align: center;
+            min-height: 18px;
+            line-height: 1.4;
+            transition: color var(--transition);
+        }
+
+        .qr-status--ok { color: var(--success); }
+        .qr-status--err { color: var(--error); }
 
         /* ─────────────── CARD HEADER ─────────────── */
         .card-title {
@@ -698,6 +795,11 @@
         }
 
         /* ─────────────── RESPONSIVE ─────────────── */
+        @media (max-width: 720px) {
+            .qr-card { width: 100%; max-width: 420px; }
+            .qr-box { width: 220px; height: 220px; }
+        }
+
         @media (max-width: 480px) {
             body { padding: 16px 12px 80px; }
 
@@ -752,13 +854,17 @@
             <span class="logo-text">BarkFluff</span>
         </div>
 
+        <header class="login-header">
+            <h1 class="card-title">Добро пожаловать</h1>
+            <p class="card-subtitle">Войдите в свой аккаунт</p>
+        </header>
+
+        <div class="login-row">
+
         <div class="card">
 
             <!-- LOGIN SECTION -->
             <div id="loginSection" class="section" role="region" aria-label="Вход">
-                <h1 class="card-title">Добро пожаловать</h1>
-                <p class="card-subtitle">Войдите в свой аккаунт</p>
-
                 <form id="loginForm" novalidate>
                     <div class="form-group">
                         <label class="form-label" for="loginInput">Почта или имя пользователя</label>
@@ -835,6 +941,19 @@
 
         </div>
 
+        <!-- QR FAST-AUTH CARD -->
+        <aside class="qr-card" id="fastAuthCard" aria-label="Вход через QR">
+            <h2 class="qr-title">Войти через QR</h2>
+            <p class="qr-subtitle">Отсканируйте код в&nbsp;мобильном BarkFluff</p>
+            <div class="qr-box">
+                <div class="qr-spinner" id="fastAuthSpinner" aria-hidden="true"></div>
+                <img class="qr-img" id="fastAuthImg" alt="QR-код для входа" hidden>
+            </div>
+            <div class="qr-status" id="fastAuthStatus" data-phase="loading">Загрузка кода…</div>
+        </aside>
+
+        </div><!-- /.login-row -->
+
         <p class="copyright">© 2026 BarkFluff. Никакие права не защищены.</p>
     </main>
 
@@ -848,6 +967,7 @@
     <script src="/js/app/tokens.js"    onerror="void 0"></script>
     <script src="/js/app/metadata.js"  onerror="void 0"></script>
     <script src="/js/app/auth.js"      onerror="void 0"></script>
+    <script src="/js/app/fast-auth.js" onerror="void 0"></script>
     <script src="/js/app/login-page.js" onerror="void 0"></script>
 
     <script>

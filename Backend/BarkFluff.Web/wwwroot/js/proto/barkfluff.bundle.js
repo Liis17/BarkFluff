@@ -4,9 +4,9 @@ var BarkFluffBundle = (() => {
     return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
   };
 
-  // scripts/node_modules/google-protobuf/google-protobuf.js
+  // Backend/BarkFluff.Web/scripts/node_modules/google-protobuf/google-protobuf.js
   var require_google_protobuf = __commonJS({
-    "scripts/node_modules/google-protobuf/google-protobuf.js"(exports, module) {
+    "Backend/BarkFluff.Web/scripts/node_modules/google-protobuf/google-protobuf.js"(exports, module) {
       var $jscomp = $jscomp || {};
       $jscomp.scope = {};
       $jscomp.findInternal = function(a2, b2, c2) {
@@ -6391,9 +6391,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // scripts/node_modules/grpc-web/index.js
+  // Backend/BarkFluff.Web/scripts/node_modules/grpc-web/index.js
   var require_grpc_web = __commonJS({
-    "scripts/node_modules/grpc-web/index.js"(exports2, module2) {
+    "Backend/BarkFluff.Web/scripts/node_modules/grpc-web/index.js"(exports2, module2) {
       var n;
       function aa(a2) {
         var b2 = 0;
@@ -8284,9 +8284,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // scripts/node_modules/google-protobuf/google/protobuf/timestamp_pb.js
+  // Backend/BarkFluff.Web/scripts/node_modules/google-protobuf/google/protobuf/timestamp_pb.js
   var require_timestamp_pb = __commonJS({
-    "scripts/node_modules/google-protobuf/google/protobuf/timestamp_pb.js"(exports2) {
+    "Backend/BarkFluff.Web/scripts/node_modules/google-protobuf/google/protobuf/timestamp_pb.js"(exports2) {
       var jspb2 = require_google_protobuf();
       var goog2 = jspb2;
       var global2 = typeof globalThis !== "undefined" && globalThis || typeof window !== "undefined" && window || typeof global2 !== "undefined" && global2 || typeof self !== "undefined" && self || function() {
@@ -8406,9 +8406,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // scripts/.proto-tmp/shared_pb.js
+  // Backend/BarkFluff.Web/scripts/.proto-tmp/shared_pb.js
   var require_shared_pb = __commonJS({
-    "scripts/.proto-tmp/shared_pb.js"(exports2) {
+    "Backend/BarkFluff.Web/scripts/.proto-tmp/shared_pb.js"(exports2) {
       var jspb2 = require_google_protobuf();
       var goog2 = jspb2;
       var global2 = function() {
@@ -9298,9 +9298,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // scripts/.proto-tmp/identity_api_pb.js
+  // Backend/BarkFluff.Web/scripts/.proto-tmp/identity_api_pb.js
   var require_identity_api_pb = __commonJS({
-    "scripts/.proto-tmp/identity_api_pb.js"(exports2) {
+    "Backend/BarkFluff.Web/scripts/.proto-tmp/identity_api_pb.js"(exports2) {
       var jspb2 = require_google_protobuf();
       var goog2 = jspb2;
       var global2 = function() {
@@ -12931,9 +12931,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // scripts/.proto-tmp/identity_api_grpc_web_pb.js
+  // Backend/BarkFluff.Web/scripts/.proto-tmp/identity_api_grpc_web_pb.js
   var require_identity_api_grpc_web_pb = __commonJS({
-    "scripts/.proto-tmp/identity_api_grpc_web_pb.js"(exports2, module2) {
+    "Backend/BarkFluff.Web/scripts/.proto-tmp/identity_api_grpc_web_pb.js"(exports2, module2) {
       var grpc = {};
       grpc.web = require_grpc_web();
       var google_protobuf_timestamp_pb = require_timestamp_pb();
@@ -13588,9 +13588,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // scripts/.proto-tmp/users_api_pb.js
+  // Backend/BarkFluff.Web/scripts/.proto-tmp/users_api_pb.js
   var require_users_api_pb = __commonJS({
-    "scripts/.proto-tmp/users_api_pb.js"(exports2) {
+    "Backend/BarkFluff.Web/scripts/.proto-tmp/users_api_pb.js"(exports2) {
       var jspb2 = require_google_protobuf();
       var goog2 = jspb2;
       var global2 = function() {
@@ -13609,8 +13609,6 @@ var BarkFluffBundle = (() => {
       goog2.exportSymbol("proto.barkfluff.users.ChangeBioResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.ChangeNameRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.ChangeNameResponse", null, global2);
-      goog2.exportSymbol("proto.barkfluff.users.ChangeUserPasswordRequest", null, global2);
-      goog2.exportSymbol("proto.barkfluff.users.ChangeUserPasswordResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.ChangeUsernameRequest", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.ChangeUsernameResponse", null, global2);
       goog2.exportSymbol("proto.barkfluff.users.CheckExistEmailRequest", null, global2);
@@ -13753,20 +13751,6 @@ var BarkFluffBundle = (() => {
       goog2.inherits(proto.barkfluff.users.SearchUsersResponse, jspb2.Message);
       if (goog2.DEBUG && !COMPILED) {
         proto.barkfluff.users.SearchUsersResponse.displayName = "proto.barkfluff.users.SearchUsersResponse";
-      }
-      proto.barkfluff.users.ChangeUserPasswordRequest = function(opt_data) {
-        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
-      };
-      goog2.inherits(proto.barkfluff.users.ChangeUserPasswordRequest, jspb2.Message);
-      if (goog2.DEBUG && !COMPILED) {
-        proto.barkfluff.users.ChangeUserPasswordRequest.displayName = "proto.barkfluff.users.ChangeUserPasswordRequest";
-      }
-      proto.barkfluff.users.ChangeUserPasswordResponse = function(opt_data) {
-        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
-      };
-      goog2.inherits(proto.barkfluff.users.ChangeUserPasswordResponse, jspb2.Message);
-      if (goog2.DEBUG && !COMPILED) {
-        proto.barkfluff.users.ChangeUserPasswordResponse.displayName = "proto.barkfluff.users.ChangeUserPasswordResponse";
       }
       proto.barkfluff.users.ChangeBioRequest = function(opt_data) {
         jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
@@ -15078,158 +15062,6 @@ var BarkFluffBundle = (() => {
       };
       proto.barkfluff.users.SearchUsersResponse.prototype.setTotalCount = function(value) {
         return jspb2.Message.setProto3IntField(this, 2, value);
-      };
-      if (jspb2.Message.GENERATE_TO_OBJECT) {
-        proto.barkfluff.users.ChangeUserPasswordRequest.prototype.toObject = function(opt_includeInstance) {
-          return proto.barkfluff.users.ChangeUserPasswordRequest.toObject(opt_includeInstance, this);
-        };
-        proto.barkfluff.users.ChangeUserPasswordRequest.toObject = function(includeInstance, msg) {
-          var f2, obj = {
-            newPassword: jspb2.Message.getFieldWithDefault(msg, 1, ""),
-            userId: jspb2.Message.getFieldWithDefault(msg, 2, 0)
-          };
-          if (includeInstance) {
-            obj.$jspbMessageInstance = msg;
-          }
-          return obj;
-        };
-      }
-      proto.barkfluff.users.ChangeUserPasswordRequest.deserializeBinary = function(bytes) {
-        var reader = new jspb2.BinaryReader(bytes);
-        var msg = new proto.barkfluff.users.ChangeUserPasswordRequest();
-        return proto.barkfluff.users.ChangeUserPasswordRequest.deserializeBinaryFromReader(msg, reader);
-      };
-      proto.barkfluff.users.ChangeUserPasswordRequest.deserializeBinaryFromReader = function(msg, reader) {
-        while (reader.nextField()) {
-          if (reader.isEndGroup()) {
-            break;
-          }
-          var field = reader.getFieldNumber();
-          switch (field) {
-            case 1:
-              var value = (
-                /** @type {string} */
-                reader.readString()
-              );
-              msg.setNewPassword(value);
-              break;
-            case 2:
-              var value = (
-                /** @type {number} */
-                reader.readInt64()
-              );
-              msg.setUserId(value);
-              break;
-            default:
-              reader.skipField();
-              break;
-          }
-        }
-        return msg;
-      };
-      proto.barkfluff.users.ChangeUserPasswordRequest.prototype.serializeBinary = function() {
-        var writer = new jspb2.BinaryWriter();
-        proto.barkfluff.users.ChangeUserPasswordRequest.serializeBinaryToWriter(this, writer);
-        return writer.getResultBuffer();
-      };
-      proto.barkfluff.users.ChangeUserPasswordRequest.serializeBinaryToWriter = function(message, writer) {
-        var f2 = void 0;
-        f2 = message.getNewPassword();
-        if (f2.length > 0) {
-          writer.writeString(
-            1,
-            f2
-          );
-        }
-        f2 = message.getUserId();
-        if (f2 !== 0) {
-          writer.writeInt64(
-            2,
-            f2
-          );
-        }
-      };
-      proto.barkfluff.users.ChangeUserPasswordRequest.prototype.getNewPassword = function() {
-        return (
-          /** @type {string} */
-          jspb2.Message.getFieldWithDefault(this, 1, "")
-        );
-      };
-      proto.barkfluff.users.ChangeUserPasswordRequest.prototype.setNewPassword = function(value) {
-        return jspb2.Message.setProto3StringField(this, 1, value);
-      };
-      proto.barkfluff.users.ChangeUserPasswordRequest.prototype.getUserId = function() {
-        return (
-          /** @type {number} */
-          jspb2.Message.getFieldWithDefault(this, 2, 0)
-        );
-      };
-      proto.barkfluff.users.ChangeUserPasswordRequest.prototype.setUserId = function(value) {
-        return jspb2.Message.setProto3IntField(this, 2, value);
-      };
-      if (jspb2.Message.GENERATE_TO_OBJECT) {
-        proto.barkfluff.users.ChangeUserPasswordResponse.prototype.toObject = function(opt_includeInstance) {
-          return proto.barkfluff.users.ChangeUserPasswordResponse.toObject(opt_includeInstance, this);
-        };
-        proto.barkfluff.users.ChangeUserPasswordResponse.toObject = function(includeInstance, msg) {
-          var f2, obj = {
-            passwordHash: jspb2.Message.getFieldWithDefault(msg, 1, "")
-          };
-          if (includeInstance) {
-            obj.$jspbMessageInstance = msg;
-          }
-          return obj;
-        };
-      }
-      proto.barkfluff.users.ChangeUserPasswordResponse.deserializeBinary = function(bytes) {
-        var reader = new jspb2.BinaryReader(bytes);
-        var msg = new proto.barkfluff.users.ChangeUserPasswordResponse();
-        return proto.barkfluff.users.ChangeUserPasswordResponse.deserializeBinaryFromReader(msg, reader);
-      };
-      proto.barkfluff.users.ChangeUserPasswordResponse.deserializeBinaryFromReader = function(msg, reader) {
-        while (reader.nextField()) {
-          if (reader.isEndGroup()) {
-            break;
-          }
-          var field = reader.getFieldNumber();
-          switch (field) {
-            case 1:
-              var value = (
-                /** @type {string} */
-                reader.readString()
-              );
-              msg.setPasswordHash(value);
-              break;
-            default:
-              reader.skipField();
-              break;
-          }
-        }
-        return msg;
-      };
-      proto.barkfluff.users.ChangeUserPasswordResponse.prototype.serializeBinary = function() {
-        var writer = new jspb2.BinaryWriter();
-        proto.barkfluff.users.ChangeUserPasswordResponse.serializeBinaryToWriter(this, writer);
-        return writer.getResultBuffer();
-      };
-      proto.barkfluff.users.ChangeUserPasswordResponse.serializeBinaryToWriter = function(message, writer) {
-        var f2 = void 0;
-        f2 = message.getPasswordHash();
-        if (f2.length > 0) {
-          writer.writeString(
-            1,
-            f2
-          );
-        }
-      };
-      proto.barkfluff.users.ChangeUserPasswordResponse.prototype.getPasswordHash = function() {
-        return (
-          /** @type {string} */
-          jspb2.Message.getFieldWithDefault(this, 1, "")
-        );
-      };
-      proto.barkfluff.users.ChangeUserPasswordResponse.prototype.setPasswordHash = function(value) {
-        return jspb2.Message.setProto3StringField(this, 1, value);
       };
       if (jspb2.Message.GENERATE_TO_OBJECT) {
         proto.barkfluff.users.ChangeBioRequest.prototype.toObject = function(opt_includeInstance) {
@@ -22129,9 +21961,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // scripts/.proto-tmp/users_api_grpc_web_pb.js
+  // Backend/BarkFluff.Web/scripts/.proto-tmp/users_api_grpc_web_pb.js
   var require_users_api_grpc_web_pb = __commonJS({
-    "scripts/.proto-tmp/users_api_grpc_web_pb.js"(exports2, module2) {
+    "Backend/BarkFluff.Web/scripts/.proto-tmp/users_api_grpc_web_pb.js"(exports2, module2) {
       var grpc = {};
       grpc.web = require_grpc_web();
       var google_protobuf_timestamp_pb = require_timestamp_pb();
@@ -23593,9 +23425,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // scripts/.proto-tmp/messages_api_pb.js
+  // Backend/BarkFluff.Web/scripts/.proto-tmp/messages_api_pb.js
   var require_messages_api_pb = __commonJS({
-    "scripts/.proto-tmp/messages_api_pb.js"(exports2) {
+    "Backend/BarkFluff.Web/scripts/.proto-tmp/messages_api_pb.js"(exports2) {
       var jspb2 = require_google_protobuf();
       var goog2 = jspb2;
       var global2 = function() {
@@ -27256,9 +27088,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // scripts/.proto-tmp/messages_api_grpc_web_pb.js
+  // Backend/BarkFluff.Web/scripts/.proto-tmp/messages_api_grpc_web_pb.js
   var require_messages_api_grpc_web_pb = __commonJS({
-    "scripts/.proto-tmp/messages_api_grpc_web_pb.js"(exports2, module2) {
+    "Backend/BarkFluff.Web/scripts/.proto-tmp/messages_api_grpc_web_pb.js"(exports2, module2) {
       var grpc = {};
       grpc.web = require_grpc_web();
       var shared_pb = require_shared_pb();
@@ -27635,9 +27467,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // scripts/.proto-tmp/files_api_pb.js
+  // Backend/BarkFluff.Web/scripts/.proto-tmp/files_api_pb.js
   var require_files_api_pb = __commonJS({
-    "scripts/.proto-tmp/files_api_pb.js"(exports2) {
+    "Backend/BarkFluff.Web/scripts/.proto-tmp/files_api_pb.js"(exports2) {
       var jspb2 = require_google_protobuf();
       var goog2 = jspb2;
       var global2 = function() {
@@ -31983,9 +31815,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // scripts/.proto-tmp/files_api_grpc_web_pb.js
+  // Backend/BarkFluff.Web/scripts/.proto-tmp/files_api_grpc_web_pb.js
   var require_files_api_grpc_web_pb = __commonJS({
-    "scripts/.proto-tmp/files_api_grpc_web_pb.js"(exports2, module2) {
+    "Backend/BarkFluff.Web/scripts/.proto-tmp/files_api_grpc_web_pb.js"(exports2, module2) {
       var grpc = {};
       grpc.web = require_grpc_web();
       var google_protobuf_timestamp_pb = require_timestamp_pb();
@@ -32672,9 +32504,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // scripts/.proto-tmp/updates_api_pb.js
+  // Backend/BarkFluff.Web/scripts/.proto-tmp/updates_api_pb.js
   var require_updates_api_pb = __commonJS({
-    "scripts/.proto-tmp/updates_api_pb.js"(exports2) {
+    "Backend/BarkFluff.Web/scripts/.proto-tmp/updates_api_pb.js"(exports2) {
       var jspb2 = require_google_protobuf();
       var goog2 = jspb2;
       var global2 = function() {
@@ -33012,9 +32844,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // scripts/.proto-tmp/updates_api_grpc_web_pb.js
+  // Backend/BarkFluff.Web/scripts/.proto-tmp/updates_api_grpc_web_pb.js
   var require_updates_api_grpc_web_pb = __commonJS({
-    "scripts/.proto-tmp/updates_api_grpc_web_pb.js"(exports2, module2) {
+    "Backend/BarkFluff.Web/scripts/.proto-tmp/updates_api_grpc_web_pb.js"(exports2, module2) {
       var grpc = {};
       grpc.web = require_grpc_web();
       var google_protobuf_timestamp_pb = require_timestamp_pb();
@@ -33098,9 +32930,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // scripts/.proto-tmp/onliner_api_pb.js
+  // Backend/BarkFluff.Web/scripts/.proto-tmp/onliner_api_pb.js
   var require_onliner_api_pb = __commonJS({
-    "scripts/.proto-tmp/onliner_api_pb.js"(exports2) {
+    "Backend/BarkFluff.Web/scripts/.proto-tmp/onliner_api_pb.js"(exports2) {
       var jspb2 = require_google_protobuf();
       var goog2 = jspb2;
       var global2 = function() {
@@ -33709,9 +33541,9 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // scripts/.proto-tmp/onliner_api_grpc_web_pb.js
+  // Backend/BarkFluff.Web/scripts/.proto-tmp/onliner_api_grpc_web_pb.js
   var require_onliner_api_grpc_web_pb = __commonJS({
-    "scripts/.proto-tmp/onliner_api_grpc_web_pb.js"(exports2, module2) {
+    "Backend/BarkFluff.Web/scripts/.proto-tmp/onliner_api_grpc_web_pb.js"(exports2, module2) {
       var grpc = {};
       grpc.web = require_grpc_web();
       var google_protobuf_timestamp_pb = require_timestamp_pb();
@@ -33857,9 +33689,1585 @@ var BarkFluffBundle = (() => {
     }
   });
 
-  // scripts/.proto-tmp/index.js
+  // Backend/BarkFluff.Web/scripts/.proto-tmp/fast_auth_api_pb.js
+  var require_fast_auth_api_pb = __commonJS({
+    "Backend/BarkFluff.Web/scripts/.proto-tmp/fast_auth_api_pb.js"(exports2) {
+      var jspb2 = require_google_protobuf();
+      var goog2 = jspb2;
+      var global2 = function() {
+        return this || window || global2 || self || Function("return this")();
+      }.call(null);
+      var google_protobuf_timestamp_pb = require_timestamp_pb();
+      goog2.object.extend(proto, google_protobuf_timestamp_pb);
+      goog2.exportSymbol("proto.barkfluff.fast.auth.AcceptFastAuthRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.fast.auth.AcceptFastAuthResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.fast.auth.FastAuthResult", null, global2);
+      goog2.exportSymbol("proto.barkfluff.fast.auth.FastAuthStatus", null, global2);
+      goog2.exportSymbol("proto.barkfluff.fast.auth.FastAuthToken", null, global2);
+      goog2.exportSymbol("proto.barkfluff.fast.auth.GenerateFastAuthTokenRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.fast.auth.GenerateFastAuthTokenResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.fast.auth.GetFastAuthInfoRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.fast.auth.GetFastAuthInfoResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.fast.auth.RejectFastAuthRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.fast.auth.RejectFastAuthResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.fast.auth.ScanFastAuthRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.fast.auth.ScanFastAuthResponse", null, global2);
+      goog2.exportSymbol("proto.barkfluff.fast.auth.SubscribeFastAuthResultRequest", null, global2);
+      goog2.exportSymbol("proto.barkfluff.fast.auth.TokenFormat", null, global2);
+      proto.barkfluff.fast.auth.GenerateFastAuthTokenRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.fast.auth.GenerateFastAuthTokenRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.fast.auth.GenerateFastAuthTokenRequest.displayName = "proto.barkfluff.fast.auth.GenerateFastAuthTokenRequest";
+      }
+      proto.barkfluff.fast.auth.GenerateFastAuthTokenResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.fast.auth.GenerateFastAuthTokenResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.fast.auth.GenerateFastAuthTokenResponse.displayName = "proto.barkfluff.fast.auth.GenerateFastAuthTokenResponse";
+      }
+      proto.barkfluff.fast.auth.SubscribeFastAuthResultRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.fast.auth.SubscribeFastAuthResultRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.fast.auth.SubscribeFastAuthResultRequest.displayName = "proto.barkfluff.fast.auth.SubscribeFastAuthResultRequest";
+      }
+      proto.barkfluff.fast.auth.FastAuthResult = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.fast.auth.FastAuthResult, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.fast.auth.FastAuthResult.displayName = "proto.barkfluff.fast.auth.FastAuthResult";
+      }
+      proto.barkfluff.fast.auth.ScanFastAuthRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.fast.auth.ScanFastAuthRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.fast.auth.ScanFastAuthRequest.displayName = "proto.barkfluff.fast.auth.ScanFastAuthRequest";
+      }
+      proto.barkfluff.fast.auth.ScanFastAuthResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.fast.auth.ScanFastAuthResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.fast.auth.ScanFastAuthResponse.displayName = "proto.barkfluff.fast.auth.ScanFastAuthResponse";
+      }
+      proto.barkfluff.fast.auth.AcceptFastAuthRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.fast.auth.AcceptFastAuthRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.fast.auth.AcceptFastAuthRequest.displayName = "proto.barkfluff.fast.auth.AcceptFastAuthRequest";
+      }
+      proto.barkfluff.fast.auth.AcceptFastAuthResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.fast.auth.AcceptFastAuthResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.fast.auth.AcceptFastAuthResponse.displayName = "proto.barkfluff.fast.auth.AcceptFastAuthResponse";
+      }
+      proto.barkfluff.fast.auth.RejectFastAuthRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.fast.auth.RejectFastAuthRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.fast.auth.RejectFastAuthRequest.displayName = "proto.barkfluff.fast.auth.RejectFastAuthRequest";
+      }
+      proto.barkfluff.fast.auth.RejectFastAuthResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.fast.auth.RejectFastAuthResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.fast.auth.RejectFastAuthResponse.displayName = "proto.barkfluff.fast.auth.RejectFastAuthResponse";
+      }
+      proto.barkfluff.fast.auth.GetFastAuthInfoRequest = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.fast.auth.GetFastAuthInfoRequest, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.fast.auth.GetFastAuthInfoRequest.displayName = "proto.barkfluff.fast.auth.GetFastAuthInfoRequest";
+      }
+      proto.barkfluff.fast.auth.GetFastAuthInfoResponse = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.fast.auth.GetFastAuthInfoResponse, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.fast.auth.GetFastAuthInfoResponse.displayName = "proto.barkfluff.fast.auth.GetFastAuthInfoResponse";
+      }
+      proto.barkfluff.fast.auth.FastAuthToken = function(opt_data) {
+        jspb2.Message.initialize(this, opt_data, 0, -1, null, null);
+      };
+      goog2.inherits(proto.barkfluff.fast.auth.FastAuthToken, jspb2.Message);
+      if (goog2.DEBUG && !COMPILED) {
+        proto.barkfluff.fast.auth.FastAuthToken.displayName = "proto.barkfluff.fast.auth.FastAuthToken";
+      }
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.fast.auth.GenerateFastAuthTokenRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.fast.auth.GenerateFastAuthTokenRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.fast.auth.GenerateFastAuthTokenRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            format: jspb2.Message.getFieldWithDefault(msg, 1, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.fast.auth.GenerateFastAuthTokenRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.fast.auth.GenerateFastAuthTokenRequest();
+        return proto.barkfluff.fast.auth.GenerateFastAuthTokenRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.fast.auth.GenerateFastAuthTokenRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {!proto.barkfluff.fast.auth.TokenFormat} */
+                reader.readEnum()
+              );
+              msg.setFormat(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.fast.auth.GenerateFastAuthTokenRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.fast.auth.GenerateFastAuthTokenRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.fast.auth.GenerateFastAuthTokenRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getFormat();
+        if (f2 !== 0) {
+          writer.writeEnum(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.fast.auth.GenerateFastAuthTokenRequest.prototype.getFormat = function() {
+        return (
+          /** @type {!proto.barkfluff.fast.auth.TokenFormat} */
+          jspb2.Message.getFieldWithDefault(this, 1, 0)
+        );
+      };
+      proto.barkfluff.fast.auth.GenerateFastAuthTokenRequest.prototype.setFormat = function(value) {
+        return jspb2.Message.setProto3EnumField(this, 1, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.fast.auth.GenerateFastAuthTokenResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.fast.auth.GenerateFastAuthTokenResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.fast.auth.GenerateFastAuthTokenResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            token: (f2 = msg.getToken()) && proto.barkfluff.fast.auth.FastAuthToken.toObject(includeInstance, f2),
+            fastAuthId: jspb2.Message.getFieldWithDefault(msg, 2, ""),
+            expiresAt: (f2 = msg.getExpiresAt()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f2)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.fast.auth.GenerateFastAuthTokenResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.fast.auth.GenerateFastAuthTokenResponse();
+        return proto.barkfluff.fast.auth.GenerateFastAuthTokenResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.fast.auth.GenerateFastAuthTokenResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = new proto.barkfluff.fast.auth.FastAuthToken();
+              reader.readMessage(value, proto.barkfluff.fast.auth.FastAuthToken.deserializeBinaryFromReader);
+              msg.setToken(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setFastAuthId(value);
+              break;
+            case 3:
+              var value = new google_protobuf_timestamp_pb.Timestamp();
+              reader.readMessage(value, google_protobuf_timestamp_pb.Timestamp.deserializeBinaryFromReader);
+              msg.setExpiresAt(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.fast.auth.GenerateFastAuthTokenResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.fast.auth.GenerateFastAuthTokenResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.fast.auth.GenerateFastAuthTokenResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getToken();
+        if (f2 != null) {
+          writer.writeMessage(
+            1,
+            f2,
+            proto.barkfluff.fast.auth.FastAuthToken.serializeBinaryToWriter
+          );
+        }
+        f2 = message.getFastAuthId();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+        f2 = message.getExpiresAt();
+        if (f2 != null) {
+          writer.writeMessage(
+            3,
+            f2,
+            google_protobuf_timestamp_pb.Timestamp.serializeBinaryToWriter
+          );
+        }
+      };
+      proto.barkfluff.fast.auth.GenerateFastAuthTokenResponse.prototype.getToken = function() {
+        return (
+          /** @type{?proto.barkfluff.fast.auth.FastAuthToken} */
+          jspb2.Message.getWrapperField(this, proto.barkfluff.fast.auth.FastAuthToken, 1)
+        );
+      };
+      proto.barkfluff.fast.auth.GenerateFastAuthTokenResponse.prototype.setToken = function(value) {
+        return jspb2.Message.setWrapperField(this, 1, value);
+      };
+      proto.barkfluff.fast.auth.GenerateFastAuthTokenResponse.prototype.clearToken = function() {
+        return this.setToken(void 0);
+      };
+      proto.barkfluff.fast.auth.GenerateFastAuthTokenResponse.prototype.hasToken = function() {
+        return jspb2.Message.getField(this, 1) != null;
+      };
+      proto.barkfluff.fast.auth.GenerateFastAuthTokenResponse.prototype.getFastAuthId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.fast.auth.GenerateFastAuthTokenResponse.prototype.setFastAuthId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      proto.barkfluff.fast.auth.GenerateFastAuthTokenResponse.prototype.getExpiresAt = function() {
+        return (
+          /** @type{?proto.google.protobuf.Timestamp} */
+          jspb2.Message.getWrapperField(this, google_protobuf_timestamp_pb.Timestamp, 3)
+        );
+      };
+      proto.barkfluff.fast.auth.GenerateFastAuthTokenResponse.prototype.setExpiresAt = function(value) {
+        return jspb2.Message.setWrapperField(this, 3, value);
+      };
+      proto.barkfluff.fast.auth.GenerateFastAuthTokenResponse.prototype.clearExpiresAt = function() {
+        return this.setExpiresAt(void 0);
+      };
+      proto.barkfluff.fast.auth.GenerateFastAuthTokenResponse.prototype.hasExpiresAt = function() {
+        return jspb2.Message.getField(this, 3) != null;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.fast.auth.SubscribeFastAuthResultRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.fast.auth.SubscribeFastAuthResultRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.fast.auth.SubscribeFastAuthResultRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            fastAuthId: jspb2.Message.getFieldWithDefault(msg, 1, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.fast.auth.SubscribeFastAuthResultRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.fast.auth.SubscribeFastAuthResultRequest();
+        return proto.barkfluff.fast.auth.SubscribeFastAuthResultRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.fast.auth.SubscribeFastAuthResultRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setFastAuthId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.fast.auth.SubscribeFastAuthResultRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.fast.auth.SubscribeFastAuthResultRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.fast.auth.SubscribeFastAuthResultRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getFastAuthId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.fast.auth.SubscribeFastAuthResultRequest.prototype.getFastAuthId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.fast.auth.SubscribeFastAuthResultRequest.prototype.setFastAuthId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.fast.auth.FastAuthResult.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.fast.auth.FastAuthResult.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.fast.auth.FastAuthResult.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            status: jspb2.Message.getFieldWithDefault(msg, 1, 0),
+            accessToken: jspb2.Message.getFieldWithDefault(msg, 2, ""),
+            accessTokenExpiresAt: (f2 = msg.getAccessTokenExpiresAt()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f2),
+            refreshToken: jspb2.Message.getFieldWithDefault(msg, 4, ""),
+            refreshTokenExpiresAt: (f2 = msg.getRefreshTokenExpiresAt()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f2)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.fast.auth.FastAuthResult.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.fast.auth.FastAuthResult();
+        return proto.barkfluff.fast.auth.FastAuthResult.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.fast.auth.FastAuthResult.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {!proto.barkfluff.fast.auth.FastAuthStatus} */
+                reader.readEnum()
+              );
+              msg.setStatus(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setAccessToken(value);
+              break;
+            case 3:
+              var value = new google_protobuf_timestamp_pb.Timestamp();
+              reader.readMessage(value, google_protobuf_timestamp_pb.Timestamp.deserializeBinaryFromReader);
+              msg.setAccessTokenExpiresAt(value);
+              break;
+            case 4:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setRefreshToken(value);
+              break;
+            case 5:
+              var value = new google_protobuf_timestamp_pb.Timestamp();
+              reader.readMessage(value, google_protobuf_timestamp_pb.Timestamp.deserializeBinaryFromReader);
+              msg.setRefreshTokenExpiresAt(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.fast.auth.FastAuthResult.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.fast.auth.FastAuthResult.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.fast.auth.FastAuthResult.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getStatus();
+        if (f2 !== 0) {
+          writer.writeEnum(
+            1,
+            f2
+          );
+        }
+        f2 = message.getAccessToken();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+        f2 = message.getAccessTokenExpiresAt();
+        if (f2 != null) {
+          writer.writeMessage(
+            3,
+            f2,
+            google_protobuf_timestamp_pb.Timestamp.serializeBinaryToWriter
+          );
+        }
+        f2 = message.getRefreshToken();
+        if (f2.length > 0) {
+          writer.writeString(
+            4,
+            f2
+          );
+        }
+        f2 = message.getRefreshTokenExpiresAt();
+        if (f2 != null) {
+          writer.writeMessage(
+            5,
+            f2,
+            google_protobuf_timestamp_pb.Timestamp.serializeBinaryToWriter
+          );
+        }
+      };
+      proto.barkfluff.fast.auth.FastAuthResult.prototype.getStatus = function() {
+        return (
+          /** @type {!proto.barkfluff.fast.auth.FastAuthStatus} */
+          jspb2.Message.getFieldWithDefault(this, 1, 0)
+        );
+      };
+      proto.barkfluff.fast.auth.FastAuthResult.prototype.setStatus = function(value) {
+        return jspb2.Message.setProto3EnumField(this, 1, value);
+      };
+      proto.barkfluff.fast.auth.FastAuthResult.prototype.getAccessToken = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.fast.auth.FastAuthResult.prototype.setAccessToken = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      proto.barkfluff.fast.auth.FastAuthResult.prototype.getAccessTokenExpiresAt = function() {
+        return (
+          /** @type{?proto.google.protobuf.Timestamp} */
+          jspb2.Message.getWrapperField(this, google_protobuf_timestamp_pb.Timestamp, 3)
+        );
+      };
+      proto.barkfluff.fast.auth.FastAuthResult.prototype.setAccessTokenExpiresAt = function(value) {
+        return jspb2.Message.setWrapperField(this, 3, value);
+      };
+      proto.barkfluff.fast.auth.FastAuthResult.prototype.clearAccessTokenExpiresAt = function() {
+        return this.setAccessTokenExpiresAt(void 0);
+      };
+      proto.barkfluff.fast.auth.FastAuthResult.prototype.hasAccessTokenExpiresAt = function() {
+        return jspb2.Message.getField(this, 3) != null;
+      };
+      proto.barkfluff.fast.auth.FastAuthResult.prototype.getRefreshToken = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 4, "")
+        );
+      };
+      proto.barkfluff.fast.auth.FastAuthResult.prototype.setRefreshToken = function(value) {
+        return jspb2.Message.setProto3StringField(this, 4, value);
+      };
+      proto.barkfluff.fast.auth.FastAuthResult.prototype.getRefreshTokenExpiresAt = function() {
+        return (
+          /** @type{?proto.google.protobuf.Timestamp} */
+          jspb2.Message.getWrapperField(this, google_protobuf_timestamp_pb.Timestamp, 5)
+        );
+      };
+      proto.barkfluff.fast.auth.FastAuthResult.prototype.setRefreshTokenExpiresAt = function(value) {
+        return jspb2.Message.setWrapperField(this, 5, value);
+      };
+      proto.barkfluff.fast.auth.FastAuthResult.prototype.clearRefreshTokenExpiresAt = function() {
+        return this.setRefreshTokenExpiresAt(void 0);
+      };
+      proto.barkfluff.fast.auth.FastAuthResult.prototype.hasRefreshTokenExpiresAt = function() {
+        return jspb2.Message.getField(this, 5) != null;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.fast.auth.ScanFastAuthRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.fast.auth.ScanFastAuthRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.fast.auth.ScanFastAuthRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            fastAuthId: jspb2.Message.getFieldWithDefault(msg, 1, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.fast.auth.ScanFastAuthRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.fast.auth.ScanFastAuthRequest();
+        return proto.barkfluff.fast.auth.ScanFastAuthRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.fast.auth.ScanFastAuthRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setFastAuthId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.fast.auth.ScanFastAuthRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.fast.auth.ScanFastAuthRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.fast.auth.ScanFastAuthRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getFastAuthId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.fast.auth.ScanFastAuthRequest.prototype.getFastAuthId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.fast.auth.ScanFastAuthRequest.prototype.setFastAuthId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.fast.auth.ScanFastAuthResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.fast.auth.ScanFastAuthResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.fast.auth.ScanFastAuthResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            deviceName: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            operationSystem: jspb2.Message.getFieldWithDefault(msg, 2, ""),
+            appName: jspb2.Message.getFieldWithDefault(msg, 3, ""),
+            appVersion: jspb2.Message.getFieldWithDefault(msg, 4, ""),
+            ipAddress: jspb2.Message.getFieldWithDefault(msg, 5, ""),
+            confirmationCode: jspb2.Message.getFieldWithDefault(msg, 6, ""),
+            expiresAt: (f2 = msg.getExpiresAt()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f2)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.fast.auth.ScanFastAuthResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.fast.auth.ScanFastAuthResponse();
+        return proto.barkfluff.fast.auth.ScanFastAuthResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.fast.auth.ScanFastAuthResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setDeviceName(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setOperationSystem(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setAppName(value);
+              break;
+            case 4:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setAppVersion(value);
+              break;
+            case 5:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setIpAddress(value);
+              break;
+            case 6:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setConfirmationCode(value);
+              break;
+            case 7:
+              var value = new google_protobuf_timestamp_pb.Timestamp();
+              reader.readMessage(value, google_protobuf_timestamp_pb.Timestamp.deserializeBinaryFromReader);
+              msg.setExpiresAt(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.fast.auth.ScanFastAuthResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.fast.auth.ScanFastAuthResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.fast.auth.ScanFastAuthResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getDeviceName();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getOperationSystem();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+        f2 = message.getAppName();
+        if (f2.length > 0) {
+          writer.writeString(
+            3,
+            f2
+          );
+        }
+        f2 = message.getAppVersion();
+        if (f2.length > 0) {
+          writer.writeString(
+            4,
+            f2
+          );
+        }
+        f2 = message.getIpAddress();
+        if (f2.length > 0) {
+          writer.writeString(
+            5,
+            f2
+          );
+        }
+        f2 = message.getConfirmationCode();
+        if (f2.length > 0) {
+          writer.writeString(
+            6,
+            f2
+          );
+        }
+        f2 = message.getExpiresAt();
+        if (f2 != null) {
+          writer.writeMessage(
+            7,
+            f2,
+            google_protobuf_timestamp_pb.Timestamp.serializeBinaryToWriter
+          );
+        }
+      };
+      proto.barkfluff.fast.auth.ScanFastAuthResponse.prototype.getDeviceName = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.fast.auth.ScanFastAuthResponse.prototype.setDeviceName = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.fast.auth.ScanFastAuthResponse.prototype.getOperationSystem = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.fast.auth.ScanFastAuthResponse.prototype.setOperationSystem = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      proto.barkfluff.fast.auth.ScanFastAuthResponse.prototype.getAppName = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 3, "")
+        );
+      };
+      proto.barkfluff.fast.auth.ScanFastAuthResponse.prototype.setAppName = function(value) {
+        return jspb2.Message.setProto3StringField(this, 3, value);
+      };
+      proto.barkfluff.fast.auth.ScanFastAuthResponse.prototype.getAppVersion = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 4, "")
+        );
+      };
+      proto.barkfluff.fast.auth.ScanFastAuthResponse.prototype.setAppVersion = function(value) {
+        return jspb2.Message.setProto3StringField(this, 4, value);
+      };
+      proto.barkfluff.fast.auth.ScanFastAuthResponse.prototype.getIpAddress = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 5, "")
+        );
+      };
+      proto.barkfluff.fast.auth.ScanFastAuthResponse.prototype.setIpAddress = function(value) {
+        return jspb2.Message.setProto3StringField(this, 5, value);
+      };
+      proto.barkfluff.fast.auth.ScanFastAuthResponse.prototype.getConfirmationCode = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 6, "")
+        );
+      };
+      proto.barkfluff.fast.auth.ScanFastAuthResponse.prototype.setConfirmationCode = function(value) {
+        return jspb2.Message.setProto3StringField(this, 6, value);
+      };
+      proto.barkfluff.fast.auth.ScanFastAuthResponse.prototype.getExpiresAt = function() {
+        return (
+          /** @type{?proto.google.protobuf.Timestamp} */
+          jspb2.Message.getWrapperField(this, google_protobuf_timestamp_pb.Timestamp, 7)
+        );
+      };
+      proto.barkfluff.fast.auth.ScanFastAuthResponse.prototype.setExpiresAt = function(value) {
+        return jspb2.Message.setWrapperField(this, 7, value);
+      };
+      proto.barkfluff.fast.auth.ScanFastAuthResponse.prototype.clearExpiresAt = function() {
+        return this.setExpiresAt(void 0);
+      };
+      proto.barkfluff.fast.auth.ScanFastAuthResponse.prototype.hasExpiresAt = function() {
+        return jspb2.Message.getField(this, 7) != null;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.fast.auth.AcceptFastAuthRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.fast.auth.AcceptFastAuthRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.fast.auth.AcceptFastAuthRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            fastAuthId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            confirmationCode: jspb2.Message.getFieldWithDefault(msg, 2, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.fast.auth.AcceptFastAuthRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.fast.auth.AcceptFastAuthRequest();
+        return proto.barkfluff.fast.auth.AcceptFastAuthRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.fast.auth.AcceptFastAuthRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setFastAuthId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setConfirmationCode(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.fast.auth.AcceptFastAuthRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.fast.auth.AcceptFastAuthRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.fast.auth.AcceptFastAuthRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getFastAuthId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getConfirmationCode();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.fast.auth.AcceptFastAuthRequest.prototype.getFastAuthId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.fast.auth.AcceptFastAuthRequest.prototype.setFastAuthId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.fast.auth.AcceptFastAuthRequest.prototype.getConfirmationCode = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.fast.auth.AcceptFastAuthRequest.prototype.setConfirmationCode = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.fast.auth.AcceptFastAuthResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.fast.auth.AcceptFastAuthResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.fast.auth.AcceptFastAuthResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.fast.auth.AcceptFastAuthResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.fast.auth.AcceptFastAuthResponse();
+        return proto.barkfluff.fast.auth.AcceptFastAuthResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.fast.auth.AcceptFastAuthResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.fast.auth.AcceptFastAuthResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.fast.auth.AcceptFastAuthResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.fast.auth.AcceptFastAuthResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.fast.auth.RejectFastAuthRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.fast.auth.RejectFastAuthRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.fast.auth.RejectFastAuthRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            fastAuthId: jspb2.Message.getFieldWithDefault(msg, 1, ""),
+            confirmationCode: jspb2.Message.getFieldWithDefault(msg, 2, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.fast.auth.RejectFastAuthRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.fast.auth.RejectFastAuthRequest();
+        return proto.barkfluff.fast.auth.RejectFastAuthRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.fast.auth.RejectFastAuthRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setFastAuthId(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setConfirmationCode(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.fast.auth.RejectFastAuthRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.fast.auth.RejectFastAuthRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.fast.auth.RejectFastAuthRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getFastAuthId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+        f2 = message.getConfirmationCode();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.fast.auth.RejectFastAuthRequest.prototype.getFastAuthId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.fast.auth.RejectFastAuthRequest.prototype.setFastAuthId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      proto.barkfluff.fast.auth.RejectFastAuthRequest.prototype.getConfirmationCode = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.fast.auth.RejectFastAuthRequest.prototype.setConfirmationCode = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.fast.auth.RejectFastAuthResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.fast.auth.RejectFastAuthResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.fast.auth.RejectFastAuthResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {};
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.fast.auth.RejectFastAuthResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.fast.auth.RejectFastAuthResponse();
+        return proto.barkfluff.fast.auth.RejectFastAuthResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.fast.auth.RejectFastAuthResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.fast.auth.RejectFastAuthResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.fast.auth.RejectFastAuthResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.fast.auth.RejectFastAuthResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.fast.auth.GetFastAuthInfoRequest.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.fast.auth.GetFastAuthInfoRequest.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.fast.auth.GetFastAuthInfoRequest.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            fastAuthId: jspb2.Message.getFieldWithDefault(msg, 1, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.fast.auth.GetFastAuthInfoRequest.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.fast.auth.GetFastAuthInfoRequest();
+        return proto.barkfluff.fast.auth.GetFastAuthInfoRequest.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.fast.auth.GetFastAuthInfoRequest.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setFastAuthId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.fast.auth.GetFastAuthInfoRequest.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.fast.auth.GetFastAuthInfoRequest.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.fast.auth.GetFastAuthInfoRequest.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getFastAuthId();
+        if (f2.length > 0) {
+          writer.writeString(
+            1,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.fast.auth.GetFastAuthInfoRequest.prototype.getFastAuthId = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 1, "")
+        );
+      };
+      proto.barkfluff.fast.auth.GetFastAuthInfoRequest.prototype.setFastAuthId = function(value) {
+        return jspb2.Message.setProto3StringField(this, 1, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.fast.auth.GetFastAuthInfoResponse.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.fast.auth.GetFastAuthInfoResponse.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.fast.auth.GetFastAuthInfoResponse.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            status: jspb2.Message.getFieldWithDefault(msg, 1, 0),
+            expiresAt: (f2 = msg.getExpiresAt()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f2),
+            userId: jspb2.Message.getFieldWithDefault(msg, 3, 0)
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.fast.auth.GetFastAuthInfoResponse.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.fast.auth.GetFastAuthInfoResponse();
+        return proto.barkfluff.fast.auth.GetFastAuthInfoResponse.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.fast.auth.GetFastAuthInfoResponse.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {!proto.barkfluff.fast.auth.FastAuthStatus} */
+                reader.readEnum()
+              );
+              msg.setStatus(value);
+              break;
+            case 2:
+              var value = new google_protobuf_timestamp_pb.Timestamp();
+              reader.readMessage(value, google_protobuf_timestamp_pb.Timestamp.deserializeBinaryFromReader);
+              msg.setExpiresAt(value);
+              break;
+            case 3:
+              var value = (
+                /** @type {number} */
+                reader.readInt64()
+              );
+              msg.setUserId(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.fast.auth.GetFastAuthInfoResponse.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.fast.auth.GetFastAuthInfoResponse.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.fast.auth.GetFastAuthInfoResponse.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getStatus();
+        if (f2 !== 0) {
+          writer.writeEnum(
+            1,
+            f2
+          );
+        }
+        f2 = message.getExpiresAt();
+        if (f2 != null) {
+          writer.writeMessage(
+            2,
+            f2,
+            google_protobuf_timestamp_pb.Timestamp.serializeBinaryToWriter
+          );
+        }
+        f2 = message.getUserId();
+        if (f2 !== 0) {
+          writer.writeInt64(
+            3,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.fast.auth.GetFastAuthInfoResponse.prototype.getStatus = function() {
+        return (
+          /** @type {!proto.barkfluff.fast.auth.FastAuthStatus} */
+          jspb2.Message.getFieldWithDefault(this, 1, 0)
+        );
+      };
+      proto.barkfluff.fast.auth.GetFastAuthInfoResponse.prototype.setStatus = function(value) {
+        return jspb2.Message.setProto3EnumField(this, 1, value);
+      };
+      proto.barkfluff.fast.auth.GetFastAuthInfoResponse.prototype.getExpiresAt = function() {
+        return (
+          /** @type{?proto.google.protobuf.Timestamp} */
+          jspb2.Message.getWrapperField(this, google_protobuf_timestamp_pb.Timestamp, 2)
+        );
+      };
+      proto.barkfluff.fast.auth.GetFastAuthInfoResponse.prototype.setExpiresAt = function(value) {
+        return jspb2.Message.setWrapperField(this, 2, value);
+      };
+      proto.barkfluff.fast.auth.GetFastAuthInfoResponse.prototype.clearExpiresAt = function() {
+        return this.setExpiresAt(void 0);
+      };
+      proto.barkfluff.fast.auth.GetFastAuthInfoResponse.prototype.hasExpiresAt = function() {
+        return jspb2.Message.getField(this, 2) != null;
+      };
+      proto.barkfluff.fast.auth.GetFastAuthInfoResponse.prototype.getUserId = function() {
+        return (
+          /** @type {number} */
+          jspb2.Message.getFieldWithDefault(this, 3, 0)
+        );
+      };
+      proto.barkfluff.fast.auth.GetFastAuthInfoResponse.prototype.setUserId = function(value) {
+        return jspb2.Message.setProto3IntField(this, 3, value);
+      };
+      if (jspb2.Message.GENERATE_TO_OBJECT) {
+        proto.barkfluff.fast.auth.FastAuthToken.prototype.toObject = function(opt_includeInstance) {
+          return proto.barkfluff.fast.auth.FastAuthToken.toObject(opt_includeInstance, this);
+        };
+        proto.barkfluff.fast.auth.FastAuthToken.toObject = function(includeInstance, msg) {
+          var f2, obj = {
+            format: jspb2.Message.getFieldWithDefault(msg, 1, 0),
+            value: jspb2.Message.getFieldWithDefault(msg, 2, "")
+          };
+          if (includeInstance) {
+            obj.$jspbMessageInstance = msg;
+          }
+          return obj;
+        };
+      }
+      proto.barkfluff.fast.auth.FastAuthToken.deserializeBinary = function(bytes) {
+        var reader = new jspb2.BinaryReader(bytes);
+        var msg = new proto.barkfluff.fast.auth.FastAuthToken();
+        return proto.barkfluff.fast.auth.FastAuthToken.deserializeBinaryFromReader(msg, reader);
+      };
+      proto.barkfluff.fast.auth.FastAuthToken.deserializeBinaryFromReader = function(msg, reader) {
+        while (reader.nextField()) {
+          if (reader.isEndGroup()) {
+            break;
+          }
+          var field = reader.getFieldNumber();
+          switch (field) {
+            case 1:
+              var value = (
+                /** @type {!proto.barkfluff.fast.auth.TokenFormat} */
+                reader.readEnum()
+              );
+              msg.setFormat(value);
+              break;
+            case 2:
+              var value = (
+                /** @type {string} */
+                reader.readString()
+              );
+              msg.setValue(value);
+              break;
+            default:
+              reader.skipField();
+              break;
+          }
+        }
+        return msg;
+      };
+      proto.barkfluff.fast.auth.FastAuthToken.prototype.serializeBinary = function() {
+        var writer = new jspb2.BinaryWriter();
+        proto.barkfluff.fast.auth.FastAuthToken.serializeBinaryToWriter(this, writer);
+        return writer.getResultBuffer();
+      };
+      proto.barkfluff.fast.auth.FastAuthToken.serializeBinaryToWriter = function(message, writer) {
+        var f2 = void 0;
+        f2 = message.getFormat();
+        if (f2 !== 0) {
+          writer.writeEnum(
+            1,
+            f2
+          );
+        }
+        f2 = message.getValue();
+        if (f2.length > 0) {
+          writer.writeString(
+            2,
+            f2
+          );
+        }
+      };
+      proto.barkfluff.fast.auth.FastAuthToken.prototype.getFormat = function() {
+        return (
+          /** @type {!proto.barkfluff.fast.auth.TokenFormat} */
+          jspb2.Message.getFieldWithDefault(this, 1, 0)
+        );
+      };
+      proto.barkfluff.fast.auth.FastAuthToken.prototype.setFormat = function(value) {
+        return jspb2.Message.setProto3EnumField(this, 1, value);
+      };
+      proto.barkfluff.fast.auth.FastAuthToken.prototype.getValue = function() {
+        return (
+          /** @type {string} */
+          jspb2.Message.getFieldWithDefault(this, 2, "")
+        );
+      };
+      proto.barkfluff.fast.auth.FastAuthToken.prototype.setValue = function(value) {
+        return jspb2.Message.setProto3StringField(this, 2, value);
+      };
+      proto.barkfluff.fast.auth.FastAuthStatus = {
+        FAST_AUTH_STATUS_UNKNOWN: 0,
+        FAST_AUTH_STATUS_PENDING: 1,
+        FAST_AUTH_STATUS_SCANNED: 2,
+        FAST_AUTH_STATUS_ACCEPTED: 3,
+        FAST_AUTH_STATUS_REJECTED: 4,
+        FAST_AUTH_STATUS_EXPIRED: 5
+      };
+      proto.barkfluff.fast.auth.TokenFormat = {
+        TOKEN_FORMAT_UNKNOWN: 0,
+        TOKEN_FORMAT_QR: 1,
+        TOKEN_FORMAT_TEXT: 2
+      };
+      goog2.object.extend(exports2, proto.barkfluff.fast.auth);
+    }
+  });
+
+  // Backend/BarkFluff.Web/scripts/.proto-tmp/fast_auth_api_grpc_web_pb.js
+  var require_fast_auth_api_grpc_web_pb = __commonJS({
+    "Backend/BarkFluff.Web/scripts/.proto-tmp/fast_auth_api_grpc_web_pb.js"(exports2, module2) {
+      var grpc = {};
+      grpc.web = require_grpc_web();
+      var google_protobuf_timestamp_pb = require_timestamp_pb();
+      var proto2 = {};
+      proto2.barkfluff = {};
+      proto2.barkfluff.fast = {};
+      proto2.barkfluff.fast.auth = require_fast_auth_api_pb();
+      proto2.barkfluff.fast.auth.FastAuthApiClient = function(hostname, credentials, options) {
+        if (!options) options = {};
+        options.format = "text";
+        this.client_ = new grpc.web.GrpcWebClientBase(options);
+        this.hostname_ = hostname.replace(/\/+$/, "");
+      };
+      proto2.barkfluff.fast.auth.FastAuthApiPromiseClient = function(hostname, credentials, options) {
+        if (!options) options = {};
+        options.format = "text";
+        this.client_ = new grpc.web.GrpcWebClientBase(options);
+        this.hostname_ = hostname.replace(/\/+$/, "");
+      };
+      var methodDescriptor_FastAuthApi_GenerateFastAuthToken = new grpc.web.MethodDescriptor(
+        "/barkfluff.fast.auth.FastAuthApi/GenerateFastAuthToken",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.fast.auth.GenerateFastAuthTokenRequest,
+        proto2.barkfluff.fast.auth.GenerateFastAuthTokenResponse,
+        /**
+         * @param {!proto.barkfluff.fast.auth.GenerateFastAuthTokenRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.fast.auth.GenerateFastAuthTokenResponse.deserializeBinary
+      );
+      proto2.barkfluff.fast.auth.FastAuthApiClient.prototype.generateFastAuthToken = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.fast.auth.FastAuthApi/GenerateFastAuthToken",
+          request,
+          metadata || {},
+          methodDescriptor_FastAuthApi_GenerateFastAuthToken,
+          callback
+        );
+      };
+      proto2.barkfluff.fast.auth.FastAuthApiPromiseClient.prototype.generateFastAuthToken = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.fast.auth.FastAuthApi/GenerateFastAuthToken",
+          request,
+          metadata || {},
+          methodDescriptor_FastAuthApi_GenerateFastAuthToken
+        );
+      };
+      var methodDescriptor_FastAuthApi_SubscribeFastAuthResult = new grpc.web.MethodDescriptor(
+        "/barkfluff.fast.auth.FastAuthApi/SubscribeFastAuthResult",
+        grpc.web.MethodType.SERVER_STREAMING,
+        proto2.barkfluff.fast.auth.SubscribeFastAuthResultRequest,
+        proto2.barkfluff.fast.auth.FastAuthResult,
+        /**
+         * @param {!proto.barkfluff.fast.auth.SubscribeFastAuthResultRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.fast.auth.FastAuthResult.deserializeBinary
+      );
+      proto2.barkfluff.fast.auth.FastAuthApiClient.prototype.subscribeFastAuthResult = function(request, metadata) {
+        return this.client_.serverStreaming(
+          this.hostname_ + "/barkfluff.fast.auth.FastAuthApi/SubscribeFastAuthResult",
+          request,
+          metadata || {},
+          methodDescriptor_FastAuthApi_SubscribeFastAuthResult
+        );
+      };
+      proto2.barkfluff.fast.auth.FastAuthApiPromiseClient.prototype.subscribeFastAuthResult = function(request, metadata) {
+        return this.client_.serverStreaming(
+          this.hostname_ + "/barkfluff.fast.auth.FastAuthApi/SubscribeFastAuthResult",
+          request,
+          metadata || {},
+          methodDescriptor_FastAuthApi_SubscribeFastAuthResult
+        );
+      };
+      var methodDescriptor_FastAuthApi_ScanFastAuth = new grpc.web.MethodDescriptor(
+        "/barkfluff.fast.auth.FastAuthApi/ScanFastAuth",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.fast.auth.ScanFastAuthRequest,
+        proto2.barkfluff.fast.auth.ScanFastAuthResponse,
+        /**
+         * @param {!proto.barkfluff.fast.auth.ScanFastAuthRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.fast.auth.ScanFastAuthResponse.deserializeBinary
+      );
+      proto2.barkfluff.fast.auth.FastAuthApiClient.prototype.scanFastAuth = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.fast.auth.FastAuthApi/ScanFastAuth",
+          request,
+          metadata || {},
+          methodDescriptor_FastAuthApi_ScanFastAuth,
+          callback
+        );
+      };
+      proto2.barkfluff.fast.auth.FastAuthApiPromiseClient.prototype.scanFastAuth = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.fast.auth.FastAuthApi/ScanFastAuth",
+          request,
+          metadata || {},
+          methodDescriptor_FastAuthApi_ScanFastAuth
+        );
+      };
+      var methodDescriptor_FastAuthApi_AcceptFastAuth = new grpc.web.MethodDescriptor(
+        "/barkfluff.fast.auth.FastAuthApi/AcceptFastAuth",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.fast.auth.AcceptFastAuthRequest,
+        proto2.barkfluff.fast.auth.AcceptFastAuthResponse,
+        /**
+         * @param {!proto.barkfluff.fast.auth.AcceptFastAuthRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.fast.auth.AcceptFastAuthResponse.deserializeBinary
+      );
+      proto2.barkfluff.fast.auth.FastAuthApiClient.prototype.acceptFastAuth = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.fast.auth.FastAuthApi/AcceptFastAuth",
+          request,
+          metadata || {},
+          methodDescriptor_FastAuthApi_AcceptFastAuth,
+          callback
+        );
+      };
+      proto2.barkfluff.fast.auth.FastAuthApiPromiseClient.prototype.acceptFastAuth = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.fast.auth.FastAuthApi/AcceptFastAuth",
+          request,
+          metadata || {},
+          methodDescriptor_FastAuthApi_AcceptFastAuth
+        );
+      };
+      var methodDescriptor_FastAuthApi_RejectFastAuth = new grpc.web.MethodDescriptor(
+        "/barkfluff.fast.auth.FastAuthApi/RejectFastAuth",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.fast.auth.RejectFastAuthRequest,
+        proto2.barkfluff.fast.auth.RejectFastAuthResponse,
+        /**
+         * @param {!proto.barkfluff.fast.auth.RejectFastAuthRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.fast.auth.RejectFastAuthResponse.deserializeBinary
+      );
+      proto2.barkfluff.fast.auth.FastAuthApiClient.prototype.rejectFastAuth = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.fast.auth.FastAuthApi/RejectFastAuth",
+          request,
+          metadata || {},
+          methodDescriptor_FastAuthApi_RejectFastAuth,
+          callback
+        );
+      };
+      proto2.barkfluff.fast.auth.FastAuthApiPromiseClient.prototype.rejectFastAuth = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.fast.auth.FastAuthApi/RejectFastAuth",
+          request,
+          metadata || {},
+          methodDescriptor_FastAuthApi_RejectFastAuth
+        );
+      };
+      proto2.barkfluff.fast.auth.FastAuthServerApiClient = function(hostname, credentials, options) {
+        if (!options) options = {};
+        options.format = "text";
+        this.client_ = new grpc.web.GrpcWebClientBase(options);
+        this.hostname_ = hostname.replace(/\/+$/, "");
+      };
+      proto2.barkfluff.fast.auth.FastAuthServerApiPromiseClient = function(hostname, credentials, options) {
+        if (!options) options = {};
+        options.format = "text";
+        this.client_ = new grpc.web.GrpcWebClientBase(options);
+        this.hostname_ = hostname.replace(/\/+$/, "");
+      };
+      var methodDescriptor_FastAuthServerApi_GetFastAuthInfo = new grpc.web.MethodDescriptor(
+        "/barkfluff.fast.auth.FastAuthServerApi/GetFastAuthInfo",
+        grpc.web.MethodType.UNARY,
+        proto2.barkfluff.fast.auth.GetFastAuthInfoRequest,
+        proto2.barkfluff.fast.auth.GetFastAuthInfoResponse,
+        /**
+         * @param {!proto.barkfluff.fast.auth.GetFastAuthInfoRequest} request
+         * @return {!Uint8Array}
+         */
+        function(request) {
+          return request.serializeBinary();
+        },
+        proto2.barkfluff.fast.auth.GetFastAuthInfoResponse.deserializeBinary
+      );
+      proto2.barkfluff.fast.auth.FastAuthServerApiClient.prototype.getFastAuthInfo = function(request, metadata, callback) {
+        return this.client_.rpcCall(
+          this.hostname_ + "/barkfluff.fast.auth.FastAuthServerApi/GetFastAuthInfo",
+          request,
+          metadata || {},
+          methodDescriptor_FastAuthServerApi_GetFastAuthInfo,
+          callback
+        );
+      };
+      proto2.barkfluff.fast.auth.FastAuthServerApiPromiseClient.prototype.getFastAuthInfo = function(request, metadata) {
+        return this.client_.unaryCall(
+          this.hostname_ + "/barkfluff.fast.auth.FastAuthServerApi/GetFastAuthInfo",
+          request,
+          metadata || {},
+          methodDescriptor_FastAuthServerApi_GetFastAuthInfo
+        );
+      };
+      module2.exports = proto2.barkfluff.fast.auth;
+    }
+  });
+
+  // Backend/BarkFluff.Web/scripts/.proto-tmp/index.js
   var require_index = __commonJS({
-    "scripts/.proto-tmp/index.js"(exports2, module2) {
+    "Backend/BarkFluff.Web/scripts/.proto-tmp/index.js"(exports2, module2) {
       var jspb2 = require_google_protobuf();
       var grpcWeb = require_grpc_web();
       var sharedPb = require_shared_pb();
@@ -33875,6 +35283,8 @@ var BarkFluffBundle = (() => {
       var updatesSvc = require_updates_api_grpc_web_pb();
       var onlinerPb = require_onliner_api_pb();
       var onlinerSvc = require_onliner_api_grpc_web_pb();
+      var fastAuthPb = require_fast_auth_api_pb();
+      var fastAuthSvc = require_fast_auth_api_grpc_web_pb();
       var barkfluff = {
         grpcWeb,
         proto: typeof proto !== "undefined" ? proto : globalThis.proto || {},
@@ -33889,7 +35299,9 @@ var BarkFluffBundle = (() => {
         UpdatesApiClient: updatesSvc.UpdatesApiClient || updatesSvc.UpdatesApiPromiseClient,
         UpdatesApiPromiseClient: updatesSvc.UpdatesApiPromiseClient,
         OnlinerApiClient: onlinerSvc.OnlinerApiClient || onlinerSvc.OnlinerApiPromiseClient,
-        OnlinerApiPromiseClient: onlinerSvc.OnlinerApiPromiseClient
+        OnlinerApiPromiseClient: onlinerSvc.OnlinerApiPromiseClient,
+        FastAuthApiClient: fastAuthSvc.FastAuthApiClient || fastAuthSvc.FastAuthApiPromiseClient,
+        FastAuthApiPromiseClient: fastAuthSvc.FastAuthApiPromiseClient
       };
       if (typeof window !== "undefined") window.barkfluff = barkfluff;
       module2.exports = barkfluff;

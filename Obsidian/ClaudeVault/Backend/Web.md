@@ -30,6 +30,7 @@ docker-compose -f docker-compose-dev.yml up web
 | `/barkfluff.files.FilesApi/{**catch-all}` | Files (7005) | gRPC/HTTP2 |
 | `/barkfluff.updates.UpdatesApi/{**catch-all}` | Updates (7015) | gRPC/HTTP2 |
 | `/barkfluff.onliner.OnlinerApi/{**catch-all}` | Onliner (7009) | gRPC/HTTP2 |
+| `/barkfluff.fast.auth.FastAuthApi/{**catch-all}` | FastAuth (7008) | gRPC/HTTP2 (server-streaming) |
 | `/api/files/upload/{uploadId}` | Files (7006) | HTTP/1.1 |
 
 ## Frontend JS Modules (`wwwroot/js/app/`)
@@ -41,7 +42,8 @@ docker-compose -f docker-compose-dev.yml up web
 
 **Страница логина** (index.html):
 - `auth.js` — login, refreshToken, getValidAccessToken
-- `login-page.js` — форма логина, OTP, проверка сессии
+- `login-page.js` — форма логина, OTP, проверка сессии, запуск/остановка QR-сессии при смене секции
+- `fast-auth.js` — `BF.fastAuth`: QR fast-auth логин (анонимный `GenerateFastAuthToken` + server-streaming `SubscribeFastAuthResult`), автоперезапуск при EXPIRED/REJECTED, отсчёт TTL 5 минут
 
 **Мессенджер** (messenger.html):
 - `clients.js` — gRPC-Web клиенты, authCall с auto-refresh
@@ -75,6 +77,21 @@ docker-compose -f docker-compose-dev.yml up web
 | onlineStream | OnlinerApi | SubscribeToOnlineStatus | Онлайн/оффлайн |
 
 Механизмы: exponential backoff (2с → 30с), page-visibility reconnection, keep-alive ping каждые 3с, tab title badge `(N)`, Browser Notification API, scroll-based mark-as-read.
+
+## QR Fast-Auth (`fast-auth.js`)
+
+QR-вход на странице логина — анонимный поток (без токена), повторяет шаблон [[Клиенты/Windows]] / [[Клиенты/MacOS]].
+
+| Шаг | RPC | Тип | Auth |
+|-----|-----|-----|------|
+| 1. Получить QR-PNG | `FastAuthApi.GenerateFastAuthToken({format: QR})` | unary | анонимно |
+| 2. Подписка на статус | `FastAuthApi.SubscribeFastAuthResult({fast_auth_id})` | server-streaming | анонимно |
+
+Метаданные устройства передаются в gRPC headers (`x-device-name`, `x-os-name`, `x-app-name`, `x-app-version`, `x-device-id`, `x-ip-address`, base64).
+
+Финальные статусы: `ACCEPTED` (получаем `access_token` + `refresh_token` → `BF.tokens.save` → редирект на `/messenger`), `REJECTED` (toast и автоперезапуск через 1с), `EXPIRED` (молчаливый перезапуск). На сетевой разрыв — exponential backoff (2с → 30с).
+
+YARP-маршрут `fast-auth` входит в `streamingServices` set — `ActivityTimeout: 24h`.
 
 ## Зависимости
 

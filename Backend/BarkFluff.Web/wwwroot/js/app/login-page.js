@@ -32,6 +32,15 @@
         loginSection.classList.toggle('hidden', name !== 'login');
         otpSection.classList.toggle('hidden', name !== 'otp');
         welcomeSection.classList.toggle('hidden', name !== 'welcome');
+
+        // QR-блок имеет смысл только на главной login-секции — на OTP/welcome скрываем
+        // и останавливаем стрим, чтобы не висел зря.
+        var qrCard = document.getElementById('fastAuthCard');
+        if (qrCard) qrCard.style.display = (name === 'login') ? '' : 'none';
+        if (BF.fastAuth) {
+            if (name === 'login') BF.fastAuth.start();
+            else BF.fastAuth.cancel();
+        }
     }
 
     function clearErrors() {
@@ -170,8 +179,14 @@
     if (BF.tokens.get()) {
         document.body.style.visibility = 'hidden';
         BF.auth.getValidAccessToken().then(function (token) {
-            if (token) window.location.href = '/messenger';
-            else document.body.style.visibility = '';
+            if (token) {
+                window.location.href = '/messenger';
+            } else {
+                document.body.style.visibility = '';
+                if (BF.fastAuth) BF.fastAuth.start();
+            }
         });
+    } else {
+        if (BF.fastAuth) BF.fastAuth.start();
     }
 })();
