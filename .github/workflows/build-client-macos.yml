@@ -76,6 +76,43 @@ jobs:
       - name: Установить xcbeautify и create-dmg
         run: brew install xcbeautify create-dmg
 
+      - name: Автоподнятие версии
+        run: |
+          RESPONSE=$(curl -sf "https://storage.barkfluff.com/get/barkfluffmacos/beta/version" || echo "")
+
+          if [ -n "$RESPONSE" ]; then
+            SERVER_VERSION=$(echo "$RESPONSE" | sed -nE 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p')
+          fi
+
+          if [ -z "$SERVER_VERSION" ]; then
+            SERVER_VERSION=$(grep -E '^[[:space:]]*MARKETING_VERSION' Barkfluff.xcodeproj/project.pbxproj | head -1 | sed -E 's/.*= ([^;]+);.*/\1/')
+          fi
+
+          # Стрипаем любой нечисловой суффикс (например " beta")
+          SERVER_VERSION=$(echo "$SERVER_VERSION" | grep -oE '^[0-9]+(\.[0-9]+){0,2}' | head -1)
+          [ -z "$SERVER_VERSION" ] && SERVER_VERSION="0.0.0"
+
+          # Нормализация до трёх частей (MARKETING_VERSION в pbxproj может быть "1.0")
+          DOTS=$(echo "$SERVER_VERSION" | tr -cd '.' | wc -c | tr -d ' ')
+          if [ "$DOTS" = "0" ]; then SERVER_VERSION="${SERVER_VERSION}.0.0"; fi
+          if [ "$DOTS" = "1" ]; then SERVER_VERSION="${SERVER_VERSION}.0"; fi
+
+          echo "Server version: $SERVER_VERSION"
+
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            MAJOR=$(echo "$SERVER_VERSION" | cut -d. -f1)
+            MINOR=$(echo "$SERVER_VERSION" | cut -d. -f2)
+            PATCH=$(echo "$SERVER_VERSION" | cut -d. -f3)
+            PATCH=$((PATCH + 1))
+            NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          else
+            NEW_VERSION="$SERVER_VERSION"
+          fi
+
+          echo "New version: $NEW_VERSION"
+
+          sed -i '' -E "s/MARKETING_VERSION = [^;]+;/MARKETING_VERSION = ${NEW_VERSION};/g" Barkfluff.xcodeproj/project.pbxproj
+
       - name: Archive (без подписи)
         run: |
           set -o pipefail
