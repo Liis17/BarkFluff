@@ -21,6 +21,11 @@
 |------|-----------|
 | `App/DI/DependencyContainer.swift` | Главный DI-контейнер — создаёт и связывает все репозитории, кеши, интерсепторы и сервисы; хранит `currentUser` |
 | `App/Models/TokenStorageSettings.swift` | Модель настроек хранилища токенов (Keychain vs UserDefaults) |
+| `App/Notifications/NotificationService.swift` | Подписка на `UpdatesService.getNewMessagesStream`, постинг системных баннеров через `UNUserNotificationCenter` |
+| `App/Notifications/NotificationContentBuilder.swift` | Сборка `UNNotificationRequest` из `NewMessageEvent` (+ сводка по вложениям с эмодзи) |
+| `App/Notifications/NotificationDelegate.swift` | `UNUserNotificationCenterDelegate` — клик по баннеру открывает чат и фокусирует приложение |
+| `App/Notifications/NotificationSettings.swift` | `@Observable`-обёртка над `UserDefaults` (показывать уведомления / звук) |
+| `App/Notifications/AppFocusState.swift` | Состояние фокуса приложения (`NSApplication.isActive`) для решения «показывать ли уведомление» |
 
 ---
 
@@ -48,10 +53,12 @@
 | `DesignSystem/Typography.swift` | Стили шрифтов |
 | `DesignSystem/Components/AvatarView.swift` | Переиспользуемый компонент аватара пользователя/чата (Nuke) |
 | `DesignSystem/Components/BadgeView.swift` | Компонент бейджа пользователя |
+| `DesignSystem/Components/CachedImageView.swift` | Универсальный кеширующий image-view (Nuke) — используется в чатах и медиа |
 | `DesignSystem/Components/ErrorBannerView.swift` | Баннер ошибки (отображается поверх UI) |
 | `DesignSystem/Components/FlowLayout.swift` | Flow layout для тегов/бейджей |
 | `DesignSystem/Components/LoadingView.swift` | Индикатор загрузки |
 | `DesignSystem/Components/OnlineStatusText.swift` | Текстовый индикатор онлайн-статуса |
+| `DesignSystem/Components/RefreshingIndicatorView.swift` | Индикатор фонового обновления списка |
 | `DesignSystem/Components/UnreadBadgeView.swift` | Бейдж непрочитанных сообщений |
 | `DesignSystem/LiquidGlass/GlassButtonStyle.swift` | `.buttonStyle(.glass)` / `.buttonStyle(.glassProminent)` — macOS 26 glass-кнопки |
 | `DesignSystem/LiquidGlass/GlassCardView.swift` | Карточка с glass-эффектом |
@@ -71,7 +78,9 @@
 | `Auth/ViewModels/ServerSelectionViewModel.swift` | VM выбора сервера: запрос к Navigator, список доступных серверов |
 | `Auth/ViewModels/Validators/*.swift` | Валидаторы: Email, Name, OTPCode, Password, Username |
 | `Auth/Views/LoginView.swift` | Экран входа |
+| `Auth/Views/OTPVerificationView.swift` | Экран ввода OTP (логин с 2FA) |
 | `Auth/Views/RegisterView.swift` | Экран регистрации (многошаговый wizard) |
+| `Auth/Views/ServerCardView.swift` | Карточка сервера в списке доступных серверов |
 | `Auth/Views/ServerSelectionView.swift` | Экран выбора BarkFluff-сервера |
 | `Auth/Views/Steps/*.swift` | Отдельные шаги регистрации: Email, Password, Username, PersonalInfo, ConfirmEmail, Avatar, Bio, Completion, TwoFA |
 | `Auth/Components/OTPInputView.swift` | Компонент ввода OTP-кода |
@@ -86,6 +95,8 @@
 |------|-----------|
 | `ChatList/ViewModels/ChatListViewModel.swift` | VM списка чатов: загрузка, подписка на обновления, онлайн-статусы |
 | `ChatList/Views/ChatListView.swift` | Отображение списка чатов с превью последнего сообщения и бейджами |
+| `ChatList/Views/ChatRowView.swift` | Строка чата (аватар, имя, превью, бейдж, онлайн-статус через `.task(id:)`) |
+| `ChatList/Views/UserSearchRowView.swift` | Строка результата поиска пользователя в списке чатов |
 
 ---
 
@@ -93,9 +104,13 @@
 
 | Файл | Назначение |
 |------|-----------|
-| `Conversation/ViewModels/ConversationViewModel.swift` | VM диалога: загрузка сообщений, отправка, стриминг, вложения, пагинация |
+| `Conversation/ViewModels/ConversationViewModel.swift` | VM диалога: загрузка сообщений, отправка, стриминг, вложения, пагинация, `pendingReply` для Telegram-style ответа |
+| `Conversation/ViewModels/ForwardChatPickerViewModel.swift` | VM пикера чатов для пересылки: snapshot чатов, поиск, мультивыбор `selectedChatIDs`, `commentText`, параллельная отправка через `withTaskGroup` |
 | `Conversation/Views/ConversationView.swift` | Основной экран диалога |
-| `Conversation/Views/MessageBubbleView.swift` | Пузырь сообщения с текстом и вложениями |
+| `Conversation/Views/ForwardChatPickerView.swift` | Sheet мультивыбора чатов для пересылки (только аватары + имена + checkmark, внизу TextField + send) |
+| `Conversation/Views/ForwardedMessageView.swift` | Отрисовка пересланного сообщения внутри пузыря (вертикальная полоса, имя автора, текст, мини-вложения) |
+| `Conversation/Views/ReplyPreviewView.swift` | Превью ответа над `MessageInputView` (полоса + автор + snippet + кнопка ×). Хелпер `makeSnippet` |
+| `Conversation/Views/MessageBubbleView.swift` | Пузырь сообщения с текстом и вложениями (контекстное меню Reply/Forward; для Forward использует `Message.forwardSourceID`) |
 | `Conversation/Views/MessagesListView.swift` | Список сообщений с группировкой по дате |
 | `Conversation/Views/MessageAttachmentView.swift` | Отображение одного вложения в пузыре |
 | `Conversation/Views/MessageInputView.swift` | Поле ввода сообщения с кнопками вложений |
@@ -128,7 +143,6 @@
 | `Conversation/Helpers/MessageGrouper.swift` | Группировка сообщений по дате и автору |
 | `Conversation/Helpers/ScrollPositionManager.swift` | Управление позицией прокрутки, автоскролл |
 | `Conversation/Models/SelectedAttachment.swift` | Модель выбранного для отправки вложения |
-| `Conversation/Extensions/MessageAttachmentExtensions.swift` | Расширения модели вложения |
 
 ---
 
@@ -178,11 +192,23 @@
 
 | Файл | Назначение |
 |------|-----------|
-| `Settings/ViewModels/SettingsViewModel.swift` | VM настроек: управление сессиями, безопасностью, выход |
-| `Settings/Views/SettingsView.swift` | Основной экран настроек |
+| `Settings/ViewModels/SettingsViewModel.swift` | Главный VM настроек: управление сессиями, безопасностью, выход |
+| `Settings/ViewModels/AboutServerSettingsViewModel.swift` | VM раздела «О сервере»: версии, статус, статистика |
+| `Settings/ViewModels/CacheSettingsViewModel.swift` | VM управления локальным кешем: размеры, очистка |
+| `Settings/ViewModels/CloudSettingsViewModel.swift` | VM облачного хранилища: использование, лимиты |
+| `Settings/Views/SettingsView.swift` | Корневой экран настроек, переключение по `SettingsCategory` |
+| `Settings/Views/SettingsCategoryView.swift` | Контейнер-обёртка одной категории (заголовок, glass-стиль) |
 | `Settings/Views/SettingsPlaceholderView.swift` | Placeholder для пустых разделов настроек |
-| `Settings/Views/SecuritySettingsView.swift` | Настройки безопасности (2FA, смена пароля) |
-| `Settings/Views/SessionsView.swift` | Список активных сессий и их завершение |
+| `Settings/Views/GeneralSettingsView.swift` | Раздел «Общие» |
+| `Settings/Views/NotificationsSettingsView.swift` | Раздел «Уведомления» |
+| `Settings/Views/SecuritySettingsView.swift` | Раздел «Безопасность» (2FA, смена пароля) |
+| `Settings/Views/SessionsView.swift` | Раздел «Сессии» — список активных сессий и их завершение |
+| `Settings/Views/CacheSettingsView.swift` | Раздел «Кеш» — размеры по типам файлов, кнопки очистки |
+| `Settings/Views/CacheStackedBarView.swift` | Stacked-bar диаграмма распределения кеша по типам |
+| `Settings/Views/CloudSettingsView.swift` | Раздел «Облако» — использование S3-хранилища |
+| `Settings/Views/CloudStackedBarView.swift` | Stacked-bar диаграмма облачного хранилища |
+| `Settings/Views/AboutAppSettingsView.swift` | Раздел «О приложении» — версия, лицензии |
+| `Settings/Views/AboutServerSettingsView.swift` | Раздел «О сервере» — Beacon-инфо, версии сервиса |
 
 ---
 
@@ -275,6 +301,7 @@
 
 | Файл | Назначение |
 |------|-----------|
+| `BFCore.swift` | Корневой файл пакета (re-exports, точка входа) |
 | `Models/Chat.swift` | Модель чата |
 | `Models/Message.swift` | Модель сообщения с вложениями |
 | `Models/User.swift` | Модель пользователя |
@@ -290,17 +317,37 @@
 | `Mappers/UserMapper.swift` | Proto → User |
 | `Mappers/FileMapper.swift` | Proto → FileInfo |
 | `Cache/CacheProtocol.swift` | Протокол универсального кеша |
-| `Cache/InMemoryCache.swift` | Базовый in-memory кеш (actor) |
-| `Cache/FileCacheService.swift` | Кеш скачанных файлов на диске |
+| `Cache/InMemoryCache.swift` | Базовый in-memory кеш (actor, generic) |
+| `Cache/CacheStats.swift` | Статистика по кешу (размеры, кол-во записей по типам) |
+| `Cache/CachedFileType.swift` | Enum типов кешируемых файлов (image, video, audio, document) |
+| `Cache/MediaCacheManager.swift` | Менеджер дискового кеша медиа: запись, чтение, очистка |
+| `Cache/S3URLParser.swift` | Парсинг ключей/путей из presigned S3 URL |
 | `Cache/FileURLCache.swift` | Кеш URL файлов (presigned S3) |
 | `Cache/OnlineStatusCache.swift` | Кеш онлайн-статусов |
-| `Services/Protocols/*Protocol.swift` | Протоколы всех бизнес-сервисов |
+| `Database/Database.swift` | Обёртка GRDB: открытие БД, очереди, базовые операции |
+| `Database/Migrations.swift` | Миграции схемы SQLite |
+| `Database/DTO/SerializationDTO.swift` | DTO для сериализации сложных полей в БД (JSON-блобы) |
+| `Database/Records/CachedChatRecord.swift` | GRDB-запись чата |
+| `Database/Records/CachedMessageRecord.swift` | GRDB-запись сообщения |
+| `Database/Records/CachedFileRecord.swift` | GRDB-запись файла/вложения |
+| `Repositories/Local/LocalChatRepository.swift` | Чтение/запись чатов в персистентный кеш (GRDB) |
+| `Repositories/Local/LocalMessageRepository.swift` | Чтение/запись сообщений в персистентный кеш (GRDB) |
+| `Services/Protocols/AuthServiceProtocol.swift` | Протокол сервиса авторизации |
+| `Services/Protocols/ChatServiceProtocol.swift` | Протокол сервиса чатов |
+| `Services/Protocols/MessageServiceProtocol.swift` | Протокол сервиса сообщений |
+| `Services/Protocols/UserServiceProtocol.swift` | Протокол сервиса профилей |
+| `Services/Protocols/FileServiceProtocol.swift` | Протокол сервиса файлов |
+| `Services/Protocols/UpdatesServiceProtocol.swift` | Протокол real-time-стрима событий |
+| `Services/Protocols/OnlineStatusServiceProtocol.swift` | Протокол сервиса онлайн-статусов |
+| `Services/Protocols/FastAuthServiceProtocol.swift` | Протокол QR-авторизации |
+| `Services/Protocols/ServerDiscoveryServiceProtocol.swift` | Протокол обнаружения серверов |
+| `Services/Protocols/SharedMediaServiceProtocol.swift` | Протокол общих медиа |
 | `Services/Implementations/AuthService.swift` | Авторизация, регистрация, выход, рефреш |
-| `Services/Implementations/ChatService.swift` | Получение, создание чатов |
-| `Services/Implementations/MessageService.swift` | Отправка, загрузка истории, стриминг сообщений |
+| `Services/Implementations/ChatService.swift` | Получение, создание чатов (с локальным кешем GRDB) |
+| `Services/Implementations/MessageService.swift` | Отправка, загрузка истории, стриминг сообщений (с локальным кешем GRDB) |
 | `Services/Implementations/UserService.swift` | Получение/обновление профилей с кешированием |
 | `Services/Implementations/FileService.swift` | Загрузка/скачивание файлов через S3 |
-| `Services/Implementations/UpdatesService.swift` | Подписка и обработка real-time событий |
+| `Services/Implementations/UpdatesService.swift` | Подписка и обработка real-time событий (UpdatesStreamManager) |
 | `Services/Implementations/OnlineStatusService.swift` | Получение и отслеживание онлайн-статусов |
 | `Services/Implementations/FastAuthService.swift` | QR-авторизация |
 | `Services/Implementations/ServerDiscoveryService.swift` | Обнаружение и подключение к BarkFluff-серверу |

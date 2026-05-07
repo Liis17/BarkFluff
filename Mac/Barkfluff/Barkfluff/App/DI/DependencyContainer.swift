@@ -73,6 +73,13 @@ final class DependencyContainer {
     let updatesStreamManager: UpdatesStreamManager
     let onlinerStreamManager: OnlinerStreamManager
 
+    // MARK: - Notifications
+
+    let appFocusState: AppFocusState
+    let notificationSettings: NotificationSettings
+    let notificationService: NotificationService
+    let notificationDelegate: NotificationDelegate
+
     // MARK: - Settings
 
     /// ViewModel для настроек
@@ -225,6 +232,21 @@ final class DependencyContainer {
             streamManager: onlinerStreamManager,
             cache: onlineStatusCache
         )
+
+        // Notifications
+        self.appFocusState = AppFocusState()
+        self.notificationSettings = NotificationSettings()
+        self.notificationService = NotificationService(
+            updatesService: updatesService,
+            userService: userService,
+            chatService: chatService,
+            userCache: userCache,
+            chatCache: chatCache,
+            mediaCacheManager: mediaCacheManager,
+            appFocusState: appFocusState,
+            settings: notificationSettings
+        )
+        self.notificationDelegate = NotificationDelegate()
 
         // Устанавливаем интерсепторы после создания всех зависимостей
         // (нужен Task т.к. connectionManager — actor)

@@ -62,6 +62,17 @@ public struct Message: Identifiable, Hashable, Sendable {
     public func isReadBy(userID: Int64) -> Bool {
         readBy.contains(userID)
     }
+
+    /// id для пересылки. Если сообщение само пересланное —
+    /// возвращает id оригинала, иначе свой id.
+    public var forwardSourceID: Int64 {
+        for att in content.attachments where att.type == .forwardedMessage {
+            if let originalID = att.forwarded?.originalMessageID, originalID > 0 {
+                return originalID
+            }
+        }
+        return id
+    }
 }
 
 /// Контент сообщения

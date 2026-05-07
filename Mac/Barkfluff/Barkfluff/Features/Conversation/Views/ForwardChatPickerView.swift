@@ -2,15 +2,17 @@
 //  ForwardChatPickerView.swift
 //  Barkfluff
 //
-//  Sheet выбора чата для пересылки сообщения
+//  Sheet выбора чатов для пересылки сообщения.
+//  Мультивыбор + опциональный комментарий + кнопка отправки.
 //
 
 import SwiftUI
 import BFCore
 
-/// Sheet выбора целевого чата при пересылке сообщения.
+/// Sheet выбора целевых чатов при пересылке сообщения.
 struct ForwardChatPickerView: View {
     let messageID: Int64
+    /// Используется только для совместимости с существующим SheetType — фильтрацию по нему не делаем.
     let sourceChatID: String
 
     @Environment(\.dismiss) private var dismiss
@@ -18,7 +20,6 @@ struct ForwardChatPickerView: View {
     @Environment(DependencyContainer.self) private var container
 
     @State private var viewModel: ForwardChatPickerViewModel?
-    @State private var selectedChatID: String?
 
     var body: some View {
         NavigationStack {
@@ -30,28 +31,31 @@ struct ForwardChatPickerView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
-            .navigationTitle("Переслать сообщение")
+            .navigationTitle(navigationTitle)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Отмена") { dismiss() }
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Переслать") { performForward() }
-                        .disabled(selectedChatID == nil || (viewModel?.isSending ?? false))
-                }
             }
         }
-        .frame(minWidth: 380, minHeight: 480)
+        .frame(minWidth: 400, minHeight: 520)
         .task {
             if viewModel == nil {
                 viewModel = ForwardChatPickerViewModel(
                     allChats: coordinator.chatListViewModel?.chats ?? [],
                     messageService: container.messageService,
-                    messageID: messageID,
-                    sourceChatID: sourceChatID
+                    messageID: messageID
                 )
             }
         }
+    }
+
+    private var navigationTitle: String {
+        let count = viewModel?.selectedChatIDs.count ?? 0
+        if count > 0 {
+            return "Переслать (\(count))"
+        }
+        return "Переслать сообщение"
     }
 
     @ViewBuilder
@@ -64,52 +68,141 @@ struct ForwardChatPickerView: View {
                     description: Text("Сначала откройте любой чат, затем повторите попытку.")
                 )
             } else {
-                List(selection: $selectedChatID) {
-                    ForEach(viewModel.filteredChats) { chat in
-                        ChatRowView(
-                            chat: chat,
-                            currentUserID: container.currentUserID,
-                            onlineStatusService: container.onlineStatusService
-                        )
-                        .tag(chat.id)
-                    }
-                }
-                .listStyle(.inset)
-                .searchable(
-                    text: Bindable(viewModel).searchText,
-                    placement: .toolbar,
-                    prompt: "Поиск чата"
-                )
+                chatList(viewModel: viewModel)
             }
 
             if let error = viewModel.errorMessage {
                 Text(error)
                     .font(.caption)
                     .foregroundStyle(.red)
-                    .padding(Theme.Spacing.sm)
+                    .padding(.horizontal, Theme.Spacing.md)
+                    .padding(.top, Theme.Spacing.xs)
             }
 
-            if viewModel.isSending {
-                ProgressView()
-                    .padding(Theme.Spacing.sm)
-            }
+            Divider()
+
+            commentBar(viewModel: viewModel)
         }
     }
 
-    private func performForward() {
-        guard
-            let viewModel,
-            let targetID = selectedChatID,
-            let target = viewModel.allChats.first(where: { $0.id == targetID })
-        else { return }
+    @ViewBuilder
+    private func chatList(viewModel: ForwardChatPickerViewModel) -> some View {
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                ForEach(viewModel.filteredChats) { chat in
+                    ForwardChatRow(
+                        chat: chat,
+                        isSelected: viewModel.selectedChatIDs.contains(chat.id)
+                    ) {
+                        viewModel.toggle(chatID: chat.id)
+                    }
+                    Divider()
+                        .padding(.leading, 60)
+                }
+            }
+        }
+        .searchable(
+            text: Bindable(viewModel).searchText,
+            placement: .toolbar,
+            prompt: "Поиск чата"
+        )
+    }
 
+    @ViewBuilder
+    private func commentBar(viewModel: ForwardChatPickerViewModel) -> some View {
+        HStack(alignment: .center, spacing: Theme.Spacing.sm) {
+            HStack(alignment: .center, spacing: Theme.Spacing.xs) {
+                TextField("Комментарий…", text: Bindable(viewModel).commentText, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .lineLimit(1...4)
+                    .onSubmit { performForward(viewModel: viewModel) }
+            }
+            .padding(.horizontal, Theme.Spacing.md)
+            .padding(.vertical, Theme.Spacing.sm)
+            .glassEffect(.regular, in: .capsule)
+
+            Button {
+                performForward(viewModel: viewModel)
+            } label: {
+                Group {
+                    if viewModel.isSending {
+                        ProgressView()
+                            .controlSize(.small)
+                            .tint(.white)
+                    } else {
+                        Image(systemName: "paperplane.fill")
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.white)
+                    }
+                }
+                .frame(width: 36, height: 36)
+                .background(
+                    Circle()
+                        .fill(viewModel.canSend ? Color.accentColor : Color.gray.opacity(0.4))
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(!viewModel.canSend)
+            .help("Переслать в выбранные чаты")
+        }
+        .padding(.horizontal, Theme.Spacing.md)
+        .padding(.vertical, Theme.Spacing.sm)
+    }
+
+    private func performForward(viewModel: ForwardChatPickerViewModel) {
+        guard viewModel.canSend else { return }
         Task {
-            let success = await viewModel.forward(to: target)
-            if success {
-                // lastMessage в sidebar обновится через real-time стрим NewMessages
+            let result = await viewModel.forwardToSelected()
+            if result.success > 0 {
                 dismiss()
             }
         }
+    }
+}
+
+/// Строка чата в модалке пересылки: только аватар, имя и галочка.
+private struct ForwardChatRow: View {
+    let chat: Chat
+    let isSelected: Bool
+    let onTap: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: Theme.Spacing.md) {
+                AvatarView(
+                    imageURL: chat.pictureURL,
+                    initials: chat.avatarInitials,
+                    size: 40
+                )
+
+                Text(chat.title)
+                    .font(.body)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(isSelected ? Color.accentColor : .secondary.opacity(0.5))
+            }
+            .padding(.horizontal, Theme.Spacing.md)
+            .padding(.vertical, Theme.Spacing.sm)
+            .contentShape(Rectangle())
+            .background {
+                if isSelected {
+                    Color.accentColor.opacity(0.08)
+                } else if isHovered {
+                    Color.gray.opacity(0.08)
+                } else {
+                    Color.clear
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
     }
 }
 

@@ -30,17 +30,29 @@ struct RootView: View {
             }
         }
         .task {
+            // Один раз — устанавливаем делегат и спрашиваем разрешение.
+            container.notificationDelegate.coordinator = coordinator
+            coordinator.notificationService = container.notificationService
+            await container.notificationService.setupNotificationCenter(
+                delegate: container.notificationDelegate
+            )
+
             await coordinator.onAppLaunch(
                 serverDiscovery: container.serverDiscoveryService,
                 authService: container.authService
             )
         }
         .onChange(of: coordinator.currentState) { _, newState in
-            // Загружаем данные пользователя при переходе в main
             if newState == .main {
                 Task {
                     await container.loadCurrentUser()
+                    await container.notificationService.start(
+                        coordinator: coordinator,
+                        currentUserID: container.currentUserID
+                    )
                 }
+            } else {
+                Task { await container.notificationService.stop() }
             }
         }
     }

@@ -84,6 +84,19 @@ struct ConversationView: View {
             // Слой 3: Плавающий ввод снизу
             VStack(spacing: 0) {
                 Spacer()
+
+                // Превью ответа (Telegram-style) — над инпутом
+                if let viewModel, let reply = viewModel.pendingReply {
+                    ReplyPreviewView(
+                        authorName: reply.senderName ?? "Сообщение",
+                        snippet: ReplyPreviewView.makeSnippet(reply),
+                        onCancel: { viewModel.clearPendingReply() }
+                    )
+                    .padding(.horizontal, Theme.Spacing.md)
+                    .padding(.bottom, Theme.Spacing.xs)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+
                 MessageInputView(
                     text: $messageText,
                     selectedAttachments: $selectedAttachments,
@@ -165,6 +178,7 @@ struct ConversationView: View {
         }
         .ignoresSafeArea(edges: .top)
         .toolbarBackground(.hidden, for: .windowToolbar)
+        .animation(.spring(duration: 0.25), value: viewModel?.pendingReply?.id)
         .onPreferenceChange(HeaderHeightKey.self) { headerHeight = $0 }
         .onPreferenceChange(InputHeightKey.self) { inputHeight = $0 }
         // Обработка нажатия на медиа-вложение
@@ -237,8 +251,12 @@ struct ConversationView: View {
                 }
             }
         }
-        // Обработка Escape - очистить вложения если есть
+        // Обработка Escape: сначала ответ, затем вложения
         .onKeyPress(.escape) {
+            if viewModel?.pendingReply != nil {
+                viewModel?.clearPendingReply()
+                return .handled
+            }
             if !selectedAttachments.isEmpty {
                 selectedAttachments = []
                 return .handled
@@ -390,7 +408,7 @@ struct ConversationView: View {
                     viewModel.deleteFailedMessage(localID: localID)
                 },
                 onReply: { message in
-                    Task { await viewModel.replyToMessage(message) }
+                    viewModel.setPendingReply(message)
                 },
                 onForward: { messageID in
                     coordinator.presentedSheet = .forwardMessage(messageID: messageID, sourceChatID: chat.id)
