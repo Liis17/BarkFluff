@@ -29,7 +29,8 @@ struct ChatListView: View {
                     userService: container.userService,
                     updatesService: container.updatesService,
                     onlineStatusService: container.onlineStatusService,
-                    currentUserID: container.currentUserID
+                    currentUserID: container.currentUserID,
+                    localChatRepository: container.localChatRepository
                 )
                 // Устанавливаем замыкание для проверки активного чата
                 vm.isActiveChatChecker = { [weak coordinator] chatID in

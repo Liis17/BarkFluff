@@ -183,7 +183,9 @@ struct ConversationView: View {
                     try? await FileDownloadHelper.downloadToDownloads(
                         fileID: attachment.fileID,
                         fileName: attachment.fileName,
-                        fileService: container.fileService
+                        fileService: container.fileService,
+                        mediaCacheManager: container.mediaCacheManager,
+                        cacheType: attachment.type.cacheType
                     )
                 }
             }
@@ -424,7 +426,8 @@ struct ConversationView: View {
             onlineStatusService: container.onlineStatusService,
             fileService: container.fileService,
             currentUserID: container.currentUserID,
-            chatService: chat.isNewConversation ? container.chatService : nil
+            chatService: chat.isNewConversation ? container.chatService : nil,
+            localMessageRepository: container.localMessageRepository
         )
         vm.onMessageSent = { [weak coordinator] message in
             coordinator?.notifyMessageSent(chatID: chat.id, message: message)
