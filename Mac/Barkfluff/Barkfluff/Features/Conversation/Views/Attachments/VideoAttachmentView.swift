@@ -41,7 +41,9 @@ struct VideoAttachmentView: View {
                     try? await FileDownloadHelper.downloadToDownloads(
                         fileID: attachment.fileID,
                         fileName: attachment.fileName,
-                        fileService: container.fileService
+                        fileService: container.fileService,
+                        mediaCacheManager: container.mediaCacheManager,
+                        cacheType: attachment.type.cacheType
                     )
                 }
             } label: {
@@ -54,24 +56,18 @@ struct VideoAttachmentView: View {
 
     @ViewBuilder
     private var previewView: some View {
-        if let previewURL = resolvedPreviewURL {
-            LazyImage(url: previewURL) { state in
-                if let image = state.image {
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } else {
-                    placeholderView
-                }
-            }
-            .processors([.resize(size: targetSize)])
-        } else {
-            AsyncPreviewView(
-                previewFileID: previewFileID,
-                fileService: container.fileService,
-                targetSize: targetSize
-            )
-        }
+        CachedImageView(
+            fileID: previewCacheFileID,
+            type: .preview,
+            presignedURLHint: attachment.previewURL,
+            processors: [.resize(size: targetSize)],
+            content: { image in
+                image
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            },
+            placeholder: { placeholderView }
+        )
     }
 
     private var placeholderView: some View {
@@ -111,76 +107,19 @@ struct VideoAttachmentView: View {
 
     // MARK: - Private
 
-    private var resolvedPreviewURL: URL? {
-        if let previewURL = attachment.previewURL, !previewURL.isEmpty {
-            return URL(string: previewURL)
-        }
-        return nil
-    }
-
-    private var previewFileID: String {
+    private var previewCacheFileID: String {
         if let previewFileID = attachment.previewFileID, !previewFileID.isEmpty {
             return previewFileID
+        }
+        if let previewURL = attachment.previewURL,
+           let fid = S3URLParser.fileID(from: previewURL) {
+            return fid
         }
         return attachment.fileID
     }
 
-    /// Извлечь длительность из имени файла или метаданных
-    /// (в реальном приложении должно приходить с бэкенда)
     private var attachmentDuration: String? {
-        // Пока заглушка - в реальности должно быть в attachment.metadata
         return nil
-    }
-}
-
-// MARK: - Async Preview Loader
-
-private struct AsyncPreviewView: View {
-    let previewFileID: String
-    let fileService: FileServiceProtocol
-    let targetSize: CGSize
-
-    @State private var previewURL: URL?
-
-    var body: some View {
-        Group {
-            if let url = previewURL {
-                LazyImage(url: url) { state in
-                    if let image = state.image {
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } else {
-                        placeholderView
-                    }
-                }
-                .processors([.resize(size: targetSize)])
-            } else {
-                placeholderView
-            }
-        }
-        .task {
-            await loadPreviewURL()
-        }
-    }
-
-    private func loadPreviewURL() async {
-        do {
-            let urlString = try await fileService.getDownloadURL(fileID: previewFileID)
-            previewURL = URL(string: urlString)
-        } catch {
-            // Ignore
-        }
-    }
-
-    private var placeholderView: some View {
-        RoundedRectangle(cornerRadius: MessageBubbleView.bubbleCornerRadius, style: .continuous)
-            .fill(.fill.tertiary)
-            .overlay {
-                Image(systemName: "video.fill")
-                    .font(.largeTitle)
-                    .foregroundStyle(.secondary)
-            }
     }
 }
 
