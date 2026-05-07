@@ -203,12 +203,14 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
      * @param fileType Тип файла
      * @param fileName Опциональное оригинальное имя файла (с расширением). Если задано вместе с mimeType — будут использованы вместо хардкод-значений.
      * @param mimeType Опциональный MIME-тип файла.
+     * @param onProgress Колбек прогресса (0..100), вызывается из Dispatchers.IO во время записи тела запроса.
      */
     suspend fun uploadFile(
         jpegImageBytes: ByteArray,
         fileType: barkfluff.files.FilesApiOuterClass.UploadFileType,
         fileName: String? = null,
-        mimeType: String? = null
+        mimeType: String? = null,
+        onProgress: (Int) -> Unit = {}
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
             if (grpcManager.filesClient == null) {
@@ -269,7 +271,24 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
                 writer.write("Content-Type: $uploadContentType\r\n")
                 writer.write("\r\n")
                 writer.flush()
-                out.write(jpegImageBytes)
+
+                // Записываем тело чанками, чтобы отслеживать прогресс
+                val total = jpegImageBytes.size
+                if (total > 0) {
+                    val chunk = 64 * 1024
+                    var written = 0
+                    var lastReported = -1
+                    while (written < total) {
+                        val len = minOf(chunk, total - written)
+                        out.write(jpegImageBytes, written, len)
+                        written += len
+                        val pct = (written.toLong() * 100L / total.toLong()).toInt()
+                        if (pct != lastReported) {
+                            try { onProgress(pct) } catch (_: Throwable) {}
+                            lastReported = pct
+                        }
+                    }
+                }
                 out.flush()
                 writer.write("\r\n")
                 writer.write("--$boundary--\r\n")
