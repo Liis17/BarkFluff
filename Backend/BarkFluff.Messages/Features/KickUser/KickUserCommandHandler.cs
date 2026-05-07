@@ -58,7 +58,7 @@ public class KickUserCommandHandler : IRequestHandler<KickUserCommand>
             throw new IsNotGroupChatException();
         }
 
-        var chatMember = chatInfo.Members!.FirstOrDefault(x => x.Id == request.UserId);
+        var chatMember = chatInfo.Members!.FirstOrDefault(x => x.UserId == request.UserId);
 
         if (chatMember == null)
         {
@@ -109,12 +109,12 @@ public class KickUserCommandHandler : IRequestHandler<KickUserCommand>
             Type = MessageContentType.System
         };
 
+        kickSystemMessage = await _messagesStorage.AddMessage(kickSystemMessage);
+
         _logger.LogDebug("Отправка системного сообщения об исключении пользователя");
 
         await _messageQueueSender.SendMessage(kickSystemMessage, request.ChatId, chatInfo.Members!
             .Select(x => x.UserId).ToList());
-
-        await _messagesStorage.AddMessage(kickSystemMessage);
 
         _logger.LogInformation(
             "Пользователь {KickedUser} ({KickedUserId}) успешно исключен из чата {ChatId} администратором {AdminUser} ({AdminId})",

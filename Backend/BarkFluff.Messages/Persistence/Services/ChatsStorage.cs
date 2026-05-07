@@ -79,14 +79,8 @@ public class ChatsStorage
 
     public async Task<bool> CheckAccessToChat(Guid chatId, long userId)
     {
-        var chat = await _context.Chats.Include(x => x.Members).FirstOrDefaultAsync(x => x.Id == chatId);
-
-        if (chat is null)
-        {
-            return false;
-        }
-
-        return chat.Members.Any(x => x.UserId == userId);
+        return await _context.ChatMembers
+            .AnyAsync(m => m.ChatId == chatId && m.UserId == userId);
     }
 
     public async Task<int> GetTotalUserChats(long userId)

@@ -15,7 +15,7 @@ public class MessageConfiguration : IEntityTypeConfiguration<Message>
         builder.OwnsOne(m => m.Content, contentBuilder =>
         {
             // Настраиваем свойства MessageContent
-            contentBuilder.Property(c => c.Text);
+            contentBuilder.Property(c => c.Text).HasMaxLength(4096);
 
             // Настраиваем отношение с MessageAttachment
             contentBuilder.OwnsMany(c => c.Attachments, attachmentBuilder =>

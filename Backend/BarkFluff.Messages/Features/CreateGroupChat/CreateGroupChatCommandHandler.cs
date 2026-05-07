@@ -102,7 +102,7 @@ public class CreateGroupChatCommandHandler : IRequestHandler<CreateGroupChatComm
             ChatId = groupChat.Id,
             Content = new MessageContent()
             {
-                Text = $"Создан групповой чат \" {request.Title} \"",
+                Text = $"Создан групповой чат \"{request.Title}\"",
             },
             ReadBy = [_userContext.UserId],
             SenderId = _userContext.UserId,

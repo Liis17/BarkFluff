@@ -33,26 +33,17 @@ public class GetUserAllMessagesQueryHandler : IRequestHandler<GetUserAllMessages
             .Distinct()
             .ToListAsync(cancellationToken);
 
-        // Получаем все сообщения из этих чатов
-        var messages = await _context.Messages
-            .Where(m => userChatIds.Contains(m.ChatId))
-            .OrderBy(m => m.SentAt)
-            .ToListAsync(cancellationToken);
-
-        // Получаем информацию о чатах
-        var chats = await _context.Chats
-            .Where(c => userChatIds.Contains(c.Id))
-            .ToListAsync(cancellationToken);
-
-        // Получаем участников чатов
-        var allChatMembers = await _context.ChatMembers
-            .Where(cm => userChatIds.Contains(cm.ChatId))
-            .ToListAsync(cancellationToken);
-
         var response = new GetUserAllMessagesResponse();
 
-        // Конвертируем сообщения
-        foreach (var message in messages)
+        // Стримим сообщения построчно через серверный курсор — без загрузки всей истории в память.
+        // Каждое сообщение конвертируется в ExportMessage и оригинальный объект освобождается.
+        var messagesStream = _context.Messages
+            .AsNoTracking()
+            .Where(m => userChatIds.Contains(m.ChatId))
+            .OrderBy(m => m.SentAt)
+            .AsAsyncEnumerable();
+
+        await foreach (var message in messagesStream.WithCancellation(cancellationToken))
         {
             var exportMessage = new ExportMessage
             {
@@ -64,13 +55,11 @@ public class GetUserAllMessagesQueryHandler : IRequestHandler<GetUserAllMessages
                 ContentType = (int)message.Type
             };
 
-            // ReadBy
             if (message.ReadBy != null)
             {
                 exportMessage.ReadBy.AddRange(message.ReadBy);
             }
 
-            // Attachments
             if (message.Content?.Attachments != null)
             {
                 foreach (var attachment in message.Content.Attachments)
@@ -91,6 +80,16 @@ public class GetUserAllMessagesQueryHandler : IRequestHandler<GetUserAllMessages
 
             response.Messages.Add(exportMessage);
         }
+
+        // Получаем информацию о чатах
+        var chats = await _context.Chats
+            .Where(c => userChatIds.Contains(c.Id))
+            .ToListAsync(cancellationToken);
+
+        // Получаем участников чатов
+        var allChatMembers = await _context.ChatMembers
+            .Where(cm => userChatIds.Contains(cm.ChatId))
+            .ToListAsync(cancellationToken);
 
         // Конвертируем чаты
         foreach (var chat in chats)

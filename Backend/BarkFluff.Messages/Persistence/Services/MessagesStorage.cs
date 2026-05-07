@@ -26,7 +26,8 @@ public class MessagesStorage
 
         if (fromMessageId != null)
         {
-            var startMessage = _context.Messages.FirstOrDefault(m => m.Id == fromMessageId && m.ChatId == chatId);
+            var startMessage = await _context.Messages
+                .FirstOrDefaultAsync(m => m.Id == fromMessageId && m.ChatId == chatId);
 
             if (startMessage is null)
             {

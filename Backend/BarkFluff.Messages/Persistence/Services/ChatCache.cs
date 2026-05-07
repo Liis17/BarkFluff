@@ -5,10 +5,12 @@ namespace BarkFluff.Messages.Persistence.Services;
 public class ChatCache
 {
     private readonly IDistributedCache _cache;
+    private readonly ILogger<ChatCache> _logger;
 
-    public ChatCache(IDistributedCache cache)
+    public ChatCache(IDistributedCache cache, ILogger<ChatCache> logger)
     {
         _cache = cache;
+        _logger = logger;
     }
 
     public async Task<string?> GetChatName(Guid chatId, long userId)
@@ -19,8 +21,9 @@ public class ChatCache
 
             return chatName;
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "Не удалось прочитать имя чата {ChatId} для пользователя {UserId} из Redis-кэша", chatId, userId);
             return null;
         }
     }
@@ -31,9 +34,9 @@ public class ChatCache
         {
             await _cache.SetStringAsync($"chat_name_{chatId}_{userId}", name);
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
-            //
+            _logger.LogWarning(ex, "Не удалось записать имя чата {ChatId} для пользователя {UserId} в Redis-кэш", chatId, userId);
         }
     }
 
@@ -45,8 +48,9 @@ public class ChatCache
 
             return chatImage;
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "Не удалось прочитать изображение чата {ChatId} для пользователя {UserId} из Redis-кэша", chatId, userId);
             return null;
         }
     }
@@ -57,9 +61,9 @@ public class ChatCache
         {
             await _cache.SetStringAsync($"chat_image_{chatId}_{userId}", image);
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
-            //
+            _logger.LogWarning(ex, "Не удалось записать изображение чата {ChatId} для пользователя {UserId} в Redis-кэш", chatId, userId);
         }
     }
 }
