@@ -38,8 +38,12 @@ public class ServerRegistrationService : BackgroundService
                 if (string.IsNullOrWhiteSpace(externalHost))
                 {
                     // Фолбэк на RunSettings для обратной совместимости
-                    externalHost = config["RunSettings:Host"] ?? "https://beacon.example.com";
+                    externalHost = config["RunSettings:Host"] ?? "beacon.example.com";
                 }
+
+                // Navigator валидирует BeaconHost как hostname/IP без схемы — нормализуем,
+                // если в конфиге лежит полный URL вида "https://beacon.example.com".
+                externalHost = NormalizeHost(externalHost);
 
                 var serverInfo = new ServerInfo
                 {
@@ -73,5 +77,15 @@ public class ServerRegistrationService : BackgroundService
 
             await Task.Delay(_interval, stoppingToken);
         }
+    }
+
+    private static string NormalizeHost(string value)
+    {
+        if (Uri.TryCreate(value, UriKind.Absolute, out var uri) && !string.IsNullOrEmpty(uri.Host))
+        {
+            return uri.Host;
+        }
+
+        return value.Trim().TrimEnd('/');
     }
 }
