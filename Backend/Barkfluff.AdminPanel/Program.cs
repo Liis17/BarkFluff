@@ -194,12 +194,26 @@ public class Program
             RequestPath = ""
         });
 
-        // Root path routing based on auth
+        // Static files for redesigned UI under /v2
+        app.UseStaticFiles(new StaticFileOptions
+        {
+            FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
+                Path.Combine(AppContext.BaseDirectory, "Pages", "Redesigned")),
+            RequestPath = "/v2"
+        });
+
+        // Root path routing based on auth and ui_version cookie
         app.MapGet("/", async context =>
         {
             var token = context.Items["AuthToken"] as Barkfluff.AdminPanel.Models.AuthToken;
             if (token != null)
             {
+                if (context.Request.Cookies.TryGetValue("ui_version", out var ver) &&
+                    string.Equals(ver, "v2", StringComparison.OrdinalIgnoreCase))
+                {
+                    context.Response.Redirect("/v2");
+                    return;
+                }
                 await ServeHtmlFile(context, "dashboard.html");
             }
             else
@@ -209,6 +223,7 @@ public class Program
         });
 
         // Page routes
+        app.MapGet("/v2", async context => await ServeHtmlFile(context, Path.Combine("Redesigned", "index.html")));
         app.MapGet("/services", async context => await ServeHtmlFile(context, "services.html"));
         app.MapGet("/logs", async context => await ServeHtmlFile(context, "logs.html"));
         app.MapGet("/badges", async context => await ServeHtmlFile(context, "badges.html"));
