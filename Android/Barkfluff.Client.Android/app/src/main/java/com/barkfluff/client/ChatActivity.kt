@@ -909,100 +909,40 @@ class ChatActivity : AppCompatActivity() {
             return
         }
 
-        // Обычный выбор фото из галереи — отправляем сразу
-        val sendAsFile = result.sendAsFile
-        val sendSeparately = result.sendSeparately
-        val captionText = result.captionText
+        // Обычный выбор фото/видео — формируем SendJob и кидаем в foreground-сервис
+        val selectedUris = uris.take(ImagePickerBottomSheet.MAX_SELECTION)
 
-        lifecycleScope.launch {
-            val selectedUris = uris.take(ImagePickerBottomSheet.MAX_SELECTION)
+        val attachments = mutableListOf<com.barkfluff.client.send.AttachmentSpec>()
+        for (uri in selectedUris) {
+            val mimeType = contentResolver.getType(uri)
+            val isVideo = mimeType?.startsWith("video/") == true
 
-            if (selectedUris.size > 1) {
-                Toast.makeText(
-                    this@ChatActivity,
-                    "Выбрано изображений: ${selectedUris.size}",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-
-            // Загружаем каждое изображение/видео
-            val fileIds = mutableListOf<String>()
-            for ((index, uri) in selectedUris.withIndex()) {
-                try {
-                    val mimeType = contentResolver.getType(uri)
-                    val isWebp = mimeType == "image/webp"
-                    val isVideo = mimeType?.startsWith("video/") == true
-
-                    // Определяем тип файла для загрузки
-                    val uploadFileType = when {
-                        sendAsFile -> barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_DOCUMENT
-                        isVideo -> barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_VIDEO
-                        isWebp -> barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_STICKER
-                        else -> barkfluff.files.FilesApiOuterClass.UploadFileType.MESSAGE_ATTACHMENT_IMAGE
-                    }
-
-                    val bytes = if (sendAsFile || isWebp || isVideo) {
-                        // Без сжатия — читаем оригинальный файл
-                        readBytesFromUri(uri)
-                    } else {
-                        // Со сжатием
-                        ImageCompressor.compressImage(uri, this@ChatActivity).getOrNull()
-                    }
-
-                    if (bytes == null) continue
-
-                    // Для видео и DOCUMENT передаём оригинальные имя/MIME
-                    val (passName, passMime) = if (sendAsFile || isVideo) {
-                        getDocumentInfo(uri)
-                    } else {
-                        null to null
-                    }
-
-                    // Загрузка на сервер
-                    val uploadResult = chatRepository.uploadFile(
-                        bytes,
-                        uploadFileType,
-                        fileName = passName,
-                        mimeType = passMime
-                    )
-
-                    if (uploadResult.isSuccess) {
-                        val fileId = uploadResult.getOrNull()!!
-                        fileIds.add(fileId)
-                        Log.d(TAG, "Media ${index + 1}/${selectedUris.size} uploaded: $fileId, fileIds.size=${fileIds.size}")
-                    } else {
-                        Log.e(TAG, "Media ${index + 1}/${selectedUris.size} upload failed: ${uploadResult.exceptionOrNull()?.message}")
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error processing media ${index + 1}/${selectedUris.size}", e)
+            attachments += when {
+                isVideo -> {
+                    val spec = com.barkfluff.client.editor.VideoEditCache.get(uri)
+                        ?: com.barkfluff.client.editor.EditedVideoSpec(uri = uri)
+                    com.barkfluff.client.send.AttachmentSpec.Video(spec)
                 }
-            }
-
-            Log.d(TAG, "After upload loop: fileIds.size=${fileIds.size}, fileIds=$fileIds")
-
-            if (fileIds.isNotEmpty()) {
-                Log.d(TAG, "Sending ${fileIds.size} fileIds: $fileIds, sendSeparately=$sendSeparately")
-                if (sendSeparately) {
-                    // Отправляем каждое изображение отдельным сообщением
-                    // Первое сообщение получает подпись, остальные без текста
-                    for ((index, fileId) in fileIds.withIndex()) {
-                        val text = if (index == 0) captionText else ""
-                        sendMessage(text = text, fileIds = listOf(fileId))
-                    }
-                } else {
-                    // Отправляем все изображения в одном сообщении с подписью
-                    sendMessage(text = captionText, fileIds = fileIds)
+                com.barkfluff.client.editor.MediaEditCache.has(uri) -> {
+                    val edited = com.barkfluff.client.editor.MediaEditCache.get(uri)!!
+                    val key = com.barkfluff.client.send.SendPayloadCache.put(edited.bytes)
+                    com.barkfluff.client.send.AttachmentSpec.EditedImage(cacheKey = key, originalUri = uri)
                 }
-            } else {
-                Log.w(TAG, "No fileIds to send! selectedUris.size=${selectedUris.size}")
-
-                Toast.makeText(
-                    this@ChatActivity,
-                    "Не удалось загрузить изображения",
-                    Toast.LENGTH_SHORT
-                ).show()
+                else -> com.barkfluff.client.send.AttachmentSpec.RawImage(uri)
             }
         }
+
+        val job = com.barkfluff.client.send.SendJob(
+            chatId = chatId,
+            chatTitle = chatTitle,
+            text = result.captionText,
+            attachments = attachments,
+            replyId = pendingReplyMessageId,
+            sendSeparately = result.sendSeparately,
+            sendAsFile = result.sendAsFile
+        )
+        com.barkfluff.client.send.MediaSendService.enqueue(applicationContext, job)
+        clearPendingReply()
     }
 
     private fun isStickerContent(uri: Uri, clipDescription: android.content.ClipDescription?, index: Int): Boolean {

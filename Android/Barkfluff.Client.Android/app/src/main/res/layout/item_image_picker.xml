@@ -68,6 +68,20 @@
                 android:background="#40000000"
                 android:visibility="gone" />
 
+            <!-- Edited indicator (scissors) — top-start -->
+            <ImageView
+                android:id="@+id/editedIndicator"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="top|start"
+                android:layout_marginTop="6dp"
+                android:layout_marginStart="6dp"
+                android:padding="4dp"
+                android:background="@drawable/duration_label_background"
+                android:src="@drawable/ic_content_cut"
+                android:visibility="gone"
+                app:tint="@android:color/white" />
+
             <!-- Checkbox touch target (larger area for easier tapping) -->
             <FrameLayout
                 android:id="@+id/checkboxTouchTarget"

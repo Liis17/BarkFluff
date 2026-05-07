@@ -14,6 +14,7 @@ import com.barkfluff.client.databinding.ItemCameraButtonBinding
 import com.barkfluff.client.databinding.ItemFileButtonBinding
 import com.barkfluff.client.databinding.ItemImagePickerBinding
 import com.barkfluff.client.databinding.ItemSystemPickerButtonBinding
+import com.barkfluff.client.editor.MediaEditCache
 
 /**
  * Адаптер для отображения сетки медиа в ImagePickerBottomSheet.
@@ -156,6 +157,10 @@ class ImagePickerAdapter(
                 binding.selectionNumber.visibility = View.GONE
             }
 
+            // Иконка ножниц для отредактированных картинок
+            binding.editedIndicator.visibility =
+                if (!item.isVideo && MediaEditCache.has(item.uri)) View.VISIBLE else View.GONE
+
             binding.cardView.setOnClickListener { onMediaPreviewClick(item) }
             binding.checkboxTouchTarget.setOnClickListener { toggleSelection(item) }
         }
@@ -186,6 +191,55 @@ class ImagePickerAdapter(
         selectedUris.clear()
         notifyItemRangeChanged(LEADING_TILES, currentList.size - LEADING_TILES)
     }
+
+    /**
+     * Восстанавливает выбор из заданного списка URI с сохранением порядка.
+     * Используется при возврате из редактора медиа.
+     */
+    fun setSelectionFromUris(uris: List<Uri>) {
+        selectedItems.clear()
+        selectedUris.clear()
+        if (uris.isEmpty()) {
+            notifyItemRangeChanged(LEADING_TILES, currentList.size - LEADING_TILES)
+            return
+        }
+        // Собираем MediaItem'ы из текущего списка по URI с сохранением порядка из uris
+        val byUri = currentList
+            .asSequence()
+            .filterIsInstance<ListItem.Media>()
+            .associate { it.item.uri to it.item }
+        for (u in uris) {
+            val mi = byUri[u] ?: continue
+            if (selectedItems.size >= maxSelection) break
+            selectedItems.add(mi)
+            selectedUris.add(u)
+        }
+        notifyItemRangeChanged(LEADING_TILES, currentList.size - LEADING_TILES)
+    }
+
+    /**
+     * Уведомляет адаптер о возможном изменении содержимого MediaEditCache —
+     * нужно перерисовать иконки ножниц.
+     */
+    fun refreshEditedIndicators() {
+        notifyItemRangeChanged(LEADING_TILES, currentList.size - LEADING_TILES)
+    }
+
+    /** Все URI картинок (не видео) в галерее в текущем порядке. */
+    fun getAllImageUris(): List<Uri> = currentList
+        .asSequence()
+        .filterIsInstance<ListItem.Media>()
+        .filter { !it.item.isVideo }
+        .map { it.item.uri }
+        .toList()
+
+    /** Все URI видео. */
+    fun getAllVideoUris(): List<Uri> = currentList
+        .asSequence()
+        .filterIsInstance<ListItem.Media>()
+        .filter { it.item.isVideo }
+        .map { it.item.uri }
+        .toList()
 
     private fun notifySelectionChanged() {
         notifyItemRangeChanged(LEADING_TILES, currentList.size - LEADING_TILES)
