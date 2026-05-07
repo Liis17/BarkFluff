@@ -1,4 +1,3 @@
-using System.Net;
 using System.Text.RegularExpressions;
 
 using BarkFluff.Navigator.Persistence;
@@ -15,14 +14,10 @@ public partial class RegisterServerCommandHandler : IRequestHandler<RegisterServ
     private const int MaxPublicNameLength = 64;
     private const int MaxDescriptionLength = 512;
     private const int MaxLocationLength = 128;
+    private const int MaxBeaconHostLength = 2048;
 
     [GeneratedRegex(@"^#?[0-9A-Fa-f]{6}$", RegexOptions.Compiled)]
     private static partial Regex HexColorRegex();
-
-    [GeneratedRegex(
-        @"^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$",
-        RegexOptions.Compiled)]
-    private static partial Regex HostnameRegex();
 
     private readonly ServersStorage _serversStorage;
     private readonly ILogger<RegisterServerCommandHandler> _logger;
@@ -51,8 +46,7 @@ public partial class RegisterServerCommandHandler : IRequestHandler<RegisterServ
             throw new BeaconHostEmptyException();
         }
 
-        if (server.BeaconHost.Length > 253
-            || (!HostnameRegex().IsMatch(server.BeaconHost) && !IPAddress.TryParse(server.BeaconHost, out _)))
+        if (server.BeaconHost.Length > MaxBeaconHostLength || !IsValidBeaconHost(server.BeaconHost))
         {
             _logger.LogWarning(
                 "Попытка регистрации сервера '{ServerName}' с некорректным BeaconHost: {BeaconHost}",
@@ -128,6 +122,17 @@ public partial class RegisterServerCommandHandler : IRequestHandler<RegisterServ
         );
 
         return Task.FromResult(new RegisterServerResponse());
+    }
+
+    private static bool IsValidBeaconHost(string host)
+    {
+        if (host.Contains("://", StringComparison.Ordinal))
+        {
+            return Uri.TryCreate(host, UriKind.Absolute, out var uri)
+                   && Uri.CheckHostName(uri.Host) != UriHostNameType.Unknown;
+        }
+
+        return Uri.CheckHostName(host) != UriHostNameType.Unknown;
     }
 
     private static void ValidateHexColor(string color)
