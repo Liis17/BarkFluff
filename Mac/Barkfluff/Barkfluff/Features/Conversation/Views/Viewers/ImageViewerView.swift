@@ -133,15 +133,12 @@ struct ImageViewerView: View {
 
     private func loadImage() async {
         do {
-            var url: URL?
-
-            if let previewURL = attachment.previewURL, !previewURL.isEmpty {
-                url = URL(string: previewURL)
-            } else {
-                let urlString = try await container.fileService.getDownloadURL(fileID: attachment.fileID)
-                url = URL(string: urlString)
-            }
-
+            // Оригинал — всегда через кеш-менеджер по fileID, чтобы повторный
+            // просмотр картинки не качался заново.
+            let url = try await container.mediaCacheManager.resolveURL(
+                for: attachment.fileID,
+                type: .image
+            )
             imageURL = url
         } catch {
             // Error loading
