@@ -1,6 +1,7 @@
 using BarkFluff.Configuration.Host;
 using BarkFluff.Configuration.Infrastructure;
 using BarkFluff.GrpcServer;
+using BarkFluff.GrpcServer.Metrics;
 
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
@@ -72,6 +73,11 @@ public class Program
         {
             var ctx = scope.ServiceProvider.GetRequiredService<ConfigurationContext>();
             var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+            var metrics = scope.ServiceProvider.GetRequiredService<MetricsCollector>();
+
+            // Стартовые gauge-метрики
+            metrics.Set("service_started_unix", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            metrics.Set("db_healthy", 0);
 
             var retryCount = 0;
             const int maxRetries = 5;
@@ -82,7 +88,10 @@ public class Program
                 try
                 {
                     logger.LogInformation("Attempting to connect to database and apply migrations (attempt {Attempt}/{MaxRetries})...", retryCount + 1, maxRetries);
+                    metrics.Increment("db_migration_attempts");
                     ctx.Database.Migrate();
+                    metrics.Increment("db_migration_succeeded");
+                    metrics.Set("db_healthy", 1);
                     logger.LogInformation("Database migrations applied successfully.");
 
                     // Авто-заполнение пустых конфигураций значениями по умолчанию
@@ -99,12 +108,13 @@ public class Program
                         var populatorLogger = scope.ServiceProvider.GetRequiredService<ILogger<ConfigurationDefaultsPopulator>>();
                         var populator = new ConfigurationDefaultsPopulator(
                             ctx, populatorLogger, pgHostOnly, username, password,
-                            rabbitUsername, rabbitPassword);
+                            rabbitUsername, rabbitPassword, metrics);
 
                         populator.PopulateDefaultsAsync().GetAwaiter().GetResult();
                     }
                     catch (Exception populateEx)
                     {
+                        metrics.Increment("defaults_populator_failed");
                         logger.LogWarning(populateEx,
                             "Ошибка при авто-заполнении конфигураций. Сервис продолжит работу.");
                     }
@@ -114,8 +124,10 @@ public class Program
                 catch (Npgsql.NpgsqlException ex)
                 {
                     retryCount++;
+                    metrics.Increment("db_migration_failed");
                     if (retryCount >= maxRetries)
                     {
+                        metrics.Set("db_healthy", 0);
                         logger.LogError(ex, "Failed to connect to database after {MaxRetries} attempts. Please ensure PostgreSQL is running and connection settings are correct.", maxRetries);
                         throw;
                     }

@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Messages.Domain;
 using BarkFluff.Messages.Mapping;
@@ -23,17 +24,19 @@ public class CreateGroupChatCommandHandler : IRequestHandler<CreateGroupChatComm
     private readonly ChatsStorage _chatsStorage;
     private readonly MessagesStorage _messagesStorage;
     private readonly MessageQueueSender _messageQueueSender;
+    private readonly MetricsCollector _metrics;
     private readonly ILogger<CreateGroupChatCommandHandler> _logger;
 
     public CreateGroupChatCommandHandler(UserContext userContext, FilesServerApi.FilesServerApiClient filesServerApiClient,
         ChatsStorage chatsStorage, MessagesStorage messagesStorage, MessageQueueSender messageQueueSender,
-        ILogger<CreateGroupChatCommandHandler> logger)
+        MetricsCollector metrics, ILogger<CreateGroupChatCommandHandler> logger)
     {
         _userContext = userContext;
         _filesServerApiClient = filesServerApiClient;
         _chatsStorage = chatsStorage;
         _messagesStorage = messagesStorage;
         _messageQueueSender = messageQueueSender;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -121,6 +124,9 @@ public class CreateGroupChatCommandHandler : IRequestHandler<CreateGroupChatComm
 
         groupChat.LastMessage = message;
         groupChat.Members = [];
+
+        _metrics.Increment("chats_created_group");
+        _metrics.Add("chats_created_group_members_total", request.UserIds.Count);
 
         _logger.LogInformation(
             "Групповой чат '{Title}' успешно создан. ChatId: {ChatId}, создатель: {CreatorId}, участников: {MemberCount}",

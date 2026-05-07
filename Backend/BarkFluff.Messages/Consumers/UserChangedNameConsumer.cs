@@ -27,7 +27,7 @@ public class UserChangedNameConsumer : IConsumer<UserChangedName>
 
     public async Task Consume(ConsumeContext<UserChangedName> context)
     {
-        _metrics.Increment("rabbitmq_events_consumed");
+        _metrics.Increment("rabbitmq_name_consumed");
         var userId = context.Message.UserId;
         var newName = $"{context.Message.NewFirstName} {context.Message.NewLastName}";
 
@@ -63,6 +63,7 @@ public class UserChangedNameConsumer : IConsumer<UserChangedName>
         }
         catch (Exception ex)
         {
+            _metrics.Increment("rabbitmq_name_errors");
             _logger.LogError(
                 ex,
                 "Ошибка при обработке изменения имени пользователя {UserId}",

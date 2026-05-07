@@ -1,4 +1,5 @@
 using BarkFluff.GrpcServer;
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Identity.Consumers;
 using BarkFluff.Identity.Host;
@@ -93,6 +94,9 @@ public class Program
             var ctx = scope.ServiceProvider.GetRequiredService<IdentityContext>();
             ctx.Database.Migrate();
         }
+
+        var metrics = app.Services.GetRequiredService<MetricsCollector>();
+        metrics.Set("service_started_unix", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
 
         app.UseRouting();
         app.UseCors("IdentityCors");

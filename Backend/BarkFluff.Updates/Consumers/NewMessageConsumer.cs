@@ -30,7 +30,7 @@ public class NewMessageConsumer : IConsumer<NewMessageEvent>
     public async Task Consume(ConsumeContext<NewMessageEvent> context)
     {
         _metrics.Increment("rabbitmq_events_consumed");
-        _metrics.Increment("events_broadcast");
+        _metrics.Increment("new_message_events_consumed");
         _logger.LogInformation(
             "Получено событие нового сообщения для чата {ChatId} с {MemberCount} участниками",
             context.Message.ChatId,
@@ -57,6 +57,7 @@ public class NewMessageConsumer : IConsumer<NewMessageEvent>
         }
         catch (Exception ex)
         {
+            _metrics.Increment("new_message_events_errors");
             _logger.LogError(
                 ex,
                 "Ошибка при обработке события нового сообщения для чата {ChatId}",

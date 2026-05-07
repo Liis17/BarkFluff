@@ -1,4 +1,3 @@
-using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Messages.Features.CreateGroupChat;
 using BarkFluff.Messages.Features.GetChatInfo;
 using BarkFluff.Messages.Features.GetPersonChatId;
@@ -29,12 +28,10 @@ namespace BarkFluff.Messages.Host;
 public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesApiBase
 {
     private readonly IMediator _mediator;
-    private readonly MetricsCollector _metrics;
 
-    public MessagesApiService(IMediator mediator, MetricsCollector metrics)
+    public MessagesApiService(IMediator mediator)
     {
         _mediator = mediator;
-        _metrics = metrics;
     }
 
     public override async Task<ListChatsResponse> ListChats(ListChatsRequest request, ServerCallContext context)
@@ -97,8 +94,6 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
 
     public override async Task<SendMessageResponse> SendMessage(SendMessageRequest request, ServerCallContext context)
     {
-        _metrics.Increment("messages_sent");
-
         if (request.Message is null)
         {
             throw new MessageNotContainContextException();
@@ -131,7 +126,6 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
 
     public override async Task<CreateGroupChatResponse> CreateGroupChat(CreateGroupChatRequest request, ServerCallContext context)
     {
-        _metrics.Increment("chats_created");
         Guid? pictureFileId = null;
 
         if (!string.IsNullOrEmpty(request.PictureFileId))
@@ -178,7 +172,6 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
 
     public override async Task<MarkAsReadResponse> MarkAsRead(MarkAsReadRequest request, ServerCallContext context)
     {
-        _metrics.Increment("messages_read");
         var command = new MarkAsReadCommand
         {
             MessageIds = request.MessageIds.ToList()

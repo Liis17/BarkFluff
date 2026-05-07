@@ -1,4 +1,5 @@
 using BarkFluff.Beacon.Configurations;
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.Proto.Beacon;
 using BarkFluff.Proto.Configuration;
 using BarkFluff.Shared.Identity;
@@ -14,14 +15,17 @@ public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand,
 
     private readonly ConfigurationApi.ConfigurationApiClient _configurationApiClient;
     private readonly ILogger<GetServerInfoCommandHandler> _logger;
+    private readonly MetricsCollector _metrics;
 
     public GetServerInfoCommandHandler(ServerColorSettings serverColorSettings, ServerPropsSettings serverPropsSettings,
-        ConfigurationApi.ConfigurationApiClient configurationApiClient, ILogger<GetServerInfoCommandHandler> logger)
+        ConfigurationApi.ConfigurationApiClient configurationApiClient, ILogger<GetServerInfoCommandHandler> logger,
+        MetricsCollector metrics)
     {
         _serverColorSettings = serverColorSettings;
         _serverPropsSettings = serverPropsSettings;
         _configurationApiClient = configurationApiClient;
         _logger = logger;
+        _metrics = metrics;
     }
 
     public async Task<GetServerInfoResponse> Handle(GetServerInfoCommand request, CancellationToken cancellationToken)
@@ -45,7 +49,20 @@ public class GetServerInfoCommandHandler : IRequestHandler<GetServerInfoCommand,
         var fastAuthTask = _configurationApiClient
             .GetConfigurationAsync(new GetConfigurationRequest { ServiceId = (int)ServiceId.FastAuth }, cancellationToken: cancellationToken).ResponseAsync;
 
-        await Task.WhenAll(identityTask, usersTask, filesTask, messagesTask, updatesTask, onlinerTask, fastAuthTask);
+        try
+        {
+            await Task.WhenAll(identityTask, usersTask, filesTask, messagesTask, updatesTask, onlinerTask, fastAuthTask);
+            _metrics.Add("configuration_fetch_success", 7);
+        }
+        catch
+        {
+            // Считаем сколько задач отвалилось, остальные считаем успешными.
+            var failed = new[] { identityTask, usersTask, filesTask, messagesTask, updatesTask, onlinerTask, fastAuthTask }
+                .Count(t => t.IsFaulted);
+            _metrics.Add("configuration_fetch_errors", failed);
+            _metrics.Add("configuration_fetch_success", 7 - failed);
+            throw;
+        }
 
         var identitySettings = identityTask.Result;
         var usersSettings = usersTask.Result;

@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Identity.Infrastructure;
@@ -26,11 +27,12 @@ public class ConfirmOtpVerificationCommandHandler : IRequestHandler<ConfirmOtpVe
     private readonly NotificationQueueSender _notificationQueueSender;
     private readonly RequestContext _requestContext;
     private readonly LocationClient _locationClient;
+    private readonly MetricsCollector _metrics;
     private readonly ILogger<ConfirmOtpVerificationCommandHandler> _logger;
 
     public ConfirmOtpVerificationCommandHandler(UserContext userContext, AuthPropertiesStorage authPropertiesStorage,
         UsersServerApi.UsersServerApiClient usersClient, NotificationQueueSender notificationQueueSender,
-        RequestContext requestContext, LocationClient locationClient,
+        RequestContext requestContext, LocationClient locationClient, MetricsCollector metrics,
         ILogger<ConfirmOtpVerificationCommandHandler> logger)
     {
         _userContext = userContext;
@@ -39,6 +41,7 @@ public class ConfirmOtpVerificationCommandHandler : IRequestHandler<ConfirmOtpVe
         _notificationQueueSender = notificationQueueSender;
         _requestContext = requestContext;
         _locationClient = locationClient;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -72,6 +75,8 @@ public class ConfirmOtpVerificationCommandHandler : IRequestHandler<ConfirmOtpVe
 
                 if (!isValid)
                 {
+                    _metrics.Increment("otp_authenticator_failed");
+                    _metrics.Increment("otp_confirmation_failed");
                     _logger.LogWarning(
                         "Неверный Authenticator OTP код для пользователя {UserId}",
                         _userContext.UserId
@@ -83,6 +88,9 @@ public class ConfirmOtpVerificationCommandHandler : IRequestHandler<ConfirmOtpVe
 
                 await _authPropertiesStorage.EnableOtp(_userContext.UserId);
                 confirmedMethod = "Authenticator приложение";
+
+                _metrics.Increment("otp_authenticator_verified");
+                _metrics.Increment("otp_enabled_authenticator");
 
                 _logger.LogInformation(
                     "Authenticator OTP успешно активирован для пользователя {UserId}",
@@ -96,6 +104,8 @@ public class ConfirmOtpVerificationCommandHandler : IRequestHandler<ConfirmOtpVe
                 if (!string.Equals(otpConfigs.LastEmailAuthCode, request.OtpCode,
                         StringComparison.InvariantCultureIgnoreCase))
                 {
+                    _metrics.Increment("otp_email_failed");
+                    _metrics.Increment("otp_confirmation_failed");
                     _logger.LogWarning(
                         "Неверный Email OTP код для пользователя {UserId}",
                         _userContext.UserId
@@ -107,6 +117,9 @@ public class ConfirmOtpVerificationCommandHandler : IRequestHandler<ConfirmOtpVe
 
                 await _authPropertiesStorage.EnableEmailOtp(_userContext.UserId);
                 confirmedMethod = "Email";
+
+                _metrics.Increment("otp_email_verified");
+                _metrics.Increment("otp_enabled_email");
 
                 _logger.LogInformation(
                     "Email OTP успешно активирован для пользователя {UserId}",

@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.Identity.Domain;
 using BarkFluff.Identity.Infrastructure;
@@ -18,7 +19,8 @@ namespace BarkFluff.Identity.Features.ConfirmAccount;
 
 public class ConfirmAccountCommandHandler(ConfirmationCodesStorage confirmationCodesStorage,
     UsersServerApi.UsersServerApiClient usersClient, RefreshTokensStorage refreshTokensStorage, RequestContext requestContext,
-    NotificationQueueSender notificationQueueSender, LocationClient locationClient, ILogger<ConfirmAccountCommandHandler> logger)
+    NotificationQueueSender notificationQueueSender, LocationClient locationClient, MetricsCollector metrics,
+    ILogger<ConfirmAccountCommandHandler> logger)
     : IRequestHandler<ConfirmAccountCommand, ConfirmAccountResponse>
 {
 
@@ -44,6 +46,8 @@ public class ConfirmAccountCommandHandler(ConfirmationCodesStorage confirmationC
 
         if (code is null)
         {
+            metrics.Increment("account_confirmation_failed");
+            metrics.Increment("account_confirmation_failed_not_found");
             logger.LogWarning("Код подтверждения {CodeId} не найден", codeId);
             throw new ConfirmationCodeNotFoundException();
         }
@@ -51,6 +55,8 @@ public class ConfirmAccountCommandHandler(ConfirmationCodesStorage confirmationC
         if (code.Type != ConfirmationCodeType.Registration)
         {
             // Why: защита от использования кода другого типа на endpoint подтверждения регистрации.
+            metrics.Increment("account_confirmation_failed");
+            metrics.Increment("account_confirmation_failed_not_found");
             logger.LogWarning(
                 "Код подтверждения {CodeId} имеет неожиданный тип {Type}, ожидается Registration",
                 codeId,
@@ -61,6 +67,8 @@ public class ConfirmAccountCommandHandler(ConfirmationCodesStorage confirmationC
 
         if (code.Expires < DateTime.UtcNow)
         {
+            metrics.Increment("account_confirmation_failed");
+            metrics.Increment("account_confirmation_failed_expired");
             logger.LogWarning(
                 "Код подтверждения {CodeId} истек. Истек: {ExpirationDate}",
                 codeId,
@@ -73,6 +81,8 @@ public class ConfirmAccountCommandHandler(ConfirmationCodesStorage confirmationC
 
         if (!equals)
         {
+            metrics.Increment("account_confirmation_failed");
+            metrics.Increment("account_confirmation_failed_incorrect");
             logger.LogWarning(
                 "Неверный код подтверждения для CodeId {CodeId}, UserId {UserId}",
                 codeId,
@@ -128,6 +138,9 @@ public class ConfirmAccountCommandHandler(ConfirmationCodesStorage confirmationC
         var refreshTokenString = RefreshTokenGenerator.GenerateRefreshToken();
 
         await refreshTokensStorage.CreateNewRefreshToken(refreshTokenString, code.OwnerId!.Value, requestContext.DeviceId ?? requestContext.DeviceName, ExpDaysRefreshToken);
+
+        metrics.Increment("accounts_confirmed");
+        metrics.Increment("sessions_created");
 
         logger.LogInformation(
             "Аккаунт успешно подтвержден. UserId: {UserId}, Username: {Username}, Устройство: {DeviceName}",

@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.Identity.Domain;
 using BarkFluff.Identity.Infrastructure;
@@ -17,7 +18,8 @@ namespace BarkFluff.Identity.Features.CreateAccount;
 
 public class CreateAccountCommandHandler(UsersServerApi.UsersServerApiClient usersClient,
     ConfirmationCodesStorage confirationCodesStorage, NotificationQueueSender notificationQueueSender,
-    RequestContext requestContext, LocationClient locationClient, ILogger<CreateAccountCommandHandler> logger)
+    RequestContext requestContext, LocationClient locationClient, MetricsCollector metrics,
+    ILogger<CreateAccountCommandHandler> logger)
     : IRequestHandler<CreateAccountCommand, CreateAccountResponse>
 {
     public async Task<CreateAccountResponse> Handle(CreateAccountCommand request, CancellationToken cancellationToken)
@@ -62,10 +64,12 @@ public class CreateAccountCommandHandler(UsersServerApi.UsersServerApiClient use
         try
         {
             responseUser = await usersClient.AddDraftUserAsync(createAccountRequest);
+            metrics.Increment("accounts_drafted");
             logger.LogDebug("Черновик пользователя создан. UserId: {UserId}", responseUser.UserId);
         }
         catch (UserIsDraftException)
         {
+            metrics.Increment("accounts_draft_overridden");
             logger.LogDebug("Пользователь уже существует как черновик, переопределение данных");
             responseUser = await usersClient.OverrideDraftUserAsync(createAccountRequest);
         }

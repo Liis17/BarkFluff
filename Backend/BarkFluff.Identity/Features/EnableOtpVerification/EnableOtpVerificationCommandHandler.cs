@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Identity.Infrastructure;
@@ -26,11 +27,13 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
     private readonly NotificationQueueSender _notificationQueueSender;
     private readonly RequestContext _requestContext;
     private readonly LocationClient _locationClient;
+    private readonly MetricsCollector _metrics;
     private readonly ILogger<EnableOtpVerificationCommandHandler> _logger;
 
     public EnableOtpVerificationCommandHandler(UserContext userContext, AuthPropertiesStorage authPropertiesStorage,
         UsersServerApi.UsersServerApiClient usersClient, NotificationQueueSender notificationQueueSender,
-        RequestContext requestContext, LocationClient locationClient, ILogger<EnableOtpVerificationCommandHandler> logger)
+        RequestContext requestContext, LocationClient locationClient, MetricsCollector metrics,
+        ILogger<EnableOtpVerificationCommandHandler> logger)
     {
         _userContext = userContext;
         _authPropertiesStorage = authPropertiesStorage;
@@ -38,6 +41,7 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
         _notificationQueueSender = notificationQueueSender;
         _requestContext = requestContext;
         _locationClient = locationClient;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -98,6 +102,8 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
             var qrCode = new Base64QRCode(qrCodeData);
 
             var qrCodeBase64 = qrCode.GetGraphic(20);
+
+            _metrics.Increment("otp_setup_authenticator");
 
             _logger.LogInformation(
                 "Authenticator 2FA успешно настроен для пользователя {UserId}. Старый метод: {OldMethod}",
@@ -163,6 +169,9 @@ public class EnableOtpVerificationCommandHandler : IRequestHandler<EnableOtpVeri
             );
 
             await _notificationQueueSender.SendNotification(emailNotification);
+
+            _metrics.Increment("otp_setup_email");
+            _metrics.Increment("otp_email_codes_sent");
 
             _logger.LogInformation(
                 "Email 2FA успешно настроен для пользователя {UserId}. Старый метод: {OldMethod}",

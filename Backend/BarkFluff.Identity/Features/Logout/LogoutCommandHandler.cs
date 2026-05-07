@@ -1,3 +1,4 @@
+using BarkFluff.GrpcServer.Metrics;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Identity.Persistence.Services;
 using BarkFluff.Identity.Settings;
@@ -17,6 +18,7 @@ public class LogoutCommandHandler(
     UsersServerApi.UsersServerApiClient usersClient,
     IPublishEndpoint publishEndpoint,
     JwtSettings jwtSettings,
+    MetricsCollector metrics,
     ILogger<LogoutCommandHandler> logger) : IRequestHandler<LogoutCommand, LogoutResponse>
 {
     public async Task<LogoutResponse> Handle(LogoutCommand request, CancellationToken cancellationToken)
@@ -51,6 +53,9 @@ public class LogoutCommandHandler(
                 "Не удалось удалить устройство {DeviceId} из Users сервиса для пользователя {UserId}",
                 deviceId, userId);
         }
+
+        metrics.Increment("logouts");
+        metrics.Increment("sessions_revoked");
 
         logger.LogInformation(
             "Пользователь {UserId} успешно разлогинен с устройства {DeviceId}",

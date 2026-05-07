@@ -29,6 +29,8 @@ Design-time factory: `Persistence/ClientStorageContextFactory.cs` (файл `cli
 | `S3_SERVICE_URL` | URL S3 (default: `http://localhost:9000`) |
 | `S3_BUCKET_NAME` | Имя бакета (default: `client-storage`) |
 | `UPLOAD_TOKEN` | **Обязательный** Bearer-токен для POST-эндпоинтов |
+| `Seq__ServerUrl` | URL Seq для логов и метрик (default `http://seq:80`) |
+| `Seq__ApiKey` | API-ключ Seq (опционально) |
 
 ## API Endpoints
 
@@ -87,3 +89,13 @@ Design-time factory: `Persistence/ClientStorageContextFactory.cs` (файл `cli
 - S3 и MinIO наружу не фигурируют
 - Checksum (SHA-256 hex) и метаданные — для проверки целостности на клиенте
 - BITS качает через ClientStorage (кешированный файл), поддержка Range встроена
+
+## Логи и метрики
+
+Подключён Serilog (Console + Seq sink, буфер `logs/seq-buffer`). `Application = "BarkFluff.ClientStorage"`.
+
+Метрики локальные (не через `BarkFluff.GrpcServer`, чтобы сохранить изоляцию сервиса):
+- `Infrastructure/MetricsCollector.cs` — потокобезопасный `Increment/Add/Set`.
+- `Services/MetricsReporterService.cs` — каждые 5 сек пишет `LogInformation("ServiceMetrics {@Metrics}", ...)` — этот формат парсит `MetricsCollectorService` AdminPanel.
+
+Полный реестр метрик и формул производных значений — в файле памяти `project_clientstorage_metrics.md` (домены: `downloads_*`, `uploads_*`, `auth_*`, `cache_*`, `s3_*`, gauges `service_started_unix`, `cache_warmup_*`).
