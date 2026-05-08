@@ -82,7 +82,8 @@ struct BackgroundsGrid: View {
                     .font(.system(size: 24, weight: .medium))
                     .foregroundStyle(.secondary)
             }
-            .aspectRatio(1, contentMode: .fit)
+            // Вертикальный 1:2 (ширина:высота) — паритет с ячейками фона.
+            .aspectRatio(0.5, contentMode: .fit)
         }
         .buttonStyle(.plain)
         .disabled(viewModel.isUploadingBackground && !viewModel.deleteMode)
@@ -100,18 +101,22 @@ private struct BackgroundCell: View {
     let onEnterDeleteMode: () -> Void
 
     var body: some View {
-        ZStack {
-            CachedImageView(
-                fileID: fileID,
-                type: .image,
-                content: { image in
-                    image.resizable().aspectRatio(contentMode: .fill)
-                },
-                placeholder: {
-                    Color.gray.opacity(0.2)
-                }
-            )
-            .aspectRatio(1, contentMode: .fill)
+        // Вертикальный 1:2 (ширина:высота): держателем фрейма выступает Color.clear,
+        // в overlay — собственно картинка через CachedImageView.
+        Color.clear
+            .aspectRatio(0.5, contentMode: .fit)
+            .overlay {
+                CachedImageView(
+                    fileID: fileID,
+                    type: .image,
+                    content: { image in
+                        image.resizable().aspectRatio(contentMode: .fill)
+                    },
+                    placeholder: {
+                        Color.gray.opacity(0.2)
+                    }
+                )
+            }
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay {
                 if isSelected {
@@ -119,31 +124,25 @@ private struct BackgroundCell: View {
                         .strokeBorder(Color.accentColor, lineWidth: 3)
                 }
             }
-
-            if isDeleteMode {
-                VStack {
-                    HStack {
-                        Spacer()
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 22))
-                            .foregroundStyle(.white, .red)
-                            .padding(4)
-                    }
-                    Spacer()
+            .overlay(alignment: .topTrailing) {
+                if isDeleteMode {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 22))
+                        .foregroundStyle(.white, .red)
+                        .padding(4)
                 }
             }
-        }
-        .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .onTapGesture { onTap() }
-        .onLongPressGesture(minimumDuration: 0.4) {
-            onEnterDeleteMode()
-        }
-        .contextMenu {
-            Button(role: .destructive) {
-                onContextDelete()
-            } label: {
-                Label("Удалить", systemImage: "trash")
+            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .onTapGesture { onTap() }
+            .onLongPressGesture(minimumDuration: 0.4) {
+                onEnterDeleteMode()
             }
-        }
+            .contextMenu {
+                Button(role: .destructive) {
+                    onContextDelete()
+                } label: {
+                    Label("Удалить", systemImage: "trash")
+                }
+            }
     }
 }

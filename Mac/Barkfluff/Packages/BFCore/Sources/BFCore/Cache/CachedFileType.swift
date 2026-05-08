@@ -12,6 +12,7 @@ import Foundation
 public enum CachedFileType: String, Sendable, Hashable, CaseIterable {
     case avatar
     case image
+    case poster
     case video
     case gif
     case document
