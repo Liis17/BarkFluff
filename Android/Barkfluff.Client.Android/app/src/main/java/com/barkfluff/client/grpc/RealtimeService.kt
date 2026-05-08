@@ -208,8 +208,9 @@ class RealtimeService(private val context: Context, private val grpcManager: Grp
     private suspend fun collectMessagesEdited() {
         val client = grpcManager.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribeMessagesEditedRequest.getDefaultInstance()
+        Log.d(TAG, "Subscribing to MessagesEdited stream")
         client.subscribeMessagesEdited(request).collect { event ->
-            Log.v(TAG, "Message edited: chatId=${event.chatId}, msgId=${event.message.id}")
+            Log.d(TAG, "Message edited received: chatId=${event.chatId}, msgId=${event.message.id}")
             _messageEdited.emit(event)
         }
     }
@@ -217,8 +218,9 @@ class RealtimeService(private val context: Context, private val grpcManager: Grp
     private suspend fun collectMessagesDeleted() {
         val client = grpcManager.updatesClient ?: throw IllegalStateException("Updates client not created")
         val request = UpdatesApiOuterClass.SubscribeMessagesDeletedRequest.getDefaultInstance()
+        Log.d(TAG, "Subscribing to MessagesDeleted stream")
         client.subscribeMessagesDeleted(request).collect { event ->
-            Log.v(TAG, "Message deleted: chatId=${event.chatId}, msgId=${event.messageId}")
+            Log.d(TAG, "Message deleted received: chatId=${event.chatId}, msgId=${event.messageId}")
             _messageDeleted.emit(event)
         }
     }
