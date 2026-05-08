@@ -82,6 +82,30 @@
         if (cbs) cbs.forEach(function (cb) { try { cb(data); } catch (e) { console.error(e); } });
     }
 
+    // gRPC UNAUTHENTICATED == 16. Используется для форс-рефреша токена перед реконнектом стрима.
+    function isAuthError(err) {
+        if (!err) return false;
+        if (err.code === 16) return true;
+        // grpc-web иногда кладёт код в строковый message
+        var m = String(err.message || err.toString() || '');
+        return /UNAUTHENTICATED|status code 16/i.test(m);
+    }
+
+    var _redirecting = false;
+    function handleNoToken() {
+        if (_redirecting) return;
+        _redirecting = true;
+        try { stopAll(); } catch (e) {}
+        try { BF.tokens && BF.tokens.clear && BF.tokens.clear(); } catch (e) {}
+        window.location.href = '/';
+    }
+
+    // Если forceRefresh=true — не доверяем кешу, дёргаем refresh напрямую (на случай UNAUTHENTICATED
+    // от уже открытого стрима, когда локально токен ещё «не помечен» как expired).
+    function getStreamToken(forceRefresh) {
+        return forceRefresh ? BF.clients.refreshToken() : BF.clients.getValidToken();
+    }
+
     function on(event, cb) {
         if (!listeners[event]) listeners[event] = [];
         listeners[event].push(cb);
@@ -104,9 +128,9 @@
 
     // --- Updates: new messages ---
 
-    function subscribeNewMessages() {
-        BF.clients.getValidToken().then(function (token) {
-            if (!token) return;
+    function subscribeNewMessages(forceRefresh) {
+        getStreamToken(forceRefresh).then(function (token) {
+            if (!token) { handleNoToken(); return; }
             var meta = BF.metadata.build(token);
             var proto = window.proto.barkfluff.updates;
             var req = new proto.SubscribeNewMessagesRequest();
@@ -116,7 +140,7 @@
             updatesOpenedAt = Date.now();
             if (updatesAgeTimer) clearTimeout(updatesAgeTimer);
             updatesAgeTimer = setTimeout(function () {
-                if (_started) subscribeNewMessages();
+                if (_started) subscribeNewMessages(false);
             }, STREAM_MAX_AGE);
 
             updatesLastActivity = Date.now();
@@ -142,11 +166,16 @@
                 }
             });
 
-            updatesStream.on('error', function () {
+            updatesStream.on('error', function (err) {
                 updatesConnected = false;
                 emitConnectionStatus();
-                if (_started) setTimeout(subscribeNewMessages, updatesBackoff);
-                updatesBackoff = Math.min(updatesBackoff * 2, MAX_BACKOFF);
+                if (!_started) return;
+                if (isAuthError(err)) {
+                    setTimeout(function () { subscribeNewMessages(true); }, 0);
+                } else {
+                    setTimeout(function () { subscribeNewMessages(false); }, updatesBackoff);
+                    updatesBackoff = Math.min(updatesBackoff * 2, MAX_BACKOFF);
+                }
             });
 
             updatesStream.on('end', function () {
@@ -156,20 +185,20 @@
                 if (Date.now() - updatesOpenedAt > STABLE_STREAM_THRESHOLD) {
                     updatesBackoff = INITIAL_BACKOFF;
                 }
-                if (_started) setTimeout(subscribeNewMessages, updatesBackoff);
+                if (_started) setTimeout(function () { subscribeNewMessages(false); }, updatesBackoff);
             });
 
             // Mark as connected optimistically after opening
             updatesConnected = true;
             emitConnectionStatus();
-        });
+        }, function () { handleNoToken(); });
     }
 
     // --- Updates: message read ---
 
-    function subscribeMessagesRead() {
-        BF.clients.getValidToken().then(function (token) {
-            if (!token) return;
+    function subscribeMessagesRead(forceRefresh) {
+        getStreamToken(forceRefresh).then(function (token) {
+            if (!token) { handleNoToken(); return; }
             var meta = BF.metadata.build(token);
             var proto = window.proto.barkfluff.updates;
             var req = new proto.SubscribeMessagesReadRequest();
@@ -179,7 +208,7 @@
             readOpenedAt = Date.now();
             if (readAgeTimer) clearTimeout(readAgeTimer);
             readAgeTimer = setTimeout(function () {
-                if (_started) subscribeMessagesRead();
+                if (_started) subscribeMessagesRead(false);
             }, STREAM_MAX_AGE);
 
             readLastActivity = Date.now();
@@ -203,11 +232,16 @@
                 }
             });
 
-            readStream.on('error', function () {
+            readStream.on('error', function (err) {
                 readConnected = false;
                 emitConnectionStatus();
-                if (_started) setTimeout(subscribeMessagesRead, readBackoff);
-                readBackoff = Math.min(readBackoff * 2, MAX_BACKOFF);
+                if (!_started) return;
+                if (isAuthError(err)) {
+                    setTimeout(function () { subscribeMessagesRead(true); }, 0);
+                } else {
+                    setTimeout(function () { subscribeMessagesRead(false); }, readBackoff);
+                    readBackoff = Math.min(readBackoff * 2, MAX_BACKOFF);
+                }
             });
 
             readStream.on('end', function () {
@@ -216,19 +250,19 @@
                 if (Date.now() - readOpenedAt > STABLE_STREAM_THRESHOLD) {
                     readBackoff = INITIAL_BACKOFF;
                 }
-                if (_started) setTimeout(subscribeMessagesRead, readBackoff);
+                if (_started) setTimeout(function () { subscribeMessagesRead(false); }, readBackoff);
             });
 
             readConnected = true;
             emitConnectionStatus();
-        });
+        }, function () { handleNoToken(); });
     }
 
     // --- Updates: message edited ---
 
-    function subscribeMessagesEdited() {
-        BF.clients.getValidToken().then(function (token) {
-            if (!token) return;
+    function subscribeMessagesEdited(forceRefresh) {
+        getStreamToken(forceRefresh).then(function (token) {
+            if (!token) { handleNoToken(); return; }
             var meta = BF.metadata.build(token);
             var proto = window.proto.barkfluff.updates;
             var req = new proto.SubscribeMessagesEditedRequest();
@@ -238,7 +272,7 @@
             editedOpenedAt = Date.now();
             if (editedAgeTimer) clearTimeout(editedAgeTimer);
             editedAgeTimer = setTimeout(function () {
-                if (_started) subscribeMessagesEdited();
+                if (_started) subscribeMessagesEdited(false);
             }, STREAM_MAX_AGE);
 
             editedLastActivity = Date.now();
@@ -264,11 +298,16 @@
                 }
             });
 
-            editedStream.on('error', function () {
+            editedStream.on('error', function (err) {
                 editedConnected = false;
                 emitConnectionStatus();
-                if (_started) setTimeout(subscribeMessagesEdited, editedBackoff);
-                editedBackoff = Math.min(editedBackoff * 2, MAX_BACKOFF);
+                if (!_started) return;
+                if (isAuthError(err)) {
+                    setTimeout(function () { subscribeMessagesEdited(true); }, 0);
+                } else {
+                    setTimeout(function () { subscribeMessagesEdited(false); }, editedBackoff);
+                    editedBackoff = Math.min(editedBackoff * 2, MAX_BACKOFF);
+                }
             });
 
             editedStream.on('end', function () {
@@ -277,19 +316,19 @@
                 if (Date.now() - editedOpenedAt > STABLE_STREAM_THRESHOLD) {
                     editedBackoff = INITIAL_BACKOFF;
                 }
-                if (_started) setTimeout(subscribeMessagesEdited, editedBackoff);
+                if (_started) setTimeout(function () { subscribeMessagesEdited(false); }, editedBackoff);
             });
 
             editedConnected = true;
             emitConnectionStatus();
-        });
+        }, function () { handleNoToken(); });
     }
 
     // --- Updates: message deleted ---
 
-    function subscribeMessagesDeleted() {
-        BF.clients.getValidToken().then(function (token) {
-            if (!token) return;
+    function subscribeMessagesDeleted(forceRefresh) {
+        getStreamToken(forceRefresh).then(function (token) {
+            if (!token) { handleNoToken(); return; }
             var meta = BF.metadata.build(token);
             var proto = window.proto.barkfluff.updates;
             var req = new proto.SubscribeMessagesDeletedRequest();
@@ -299,7 +338,7 @@
             deletedOpenedAt = Date.now();
             if (deletedAgeTimer) clearTimeout(deletedAgeTimer);
             deletedAgeTimer = setTimeout(function () {
-                if (_started) subscribeMessagesDeleted();
+                if (_started) subscribeMessagesDeleted(false);
             }, STREAM_MAX_AGE);
 
             deletedLastActivity = Date.now();
@@ -322,11 +361,16 @@
                 }
             });
 
-            deletedStream.on('error', function () {
+            deletedStream.on('error', function (err) {
                 deletedConnected = false;
                 emitConnectionStatus();
-                if (_started) setTimeout(subscribeMessagesDeleted, deletedBackoff);
-                deletedBackoff = Math.min(deletedBackoff * 2, MAX_BACKOFF);
+                if (!_started) return;
+                if (isAuthError(err)) {
+                    setTimeout(function () { subscribeMessagesDeleted(true); }, 0);
+                } else {
+                    setTimeout(function () { subscribeMessagesDeleted(false); }, deletedBackoff);
+                    deletedBackoff = Math.min(deletedBackoff * 2, MAX_BACKOFF);
+                }
             });
 
             deletedStream.on('end', function () {
@@ -335,22 +379,22 @@
                 if (Date.now() - deletedOpenedAt > STABLE_STREAM_THRESHOLD) {
                     deletedBackoff = INITIAL_BACKOFF;
                 }
-                if (_started) setTimeout(subscribeMessagesDeleted, deletedBackoff);
+                if (_started) setTimeout(function () { subscribeMessagesDeleted(false); }, deletedBackoff);
             });
 
             deletedConnected = true;
             emitConnectionStatus();
-        });
+        }, function () { handleNoToken(); });
     }
 
     // --- Online status ---
 
-    function subscribeOnline(userIds) {
+    function subscribeOnline(userIds, forceRefresh) {
         if (!userIds || userIds.length === 0) return;
         currentOnlineUserIds = userIds.slice();
 
-        BF.clients.getValidToken().then(function (token) {
-            if (!token) return;
+        getStreamToken(forceRefresh).then(function (token) {
+            if (!token) { handleNoToken(); return; }
             var meta = BF.metadata.build(token);
             var proto = window.proto.barkfluff.onliner;
             var req = new proto.SubscribeToOnlineStatusRequest();
@@ -361,7 +405,7 @@
             onlineOpenedAt = Date.now();
             if (onlineAgeTimer) clearTimeout(onlineAgeTimer);
             onlineAgeTimer = setTimeout(function () {
-                if (_started && currentOnlineUserIds.length > 0) subscribeOnline(currentOnlineUserIds);
+                if (_started && currentOnlineUserIds.length > 0) subscribeOnline(currentOnlineUserIds, false);
             }, STREAM_MAX_AGE);
 
             onlineLastActivity = Date.now();
@@ -381,11 +425,14 @@
                 if (status && status.code === 0) onlineBackoff = INITIAL_BACKOFF;
             });
 
-            onlineStream.on('error', function () {
-                if (_started && currentOnlineUserIds.length > 0) {
-                    setTimeout(function () { subscribeOnline(currentOnlineUserIds); }, onlineBackoff);
+            onlineStream.on('error', function (err) {
+                if (!_started || currentOnlineUserIds.length === 0) return;
+                if (isAuthError(err)) {
+                    setTimeout(function () { subscribeOnline(currentOnlineUserIds, true); }, 0);
+                } else {
+                    setTimeout(function () { subscribeOnline(currentOnlineUserIds, false); }, onlineBackoff);
+                    onlineBackoff = Math.min(onlineBackoff * 2, MAX_BACKOFF);
                 }
-                onlineBackoff = Math.min(onlineBackoff * 2, MAX_BACKOFF);
             });
 
             onlineStream.on('end', function () {
@@ -393,10 +440,10 @@
                     onlineBackoff = INITIAL_BACKOFF;
                 }
                 if (_started && currentOnlineUserIds.length > 0) {
-                    setTimeout(function () { subscribeOnline(currentOnlineUserIds); }, onlineBackoff);
+                    setTimeout(function () { subscribeOnline(currentOnlineUserIds, false); }, onlineBackoff);
                 }
             });
-        });
+        }, function () { handleNoToken(); });
     }
 
     /**
