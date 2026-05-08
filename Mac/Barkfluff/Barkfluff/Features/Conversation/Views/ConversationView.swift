@@ -178,8 +178,11 @@ struct ConversationView: View {
         }
         // Фон чата — через .background, чтобы intrinsic size картинки
         // не растягивал ZStack и не выталкивал шапку с полем ввода.
+        // ignoresSafeArea применяется снаружи: только в реальном чате фон
+        // должен заполнять окно до самых краёв; в превью настроек — нет.
         .background {
             ChatBackgroundView()
+                .ignoresSafeArea()
         }
         .ignoresSafeArea(edges: .top)
         .toolbarBackground(.hidden, for: .windowToolbar)

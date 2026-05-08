@@ -64,12 +64,10 @@ struct PosterPreviewCard: View {
             .padding(.horizontal, Theme.Spacing.md)
             .padding(.bottom, Theme.Spacing.md)
         }
-        .background(.ultraThinMaterial)
+        // Без собственного фона/бордера: карточка живёт внутри Form Section
+        // и наследует её стиль (rounded card на ультратонком материале).
+        // clipShape оставлен, чтобы постер сверху имел те же углы, что и Section.
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous)
-                .strokeBorder(Color.gray.opacity(0.15), lineWidth: 1)
-        )
         .fileImporter(
             isPresented: $showPosterPicker,
             allowedContentTypes: [.image],
