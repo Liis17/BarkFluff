@@ -432,6 +432,50 @@ Dockerfile монтирует `/var/run/docker.sock`, устанавливает
 
 ---
 
+## UI Pages — поведение фронтенда
+
+### `/logs` (`Pages/logs.html`)
+
+Просмотр событий Seq с фильтрами (сервис / уровень / поиск) и серверной пагинацией через `afterId`.
+
+**Структура таблицы (5 колонок):** chevron / Время / Уровень / Сервис / Сообщение.
+
+**Inline accordion с деталями** — при клике на строку под ней разворачивается детальная панель в формате как в Seq UI:
+- `Message` — `RenderedMessage` события на белом фоне.
+- `Template` — `MessageTemplate` (показывается только если отличается от Message).
+- `Properties` — таблица `key → value`, отсортированная по имени; объекты сериализуются `JSON.stringify`.
+- `Exception` — `<pre>` на красном фоне (только если поле непустое).
+- Кнопка `Copy JSON` — копирует полный объект события через `navigator.clipboard.writeText(JSON.stringify(evt, null, 2))`.
+
+Реализация:
+- На каждое событие рендерятся **две** `<tr>`: основная (`.log-row` с `data-idx`) и скрытая `.log-detail-row` с `colspan="5"`.
+- Один обработчик кликов через **делегирование** на `<tbody id="logsTableBody">` ловит как открытие/закрытие строки, так и клик по кнопке `.copy-json-btn`.
+- Содержимое деталей рендерится **lazily** — только при первом раскрытии (`detail.dataset.rendered = '1'`).
+- `dataset.idx` рассчитывается как `allLogs.length + index` ДО конкатенации в `allLogs`, чтобы при `append` (load more) индексы не пересекались.
+
+**Backend нового endpoint не понадобился** — `/api/seq/events` уже отдаёт полное событие (`SeqService.GetEventsAsync` зовёт Seq с `render=true`), включая `Properties`, `Exception`, `MessageTemplate`.
+
+### `/` (`Pages/dashboard.html`) — метрики сервисов
+
+`knownServices` (список сервисов в карусели метрик) — **12 сервисов**:
+`Identity, Users, Messages, Files, Updates, Notification, Beacon, FastAuth, Onliner, Configuration, Web, ClientStorage`.
+Backend `KnownServices` (`SeqEndpoints.cs`) шире (включает CloudMessaging, Developers и инфраструктуру) — он используется для `/api/seq/services` и статуса контейнеров; для метрик dashboard сознательно урезан.
+
+**Группировка метрик по типу.** В каждой карточке сервиса — 4 таба, между которыми переключаются мини-графики Chart.js:
+
+| Tab | Что попадает |
+|-----|-------------|
+| Counters | всё, что не классифицировано как одна из остальных (по умолчанию) |
+| Errors | имя содержит `error`, `_failed`, `_fail`, `rejected` |
+| Gauges | заканчивается на `_unix`, содержит `uptime`, начинается с `active_` или заканчивается `_active`/`_healthy`/`_current`/`_size`/`_subscriptions`/`_streams`/`_connections`, либо содержит `_gauge` |
+| Latency | содержит `duration`, `latency`, `_ms` (либо заканчивается на `_ms`) |
+
+Классификация делается на фронте функцией `classifyMetric(name)` в `dashboard.html`. Если группа пуста — соответствующий tab disabled (серый). Если все группы пусты или ответ Seq пустой — placeholder `Нет данных`. Активным по умолчанию становится первый tab с непустой группой (Counters → Errors → Gauges → Latency).
+
+Tab-переключатель — общий обработчик через делегирование на `#service-metrics-container`.
+
+---
+
 ## Безопасность (сводка из SECURITY_AUDIT.md)
 
 Полный аудит: `Backend/Barkfluff.AdminPanel/SECURITY_AUDIT.md`
