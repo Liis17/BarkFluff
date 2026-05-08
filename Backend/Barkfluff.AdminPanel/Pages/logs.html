@@ -122,6 +122,11 @@
                         <i data-lucide="download" class="w-4 h-4"></i>
                         Экспорт логов
                     </button>
+                    <button id="clearLogsBtn" onclick="openClearModal()"
+                        class="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        Очистить логи
+                    </button>
                     <button id="logoutBtn" class="p-2 text-slate-400 hover:text-red-500" title="Выйти">
                         <i data-lucide="log-out" class="w-5 h-5"></i>
                     </button>
@@ -277,6 +282,94 @@
                 <p id="exportErrorText" class="text-sm text-slate-600 mb-4 break-words"></p>
                 <div class="flex justify-end">
                     <button onclick="closeExportModal()" class="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">
+                        Закрыть
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CLEAR MODAL -->
+    <div id="clearModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4">
+            <!-- State: choice -->
+            <div id="clearStateChoice" class="p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-slate-800">Очистка логов</h3>
+                    <button onclick="closeClearModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <p class="text-sm text-slate-600 mb-4">Выберите, что удалить:</p>
+                <div class="space-y-2">
+                    <button onclick="askClearConfirm('old')" class="w-full text-left p-3 border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-red-300 transition-colors">
+                        <div class="font-medium text-slate-800">Удалить старые логи</div>
+                        <div class="text-xs text-slate-500 mt-0.5">Старше 2 недель</div>
+                    </button>
+                    <button onclick="askClearConfirm('all')" class="w-full text-left p-3 border border-red-300 rounded-lg hover:bg-red-50 hover:border-red-400 transition-colors">
+                        <div class="font-medium text-red-700">Удалить все логи</div>
+                        <div class="text-xs text-slate-500 mt-0.5">Полная очистка хранилища Seq</div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- State: confirm -->
+            <div id="clearStateConfirm" class="p-6 hidden">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-red-600">Подтверждение</h3>
+                    <button onclick="closeClearModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <p id="clearConfirmText" class="text-sm text-slate-700 mb-4"></p>
+                <div class="flex gap-2 justify-end">
+                    <button onclick="closeClearModal()" class="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">
+                        Отмена
+                    </button>
+                    <button id="clearConfirmBtn" class="px-4 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center gap-2">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        Удалить
+                    </button>
+                </div>
+            </div>
+
+            <!-- State: running (без кнопки закрытия) -->
+            <div id="clearStateRunning" class="p-6 hidden">
+                <h3 class="text-lg font-semibold text-slate-800 mb-4">Очистка логов</h3>
+                <div class="flex flex-col items-center gap-3 py-4">
+                    <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-red-500"></div>
+                    <div id="clearStageText" class="text-sm font-medium text-slate-700">Подготовка...</div>
+                    <div id="clearCounterText" class="text-xs text-slate-500"></div>
+                </div>
+            </div>
+
+            <!-- State: done -->
+            <div id="clearStateDone" class="p-6 hidden">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-slate-800">Очистка завершена</h3>
+                    <button onclick="closeClearModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <p id="clearDoneText" class="text-sm text-slate-600 mb-4"></p>
+                <div class="flex justify-end">
+                    <button onclick="closeClearModal()" class="px-4 py-2 text-sm bg-slate-700 hover:bg-slate-800 text-white rounded-lg transition-colors">
+                        Закрыть
+                    </button>
+                </div>
+            </div>
+
+            <!-- State: error -->
+            <div id="clearStateError" class="p-6 hidden">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-red-600">Ошибка очистки</h3>
+                    <button onclick="closeClearModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <p id="clearErrorText" class="text-sm text-slate-600 mb-4 break-words"></p>
+                <div class="flex justify-end">
+                    <button onclick="closeClearModal()" class="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">
                         Закрыть
                     </button>
                 </div>
@@ -879,6 +972,105 @@
             } catch (e) {
                 showExportError(e.message);
             }
+        }
+
+        // --- Logs Clear ---
+        let currentClearJobId = null;
+        let clearPollTimer = null;
+
+        function showClearState(name) {
+            ['Choice', 'Confirm', 'Running', 'Done', 'Error'].forEach(s => {
+                document.getElementById('clearState' + s).classList.toggle('hidden', s.toLowerCase() !== name);
+            });
+        }
+
+        function openClearModal() {
+            const m = document.getElementById('clearModal');
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+            showClearState('choice');
+            lucide.createIcons();
+        }
+
+        function closeClearModal() {
+            if (clearPollTimer) {
+                clearInterval(clearPollTimer);
+                clearPollTimer = null;
+            }
+            const m = document.getElementById('clearModal');
+            m.classList.add('hidden');
+            m.classList.remove('flex');
+            currentClearJobId = null;
+        }
+
+        function askClearConfirm(scope) {
+            const text = scope === 'all'
+                ? 'Будут безвозвратно удалены ВСЕ логи в Seq. Это действие нельзя отменить. Продолжить?'
+                : 'Будут безвозвратно удалены логи старше 14 дней. Продолжить?';
+            document.getElementById('clearConfirmText').textContent = text;
+            const btn = document.getElementById('clearConfirmBtn');
+            btn.onclick = () => startClear(scope);
+            showClearState('confirm');
+            lucide.createIcons();
+        }
+
+        async function startClear(scope) {
+            showClearState('running');
+            document.getElementById('clearStageText').textContent = 'Подсчёт логов...';
+            document.getElementById('clearCounterText').textContent = '';
+            try {
+                const resp = await fetch('/api/seq/clear/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ scope })
+                });
+                if (!resp.ok) throw new Error('start: ' + resp.status);
+                const { jobId } = await resp.json();
+                currentClearJobId = jobId;
+                clearPollTimer = setInterval(pollClearStatus, 1500);
+                pollClearStatus();
+            } catch (e) {
+                showClearError(e.message);
+            }
+        }
+
+        async function pollClearStatus() {
+            if (!currentClearJobId) return;
+            try {
+                const resp = await fetch(`/api/seq/clear/${currentClearJobId}/status`);
+                if (!resp.ok) throw new Error('status: ' + resp.status);
+                const s = await resp.json();
+                const fmt = (n) => Number(n || 0).toLocaleString('ru-RU');
+
+                if (s.state === 'queued' || s.state === 'counting') {
+                    document.getElementById('clearStageText').textContent = 'Подсчёт логов...';
+                    document.getElementById('clearCounterText').textContent = '';
+                } else if (s.state === 'deleting') {
+                    document.getElementById('clearStageText').textContent = `Удаление ${fmt(s.totalCount)} логов...`;
+                    document.getElementById('clearCounterText').textContent = '';
+                } else if (s.state === 'done') {
+                    clearInterval(clearPollTimer);
+                    clearPollTimer = null;
+                    document.getElementById('clearDoneText').textContent =
+                        `Удалено ${fmt(s.deletedCount)} логов из ${fmt(s.totalCount)}.`;
+                    showClearState('done');
+                    lucide.createIcons();
+                } else if (s.state === 'error') {
+                    clearInterval(clearPollTimer);
+                    clearPollTimer = null;
+                    showClearError(s.error || 'Неизвестная ошибка');
+                }
+            } catch (e) {
+                clearInterval(clearPollTimer);
+                clearPollTimer = null;
+                showClearError(e.message);
+            }
+        }
+
+        function showClearError(msg) {
+            document.getElementById('clearErrorText').textContent = msg;
+            showClearState('error');
+            lucide.createIcons();
         }
 
         // --- Initialize ---
