@@ -49,6 +49,18 @@ class BarkFluffFirebaseMessagingService : FirebaseMessagingService() {
 
         val data = remoteMessage.data
 
+        // Команда dismiss: убираем нотификацию чата (после прочтения на другом устройстве)
+        if (data["type"] == "dismiss_chat_notifications") {
+            val dismissChatId = data["chat_id"]
+            if (dismissChatId.isNullOrBlank()) {
+                Log.w(TAG, "dismiss_chat_notifications без chat_id, пропускаем")
+                return
+            }
+            Log.d(TAG, "dismiss_chat_notifications: chatId=$dismissChatId")
+            NotificationHelper.dismissForChat(applicationContext, dismissChatId)
+            return
+        }
+
         // Извлекаем данные
         val chatId = data["chat_id"] ?: return
         val senderId = data["sender_id"]?.toLongOrNull() ?: return
