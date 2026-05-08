@@ -67,8 +67,10 @@ public class LogsClearService : IDisposable
             job.State = LogsClearState.Deleting;
             job.UpdatedAtUtc = DateTime.UtcNow;
 
-            var deleted = await seq.DeleteEventsAsync(fromDateUtc: null, toDateUtc: toDateUtc);
-            job.DeletedCount = deleted ?? job.TotalCount;
+            await seq.DeleteEventsAsync(fromDateUtc: null, toDateUtc: toDateUtc);
+            // Seq не возвращает количество удалённых в DeleteResultPart — считаем,
+            // что удалось столько же, сколько было найдено на стадии Counting.
+            job.DeletedCount = job.TotalCount;
             job.State = LogsClearState.Done;
             job.UpdatedAtUtc = DateTime.UtcNow;
 
