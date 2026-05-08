@@ -88,6 +88,88 @@ public actor UpdatesRepository: UpdatesRepositoryProtocol {
         }
     }
 
+    public func subscribeMessagesEdited() async throws -> AsyncThrowingStream<MessageEditedEventDTO, Error> {
+        let req = Barkfluff_Updates_SubscribeMessagesEditedRequest()
+
+        return AsyncThrowingStream { continuation in
+            Task {
+                do {
+                    try await self.connectionManager.withAuthorizedClient(for: .updates) { client in
+                        let updatesClient = Barkfluff_Updates_UpdatesApi.Client(wrapping: client)
+                        try await updatesClient.subscribeMessagesEdited(req) { response in
+                            for try await event in response.messages {
+                                let chatID = event.chatID
+                                let msg = event.message
+
+                                let sentAt: Date
+                                if msg.hasSentAt {
+                                    sentAt = Date(
+                                        timeIntervalSince1970: TimeInterval(msg.sentAt.seconds)
+                                            + TimeInterval(msg.sentAt.nanos) / 1_000_000_000
+                                    )
+                                } else {
+                                    sentAt = Date()
+                                }
+                                let editedAt: Date?
+                                if msg.hasEditedAt {
+                                    editedAt = Date(
+                                        timeIntervalSince1970: TimeInterval(msg.editedAt.seconds)
+                                            + TimeInterval(msg.editedAt.nanos) / 1_000_000_000
+                                    )
+                                } else {
+                                    editedAt = nil
+                                }
+                                let attachments = msg.content.attachments.map { self.mapAttachment($0) }
+                                let messageInfo = MessageInfo(
+                                    id: msg.id,
+                                    chatID: chatID,
+                                    senderID: msg.senderID,
+                                    senderName: nil,
+                                    content: msg.content.text,
+                                    attachments: attachments,
+                                    sentAt: sentAt,
+                                    readBy: msg.readBy,
+                                    isSystem: msg.type == .system,
+                                    isEdited: msg.isEdited,
+                                    editedAt: editedAt
+                                )
+                                continuation.yield(MessageEditedEventDTO(chatID: chatID, message: messageInfo))
+                            }
+                            continuation.finish()
+                        }
+                    }
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
+
+    public func subscribeMessagesDeleted() async throws -> AsyncThrowingStream<MessageDeletedEventDTO, Error> {
+        let req = Barkfluff_Updates_SubscribeMessagesDeletedRequest()
+
+        return AsyncThrowingStream { continuation in
+            Task {
+                do {
+                    try await self.connectionManager.withAuthorizedClient(for: .updates) { client in
+                        let updatesClient = Barkfluff_Updates_UpdatesApi.Client(wrapping: client)
+                        try await updatesClient.subscribeMessagesDeleted(req) { response in
+                            for try await event in response.messages {
+                                continuation.yield(MessageDeletedEventDTO(
+                                    chatID: event.chatID,
+                                    messageID: event.messageID
+                                ))
+                            }
+                            continuation.finish()
+                        }
+                    }
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
+
     // MARK: - Helpers
 
     private nonisolated func mapAttachmentType(_ type: Barkfluff_Shared_MessageAttachmentType) -> AttachmentType {
@@ -153,13 +235,19 @@ public actor UpdatesStreamManager {
 
     private var newMessagesTask: Task<Void, Never>?
     private var messagesReadTask: Task<Void, Never>?
+    private var messagesEditedTask: Task<Void, Never>?
+    private var messagesDeletedTask: Task<Void, Never>?
 
     private var newMessagesContinuation: AsyncStream<NewMessageEvent>.Continuation?
     private var messagesReadContinuation: AsyncStream<MessageReadEvent>.Continuation?
+    private var messagesEditedContinuation: AsyncStream<MessageEditedEventDTO>.Continuation?
+    private var messagesDeletedContinuation: AsyncStream<MessageDeletedEventDTO>.Continuation?
     private var connectionContinuation: AsyncStream<ConnectionEvent>.Continuation?
 
     public private(set) var newMessages: AsyncStream<NewMessageEvent>
     public private(set) var messageReads: AsyncStream<MessageReadEvent>
+    public private(set) var messagesEdited: AsyncStream<MessageEditedEventDTO>
+    public private(set) var messagesDeleted: AsyncStream<MessageDeletedEventDTO>
     public private(set) var connectionEvents: AsyncStream<ConnectionEvent>
 
     private var isRunning = false
@@ -180,6 +268,18 @@ public actor UpdatesStreamManager {
             readCont = continuation
         }
         self.messagesReadContinuation = readCont
+
+        var editedCont: AsyncStream<MessageEditedEventDTO>.Continuation!
+        self.messagesEdited = AsyncStream { continuation in
+            editedCont = continuation
+        }
+        self.messagesEditedContinuation = editedCont
+
+        var deletedCont: AsyncStream<MessageDeletedEventDTO>.Continuation!
+        self.messagesDeleted = AsyncStream { continuation in
+            deletedCont = continuation
+        }
+        self.messagesDeletedContinuation = deletedCont
 
         var connCont: AsyncStream<ConnectionEvent>.Continuation!
         self.connectionEvents = AsyncStream { continuation in
@@ -202,6 +302,14 @@ public actor UpdatesStreamManager {
         var readCont: AsyncStream<MessageReadEvent>.Continuation!
         messageReads = AsyncStream { continuation in readCont = continuation }
         messagesReadContinuation = readCont
+
+        var editedCont: AsyncStream<MessageEditedEventDTO>.Continuation!
+        messagesEdited = AsyncStream { continuation in editedCont = continuation }
+        messagesEditedContinuation = editedCont
+
+        var deletedCont: AsyncStream<MessageDeletedEventDTO>.Continuation!
+        messagesDeleted = AsyncStream { continuation in deletedCont = continuation }
+        messagesDeletedContinuation = deletedCont
 
         var connCont: AsyncStream<ConnectionEvent>.Continuation!
         connectionEvents = AsyncStream { continuation in connCont = continuation }
@@ -312,6 +420,88 @@ public actor UpdatesStreamManager {
             }
             print("🛑 [UpdatesStreamManager] messagesRead task cancelled")
         }
+
+        messagesEditedTask = Task { [weak self] in
+            guard let self else { return }
+            var backoff: TimeInterval = 1
+            var consecutiveErrors = 0
+
+            while !Task.isCancelled {
+                do {
+                    print("📡 [UpdatesStreamManager] Connecting to messagesEdited stream (attempt \(consecutiveErrors + 1))...")
+                    let stream = try await self.updatesRepository.subscribeMessagesEdited()
+                    backoff = 1
+                    consecutiveErrors = 0
+                    print("✅ [UpdatesStreamManager] messagesEdited stream connected")
+                    for try await event in stream {
+                        let cont = await self.messagesEditedContinuation
+                        cont?.yield(event)
+                    }
+                    print("⚠️ [UpdatesStreamManager] messagesEdited stream ended normally")
+                } catch {
+                    if Task.isCancelled { break }
+                    consecutiveErrors += 1
+
+                    let isAuthError = self.isAuthenticationError(error)
+                    print("❌ [UpdatesStreamManager] messagesEdited stream error (#\(consecutiveErrors)): \(error.localizedDescription)")
+                    print("   isAuthError: \(isAuthError), backoff: \(backoff)s")
+
+                    if isAuthError, let coordinator = await self.tokenRefreshCoordinator {
+                        do {
+                            _ = try await coordinator.refreshAccessToken()
+                            print("✅ [UpdatesStreamManager] Token refreshed successfully")
+                        } catch {
+                            print("❌ [UpdatesStreamManager] Token refresh failed: \(error.localizedDescription)")
+                        }
+                    }
+
+                    try? await Task.sleep(for: .seconds(backoff))
+                    backoff = min(backoff * 2, UpdatesStreamManager.maxBackoff)
+                }
+            }
+            print("🛑 [UpdatesStreamManager] messagesEdited task cancelled")
+        }
+
+        messagesDeletedTask = Task { [weak self] in
+            guard let self else { return }
+            var backoff: TimeInterval = 1
+            var consecutiveErrors = 0
+
+            while !Task.isCancelled {
+                do {
+                    print("📡 [UpdatesStreamManager] Connecting to messagesDeleted stream (attempt \(consecutiveErrors + 1))...")
+                    let stream = try await self.updatesRepository.subscribeMessagesDeleted()
+                    backoff = 1
+                    consecutiveErrors = 0
+                    print("✅ [UpdatesStreamManager] messagesDeleted stream connected")
+                    for try await event in stream {
+                        let cont = await self.messagesDeletedContinuation
+                        cont?.yield(event)
+                    }
+                    print("⚠️ [UpdatesStreamManager] messagesDeleted stream ended normally")
+                } catch {
+                    if Task.isCancelled { break }
+                    consecutiveErrors += 1
+
+                    let isAuthError = self.isAuthenticationError(error)
+                    print("❌ [UpdatesStreamManager] messagesDeleted stream error (#\(consecutiveErrors)): \(error.localizedDescription)")
+                    print("   isAuthError: \(isAuthError), backoff: \(backoff)s")
+
+                    if isAuthError, let coordinator = await self.tokenRefreshCoordinator {
+                        do {
+                            _ = try await coordinator.refreshAccessToken()
+                            print("✅ [UpdatesStreamManager] Token refreshed successfully")
+                        } catch {
+                            print("❌ [UpdatesStreamManager] Token refresh failed: \(error.localizedDescription)")
+                        }
+                    }
+
+                    try? await Task.sleep(for: .seconds(backoff))
+                    backoff = min(backoff * 2, UpdatesStreamManager.maxBackoff)
+                }
+            }
+            print("🛑 [UpdatesStreamManager] messagesDeleted task cancelled")
+        }
     }
 
     // MARK: - Error Detection
@@ -330,10 +520,16 @@ public actor UpdatesStreamManager {
         isRunning = false
         newMessagesTask?.cancel()
         messagesReadTask?.cancel()
+        messagesEditedTask?.cancel()
+        messagesDeletedTask?.cancel()
         newMessagesTask = nil
         messagesReadTask = nil
+        messagesEditedTask = nil
+        messagesDeletedTask = nil
         newMessagesContinuation?.finish()
         messagesReadContinuation?.finish()
+        messagesEditedContinuation?.finish()
+        messagesDeletedContinuation?.finish()
         connectionContinuation?.finish()
         print("✅ [UpdatesStreamManager] Streams stopped")
     }

@@ -21,7 +21,9 @@ public enum MessageMapper {
             content: toDomain(proto.content),
             sentAt: proto.sentAt.date,
             readBy: proto.readBy,
-            isSystem: proto.type == .system
+            isSystem: proto.type == .system,
+            isEdited: proto.isEdited,
+            editedAt: proto.hasEditedAt ? proto.editedAt.date : nil
         )
     }
 

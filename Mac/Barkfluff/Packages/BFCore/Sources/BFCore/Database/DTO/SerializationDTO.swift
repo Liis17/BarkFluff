@@ -18,6 +18,8 @@ struct MessageDTO: Codable {
     let sentAt: Int64 // milliseconds since epoch
     let readBy: [Int64]
     let isSystem: Bool
+    let isEdited: Bool?
+    let editedAtMs: Int64?
 
     init(message: Message) {
         self.id = message.id
@@ -29,6 +31,8 @@ struct MessageDTO: Codable {
         self.sentAt = Int64(message.sentAt.timeIntervalSince1970 * 1000)
         self.readBy = message.readBy
         self.isSystem = message.isSystem
+        self.isEdited = message.isEdited
+        self.editedAtMs = message.editedAt.map { Int64($0.timeIntervalSince1970 * 1000) }
     }
 
     func toMessage() -> Message {
@@ -44,7 +48,9 @@ struct MessageDTO: Codable {
             sentAt: Date(timeIntervalSince1970: TimeInterval(sentAt) / 1000),
             readBy: readBy,
             isSystem: isSystem,
-            sendingState: .sent
+            sendingState: .sent,
+            isEdited: isEdited ?? false,
+            editedAt: editedAtMs.map { Date(timeIntervalSince1970: TimeInterval($0) / 1000) }
         )
     }
 }

@@ -42,6 +42,9 @@ struct ConversationView: View {
     @State private var selectedAttachments: [SelectedAttachment] = []
     @State private var isDragOver = false
 
+    /// Сообщение, на удаление которого ждём подтверждения через .confirmationDialog
+    @State private var pendingDeleteMessageID: Int64?
+
     /// Монитор для перехвата Cmd+V
     @State private var pasteMonitor: Any?
 
@@ -97,11 +100,26 @@ struct ConversationView: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
 
+                // Превью редактирования — над инпутом
+                if let viewModel, let editing = viewModel.editingMessage {
+                    EditPreviewView(
+                        snippet: ReplyPreviewView.makeSnippet(editing),
+                        onCancel: {
+                            viewModel.cancelEdit()
+                            messageText = ""
+                        }
+                    )
+                    .padding(.horizontal, Theme.Spacing.md)
+                    .padding(.bottom, Theme.Spacing.xs)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+
                 MessageInputView(
                     text: $messageText,
                     selectedAttachments: $selectedAttachments,
                     isSending: viewModel?.isSendingAttachments ?? false,
                     uploadProgress: viewModel?.uploadProgress ?? [:],
+                    isEditMode: viewModel?.editingMessage != nil,
                     onSend: { sendMessage() },
                     onFileSelected: { urls, forceAsDocument in
                         for url in urls {
@@ -178,15 +196,24 @@ struct ConversationView: View {
         }
         // Фон чата — через .background, чтобы intrinsic size картинки
         // не растягивал ZStack и не выталкивал шапку с полем ввода.
-        // ignoresSafeArea применяется снаружи: только в реальном чате фон
-        // должен заполнять окно до самых краёв; в превью настроек — нет.
         .background {
             ChatBackgroundView()
-                .ignoresSafeArea()
         }
+        // Карточный стиль: square top (уходит под toolbar — закругление
+        // там не видно), rounded bottom + боковой/нижний padding.
+        .clipShape(UnevenRoundedRectangle(
+            topLeadingRadius: 0,
+            bottomLeadingRadius: Theme.Radius.lg,
+            bottomTrailingRadius: Theme.Radius.lg,
+            topTrailingRadius: 0,
+            style: .continuous
+        ))
+        .padding(.horizontal, Theme.Spacing.xs)
+        .padding(.bottom, Theme.Spacing.xs)
         .ignoresSafeArea(edges: .top)
         .toolbarBackground(.hidden, for: .windowToolbar)
         .animation(.spring(duration: 0.25), value: viewModel?.pendingReply?.id)
+        .animation(.spring(duration: 0.25), value: viewModel?.editingMessage?.id)
         .onPreferenceChange(HeaderHeightKey.self) { headerHeight = $0 }
         .onPreferenceChange(InputHeightKey.self) { inputHeight = $0 }
         // Обработка нажатия на медиа-вложение
@@ -259,8 +286,13 @@ struct ConversationView: View {
                 }
             }
         }
-        // Обработка Escape: сначала ответ, затем вложения
+        // Обработка Escape: сначала редактирование, затем ответ, затем вложения
         .onKeyPress(.escape) {
+            if viewModel?.editingMessage != nil {
+                viewModel?.cancelEdit()
+                messageText = ""
+                return .handled
+            }
             if viewModel?.pendingReply != nil {
                 viewModel?.clearPendingReply()
                 return .handled
@@ -270,6 +302,25 @@ struct ConversationView: View {
                 return .handled
             }
             return .ignored
+        }
+        .confirmationDialog(
+            "Удалить сообщение?",
+            isPresented: Binding(
+                get: { pendingDeleteMessageID != nil },
+                set: { if !$0 { pendingDeleteMessageID = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: pendingDeleteMessageID
+        ) { messageID in
+            Button("Удалить", role: .destructive) {
+                pendingDeleteMessageID = nil
+                Task { await viewModel?.deleteMessage(messageID: messageID) }
+            }
+            Button("Отмена", role: .cancel) {
+                pendingDeleteMessageID = nil
+            }
+        } message: { _ in
+            Text("Сообщение будет удалено у всех участников чата.")
         }
         // Глобальная обработка Cmd+V для вставки файлов из буфера обмена
         .onPasteCommand(of: [.image, .fileURL, .png, .jpeg, .tiff]) { providers in
@@ -420,6 +471,26 @@ struct ConversationView: View {
                 },
                 onForward: { messageID in
                     coordinator.presentedSheet = .forwardMessage(messageID: messageID, sourceChatID: chat.id)
+                },
+                onEdit: { message in
+                    messageText = message.content.text
+                    viewModel.enterEditMode(message)
+                },
+                onDelete: { messageID in
+                    pendingDeleteMessageID = messageID
+                },
+                onCopyText: { text in
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(text, forType: .string)
+                },
+                onSaveImages: { atts in
+                    Task { await MediaActions.saveImages(atts, container: container) }
+                },
+                onCopyImage: { att in
+                    Task { await MediaActions.copyImageToPasteboard(att, container: container) }
+                },
+                onSaveDocuments: { atts in
+                    Task { await MediaActions.saveDocuments(atts, container: container) }
                 }
             )
         }
@@ -428,11 +499,19 @@ struct ConversationView: View {
     // MARK: - Actions
 
     private func sendMessage() {
-        let trimmedText = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedText.isEmpty || !selectedAttachments.isEmpty else { return }
         guard let viewModel else { return }
-
         let text = messageText
+        let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Режим редактирования — отправляем edit вместо обычной отправки.
+        if viewModel.editingMessage != nil {
+            guard !trimmedText.isEmpty else { return }
+            messageText = ""
+            Task { await viewModel.submitEdit(text: text) }
+            return
+        }
+
+        guard !trimmedText.isEmpty || !selectedAttachments.isEmpty else { return }
         let attachments = selectedAttachments
 
         // Очистка UI сразу (optimistic)

@@ -194,8 +194,21 @@ public struct Barkfluff_Shared_Message: Sendable {
   /// Clears the value of `content`. Subsequent reads from it will return its default value.
   public mutating func clearContent() {self._content = nil}
 
-  /// Тип сообщения 
+  /// Тип сообщения
   public var type: Barkfluff_Shared_MessageContentType = .unknown
+
+  /// Признак того что сообщение было отредактировано
+  public var isEdited: Bool = false
+
+  /// Дата последней правки сообщения
+  public var editedAt: SwiftProtobuf.Google_Protobuf_Timestamp {
+    get {_editedAt ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
+    set {_editedAt = newValue}
+  }
+  /// Returns true if `editedAt` has been explicitly set.
+  public var hasEditedAt: Bool {self._editedAt != nil}
+  /// Clears the value of `editedAt`. Subsequent reads from it will return its default value.
+  public mutating func clearEditedAt() {self._editedAt = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -203,6 +216,7 @@ public struct Barkfluff_Shared_Message: Sendable {
 
   fileprivate var _sentAt: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
   fileprivate var _content: Barkfluff_Shared_MessageContent? = nil
+  fileprivate var _editedAt: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
 }
 
 public struct Barkfluff_Shared_MessageContent: Sendable {
@@ -341,7 +355,7 @@ extension Barkfluff_Shared_PageRequest: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 extension Barkfluff_Shared_Message: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Message"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{3}sender_id\0\u{3}read_by\0\u{3}sent_at\0\u{1}content\0\u{1}type\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{3}sender_id\0\u{3}read_by\0\u{3}sent_at\0\u{1}content\0\u{1}type\0\u{3}is_edited\0\u{3}edited_at\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -355,6 +369,8 @@ extension Barkfluff_Shared_Message: SwiftProtobuf.Message, SwiftProtobuf._Messag
       case 4: try { try decoder.decodeSingularMessageField(value: &self._sentAt) }()
       case 5: try { try decoder.decodeSingularMessageField(value: &self._content) }()
       case 6: try { try decoder.decodeSingularEnumField(value: &self.type) }()
+      case 7: try { try decoder.decodeSingularBoolField(value: &self.isEdited) }()
+      case 8: try { try decoder.decodeSingularMessageField(value: &self._editedAt) }()
       default: break
       }
     }
@@ -383,6 +399,12 @@ extension Barkfluff_Shared_Message: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if self.type != .unknown {
       try visitor.visitSingularEnumField(value: self.type, fieldNumber: 6)
     }
+    if self.isEdited != false {
+      try visitor.visitSingularBoolField(value: self.isEdited, fieldNumber: 7)
+    }
+    try { if let v = self._editedAt {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 8)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -393,6 +415,8 @@ extension Barkfluff_Shared_Message: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if lhs._sentAt != rhs._sentAt {return false}
     if lhs._content != rhs._content {return false}
     if lhs.type != rhs.type {return false}
+    if lhs.isEdited != rhs.isEdited {return false}
+    if lhs._editedAt != rhs._editedAt {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

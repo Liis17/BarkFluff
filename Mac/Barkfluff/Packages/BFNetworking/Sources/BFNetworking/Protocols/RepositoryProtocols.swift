@@ -109,6 +109,13 @@ public protocol MessagesRepositoryProtocol: Sendable {
 
     /// Получить ID личного чата с пользователем (nil если чат не существует)
     func getPersonChatId(userID: Int64) async throws -> String?
+
+    /// Редактировать сообщение (текст и список файлов).
+    /// Возвращает обновлённое сообщение (chatID не возвращается сервером, передаётся пустая строка).
+    func editMessage(messageID: Int64, text: String, fileIDs: [String]) async throws -> MessageInfo
+
+    /// Удалить сообщение по id
+    func deleteMessage(messageID: Int64) async throws
 }
 
 // MARK: - Files
@@ -143,6 +150,8 @@ public protocol FilesRepositoryProtocol: Sendable {
 public protocol UpdatesRepositoryProtocol: Sendable {
     func subscribeNewMessages() async throws -> AsyncThrowingStream<NewMessageEvent, Error>
     func subscribeMessagesRead() async throws -> AsyncThrowingStream<MessageReadEvent, Error>
+    func subscribeMessagesEdited() async throws -> AsyncThrowingStream<MessageEditedEventDTO, Error>
+    func subscribeMessagesDeleted() async throws -> AsyncThrowingStream<MessageDeletedEventDTO, Error>
 }
 
 // MARK: - FastAuth
