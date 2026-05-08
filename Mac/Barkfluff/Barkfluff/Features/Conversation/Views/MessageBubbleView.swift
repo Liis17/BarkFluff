@@ -170,7 +170,6 @@ struct MessageBubbleView: View {
                         .foregroundStyle(.white)
                         .textSelection(.enabled)
                         .multilineTextAlignment(.leading)
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
             }
             .padding(.horizontal, padding)
@@ -199,7 +198,6 @@ struct MessageBubbleView: View {
                         .foregroundStyle(.primary)
                         .textSelection(.enabled)
                         .multilineTextAlignment(.leading)
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
             }
             .padding(.horizontal, padding)
