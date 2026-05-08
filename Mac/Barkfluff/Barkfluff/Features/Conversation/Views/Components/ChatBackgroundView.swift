@@ -51,6 +51,5 @@ struct ChatBackgroundView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
-        .ignoresSafeArea()
     }
 }

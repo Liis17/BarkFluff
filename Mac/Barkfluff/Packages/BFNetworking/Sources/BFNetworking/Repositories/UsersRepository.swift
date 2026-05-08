@@ -36,6 +36,21 @@ public actor UsersRepository: UsersRepositoryProtocol {
         return try await getUser(userID: 0)
     }
 
+    public func getCurrentDevice() async throws -> DeviceInfo? {
+        let req = Barkfluff_Users_GetCurrentDeviceRequest()
+
+        do {
+            return try await connectionManager.withAuthorizedClient(for: .users) { client in
+                let usersClient = Barkfluff_Users_UsersApi.Client(wrapping: client)
+                let response = try await usersClient.getCurrentDevice(req)
+                guard response.hasDevice else { return nil }
+                return self.mapDevice(response.device)
+            }
+        } catch let error as RPCError {
+            throw GRPCErrorMapper.map(error)
+        }
+    }
+
     public func changeName(firstName: String, lastName: String) async throws {
         var request = Barkfluff_Users_ChangeNameRequest()
         request.firstName = firstName
@@ -303,6 +318,28 @@ public actor UsersRepository: UsersRepositoryProtocol {
         case .none: return .none
         case .UNRECOGNIZED: return .all
         }
+    }
+
+    private nonisolated func mapDevice(_ device: Barkfluff_Users_Device) -> DeviceInfo {
+        let authorizedAt: Date
+        if device.hasAuthorizedAt {
+            let ts = device.authorizedAt
+            authorizedAt = Date(timeIntervalSince1970: TimeInterval(ts.seconds) + TimeInterval(ts.nanos) / 1_000_000_000)
+        } else {
+            authorizedAt = Date()
+        }
+
+        return DeviceInfo(
+            deviceId: device.deviceID,
+            userId: device.userID,
+            originalName: device.originalName,
+            customName: device.customName,
+            authorizedAt: authorizedAt,
+            appName: device.appName,
+            operationSystem: device.operationSystem,
+            location: device.location,
+            notificationsEnabled: device.notificationsEnabled
+        )
     }
 
     private nonisolated func mapUser(_ user: Barkfluff_Users_User) -> UserInfo {

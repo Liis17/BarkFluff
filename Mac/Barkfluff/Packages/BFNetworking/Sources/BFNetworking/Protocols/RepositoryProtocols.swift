@@ -46,6 +46,10 @@ public protocol IdentityRepositoryProtocol: Sendable {
 public protocol UsersRepositoryProtocol: Sendable {
     func getUser(userID: Int64) async throws -> UserInfo
     func getCurrentUser() async throws -> UserInfo
+
+    /// Получить информацию о текущем устройстве (по claim x-device-id из JWT).
+    /// Возвращает nil если сервер не нашёл устройство для текущей сессии.
+    func getCurrentDevice() async throws -> DeviceInfo?
     func changeName(firstName: String, lastName: String) async throws
     func changeUsername(newUsername: String) async throws
     func changeBio(newBio: String) async throws

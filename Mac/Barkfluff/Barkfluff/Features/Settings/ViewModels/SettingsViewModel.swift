@@ -60,10 +60,22 @@ final class SettingsViewModel {
         isSessionsLoading = true
         errorMessage = nil
 
+        // Локальный deviceID — fallback, если сервер не вернёт текущее устройство
+        let localDeviceId = await dc.tokenProvider.deviceID
+
+        async let sessionsTask = dc.identityRepository.getActiveSessions()
+        async let currentDeviceTask = dc.usersRepository.getCurrentDevice()
+
         do {
-            currentDeviceId = await dc.tokenProvider.deviceID
-            sessions = try await dc.identityRepository.getActiveSessions()
+            sessions = try await sessionsTask
+            let serverDevice: DeviceInfo? = (try? await currentDeviceTask) ?? nil
+            if let id = serverDevice?.deviceId, !id.isEmpty {
+                currentDeviceId = id
+            } else {
+                currentDeviceId = localDeviceId
+            }
         } catch {
+            currentDeviceId = localDeviceId
             errorMessage = "Не удалось загрузить сессии"
         }
 

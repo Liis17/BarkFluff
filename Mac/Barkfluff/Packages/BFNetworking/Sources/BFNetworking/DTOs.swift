@@ -50,6 +50,48 @@ public struct SessionInfo: Sendable, Identifiable {
     }
 }
 
+// MARK: - Device
+
+public struct DeviceInfo: Sendable, Identifiable {
+    public let deviceId: String
+    public let userId: Int64
+    public let originalName: String
+    public let customName: String
+    public let authorizedAt: Date
+    public let appName: String
+    public let operationSystem: String
+    public let location: String
+    public let notificationsEnabled: Bool
+
+    public var id: String { deviceId }
+
+    public var displayName: String {
+        customName.isEmpty ? originalName : customName
+    }
+
+    public init(
+        deviceId: String,
+        userId: Int64,
+        originalName: String,
+        customName: String,
+        authorizedAt: Date,
+        appName: String,
+        operationSystem: String,
+        location: String,
+        notificationsEnabled: Bool
+    ) {
+        self.deviceId = deviceId
+        self.userId = userId
+        self.originalName = originalName
+        self.customName = customName
+        self.authorizedAt = authorizedAt
+        self.appName = appName
+        self.operationSystem = operationSystem
+        self.location = location
+        self.notificationsEnabled = notificationsEnabled
+    }
+}
+
 // MARK: - OTP
 
 public struct OTPSetupInfo: Sendable {

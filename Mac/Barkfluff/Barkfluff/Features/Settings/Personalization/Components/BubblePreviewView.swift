@@ -30,7 +30,12 @@ struct BubblePreviewView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Theme.Spacing.md)
-        .background(Color(nsColor: .windowBackgroundColor))
+        // Превью на том же фоне, что и реальный чат, со всеми эффектами
+        // (картинка/блюр/затемнение). ChatBackgroundView сам читает текущие
+        // настройки персонализации из DependencyContainer.
+        .background {
+            ChatBackgroundView()
+        }
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
     }
 
