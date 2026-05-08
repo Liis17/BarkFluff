@@ -33,9 +33,13 @@
 
     var INITIAL_BACKOFF = 2000;
     var MAX_BACKOFF = 30000;
-    var STREAM_MAX_AGE = 250000; // ms — превентивный реконнект до nginx 300s-таймаута
+    var STREAM_MAX_AGE = 180000; // ms — превентивный реконнект ниже любых прокси/nginx-таймаутов
     // Если поток прожил больше этого порога, считаем закрытие «штатным» и не растим backoff.
     var STABLE_STREAM_THRESHOLD = 10000;
+    // Watchdog: если стрим не подал признаков жизни (data/status) дольше этого порога —
+    // считаем его «чёрной дырой» (TCP-сокет ещё жив, но прокси молча дропнул) и форсим реконнект.
+    var STREAM_INACTIVITY_THRESHOLD = 90000;
+    var WATCHDOG_INTERVAL = 30000;
 
     var updatesAgeTimer = null;
     var readAgeTimer    = null;
@@ -48,6 +52,14 @@
     var editedOpenedAt  = 0;
     var deletedOpenedAt = 0;
     var onlineOpenedAt  = 0;
+
+    // Время последней активности (data/status) — для watchdog'а.
+    var updatesLastActivity = 0;
+    var readLastActivity    = 0;
+    var editedLastActivity  = 0;
+    var deletedLastActivity = 0;
+    var onlineLastActivity  = 0;
+    var watchdogTimer = null;
 
     // Currently subscribed online user IDs (for reconnection)
     var currentOnlineUserIds = [];
@@ -107,8 +119,11 @@
                 if (_started) subscribeNewMessages();
             }, STREAM_MAX_AGE);
 
+            updatesLastActivity = Date.now();
+
             updatesStream.on('data', function (evt) {
                 updatesBackoff = INITIAL_BACKOFF;
+                updatesLastActivity = Date.now();
                 if (!updatesConnected) { updatesConnected = true; emitConnectionStatus(); }
                 var msg = evt.getMessage();
                 if (msg) {
@@ -120,6 +135,7 @@
             });
 
             updatesStream.on('status', function (status) {
+                updatesLastActivity = Date.now();
                 if (status && status.code === 0) {
                     updatesBackoff = INITIAL_BACKOFF;
                     if (!updatesConnected) { updatesConnected = true; emitConnectionStatus(); }
@@ -166,8 +182,11 @@
                 if (_started) subscribeMessagesRead();
             }, STREAM_MAX_AGE);
 
+            readLastActivity = Date.now();
+
             readStream.on('data', function (evt) {
                 readBackoff = INITIAL_BACKOFF;
+                readLastActivity = Date.now();
                 if (!readConnected) { readConnected = true; emitConnectionStatus(); }
                 emit('message_read', {
                     chatId: evt.getChatId(),
@@ -177,6 +196,7 @@
             });
 
             readStream.on('status', function (status) {
+                readLastActivity = Date.now();
                 if (status && status.code === 0) {
                     readBackoff = INITIAL_BACKOFF;
                     if (!readConnected) { readConnected = true; emitConnectionStatus(); }
@@ -221,8 +241,11 @@
                 if (_started) subscribeMessagesEdited();
             }, STREAM_MAX_AGE);
 
+            editedLastActivity = Date.now();
+
             editedStream.on('data', function (evt) {
                 editedBackoff = INITIAL_BACKOFF;
+                editedLastActivity = Date.now();
                 if (!editedConnected) { editedConnected = true; emitConnectionStatus(); }
                 var msg = evt.getMessage();
                 if (msg) {
@@ -234,6 +257,7 @@
             });
 
             editedStream.on('status', function (status) {
+                editedLastActivity = Date.now();
                 if (status && status.code === 0) {
                     editedBackoff = INITIAL_BACKOFF;
                     if (!editedConnected) { editedConnected = true; emitConnectionStatus(); }
@@ -278,16 +302,20 @@
                 if (_started) subscribeMessagesDeleted();
             }, STREAM_MAX_AGE);
 
+            deletedLastActivity = Date.now();
+
             deletedStream.on('data', function (evt) {
                 deletedBackoff = INITIAL_BACKOFF;
+                deletedLastActivity = Date.now();
                 if (!deletedConnected) { deletedConnected = true; emitConnectionStatus(); }
-                emit('message_deleted', {
-                    chatId: evt.getChatId(),
-                    messageId: evt.getMessageId()
-                });
+                var chatId = evt.getChatId();
+                var messageId = evt.getMessageId();
+                console.log('[realtime] message_deleted received', { chatId: chatId, messageId: messageId });
+                emit('message_deleted', { chatId: chatId, messageId: messageId });
             });
 
             deletedStream.on('status', function (status) {
+                deletedLastActivity = Date.now();
                 if (status && status.code === 0) {
                     deletedBackoff = INITIAL_BACKOFF;
                     if (!deletedConnected) { deletedConnected = true; emitConnectionStatus(); }
@@ -336,8 +364,11 @@
                 if (_started && currentOnlineUserIds.length > 0) subscribeOnline(currentOnlineUserIds);
             }, STREAM_MAX_AGE);
 
+            onlineLastActivity = Date.now();
+
             onlineStream.on('data', function (evt) {
                 onlineBackoff = INITIAL_BACKOFF;
+                onlineLastActivity = Date.now();
                 emit('online_status', {
                     userId: evt.getUserId(),
                     status: evt.getStatus(),
@@ -346,6 +377,7 @@
             });
 
             onlineStream.on('status', function (status) {
+                onlineLastActivity = Date.now();
                 if (status && status.code === 0) onlineBackoff = INITIAL_BACKOFF;
             });
 
@@ -408,6 +440,45 @@
         if (keepAliveTimer) { clearInterval(keepAliveTimer); keepAliveTimer = null; }
     }
 
+    // --- Watchdog: реконнектим стримы, которые молчат дольше STREAM_INACTIVITY_THRESHOLD ---
+
+    function checkStreamActivity() {
+        if (!_started) return;
+        var now = Date.now();
+        if (updatesStream && (now - updatesLastActivity) > STREAM_INACTIVITY_THRESHOLD) {
+            console.warn('[realtime] watchdog: new-messages stream silent for ' +
+                Math.round((now - updatesLastActivity) / 1000) + 's, reconnecting');
+            subscribeNewMessages();
+        }
+        if (readStream && (now - readLastActivity) > STREAM_INACTIVITY_THRESHOLD) {
+            console.warn('[realtime] watchdog: messages-read stream silent, reconnecting');
+            subscribeMessagesRead();
+        }
+        if (editedStream && (now - editedLastActivity) > STREAM_INACTIVITY_THRESHOLD) {
+            console.warn('[realtime] watchdog: messages-edited stream silent, reconnecting');
+            subscribeMessagesEdited();
+        }
+        if (deletedStream && (now - deletedLastActivity) > STREAM_INACTIVITY_THRESHOLD) {
+            console.warn('[realtime] watchdog: messages-deleted stream silent, reconnecting');
+            subscribeMessagesDeleted();
+        }
+        if (onlineStream && (now - onlineLastActivity) > STREAM_INACTIVITY_THRESHOLD) {
+            if (currentOnlineUserIds.length > 0) {
+                console.warn('[realtime] watchdog: online stream silent, reconnecting');
+                subscribeOnline(currentOnlineUserIds);
+            }
+        }
+    }
+
+    function startWatchdog() {
+        if (watchdogTimer) clearInterval(watchdogTimer);
+        watchdogTimer = setInterval(checkStreamActivity, WATCHDOG_INTERVAL);
+    }
+
+    function stopWatchdog() {
+        if (watchdogTimer) { clearInterval(watchdogTimer); watchdogTimer = null; }
+    }
+
     // --- Page visibility handling ---
     // When the user switches tabs the browser may throttle/kill streams.
     // On return we reconnect if streams dropped and refresh the token.
@@ -444,6 +515,7 @@
         subscribeMessagesEdited();
         subscribeMessagesDeleted();
         startKeepAlive();
+        startWatchdog();
     }
 
     function stopAll() {
@@ -465,6 +537,7 @@
         _lastEmittedStatus = null;
         currentOnlineUserIds = [];
         stopKeepAlive();
+        stopWatchdog();
         emitConnectionStatus();
     }
 
