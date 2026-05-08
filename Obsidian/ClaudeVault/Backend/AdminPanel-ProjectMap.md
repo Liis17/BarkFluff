@@ -27,6 +27,7 @@ Barkfluff.AdminPanel/
 │   ├── UsersEndpoints.cs              ← /api/users/*
 │   ├── SeqEndpoints.cs                ← /api/seq/*
 │   ├── LogsExportEndpoints.cs         ← /api/seq/export/*
+│   ├── LogsClearEndpoints.cs          ← /api/seq/clear/*
 │   ├── ConfigurationEndpoints.cs      ← /api/configuration/*
 │   ├── S3BrowserEndpoints.cs          ← /api/s3/*
 │   └── ReservedNamesEndpoints.cs      ← /api/reserved-names/*
@@ -37,6 +38,7 @@ Barkfluff.AdminPanel/
 │   ├── PendingAuthRequest.cs          ← запрос подтверждения (in-memory)
 │   ├── SeqSettings.cs                 ← конфиг Seq
 │   ├── LogsExportJob.cs               ← состояние job экспорта логов
+│   ├── LogsClearJob.cs                ← состояние job очистки логов
 │   └── Dtos/
 │       ├── ContainerDtos.cs           ← Docker DTO
 │       ├── AuthRequestDto.cs          ← запрос авторизации
@@ -49,6 +51,7 @@ Barkfluff.AdminPanel/
 │   ├── DockerService.cs               ← управление Docker
 │   ├── SeqService.cs                  ← HTTP-клиент Seq
 │   ├── LogsExportService.cs           ← async job: pull Seq → JSON → ZIP, TTL-cleanup
+│   ├── LogsClearService.cs            ← async job: count → DELETE Seq events, TTL-cleanup
 │   ├── S3BrowserService.cs            ← AWS SDK S3
 │   ├── MetricsCollectorService.cs     ← фоновый сбор метрик (IHostedService)
 │   └── ConfigurationService.cs        ← gRPC-клиент конфигурации
@@ -233,6 +236,8 @@ In-memory хранилище `PendingAuthRequest`. Таймер каждые 60 
 | `RunSqlQueryAsync(query, dates)` | `GET /api/sqlquery?q=` |
 | `GetAllEventsListAsync(filter, fromUtc, maxEvents)` | постраничная загрузка |
 | `GetSignalsAsync()` | `GET /api/signals` |
+| `CountEventsAsync(fromUtc, toUtc)` | `GET /api/sqlquery?q=select count(*) ...` (через `RunSqlQueryAsync`) |
+| `DeleteEventsAsync(fromUtc, toUtc)` | `DELETE /api/events?fromDateUtc&toDateUtc` — возвращает количество удалённых из ответа Seq (поля `Count`/`Deleted`/`EventsDeleted`) |
 | `static ExtractEventsArray(JsonElement)` | парсит как массив, так и `{Events:[...]}` |
 
 ### LogsExportService
@@ -252,6 +257,21 @@ In-memory хранилище `PendingAuthRequest`. Таймер каждые 60 
 **TTL cleanup:** `Timer` каждые 5 минут проходит по `_jobs`; если job в состоянии `Ready`/`Error` и `UpdatedAtUtc` старше 30 минут — удаляет zip + dir + запись.
 
 **Корневая папка:** `Path.Combine(Path.GetTempPath(), "logs-export")` — внутри контейнера это `/tmp/logs-export/`.
+
+### LogsClearService
+**Singleton.** In-memory `ConcurrentDictionary<Guid, LogsClearJob>` + фоновый `Timer` для TTL-cleanup. `IServiceScopeFactory` для получения scoped `SeqService` внутри фоновой Task. Зеркало `LogsExportService`, но без файлов и ZIP — только обращения к Seq API.
+
+| Метод | Описание |
+|-------|---------|
+| `StartClear(scope)` | Создать job, запустить `Task.Run(RunClearAsync)`, вернуть `Guid jobId` |
+| `GetJob(jobId)` | Получить состояние |
+
+**Pipeline (`RunClearAsync`):**
+1. Stage `Counting`: `seq.CountEventsAsync(toDateUtc)` — через SQL `select count(*) from stream`. Для `Scope.Old` `toDateUtc = UtcNow.AddDays(-14)`, для `All` — `null` (без ограничений). Результат записывается в `job.TotalCount`.
+2. Stage `Deleting`: `seq.DeleteEventsAsync(toDateUtc)` — `DELETE /api/events`. Результат пишется в `job.DeletedCount` (если Seq не вернул число — фолбэк на `TotalCount`).
+3. State `Done` либо `Error` (с текстом исключения).
+
+**TTL cleanup:** `Timer` каждые 5 минут удаляет job'ы в состоянии `Done`/`Error` старше 30 минут.
 
 ### S3BrowserService
 AWS SDK S3. Кеширует `AmazonS3Client` по `bucketId`. Конфигурацию берёт из `ConfigurationService` (gRPC).
@@ -355,6 +375,17 @@ Async-job экспорт логов в zip-архив. Все 3 ручки тр�
 | POST | `/api/seq/export/start` | `{ "scope": "all" \| "old" }` | Создаёт job, возвращает `{ jobId }`. `old` = логи старше 14 дней (`toDateUtc = UtcNow - 14d`). |
 | GET | `/api/seq/export/{jobId}/status` | — | `{ state: queued\|downloading\|compressing\|ready\|error, totalDownloaded, currentPage, zipSizeBytes, error }` |
 | GET | `/api/seq/export/{jobId}/download` | — | Стрим zip через `Results.Stream(FileStream)` (без полной загрузки в RAM). После отправки `Response.OnCompleted` → `TryDeleteJobFiles(jobId)`. |
+
+### /api/seq/clear — LogsClearEndpoints.cs
+
+Async-job очистка логов в Seq. Обе ручки требуют валидный `AuthToken`.
+
+| Метод | Путь | Тело / Query | Описание |
+|-------|------|-------------|---------|
+| POST | `/api/seq/clear/start` | `{ "scope": "all" \| "old" }` | Создаёт job, возвращает `{ jobId }`. `old` = логи старше 14 дней (`toDateUtc = UtcNow - 14d`); `all` = без ограничения по времени. |
+| GET | `/api/seq/clear/{jobId}/status` | — | `{ state: queued\|counting\|deleting\|done\|error, scope, totalCount, deletedCount, error }` |
+
+Авторизация в Seq при `DELETE /api/events` — через существующий `SeqSettings.ApiKey` (header `X-Seq-ApiKey`). Если ключ не задан / нет admin-прав — Seq вернёт 401/403 и job переходит в `error` с пробросом текста ответа.
 
 ### /api/configuration — ConfigurationEndpoints.cs
 
@@ -503,6 +534,24 @@ JS-flow:
 4. Кнопка `Перезапустить` в `done` → `POST /api/docker/containers/admin-panel/restart-own` → `window.location = '/restarting'` (тот же flow, что у кнопки `Перезапустить` на `/services`).
 
 Конкурирующих экспортов в одной вкладке быть не может — переменная `currentExportJobId` очищается при закрытии модалки и при переходе в done/error.
+
+**Очистка логов в шапке.** Кнопка `Очистить логи` (красная) рядом с `Экспорт логов` открывает модалку с 5 состояниями:
+
+| State | UI |
+|-------|----|
+| `choice` | Две кнопки: «Удалить старые логи (старше 2 недель)» и «Удалить все логи» (красная). Крестик доступен. |
+| `confirm` | Красный заголовок «Подтверждение» + текст с предупреждением о необратимости + кнопки `Отмена` / `Удалить` (красная). Крестик доступен. |
+| `running` | Спиннер + текст этапа («Подсчёт логов...» → «Удаление N логов...»). **Крестика нет, backdrop не закрывает.** |
+| `done` | Текст «Удалено N из M логов» + кнопка `Закрыть`. Крестик доступен. |
+| `error` | Текст ошибки от Seq + кнопка `Закрыть`. Крестик доступен. |
+
+JS-flow:
+1. Click `askClearConfirm(scope)` → state `confirm` с текстом, специфичным для scope. `clearConfirmBtn.onclick` пересоздаётся под выбранный scope.
+2. Click `Удалить` → `startClear(scope)` → `POST /api/seq/clear/start` → state `running`, `setInterval(pollClearStatus, 1500)`.
+3. `/status` возвращает state `counting` → `deleting` → `done`/`error`. На `deleting` показывается «Удаление {totalCount} логов...».
+4. `done`: «Удалено {deletedCount} из {totalCount} логов». В отличие от экспорта, **перезапуск админ-панели не предлагается** — кеш UI логов обновится по обычному рефрешу.
+
+Конкурирующих очисток в одной вкладке быть не может — переменная `currentClearJobId` сбрасывается при закрытии модалки.
 
 ### `/` (`Pages/dashboard.html`) — метрики сервисов
 
