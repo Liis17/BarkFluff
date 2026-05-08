@@ -1,4 +1,3 @@
-using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Users.Persistence.Services;
 
@@ -9,7 +8,6 @@ namespace BarkFluff.Users.Features.Devices.SetNotificationsEnabled;
 public class SetNotificationsEnabledCommandHandler(
     DevicesStorage devicesStorage,
     UserContext userContext,
-    RequestContext requestContext,
     ILogger<SetNotificationsEnabledCommandHandler> logger)
     : IRequestHandler<SetNotificationsEnabledCommand, Unit>
 {
@@ -17,11 +15,11 @@ public class SetNotificationsEnabledCommandHandler(
     {
         logger.LogDebug(
             "Изменение статуса уведомлений для пользователя {UserId}, DeviceId: {DeviceId}, Enabled: {Enabled}",
-            userContext.UserId, requestContext.DeviceId, request.Enabled);
+            userContext.UserId, userContext.DeviceId, request.Enabled);
 
-        if (string.IsNullOrEmpty(requestContext.DeviceId) || !Guid.TryParse(requestContext.DeviceId, out var deviceGuid))
+        if (string.IsNullOrEmpty(userContext.DeviceId) || !Guid.TryParse(userContext.DeviceId, out var deviceGuid))
         {
-            logger.LogWarning("Некорректный DeviceId: {DeviceId}", requestContext.DeviceId);
+            logger.LogWarning("Некорректный DeviceId: {DeviceId}", userContext.DeviceId);
             return Unit.Value;
         }
 
