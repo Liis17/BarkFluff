@@ -47,6 +47,10 @@ ConcurrentDictionary<long userId, ConcurrentDictionary<Guid subscriptionId, ISer
 
 `PendingPushTracker` (Singleton) хранит `CancellationTokenSource` по ключу `(MessageId, UserId)`.
 
+### Dismiss push после прочтения
+
+`DismissPushPublisher` (`INotificationHandler<ReadByNotification>`) запускается параллельно с `ReadByCancelPushHandler` и для каждого `userId` из `NewReadBy` публикует `DismissPushEvent { ChatId, UserId }` в RabbitMQ. Его потребляет [[Backend/CloudMessaging]] и шлёт data-only FCM `type=dismiss_chat_notifications` — клиент скрывает нотификацию чата на остальных устройствах. Если push в 5-сек окне ещё не ушёл, `ReadByCancelPushHandler` его отменит, а dismiss станет no-op на клиенте.
+
 ### gRPC API
 
 ```protobuf
