@@ -22,6 +22,8 @@ docker-compose -f docker-compose-dev.yml up -d updates
 |----------|----------|----------------------|-----------|
 | `new-messages-updates-handler` | `NewMessageConsumer` | `NewMessageNotification` | `SubscribeNewMessages` |
 | `read-receipts-updates-handler` | `ReadByConsumer` | `ReadByNotification` | `SubscribeMessagesRead` |
+| `messages-edited-updates-handler` | `MessageEditedConsumer` | `MessageEditedNotification` | `SubscribeMessagesEdited` |
+| `messages-deleted-updates-handler` | `MessageDeletedConsumer` | `MessageDeletedNotification` | `SubscribeMessagesDeleted` |
 | `session-revoked-updates` | `SessionRevokedConsumer` | — | — (инвалидация токена через `TokenRevocationCache`) |
 
 ### Схема прохождения события
@@ -56,6 +58,8 @@ ConcurrentDictionary<long userId, ConcurrentDictionary<Guid subscriptionId, ISer
 ```protobuf
 rpc SubscribeNewMessages(SubscribeNewMessagesRequest) returns (stream NewMessageEvent)
 rpc SubscribeMessagesRead(SubscribeMessagesReadRequest) returns (stream MessageReadEvent)
+rpc SubscribeMessagesEdited(SubscribeMessagesEditedRequest) returns (stream MessageEditedEvent)
+rpc SubscribeMessagesDeleted(SubscribeMessagesDeletedRequest) returns (stream MessageDeletedEvent)
 ```
 
 Оба метода: регистрируют подписку → `await Task.Delay(Infinite, context.CancellationToken)` → при отключении удаляют подписку.

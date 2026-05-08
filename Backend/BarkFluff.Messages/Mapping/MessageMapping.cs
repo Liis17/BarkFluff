@@ -10,27 +10,43 @@ public static class MessageMapping
 {
     public static Message ToGrpc(this Domain.Message message)
     {
-        return new Message
+        var grpc = new Message
         {
             Id = message.Id,
             SentAt = Timestamp.FromDateTime(DateTime.SpecifyKind(message.SentAt, DateTimeKind.Utc)),
             ReadBy = { message.ReadBy },
             SenderId = message.SenderId,
             Content = message.Content?.ToGrpc(),
-            Type = (MessageContentType)(int)message.Type
+            Type = (MessageContentType)(int)message.Type,
+            IsEdited = message.IsEdited
         };
+
+        if (message.EditedAt.HasValue)
+        {
+            grpc.EditedAt = Timestamp.FromDateTime(DateTime.SpecifyKind(message.EditedAt.Value, DateTimeKind.Utc));
+        }
+
+        return grpc;
     }
 
     public static Message ToGrpc(this Domain.Message message, Dictionary<string, UploadFileInfo> filesInfoMap)
     {
-        return new Message
+        var grpc = new Message
         {
             Id = message.Id,
             SentAt = Timestamp.FromDateTime(DateTime.SpecifyKind(message.SentAt, DateTimeKind.Utc)),
             ReadBy = { message.ReadBy },
             SenderId = message.SenderId,
             Content = message.Content?.ToGrpc(filesInfoMap),
-            Type = (MessageContentType)(int)message.Type
+            Type = (MessageContentType)(int)message.Type,
+            IsEdited = message.IsEdited
         };
+
+        if (message.EditedAt.HasValue)
+        {
+            grpc.EditedAt = Timestamp.FromDateTime(DateTime.SpecifyKind(message.EditedAt.Value, DateTimeKind.Utc));
+        }
+
+        return grpc;
     }
 }

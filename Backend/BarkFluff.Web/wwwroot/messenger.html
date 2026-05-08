@@ -41,6 +41,7 @@
             --scrollbar: rgba(0,0,0,0.10);
             --separator-bg: rgba(255,255,255,0.82);
             --profile-bg: #faf8f5;
+            --logo-gradient: linear-gradient(135deg, #1a1a1a 0%, #4a4a4a 100%);
             /* legacy aliases */
             --bg-dark: var(--bg);
             --card-bg: var(--dialog-bg);
@@ -78,6 +79,7 @@
             --scrollbar: rgba(255,255,255,0.07);
             --separator-bg: rgba(28,25,20,0.92);
             --profile-bg: #1c1916;
+            --logo-gradient: linear-gradient(135deg, #f0e8e0 0%, #c0a080 100%);
             --bg-dark: var(--bg);
             --card-bg: var(--dialog-bg);
             --msg-incoming-bg: var(--msg-in-bg);
@@ -114,6 +116,7 @@
             --scrollbar: rgba(255,255,255,0.06);
             --separator-bg: rgba(18,21,38,0.92);
             --profile-bg: #12152a;
+            --logo-gradient: linear-gradient(135deg, #e8e4ff 0%, #a090ff 100%);
             --bg-dark: var(--bg);
             --card-bg: var(--dialog-bg);
             --msg-incoming-bg: var(--msg-in-bg);
@@ -192,9 +195,10 @@
         .sidebar-header .logo-text {
             font-size: 18px;
             font-weight: 700;
-            background: linear-gradient(135deg, #1a1a1a 0%, #4a4a4a 100%);
+            background: var(--logo-gradient);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            background-clip: text;
             flex: 1;
         }
 

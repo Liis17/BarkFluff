@@ -104,6 +104,19 @@ namespace BarkFluff.Messages.Persistence.Migrations
                     b.Property<Guid>("ChatId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("EditedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("IsEdited")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.PrimitiveCollection<List<long>>("ReadBy")
                         .IsRequired()
                         .HasColumnType("bigint[]");

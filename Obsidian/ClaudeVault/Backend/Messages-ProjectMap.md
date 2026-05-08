@@ -20,7 +20,7 @@
 
 | Файл | Авторизация | Что делает |
 |------|------------|-----------|
-| `Host/MessagesApiService.cs` | `TokenType.User` | Клиентский API: ListChats, ListMessages, SendMessage, MarkAsRead, CreateGroupChat, KickUser, ListChatMembers, ListChatAttachments, GetPersonChatId, GetChatInfo |
+| `Host/MessagesApiService.cs` | `TokenType.User` | Клиентский API: ListChats, ListMessages, SendMessage, EditMessage, DeleteMessage, MarkAsRead, CreateGroupChat, KickUser, ListChatMembers, ListChatAttachments, GetPersonChatId, GetChatInfo |
 | `Host/MessagesServerApiService.cs` | `TokenType.Service` | Межсервисный API: GetUserAllMessages (GDPR-экспорт) |
 
 ---
@@ -32,6 +32,10 @@
 | `Features/SendMessage/SendMessageCommand.cs` | Команда отправки сообщения (chatId или userId получателя) |
 | `Features/SendMessage/SendMessageCommandHandler.cs` | Обработчик: авто-создаёт DM если нужно, сохраняет сообщение, публикует `NewMessageEvent` |
 | `Features/SendMessage/OutgoingMessage.cs` | DTO исходящего сообщения (Text, FileIds) |
+| `Features/EditMessage/EditMessageCommand.cs` | Команда редактирования сообщения (MessageId, Text, FileIds) |
+| `Features/EditMessage/EditMessageCommandHandler.cs` | Обработчик: проверяет владельца/тип/IsDeleted, сохраняет forwarded-вложения, перезаписывает не-forward attachments, выставляет IsEdited+EditedAt, публикует `MessageEditedEvent` |
+| `Features/DeleteMessage/DeleteMessageCommand.cs` | Команда soft-delete сообщения |
+| `Features/DeleteMessage/DeleteMessageCommandHandler.cs` | Обработчик: проверки владельца/типа, idempotent no-op для повторного удаления, выставляет IsDeleted=true, публикует `MessageDeletedEvent` |
 | `Features/ListChats/ListChatsCommand.cs` | Команда запроса списка чатов с пагинацией |
 | `Features/ListChats/ListChatsCommandHandler.cs` | Загружает чаты, подтягивает имена/аватары из Redis или Users API |
 | `Features/ListMessages/ListMessagesCommand.cs` | Команда загрузки сообщений чата |

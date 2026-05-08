@@ -23,6 +23,8 @@ docker-compose -f docker-compose-dev.yml up -d messages
 | Feature | Описание |
 |---------|----------|
 | `SendMessage` | Отправка в чат или DM (авто-создаёт личный чат). Лимиты: текст ≤ 4096 символов, ≤ 10 вложений |
+| `EditMessage` | Правка своего сообщения: текст и/или список вложений. Forward-снапшот не редактируется. Системные нельзя. Выставляет `IsEdited`+`EditedAt`, публикует `MessageEditedEvent` |
+| `DeleteMessage` | Soft-delete своего сообщения (`IsDeleted=true`). Системные нельзя. Повторное удаление — idempotent no-op. Публикует `MessageDeletedEvent` |
 | `ListChats` | Список чатов с пагинацией, имена/аватары из Redis или Users API |
 | `ListMessages` | Двунаправленная пагинация (до 50 в каждую сторону) |
 | `CreateGroupChat` | Создание группы с системным сообщением |
@@ -51,6 +53,8 @@ docker-compose -f docker-compose-dev.yml up -d messages
 **Публикует:**
 - `NewMessageEvent` → [[Backend/Updates]] (отправка сообщения, создание группы, kick)
 - `MessageReadEvent` → [[Backend/Updates]] (MarkAsRead)
+- `MessageEditedEvent` → [[Backend/Updates]] (EditMessage)
+- `MessageDeletedEvent` → [[Backend/Updates]] (DeleteMessage)
 
 **Потребляет:**
 - `user-changed-name-messages` → `UserChangedNameConsumer` → Redis-кеш имён
@@ -67,7 +71,7 @@ docker-compose -f docker-compose-dev.yml up -d messages
 |----------|---------------|
 | `Chat` | `LastMessage`, `CountUnread`, `FirstUnreadMessageId` — вычисляются в рантайме, не в БД |
 | `ChatMember` | Индекс `(ChatId, UserId)`, каскадное удаление |
-| `Message` | `Content` — owned type, `ReadBy` — PostgreSQL array |
+| `Message` | `Content` — owned type, `ReadBy` — PostgreSQL array, `IsDeleted`/`IsEdited` (bool, default=false), `EditedAt` (timestamptz nullable) |
 | `MessageAttachment` | Owned collection в отдельной таблице `MessageAttachments` |
 | `MessageAttachmentType` | Unknown, Image, Video, Gif, Document, Audio, Voice, Sticker, ForwardedMessage |
 | `ForwardedMessageAttachment` | Owned collection в таблице `ForwardedMessageAttachments`; вложения внутри пересланного сообщения (без ForwardedMessage рекурсии) |
@@ -83,6 +87,8 @@ docker-compose -f docker-compose-dev.yml up -d messages
 - **Пагинация**: `GetChatMessagesWithOffset` — двунаправленная загрузка вокруг `fromMessageId` (по 50 в каждую сторону)
 - **Права кика**: только создатель группы и `GroupChatInfo.UsersCanKick`
 - **Self-chat**: `CreatePersonChat(userId, userId)` — личный чат с самим собой поддерживается
+- **Soft-delete**: удалённые сообщения остаются в БД, но скрыты везде в выдаче (`MessagesStorage`, `ChatsStorage` — фильтр `!IsDeleted`). `MarkAsRead` пропускает удалённые. Чат с единственным удалённым сообщением исчезает из `ListChats`
+- **Edit-семантика**: при правке forward-вложения сохраняются как есть (Telegram-style), не-forward attachments полностью пересоздаются по новому списку `FileIds`. Forward-снапшоты не обновляются автоматически
 
 ## Конфигурация
 
