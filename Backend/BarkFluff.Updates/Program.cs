@@ -34,6 +34,8 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<NewMessageConsumer>();
     x.AddConsumer<ReadByConsumer>();
     x.AddConsumer<SessionRevokedConsumer>();
+    x.AddConsumer<MessageEditedConsumer>();
+    x.AddConsumer<MessageDeletedConsumer>();
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -57,6 +59,16 @@ builder.Services.AddMassTransit(x =>
         {
             e.ConfigureConsumer<SessionRevokedConsumer>(context);
         });
+
+        cfg.ReceiveEndpoint("messages-edited-updates-handler", e =>
+        {
+            e.ConfigureConsumer<MessageEditedConsumer>(context);
+        });
+
+        cfg.ReceiveEndpoint("messages-deleted-updates-handler", e =>
+        {
+            e.ConfigureConsumer<MessageDeletedConsumer>(context);
+        });
     });
 });
 
@@ -73,6 +85,8 @@ var startupMetrics = app.Services.GetRequiredService<MetricsCollector>();
 startupMetrics.Set("service_started_unix", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
 startupMetrics.Set("new_messages_subscriptions_active", 0);
 startupMetrics.Set("read_by_subscriptions_active", 0);
+startupMetrics.Set("messages_edited_subscriptions_active", 0);
+startupMetrics.Set("messages_deleted_subscriptions_active", 0);
 startupMetrics.Set("subscriptions_active_total", 0);
 
 app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);

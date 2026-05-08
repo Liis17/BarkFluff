@@ -38,11 +38,13 @@ builder.Services.AddMediatR(cfg =>
 
 ### Auto-counters (MediatR pipeline) — сбрасываются каждые 5 секунд
 
-Все 11 операций получают одинаковую четвёрку `{op}_requests / _success / _errors / _duration_ms_total`:
+Все 13 операций получают одинаковую четвёрку `{op}_requests / _success / _errors / _duration_ms_total`:
 
 | Операция                  | Что делает handler                                                       |
 | ------------------------- | ------------------------------------------------------------------------ |
 | `send_message`            | Отправка сообщения (текст / вложения / форвард / создание DM по ходу)    |
+| `edit_message`            | Редактирование своего сообщения (текст и/или список вложений)            |
+| `delete_message`          | Soft-delete своего сообщения                                             |
 | `list_chats`              | Список чатов пользователя                                                |
 | `list_messages`           | Список сообщений чата с двунаправленной пагинацией                       |
 | `mark_as_read`            | Отметка набора сообщений прочитанными                                    |
@@ -68,6 +70,11 @@ builder.Services.AddMediatR(cfg =>
 | `chats_created_group`                  | `Features/CreateGroupChat/CreateGroupChatCommandHandler.cs`               | Новые групповые чаты                                                       |
 | `chats_created_group_members_total`    | `CreateGroupChatCommandHandler.cs` (`Add(UserIds.Count)`)                 | Сумма размеров создаваемых групп. Среднее = `_total / chats_created_group` |
 | `users_kicked`                         | `Features/KickUser/KickUserCommandHandler.cs` (после публикации)          | Успешные кики                                                              |
+| `messages_edited`                      | `Features/EditMessage/EditMessageCommandHandler.cs` (после публикации)    | Успешные правки сообщений                                                  |
+| `messages_edited_with_text`            | `EditMessageCommandHandler.cs`                                            | Из `messages_edited` — те, у которых остался текст                         |
+| `messages_edited_with_attachments`     | `EditMessageCommandHandler.cs`                                            | Из `messages_edited` — те, у которых остались/добавлены не-forwarded файлы |
+| `messages_deleted`                     | `Features/DeleteMessage/DeleteMessageCommandHandler.cs` (после публикации)| Успешные soft-delete                                                       |
+| `messages_delete_noop`                 | `DeleteMessageCommandHandler.cs`                                          | Повторное удаление уже удалённого сообщения (idempotent)                   |
 
 ### RabbitMQ-консьюмеры
 

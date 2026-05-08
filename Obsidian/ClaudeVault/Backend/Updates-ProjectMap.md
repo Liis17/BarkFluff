@@ -12,7 +12,7 @@
 | Файл | Назначение |
 |------|-----------|
 | `Program.cs` | Точка запуска сервиса. Регистрирует gRPC, XAuth, MassTransit (3 consumer-а), Serilog, Metrics. Монтирует `UpdatesApiService`. |
-| `DependencyInjection.cs` | Extension-метод `AddUpdatesServices()`. Регистрирует оба `StreamSubscriptionsManager` и `PendingPushTracker` как Singleton, подключает MediatR. |
+| `DependencyInjection.cs` | Extension-метод `AddUpdatesServices()`. Регистрирует все 4 `StreamSubscriptionsManager` (NewMessages, MessagesRead, MessagesEdited, MessagesDeleted) и `PendingPushTracker` как Singleton, подключает MediatR. |
 | `appsettings.json` | Базовая конфигурация: порт `7015`, адрес Configuration-сервиса. |
 | `appsettings.Development.json` | Переопределения для разработки. |
 | `Properties/launchSettings.json` | Профили запуска (IDE). |
@@ -24,7 +24,7 @@
 
 | Файл | Назначение |
 |------|-----------|
-| `Host/UpdatesApiService.cs` | gRPC-сервис (`UpdatesApiBase`). Два метода: `SubscribeNewMessages` и `SubscribeMessagesRead`. Регистрирует подписку в `StreamSubscriptionsManager`, ждёт `CancellationToken`, при отключении удаляет подписку. Собирает метрики (`active_subscriptions`, `active_subscriptions_removed`). Защищён `[Authorize(Policy = TokenType.User)]`. |
+| `Host/UpdatesApiService.cs` | gRPC-сервис (`UpdatesApiBase`). Четыре метода: `SubscribeNewMessages`, `SubscribeMessagesRead`, `SubscribeMessagesEdited`, `SubscribeMessagesDeleted`. Регистрирует подписку в соответствующем `StreamSubscriptionsManager`, ждёт `CancellationToken`, при отключении удаляет подписку. Собирает метрики (`*_subscriptions_opened/closed/active`, `subscriptions_active_total`). Защищён `[Authorize(Policy = TokenType.User)]`. |
 
 ---
 
@@ -34,6 +34,8 @@
 |------|-------|-----------|
 | `Consumers/NewMessageConsumer.cs` | `new-messages-updates-handler` | Получает `NewMessageEvent` из RabbitMQ. Парсит бинарный protobuf-объект `Message`, публикует `NewMessageNotification` через MediatR. |
 | `Consumers/ReadByConsumer.cs` | `read-receipts-updates-handler` | Получает `MessageReadEvent` из RabbitMQ. Публикует `ReadByNotification` через MediatR. |
+| `Consumers/MessageEditedConsumer.cs` | `messages-edited-updates-handler` | Получает `MessageEditedEvent` из RabbitMQ. Парсит бинарный protobuf `Message`, публикует `MessageEditedNotification` через MediatR. |
+| `Consumers/MessageDeletedConsumer.cs` | `messages-deleted-updates-handler` | Получает `MessageDeletedEvent` из RabbitMQ. Публикует `MessageDeletedNotification` (содержит только `MessageId`+`ChatId`+`Members`) через MediatR. |
 | `Consumers/SessionRevokedConsumer.cs` | `session-revoked-updates` | Получает `SessionRevokedEvent` из RabbitMQ. Вызывает `TokenRevocationCache.Revoke()` — принудительно инвалидирует токен сессии для пары `(UserId, DeviceId)`. |
 
 ---
@@ -58,6 +60,26 @@
 
 ---
 
+## Features / SubscribeMessagesEdited
+
+| Файл | Назначение |
+|------|-----------|
+| `Features/SubscribeMessagesEdited/MessageEditedNotification.cs` | MediatR `INotification`. Содержит обновлённый объект `Message`, список участников и `ChatId`. |
+| `Features/SubscribeMessagesEdited/StreamSubscriptionsManager.cs` | Singleton-менеджер подписок типизированный `IServerStreamWriter<MessageEditedEvent>`. |
+| `Features/SubscribeMessagesEdited/Handlers/MessageEditedNotificationHandler.cs` | Параллельная рассылка `MessageEditedEvent` всем участникам чата с активными стримами. |
+
+---
+
+## Features / SubscribeMessagesDeleted
+
+| Файл | Назначение |
+|------|-----------|
+| `Features/SubscribeMessagesDeleted/MessageDeletedNotification.cs` | MediatR `INotification`. Содержит `MessageId`, `Members`, `ChatId` (без полного тела сообщения — клиент удаляет по id). |
+| `Features/SubscribeMessagesDeleted/StreamSubscriptionsManager.cs` | Singleton-менеджер подписок типизированный `IServerStreamWriter<MessageDeletedEvent>`. |
+| `Features/SubscribeMessagesDeleted/Handlers/MessageDeletedNotificationHandler.cs` | Параллельная рассылка `MessageDeletedEvent` всем участникам чата с активными стримами. |
+
+---
+
 ## Features / PushNotifications
 
 | Файл | Назначение |
@@ -72,7 +94,7 @@
 
 | Файл | Назначение |
 |------|-----------|
-| `Shared/BarkFluff.Proto/updates_api.proto` | gRPC-контракт сервиса. Определяет `UpdatesApi` с двумя server-streaming методами: `SubscribeNewMessages` → `stream NewMessageEvent`, `SubscribeMessagesRead` → `stream MessageReadEvent`. |
+| `Shared/BarkFluff.Proto/updates_api.proto` | gRPC-контракт сервиса. Определяет `UpdatesApi` с четырьмя server-streaming методами: `SubscribeNewMessages` → `stream NewMessageEvent`, `SubscribeMessagesRead` → `stream MessageReadEvent`, `SubscribeMessagesEdited` → `stream MessageEditedEvent`, `SubscribeMessagesDeleted` → `stream MessageDeletedEvent`. |
 | `Shared/BarkFluff.Proto/shared.proto` | Общий контракт (используется для типа `Message`). |
 
 ---

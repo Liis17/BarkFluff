@@ -19,6 +19,8 @@ builder.Services.AddBarkFluffMetrics("BarkFluff.Updates");
 startupMetrics.Set("service_started_unix", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
 startupMetrics.Set("new_messages_subscriptions_active", 0);
 startupMetrics.Set("read_by_subscriptions_active", 0);
+startupMetrics.Set("messages_edited_subscriptions_active", 0);
+startupMetrics.Set("messages_deleted_subscriptions_active", 0);
 startupMetrics.Set("subscriptions_active_total", 0);
 ```
 
@@ -34,8 +36,12 @@ startupMetrics.Set("subscriptions_active_total", 0);
 | `new_messages_subscriptions_closed`    | `Host/UpdatesApiService.cs::SubscribeNewMessages` (finally) | Сколько стримов закрыто (отмена, дисконнект, выход).                          |
 | `read_by_subscriptions_opened`         | `Host/UpdatesApiService.cs::SubscribeMessagesRead`    | Открытые стримы `SubscribeMessagesRead`.                                              |
 | `read_by_subscriptions_closed`         | `Host/UpdatesApiService.cs::SubscribeMessagesRead` (finally) | Закрытые стримы `SubscribeMessagesRead`.                                       |
-| `active_subscriptions`                 | оба метода API                            | (legacy) суммарный счётчик открытий обоих типов. Сохранён ради совместимости с дашбордом. |
-| `active_subscriptions_removed`         | оба метода API                            | (legacy) суммарный счётчик закрытий обоих типов.                                       |
+| `messages_edited_subscriptions_opened` | `Host/UpdatesApiService.cs::SubscribeMessagesEdited`  | Открытые стримы `SubscribeMessagesEdited`.                                            |
+| `messages_edited_subscriptions_closed` | `Host/UpdatesApiService.cs::SubscribeMessagesEdited` (finally) | Закрытые стримы `SubscribeMessagesEdited`.                                  |
+| `messages_deleted_subscriptions_opened`| `Host/UpdatesApiService.cs::SubscribeMessagesDeleted` | Открытые стримы `SubscribeMessagesDeleted`.                                           |
+| `messages_deleted_subscriptions_closed`| `Host/UpdatesApiService.cs::SubscribeMessagesDeleted` (finally) | Закрытые стримы `SubscribeMessagesDeleted`.                                |
+| `active_subscriptions`                 | все методы API                            | (legacy) суммарный счётчик открытий всех типов. Сохранён ради совместимости с дашбордом. |
+| `active_subscriptions_removed`         | все методы API                            | (legacy) суммарный счётчик закрытий всех типов.                                       |
 
 **Gauges** (последнее значение):
 
@@ -43,17 +49,23 @@ startupMetrics.Set("subscriptions_active_total", 0);
 | ------------------------------------ | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
 | `new_messages_subscriptions_active`  | `Host/UpdatesApiService.cs` + `Program.cs` (init=0) | Реальное число открытых стримов `SubscribeNewMessages`. Считывается из `StreamSubscriptionsManager.ActiveCount`. |
 | `read_by_subscriptions_active`       | `Host/UpdatesApiService.cs` + `Program.cs` (init=0) | Реальное число открытых стримов `SubscribeMessagesRead`.                                              |
-| `subscriptions_active_total`         | `Host/UpdatesApiService.cs` + `Program.cs` (init=0) | Сумма активных подписок обоих типов. Используется как индикатор «онлайн-клиентов» в админке.        |
+| `messages_edited_subscriptions_active` | `Host/UpdatesApiService.cs` + `Program.cs` (init=0) | Реальное число открытых стримов `SubscribeMessagesEdited`.                                          |
+| `messages_deleted_subscriptions_active`| `Host/UpdatesApiService.cs` + `Program.cs` (init=0) | Реальное число открытых стримов `SubscribeMessagesDeleted`.                                         |
+| `subscriptions_active_total`         | `Host/UpdatesApiService.cs` + `Program.cs` (init=0) | Сумма активных подписок всех 4 типов. Используется как индикатор «онлайн-клиентов» в админке.       |
 
 ### RabbitMQ-события (consumers)
 
 | Метрика                              | Где                                              | Описание                                                                                       |
 | ------------------------------------ | ------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
-| `rabbitmq_events_consumed`           | все три consumer-а                               | Общий счётчик потребления RMQ-событий (NewMessage + ReadBy + SessionRevoked).                  |
+| `rabbitmq_events_consumed`           | все consumer-ы                                   | Общий счётчик потребления RMQ-событий (NewMessage + ReadBy + SessionRevoked + Edited + Deleted). |
 | `new_message_events_consumed`        | `Consumers/NewMessageConsumer.cs`                | События `NewMessageEvent` из очереди `new-messages-updates-handler`.                           |
 | `new_message_events_errors`          | `Consumers/NewMessageConsumer.cs` (catch)        | Ошибки парсинга бинарного `Message` или паблишинга MediatR-нотификации.                        |
 | `read_by_events_consumed`            | `Consumers/ReadByConsumer.cs`                    | События `MessageReadEvent` из очереди `read-receipts-updates-handler`.                         |
 | `read_by_events_errors`              | `Consumers/ReadByConsumer.cs` (catch)            | Ошибки обработки события прочтения.                                                            |
+| `messages_edited_events_consumed`    | `Consumers/MessageEditedConsumer.cs`             | События `MessageEditedEvent` из очереди `messages-edited-updates-handler`.                     |
+| `messages_edited_events_errors`      | `Consumers/MessageEditedConsumer.cs` (catch)     | Ошибки парсинга/публикации MediatR при правке.                                                 |
+| `messages_deleted_events_consumed`   | `Consumers/MessageDeletedConsumer.cs`            | События `MessageDeletedEvent` из очереди `messages-deleted-updates-handler`.                   |
+| `messages_deleted_events_errors`     | `Consumers/MessageDeletedConsumer.cs` (catch)    | Ошибки публикации MediatR-уведомления при удалении.                                            |
 | `session_revoked_events_consumed`    | `Consumers/SessionRevokedConsumer.cs`            | События `SessionRevokedEvent` из очереди `session-revoked-updates`.                            |
 | `sessions_revoked`                   | `Consumers/SessionRevokedConsumer.cs`            | Сессии, инвалидированные через `TokenRevocationCache.Revoke()`. Маркер форс-логаутов.          |
 
@@ -67,6 +79,10 @@ startupMetrics.Set("subscriptions_active_total", 0);
 | `events_broadcast_errors`            | тот же файл                                                                          | (legacy) синоним `new_messages_broadcast_errors`.                                                |
 | `read_by_broadcast`                  | `Features/SubscribeMessagesRead/Handlers/ReadByNotificationHandler.cs`               | Сколько `MessageReadEvent` успешно записано в стримы.                                            |
 | `read_by_broadcast_errors`           | тот же файл (catch)                                                                  | Ошибки записи `MessageReadEvent` в стрим.                                                        |
+| `messages_edited_broadcast`          | `Features/SubscribeMessagesEdited/Handlers/MessageEditedNotificationHandler.cs`      | Сколько `MessageEditedEvent` успешно записано в стримы.                                          |
+| `messages_edited_broadcast_errors`   | тот же файл (catch)                                                                  | Ошибки записи `MessageEditedEvent` в стрим.                                                      |
+| `messages_deleted_broadcast`         | `Features/SubscribeMessagesDeleted/Handlers/MessageDeletedNotificationHandler.cs`    | Сколько `MessageDeletedEvent` успешно записано в стримы.                                         |
+| `messages_deleted_broadcast_errors`  | тот же файл (catch)                                                                  | Ошибки записи `MessageDeletedEvent` в стрим.                                                     |
 
 ### Push-уведомления (отложенный пайплайн)
 

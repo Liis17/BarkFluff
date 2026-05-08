@@ -10,6 +10,8 @@ public static class DependencyInjection
         // так как он должен сохранять состояние между запросами
         services.AddSingleton<Features.SubscribeNewMessages.StreamSubscriptionsManager>();
         services.AddSingleton<Features.SubscribeMessagesRead.StreamSubscriptionsManager>();
+        services.AddSingleton<Features.SubscribeMessagesEdited.StreamSubscriptionsManager>();
+        services.AddSingleton<Features.SubscribeMessagesDeleted.StreamSubscriptionsManager>();
 
         // Регистрируем трекер ожидающих push-уведомлений
         services.AddSingleton<Features.PushNotifications.PendingPushTracker>();
