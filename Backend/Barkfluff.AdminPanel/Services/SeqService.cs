@@ -178,4 +178,82 @@ public class SeqService
             return null;
         }
     }
+
+    public async Task<long?> CountEventsAsync(DateTime? fromDateUtc = null, DateTime? toDateUtc = null)
+    {
+        var resp = await RunSqlQueryAsync("select count(*) as Total from stream", fromDateUtc, toDateUtc);
+        if (resp is null) return null;
+        return ExtractFirstScalar(resp.Value);
+    }
+
+    public async Task<long?> DeleteEventsAsync(DateTime? fromDateUtc = null, DateTime? toDateUtc = null)
+    {
+        var query = "/api/events";
+        var parts = new List<string>();
+        if (fromDateUtc.HasValue) parts.Add($"fromDateUtc={Uri.EscapeDataString(fromDateUtc.Value.ToString("O"))}");
+        if (toDateUtc.HasValue) parts.Add($"toDateUtc={Uri.EscapeDataString(toDateUtc.Value.ToString("O"))}");
+        if (parts.Count > 0) query += "?" + string.Join("&", parts);
+
+        var response = await _httpClient.DeleteAsync(query);
+        var json = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogError("Seq DELETE /api/events returned {StatusCode}: {Body}", (int)response.StatusCode, json);
+            throw new InvalidOperationException($"Seq вернул {(int)response.StatusCode}: {json}");
+        }
+
+        if (string.IsNullOrWhiteSpace(json))
+            return null;
+
+        try
+        {
+            var doc = JsonSerializer.Deserialize<JsonElement>(json);
+            return TryReadDeletedCount(doc);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static long? TryReadDeletedCount(JsonElement doc)
+    {
+        if (doc.ValueKind != JsonValueKind.Object) return null;
+        foreach (var key in new[] { "Count", "count", "Deleted", "EventsDeleted", "deleted" })
+        {
+            if (doc.TryGetProperty(key, out var v) && v.ValueKind == JsonValueKind.Number)
+                return v.GetInt64();
+        }
+        return null;
+    }
+
+    private static long? ExtractFirstScalar(JsonElement root)
+    {
+        if (root.ValueKind != JsonValueKind.Object) return null;
+
+        if (root.TryGetProperty("Rows", out var rows) && rows.ValueKind == JsonValueKind.Array && rows.GetArrayLength() > 0)
+        {
+            var firstRow = rows[0];
+            if (firstRow.ValueKind == JsonValueKind.Array && firstRow.GetArrayLength() > 0
+                && firstRow[0].ValueKind == JsonValueKind.Number)
+                return firstRow[0].GetInt64();
+        }
+
+        if (root.TryGetProperty("Slices", out var slices) && slices.ValueKind == JsonValueKind.Array && slices.GetArrayLength() > 0)
+        {
+            var slice = slices[0];
+            if (slice.ValueKind == JsonValueKind.Object
+                && slice.TryGetProperty("Rows", out var sliceRows)
+                && sliceRows.ValueKind == JsonValueKind.Array
+                && sliceRows.GetArrayLength() > 0)
+            {
+                var firstRow = sliceRows[0];
+                if (firstRow.ValueKind == JsonValueKind.Array && firstRow.GetArrayLength() > 0
+                    && firstRow[0].ValueKind == JsonValueKind.Number)
+                    return firstRow[0].GetInt64();
+            }
+        }
+
+        return null;
+    }
 }

@@ -54,6 +54,9 @@ public class Program
         // Register LogsExportService as Singleton (in-memory job dictionary)
         builder.Services.AddSingleton<LogsExportService>();
 
+        // Register LogsClearService as Singleton (in-memory job dictionary)
+        builder.Services.AddSingleton<LogsClearService>();
+
         // Register S3BrowserService as Singleton
         builder.Services.AddSingleton<S3BrowserService>();
 
@@ -184,6 +187,9 @@ public class Program
 
         // Map Logs Export Endpoints
         app.MapLogsExportEndpoints();
+
+        // Map Logs Clear Endpoints
+        app.MapLogsClearEndpoints();
 
         // Map Docker Endpoints
         app.MapDockerEndpoints();
