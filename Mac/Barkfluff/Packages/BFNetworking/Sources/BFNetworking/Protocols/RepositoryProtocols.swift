@@ -50,6 +50,26 @@ public protocol UsersRepositoryProtocol: Sendable {
     func changeUsername(newUsername: String) async throws
     func changeBio(newBio: String) async throws
     func setProfilePicture(fileID: String) async throws
+
+    /// Получить персонализацию текущего пользователя (постер + список фонов).
+    func getPersonalization() async throws -> PersonalizationInfo
+
+    /// Обновить персонализацию: пишутся ОБА поля сразу,
+    /// поэтому вызывающий обязан передавать актуальный `posterFileID`.
+    func updatePersonalization(posterFileID: String, backgroundFileIDs: [String]) async throws
+
+    /// Получить fileID постера текущего пользователя (пустая строка = нет постера).
+    func getProfilePoster() async throws -> String
+
+    /// Установить постер текущего пользователя. Пустая строка = удалить постер.
+    func setProfilePoster(fileID: String) async throws
+
+    /// Получить настройки приватности текущего пользователя
+    func getPrivacySettings() async throws -> PrivacySettingsInfo
+
+    /// Обновить настройки приватности текущего пользователя
+    func updatePrivacySettings(_ settings: PrivacySettingsInfo) async throws
+
     func checkExistUsername(username: String) async throws -> Bool
     func checkExistEmail(email: String) async throws -> Bool
     func searchUsers(query: String, offset: Int32, size: Int32) async throws -> (users: [UserInfo], totalCount: Int32)

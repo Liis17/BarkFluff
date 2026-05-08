@@ -51,6 +51,9 @@ struct ConversationView: View {
 
     var body: some View {
         ZStack {
+            // Слой 0: Фоновая картинка чата + опциональные блюр и затемнение.
+            ChatBackgroundView()
+
             // Слой 1: Список сообщений (полная область)
             if let viewModel {
                 messagesList(viewModel: viewModel)

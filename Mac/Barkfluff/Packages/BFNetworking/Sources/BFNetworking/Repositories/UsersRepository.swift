@@ -97,6 +97,108 @@ public actor UsersRepository: UsersRepositoryProtocol {
         }
     }
 
+    public func getPersonalization() async throws -> PersonalizationInfo {
+        let req = Barkfluff_Users_GetPersonalizationRequest()
+
+        do {
+            return try await connectionManager.withAuthorizedClient(for: .users) { client in
+                let usersClient = Barkfluff_Users_UsersApi.Client(wrapping: client)
+                let response = try await usersClient.getPersonalization(req)
+                return PersonalizationInfo(
+                    profilePosterFileID: response.personalization.profilePosterFileID,
+                    chatBackgroundFileIDs: response.personalization.chatBackgroundFileIds
+                )
+            }
+        } catch let error as RPCError {
+            throw GRPCErrorMapper.map(error)
+        }
+    }
+
+    public func updatePersonalization(posterFileID: String, backgroundFileIDs: [String]) async throws {
+        var data = Barkfluff_Users_UserPersonalizationData()
+        data.profilePosterFileID = posterFileID
+        data.chatBackgroundFileIds = backgroundFileIDs
+
+        var request = Barkfluff_Users_UpdatePersonalizationRequest()
+        request.personalization = data
+        let req = request
+
+        do {
+            try await connectionManager.withAuthorizedClient(for: .users) { client in
+                let usersClient = Barkfluff_Users_UsersApi.Client(wrapping: client)
+                _ = try await usersClient.updatePersonalization(req)
+            }
+        } catch let error as RPCError {
+            throw GRPCErrorMapper.map(error)
+        }
+    }
+
+    public func getProfilePoster() async throws -> String {
+        let req = Barkfluff_Users_GetProfilePosterRequest()
+
+        do {
+            return try await connectionManager.withAuthorizedClient(for: .users) { client in
+                let usersClient = Barkfluff_Users_UsersApi.Client(wrapping: client)
+                let response = try await usersClient.getProfilePoster(req)
+                return response.profilePosterFileID
+            }
+        } catch let error as RPCError {
+            throw GRPCErrorMapper.map(error)
+        }
+    }
+
+    public func setProfilePoster(fileID: String) async throws {
+        var request = Barkfluff_Users_SetProfilePosterRequest()
+        request.profilePosterFileID = fileID
+        let req = request
+
+        do {
+            try await connectionManager.withAuthorizedClient(for: .users) { client in
+                let usersClient = Barkfluff_Users_UsersApi.Client(wrapping: client)
+                _ = try await usersClient.setProfilePoster(req)
+            }
+        } catch let error as RPCError {
+            throw GRPCErrorMapper.map(error)
+        }
+    }
+
+    public func getPrivacySettings() async throws -> PrivacySettingsInfo {
+        let req = Barkfluff_Users_GetPrivacySettingsRequest()
+
+        do {
+            return try await connectionManager.withAuthorizedClient(for: .users) { client in
+                let usersClient = Barkfluff_Users_UsersApi.Client(wrapping: client)
+                let response = try await usersClient.getPrivacySettings(req)
+                return self.mapPrivacySettings(response.settings)
+            }
+        } catch let error as RPCError {
+            throw GRPCErrorMapper.map(error)
+        }
+    }
+
+    public func updatePrivacySettings(_ settings: PrivacySettingsInfo) async throws {
+        var proto = Barkfluff_Users_PrivacySettings()
+        proto.profileVisibleOnSite = settings.profileVisibleOnSite
+        proto.avatarVisibility = mapVisibilityToProto(settings.avatarVisibility)
+        proto.bioVisibility = mapVisibilityToProto(settings.bioVisibility)
+        proto.emailVisibility = mapVisibilityToProto(settings.emailVisibility)
+        proto.searchVisible = settings.searchVisible
+        proto.onlineVisibility = mapVisibilityToProto(settings.onlineVisibility)
+
+        var request = Barkfluff_Users_UpdatePrivacySettingsRequest()
+        request.settings = proto
+        let req = request
+
+        do {
+            try await connectionManager.withAuthorizedClient(for: .users) { client in
+                let usersClient = Barkfluff_Users_UsersApi.Client(wrapping: client)
+                _ = try await usersClient.updatePrivacySettings(req)
+            }
+        } catch let error as RPCError {
+            throw GRPCErrorMapper.map(error)
+        }
+    }
+
     public func checkExistUsername(username: String) async throws -> Bool {
         var request = Barkfluff_Users_CheckExistUsernameRequest()
         request.username = username
@@ -174,6 +276,34 @@ public actor UsersRepository: UsersRepositoryProtocol {
     }
 
     // MARK: - Mapping Helpers
+
+    private nonisolated func mapPrivacySettings(_ p: Barkfluff_Users_PrivacySettings) -> PrivacySettingsInfo {
+        PrivacySettingsInfo(
+            profileVisibleOnSite: p.profileVisibleOnSite,
+            avatarVisibility: mapVisibilityFromProto(p.avatarVisibility),
+            bioVisibility: mapVisibilityFromProto(p.bioVisibility),
+            emailVisibility: mapVisibilityFromProto(p.emailVisibility),
+            searchVisible: p.searchVisible,
+            onlineVisibility: mapVisibilityFromProto(p.onlineVisibility)
+        )
+    }
+
+    private nonisolated func mapVisibilityToProto(_ v: ProfileFieldVisibility) -> Barkfluff_Users_ProfileFieldVisibility {
+        switch v {
+        case .all: return .all
+        case .friends: return .friends
+        case .none: return .none
+        }
+    }
+
+    private nonisolated func mapVisibilityFromProto(_ v: Barkfluff_Users_ProfileFieldVisibility) -> ProfileFieldVisibility {
+        switch v {
+        case .all: return .all
+        case .friends: return .friends
+        case .none: return .none
+        case .UNRECOGNIZED: return .all
+        }
+    }
 
     private nonisolated func mapUser(_ user: Barkfluff_Users_User) -> UserInfo {
         let registrationDate: Date

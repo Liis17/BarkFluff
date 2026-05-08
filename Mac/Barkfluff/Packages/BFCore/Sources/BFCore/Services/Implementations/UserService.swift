@@ -58,6 +58,33 @@ public actor UserService: UserServiceProtocol {
         try await usersRepository.setProfilePicture(fileID: fileID)
     }
 
+    public func getPersonalization() async throws -> PersonalizationInfo {
+        try await usersRepository.getPersonalization()
+    }
+
+    public func updatePersonalization(posterFileID: String, backgroundFileIDs: [String]) async throws {
+        try await usersRepository.updatePersonalization(
+            posterFileID: posterFileID,
+            backgroundFileIDs: backgroundFileIDs
+        )
+    }
+
+    public func getProfilePoster() async throws -> String {
+        try await usersRepository.getProfilePoster()
+    }
+
+    public func setProfilePoster(fileID: String) async throws {
+        try await usersRepository.setProfilePoster(fileID: fileID)
+    }
+
+    public func getPrivacySettings() async throws -> PrivacySettingsInfo {
+        try await usersRepository.getPrivacySettings()
+    }
+
+    public func updatePrivacySettings(_ settings: PrivacySettingsInfo) async throws {
+        try await usersRepository.updatePrivacySettings(settings)
+    }
+
     public func checkUsernameExists(username: String) async throws -> Bool {
         try await usersRepository.checkExistUsername(username: username)
     }

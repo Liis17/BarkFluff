@@ -30,7 +30,7 @@ struct ImageAttachmentView: View {
                         .aspectRatio(contentMode: .fill)
                         .frame(width: targetSize.width, height: targetSize.height)
                         .clipped()
-                        .clipShape(RoundedRectangle(cornerRadius: MessageBubbleView.bubbleCornerRadius, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: CGFloat(container.personalizationSettings.bubbleCornerRadius), style: .continuous))
                         .contentShape(Rectangle())
                         .onTapGesture(perform: onTap)
                 },
@@ -58,7 +58,7 @@ struct ImageAttachmentView: View {
     // MARK: - Private Views
 
     private var loadingPlaceholder: some View {
-        RoundedRectangle(cornerRadius: MessageBubbleView.bubbleCornerRadius, style: .continuous)
+        RoundedRectangle(cornerRadius: CGFloat(container.personalizationSettings.bubbleCornerRadius), style: .continuous)
             .fill(.fill.tertiary)
             .overlay {
                 ProgressView()
@@ -67,7 +67,7 @@ struct ImageAttachmentView: View {
     }
 
     private var errorPlaceholder: some View {
-        RoundedRectangle(cornerRadius: MessageBubbleView.bubbleCornerRadius, style: .continuous)
+        RoundedRectangle(cornerRadius: CGFloat(container.personalizationSettings.bubbleCornerRadius), style: .continuous)
             .fill(.fill.tertiary)
             .overlay {
                 Image(systemName: "photo")

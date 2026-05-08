@@ -13,7 +13,9 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
     case editProfile
     case general
     case notifications
+    case security
     case privacy
+    case personalization
     case cloud
     case cache
     case activeSessions
@@ -27,7 +29,9 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .editProfile: "Мой профиль"
         case .general: "Общие"
         case .notifications: "Уведомления и звук"
-        case .privacy: "Конфиденциальность"
+        case .security: "Безопасность"
+        case .privacy: "Приватность"
+        case .personalization: "Персонализация"
         case .cloud: "Облако"
         case .cache: "Кеш"
         case .activeSessions: "Активные сессии"
@@ -41,7 +45,9 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .editProfile: "person.crop.circle.fill"
         case .general: "gear"
         case .notifications: "bell.fill"
-        case .privacy: "lock.shield.fill"
+        case .security: "lock.fill"
+        case .privacy: "eye.slash.fill"
+        case .personalization: "paintbrush.fill"
         case .cloud: "cloud.fill"
         case .cache: "internaldrive.fill"
         case .activeSessions: "laptopcomputer.and.iphone"
@@ -55,7 +61,9 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .editProfile: .blue
         case .general: .gray
         case .notifications: .red
-        case .privacy: .green
+        case .security: .green
+        case .privacy: .cyan
+        case .personalization: .pink
         case .cloud: .indigo
         case .cache: .purple
         case .activeSessions: .orange

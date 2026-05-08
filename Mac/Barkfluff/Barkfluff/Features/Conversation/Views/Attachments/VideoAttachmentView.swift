@@ -32,7 +32,7 @@ struct VideoAttachmentView: View {
             }
         }
         .frame(width: targetSize.width, height: targetSize.height)
-        .clipShape(RoundedRectangle(cornerRadius: MessageBubbleView.bubbleCornerRadius, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: CGFloat(container.personalizationSettings.bubbleCornerRadius), style: .continuous))
         .contentShape(Rectangle())
         .onTapGesture(perform: onTap)
         .contextMenu {
@@ -71,7 +71,7 @@ struct VideoAttachmentView: View {
     }
 
     private var placeholderView: some View {
-        RoundedRectangle(cornerRadius: MessageBubbleView.bubbleCornerRadius, style: .continuous)
+        RoundedRectangle(cornerRadius: CGFloat(container.personalizationSettings.bubbleCornerRadius), style: .continuous)
             .fill(.fill.tertiary)
             .overlay {
                 Image(systemName: "video.fill")
