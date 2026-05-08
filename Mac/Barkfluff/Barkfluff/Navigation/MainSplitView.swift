@@ -65,14 +65,6 @@ struct MainSplitView: View {
                     .inspectorColumnWidth(min: 280, ideal: 320, max: 400)
             }
         }
-        // Скрыть sidebar когда открыта панель профиля
-        .onChange(of: coordinator.showProfilePanel) { _, isPresented in
-            if isPresented {
-                columnVisibility = .detailOnly
-            } else {
-                columnVisibility = .all
-            }
-        }
         // Модальные окна (создание группового чата, поиск пользователей, выбор чата для пересылки)
         .sheet(item: Bindable(coordinator).presentedSheet) { sheet in
             switch sheet {

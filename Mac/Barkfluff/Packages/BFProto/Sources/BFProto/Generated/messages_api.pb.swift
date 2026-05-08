@@ -20,6 +20,70 @@ fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAP
   typealias Version = _2
 }
 
+public struct Barkfluff_Messages_EditMessageRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Идентификатор сообщения
+  public var messageID: Int64 = 0
+
+  /// Новый текст сообщения
+  public var text: String = String()
+
+  /// Новый список файлов (без forwarded — он не редактируется)
+  public var filesIds: [String] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Messages_EditMessageResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Обновленное сообщение
+  public var message: Barkfluff_Shared_Message {
+    get {_message ?? Barkfluff_Shared_Message()}
+    set {_message = newValue}
+  }
+  /// Returns true if `message` has been explicitly set.
+  public var hasMessage: Bool {self._message != nil}
+  /// Clears the value of `message`. Subsequent reads from it will return its default value.
+  public mutating func clearMessage() {self._message = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _message: Barkfluff_Shared_Message? = nil
+}
+
+public struct Barkfluff_Messages_DeleteMessageRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Идентификатор сообщения
+  public var messageID: Int64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Barkfluff_Messages_DeleteMessageResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 public struct Barkfluff_Messages_MarkAsReadRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -327,47 +391,68 @@ public struct Barkfluff_Messages_ListChatsResponse: Sendable {
   public init() {}
 }
 
-public struct Barkfluff_Messages_Chat: Sendable {
+public struct Barkfluff_Messages_Chat: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
   /// Идентификатор чата
-  public var id: String = String()
+  public var id: String {
+    get {_storage._id}
+    set {_uniqueStorage()._id = newValue}
+  }
 
   /// Название чата
-  public var title: String = String()
+  public var title: String {
+    get {_storage._title}
+    set {_uniqueStorage()._title = newValue}
+  }
 
   /// Картиночка чата
-  public var picture: String = String()
+  public var picture: String {
+    get {_storage._picture}
+    set {_uniqueStorage()._picture = newValue}
+  }
 
   /// Признак того что это групповой чат
-  public var isGroupChat: Bool = false
+  public var isGroupChat: Bool {
+    get {_storage._isGroupChat}
+    set {_uniqueStorage()._isGroupChat = newValue}
+  }
 
   /// Последнее отправленное сообщение
   public var lastMessage: Barkfluff_Shared_Message {
-    get {_lastMessage ?? Barkfluff_Shared_Message()}
-    set {_lastMessage = newValue}
+    get {_storage._lastMessage ?? Barkfluff_Shared_Message()}
+    set {_uniqueStorage()._lastMessage = newValue}
   }
   /// Returns true if `lastMessage` has been explicitly set.
-  public var hasLastMessage: Bool {self._lastMessage != nil}
+  public var hasLastMessage: Bool {_storage._lastMessage != nil}
   /// Clears the value of `lastMessage`. Subsequent reads from it will return its default value.
-  public mutating func clearLastMessage() {self._lastMessage = nil}
+  public mutating func clearLastMessage() {_uniqueStorage()._lastMessage = nil}
 
   /// Участники чата (возвращается только для ЛС)
-  public var members: [Barkfluff_Messages_ChatMember] = []
+  public var members: [Barkfluff_Messages_ChatMember] {
+    get {_storage._members}
+    set {_uniqueStorage()._members = newValue}
+  }
 
   /// Количество непрочитанных сообщений
-  public var countUnread: Int64 = 0
+  public var countUnread: Int64 {
+    get {_storage._countUnread}
+    set {_uniqueStorage()._countUnread = newValue}
+  }
 
   /// Идентификатор первого непрочитанного сообщения
-  public var firstUnreadMessageID: Int64 = 0
+  public var firstUnreadMessageID: Int64 {
+    get {_storage._firstUnreadMessageID}
+    set {_uniqueStorage()._firstUnreadMessageID = newValue}
+  }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
-  fileprivate var _lastMessage: Barkfluff_Shared_Message? = nil
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 public struct Barkfluff_Messages_ChatMember: Sendable {
@@ -709,6 +794,129 @@ public struct Barkfluff_Messages_ExportChat: Sendable {
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate let _protobuf_package = "barkfluff.messages"
+
+extension Barkfluff_Messages_EditMessageRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".EditMessageRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}message_id\0\u{1}text\0\u{3}files_ids\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt64Field(value: &self.messageID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.text) }()
+      case 3: try { try decoder.decodeRepeatedStringField(value: &self.filesIds) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.messageID != 0 {
+      try visitor.visitSingularInt64Field(value: self.messageID, fieldNumber: 1)
+    }
+    if !self.text.isEmpty {
+      try visitor.visitSingularStringField(value: self.text, fieldNumber: 2)
+    }
+    if !self.filesIds.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.filesIds, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_EditMessageRequest, rhs: Barkfluff_Messages_EditMessageRequest) -> Bool {
+    if lhs.messageID != rhs.messageID {return false}
+    if lhs.text != rhs.text {return false}
+    if lhs.filesIds != rhs.filesIds {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_EditMessageResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".EditMessageResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}message\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._message) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._message {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_EditMessageResponse, rhs: Barkfluff_Messages_EditMessageResponse) -> Bool {
+    if lhs._message != rhs._message {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_DeleteMessageRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DeleteMessageRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}message_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt64Field(value: &self.messageID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.messageID != 0 {
+      try visitor.visitSingularInt64Field(value: self.messageID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_DeleteMessageRequest, rhs: Barkfluff_Messages_DeleteMessageRequest) -> Bool {
+    if lhs.messageID != rhs.messageID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Barkfluff_Messages_DeleteMessageResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DeleteMessageResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Barkfluff_Messages_DeleteMessageResponse, rhs: Barkfluff_Messages_DeleteMessageResponse) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
 
 extension Barkfluff_Messages_MarkAsReadRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MarkAsReadRequest"
@@ -1254,66 +1462,116 @@ extension Barkfluff_Messages_Chat: SwiftProtobuf.Message, SwiftProtobuf._Message
   public static let protoMessageName: String = _protobuf_package + ".Chat"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}title\0\u{1}picture\0\u{3}is_group_chat\0\u{3}last_message\0\u{1}members\0\u{3}count_unread\0\u{3}first_unread_message_id\0")
 
+  fileprivate class _StorageClass {
+    var _id: String = String()
+    var _title: String = String()
+    var _picture: String = String()
+    var _isGroupChat: Bool = false
+    var _lastMessage: Barkfluff_Shared_Message? = nil
+    var _members: [Barkfluff_Messages_ChatMember] = []
+    var _countUnread: Int64 = 0
+    var _firstUnreadMessageID: Int64 = 0
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _id = source._id
+      _title = source._title
+      _picture = source._picture
+      _isGroupChat = source._isGroupChat
+      _lastMessage = source._lastMessage
+      _members = source._members
+      _countUnread = source._countUnread
+      _firstUnreadMessageID = source._firstUnreadMessageID
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
-      case 2: try { try decoder.decodeSingularStringField(value: &self.title) }()
-      case 3: try { try decoder.decodeSingularStringField(value: &self.picture) }()
-      case 4: try { try decoder.decodeSingularBoolField(value: &self.isGroupChat) }()
-      case 5: try { try decoder.decodeSingularMessageField(value: &self._lastMessage) }()
-      case 6: try { try decoder.decodeRepeatedMessageField(value: &self.members) }()
-      case 7: try { try decoder.decodeSingularInt64Field(value: &self.countUnread) }()
-      case 8: try { try decoder.decodeSingularInt64Field(value: &self.firstUnreadMessageID) }()
-      default: break
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularStringField(value: &_storage._id) }()
+        case 2: try { try decoder.decodeSingularStringField(value: &_storage._title) }()
+        case 3: try { try decoder.decodeSingularStringField(value: &_storage._picture) }()
+        case 4: try { try decoder.decodeSingularBoolField(value: &_storage._isGroupChat) }()
+        case 5: try { try decoder.decodeSingularMessageField(value: &_storage._lastMessage) }()
+        case 6: try { try decoder.decodeRepeatedMessageField(value: &_storage._members) }()
+        case 7: try { try decoder.decodeSingularInt64Field(value: &_storage._countUnread) }()
+        case 8: try { try decoder.decodeSingularInt64Field(value: &_storage._firstUnreadMessageID) }()
+        default: break
+        }
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    // The use of inline closures is to circumvent an issue where the compiler
-    // allocates stack space for every if/case branch local when no optimizations
-    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-    // https://github.com/apple/swift-protobuf/issues/1182
-    if !self.id.isEmpty {
-      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
-    }
-    if !self.title.isEmpty {
-      try visitor.visitSingularStringField(value: self.title, fieldNumber: 2)
-    }
-    if !self.picture.isEmpty {
-      try visitor.visitSingularStringField(value: self.picture, fieldNumber: 3)
-    }
-    if self.isGroupChat != false {
-      try visitor.visitSingularBoolField(value: self.isGroupChat, fieldNumber: 4)
-    }
-    try { if let v = self._lastMessage {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 5)
-    } }()
-    if !self.members.isEmpty {
-      try visitor.visitRepeatedMessageField(value: self.members, fieldNumber: 6)
-    }
-    if self.countUnread != 0 {
-      try visitor.visitSingularInt64Field(value: self.countUnread, fieldNumber: 7)
-    }
-    if self.firstUnreadMessageID != 0 {
-      try visitor.visitSingularInt64Field(value: self.firstUnreadMessageID, fieldNumber: 8)
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if !_storage._id.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._id, fieldNumber: 1)
+      }
+      if !_storage._title.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._title, fieldNumber: 2)
+      }
+      if !_storage._picture.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._picture, fieldNumber: 3)
+      }
+      if _storage._isGroupChat != false {
+        try visitor.visitSingularBoolField(value: _storage._isGroupChat, fieldNumber: 4)
+      }
+      try { if let v = _storage._lastMessage {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 5)
+      } }()
+      if !_storage._members.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._members, fieldNumber: 6)
+      }
+      if _storage._countUnread != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._countUnread, fieldNumber: 7)
+      }
+      if _storage._firstUnreadMessageID != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._firstUnreadMessageID, fieldNumber: 8)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: Barkfluff_Messages_Chat, rhs: Barkfluff_Messages_Chat) -> Bool {
-    if lhs.id != rhs.id {return false}
-    if lhs.title != rhs.title {return false}
-    if lhs.picture != rhs.picture {return false}
-    if lhs.isGroupChat != rhs.isGroupChat {return false}
-    if lhs._lastMessage != rhs._lastMessage {return false}
-    if lhs.members != rhs.members {return false}
-    if lhs.countUnread != rhs.countUnread {return false}
-    if lhs.firstUnreadMessageID != rhs.firstUnreadMessageID {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._id != rhs_storage._id {return false}
+        if _storage._title != rhs_storage._title {return false}
+        if _storage._picture != rhs_storage._picture {return false}
+        if _storage._isGroupChat != rhs_storage._isGroupChat {return false}
+        if _storage._lastMessage != rhs_storage._lastMessage {return false}
+        if _storage._members != rhs_storage._members {return false}
+        if _storage._countUnread != rhs_storage._countUnread {return false}
+        if _storage._firstUnreadMessageID != rhs_storage._firstUnreadMessageID {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

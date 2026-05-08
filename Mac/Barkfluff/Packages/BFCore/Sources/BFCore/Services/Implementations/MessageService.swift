@@ -60,6 +60,40 @@ public actor MessageService: MessageServiceProtocol {
         try await messagesRepository.markAsRead(messageIDs: messageIDs)
     }
 
+    public func editMessage(
+        chatID: String,
+        messageID: Int64,
+        text: String,
+        fileIDs: [String]
+    ) async throws -> Message {
+        let info = try await messagesRepository.editMessage(
+            messageID: messageID,
+            text: text,
+            fileIDs: fileIDs
+        )
+        // Backend не возвращает chat_id в shared.Message — подменяем его здесь.
+        let domain = toDomainMessage(info)
+        return Message(
+            id: domain.id,
+            chatID: chatID,
+            senderID: domain.senderID,
+            senderName: domain.senderName,
+            content: domain.content,
+            sentAt: domain.sentAt,
+            readBy: domain.readBy,
+            isSystem: domain.isSystem,
+            sendingState: domain.sendingState,
+            localID: domain.localID,
+            uploadProgress: domain.uploadProgress,
+            isEdited: true,
+            editedAt: domain.editedAt ?? Date()
+        )
+    }
+
+    public func deleteMessage(messageID: Int64) async throws {
+        try await messagesRepository.deleteMessage(messageID: messageID)
+    }
+
     public func subscribeToNewMessages() async throws -> AsyncThrowingStream<NewMessageEvent, Error> {
         let stream = try await updatesRepository.subscribeNewMessages()
         return AsyncThrowingStream { continuation in
@@ -95,6 +129,49 @@ public actor MessageService: MessageServiceProtocol {
         }
     }
 
+    public func subscribeToEditedEvents() async throws -> AsyncThrowingStream<MessageEditedEvent, Error> {
+        let stream = try await updatesRepository.subscribeMessagesEdited()
+        return AsyncThrowingStream { continuation in
+            let task = Task {
+                for try await event in stream {
+                    var domain = toDomainMessage(event.message)
+                    // chatID из event, не из info (info.chatID может быть пустым).
+                    domain = Message(
+                        id: domain.id,
+                        chatID: event.chatID,
+                        senderID: domain.senderID,
+                        senderName: domain.senderName,
+                        content: domain.content,
+                        sentAt: domain.sentAt,
+                        readBy: domain.readBy,
+                        isSystem: domain.isSystem,
+                        sendingState: domain.sendingState,
+                        localID: domain.localID,
+                        uploadProgress: domain.uploadProgress,
+                        isEdited: domain.isEdited,
+                        editedAt: domain.editedAt
+                    )
+                    continuation.yield(MessageEditedEvent(chatID: event.chatID, message: domain))
+                }
+                continuation.finish()
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
+    public func subscribeToDeletedEvents() async throws -> AsyncThrowingStream<MessageDeletedEvent, Error> {
+        let stream = try await updatesRepository.subscribeMessagesDeleted()
+        return AsyncThrowingStream { continuation in
+            let task = Task {
+                for try await event in stream {
+                    continuation.yield(MessageDeletedEvent(chatID: event.chatID, messageID: event.messageID))
+                }
+                continuation.finish()
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
     // MARK: - Private helpers
 
     private func toDomainMessage(_ info: MessageInfo) -> Message {
@@ -109,7 +186,9 @@ public actor MessageService: MessageServiceProtocol {
             ),
             sentAt: info.sentAt,
             readBy: info.readBy,
-            isSystem: info.isSystem
+            isSystem: info.isSystem,
+            isEdited: info.isEdited,
+            editedAt: info.editedAt
         )
     }
 

@@ -214,6 +214,34 @@ public struct MessageInfo: Sendable, Identifiable {
     public let sentAt: Date
     public let readBy: [Int64]
     public let isSystem: Bool
+    public let isEdited: Bool
+    public let editedAt: Date?
+
+    public init(
+        id: Int64,
+        chatID: String,
+        senderID: Int64,
+        senderName: String?,
+        content: String,
+        attachments: [MessageAttachmentInfo],
+        sentAt: Date,
+        readBy: [Int64],
+        isSystem: Bool,
+        isEdited: Bool = false,
+        editedAt: Date? = nil
+    ) {
+        self.id = id
+        self.chatID = chatID
+        self.senderID = senderID
+        self.senderName = senderName
+        self.content = content
+        self.attachments = attachments
+        self.sentAt = sentAt
+        self.readBy = readBy
+        self.isSystem = isSystem
+        self.isEdited = isEdited
+        self.editedAt = editedAt
+    }
 }
 
 public struct MessageAttachmentInfo: Sendable, Identifiable {
@@ -431,6 +459,26 @@ public struct MessageReadEvent: Sendable {
     public let chatID: String
     public let messageID: Int64
     public let readBy: [Int64]
+}
+
+public struct MessageEditedEventDTO: Sendable {
+    public let chatID: String
+    public let message: MessageInfo
+
+    public init(chatID: String, message: MessageInfo) {
+        self.chatID = chatID
+        self.message = message
+    }
+}
+
+public struct MessageDeletedEventDTO: Sendable {
+    public let chatID: String
+    public let messageID: Int64
+
+    public init(chatID: String, messageID: Int64) {
+        self.chatID = chatID
+        self.messageID = messageID
+    }
 }
 
 // MARK: - FastAuth

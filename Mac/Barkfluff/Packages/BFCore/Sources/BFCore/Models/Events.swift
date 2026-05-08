@@ -31,6 +31,28 @@ public struct MessageReadEvent: Hashable, Sendable {
     }
 }
 
+/// Событие редактирования сообщения
+public struct MessageEditedEvent: Hashable, Sendable {
+    public let chatID: String
+    public let message: Message
+
+    public init(chatID: String, message: Message) {
+        self.chatID = chatID
+        self.message = message
+    }
+}
+
+/// Событие удаления сообщения
+public struct MessageDeletedEvent: Hashable, Sendable {
+    public let chatID: String
+    public let messageID: Int64
+
+    public init(chatID: String, messageID: Int64) {
+        self.chatID = chatID
+        self.messageID = messageID
+    }
+}
+
 /// Событие подключения real-time стрима
 public enum UpdatesConnectionEvent: Sendable {
     case connectionLost

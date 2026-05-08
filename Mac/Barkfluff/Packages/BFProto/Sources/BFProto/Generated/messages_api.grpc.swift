@@ -150,6 +150,32 @@ public enum Barkfluff_Messages_MessagesApi: Sendable {
                 type: .unary
             )
         }
+        /// Namespace for "EditMessage" metadata.
+        public enum EditMessage: Sendable {
+            /// Request type for "EditMessage".
+            public typealias Input = Barkfluff_Messages_EditMessageRequest
+            /// Response type for "EditMessage".
+            public typealias Output = Barkfluff_Messages_EditMessageResponse
+            /// Descriptor for "EditMessage".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesApi"),
+                method: "EditMessage",
+                type: .unary
+            )
+        }
+        /// Namespace for "DeleteMessage" metadata.
+        public enum DeleteMessage: Sendable {
+            /// Request type for "DeleteMessage".
+            public typealias Input = Barkfluff_Messages_DeleteMessageRequest
+            /// Response type for "DeleteMessage".
+            public typealias Output = Barkfluff_Messages_DeleteMessageResponse
+            /// Descriptor for "DeleteMessage".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.messages.MessagesApi"),
+                method: "DeleteMessage",
+                type: .unary
+            )
+        }
         /// Descriptors for all methods in the "barkfluff.messages.MessagesApi" service.
         public static let descriptors: [GRPCCore.MethodDescriptor] = [
             ListChats.descriptor,
@@ -161,7 +187,9 @@ public enum Barkfluff_Messages_MessagesApi: Sendable {
             MarkAsRead.descriptor,
             ListChatAttachments.descriptor,
             GetPersonChatId.descriptor,
-            GetChatInfo.descriptor
+            GetChatInfo.descriptor,
+            EditMessage.descriptor,
+            DeleteMessage.descriptor
         ]
     }
 }
@@ -409,6 +437,52 @@ extension Barkfluff_Messages_MessagesApi {
             deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_GetChatInfoResponse>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_GetChatInfoResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "EditMessage" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Редактировать сообщение (текст и/или вложения)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_EditMessageRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_EditMessageRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_EditMessageResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func editMessage<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_EditMessageRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_EditMessageRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_EditMessageResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_EditMessageResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "DeleteMessage" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Удалить сообщение (soft-delete: скрывается у всех клиентов)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_DeleteMessageRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_DeleteMessageRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_DeleteMessageResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func deleteMessage<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_DeleteMessageRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_DeleteMessageRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_DeleteMessageResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_DeleteMessageResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
     }
 
@@ -767,6 +841,74 @@ extension Barkfluff_Messages_MessagesApi {
                 onResponse: handleResponse
             )
         }
+
+        /// Call the "EditMessage" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Редактировать сообщение (текст и/или вложения)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_EditMessageRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_EditMessageRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_EditMessageResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func editMessage<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_EditMessageRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_EditMessageRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_EditMessageResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_EditMessageResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Messages_MessagesApi.Method.EditMessage.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "DeleteMessage" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Удалить сообщение (soft-delete: скрывается у всех клиентов)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Messages_DeleteMessageRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Messages_DeleteMessageRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Messages_DeleteMessageResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func deleteMessage<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Messages_DeleteMessageRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Messages_DeleteMessageRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Messages_DeleteMessageResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_DeleteMessageResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Barkfluff_Messages_MessagesApi.Method.DeleteMessage.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
     }
 }
 
@@ -1058,6 +1200,64 @@ extension Barkfluff_Messages_MessagesApi.ClientProtocol {
             request: request,
             serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Messages_GetChatInfoRequest>(),
             deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Messages_GetChatInfoResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "EditMessage" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Редактировать сообщение (текст и/или вложения)
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Messages_EditMessageRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func editMessage<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Messages_EditMessageRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_EditMessageResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.editMessage(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Messages_EditMessageRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Messages_EditMessageResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "DeleteMessage" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Удалить сообщение (soft-delete: скрывается у всех клиентов)
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Messages_DeleteMessageRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func deleteMessage<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Messages_DeleteMessageRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_DeleteMessageResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.deleteMessage(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Messages_DeleteMessageRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Messages_DeleteMessageResponse>(),
             options: options,
             onResponse: handleResponse
         )
@@ -1391,6 +1591,72 @@ extension Barkfluff_Messages_MessagesApi.ClientProtocol {
             metadata: metadata
         )
         return try await self.getChatInfo(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "EditMessage" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Редактировать сообщение (текст и/или вложения)
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func editMessage<Result>(
+        _ message: Barkfluff_Messages_EditMessageRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_EditMessageResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Messages_EditMessageRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.editMessage(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "DeleteMessage" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Удалить сообщение (soft-delete: скрывается у всех клиентов)
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func deleteMessage<Result>(
+        _ message: Barkfluff_Messages_DeleteMessageRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Barkfluff_Messages_DeleteMessageResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Messages_DeleteMessageRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.deleteMessage(
             request: request,
             options: options,
             onResponse: handleResponse

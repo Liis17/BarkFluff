@@ -247,6 +247,40 @@ public actor MessagesRepository: MessagesRepositoryProtocol {
         }
     }
 
+    public func editMessage(messageID: Int64, text: String, fileIDs: [String]) async throws -> MessageInfo {
+        var request = Barkfluff_Messages_EditMessageRequest()
+        request.messageID = messageID
+        request.text = text
+        request.filesIds = fileIDs
+        let req = request
+
+        do {
+            return try await connectionManager.withAuthorizedClient(for: .messages) { client in
+                let messagesClient = Barkfluff_Messages_MessagesApi.Client(wrapping: client)
+                let response = try await messagesClient.editMessage(req)
+                // chatID не возвращается в shared.Message — пробрасывает вызывающий слой.
+                return self.mapMessage(response.message, chatID: "")
+            }
+        } catch let error as RPCError {
+            throw GRPCErrorMapper.map(error)
+        }
+    }
+
+    public func deleteMessage(messageID: Int64) async throws {
+        var request = Barkfluff_Messages_DeleteMessageRequest()
+        request.messageID = messageID
+        let req = request
+
+        do {
+            try await connectionManager.withAuthorizedClient(for: .messages) { client in
+                let messagesClient = Barkfluff_Messages_MessagesApi.Client(wrapping: client)
+                _ = try await messagesClient.deleteMessage(req)
+            }
+        } catch let error as RPCError {
+            throw GRPCErrorMapper.map(error)
+        }
+    }
+
     public func getPersonChatId(userID: Int64) async throws -> String? {
         var request = Barkfluff_Messages_GetPersonChatIdRequest()
         request.userID = userID
@@ -305,6 +339,16 @@ public actor MessagesRepository: MessagesRepositoryProtocol {
 
         let attachments = msg.content.attachments.map { mapAttachment($0) }
 
+        let editedAt: Date?
+        if msg.hasEditedAt {
+            editedAt = Date(
+                timeIntervalSince1970: TimeInterval(msg.editedAt.seconds)
+                    + TimeInterval(msg.editedAt.nanos) / 1_000_000_000
+            )
+        } else {
+            editedAt = nil
+        }
+
         return MessageInfo(
             id: msg.id,
             chatID: chatID,
@@ -314,7 +358,9 @@ public actor MessagesRepository: MessagesRepositoryProtocol {
             attachments: attachments,
             sentAt: sentAt,
             readBy: msg.readBy,
-            isSystem: msg.type == .system
+            isSystem: msg.type == .system,
+            isEdited: msg.isEdited,
+            editedAt: editedAt
         )
     }
 
