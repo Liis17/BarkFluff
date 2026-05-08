@@ -32,4 +32,28 @@ public class MessageQueueSender
 
         await _publishEndpoint.Publish(newMessageEvent);
     }
+
+    public async Task SendEdited(Message message, Guid chatId, List<long> chatMembers, Dictionary<string, UploadFileInfo>? filesInfoMap = null)
+    {
+        var editedEvent = new MessageEditedEvent()
+        {
+            ChatId = chatId,
+            ChatMembers = chatMembers,
+            Message = message.ToGrpc(filesInfoMap).ToByteArray()
+        };
+
+        await _publishEndpoint.Publish(editedEvent);
+    }
+
+    public async Task SendDeleted(Guid chatId, long messageId, List<long> chatMembers)
+    {
+        var deletedEvent = new MessageDeletedEvent()
+        {
+            ChatId = chatId,
+            ChatMembers = chatMembers,
+            MessageId = messageId
+        };
+
+        await _publishEndpoint.Publish(deletedEvent);
+    }
 }

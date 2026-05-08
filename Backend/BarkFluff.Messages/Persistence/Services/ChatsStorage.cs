@@ -40,12 +40,12 @@ public class ChatsStorage
                 Picture = c.Picture,
                 IsGroupChat = c.IsGroupChat,
                 Members = c.Members,
-                CountUnread = _context.Messages.Count(x => x.ChatId == c.Id && !x.ReadBy.Contains(userId)),
+                CountUnread = _context.Messages.Count(x => x.ChatId == c.Id && !x.IsDeleted && !x.ReadBy.Contains(userId)),
                 FirstUnreadMessageId = _context.Messages
-                    .Where(m => m.ChatId == c.Id && !m.ReadBy.Contains(userId))
+                    .Where(m => m.ChatId == c.Id && !m.IsDeleted && !m.ReadBy.Contains(userId))
                     .Min(m => (long?)m.Id),
                 LastMessage = _context.Messages
-                    .Where(m => m.ChatId == c.Id)
+                    .Where(m => m.ChatId == c.Id && !m.IsDeleted)
                     .OrderByDescending(m => m.SentAt)
                     .FirstOrDefault()
             })
@@ -87,7 +87,7 @@ public class ChatsStorage
     {
         // Считаем только чаты, у которых есть сообщения (исключаем пустые чаты)
         var count = await _context.Chats
-            .CountAsync(x => x.Members.Any(c => c.UserId == userId) && _context.Messages.Any(m => m.ChatId == x.Id));
+            .CountAsync(x => x.Members.Any(c => c.UserId == userId) && _context.Messages.Any(m => m.ChatId == x.Id && !m.IsDeleted));
 
         return count;
     }
@@ -189,12 +189,12 @@ public class ChatsStorage
                 Picture = c.Picture,
                 IsGroupChat = c.IsGroupChat,
                 CountUnread = _context.Messages
-                    .Count(m => m.ChatId == c.Id && !m.ReadBy.Contains(userId)),
+                    .Count(m => m.ChatId == c.Id && !m.IsDeleted && !m.ReadBy.Contains(userId)),
                 FirstUnreadMessageId = _context.Messages
-                    .Where(m => m.ChatId == c.Id && !m.ReadBy.Contains(userId))
+                    .Where(m => m.ChatId == c.Id && !m.IsDeleted && !m.ReadBy.Contains(userId))
                     .Min(m => (long?)m.Id) ?? 0,
                 LastMessageId = _context.Messages
-                    .Where(m => m.ChatId == c.Id)
+                    .Where(m => m.ChatId == c.Id && !m.IsDeleted)
                     .Max(m => (long?)m.Id) ?? 0
             })
             .FirstOrDefaultAsync();

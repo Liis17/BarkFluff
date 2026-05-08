@@ -27,7 +27,7 @@ public class MessagesStorage
         if (fromMessageId != null)
         {
             var startMessage = await _context.Messages
-                .FirstOrDefaultAsync(m => m.Id == fromMessageId && m.ChatId == chatId);
+                .FirstOrDefaultAsync(m => m.Id == fromMessageId && m.ChatId == chatId && !m.IsDeleted);
 
             if (startMessage is null)
             {
@@ -41,7 +41,7 @@ public class MessagesStorage
         var messages = await _context
             .Messages
             .OrderByDescending(m => m.SentAt)
-            .Where(x => x.ChatId == chatId && x.SentAt <= startDate)
+            .Where(x => x.ChatId == chatId && !x.IsDeleted && x.SentAt <= startDate)
             .Take(count)
             .ToListAsync();
 
@@ -67,7 +67,7 @@ public class MessagesStorage
             var count = offsetBefore > 0 ? Math.Min(offsetBefore, MaxOffset) : MaxOffset;
             var latestMessages = await _context
                 .Messages
-                .Where(x => x.ChatId == chatId)
+                .Where(x => x.ChatId == chatId && !x.IsDeleted)
                 .OrderByDescending(m => m.SentAt)
                 .Take(count)
                 .ToListAsync();
@@ -76,7 +76,7 @@ public class MessagesStorage
         }
 
         var referenceMessage = await _context.Messages
-            .FirstOrDefaultAsync(m => m.Id == fromMessageId && m.ChatId == chatId);
+            .FirstOrDefaultAsync(m => m.Id == fromMessageId && m.ChatId == chatId && !m.IsDeleted);
 
         if (referenceMessage == null)
         {
@@ -90,7 +90,7 @@ public class MessagesStorage
         {
             var messagesBefore = await _context
                 .Messages
-                .Where(x => x.ChatId == chatId && x.SentAt < referenceMessage.SentAt)
+                .Where(x => x.ChatId == chatId && !x.IsDeleted && x.SentAt < referenceMessage.SentAt)
                 .OrderByDescending(m => m.SentAt)
                 .Take(offsetBefore)
                 .ToListAsync();
@@ -106,7 +106,7 @@ public class MessagesStorage
         {
             var messagesAfter = await _context
                 .Messages
-                .Where(x => x.ChatId == chatId && x.SentAt > referenceMessage.SentAt)
+                .Where(x => x.ChatId == chatId && !x.IsDeleted && x.SentAt > referenceMessage.SentAt)
                 .OrderBy(m => m.SentAt)
                 .Take(offsetAfter)
                 .ToListAsync();
@@ -129,8 +129,19 @@ public class MessagesStorage
     public async Task<List<Message>> GetMessagesByIds(List<long> messageIds)
     {
         return await _context.Messages
-            .Where(m => messageIds.Contains(m.Id))
+            .Where(m => messageIds.Contains(m.Id) && !m.IsDeleted)
             .ToListAsync();
+    }
+
+    public async Task<Message?> GetMessageById(long id)
+    {
+        return await _context.Messages
+            .FirstOrDefaultAsync(m => m.Id == id);
+    }
+
+    public async Task SaveChangesAsync()
+    {
+        await _context.SaveChangesAsync();
     }
 
     public async Task MarkMessagesAsRead(List<long> messageIds, long userId)
@@ -142,7 +153,7 @@ public class MessagesStorage
                 WHEN ""ReadBy"" @> ARRAY[@userId]::bigint[] THEN ""ReadBy""
                 ELSE array_append(""ReadBy"", @userId)
             END
-            WHERE ""Id"" = ANY(@messageIds)",
+            WHERE ""Id"" = ANY(@messageIds) AND ""IsDeleted"" = false",
             new NpgsqlParameter("@userId", userId),
             new NpgsqlParameter("@messageIds", messageIds.ToArray()));
     }
@@ -177,6 +188,7 @@ public class MessagesStorage
             FROM ""Messages"" m
             INNER JOIN ""MessageAttachments"" a ON m.""Id"" = a.""MessageId""
             WHERE m.""ChatId"" = @chatId
+            AND m.""IsDeleted"" = false
             {attachmentTypeFilter}";
 
         var totalCount = (await _context.Database.SqlQueryRaw<int>(
@@ -198,6 +210,7 @@ public class MessagesStorage
             FROM ""Messages"" m
             INNER JOIN ""MessageAttachments"" a ON m.""Id"" = a.""MessageId""
             WHERE m.""ChatId"" = @chatId
+            AND m.""IsDeleted"" = false
             {attachmentTypeFilter}
             ORDER BY m.""SentAt"" {sortOrder}, a.""Id"" ASC
             LIMIT @take OFFSET @skip";

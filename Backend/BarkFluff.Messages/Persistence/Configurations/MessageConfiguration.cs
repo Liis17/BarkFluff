@@ -11,6 +11,8 @@ public class MessageConfiguration : IEntityTypeConfiguration<Message>
     {
         builder.HasKey(x => x.Id);
 
+        builder.Property(m => m.IsDeleted).HasDefaultValue(false);
+        builder.Property(m => m.IsEdited).HasDefaultValue(false);
 
         builder.OwnsOne(m => m.Content, contentBuilder =>
         {

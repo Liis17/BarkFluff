@@ -1,4 +1,6 @@
 using BarkFluff.Messages.Features.CreateGroupChat;
+using BarkFluff.Messages.Features.DeleteMessage;
+using BarkFluff.Messages.Features.EditMessage;
 using BarkFluff.Messages.Features.GetChatInfo;
 using BarkFluff.Messages.Features.GetPersonChatId;
 using BarkFluff.Messages.Features.KickUser;
@@ -204,6 +206,44 @@ public class MessagesApiService : BarkFluff.Proto.Messages.MessagesApi.MessagesA
         var command = new GetChatInfoCommand
         {
             ChatId = chatId
+        };
+
+        return await _mediator.Send(command);
+    }
+
+    public override async Task<EditMessageResponse> EditMessage(EditMessageRequest request, ServerCallContext context)
+    {
+        List<Guid>? fileIds = null;
+
+        if (request.FilesIds is { Count: > 0 })
+        {
+            fileIds = new List<Guid>(request.FilesIds.Count);
+            foreach (var rawId in request.FilesIds)
+            {
+                if (!Guid.TryParse(rawId, out var fileId))
+                {
+                    throw new NotValidFileIdException();
+                }
+
+                fileIds.Add(fileId);
+            }
+        }
+
+        var command = new EditMessageCommand
+        {
+            MessageId = request.MessageId,
+            Text = request.Text,
+            FileIds = fileIds
+        };
+
+        return await _mediator.Send(command);
+    }
+
+    public override async Task<DeleteMessageResponse> DeleteMessage(DeleteMessageRequest request, ServerCallContext context)
+    {
+        var command = new DeleteMessageCommand
+        {
+            MessageId = request.MessageId
         };
 
         return await _mediator.Send(command);
