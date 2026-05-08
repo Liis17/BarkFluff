@@ -1042,17 +1042,13 @@
                 const s = await resp.json();
                 const fmt = (n) => Number(n || 0).toLocaleString('ru-RU');
 
-                if (s.state === 'queued' || s.state === 'counting') {
-                    document.getElementById('clearStageText').textContent = 'Подсчёт логов...';
-                    document.getElementById('clearCounterText').textContent = '';
-                } else if (s.state === 'deleting') {
-                    document.getElementById('clearStageText').textContent = `Удаление ${fmt(s.totalCount)} логов...`;
+                if (s.state === 'queued' || s.state === 'counting' || s.state === 'deleting') {
+                    document.getElementById('clearStageText').textContent = 'Удаление логов...';
                     document.getElementById('clearCounterText').textContent = '';
                 } else if (s.state === 'done') {
                     clearInterval(clearPollTimer);
                     clearPollTimer = null;
-                    document.getElementById('clearDoneText').textContent =
-                        `Удалено ${fmt(s.deletedCount)} логов из ${fmt(s.totalCount)}.`;
+                    document.getElementById('clearDoneText').textContent = 'Логи успешно удалены.';
                     showClearState('done');
                     lucide.createIcons();
                 } else if (s.state === 'error') {
