@@ -21,6 +21,34 @@
             android:text="Ответить" />
 
         <TextView
+            android:id="@+id/actionCopyText"
+            style="@style/MessageActionItem"
+            android:drawableStart="@drawable/ic_copy"
+            android:text="Копировать текст"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/actionCopyImage"
+            style="@style/MessageActionItem"
+            android:drawableStart="@drawable/ic_copy_content"
+            android:text="Скопировать изображение"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/actionSaveImages"
+            style="@style/MessageActionItem"
+            android:drawableStart="@drawable/ic_save"
+            android:text="Сохранить изображение"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/actionSaveDocs"
+            style="@style/MessageActionItem"
+            android:drawableStart="@drawable/ic_download"
+            android:text="Сохранить в загрузки"
+            android:visibility="gone" />
+
+        <TextView
             android:id="@+id/actionEdit"
             style="@style/MessageActionItem"
             android:drawableStart="@drawable/ic_edit"
