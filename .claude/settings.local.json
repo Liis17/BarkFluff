@@ -112,7 +112,8 @@
       "Bash(curl -s \"https://api.nuget.org/v3-flatcontainer/seq.api/index.json\")",
       "Bash(Select-Object -ExpandProperty FullName)",
       "Bash(Sort-Object)",
-      "Bash(Format-Table FullName)"
+      "Bash(Format-Table FullName)",
+      "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/generate-proto.ps1)"
     ],
     "deny": [],
     "ask": []

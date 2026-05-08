@@ -50,8 +50,8 @@ docker-compose -f docker-compose-dev.yml up web
 - `utils.js` — форматирование, escapeHtml, parseJwt
 - `api.js` — высокоуровневые обёртки (listChats, sendMessage и др.)
 - `files.js` — кэш URL файлов, upload
-- `messages.js` — рендеринг пузырей, вложений, аудиоплеер
-- `realtime.js` — server-streaming подписки (new_message, message_read, online_status)
+- `messages.js` — рендеринг пузырей, вложений, аудиоплеер. Маркер «изм.» в `.msg-meta` для `msg.isEdited`
+- `realtime.js` — server-streaming подписки (new_message, message_read, message_edited, message_deleted, online_status)
 - `attach.js` — диалог прикрепления файлов (images/docs режим, превью)
 - `settings.js` — многоэкранная панель настроек (профиль, 2FA, сессии, пароль)
 - `main.js` — bootstrap мессенджера
@@ -74,7 +74,18 @@ docker-compose -f docker-compose-dev.yml up web
 |--------|---------|-----|------------|
 | updatesStream | UpdatesApi | SubscribeNewMessages | Новые сообщения |
 | readStream | UpdatesApi | SubscribeMessagesRead | Статусы прочтения |
+| editedStream | UpdatesApi | SubscribeMessagesEdited | Редактирование сообщений (синхронизация между устройствами) |
+| deletedStream | UpdatesApi | SubscribeMessagesDeleted | Удаление сообщений (синхронизация между устройствами) |
 | onlineStream | OnlinerApi | SubscribeToOnlineStatus | Онлайн/оффлайн |
+
+## Редактирование и удаление сообщений (`main.js`)
+
+- Контекстное меню сообщения (`#msgContextMenu`): пункты **Изменить** / **Удалить** видны только для своих не-системных сообщений (фильтрация в `openContextMenu`).
+- **Edit**: `setPendingEdit(msg)` кладёт текст в `#messageInput`, показывает блок `#editPreviewBar`. `sendMessage()` вместо `SendMessage` вызывает `BF.api.editMessage(messageId, text, keepFileIds)`. `keepFileIds` — все не-forward вложения исходного сообщения (forward-снапшоты не редактируются на бэке).
+- **Delete**: `requestDelete(messageId)` показывает `#deleteMsgConfirmOverlay`, по подтверждению — `BF.api.deleteMessage(messageId)`.
+- `applyMessageEdit/applyMessageDelete` обновляют локальный `messages[]`, перерендеривают bubble (через `BF.messages.buildMessageElement`) или удаляют DOM-узел; обновляют `chat.lastMessage` в чат-листе.
+- Realtime: подписки `BF.realtime.on('message_edited' | 'message_deleted', ...)` зеркалируют изменения с других устройств.
+- Во время `pendingEdit` attach-flow (`sendMessageWithFiles`) заблокирован, чтобы drop/paste не отправил новое сообщение поверх правки.
 
 Механизмы: exponential backoff (2с → 30с), page-visibility reconnection, keep-alive ping каждые 3с, tab title badge `(N)`, Browser Notification API, scroll-based mark-as-read.
 

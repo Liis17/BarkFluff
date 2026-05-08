@@ -44,6 +44,7 @@
 
     // Reply / Forward / Context menu state
     var pendingReply = null;
+    var pendingEdit = null; // { messageId, originalText }
     var contextMenuTarget = null;
     var forwardSelection = new Set();
     var knownMessageIds = new Set();
@@ -81,6 +82,12 @@
     var rpbAuthor = $('#rpbAuthor');
     var rpbText = $('#rpbText');
     var rpbCloseBtn = $('#rpbClose');
+    var editPreviewBar = $('#editPreviewBar');
+    var epbText = $('#epbText');
+    var epbCloseBtn = $('#epbClose');
+    var deleteMsgConfirmOverlay = $('#deleteMsgConfirmOverlay');
+    var deleteMsgCancel = $('#deleteMsgCancel');
+    var deleteMsgOk = $('#deleteMsgOk');
     var forwardOverlay = $('#forwardOverlay');
     var forwardCloseBtn = $('#forwardClose');
     var forwardChatListEl = $('#forwardChatList');
@@ -190,6 +197,7 @@
         noMoreOlder = false;
         knownMessageIds = new Set();
         clearPendingReply();
+        clearPendingEdit();
         closeContextMenu();
         if (scrollToBottomBtn) scrollToBottomBtn.classList.remove('visible');
         chatEmpty.style.display = 'none';
@@ -356,7 +364,30 @@
 
     function sendMessage() {
         var text = messageInput.value.trim();
-        if (!text || !currentChatId) return;
+        if (!currentChatId) return;
+
+        if (pendingEdit) {
+            var editId = pendingEdit.messageId;
+            var origMsg = messages.find(function (m) { return m.id === editId; });
+            var keepFileIds = [];
+            if (origMsg && origMsg.content && origMsg.content.attachments) {
+                origMsg.content.attachments.forEach(function (a) {
+                    var t = a.type;
+                    if (t === 'FORWARDED_MESSAGE' || t === 8 || t === '8') return;
+                    if (a.fileId) keepFileIds.push(a.fileId);
+                });
+            }
+            if (!text && keepFileIds.length === 0) return; // нечего сохранять
+            sendBtn.disabled = true;
+            BF.api.editMessage(editId, text, keepFileIds).then(function (resp) {
+                sendBtn.disabled = false;
+                if (resp && resp.message) applyMessageEdit(currentChatId, resp.message);
+                clearPendingEdit();
+            }).catch(function () { sendBtn.disabled = false; });
+            return;
+        }
+
+        if (!text) return;
 
         sendBtn.disabled = true;
         var sentChatId = currentChatId;
@@ -388,6 +419,11 @@
     }
 
     function sendMessageWithFiles(files, asDocuments) {
+        if (pendingEdit) {
+            // Во время редактирования attach-flow заблокирован, чтобы не отправить новое сообщение
+            // вместо правки исходного. Завершите или отмените редактирование.
+            return;
+        }
         var text = messageInput.value.trim();
         var sentChatId = currentChatId;
         sendBtn.disabled = true;
@@ -649,6 +685,14 @@
 
     BF.realtime.on('online_status', function (data) {
         handleOnlineStatus(data.userId, data.status, data.lastSeen);
+    });
+
+    BF.realtime.on('message_edited', function (data) {
+        applyMessageEdit(data.chatId, data.message);
+    });
+
+    BF.realtime.on('message_deleted', function (data) {
+        applyMessageDelete(data.chatId, data.messageId);
     });
 
     function handleNewMessage(chatId, msg) {
@@ -1201,11 +1245,96 @@
         if (replyPreviewBar) replyPreviewBar.classList.remove('visible');
     }
 
+    function setPendingEdit(msg) {
+        if (!msg) return;
+        clearPendingReply();
+        var origText = (msg.content && msg.content.text) || '';
+        pendingEdit = { messageId: msg.id, originalText: origText };
+        messageInput.value = origText;
+        messageInput.style.height = 'auto';
+        messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
+        if (epbText) epbText.textContent = origText || '(вложения)';
+        if (editPreviewBar) editPreviewBar.classList.add('visible');
+        try { messageInput.focus(); } catch (e) {}
+    }
+
+    function clearPendingEdit() {
+        pendingEdit = null;
+        if (editPreviewBar) editPreviewBar.classList.remove('visible');
+        messageInput.value = '';
+        messageInput.style.height = 'auto';
+    }
+
+    function requestDelete(messageId) {
+        if (!deleteMsgConfirmOverlay || !messageId) return;
+        deleteMsgConfirmOverlay.classList.add('visible');
+        deleteMsgOk.onclick = function () {
+            deleteMsgOk.disabled = true;
+            BF.api.deleteMessage(messageId).then(function () {
+                applyMessageDelete(currentChatId, messageId);
+            }).catch(function () {})
+            .finally(function () {
+                deleteMsgOk.disabled = false;
+                deleteMsgConfirmOverlay.classList.remove('visible');
+                deleteMsgOk.onclick = null;
+            });
+        };
+    }
+
+    function applyMessageEdit(chatId, updatedMsg) {
+        if (!updatedMsg) return;
+        var ch = chats.find(function (x) { return x.id === chatId; });
+        if (ch && ch.lastMessage && ch.lastMessage.id === updatedMsg.id) {
+            ch.lastMessage = updatedMsg;
+            renderChatList();
+        }
+        if (chatId !== currentChatId) return;
+        var idx = messages.findIndex(function (m) { return m.id === updatedMsg.id; });
+        if (idx < 0) return;
+        messages[idx] = updatedMsg;
+        var oldEl = messagesInner.querySelector('.msg-group[data-msg-id="' + updatedMsg.id + '"]');
+        if (!oldEl) return;
+        var bldOpts = { knownMessageIds: knownMessageIds, onReplyClick: scrollToMessage };
+        BF.messages.buildMessageElement(
+            updatedMsg, myUserId,
+            !!(currentChatInfo && currentChatInfo.isGroupChat),
+            getUser, showMediaOverlay, bldOpts
+        ).then(function (newEl) {
+            newEl.dataset.date = oldEl.dataset.date;
+            oldEl.replaceWith(newEl);
+        });
+    }
+
+    function applyMessageDelete(chatId, messageId) {
+        if (!messageId) return;
+        if (chatId === currentChatId) {
+            var idx = messages.findIndex(function (m) { return m.id === messageId; });
+            if (idx >= 0) messages.splice(idx, 1);
+            if (knownMessageIds && knownMessageIds.delete) knownMessageIds.delete(messageId);
+            var el = messagesInner.querySelector('.msg-group[data-msg-id="' + messageId + '"]');
+            if (el) el.remove();
+        }
+        var ch = chats.find(function (x) { return x.id === chatId; });
+        if (ch && ch.lastMessage && ch.lastMessage.id === messageId) {
+            loadChats(true);
+        }
+    }
+
     function openContextMenu(x, y, msgEl) {
         if (!msgContextMenu || !msgEl) return;
         var msgId = Number(msgEl.dataset.msgId);
         if (!msgId) return;
-        contextMenuTarget = { messageId: msgId, isOutgoing: msgEl.classList.contains('outgoing') };
+        var isOutgoing = msgEl.classList.contains('outgoing');
+        contextMenuTarget = { messageId: msgId, isOutgoing: isOutgoing };
+
+        var msgObj = messages.find(function (m) { return m.id === msgId; });
+        var isSystem = msgObj && (msgObj.type === 2 || msgObj.type === 'SYSTEM');
+        var canModify = isOutgoing && !isSystem;
+        var editBtn = msgContextMenu.querySelector('button[data-act="edit"]');
+        var deleteBtn = msgContextMenu.querySelector('button[data-act="delete"]');
+        if (editBtn) editBtn.style.display = canModify ? '' : 'none';
+        if (deleteBtn) deleteBtn.style.display = canModify ? '' : 'none';
+
         msgContextMenu.classList.add('visible');
 
         var vw = window.innerWidth;
@@ -1357,6 +1486,25 @@
     // --- Reply preview close handler ---
     if (rpbCloseBtn) rpbCloseBtn.addEventListener('click', clearPendingReply);
 
+    // --- Edit preview close handler ---
+    if (epbCloseBtn) epbCloseBtn.addEventListener('click', clearPendingEdit);
+
+    // --- Delete confirm cancel ---
+    if (deleteMsgCancel) {
+        deleteMsgCancel.addEventListener('click', function () {
+            if (deleteMsgConfirmOverlay) deleteMsgConfirmOverlay.classList.remove('visible');
+            if (deleteMsgOk) deleteMsgOk.onclick = null;
+        });
+    }
+    if (deleteMsgConfirmOverlay) {
+        deleteMsgConfirmOverlay.addEventListener('click', function (e) {
+            if (e.target === deleteMsgConfirmOverlay) {
+                deleteMsgConfirmOverlay.classList.remove('visible');
+                if (deleteMsgOk) deleteMsgOk.onclick = null;
+            }
+        });
+    }
+
     // --- Forward modal close ---
     if (forwardCloseBtn) forwardCloseBtn.addEventListener('click', closeForwardModal);
     if (forwardOverlay) {
@@ -1378,6 +1526,14 @@
                 if (msg) setPendingReply(msg);
             } else if (act === 'forward') {
                 openForwardModal(resolveForwardSourceId(msg, msgId));
+            } else if (act === 'edit') {
+                if (msg && contextMenuTarget && contextMenuTarget.isOutgoing && msg.type !== 2 && msg.type !== 'SYSTEM') {
+                    setPendingEdit(msg);
+                }
+            } else if (act === 'delete') {
+                if (msg && contextMenuTarget && contextMenuTarget.isOutgoing && msg.type !== 2 && msg.type !== 'SYSTEM') {
+                    requestDelete(msg.id);
+                }
             } else {
                 showSoonToast();
             }
