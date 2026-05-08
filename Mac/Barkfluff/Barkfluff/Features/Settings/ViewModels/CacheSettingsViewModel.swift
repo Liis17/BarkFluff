@@ -56,6 +56,7 @@ extension CachedFileType {
         switch self {
         case .avatar: return "Аватары"
         case .image: return "Изображения"
+        case .poster: return "Постеры"
         case .video: return "Видео"
         case .gif: return "GIF"
         case .document: return "Документы"
@@ -70,6 +71,7 @@ extension CachedFileType {
         switch self {
         case .avatar: return "person.crop.circle"
         case .image: return "photo"
+        case .poster: return "photo.on.rectangle.angled"
         case .video: return "video"
         case .gif: return "rectangle.stack.badge.play"
         case .document: return "doc"
@@ -84,6 +86,7 @@ extension CachedFileType {
         switch self {
         case .avatar: return .pink
         case .image: return .blue
+        case .poster: return .indigo
         case .video: return .purple
         case .gif: return .orange
         case .document: return .gray

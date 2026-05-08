@@ -63,25 +63,28 @@ struct ProfileHeaderSection: View {
 
     @ViewBuilder
     private var posterView: some View {
-        Group {
-            if let fileID = viewModel.posterFileID {
-                CachedImageView(
-                    fileID: fileID,
-                    type: .image,
-                    content: { image in
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    },
-                    placeholder: { posterPlaceholder }
-                )
-            } else {
-                posterPlaceholder
+        GeometryReader { geo in
+            Group {
+                if let fileID = viewModel.posterFileID {
+                    CachedImageView(
+                        fileID: fileID,
+                        type: .poster,
+                        content: { image in
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                        },
+                        placeholder: { posterPlaceholder }
+                    )
+                } else {
+                    posterPlaceholder
+                }
             }
+            .frame(width: geo.size.width, height: geo.size.height)
+            .clipped()
         }
-        .frame(maxWidth: .infinity)
         .aspectRatio(3.0, contentMode: .fit)
-        .clipped()
+        .frame(maxWidth: .infinity)
     }
 
     private var posterPlaceholder: some View {

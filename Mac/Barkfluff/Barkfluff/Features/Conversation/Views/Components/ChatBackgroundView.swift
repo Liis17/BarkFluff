@@ -31,6 +31,9 @@ struct ChatBackgroundView: View {
                         Color(nsColor: .windowBackgroundColor)
                     }
                 )
+                // Явно зажимаем картинку в фрейм родителя, иначе её
+                // intrinsic size может «вытянуть» родительский ZStack.
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .blur(
                     radius: settings.backgroundBlurEnabled
                         ? CGFloat(settings.backgroundBlurRadius)
@@ -47,6 +50,7 @@ struct ChatBackgroundView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipped()
         .ignoresSafeArea()
     }
 }
