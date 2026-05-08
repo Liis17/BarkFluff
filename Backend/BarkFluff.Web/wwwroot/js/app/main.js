@@ -618,11 +618,41 @@
 
     var connectionBanner = $('#connectionBanner');
 
+    var _wasConnected = true;
     BF.realtime.on('connection_status', function (data) {
         if (connectionBanner) {
             connectionBanner.classList.toggle('visible', !data.connected);
         }
+        if (data.connected && _wasConnected === false) {
+            // Соединение восстановлено — пропустили события (delete/edit/new),
+            // подтягиваем актуальное состояние с сервера.
+            console.log('[main] connection restored — running catch-up');
+            loadChats(true);
+            reloadCurrentChatMessages();
+        }
+        _wasConnected = !!data.connected;
     });
+
+    // Catch-up: перезагрузка сообщений текущего чата.
+    // Используется при восстановлении соединения и при возврате на вкладку,
+    // чтобы синхронизировать пропущенные edit/delete/new события.
+    function reloadCurrentChatMessages() {
+        if (!currentChatId) return;
+        var chatId = currentChatId;
+        BF.api.getChatInfo(chatId).then(function (info) {
+            if (chatId !== currentChatId || !info || info.error) return;
+            currentChatInfo = info;
+            var fromId = info.firstUnreadMessageId || info.lastMessageId || 0;
+            return BF.api.listMessages(chatId, fromId, 30, 10);
+        }).then(function (data) {
+            if (!data || !data.messages || chatId !== currentChatId) return;
+            var wasAtBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 300;
+            messages = data.messages;
+            renderMessages().then(function () {
+                if (wasAtBottom) scrollToBottom();
+            });
+        }).catch(function () {});
+    }
 
     // ========== SCROLL-BASED MARK AS READ ==========
 
@@ -668,8 +698,9 @@
     // ========== TAB VISIBILITY — REFRESH ON RETURN ==========
 
     BF.realtime.on('tab_visible', function () {
-        // Refresh chat list to sync any missed updates while tab was hidden
+        // Refresh chat list + currentChat messages to catch up missed updates while tab was hidden
         loadChats(true);
+        reloadCurrentChatMessages();
     });
 
     // ========== REALTIME HANDLERS ==========
@@ -1306,18 +1337,29 @@
     }
 
     function applyMessageDelete(chatId, messageId) {
-        if (!messageId) return;
-        if (chatId === currentChatId) {
-            var idx = messages.findIndex(function (m) { return m.id === messageId; });
-            if (idx >= 0) messages.splice(idx, 1);
-            if (knownMessageIds && knownMessageIds.delete) knownMessageIds.delete(messageId);
-            var el = messagesInner.querySelector('.msg-group[data-msg-id="' + messageId + '"]');
-            if (el) el.remove();
+        if (messageId == null) return;
+        var msgIdNum = Number(messageId);
+        var msgIdStr = String(messageId);
+        console.log('[main] applyMessageDelete', { chatId: chatId, messageId: messageId, currentChatId: currentChatId });
+
+        // messageId глобально уникален: ищем и удаляем во всех текущих структурах,
+        // не привязываясь к chatId-сравнению (на случай расхождения форматов id).
+        var idx = messages.findIndex(function (m) { return Number(m.id) === msgIdNum; });
+        if (idx >= 0) messages.splice(idx, 1);
+        if (knownMessageIds && typeof knownMessageIds.delete === 'function') {
+            knownMessageIds.delete(msgIdNum);
+            knownMessageIds.delete(msgIdStr);
         }
-        var ch = chats.find(function (x) { return x.id === chatId; });
-        if (ch && ch.lastMessage && ch.lastMessage.id === messageId) {
-            loadChats(true);
-        }
+        var el = messagesInner.querySelector('.msg-group[data-msg-id="' + msgIdStr + '"]');
+        console.log('[main] applyMessageDelete: idx=', idx, 'domEl=', !!el);
+        if (el) el.remove();
+
+        // Обновляем lastMessage чат-листа для всех чатов, где это сообщение последнее.
+        var anyChatTouched = false;
+        chats.forEach(function (c) {
+            if (c.lastMessage && Number(c.lastMessage.id) === msgIdNum) anyChatTouched = true;
+        });
+        if (anyChatTouched) loadChats(true);
     }
 
     function openContextMenu(x, y, msgEl) {
