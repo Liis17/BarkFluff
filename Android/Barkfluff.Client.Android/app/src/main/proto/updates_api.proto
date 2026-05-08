@@ -50,12 +50,12 @@ message SubscribeMessagesDeletedRequest {
 }
 
 message MessageEditedEvent {
-  barkfluff.shared.Message message = 1; // Обновлённое сообщение
-  string chat_id = 2; // Идентификатор чата
+  string chat_id = 1; // Идентификатор чата
+  barkfluff.shared.Message message = 2; // Обновлённое сообщение
 }
 
 message MessageDeletedEvent {
-  int64 message_id = 1; // Идентификатор удалённого сообщения
-  string chat_id = 2; // Идентификатор чата
+  string chat_id = 1; // Идентификатор чата
+  int64 message_id = 2; // Идентификатор удалённого сообщения
 }
 
