@@ -16,13 +16,14 @@ struct BackgroundsGrid: View {
 
     @State private var showImporter = false
 
-    private let columns: [GridItem] = Array(
-        repeating: GridItem(.flexible(), spacing: Theme.Spacing.sm),
-        count: 3
-    )
+    // Адаптивная сетка: ширина окна Settings определяет число колонок.
+    // 80pt минимум на ячейку → ~5–6 колонок при 540pt окне, больше на широких.
+    private let columns: [GridItem] = [
+        GridItem(.adaptive(minimum: 80), spacing: Theme.Spacing.sm)
+    ]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
             LazyVGrid(columns: columns, spacing: Theme.Spacing.sm) {
                 addCell
 
@@ -49,11 +50,14 @@ struct BackgroundsGrid: View {
             }
 
             if !settings.currentBackgroundFileID.isEmpty {
-                Button("Убрать фон чата", role: .destructive) {
+                Button(role: .destructive) {
                     viewModel.clearBackgroundSelection()
+                } label: {
+                    Label("Убрать фон чата", systemImage: "xmark.circle.fill")
+                        .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderless)
-                .controlSize(.small)
+                .buttonStyle(.bordered)
+                .controlSize(.regular)
             }
         }
         .fileImporter(

@@ -46,9 +46,6 @@ struct PersonalizationSettingsView: View {
         @Bindable var vm = viewModel
         @Bindable var settings = container.personalizationSettings
 
-        // Блок 0: постер профиля
-        PosterPreviewCard(viewModel: vm)
-
         // Ошибки
         if let error = vm.errorMessage {
             HStack {
@@ -67,8 +64,15 @@ struct PersonalizationSettingsView: View {
             .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
         }
 
-        // Блок 1 + 2: настройки отображения и фон
+        // Все блоки внутри одной Form — чтобы постер был такой же ширины,
+        // как остальные секции (Form.grouped задаёт собственные insets).
         Form {
+            Section {
+                PosterPreviewCard(viewModel: vm)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+            }
+
             Section("Внешний вид сообщений") {
                 BubblePreviewView(cornerRadius: settings.bubbleCornerRadius)
                     .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
