@@ -142,7 +142,16 @@ Layout цитаты: `view_message_quote.xml` (включается в `item_mes
 
 ### Ответ (reply) в открытом чате
 
-- **Action menu**: клик по корневому `FrameLayout` строки сообщения (вне bubble — там, где padding 80dp слева/справа) открывает `PopupWindow` (`popup_message_actions.xml`) с пунктами Ответить / Изменить / Удалить / Переслать / Закрепить. Закрепить — заглушка `Toast "Скоро будет"`. Изменить/Удалить — реализованы (см. ниже), скрываются через `View.GONE` для чужих сообщений.
+- **Action menu**: клик по корневому `FrameLayout` строки сообщения (вне bubble — там, где padding 80dp слева/справа) открывает `PopupWindow` (`popup_message_actions.xml`). Базовые пункты: Ответить / Изменить / Удалить / Переслать / Закрепить. Закрепить — заглушка `Toast "Скоро будет"`. Изменить/Удалить — реализованы, скрываются через `View.GONE` для чужих сообщений.
+- **Подсветка выбранного сообщения**: `ChatActivity.showMessageActionMenu` находит `R.id.messageCard` внутри anchor, сохраняет `originalForeground` и устанавливает полупрозрачный `ColorDrawable(?attr/colorPrimary)` (~24% alpha) как `foreground`. На `popup.setOnDismissListener` — восстановление. Анимация не нужна: `popup.isFocusable=true` блокирует прокрутку RecyclerView, поэтому ViewHolder не перепривязывается.
+- **Контекстные пункты (по содержимому сообщения)**:
+  - **Копировать текст** (`actionCopyText`) — если `item.text.isNotBlank()`. `ClipData.newPlainText`.
+  - **Скопировать изображение** (`actionCopyImage`) — если ровно одна картинка (IMAGE/GIF). Скачивание в `FileCache`, `FileProvider.getUriForFile(...)`, `ClipData.newUri`.
+  - **Сохранить изображение / Сохранить изображения** (`actionSaveImages`) — если ≥1 картинка. Текст меняется по количеству. Сохраняет в `Pictures/BarkFluff/` через `FileSaveUtils.saveImageToGallery` (видно в Галерее).
+  - **Сохранить в загрузки** (`actionSaveDocs`) — если ≥1 документ (DOCUMENT). Сохраняет в `Downloads/BarkFluff/` через `FileSaveUtils.saveToDownloads`.
+- **Места сохранения файлов** (`utils/FileSaveUtils.kt`): картинки → `Pictures/BarkFluff` (MediaStore.Images), видео и документы → `Downloads/BarkFluff` (MediaStore.Downloads). На API < Q используется `Environment.getExternalStoragePublicDirectory(...)` + `uniqueFile(...)` для дедуплицирования имён.
+- **Вьюверы**: `ImageViewerActivity.saveToGallery` использует `FileSaveUtils.saveBitmapToGallery` (Pictures/BarkFluff). `MediaViewerActivity.saveToGallery` использует `FileSaveUtils.saveToDownloads` (Downloads/BarkFluff).
+- **Long-press на вложениях**: меню картинок удалено целиком (`menu_image_attachment.xml` удалён) — теперь сохранение картинок только через основное меню. У документов осталось только «Удалить из кеша» (показывается лишь если файл закеширован). У аудио — без изменений.
 - **Свайп влево**: `ReplySwipeCallback : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT)`. При сдвиге `>= 64dp` — haptic + триггер. После отпускания bubble возвращается на место (`onSwiped` пуст, `clearView` сбрасывает `translationX`). Иконка стрелки рисуется справа в `onChildDraw` с alpha по прогрессу.
 - **Reply preview bar**: `replyPreviewBar` в `activity_chat.xml` — `MaterialCardView` над `attachmentPreviewBar`, показывается при `pendingReplyMessageId != 0L`. Содержит автора, превью текста (или "📷 N фото" / "📎 N файлов"), кнопку отмены `clearReplyButton`.
 - **Отправка**: `ChatRepository.sendMessage(..., forwardedMessageId = pendingReplyMessageId)`. После успеха — `clearPendingReply()`.
