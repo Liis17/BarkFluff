@@ -186,45 +186,27 @@ public class SeqService
         return ExtractFirstScalar(resp.Value);
     }
 
-    public async Task<long?> DeleteEventsAsync(DateTime? fromDateUtc = null, DateTime? toDateUtc = null)
+    public async Task DeleteEventsAsync(DateTime? fromDateUtc = null, DateTime? toDateUtc = null)
     {
-        var query = "/api/events";
-        var parts = new List<string>();
-        if (fromDateUtc.HasValue) parts.Add($"fromDateUtc={Uri.EscapeDataString(fromDateUtc.Value.ToString("O"))}");
-        if (toDateUtc.HasValue) parts.Add($"toDateUtc={Uri.EscapeDataString(toDateUtc.Value.ToString("O"))}");
-        if (parts.Count > 0) query += "?" + string.Join("&", parts);
-
-        var response = await _httpClient.DeleteAsync(query);
-        var json = await response.Content.ReadAsStringAsync();
-        if (!response.IsSuccessStatusCode)
-        {
-            _logger.LogError("Seq DELETE /api/events returned {StatusCode}: {Body}", (int)response.StatusCode, json);
-            throw new InvalidOperationException($"Seq вернул {(int)response.StatusCode}: {json}");
-        }
-
-        if (string.IsNullOrWhiteSpace(json))
-            return null;
+        // Seq HTTP API использует HATEOAS-style URL discovery, поэтому путь DELETE
+        // определяется не статически, а через `/api/events/resources` → `Links["DeleteInSignal"]`.
+        // Обёртку и подстановку RFC 6570 templates делает официальный пакет Seq.Api.
+        using var connection = new Seq.Api.SeqConnection(
+            _settings.Value.ServerUrl,
+            string.IsNullOrEmpty(_settings.Value.ApiKey) ? null : _settings.Value.ApiKey);
 
         try
         {
-            var doc = JsonSerializer.Deserialize<JsonElement>(json);
-            return TryReadDeletedCount(doc);
+            await connection.Events.DeleteAsync(
+                filter: null,
+                fromDateUtc: fromDateUtc,
+                toDateUtc: toDateUtc);
         }
-        catch (JsonException)
+        catch (Exception ex)
         {
-            return null;
+            _logger.LogError(ex, "Seq Events.DeleteAsync failed");
+            throw new InvalidOperationException($"Seq вернул ошибку: {ex.Message}", ex);
         }
-    }
-
-    private static long? TryReadDeletedCount(JsonElement doc)
-    {
-        if (doc.ValueKind != JsonValueKind.Object) return null;
-        foreach (var key in new[] { "Count", "count", "Deleted", "EventsDeleted", "deleted" })
-        {
-            if (doc.TryGetProperty(key, out var v) && v.ValueKind == JsonValueKind.Number)
-                return v.GetInt64();
-        }
-        return null;
     }
 
     private static long? ExtractFirstScalar(JsonElement root)

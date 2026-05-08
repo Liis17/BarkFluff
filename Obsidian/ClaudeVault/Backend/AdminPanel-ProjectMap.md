@@ -237,7 +237,7 @@ In-memory хранилище `PendingAuthRequest`. Таймер каждые 60 
 | `GetAllEventsListAsync(filter, fromUtc, maxEvents)` | постраничная загрузка |
 | `GetSignalsAsync()` | `GET /api/signals` |
 | `CountEventsAsync(fromUtc, toUtc)` | `GET /api/sqlquery?q=select count(*) ...` (через `RunSqlQueryAsync`) |
-| `DeleteEventsAsync(fromUtc, toUtc)` | `DELETE /api/events?fromDateUtc&toDateUtc` — возвращает количество удалённых из ответа Seq (поля `Count`/`Deleted`/`EventsDeleted`) |
+| `DeleteEventsAsync(fromUtc, toUtc)` | Удаляет события через NuGet `Seq.Api` (`SeqConnection.Events.DeleteAsync`). Пакет сам делает HATEOAS-discovery URL через `/api/events/resources` → `Links["DeleteInSignal"]` (RFC 6570). Возвращает `Task` (Seq не отдаёт количество удалённых — `DeleteResultPart` пустой). |
 | `static ExtractEventsArray(JsonElement)` | парсит как массив, так и `{Events:[...]}` |
 
 ### LogsExportService
@@ -268,7 +268,7 @@ In-memory хранилище `PendingAuthRequest`. Таймер каждые 60 
 
 **Pipeline (`RunClearAsync`):**
 1. Stage `Counting`: `seq.CountEventsAsync(toDateUtc)` — через SQL `select count(*) from stream`. Для `Scope.Old` `toDateUtc = UtcNow.AddDays(-14)`, для `All` — `null` (без ограничений). Результат записывается в `job.TotalCount`.
-2. Stage `Deleting`: `seq.DeleteEventsAsync(toDateUtc)` — `DELETE /api/events`. Результат пишется в `job.DeletedCount` (если Seq не вернул число — фолбэк на `TotalCount`).
+2. Stage `Deleting`: `seq.DeleteEventsAsync(toDateUtc)` — через `Seq.Api` NuGet (`SeqConnection.Events.DeleteAsync`). После завершения `DeletedCount` приравнивается к `TotalCount` (Seq не возвращает фактическое число удалённых — `DeleteResultPart` пустой).
 3. State `Done` либо `Error` (с текстом исключения).
 
 **TTL cleanup:** `Timer` каждые 5 минут удаляет job'ы в состоянии `Done`/`Error` старше 30 минут.

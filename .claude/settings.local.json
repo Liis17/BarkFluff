@@ -104,7 +104,15 @@
       "Bash(tasklist)",
       "Bash(xcodebuild -project Barkfluff.xcodeproj -list)",
       "Bash(xcodebuild -project /Users/liis/Projects/BarkFluff/Mac/Barkfluff/Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=macOS' -configuration Debug build)",
-      "Bash(Select-Object FullName)"
+      "Bash(Select-Object FullName)",
+      "Bash(curl -s \"http://localhost:8880/api/events/resources\")",
+      "Bash(curl -v \"http://localhost:8880/api/events/resources\")",
+      "Bash(gh api *)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(curl -s \"https://api.nuget.org/v3-flatcontainer/seq.api/index.json\")",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Sort-Object)",
+      "Bash(Format-Table FullName)"
     ],
     "deny": [],
     "ask": []
