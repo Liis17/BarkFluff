@@ -1992,7 +1992,7 @@ class ChatActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             realtimeService.messageEdited.collect { event ->
-                if (event.chatId == chatId) {
+                if (event.chatId.equals(chatId, ignoreCase = true)) {
                     applyEditedMessage(event.message)
                 }
             }
@@ -2000,7 +2000,7 @@ class ChatActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             realtimeService.messageDeleted.collect { event ->
-                if (event.chatId == chatId) {
+                if (event.chatId.equals(chatId, ignoreCase = true)) {
                     removeMessageById(event.messageId)
                 }
             }
@@ -2116,7 +2116,67 @@ class ChatActivity : AppCompatActivity() {
                     Log.d(TAG, "onStart: loading missed messages from lastVisibleMessageId=$lastVisibleMessageId")
                     hasMoreMessagesDown = true
                     loadMessagesDown()
+
+                    // Догоняем edit/delete события, пропущенные пока стримы были оффлайн
+                    syncRecentMessages()
                 }
+            }
+        }
+    }
+
+    /**
+     * Подтягивает свежее состояние уже загруженных сообщений и применяет diff:
+     *  — сообщения, которых больше нет на сервере, удаляются из адаптера (другое устройство удалило);
+     *  — сообщения с обновлённым текстом/вложениями/isEdited обновляются.
+     * Нужен после возвращения из фона: события стримов, эмитнутые во время паузы, теряются.
+     */
+    private suspend fun syncRecentMessages() {
+        val visibleMessages = messageAdapter.currentList
+            .filter { it.type == MessageType.MESSAGE }
+        if (visibleMessages.isEmpty()) return
+
+        val earliestId = visibleMessages.minOf { it.messageId }
+        val latestId = visibleMessages.maxOf { it.messageId }
+
+        // Запрашиваем окно от самого раннего видимого сообщения и до конца
+        val result = chatRepository.loadMessages(
+            chatId = chatId,
+            fromMessageId = earliestId,
+            offsetBefore = 0,
+            offsetAfter = 50
+        )
+        if (result.isFailure) {
+            Log.w(TAG, "syncRecentMessages: load failed: ${result.exceptionOrNull()?.message}")
+            return
+        }
+
+        val serverMessages = result.getOrNull().orEmpty()
+        val serverById = serverMessages.associateBy { it.id }
+        val serverIds = serverById.keys
+
+        // Граница "проверенного" диапазона: если сервер вернул максимум (50) — за пределы заглядывать не можем.
+        // Если меньше — значит больше сообщений в этом окне нет, можно безопасно удалять отсутствующие.
+        val checkedUpperBound = if (serverMessages.size < 50) Long.MAX_VALUE else serverMessages.maxOfOrNull { it.id } ?: earliestId
+
+        // Удаляем локальные сообщения, которых нет на сервере, но только в проверенном диапазоне
+        val deletedIds = visibleMessages
+            .filter { it.messageId in earliestId..checkedUpperBound && it.messageId !in serverIds }
+            .map { it.messageId }
+        for (id in deletedIds) {
+            Log.d(TAG, "syncRecentMessages: removing locally known but server-missing messageId=$id")
+            removeMessageById(id)
+        }
+
+        // Обновляем сообщения, у которых на сервере другой текст/isEdited/состав вложений
+        for (item in visibleMessages) {
+            val server = serverById[item.messageId] ?: continue
+            val serverText = server.content?.text ?: ""
+            val serverEdited = server.isEdited
+            val serverAttachmentIds = server.content?.attachmentsList?.map { it.id }.orEmpty()
+            val localAttachmentIds = item.attachments.map { it.id }
+            if (item.text != serverText || item.isEdited != serverEdited || localAttachmentIds != serverAttachmentIds) {
+                Log.d(TAG, "syncRecentMessages: applying server-side update to messageId=${item.messageId}")
+                applyEditedMessage(server)
             }
         }
     }
