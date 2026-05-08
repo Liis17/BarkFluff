@@ -26,6 +26,7 @@ Barkfluff.AdminPanel/
 │   ├── StickersEndpoints.cs           ← /api/stickers/*
 │   ├── UsersEndpoints.cs              ← /api/users/*
 │   ├── SeqEndpoints.cs                ← /api/seq/*
+│   ├── LogsExportEndpoints.cs         ← /api/seq/export/*
 │   ├── ConfigurationEndpoints.cs      ← /api/configuration/*
 │   ├── S3BrowserEndpoints.cs          ← /api/s3/*
 │   └── ReservedNamesEndpoints.cs      ← /api/reserved-names/*
@@ -35,6 +36,7 @@ Barkfluff.AdminPanel/
 │   ├── AuthToken.cs                   ← сессионный токен
 │   ├── PendingAuthRequest.cs          ← запрос подтверждения (in-memory)
 │   ├── SeqSettings.cs                 ← конфиг Seq
+│   ├── LogsExportJob.cs               ← состояние job экспорта логов
 │   └── Dtos/
 │       ├── ContainerDtos.cs           ← Docker DTO
 │       ├── AuthRequestDto.cs          ← запрос авторизации
@@ -46,6 +48,7 @@ Barkfluff.AdminPanel/
 │   ├── TelegramBotService.cs          ← Telegram-бот (IHostedService)
 │   ├── DockerService.cs               ← управление Docker
 │   ├── SeqService.cs                  ← HTTP-клиент Seq
+│   ├── LogsExportService.cs           ← async job: pull Seq → JSON → ZIP, TTL-cleanup
 │   ├── S3BrowserService.cs            ← AWS SDK S3
 │   ├── MetricsCollectorService.cs     ← фоновый сбор метрик (IHostedService)
 │   └── ConfigurationService.cs        ← gRPC-клиент конфигурации
@@ -226,10 +229,29 @@ In-memory хранилище `PendingAuthRequest`. Таймер каждые 60 
 
 | Метод | URL |
 |-------|-----|
-| `GetEventsAsync(filter, count, fromUtc, afterId)` | `GET /api/events` |
+| `GetEventsAsync(filter, count, fromUtc, afterId, toUtc)` | `GET /api/events` |
 | `RunSqlQueryAsync(query, dates)` | `GET /api/sqlquery?q=` |
 | `GetAllEventsListAsync(filter, fromUtc, maxEvents)` | постраничная загрузка |
 | `GetSignalsAsync()` | `GET /api/signals` |
+| `static ExtractEventsArray(JsonElement)` | парсит как массив, так и `{Events:[...]}` |
+
+### LogsExportService
+**Singleton.** In-memory `ConcurrentDictionary<Guid, LogsExportJob>` + фоновый `Timer` для TTL-cleanup. Использует `IServiceScopeFactory` чтобы достать scoped `SeqService` внутри фоновой Task.
+
+| Метод | Описание |
+|-------|---------|
+| `StartExport(scope)` | Создать job, запустить `Task.Run(RunExportAsync)`, вернуть `Guid jobId` |
+| `GetJob(jobId)` | Получить состояние |
+| `TryDeleteJobFiles(jobId)` | Удалить zip + temp-dir + убрать job (вызывается из download endpoint в `Response.OnCompleted`) |
+
+**Pipeline (`RunExportAsync`):**
+1. State `Downloading`. Цикл: `seq.GetEventsAsync(count=1000, afterId=...)` → парсим через `SeqService.ExtractEventsArray` → пишем `page-NNNNN.json` (массив `JsonElement` через `Utf8JsonWriter`) → берём `Id` последнего события как `afterId` для следующей страницы. Для `Scope.Old` дополнительно передаётся `toDateUtc = UtcNow.AddDays(-14)`. Цикл прерывается, когда страница неполная (< 1000) или нет `Id`.
+2. State `Compressing`. `ZipFile.CreateFromDirectory(tempDir, zipPath, CompressionLevel.Optimal, includeBaseDirectory: false)` — однопоточно, "среднее" сжатие. JSON-папка удаляется после ZIP.
+3. State `Ready`, выставляется `ZipPath` и `ZipSizeBytes`.
+
+**TTL cleanup:** `Timer` каждые 5 минут проходит по `_jobs`; если job в состоянии `Ready`/`Error` и `UpdatedAtUtc` старше 30 минут — удаляет zip + dir + запись.
+
+**Корневая папка:** `Path.Combine(Path.GetTempPath(), "logs-export")` — внутри контейнера это `/tmp/logs-export/`.
 
 ### S3BrowserService
 AWS SDK S3. Кеширует `AmazonS3Client` по `bucketId`. Конфигурацию берёт из `ConfigurationService` (gRPC).
@@ -323,6 +345,16 @@ AWS SDK S3. Кеширует `AmazonS3Client` по `bucketId`. Конфигур�
 | GET | `/api/seq/dashboard/service-metrics` | hours (def 12) | Метрики по сервисам |
 | GET | `/api/seq/dashboard/service-metrics/{name}` | hours | Метрики одного сервиса |
 | GET | `/api/seq/services/status` | — | Статус сервисов (Seq + Docker) |
+
+### /api/seq/export — LogsExportEndpoints.cs
+
+Async-job экспорт логов в zip-архив. Все 3 ручки требуют валидный `AuthToken`.
+
+| Метод | Путь | Тело / Query | Описание |
+|-------|------|-------------|---------|
+| POST | `/api/seq/export/start` | `{ "scope": "all" \| "old" }` | Создаёт job, возвращает `{ jobId }`. `old` = логи старше 14 дней (`toDateUtc = UtcNow - 14d`). |
+| GET | `/api/seq/export/{jobId}/status` | — | `{ state: queued\|downloading\|compressing\|ready\|error, totalDownloaded, currentPage, zipSizeBytes, error }` |
+| GET | `/api/seq/export/{jobId}/download` | — | Стрим zip через `Results.Stream(FileStream)` (без полной загрузки в RAM). После отправки `Response.OnCompleted` → `TryDeleteJobFiles(jobId)`. |
 
 ### /api/configuration — ConfigurationEndpoints.cs
 
@@ -454,6 +486,23 @@ Dockerfile монтирует `/var/run/docker.sock`, устанавливает
 - `dataset.idx` рассчитывается как `allLogs.length + index` ДО конкатенации в `allLogs`, чтобы при `append` (load more) индексы не пересекались.
 
 **Backend нового endpoint не понадобился** — `/api/seq/events` уже отдаёт полное событие (`SeqService.GetEventsAsync` зовёт Seq с `render=true`), включая `Properties`, `Exception`, `MessageTemplate`.
+
+**Экспорт логов в шапке.** Кнопка `Экспорт логов` справа от заголовка открывает модалку с 4 состояниями:
+
+| State | UI |
+|-------|----|
+| `choice` | Две кнопки выбора: «Только старые логи (старше 2 недель)» и «Все логи». Крестик доступен. |
+| `running` | Спиннер + текст этапа («Скачивание из Seq...» / «Сжатие архива...») + счётчик `Получено N логов`. **Крестика нет, backdrop не закрывает** — пока полнится job, модалку нельзя закрыть. |
+| `done` | Текст «Архив скачан. Рекомендуется перезапустить...» + кнопки `Позже` / `Перезапустить`. Крестик доступен. |
+| `error` | Текст ошибки + кнопка `Закрыть`. Крестик доступен. |
+
+JS-flow:
+1. Click `startExport(scope)` → `POST /api/seq/export/start` → получить `jobId`, перейти в state `running`.
+2. `setInterval(pollExportStatus, 2000)` опрашивает `/status`. Текст этапа и счётчик обновляются по `state`/`totalDownloaded`.
+3. На `state=ready` polling останавливается, `triggerDownload(jobId)` создаёт скрытую `<a href="/api/seq/export/{jobId}/download">` и кликает её — браузер начинает скачивание; модалка переходит в `done`.
+4. Кнопка `Перезапустить` в `done` → `POST /api/docker/containers/admin-panel/restart-own` → `window.location = '/restarting'` (тот же flow, что у кнопки `Перезапустить` на `/services`).
+
+Конкурирующих экспортов в одной вкладке быть не может — переменная `currentExportJobId` очищается при закрытии модалки и при переходе в done/error.
 
 ### `/` (`Pages/dashboard.html`) — метрики сервисов
 

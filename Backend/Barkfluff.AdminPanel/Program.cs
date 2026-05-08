@@ -51,6 +51,9 @@ public class Program
         // Register HttpClient for SeqService
         builder.Services.AddHttpClient<SeqService>();
 
+        // Register LogsExportService as Singleton (in-memory job dictionary)
+        builder.Services.AddSingleton<LogsExportService>();
+
         // Register S3BrowserService as Singleton
         builder.Services.AddSingleton<S3BrowserService>();
 
@@ -178,6 +181,9 @@ public class Program
 
         // Map Seq Endpoints
         app.MapSeqEndpoints();
+
+        // Map Logs Export Endpoints
+        app.MapLogsExportEndpoints();
 
         // Map Docker Endpoints
         app.MapDockerEndpoints();

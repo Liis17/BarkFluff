@@ -117,6 +117,11 @@
             <header class="h-16 bg-white shadow-sm flex items-center justify-between px-8 z-10">
                 <h2 class="text-xl font-semibold text-slate-700">Логи системы</h2>
                 <div class="flex items-center gap-4">
+                    <button id="exportLogsBtn" onclick="openExportModal()"
+                        class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        Экспорт логов
+                    </button>
                     <button id="logoutBtn" class="p-2 text-slate-400 hover:text-red-500" title="Выйти">
                         <i data-lucide="log-out" class="w-5 h-5"></i>
                     </button>
@@ -203,6 +208,80 @@
 
             </div>
         </main>
+    </div>
+
+    <!-- EXPORT MODAL -->
+    <div id="exportModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4">
+            <!-- State: choice -->
+            <div id="exportStateChoice" class="p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-slate-800">Экспорт логов</h3>
+                    <button onclick="closeExportModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <p class="text-sm text-slate-600 mb-4">Выберите, что экспортировать:</p>
+                <div class="space-y-2">
+                    <button onclick="startExport('old')" class="w-full text-left p-3 border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-blue-300 transition-colors">
+                        <div class="font-medium text-slate-800">Только старые логи</div>
+                        <div class="text-xs text-slate-500 mt-0.5">Старше 2 недель</div>
+                    </button>
+                    <button onclick="startExport('all')" class="w-full text-left p-3 border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-blue-300 transition-colors">
+                        <div class="font-medium text-slate-800">Все логи</div>
+                        <div class="text-xs text-slate-500 mt-0.5">Может занять время</div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- State: running (без кнопки закрытия) -->
+            <div id="exportStateRunning" class="p-6 hidden">
+                <h3 class="text-lg font-semibold text-slate-800 mb-4">Экспорт логов</h3>
+                <div class="flex flex-col items-center gap-3 py-4">
+                    <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
+                    <div id="exportStageText" class="text-sm font-medium text-slate-700">Подготовка...</div>
+                    <div id="exportCounterText" class="text-xs text-slate-500"></div>
+                </div>
+            </div>
+
+            <!-- State: done (после download) -->
+            <div id="exportStateDone" class="p-6 hidden">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-slate-800">Экспорт завершён</h3>
+                    <button onclick="closeExportModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <p class="text-sm text-slate-600 mb-4">
+                    Архив скачан. Рекомендуется перезапустить админ-панель для очистки кеша.
+                </p>
+                <div class="flex gap-2 justify-end">
+                    <button onclick="closeExportModal()" class="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">
+                        Позже
+                    </button>
+                    <button onclick="restartAfterExport()" class="px-4 py-2 text-sm bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors flex items-center gap-2">
+                        <i data-lucide="rotate-cw" class="w-4 h-4"></i>
+                        Перезапустить
+                    </button>
+                </div>
+            </div>
+
+            <!-- State: error -->
+            <div id="exportStateError" class="p-6 hidden">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-red-600">Ошибка экспорта</h3>
+                    <button onclick="closeExportModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <p id="exportErrorText" class="text-sm text-slate-600 mb-4 break-words"></p>
+                <div class="flex justify-end">
+                    <button onclick="closeExportModal()" class="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">
+                        Закрыть
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -684,6 +763,123 @@
             document.cookie = 'auth_token=; path=/; max-age=0';
             window.location.href = '/';
         });
+
+        // --- Logs Export ---
+        let currentExportJobId = null;
+        let exportPollTimer = null;
+
+        function showExportState(stateName) {
+            ['Choice', 'Running', 'Done', 'Error'].forEach(s => {
+                document.getElementById('exportState' + s).classList.toggle('hidden', s.toLowerCase() !== stateName);
+            });
+        }
+
+        function openExportModal() {
+            const modal = document.getElementById('exportModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            showExportState('choice');
+            lucide.createIcons();
+        }
+
+        function closeExportModal() {
+            if (exportPollTimer) {
+                clearInterval(exportPollTimer);
+                exportPollTimer = null;
+            }
+            const modal = document.getElementById('exportModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            currentExportJobId = null;
+        }
+
+        async function startExport(scope) {
+            showExportState('running');
+            document.getElementById('exportStageText').textContent = 'Подготовка экспорта...';
+            document.getElementById('exportCounterText').textContent = '';
+
+            try {
+                const resp = await fetch('/api/seq/export/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ scope })
+                });
+                if (!resp.ok) throw new Error('Не удалось запустить экспорт (HTTP ' + resp.status + ')');
+                const data = await resp.json();
+                currentExportJobId = data.jobId;
+                exportPollTimer = setInterval(pollExportStatus, 2000);
+                pollExportStatus();
+            } catch (e) {
+                showExportError(e.message);
+            }
+        }
+
+        async function pollExportStatus() {
+            if (!currentExportJobId) return;
+            try {
+                const resp = await fetch(`/api/seq/export/${currentExportJobId}/status`);
+                if (!resp.ok) throw new Error('Ошибка опроса статуса (HTTP ' + resp.status + ')');
+                const s = await resp.json();
+
+                const counter = document.getElementById('exportCounterText');
+                const stage = document.getElementById('exportStageText');
+                const num = (s.totalDownloaded || 0).toLocaleString('ru-RU');
+
+                if (s.state === 'queued') {
+                    stage.textContent = 'Подготовка экспорта...';
+                    counter.textContent = '';
+                } else if (s.state === 'downloading') {
+                    stage.textContent = 'Скачивание из Seq...';
+                    counter.textContent = `Получено ${num} логов`;
+                } else if (s.state === 'compressing') {
+                    stage.textContent = 'Сжатие архива...';
+                    counter.textContent = `${num} логов`;
+                } else if (s.state === 'ready') {
+                    if (exportPollTimer) { clearInterval(exportPollTimer); exportPollTimer = null; }
+                    triggerDownload(currentExportJobId);
+                } else if (s.state === 'error') {
+                    if (exportPollTimer) { clearInterval(exportPollTimer); exportPollTimer = null; }
+                    showExportError(s.error || 'Неизвестная ошибка');
+                }
+            } catch (e) {
+                if (exportPollTimer) { clearInterval(exportPollTimer); exportPollTimer = null; }
+                showExportError(e.message);
+            }
+        }
+
+        function triggerDownload(jobId) {
+            const a = document.createElement('a');
+            a.href = `/api/seq/export/${jobId}/download`;
+            a.download = '';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            showExportState('done');
+            lucide.createIcons();
+        }
+
+        function showExportError(msg) {
+            document.getElementById('exportErrorText').textContent = msg;
+            showExportState('error');
+            lucide.createIcons();
+        }
+
+        async function restartAfterExport() {
+            try {
+                const resp = await fetch('/api/docker/containers/admin-panel/restart-own', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const r = await resp.json();
+                if (r.success) {
+                    window.location.href = '/restarting';
+                } else {
+                    showExportError(r.message || 'Не удалось запустить перезапуск');
+                }
+            } catch (e) {
+                showExportError(e.message);
+            }
+        }
 
         // --- Initialize ---
         checkAuth();
