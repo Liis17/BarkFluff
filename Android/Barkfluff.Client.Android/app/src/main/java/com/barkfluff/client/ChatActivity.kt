@@ -2,6 +2,10 @@ package com.barkfluff.client
 
 import android.animation.ValueAnimator
 import android.app.Activity
+import android.content.ClipData
+import android.content.ClipDescription
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -10,6 +14,8 @@ import android.view.View
 import android.view.animation.DecelerateInterpolator
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.content.FileProvider
+import androidx.core.view.isVisible
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -34,6 +40,7 @@ import com.barkfluff.client.picker.ImagePickerResult
 import com.barkfluff.client.repository.ChatRepository
 import com.barkfluff.client.utils.AvatarLoader
 import com.barkfluff.client.utils.FileCache
+import com.barkfluff.client.utils.FileSaveUtils
 import com.barkfluff.client.utils.ImageCompressor
 import com.barkfluff.client.utils.KeyboardHeightTracker
 import com.barkfluff.client.utils.StickerCache
@@ -1437,6 +1444,17 @@ class ChatActivity : AppCompatActivity() {
             setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
         }
 
+        // Подсветка пузыря сообщения, для которого открыто меню
+        val bubble = anchor.findViewById<View>(R.id.messageCard)
+        val originalForeground = bubble?.foreground
+        if (bubble != null) {
+            val tv = android.util.TypedValue()
+            theme.resolveAttribute(androidx.appcompat.R.attr.colorPrimary, tv, true)
+            val highlightColor = (tv.data and 0x00FFFFFF) or (60 shl 24)
+            bubble.foreground = android.graphics.drawable.ColorDrawable(highlightColor)
+        }
+        popup.setOnDismissListener { bubble?.foreground = originalForeground }
+
         val dismiss = { popup.dismiss() }
 
         val onClickWithDismiss: (Int) -> Unit = { actionId ->
@@ -1469,6 +1487,35 @@ class ChatActivity : AppCompatActivity() {
         val deleteView = popupView.findViewById<View>(R.id.actionDelete)
         editView.visibility = if (isOwnMessage) View.VISIBLE else View.GONE
         deleteView.visibility = if (isOwnMessage) View.VISIBLE else View.GONE
+
+        // Контекстные пункты по содержимому сообщения
+        val imageAtts = item.attachments.filter {
+            it.type == barkfluff.shared.Shared.MessageAttachmentType.IMAGE ||
+            it.type == barkfluff.shared.Shared.MessageAttachmentType.GIF
+        }
+        val docAtts = item.attachments.filter {
+            it.type == barkfluff.shared.Shared.MessageAttachmentType.DOCUMENT
+        }
+        val hasText = item.text.isNotBlank()
+
+        val copyTextView = popupView.findViewById<TextView>(R.id.actionCopyText)
+        val copyImageView = popupView.findViewById<TextView>(R.id.actionCopyImage)
+        val saveImagesView = popupView.findViewById<TextView>(R.id.actionSaveImages)
+        val saveDocsView = popupView.findViewById<TextView>(R.id.actionSaveDocs)
+
+        copyTextView.isVisible = hasText
+        copyImageView.isVisible = imageAtts.size == 1
+        saveImagesView.isVisible = imageAtts.isNotEmpty()
+        saveDocsView.isVisible = docAtts.isNotEmpty()
+
+        if (saveImagesView.isVisible) {
+            saveImagesView.text = if (imageAtts.size == 1) "Сохранить изображение" else "Сохранить изображения"
+        }
+
+        copyTextView.setOnClickListener { copyMessageText(item); dismiss() }
+        copyImageView.setOnClickListener { copyMessageImage(imageAtts.first()); dismiss() }
+        saveImagesView.setOnClickListener { saveMessageImages(imageAtts); dismiss() }
+        saveDocsView.setOnClickListener { saveMessageDocuments(docAtts); dismiss() }
 
         popupView.findViewById<View>(R.id.actionReply).setOnClickListener { onClickWithDismiss(R.id.actionReply) }
         editView.setOnClickListener { onClickWithDismiss(R.id.actionEdit) }
@@ -1504,6 +1551,95 @@ class ChatActivity : AppCompatActivity() {
         }
 
         popup.showAtLocation(anchor, android.view.Gravity.NO_GRAVITY or android.view.Gravity.START or android.view.Gravity.TOP, x, y)
+    }
+
+    private fun copyMessageText(item: MessageItem) {
+        val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        cm.setPrimaryClip(ClipData.newPlainText("BarkFluff message", item.text))
+        Toast.makeText(this, "Текст скопирован", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun copyMessageImage(att: barkfluff.shared.Shared.MessageAttachment) {
+        lifecycleScope.launch {
+            val srcFile = FileCache.getFile(att.fileId) ?: chatRepository.downloadFile(att.fileId)
+            if (srcFile == null) {
+                Toast.makeText(this@ChatActivity, "Не удалось загрузить изображение", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            try {
+                // FileCache хранит файл без расширения → FileProvider не может определить MIME.
+                // Копируем во временный файл с расширением, чтобы ContentResolver вернул image/* MIME.
+                val ext = att.fileName.substringAfterLast('.', "").lowercase().ifBlank { "jpg" }
+                val resolvedMime = FileSaveUtils.getMimeType("dummy.$ext")
+                val mime = if (resolvedMime.startsWith("image/")) resolvedMime else "image/jpeg"
+                val tempFile = withContext(Dispatchers.IO) {
+                    val tempDir = File(cacheDir, "clipboard").apply { if (!exists()) mkdirs() }
+                    val out = File(tempDir, "img_${System.currentTimeMillis()}.$ext")
+                    srcFile.inputStream().use { input ->
+                        out.outputStream().use { input.copyTo(it) }
+                    }
+                    out
+                }
+                val uri = FileProvider.getUriForFile(
+                    this@ChatActivity, "${packageName}.fileprovider", tempFile
+                )
+                val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val clip = ClipData(
+                    ClipDescription("BarkFluff image", arrayOf(mime)),
+                    ClipData.Item(uri)
+                )
+                cm.setPrimaryClip(clip)
+                Toast.makeText(this@ChatActivity, "Изображение скопировано", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(this@ChatActivity, "Не удалось скопировать", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun saveMessageImages(images: List<barkfluff.shared.Shared.MessageAttachment>) {
+        if (images.isEmpty()) return
+        Toast.makeText(this, "Сохраняю...", Toast.LENGTH_SHORT).show()
+        lifecycleScope.launch {
+            var saved = 0
+            for (att in images) {
+                val name = att.fileName.ifBlank { "image_${att.fileId.take(8)}.jpg" }
+                val file = FileCache.getFile(att.fileId) ?: chatRepository.downloadFile(att.fileId)
+                if (file != null) {
+                    val ok = withContext(Dispatchers.IO) {
+                        FileSaveUtils.saveImageToGallery(this@ChatActivity, file, name)
+                    }
+                    if (ok) saved++
+                }
+            }
+            Toast.makeText(
+                this@ChatActivity,
+                if (saved > 0) "Сохранено в галерею: $saved" else "Не удалось сохранить",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    private fun saveMessageDocuments(docs: List<barkfluff.shared.Shared.MessageAttachment>) {
+        if (docs.isEmpty()) return
+        Toast.makeText(this, "Сохраняю...", Toast.LENGTH_SHORT).show()
+        lifecycleScope.launch {
+            var saved = 0
+            for (att in docs) {
+                val name = att.fileName.ifBlank { "file_${att.fileId.take(8)}" }
+                val file = FileCache.getFile(att.fileId) ?: chatRepository.downloadFile(att.fileId)
+                if (file != null) {
+                    val ok = withContext(Dispatchers.IO) {
+                        FileSaveUtils.saveToDownloads(this@ChatActivity, file, name)
+                    }
+                    if (ok) saved++
+                }
+            }
+            Toast.makeText(
+                this@ChatActivity,
+                if (saved > 0) "Сохранено в загрузки: $saved" else "Не удалось сохранить",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
     }
 
     private fun loadChatInfoAndMessages() {
