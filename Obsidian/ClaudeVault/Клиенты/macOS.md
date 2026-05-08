@@ -203,9 +203,11 @@ Logout строится по «server-first, fail-loud» схеме: если с
 |-----------------|-------------------------------|------------------------------------|
 | General         | `GeneralSettingsView`         | через `SettingsViewModel`          |
 | Notifications   | `NotificationsSettingsView`   | —                                  |
+| Personalization | `PersonalizationSettingsView` + `PosterPreviewCard`/`BubblePreviewView`/`BackgroundsGrid` | `PersonalizationSettingsViewModel` |
 | Cache           | `CacheSettingsView` + `CacheStackedBarView` | `CacheSettingsViewModel` |
 | Cloud           | `CloudSettingsView` + `CloudStackedBarView` | `CloudSettingsViewModel` |
-| Security        | `SecuritySettingsView`        | через `SettingsViewModel`          |
+| Security        | `SecuritySettingsView` (case `.security`, «Безопасность», `lock.fill`) | через `SettingsViewModel` |
+| Privacy         | `PrivacySettingsView` (case `.privacy`, «Приватность», `eye.slash.fill`) | `PrivacySettingsViewModel` |
 | Sessions        | `SessionsView`                | через `SettingsViewModel`          |
 | About App       | `AboutAppSettingsView`        | —                                  |
 | About Server    | `AboutServerSettingsView`     | `AboutServerSettingsViewModel`     |
@@ -245,6 +247,40 @@ Logout строится по «server-first, fail-loud» схеме: если с
 UI настроек — `Features/Settings/Views/NotificationsSettingsView.swift`, тогглеры байндятся к `container.notificationSettings`. При переключении `showNotifications` в OFF вьюха через `.onChange` вызывает `notificationService.removeAllDelivered()`, чтобы старые баннеры не висели в Notification Center после выключения фичи. `playSound` читает `NotificationContentBuilder.build(...)` — когда выключен, `content.sound` не ставится, остаётся только визуальный баннер. Главный гейт по `showNotifications` — в `NotificationService.handle(_:)` (ранний `return` до резолва аватара/имени).
 
 **Lifecycle**: `RootView.task` ставит делегата и спрашивает разрешение один раз при старте; `RootView.onChange(of: currentState)` запускает `notificationService.start(coordinator:currentUserID:)` при переходе в `.main` и `stop()` при выходе. На `stop()` все баннеры снимаются (`removeAllDeliveredNotifications`).
+
+## Персонализация чата
+
+Раздел `Settings → Персонализация` повторяет реализацию Android-клиента и состоит из трёх блоков:
+
+1. **Постер профиля** — превью карточки (постер 3:1 + аватар поверх + имя/`@username`) с кнопкой смены через `.fileImporter`. Загрузка: `FileService.uploadFile(fileType: .userProfilePoster)` → `UserService.setProfilePoster(fileID:)` → `container.loadCurrentUser()` для немедленного обновления `ProfileHeaderSection` и `ProfileSidebarView`.
+2. **Закругление пузырей** — превью из 5 фейковых пузырей на `MessageBubbleShape` + слайдер 0…30 pt. Радиус читается из `PersonalizationSettings.bubbleCornerRadius` через `@Environment(DependencyContainer.self)` в `MessageBubbleView` и attachment-вьюхах (`ImageAttachmentView`, `VideoAttachmentView`, `GIFAttachmentView`). `@Observable` гарантирует rerender открытого `ConversationView` в реальном времени.
+3. **Фон чата** — тогл размытия + слайдеры радиуса блюра (1…25) и затемнения (0…100%) + сетка 3×N с фонами и ячейкой добавления. Long-press / context menu переключает delete-mode на ячейке. Применяется в `Conversation/Views/Components/ChatBackgroundView.swift` (нижний слой ZStack в `ConversationView`): `CachedImageView(.image)` + `.blur(radius:opaque: true)` + `.clipped()` + dim-overlay цвета `Color(nsColor: .windowBackgroundColor)` с `.opacity(percent / 100)`.
+
+Хранилище:
+- Локальные настройки (radius, blur on/off, blur radius, dim, currentBackgroundFileID) — `App/Settings/PersonalizationSettings.swift` поверх `UserDefaults` (ключи `personalization.*`). Не очищаются при logout — паритет с Android-`GlobalParam`.
+- Постер и список фонов — синхронизируются с сервером через `Users.GetPersonalization` / `Users.UpdatePersonalization` / `Users.GetProfilePoster` / `Users.SetProfilePoster`. Реализация в `BFNetworking/Repositories/UsersRepository.swift` (DTO `PersonalizationInfo`) и `BFCore/Services/Implementations/UserService.swift`.
+
+Контракт `UpdatePersonalization` затирает обе стороны (`profilePosterFileID` + `chatBackgroundFileIds`), поэтому `PersonalizationSettingsViewModel` хранит текущий `posterFileID` и при апдейте списка фонов передаёт его без изменений — иначе сервер обнулит постер. Фоны заливаются как `UploadFileType.messageAttachmentImage` (паритет с Android), постер — `UploadFileType.userProfilePoster`.
+
+Ключевые файлы:
+- UI: `Features/Settings/Personalization/PersonalizationSettingsView.swift` + `Components/{PosterPreviewCard,BubblePreviewView,BackgroundsGrid}.swift`.
+- VM: `Features/Settings/Personalization/PersonalizationSettingsViewModel.swift` (`@MainActor @Observable`).
+- Применение в чате: `Features/Conversation/Views/Components/ChatBackgroundView.swift`, плюс правки в `MessageBubbleView`/`Image|Video|GIFAttachmentView`.
+
+### Приватность
+
+Раздел `Settings → Приватность` повторяет реализацию Android-клиента ([[Android]] → `PrivacySettingsActivity`) и состоит из двух секций по 6 настроек:
+
+1. **Профиль** — `Toggle` «Профиль на сайте» (`profileVisibleOnSite`), `Picker` «Видимость аватара/описания/почты» (`avatarVisibility`, `bioVisibility`, `emailVisibility`) с тремя значениями: «Все»/«Друзья»/«Никто».
+2. **Поиск и онлайн** — `Toggle` «Видимость в поиске» (`searchVisible`), `Picker` «Видимость онлайна» (`onlineVisibility`).
+
+Контракт — `Barkfluff_Users_PrivacySettings` ([[Shared/Proto]], `users_api.proto`), RPC `GetPrivacySettings`/`UpdatePrivacySettings`. На клиенте:
+
+- DTO: `BFNetworking.PrivacySettingsInfo` + enum `ProfileFieldVisibility` (`.all/.friends/.none`).
+- Repository: `UsersRepository.getPrivacySettings()` / `updatePrivacySettings(_:)` — стандартный паттерн `withAuthorizedClient(for: .users)` + nonisolated мапперы `mapPrivacySettings` / `mapVisibilityTo|FromProto`.
+- Service: `BFCore.UserService.getPrivacySettings()` / `updatePrivacySettings(_:)` — простая делегация в репозиторий, без кеша.
+- VM: `Features/Settings/ViewModels/PrivacySettingsViewModel.swift` (`@MainActor @Observable`). Загрузка в `.task`. Метод `update(_ mutate:)` применяет мутацию к локальной копии, шлёт `updatePrivacySettings`; **на ошибке откатывает локальную копию и показывает `errorMessage`** — UI всегда отражает реальное состояние сервера.
+- UI: `Features/Settings/Views/PrivacySettingsView.swift`. Биндинги через приватные `boolBinding(_:)` / `visibilityBinding(_:)` с `WritableKeyPath` — `set` запускает `Task { await viewModel.update { ... } }`, поэтому каждое переключение Toggle/Picker автосохраняется без отдельной кнопки.
 
 ## Code Conventions
 

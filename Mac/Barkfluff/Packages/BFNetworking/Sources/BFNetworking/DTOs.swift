@@ -86,6 +86,52 @@ public struct UserBadgeInfo: Sendable, Identifiable {
     public let iconURL: String?
 }
 
+/// Персонализация пользователя: постер профиля + список фоновых картинок чата.
+public struct PersonalizationInfo: Sendable, Hashable {
+    public let profilePosterFileID: String
+    public let chatBackgroundFileIDs: [String]
+
+    public init(profilePosterFileID: String, chatBackgroundFileIDs: [String]) {
+        self.profilePosterFileID = profilePosterFileID
+        self.chatBackgroundFileIDs = chatBackgroundFileIDs
+    }
+}
+
+// MARK: - Privacy
+
+/// Уровень видимости поля профиля (соответствует proto enum ProfileFieldVisibility)
+public enum ProfileFieldVisibility: Sendable, Hashable, CaseIterable, Codable {
+    case all
+    case friends
+    case none
+}
+
+/// Настройки приватности текущего пользователя
+public struct PrivacySettingsInfo: Sendable, Hashable {
+    public var profileVisibleOnSite: Bool
+    public var avatarVisibility: ProfileFieldVisibility
+    public var bioVisibility: ProfileFieldVisibility
+    public var emailVisibility: ProfileFieldVisibility
+    public var searchVisible: Bool
+    public var onlineVisibility: ProfileFieldVisibility
+
+    public init(
+        profileVisibleOnSite: Bool,
+        avatarVisibility: ProfileFieldVisibility,
+        bioVisibility: ProfileFieldVisibility,
+        emailVisibility: ProfileFieldVisibility,
+        searchVisible: Bool,
+        onlineVisibility: ProfileFieldVisibility
+    ) {
+        self.profileVisibleOnSite = profileVisibleOnSite
+        self.avatarVisibility = avatarVisibility
+        self.bioVisibility = bioVisibility
+        self.emailVisibility = emailVisibility
+        self.searchVisible = searchVisible
+        self.onlineVisibility = onlineVisibility
+    }
+}
+
 // MARK: - Chat
 
 public struct ChatInfo: Sendable, Identifiable {

@@ -80,6 +80,11 @@ final class DependencyContainer {
     let notificationService: NotificationService
     let notificationDelegate: NotificationDelegate
 
+    // MARK: - Personalization
+
+    /// Локальные настройки персонализации (UserDefaults-backed).
+    let personalizationSettings: PersonalizationSettings
+
     // MARK: - Settings
 
     /// ViewModel для настроек
@@ -247,6 +252,9 @@ final class DependencyContainer {
             settings: notificationSettings
         )
         self.notificationDelegate = NotificationDelegate()
+
+        // Personalization (локальные настройки чата)
+        self.personalizationSettings = PersonalizationSettings()
 
         // Устанавливаем интерсепторы после создания всех зависимостей
         // (нужен Task т.к. connectionManager — actor)
