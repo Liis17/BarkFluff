@@ -217,6 +217,19 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
                 return@withContext Result.failure(IllegalStateException("Files client not created"))
             }
 
+            // Дедупликация: считаем SHA-256 от тех самых байт, которые ушли бы на сервер
+            // (для картинок это уже сжатый JPEG из ImageCompressor — совпадает с тем,
+            // что хеширует backend в UploadFileCommandHandler).
+            val fileHash = jpegImageBytes.sha256Hex()
+            val existingFileId = grpcManager.checkFileHash(fileHash).getOrNull()
+            if (!existingFileId.isNullOrEmpty()) {
+                Log.d(TAG, "File already exists on server (hash=$fileHash), reusing fileId: $existingFileId")
+                try { onProgress(100) } catch (_: Throwable) {}
+                return@withContext Result.success(existingFileId)
+            }
+            // На промахе или сетевой ошибке checkFileHash продолжаем обычный upload —
+            // серверная пост-дедупликация всё равно отработает после полной загрузки.
+
             // Получаем URL для загрузки
             val uploadUrlRequest = barkfluff.files.FilesApiOuterClass.GetUploadUrlRequest.newBuilder()
                 .setFileType(fileType)
@@ -430,4 +443,9 @@ class ChatRepository(private val context: Context, private val grpcManager: Grpc
         val url: String,
         val fileId: String
     )
+}
+
+private fun ByteArray.sha256Hex(): String {
+    val digest = java.security.MessageDigest.getInstance("SHA-256").digest(this)
+    return digest.joinToString("") { "%02x".format(it) }
 }

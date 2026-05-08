@@ -1547,6 +1547,28 @@ class GrpcManager {
     }
 
     /**
+     * Проверяет, существует ли на сервере файл с таким SHA-256 хешем (lowercase hex, 64 символа).
+     * Возвращает существующий fileId или пустую строку, если файла нет — для дедупликации до загрузки.
+     */
+    suspend fun checkFileHash(fileHash: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            if (filesClient == null) {
+                return@withContext Result.failure(IllegalStateException("Files клиент не создан"))
+            }
+
+            val request = FilesApiOuterClass.CheckFileHashRequest.newBuilder()
+                .setFileHash(fileHash)
+                .build()
+
+            val response = filesClient!!.checkFileHash(request)
+            Result.success(response.fileId)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка проверки хеша файла", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Получает URL для загрузки файла
      */
     suspend fun getUploadUrl(fileType: FilesApiOuterClass.UploadFileType): Result<UploadUrlResult> = withContext(Dispatchers.IO) {
