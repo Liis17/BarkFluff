@@ -41,6 +41,7 @@ builder.Services.AddGrpcClient<MessagesApi.MessagesApiClient>(o =>
 builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<PushNotificationConsumer>();
+    x.AddConsumer<DismissPushConsumer>();
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -53,6 +54,11 @@ builder.Services.AddMassTransit(x =>
         cfg.ReceiveEndpoint("push-notifications-handler", e =>
         {
             e.ConfigureConsumer<PushNotificationConsumer>(context);
+        });
+
+        cfg.ReceiveEndpoint("dismiss-push-handler", e =>
+        {
+            e.ConfigureConsumer<DismissPushConsumer>(context);
         });
     });
 });

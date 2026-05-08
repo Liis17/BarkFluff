@@ -171,6 +171,88 @@ public class FirebaseService
         }
     }
 
+    /// <summary>
+    /// Отправляет data-only команду на удаление нотификации чата на всех указанных FCM-токенах.
+    /// Клиент по type="dismiss_chat_notifications" вызывает NotificationManager.cancel.
+    /// </summary>
+    public async Task SendDismissBatchAsync(
+        IReadOnlyList<string> fcmTokens,
+        string chatId,
+        CancellationToken cancellationToken = default)
+    {
+        if (_messaging == null)
+        {
+            _logger.LogWarning("Firebase messaging not initialized, skipping dismiss");
+            return;
+        }
+
+        if (fcmTokens.Count == 0)
+            return;
+
+        var multicastMessage = new MulticastMessage
+        {
+            Tokens = [.. fcmTokens],
+            Data = new Dictionary<string, string>
+            {
+                ["type"] = "dismiss_chat_notifications",
+                ["chat_id"] = chatId
+            },
+            Android = new AndroidConfig
+            {
+                Priority = Priority.High
+            }
+        };
+
+        try
+        {
+            var response = await _messaging.SendEachForMulticastAsync(multicastMessage, cancellationToken);
+
+            _logger.LogInformation(
+                "Dismiss push отправлен. ChatId: {ChatId}, Tokens: {Total}, Success: {Success}, Failed: {Failed}",
+                chatId,
+                fcmTokens.Count,
+                response.SuccessCount,
+                response.FailureCount);
+
+            if (response.FailureCount > 0)
+            {
+                var unregisteredTokens = new List<string>();
+                for (var i = 0; i < response.Responses.Count; i++)
+                {
+                    var resp = response.Responses[i];
+                    if (resp.IsSuccess)
+                        continue;
+
+                    var token = fcmTokens[i];
+                    var ex = resp.Exception;
+
+                    if (ex?.MessagingErrorCode == MessagingErrorCode.Unregistered)
+                    {
+                        unregisteredTokens.Add(token);
+                    }
+                    else
+                    {
+                        _logger.LogError(
+                            ex,
+                            "Ошибка отправки dismiss push. Token: {TokenPrefix}...",
+                            token[..Math.Min(10, token.Length)]);
+                    }
+                }
+
+                if (unregisteredTokens.Count > 0)
+                {
+                    _logger.LogWarning(
+                        "Невалидные FCM-токены при dismiss ({Count}): требуется очистка в БД",
+                        unregisteredTokens.Count);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Неожиданная ошибка при батч-отправке dismiss push");
+        }
+    }
+
     private static string TruncateMessage(string? text, int maxLength)
     {
         if (string.IsNullOrEmpty(text))

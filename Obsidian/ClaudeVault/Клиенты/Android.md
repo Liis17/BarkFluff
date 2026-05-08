@@ -60,6 +60,13 @@ Package: `com.barkfluff.client`
 - `deleteAndRefreshTokenThenSend()` — удаляет старый токен, получает новый, отправляет. Используется в **LoginActivity** после успешного логина (свежий вход).
 - `refreshTokenAndSendToServer()` — принудительное обновление токена (вызывается из `BarkFluffFirebaseMessagingService.onNewToken()`).
 
+## Обработка FCM data-only payload
+
+`BarkFluffFirebaseMessagingService.onMessageReceived` диспатчит payload по полю `type`:
+
+- `type = "new_message"` (по умолчанию, если поле не задано) — строит локальную нотификацию через `NotificationHelper.showMessageNotification` с аватаром и BigPictureStyle при наличии превью.
+- `type = "dismiss_chat_notifications"` — вызывает `NotificationHelper.dismissForChat(context, chat_id)`, удаляя нотификацию чата из шторки. Шлётся бекендом ([[Backend/CloudMessaging]] / [[Backend/Updates]]) после прочтения сообщения, чтобы скрыть уведомление на остальных устройствах пользователя. На читавшем устройстве — no-op (нотификации уже нет).
+
 
 
 - `MessageAttachmentType`: Unknown, Image, Video, Gif, Document, Audio(4), Voice, Sticker; **AUDIO=5** (добавлен в shared.proto)
