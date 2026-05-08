@@ -142,10 +142,24 @@ Layout цитаты: `view_message_quote.xml` (включается в `item_mes
 
 ### Ответ (reply) в открытом чате
 
-- **Action menu**: клик по корневому `FrameLayout` строки сообщения (вне bubble — там, где padding 80dp слева/справа) открывает `PopupMenu` (`menu_message_actions.xml`) с пунктами Ответить / Изменить / Удалить / Переслать / Закрепить. Изменить/Удалить/Закрепить — заглушки `Toast "Скоро будет"`.
+- **Action menu**: клик по корневому `FrameLayout` строки сообщения (вне bubble — там, где padding 80dp слева/справа) открывает `PopupWindow` (`popup_message_actions.xml`) с пунктами Ответить / Изменить / Удалить / Переслать / Закрепить. Закрепить — заглушка `Toast "Скоро будет"`. Изменить/Удалить — реализованы (см. ниже), скрываются через `View.GONE` для чужих сообщений.
 - **Свайп влево**: `ReplySwipeCallback : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT)`. При сдвиге `>= 64dp` — haptic + триггер. После отпускания bubble возвращается на место (`onSwiped` пуст, `clearView` сбрасывает `translationX`). Иконка стрелки рисуется справа в `onChildDraw` с alpha по прогрессу.
 - **Reply preview bar**: `replyPreviewBar` в `activity_chat.xml` — `MaterialCardView` над `attachmentPreviewBar`, показывается при `pendingReplyMessageId != 0L`. Содержит автора, превью текста (или "📷 N фото" / "📎 N файлов"), кнопку отмены `clearReplyButton`.
 - **Отправка**: `ChatRepository.sendMessage(..., forwardedMessageId = pendingReplyMessageId)`. После успеха — `clearPendingReply()`.
+
+### Редактирование и удаление сообщений
+
+Реализовано через `EditMessage` / `DeleteMessage` gRPC из [[Backend/Messages]] и стримы `SubscribeMessagesEdited` / `SubscribeMessagesDeleted` из [[Backend/Updates]].
+
+- **Repository** (`ChatRepository.editMessage(messageId, text, fileIds)` / `deleteMessage(messageId)`): обёртки над gRPC-вызовами. Возвращают `Result<Shared.Message>` / `Result<Unit>`.
+- **RealtimeService** (`grpc/RealtimeService.kt`): два дополнительных `MutableSharedFlow` — `messageEdited`, `messageDeleted`. Стартует две корутины `streamWithReconnect("MessagesEdited"/"MessagesDeleted")` в `resume()`.
+- **ChatActivity состояние**: `pendingEditMessageId: Long`, `pendingEditFileIds: List<String>`. Если != 0 → `sendMessage()` вызывает `sendEdit()` вместо `chatRepository.sendMessage()`.
+- **Edit preview bar**: `editPreviewBar` в `activity_chat.xml` — `MaterialCardView` с заголовком «Редактирование сообщения» и превью текста, привязан к `attachmentPreviewBar` (как `replyPreviewBar`). Кнопка отмены `clearEditButton`.
+- **Edit-режим**: `setPendingEdit(item)` подставляет текст в `messageEditText`, фокусирует поле, открывает клавиатуру. Сохраняет существующие `file_id` (без FORWARDED_MESSAGE) в `pendingEditFileIds` — backend сохраняет их при правке без изменений. Edit и reply — взаимоисключающие, при входе в edit активный reply сбрасывается.
+- **Delete-режим**: `confirmAndDelete(item)` показывает `MaterialAlertDialogBuilder` («Удалить сообщение?» / «Удалить» / «Отмена»). При подтверждении — `chatRepository.deleteMessage()`, при успехе сразу `removeMessageById(messageId)` (UI-обновление до прихода стрима).
+- **Применение событий**: `applyEditedMessage(msg)` и `removeMessageById(id)` модифицируют `messageAdapter.currentList` через `submitList`. Вызываются и из обработчика ответа на gRPC (для своих изменений), и из подписок на стримы (для изменений других участников).
+- **Метка «изменено»**: `MessageItem.isEdited: Boolean` пробрасывается в три места создания (`messagesWithDateSeparators`, `appendMessages`, `addNewMessage`). В layouts `item_message_sent.xml` / `item_message_received.xml` рядом со временем — `editedLabelTextView` (italic, alpha 0.6, `?attr/colorOnPrimaryContainer` или `?attr/colorOnSurfaceVariant`). Привязка в обоих ViewHolder: `editedLabelTextView.visibility = if (item.isEdited) VISIBLE else GONE`.
+- **Proto**: добавлены `EditMessage` / `DeleteMessage` rpc в `messages_api.proto`, `SubscribeMessagesEdited` / `SubscribeMessagesDeleted` в `updates_api.proto`, `is_edited` (field 7) и `edited_at` (field 8) в `shared.proto:Message`.
 
 ### Пересылка в другие чаты (forward)
 

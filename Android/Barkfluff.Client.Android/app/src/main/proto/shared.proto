@@ -26,7 +26,11 @@ message Message {
 
   MessageContent content = 5; // Содержимое сообщения
 
-  MessageContentType type = 6; // Тип сообщения 
+  MessageContentType type = 6; // Тип сообщения
+
+  bool is_edited = 7; // Признак редактирования
+
+  google.protobuf.Timestamp edited_at = 8; // Дата последней правки (опционально)
 }
 
 message MessageContent {

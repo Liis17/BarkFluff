@@ -243,6 +243,7 @@ class MessageAdapter(
                 }
 
                 binding.timeTextView.text = formatTime(item.timestamp)
+                binding.editedLabelTextView.visibility = if (item.isEdited) View.VISIBLE else View.GONE
 
                 when (item.readStatus) {
                     ReadStatus.READ -> {
@@ -373,6 +374,7 @@ class MessageAdapter(
                 }
 
                 binding.timeTextView.text = formatTime(item.timestamp)
+                binding.editedLabelTextView.visibility = if (item.isEdited) View.VISIBLE else View.GONE
 
                 if (displayedAttachments.isNotEmpty()) {
                     val hasMedia = displayedAttachments.any {
@@ -1509,7 +1511,8 @@ data class MessageItem(
     val attachments: List<Shared.MessageAttachment>,
     val readStatus: ReadStatus = ReadStatus.NONE,
     val type: MessageType = MessageType.MESSAGE,
-    val dateText: String = ""
+    val dateText: String = "",
+    val isEdited: Boolean = false
 ) {
     companion object {
         fun createDateSeparator(dateText: String) = MessageItem(

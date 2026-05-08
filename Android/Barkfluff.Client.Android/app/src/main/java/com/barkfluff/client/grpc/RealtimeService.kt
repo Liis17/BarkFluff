@@ -54,6 +54,12 @@ class RealtimeService(private val context: Context, private val grpcManager: Grp
     private val _onlineStatuses = MutableSharedFlow<OnlinerApiOuterClass.UserOnlineStatus>(extraBufferCapacity = 64)
     val onlineStatuses: SharedFlow<OnlinerApiOuterClass.UserOnlineStatus> = _onlineStatuses
 
+    private val _messageEdited = MutableSharedFlow<UpdatesApiOuterClass.MessageEditedEvent>(extraBufferCapacity = 64)
+    val messageEdited: SharedFlow<UpdatesApiOuterClass.MessageEditedEvent> = _messageEdited
+
+    private val _messageDeleted = MutableSharedFlow<UpdatesApiOuterClass.MessageDeletedEvent>(extraBufferCapacity = 64)
+    val messageDeleted: SharedFlow<UpdatesApiOuterClass.MessageDeletedEvent> = _messageDeleted
+
     private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
     val connectionState: StateFlow<ConnectionState> = _connectionState
 
@@ -98,6 +104,8 @@ class RealtimeService(private val context: Context, private val grpcManager: Grp
 
         scope.launch { streamWithReconnect("NewMessages") { collectNewMessages() } }
         scope.launch { streamWithReconnect("MessagesRead") { collectMessagesRead() } }
+        scope.launch { streamWithReconnect("MessagesEdited") { collectMessagesEdited() } }
+        scope.launch { streamWithReconnect("MessagesDeleted") { collectMessagesDeleted() } }
         scope.launch { streamWithReconnect("OnlineStatus") { collectOnlineStatus() } }
         scope.launch { onlinePingLoop() }
         scope.launch { notificationLoop() }
@@ -194,6 +202,24 @@ class RealtimeService(private val context: Context, private val grpcManager: Grp
             if (uid > 0 && event.newReadByList.contains(uid)) {
                 NotificationHelper.dismissForChat(context, event.chatId)
             }
+        }
+    }
+
+    private suspend fun collectMessagesEdited() {
+        val client = grpcManager.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val request = UpdatesApiOuterClass.SubscribeMessagesEditedRequest.getDefaultInstance()
+        client.subscribeMessagesEdited(request).collect { event ->
+            Log.v(TAG, "Message edited: chatId=${event.chatId}, msgId=${event.message.id}")
+            _messageEdited.emit(event)
+        }
+    }
+
+    private suspend fun collectMessagesDeleted() {
+        val client = grpcManager.updatesClient ?: throw IllegalStateException("Updates client not created")
+        val request = UpdatesApiOuterClass.SubscribeMessagesDeletedRequest.getDefaultInstance()
+        client.subscribeMessagesDeleted(request).collect { event ->
+            Log.v(TAG, "Message deleted: chatId=${event.chatId}, msgId=${event.messageId}")
+            _messageDeleted.emit(event)
         }
     }
 
