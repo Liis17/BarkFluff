@@ -63,10 +63,10 @@ dotnet ef database update --project BarkFluff.Users.csproj
 | `SearchUsers(query, pagination)`         | Поиск по имени/фамилии/username               | Trigram; макс 50; уважает `SearchVisible`                            |
 | `GetUserBadges(userId, limit)`           | Получить баджи                                | Только активные; `limit=1` для списков, `limit=3` для профиля        |
 | `GetDevices()`                           | Список устройств текущего пользователя        |                                                                      |
-| `GetCurrentDevice()`                     | Текущее устройство                            |                                                                      |
+| `GetCurrentDevice()`                     | Текущее устройство                            | DeviceId — из JWT-claim (`UserContext.DeviceId`)                     |
 | `RenameDevice(deviceId, customName)`     | Переименовать устройство                      |                                                                      |
-| `SetFirebaseToken(firebaseToken)`        | Установить FCM-токен текущего устройства      |                                                                      |
-| `SetNotificationsEnabled(enabled)`       | Включить/выключить push на текущем устройстве |                                                                      |
+| `SetFirebaseToken(firebaseToken)`        | Установить FCM-токен текущего устройства      | DeviceId — из JWT-claim (`UserContext.DeviceId`)                     |
+| `SetNotificationsEnabled(enabled)`       | Включить/выключить push на текущем устройстве | DeviceId — из JWT-claim (`UserContext.DeviceId`)                     |
 | `GetPrivacySettings()`                   | Настройки приватности текущего пользователя   |                                                                      |
 | `UpdatePrivacySettings(settings)`        | Обновить настройки приватности                |                                                                      |
 | `GetPersonalization()`                   | Персонализация текущего пользователя          |                                                                      |

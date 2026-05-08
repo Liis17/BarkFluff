@@ -1,4 +1,3 @@
-using BarkFluff.GrpcServer.Tracker;
 using BarkFluff.GrpcServer.XAuth;
 using BarkFluff.Users.Persistence.Services;
 
@@ -9,7 +8,6 @@ namespace BarkFluff.Users.Features.Devices.SetFirebaseToken;
 public class SetFirebaseTokenCommandHandler(
     DevicesStorage devicesStorage,
     UserContext userContext,
-    RequestContext requestContext,
     ILogger<SetFirebaseTokenCommandHandler> logger)
     : IRequestHandler<SetFirebaseTokenCommand, Unit>
 {
@@ -17,11 +15,11 @@ public class SetFirebaseTokenCommandHandler(
     {
         logger.LogDebug(
             "Установка Firebase токена для пользователя {UserId}, DeviceId: {DeviceId}",
-            userContext.UserId, requestContext.DeviceId);
+            userContext.UserId, userContext.DeviceId);
 
-        if (string.IsNullOrEmpty(requestContext.DeviceId) || !Guid.TryParse(requestContext.DeviceId, out var deviceGuid))
+        if (string.IsNullOrEmpty(userContext.DeviceId) || !Guid.TryParse(userContext.DeviceId, out var deviceGuid))
         {
-            logger.LogWarning("Некорректный DeviceId: {DeviceId}", requestContext.DeviceId);
+            logger.LogWarning("Некорректный DeviceId: {DeviceId}", userContext.DeviceId);
             return Unit.Value;
         }
 
