@@ -767,7 +767,7 @@ class GrpcManager {
 
     private fun ensureHttpPrefix(url: String): String {
         return if (!url.startsWith("http://") && !url.startsWith("https://")) {
-            "http://$url"
+            "https://$url"
         } else {
             url
         }
