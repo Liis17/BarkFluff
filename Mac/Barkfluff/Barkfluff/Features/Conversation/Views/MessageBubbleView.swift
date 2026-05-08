@@ -24,8 +24,16 @@ struct MessageBubbleView: View {
     /// Callback на «Переслать» (открыть выбор чата) — передаётся id сообщения
     var onForward: ((Int64) -> Void)?
 
-    /// Радиус скругления углов (как у облачка)
-    static let bubbleCornerRadius: CGFloat = 18
+    @Environment(DependencyContainer.self) private var container
+
+    /// Радиус скругления по умолчанию — используется в превью без DI и
+    /// как fallback. Реальный радиус берётся из PersonalizationSettings.
+    static let defaultBubbleCornerRadius: CGFloat = 18
+
+    /// Текущий радиус из настроек (точка чтения для всего пузырька и его медиа).
+    private var bubbleCornerRadius: CGFloat {
+        CGFloat(container.personalizationSettings.bubbleCornerRadius)
+    }
 
     /// Является ли сообщение своим
     private var isOwn: Bool {
@@ -168,10 +176,10 @@ struct MessageBubbleView: View {
             .padding(.horizontal, padding)
             .padding(.vertical, verticalPadding)
             .background(
-                MessageBubbleShape(tailSide: .right, showTail: showTail)
+                MessageBubbleShape(tailSide: .right, showTail: showTail, cornerRadius: bubbleCornerRadius)
                     .fill(Color(red: 0, green: 122/255, blue: 1))
             )
-            .clipShape(MessageBubbleShape(tailSide: .right, showTail: showTail))
+            .clipShape(MessageBubbleShape(tailSide: .right, showTail: showTail, cornerRadius: bubbleCornerRadius))
             .padding(.trailing, showTail ? 6 : 0)
         } else {
             // Входящее сообщение — серый пузырь
@@ -197,10 +205,10 @@ struct MessageBubbleView: View {
             .padding(.horizontal, padding)
             .padding(.vertical, verticalPadding)
             .background(
-                MessageBubbleShape(tailSide: .left, showTail: showTail)
+                MessageBubbleShape(tailSide: .left, showTail: showTail, cornerRadius: bubbleCornerRadius)
                     .fill(Color(nsColor: .secondarySystemFill))
             )
-            .clipShape(MessageBubbleShape(tailSide: .left, showTail: showTail))
+            .clipShape(MessageBubbleShape(tailSide: .left, showTail: showTail, cornerRadius: bubbleCornerRadius))
             .padding(.leading, showTail ? 6 : 0)
         }
     }
@@ -252,7 +260,7 @@ struct MessageBubbleView: View {
                 // Круговой прогресс поверх медиа (Telegram-стиль)
                 if let progress = message.uploadProgress, progress < 1.0 {
                     MediaUploadProgressView(progress: progress)
-                        .clipShape(RoundedRectangle(cornerRadius: MessageBubbleView.bubbleCornerRadius, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: bubbleCornerRadius, style: .continuous))
                 }
             }
         }

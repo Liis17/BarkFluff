@@ -24,8 +24,12 @@ struct SettingsCategoryView: View {
             GeneralSettingsView()
         case .notifications:
             NotificationsSettingsView()
-        case .privacy:
+        case .security:
             SecuritySettingsView(viewModel: container.settingsViewModel)
+        case .privacy:
+            PrivacySettingsView()
+        case .personalization:
+            PersonalizationSettingsView()
         case .cloud:
             CloudSettingsView()
         case .cache:
