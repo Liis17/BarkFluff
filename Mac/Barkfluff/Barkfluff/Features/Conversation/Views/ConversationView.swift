@@ -51,9 +51,6 @@ struct ConversationView: View {
 
     var body: some View {
         ZStack {
-            // Слой 0: Фоновая картинка чата + опциональные блюр и затемнение.
-            ChatBackgroundView()
-
             // Слой 1: Список сообщений (полная область)
             if let viewModel {
                 messagesList(viewModel: viewModel)
@@ -178,6 +175,11 @@ struct ConversationView: View {
                 DragDropOverlay()
                     .transition(.opacity)
             }
+        }
+        // Фон чата — через .background, чтобы intrinsic size картинки
+        // не растягивал ZStack и не выталкивал шапку с полем ввода.
+        .background {
+            ChatBackgroundView()
         }
         .ignoresSafeArea(edges: .top)
         .toolbarBackground(.hidden, for: .windowToolbar)

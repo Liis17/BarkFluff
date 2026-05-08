@@ -28,8 +28,12 @@ struct SessionsView: View {
                     Text("Нет активных сессий")
                         .foregroundStyle(.secondary)
                 } else {
-                    let currentSession = viewModel.sessions.first { $0.deviceId == viewModel.currentDeviceId }
-                    let otherSessions = viewModel.sessions.filter { $0.deviceId != viewModel.currentDeviceId }
+                    let currentSession = viewModel.sessions.first {
+                        $0.deviceId.caseInsensitiveCompare(viewModel.currentDeviceId) == .orderedSame
+                    }
+                    let otherSessions = viewModel.sessions.filter {
+                        $0.deviceId.caseInsensitiveCompare(viewModel.currentDeviceId) != .orderedSame
+                    }
 
                     if let current = currentSession {
                         sessionRow(current, isCurrent: true)

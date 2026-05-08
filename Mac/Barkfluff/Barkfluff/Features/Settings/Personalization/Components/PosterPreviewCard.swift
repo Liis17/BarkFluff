@@ -21,10 +21,18 @@ struct PosterPreviewCard: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            posterView
-                .frame(maxWidth: .infinity)
-                .aspectRatio(3.0, contentMode: .fit)
-                .clipped()
+            // GeometryReader снаружи зажат через aspectRatio(.fit) — получает
+            // фрейм 3:1 от ширины родителя. Внутри постер рисуется на этой
+            // конкретной геометрии (явные width/height), без зависимости от
+            // intrinsic size картинки, иначе .fill раздул бы view до исходного
+            // размера декодированного изображения.
+            GeometryReader { geo in
+                posterView
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .clipped()
+            }
+            .aspectRatio(3.0, contentMode: .fit)
+            .frame(maxWidth: .infinity)
 
             avatarView
                 .padding(.top, -Self.avatarOverlap)
@@ -78,7 +86,7 @@ struct PosterPreviewCard: View {
         if !viewModel.posterFileID.isEmpty {
             CachedImageView(
                 fileID: viewModel.posterFileID,
-                type: .image,
+                type: .poster,
                 content: { image in
                     image.resizable().aspectRatio(contentMode: .fill)
                 },

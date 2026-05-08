@@ -84,7 +84,9 @@ final class SettingsViewModel {
     func terminateAllOtherSessions() async {
         guard let dc = dependencyContainer else { return }
 
-        let otherSessions = sessions.filter { $0.deviceId != currentDeviceId }
+        let otherSessions = sessions.filter {
+            $0.deviceId.caseInsensitiveCompare(currentDeviceId) != .orderedSame
+        }
         for session in otherSessions {
             do {
                 try await dc.identityRepository.removeActiveSession(deviceID: session.deviceId)
