@@ -168,6 +168,7 @@
                         <table class="w-full text-left border-collapse">
                             <thead>
                                 <tr class="text-xs text-slate-400 border-b border-slate-100 bg-slate-50">
+                                    <th class="py-3 px-2 w-8"></th>
                                     <th class="py-3 px-4 font-semibold uppercase w-44">Время</th>
                                     <th class="py-3 px-4 font-semibold uppercase w-32">Уровень</th>
                                     <th class="py-3 px-4 font-semibold uppercase w-48">Сервис</th>
@@ -434,6 +435,8 @@
             const tableBody = document.getElementById('logsTableBody');
             const emptyState = document.getElementById('emptyState');
 
+            const baseIdx = append ? allLogs.length : 0;
+
             if (!append) {
                 tableBody.innerHTML = '';
                 allLogs = events;
@@ -453,24 +456,140 @@
                 const message = getMessage(event);
                 const timestamp = getTimestamp(event);
                 const application = getApplication(event);
+                const globalIdx = baseIdx + index;
 
-                const row = document.createElement('tr');
-                row.className = `border-b border-slate-50 hover:bg-slate-50 transition ${index % 2 === 1 ? 'bg-slate-25' : ''}`;
-                row.style.backgroundColor = index % 2 === 1 ? '#fafbfc' : '';
+                const main = document.createElement('tr');
+                main.className = 'log-row border-b border-slate-50 hover:bg-slate-50 transition cursor-pointer';
+                main.dataset.idx = String(globalIdx);
+                if (globalIdx % 2 === 1) main.style.backgroundColor = '#fafbfc';
 
-                row.innerHTML = `
+                main.innerHTML = `
+                    <td class="py-3 px-2 w-8 text-slate-400"><i data-lucide="chevron-right" class="w-4 h-4 chevron" style="transition:transform 0.15s ease"></i></td>
                     <td class="py-3 px-4 text-slate-500 font-mono text-xs whitespace-nowrap">${timestamp ? formatLogTime(timestamp) : '-'}</td>
                     <td class="py-3 px-4">${getLevelBadge(level)}</td>
                     <td class="py-3 px-4 text-slate-600 text-xs font-medium">${escapeHtml(application) || '<span class="text-slate-300">-</span>'}</td>
                     <td class="py-3 px-4 font-mono text-xs text-slate-700 break-all">${escapeHtml(message)}</td>
                 `;
 
-                tableBody.appendChild(row);
+                const detail = document.createElement('tr');
+                detail.className = 'log-detail-row hidden bg-slate-50';
+                detail.innerHTML = '<td colspan="5" class="px-6 py-4 detail-cell border-b border-slate-100"></td>';
+
+                tableBody.appendChild(main);
+                tableBody.appendChild(detail);
             });
 
             // Re-initialize lucide icons for dynamically added content
             lucide.createIcons();
         }
+
+        // --- Render Event Detail (Seq-style) ---
+        function renderEventDetail(evt) {
+            const message = evt.RenderedMessage || evt.renderedMessage || evt.MessageTemplate || evt.messageTemplate || '';
+            const template = evt.MessageTemplate || evt.messageTemplate || '';
+            const exception = evt.Exception || evt.exception || '';
+            const props = evt.Properties || evt.properties || {};
+
+            const propList = [];
+            if (Array.isArray(props)) {
+                props.forEach(p => {
+                    const k = p.Name || p.name;
+                    const v = p.Value !== undefined ? p.Value : p.value;
+                    if (k != null) propList.push([k, v]);
+                });
+            } else if (props && typeof props === 'object') {
+                Object.entries(props).forEach(([k, v]) => propList.push([k, v]));
+            }
+            propList.sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+
+            const propRows = propList.map(([k, v]) => {
+                let valStr;
+                if (v === null || v === undefined) valStr = '';
+                else if (typeof v === 'object') valStr = JSON.stringify(v);
+                else valStr = String(v);
+                return `<tr class="border-b border-slate-200 last:border-0">
+                    <td class="py-1.5 pr-4 font-mono text-xs text-slate-500 align-top whitespace-nowrap">${escapeHtml(k)}</td>
+                    <td class="py-1.5 font-mono text-xs text-slate-800 break-all">${escapeHtml(valStr)}</td>
+                </tr>`;
+            }).join('');
+
+            return `
+                <div class="space-y-4">
+                    <div>
+                        <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Message</div>
+                        <div class="font-mono text-xs text-slate-800 whitespace-pre-wrap break-all bg-white border border-slate-200 rounded p-3">${escapeHtml(message) || '<span class="text-slate-300 italic">(empty)</span>'}</div>
+                    </div>
+                    ${template && template !== message ? `
+                    <div>
+                        <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Template</div>
+                        <div class="font-mono text-xs text-slate-600 break-all bg-white border border-slate-200 rounded p-3">${escapeHtml(template)}</div>
+                    </div>` : ''}
+                    <div>
+                        <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Properties</div>
+                        ${propRows ? `<div class="bg-white border border-slate-200 rounded overflow-hidden"><table class="w-full"><tbody>${propRows}</tbody></table></div>` : '<div class="text-xs text-slate-400 italic">(none)</div>'}
+                    </div>
+                    ${exception ? `
+                    <div>
+                        <div class="text-[10px] uppercase tracking-wider text-red-500 font-semibold mb-1">Exception</div>
+                        <pre class="font-mono text-xs text-red-700 whitespace-pre-wrap break-all bg-red-50 border border-red-200 rounded p-3">${escapeHtml(exception)}</pre>
+                    </div>` : ''}
+                    <div>
+                        <button class="copy-json-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-300 rounded hover:bg-slate-100 transition-colors">
+                            <i data-lucide="copy" class="w-3 h-3"></i> Copy JSON
+                        </button>
+                        <span class="copy-feedback hidden ml-2 text-xs text-green-600">Скопировано</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- Row click → toggle detail (delegated) ---
+        document.getElementById('logsTableBody').addEventListener('click', (e) => {
+            // Copy JSON button
+            const copyBtn = e.target.closest('.copy-json-btn');
+            if (copyBtn) {
+                e.stopPropagation();
+                const detail = copyBtn.closest('.log-detail-row');
+                const idx = detail?.previousElementSibling?.dataset?.idx;
+                if (idx == null) return;
+                const evt = allLogs[parseInt(idx, 10)];
+                if (!evt) return;
+                navigator.clipboard.writeText(JSON.stringify(evt, null, 2)).then(() => {
+                    const fb = copyBtn.parentElement.querySelector('.copy-feedback');
+                    if (fb) {
+                        fb.classList.remove('hidden');
+                        setTimeout(() => fb.classList.add('hidden'), 1500);
+                    }
+                });
+                return;
+            }
+
+            // Toggle row
+            const row = e.target.closest('.log-row');
+            if (!row) return;
+            const detail = row.nextElementSibling;
+            if (!detail || !detail.classList.contains('log-detail-row')) return;
+
+            const chevron = row.querySelector('.chevron');
+            const isOpen = !detail.classList.contains('hidden');
+
+            if (isOpen) {
+                detail.classList.add('hidden');
+                if (chevron) chevron.style.transform = '';
+            } else {
+                if (!detail.dataset.rendered) {
+                    const idx = parseInt(row.dataset.idx, 10);
+                    const evt = allLogs[idx];
+                    if (evt) {
+                        detail.querySelector('.detail-cell').innerHTML = renderEventDetail(evt);
+                        detail.dataset.rendered = '1';
+                        lucide.createIcons();
+                    }
+                }
+                detail.classList.remove('hidden');
+                if (chevron) chevron.style.transform = 'rotate(90deg)';
+            }
+        });
 
         // --- Escape HTML ---
         function escapeHtml(text) {

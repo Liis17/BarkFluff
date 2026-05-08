@@ -527,8 +527,26 @@
             'BarkFluff.Identity', 'BarkFluff.Users', 'BarkFluff.Messages',
             'BarkFluff.Files', 'BarkFluff.Updates', 'BarkFluff.Notification',
             'BarkFluff.Beacon', 'BarkFluff.FastAuth', 'BarkFluff.Onliner',
-            'BarkFluff.Configuration'
+            'BarkFluff.Configuration', 'BarkFluff.Web', 'BarkFluff.ClientStorage'
         ];
+
+        const METRIC_TABS = [
+            { key: 'counters', label: 'Counters' },
+            { key: 'errors',   label: 'Errors' },
+            { key: 'gauges',   label: 'Gauges' },
+            { key: 'latency',  label: 'Latency' }
+        ];
+
+        function classifyMetric(name) {
+            if (!name) return 'counters';
+            const n = name.toLowerCase();
+            if (n.includes('error') || n.includes('_failed') || n.includes('_fail') || n.includes('rejected')) return 'errors';
+            if (n.includes('duration') || n.includes('latency') || n.endsWith('_ms') || n.includes('_ms_')) return 'latency';
+            if (n.endsWith('_unix') || n.includes('uptime') || n.startsWith('active_') || n.endsWith('_active')
+                || n.endsWith('_healthy') || n.endsWith('_current') || n.includes('_gauge') || n.endsWith('_size')
+                || n.endsWith('_subscriptions') || n.endsWith('_streams') || n.endsWith('_connections')) return 'gauges';
+            return 'counters';
+        }
 
         document.getElementById('show-metrics-btn').addEventListener('click', async () => {
             if (serviceMetricsLoaded) return;
@@ -542,18 +560,29 @@
 
             services.forEach((svc) => {
                 const shortName = getShortServiceName(svc);
-                const cardId = `svc-card-${svc.replace(/\./g, '-')}`;
-                const canvasId = `svc-chart-${svc.replace(/\./g, '-')}`;
+                const safe = svc.replace(/\./g, '-');
+                const cardId = `svc-card-${safe}`;
+
+                const tabsHtml = METRIC_TABS.map((t, i) => `
+                    <button class="metric-tab px-3 py-1.5 text-xs font-medium border-b-2 transition-colors ${i === 0 ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}" data-tab="${t.key}">${t.label}</button>
+                `).join('');
+
+                const canvasesHtml = METRIC_TABS.map((t, i) => `
+                    <canvas id="svc-chart-${safe}-${t.key}" class="metric-canvas ${i === 0 ? '' : 'hidden'}" data-tab="${t.key}"></canvas>
+                `).join('');
 
                 html += `
-                    <div id="${cardId}" class="border border-gray-200 rounded-lg overflow-hidden min-w-0">
+                    <div id="${cardId}" data-svc="${svc}" class="border border-gray-200 rounded-lg overflow-hidden min-w-0">
                         <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
                             <span class="font-semibold text-gray-900">${shortName}</span>
                             <span class="svc-loading-indicator inline-block w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin"></span>
                         </div>
+                        <div class="metric-tabs hidden border-b border-gray-200 px-2 pt-1 gap-1">
+                            ${tabsHtml}
+                        </div>
                         <div class="p-4">
                             <div class="relative" style="height: 220px;">
-                                <canvas id="${canvasId}"></canvas>
+                                ${canvasesHtml}
                                 <div class="svc-placeholder absolute inset-0 flex items-center justify-center text-gray-300 text-sm">
                                     Загрузка...
                                 </div>
@@ -567,9 +596,49 @@
             container.innerHTML = html;
         }
 
+        function buildChartOptions() {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: {
+                            color: '#64748b',
+                            font: { size: 10 },
+                            usePointStyle: true,
+                            padding: 8,
+                            boxWidth: 6
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: '#1e293b',
+                        titleFont: { size: 11 },
+                        bodyFont: { size: 11 },
+                        padding: 8,
+                        cornerRadius: 6,
+                        displayColors: true
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#94a3b8', font: { size: 10 } }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(148, 163, 184, 0.1)' },
+                        ticks: { color: '#94a3b8', font: { size: 10 }, precision: 0 }
+                    }
+                },
+                interaction: { intersect: false, mode: 'index' }
+            };
+        }
+
         function renderServiceChart(svc, data) {
-            const cardId = `svc-card-${svc.replace(/\./g, '-')}`;
-            const canvasId = `svc-chart-${svc.replace(/\./g, '-')}`;
+            const safe = svc.replace(/\./g, '-');
+            const cardId = `svc-card-${safe}`;
             const card = document.getElementById(cardId);
             if (!card) return;
 
@@ -578,6 +647,7 @@
             if (spinner) spinner.remove();
 
             const placeholder = card.querySelector('.svc-placeholder');
+            const tabsBar = card.querySelector('.metric-tabs');
 
             if (!data.timeSeries || data.timeSeries.length === 0) {
                 if (placeholder) placeholder.textContent = 'Нет данных';
@@ -595,76 +665,121 @@
                 return;
             }
 
-            // Remove placeholder
-            if (placeholder) placeholder.remove();
-
-            const canvas = document.getElementById(canvasId);
-            if (!canvas) return;
-
-            const labels = data.timeSeries.map(ts => formatTime(ts.hour));
-            const datasets = [];
-            let colorIdx = 0;
-
-            metricNames.forEach(metricName => {
-                const color = metricColors[colorIdx % metricColors.length];
-                colorIdx++;
-                datasets.push({
-                    label: formatMetricName(metricName),
-                    data: data.timeSeries.map(ts => ts.metrics[metricName] || 0),
-                    borderColor: color,
-                    backgroundColor: color + '14',
-                    borderWidth: 1.5,
-                    fill: false,
-                    tension: 0.3,
-                    pointRadius: 2,
-                    pointHoverRadius: 4
-                });
+            // Group metrics by type
+            const groups = { counters: [], errors: [], gauges: [], latency: [] };
+            metricNames.forEach(name => {
+                const type = classifyMetric(name);
+                groups[type].push(name);
             });
 
-            const chart = new Chart(canvas.getContext('2d'), {
-                type: 'line',
-                data: { labels, datasets },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'bottom',
-                            labels: {
-                                color: '#64748b',
-                                font: { size: 10 },
-                                usePointStyle: true,
-                                padding: 8,
-                                boxWidth: 6
-                            }
-                        },
-                        tooltip: {
-                            backgroundColor: '#1e293b',
-                            titleFont: { size: 11 },
-                            bodyFont: { size: 11 },
-                            padding: 8,
-                            cornerRadius: 6,
-                            displayColors: true
-                        }
-                    },
-                    scales: {
-                        x: {
-                            grid: { display: false },
-                            ticks: { color: '#94a3b8', font: { size: 10 } }
-                        },
-                        y: {
-                            beginAtZero: true,
-                            grid: { color: 'rgba(148, 163, 184, 0.1)' },
-                            ticks: { color: '#94a3b8', font: { size: 10 }, precision: 0 }
-                        }
-                    },
-                    interaction: { intersect: false, mode: 'index' }
+            // Update tab states (disable empty tabs, pick first non-empty as default)
+            const tabBtns = tabsBar ? Array.from(tabsBar.querySelectorAll('.metric-tab')) : [];
+            let firstActive = null;
+            tabBtns.forEach(btn => {
+                const key = btn.dataset.tab;
+                const empty = !groups[key] || groups[key].length === 0;
+                if (empty) {
+                    btn.disabled = true;
+                    btn.classList.remove('border-blue-500', 'text-blue-600');
+                    btn.classList.add('border-transparent', 'text-gray-300', 'cursor-not-allowed');
+                } else if (firstActive === null) {
+                    firstActive = key;
                 }
             });
 
-            serviceMetricCharts.push(chart);
+            if (firstActive === null) {
+                if (placeholder) placeholder.textContent = 'Нет данных';
+                return;
+            }
+
+            // Remove placeholder & show tabs bar
+            if (placeholder) placeholder.remove();
+            if (tabsBar) {
+                tabsBar.classList.remove('hidden');
+                tabsBar.classList.add('flex');
+            }
+
+            // Reset active styling, then mark firstActive
+            tabBtns.forEach(btn => {
+                btn.classList.remove('border-blue-500', 'text-blue-600', 'font-medium');
+                if (!btn.disabled) {
+                    btn.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700');
+                }
+            });
+            const activeBtn = tabBtns.find(b => b.dataset.tab === firstActive);
+            if (activeBtn) {
+                activeBtn.classList.remove('border-transparent', 'text-gray-500');
+                activeBtn.classList.add('border-blue-500', 'text-blue-600', 'font-medium');
+            }
+
+            // Toggle canvas visibility
+            const canvases = card.querySelectorAll('.metric-canvas');
+            canvases.forEach(c => {
+                if (c.dataset.tab === firstActive) c.classList.remove('hidden');
+                else c.classList.add('hidden');
+            });
+
+            const labels = data.timeSeries.map(ts => formatTime(ts.hour));
+
+            // Build a chart per non-empty group
+            METRIC_TABS.forEach(tab => {
+                const names = groups[tab.key];
+                if (!names || names.length === 0) return;
+
+                const canvas = document.getElementById(`svc-chart-${safe}-${tab.key}`);
+                if (!canvas) return;
+
+                const datasets = [];
+                let colorIdx = 0;
+                names.forEach(metricName => {
+                    const color = metricColors[colorIdx % metricColors.length];
+                    colorIdx++;
+                    datasets.push({
+                        label: formatMetricName(metricName),
+                        data: data.timeSeries.map(ts => ts.metrics[metricName] || 0),
+                        borderColor: color,
+                        backgroundColor: color + '14',
+                        borderWidth: 1.5,
+                        fill: false,
+                        tension: 0.3,
+                        pointRadius: 2,
+                        pointHoverRadius: 4
+                    });
+                });
+
+                const chart = new Chart(canvas.getContext('2d'), {
+                    type: 'line',
+                    data: { labels, datasets },
+                    options: buildChartOptions()
+                });
+
+                serviceMetricCharts.push(chart);
+            });
         }
+
+        // Tab switching (delegated)
+        document.getElementById('service-metrics-container').addEventListener('click', (e) => {
+            const btn = e.target.closest('.metric-tab');
+            if (!btn || btn.disabled) return;
+            const card = btn.closest('[data-svc]');
+            if (!card) return;
+            const target = btn.dataset.tab;
+
+            card.querySelectorAll('.metric-tab').forEach(b => {
+                if (b.disabled) return;
+                if (b === btn) {
+                    b.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700');
+                    b.classList.add('border-blue-500', 'text-blue-600', 'font-medium');
+                } else {
+                    b.classList.remove('border-blue-500', 'text-blue-600', 'font-medium');
+                    b.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700');
+                }
+            });
+            card.querySelectorAll('.metric-canvas').forEach(c => {
+                if (c.dataset.tab === target) c.classList.remove('hidden');
+                else c.classList.add('hidden');
+            });
+        });
 
         function renderServiceError(svc) {
             const cardId = `svc-card-${svc.replace(/\./g, '-')}`;

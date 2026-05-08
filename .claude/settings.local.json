@@ -101,9 +101,10 @@
       "Read(//k/source/BarkFluff/**)",
       "Bash(dotnet build *)",
       "Read(//tmp/**)",
-      "Bash(tasklist)"
+      "Bash(tasklist)",
       "Bash(xcodebuild -project Barkfluff.xcodeproj -list)",
-      "Bash(xcodebuild -project /Users/liis/Projects/BarkFluff/Mac/Barkfluff/Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=macOS' -configuration Debug build)"
+      "Bash(xcodebuild -project /Users/liis/Projects/BarkFluff/Mac/Barkfluff/Barkfluff.xcodeproj -scheme Barkfluff -destination 'platform=macOS' -configuration Debug build)",
+      "Bash(Select-Object FullName)"
     ],
     "deny": [],
     "ask": []
