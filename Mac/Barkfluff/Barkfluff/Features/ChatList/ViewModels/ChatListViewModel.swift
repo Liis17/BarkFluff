@@ -36,6 +36,8 @@ final class ChatListViewModel {
 
     private var newMessagesTask: Task<Void, Never>?
     private var readEventsTask: Task<Void, Never>?
+    private var editedMessagesTask: Task<Void, Never>?
+    private var deletedMessagesTask: Task<Void, Never>?
     private var connectionEventsTask: Task<Void, Never>?
     private var searchTask: Task<Void, Never>?
 
@@ -168,6 +170,26 @@ final class ChatListViewModel {
             }
         }
 
+        editedMessagesTask = Task { [weak self] in
+            guard let self else { return }
+            let stream = await self.updatesService.getEditedMessagesStream()
+            for await event in stream {
+                await MainActor.run {
+                    self.handleEditedMessage(event)
+                }
+            }
+        }
+
+        deletedMessagesTask = Task { [weak self] in
+            guard let self else { return }
+            let stream = await self.updatesService.getDeletedMessagesStream()
+            for await event in stream {
+                await MainActor.run {
+                    self.handleDeletedMessage(event)
+                }
+            }
+        }
+
         connectionEventsTask = Task { [weak self] in
             guard let self else { return }
             let stream = await self.updatesService.getConnectionEventsStream()
@@ -182,9 +204,13 @@ final class ChatListViewModel {
     func stopListeningForUpdates() {
         newMessagesTask?.cancel()
         readEventsTask?.cancel()
+        editedMessagesTask?.cancel()
+        deletedMessagesTask?.cancel()
         connectionEventsTask?.cancel()
         newMessagesTask = nil
         readEventsTask = nil
+        editedMessagesTask = nil
+        deletedMessagesTask = nil
         connectionEventsTask = nil
     }
 
@@ -241,6 +267,23 @@ final class ChatListViewModel {
                 allChats[index].unreadCount = 0
             }
             applyFilter()
+        }
+    }
+
+    private func handleEditedMessage(_ event: BFCore.MessageEditedEvent) {
+        guard let index = allChats.firstIndex(where: { $0.id == event.chatID }) else { return }
+        // Обновляем превью lastMessage только если это именно последнее сообщение чата.
+        if let last = allChats[index].lastMessage, last.id == event.message.id {
+            allChats[index].lastMessage = event.message
+            applyFilter()
+        }
+    }
+
+    private func handleDeletedMessage(_ event: BFCore.MessageDeletedEvent) {
+        guard let index = allChats.firstIndex(where: { $0.id == event.chatID }) else { return }
+        if let last = allChats[index].lastMessage, last.id == event.messageID {
+            // Перезагружаем чаты — backend вернёт актуальный last_message.
+            Task { await self.loadChats() }
         }
     }
 

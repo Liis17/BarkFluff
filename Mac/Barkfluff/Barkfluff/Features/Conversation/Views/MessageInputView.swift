@@ -15,6 +15,8 @@ struct MessageInputView: View {
     @Binding var selectedAttachments: [SelectedAttachment]
     let isSending: Bool
     let uploadProgress: [UUID: Double]
+    /// Режим редактирования — кнопка отправки показывается как галочка
+    var isEditMode: Bool = false
     let onSend: () -> Void
     let onFileSelected: ([URL], Bool) -> Void  // URLs, forceAsDocument
 
@@ -104,6 +106,7 @@ struct MessageInputView: View {
                 SendButton(
                     canSend: canSend,
                     isSending: isSending,
+                    isEditMode: isEditMode,
                     action: onSend
                 )
             }

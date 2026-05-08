@@ -26,6 +26,8 @@
 | `App/Notifications/NotificationDelegate.swift` | `UNUserNotificationCenterDelegate` — клик по баннеру открывает чат и фокусирует приложение |
 | `App/Notifications/NotificationSettings.swift` | `@Observable`-обёртка над `UserDefaults` (показывать уведомления / звук) |
 | `App/Notifications/AppFocusState.swift` | Состояние фокуса приложения (`NSApplication.isActive`) для решения «показывать ли уведомление» |
+| `App/Settings/AppearanceSettings.swift` | `@Observable` поверх `UserDefaults` — выбранная тема приложения (`AppTheme`: system/light/dark) |
+| `App/Settings/PersonalizationSettings.swift` | `@Observable` поверх `UserDefaults` — радиус пузырей, blur, dim, currentBackgroundFileID |
 
 ---
 
@@ -104,13 +106,14 @@
 
 | Файл | Назначение |
 |------|-----------|
-| `Conversation/ViewModels/ConversationViewModel.swift` | VM диалога: загрузка сообщений, отправка, стриминг, вложения, пагинация, `pendingReply` для Telegram-style ответа |
+| `Conversation/ViewModels/ConversationViewModel.swift` | VM диалога: загрузка сообщений, отправка, стриминг, вложения, пагинация, `pendingReply`, `editingMessage` (edit-режим), `submitEdit`/`deleteMessage`, подписки на `MessageEditedEvent` / `MessageDeletedEvent` |
 | `Conversation/ViewModels/ForwardChatPickerViewModel.swift` | VM пикера чатов для пересылки: snapshot чатов, поиск, мультивыбор `selectedChatIDs`, `commentText`, параллельная отправка через `withTaskGroup` |
 | `Conversation/Views/ConversationView.swift` | Основной экран диалога |
 | `Conversation/Views/ForwardChatPickerView.swift` | Sheet мультивыбора чатов для пересылки (только аватары + имена + checkmark, внизу TextField + send) |
 | `Conversation/Views/ForwardedMessageView.swift` | Отрисовка пересланного сообщения внутри пузыря (вертикальная полоса, имя автора, текст, мини-вложения) |
 | `Conversation/Views/ReplyPreviewView.swift` | Превью ответа над `MessageInputView` (полоса + автор + snippet + кнопка ×). Хелпер `makeSnippet` |
-| `Conversation/Views/MessageBubbleView.swift` | Пузырь сообщения с текстом и вложениями (контекстное меню Reply/Forward; для Forward использует `Message.forwardSourceID`) |
+| `Conversation/Views/MessageBubbleView.swift` | Пузырь сообщения с текстом и вложениями. Контекстное меню: Изменить, Ответить, Переслать, Копировать текст, Скопировать/Сохранить изображение, Сохранить в загрузки, Удалить (свои); для Forward использует `Message.forwardSourceID` |
+| `Conversation/Views/EditPreviewView.swift` | Превью редактируемого сообщения над `MessageInputView` (иконка `pencil`, заголовок, snippet оригинала, кнопка ×) |
 | `Conversation/Views/MessagesListView.swift` | Список сообщений с группировкой по дате |
 | `Conversation/Views/MessageAttachmentView.swift` | Отображение одного вложения в пузыре |
 | `Conversation/Views/MessageInputView.swift` | Поле ввода сообщения с кнопками вложений |
@@ -140,6 +143,7 @@
 | `Conversation/Helpers/AttachmentLayoutCalculator.swift` | Расчёт размеров сетки вложений |
 | `Conversation/Helpers/AttachmentNotifications.swift` | NotificationCenter-уведомления о вложениях |
 | `Conversation/Helpers/FileDownloadHelper.swift` | Скачивание файла и сохранение на диск (macOS NSSavePanel) |
+| `Conversation/Helpers/MediaActions.swift` | Медиа-действия из контекстного меню сообщений: copy image to NSPasteboard, batch save в `~/Downloads/BarkFluff/` |
 | `Conversation/Helpers/MessageGrouper.swift` | Группировка сообщений по дате и автору |
 | `Conversation/Helpers/ScrollPositionManager.swift` | Управление позицией прокрутки, автоскролл |
 | `Conversation/Models/SelectedAttachment.swift` | Модель выбранного для отправки вложения |

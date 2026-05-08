@@ -21,6 +21,12 @@ public protocol UpdatesServiceProtocol: Sendable {
     /// Поток событий прочтения
     func getReadEventsStream() async -> AsyncStream<MessageReadEvent>
 
+    /// Поток событий редактирования сообщений
+    func getEditedMessagesStream() async -> AsyncStream<MessageEditedEvent>
+
+    /// Поток событий удаления сообщений
+    func getDeletedMessagesStream() async -> AsyncStream<MessageDeletedEvent>
+
     /// Поток событий подключения (connectionLost / reconnected)
     func getConnectionEventsStream() async -> AsyncStream<UpdatesConnectionEvent>
 

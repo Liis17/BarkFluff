@@ -65,6 +65,24 @@ public actor LocalMessageRepository {
         }
     }
 
+    /// Обновить сообщение в кеше (используем upsert — устойчиво к "событие пришло раньше initial load").
+    public func update(_ message: Message) async throws {
+        guard message.id > 0 else { return }
+        try await database.dbPool.write { db in
+            try makeRecord(from: message, chatID: message.chatID).upsert(db)
+        }
+    }
+
+    /// Удалить сообщение по id из кеша конкретного чата.
+    public func delete(messageID: Int64, chatID: String) async throws {
+        try await database.dbPool.write { db in
+            _ = try CachedMessageRecord
+                .filter(CachedMessageRecord.Columns.id == messageID)
+                .filter(CachedMessageRecord.Columns.chatId == chatID)
+                .deleteAll(db)
+        }
+    }
+
     // MARK: - Mapping
 
     nonisolated private func makeRecord(from message: Message, chatID: String) throws -> CachedMessageRecord {
@@ -80,7 +98,9 @@ public actor LocalMessageRepository {
             attachmentsJson: attachmentsData,
             sentAt: Int64(message.sentAt.timeIntervalSince1970 * 1000),
             readByJson: readByData,
-            isSystem: message.isSystem
+            isSystem: message.isSystem,
+            isEdited: message.isEdited,
+            editedAt: message.editedAt.map { Int64($0.timeIntervalSince1970 * 1000) }
         )
     }
 
@@ -107,7 +127,9 @@ public actor LocalMessageRepository {
             sentAt: Date(timeIntervalSince1970: TimeInterval(record.sentAt) / 1000),
             readBy: readBy,
             isSystem: record.isSystem,
-            sendingState: .sent
+            sendingState: .sent,
+            isEdited: record.isEdited,
+            editedAt: record.editedAt.map { Date(timeIntervalSince1970: TimeInterval($0) / 1000) }
         )
     }
 }

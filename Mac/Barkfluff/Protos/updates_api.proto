@@ -13,15 +13,25 @@ service UpdatesApi {
   rpc SubscribeNewMessages(SubscribeNewMessagesRequest) returns (stream NewMessageEvent);
   
   rpc SubscribeMessagesRead(SubscribeMessagesReadRequest) returns(stream MessageReadEvent);
+
+  // Подписаться на события редактирования сообщений
+  rpc SubscribeMessagesEdited(SubscribeMessagesEditedRequest) returns (stream MessageEditedEvent);
+
+  // Подписаться на события удаления сообщений
+  rpc SubscribeMessagesDeleted(SubscribeMessagesDeletedRequest) returns (stream MessageDeletedEvent);
 }
 
 message SubscribeNewMessagesRequest {
-  
+
 }
 
 message SubscribeMessagesReadRequest {
-  
+
 }
+
+message SubscribeMessagesEditedRequest { }
+
+message SubscribeMessagesDeletedRequest { }
 
 message NewMessageEvent {
   barkfluff.shared.Message message = 1; //Отправленное сообщение
@@ -33,5 +43,15 @@ message MessageReadEvent {
   string chat_id = 1; // Идентификатор чата
   int64 message_id = 2; // Идентификатор прочитанного сообщения
   repeated int64 new_read_by = 3; // Новый read_by сообщения (НЕ ТОЛЬКО НОВЫЕ, А ПОЛНОСТЬЮ ВСЕ, КТО ПРОЧИТАЛ)
+}
+
+message MessageEditedEvent {
+  string chat_id = 1; // Идентификатор чата
+  barkfluff.shared.Message message = 2; // Обновленное сообщение
+}
+
+message MessageDeletedEvent {
+  string chat_id = 1; // Идентификатор чата
+  int64 message_id = 2; // Идентификатор удаленного сообщения
 }
 

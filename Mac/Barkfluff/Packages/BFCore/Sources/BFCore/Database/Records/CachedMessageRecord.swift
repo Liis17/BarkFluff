@@ -19,6 +19,8 @@ struct CachedMessageRecord: Codable, FetchableRecord, PersistableRecord, Hashabl
     var sentAt: Int64
     var readByJson: Data?
     var isSystem: Bool
+    var isEdited: Bool
+    var editedAt: Int64?
 
     enum Columns {
         static let id = Column(CodingKeys.id)

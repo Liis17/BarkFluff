@@ -43,6 +43,14 @@ final class ConversationViewModel {
     /// Очищается после успешной отправки или нажатия × в превью.
     var pendingReply: Message?
 
+    /// Сообщение, которое сейчас редактируется. Превью с заголовком «Редактирование сообщения»
+    /// показывается над полем ввода. Edit и Reply — взаимоисключающие.
+    var editingMessage: Message?
+
+    /// fileIDs оригинального сообщения для передачи в editMessage (без forwarded-вложений).
+    /// На macOS нет UI редактирования вложений — сохраняем оригинальные.
+    private var editingOriginalFileIDs: [String] = []
+
     /// Замыкание для уведомления об отправке сообщения (обновление lastMessage в списке чатов)
     var onMessageSent: ((Message) -> Void)?
 
@@ -79,6 +87,8 @@ final class ConversationViewModel {
     // Task management для стримов
     private var newMessagesTask: Task<Void, Never>?
     private var readEventsTask: Task<Void, Never>?
+    private var editedMessagesTask: Task<Void, Never>?
+    private var deletedMessagesTask: Task<Void, Never>?
     private var onlineStatusTask: Task<Void, Never>?
 
     // Сгруппированные элементы для отображения
@@ -440,12 +450,88 @@ final class ConversationViewModel {
     func setPendingReply(_ message: Message) {
         // В новом диалоге чата на сервере нет — реальный id оригинала тоже отрицательный.
         guard !isNewConversation, message.id > 0 else { return }
+        if editingMessage != nil { cancelEdit() }
         pendingReply = message
     }
 
     /// Очистить состояние ответа.
     func clearPendingReply() {
         pendingReply = nil
+    }
+
+    // MARK: - Edit / Delete
+
+    /// Войти в режим редактирования сообщения. Только для своих, отправленных сообщений.
+    func enterEditMode(_ message: Message) {
+        guard !isNewConversation,
+              message.senderID == currentUserID,
+              message.id > 0 else { return }
+        if pendingReply != nil { clearPendingReply() }
+        editingOriginalFileIDs = message.content.attachments
+            .filter { $0.type != .forwardedMessage }
+            .map { $0.fileID }
+            .filter { !$0.isEmpty }
+        editingMessage = message
+    }
+
+    /// Выйти из режима редактирования.
+    func cancelEdit() {
+        editingMessage = nil
+        editingOriginalFileIDs = []
+    }
+
+    /// Применить редактирование. Текст приходит из инпута ConversationView.
+    func submitEdit(text: String) async {
+        guard let original = editingMessage else { return }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty || !editingOriginalFileIDs.isEmpty else { return }
+
+        let messageID = original.id
+        let fileIDs = editingOriginalFileIDs
+
+        // Optimistic локальное обновление
+        if let idx = messages.firstIndex(where: { $0.id == messageID }) {
+            messages[idx].content.text = trimmed
+            messages[idx].isEdited = true
+            messages[idx].editedAt = Date()
+        }
+
+        cancelEdit()
+
+        do {
+            let confirmed = try await messageService.editMessage(
+                chatID: chat.id,
+                messageID: messageID,
+                text: trimmed,
+                fileIDs: fileIDs
+            )
+            applyEditedMessage(confirmed)
+            if let local = localMessageRepository {
+                try? await local.update(confirmed)
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+            // Откат: перезагружаем список (простейший корректный путь).
+            await loadMessages()
+        }
+    }
+
+    /// Удалить сообщение (с серверной отправкой и optimistic remove).
+    func deleteMessage(messageID: Int64) async {
+        let snapshot = messages
+        withAnimation(.spring(duration: 0.25)) {
+            messages.removeAll { $0.id == messageID }
+        }
+
+        do {
+            try await messageService.deleteMessage(messageID: messageID)
+            if let local = localMessageRepository {
+                try? await local.delete(messageID: messageID, chatID: chat.id)
+            }
+        } catch {
+            messages = snapshot
+            errorMessage = error.localizedDescription
+        }
     }
 
     /// Локальный placeholder forwarded-attachment для optimistic UI до подтверждения сервером.
@@ -661,6 +747,28 @@ final class ConversationViewModel {
             }
         }
 
+        // Слушаем события редактирования
+        editedMessagesTask = Task { [weak self] in
+            guard let self else { return }
+            let stream = await self.updatesService.getEditedMessagesStream()
+            for await event in stream {
+                await MainActor.run {
+                    self.handleEditedMessage(event)
+                }
+            }
+        }
+
+        // Слушаем события удаления
+        deletedMessagesTask = Task { [weak self] in
+            guard let self else { return }
+            let stream = await self.updatesService.getDeletedMessagesStream()
+            for await event in stream {
+                await MainActor.run {
+                    self.handleDeletedMessage(event)
+                }
+            }
+        }
+
         // Подписываемся на онлайн-статус собеседника (только для DM)
         await startListeningForOnlineStatus()
     }
@@ -669,9 +777,13 @@ final class ConversationViewModel {
     func stopListeningForUpdates() {
         newMessagesTask?.cancel()
         readEventsTask?.cancel()
+        editedMessagesTask?.cancel()
+        deletedMessagesTask?.cancel()
         onlineStatusTask?.cancel()
         newMessagesTask = nil
         readEventsTask = nil
+        editedMessagesTask = nil
+        deletedMessagesTask = nil
         onlineStatusTask = nil
 
         // Парный untrack для track из startListeningForOnlineStatus.
@@ -758,6 +870,49 @@ final class ConversationViewModel {
         // Обновляем статус прочтения
         if let index = messages.firstIndex(where: { $0.id == event.messageID }) {
             messages[index].readBy = event.readBy
+        }
+    }
+
+    private func handleEditedMessage(_ event: MessageEditedEvent) {
+        guard event.chatID == chat.id else { return }
+        applyEditedMessage(event.message)
+        if let local = localMessageRepository {
+            let updated = event.message
+            Task { try? await local.update(updated) }
+        }
+    }
+
+    /// Применить пришедшее обновление, сохраняя локальные state-поля (localID, sendingState).
+    private func applyEditedMessage(_ updated: Message) {
+        guard let idx = messages.firstIndex(where: { $0.id == updated.id }) else { return }
+        let existing = messages[idx]
+        let merged = Message(
+            id: updated.id,
+            chatID: existing.chatID,
+            senderID: updated.senderID,
+            senderName: updated.senderName ?? existing.senderName,
+            content: updated.content,
+            sentAt: updated.sentAt,
+            readBy: updated.readBy,
+            isSystem: updated.isSystem,
+            sendingState: existing.sendingState,
+            localID: existing.localID,
+            uploadProgress: existing.uploadProgress,
+            isEdited: updated.isEdited,
+            editedAt: updated.editedAt
+        )
+        messages[idx] = merged
+    }
+
+    private func handleDeletedMessage(_ event: MessageDeletedEvent) {
+        guard event.chatID == chat.id else { return }
+        let messageID = event.messageID
+        withAnimation(.spring(duration: 0.25)) {
+            messages.removeAll { $0.id == messageID }
+        }
+        if let local = localMessageRepository {
+            let chatID = chat.id
+            Task { try? await local.delete(messageID: messageID, chatID: chatID) }
         }
     }
 

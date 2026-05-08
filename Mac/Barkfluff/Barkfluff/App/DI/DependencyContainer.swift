@@ -85,6 +85,11 @@ final class DependencyContainer {
     /// Локальные настройки персонализации (UserDefaults-backed).
     let personalizationSettings: PersonalizationSettings
 
+    // MARK: - Appearance
+
+    /// Локальные настройки внешнего вида (тема приложения).
+    let appearanceSettings: AppearanceSettings
+
     // MARK: - Settings
 
     /// ViewModel для настроек
@@ -255,6 +260,9 @@ final class DependencyContainer {
 
         // Personalization (локальные настройки чата)
         self.personalizationSettings = PersonalizationSettings()
+
+        // Appearance (тема приложения)
+        self.appearanceSettings = AppearanceSettings()
 
         // Устанавливаем интерсепторы после создания всех зависимостей
         // (нужен Task т.к. connectionManager — actor)

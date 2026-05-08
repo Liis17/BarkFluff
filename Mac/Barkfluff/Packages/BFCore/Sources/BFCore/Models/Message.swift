@@ -32,6 +32,11 @@ public struct Message: Identifiable, Hashable, Sendable {
     /// Прогресс загрузки вложений (0.0...1.0)
     public var uploadProgress: Double?
 
+    /// Сообщение было отредактировано
+    public var isEdited: Bool
+    /// Время последнего редактирования (если есть)
+    public var editedAt: Date?
+
     public init(
         id: Int64,
         chatID: String,
@@ -43,7 +48,9 @@ public struct Message: Identifiable, Hashable, Sendable {
         isSystem: Bool = false,
         sendingState: MessageSendingState = .sent,
         localID: String? = nil,
-        uploadProgress: Double? = nil
+        uploadProgress: Double? = nil,
+        isEdited: Bool = false,
+        editedAt: Date? = nil
     ) {
         self.id = id
         self.chatID = chatID
@@ -56,6 +63,8 @@ public struct Message: Identifiable, Hashable, Sendable {
         self.sendingState = sendingState
         self.localID = localID
         self.uploadProgress = uploadProgress
+        self.isEdited = isEdited
+        self.editedAt = editedAt
     }
 
     /// Проверить, прочитано ли сообщение пользователем

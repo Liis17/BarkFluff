@@ -10,7 +10,14 @@ import SwiftUI
 struct SendButton: View {
     let canSend: Bool
     let isSending: Bool
+    /// Режим редактирования — иконка стрелки заменяется галочкой.
+    var isEditMode: Bool = false
     let action: () -> Void
+
+    private var iconName: String {
+        if isEditMode { return "checkmark" }
+        return canSend ? "arrow.up" : "mic"
+    }
 
     var body: some View {
         Button(action: action) {
@@ -20,7 +27,7 @@ struct SendButton: View {
                         .controlSize(.small)
                         .tint(.white)
                 } else {
-                    Image(systemName: canSend ? "arrow.up" : "mic")
+                    Image(systemName: iconName)
                         .font(.title3)
                         .fontWeight(.semibold)
                         .foregroundStyle(.white)
@@ -36,6 +43,7 @@ struct SendButton: View {
         .disabled(!canSend || isSending)
         .animation(.easeInOut(duration: 0.15), value: canSend)
         .animation(.easeInOut(duration: 0.15), value: isSending)
+        .animation(.easeInOut(duration: 0.15), value: isEditMode)
     }
 }
 
@@ -44,6 +52,7 @@ struct SendButton: View {
         SendButton(canSend: false, isSending: false, action: {})
         SendButton(canSend: true, isSending: false, action: {})
         SendButton(canSend: true, isSending: true, action: {})
+        SendButton(canSend: true, isSending: false, isEditMode: true, action: {})
     }
     .padding()
 }

@@ -168,16 +168,80 @@ Logout строится по «server-first, fail-loud» схеме: если с
 
 Консумеры: `ChatRowView` (через `.task(id:)`), `ConversationViewModel.startListeningForOnlineStatus` (для статуса под именем в открытом чате), `UserProfilePanelViewModel`.
 
+## Контекстное меню сообщения
+
+`MessageBubbleView.contextMenu` для подтверждённых сообщений (`message.id > 0`, не failed, не system) собирает пункты по правилам:
+
+| Пункт                       | Условие показа |
+|-----------------------------|----------------|
+| **Изменить**                | `senderID == currentUserID` и есть текст или нефорвард-вложения |
+| **Ответить**                | всегда |
+| **Переслать**               | всегда (`message.forwardSourceID` исключает «вложенные» пересылки) |
+| **Копировать текст**        | `!message.content.text.isEmpty` |
+| **Скопировать изображение** | ровно одно вложение типа `image` |
+| **Сохранить изображение(я)**| есть вложения типа `image` (label сингулярный/плюральный) |
+| **Сохранить в загрузки**    | есть вложения типа `document`, `audio` или `voice` |
+| **Удалить**                 | `senderID == currentUserID` (с `.confirmationDialog`) |
+
+Колбеки пробрасываются `MessagesListView` → `ConversationView`:
+- `onCopyText` — `NSPasteboard.general.setString(... , forType: .string)`
+- `onCopyImage`/`onSaveImages`/`onSaveDocuments` — `MediaActions` (см. ниже)
+- `onEdit` — seed `messageText = message.content.text` + `viewModel.enterEditMode(message)`
+- `onDelete` — устанавливает `pendingDeleteMessageID`, открывает `.confirmationDialog`
+
+## Редактирование и удаление сообщений
+
+### Edit-flow (`MessagesApi.EditMessage`)
+
+`ConversationViewModel`:
+- `editingMessage: Message?` — состояние режима редактирования (взаимоисключающее с `pendingReply`).
+- `editingOriginalFileIDs: [String]` — fileIDs нефорвард-вложений оригинала (на macOS UI редактирования attachments нет, передаём как есть).
+- `enterEditMode(_:)` — gating по `senderID == currentUserID && id > 0`, сбрасывает `pendingReply`.
+- `submitEdit(text:)` — optimistic правка `messages[idx]` + `messageService.editMessage(chatID:messageID:text:fileIDs:)` + `localMessageRepository.update(_:)`. На ошибке — `loadMessages()` для восстановления.
+- `cancelEdit()` — выход из режима без отправки.
+
+UI (`ConversationView`):
+- `EditPreviewView` (новый компонент по образцу `ReplyPreviewView`) — рисуется над `MessageInputView`, иконка `pencil`, заголовок «Редактирование сообщения», текст оригинала.
+- `MessageInputView.isEditMode` — флаг прокидывается в `SendButton.isEditMode` → иконка стрелки заменяется на `checkmark`.
+- Esc выходит из edit-режима первым (до `pendingReply` и attachments).
+- В `MessageTimeView` рядом со временем отображается иконка `pencil`, если `message.isEdited`.
+
+### Delete-flow (`MessagesApi.DeleteMessage`)
+
+- `ConversationViewModel.deleteMessage(messageID:)` — optimistic `messages.removeAll`, затем `messageService.deleteMessage` + `localMessageRepository.delete`. На ошибке — rollback по snapshot.
+- `.confirmationDialog("Удалить сообщение?")` в `ConversationView` с двумя кнопками: «Удалить» (destructive) / «Отмена».
+
+### Real-time подписки (`UpdatesApi`)
+
+`SubscribeMessagesEdited` → `MessageEditedEvent{chat_id, message}` и `SubscribeMessagesDeleted` → `MessageDeletedEvent{chat_id, message_id}`:
+
+- `UpdatesStreamManager` (BFNetworking): два новых таска `messagesEditedTask` / `messagesDeletedTask` с тем же retry/backoff паттерном, что и `newMessagesTask`. Continuations для `AsyncStream<MessageEditedEventDTO>` / `AsyncStream<MessageDeletedEventDTO>` пересоздаются в `start()`, гасятся в `stop()`.
+- `UpdatesService` (BFCore): `getEditedMessagesStream()` / `getDeletedMessagesStream()` (broadcaster по UUID-подписчикам), forward-таски маппят DTO → доменные `MessageEditedEvent` / `MessageDeletedEvent`.
+- `ConversationViewModel.startListeningForUpdates()` подписывается на оба стрима и вызывает `applyEditedMessage(_:)` (merge с сохранением `localID`/`sendingState`) и удаление с анимацией. Локальный SQLite-кеш обновляется через `LocalMessageRepository.update(_:)` / `.delete(messageID:chatID:)`.
+- `ChatListViewModel` подписывается на те же стримы для обновления `lastMessage` в превью списка чатов; при удалении last_message — `loadChats()` (backend вернёт актуальный last).
+
+### Поля в shared.proto
+
+В `Barkfluff_Shared_Message` добавлены `is_edited: bool` (field 7) и `edited_at: Timestamp` (field 8). Маппятся в `BFCore.Message.isEdited` / `editedAt` через `MessageMapper.toDomain(_:)` и `MessagesRepository.mapMessage`. SQLite-таблица `cached_message` мигрирована до v3 — добавлены колонки `is_edited` и `edited_at`.
+
 ## Пересылка и ответ на сообщение
 
-Контекстное меню на пузыре (`MessageBubbleView.contextMenu`) для подтверждённых сообщений (`message.id > 0`, не failed, не system) показывает «Ответить» и «Переслать». UX повторяет веб- и Android-клиентов (Telegram-style).
+UX повторяет веб- и Android-клиентов (Telegram-style).
 
-- **Ответить** — синхронно `viewModel.setPendingReply(message)`. Превью оригинала (`ReplyPreviewView`: акцентная полоса + имя автора + первая строка текста или emoji-сводка вложения + кнопка ×) появляется над `MessageInputView`. Пользователь набирает свой текст, и при отправке через `sendMessage` / `sendMessageWithAttachments` `pendingReply` снапшотится, превью очищается, в pending-сообщение добавляется placeholder через `makeForwardedPlaceholder`, а на сервер уходит `forwardedMessageID = pendingReply.id` вместе с текстом и `fileIDs`. Серверный ответ заменяет pending. Esc и кнопка × очищают `pendingReply`.
+- **Ответить** — синхронно `viewModel.setPendingReply(message)`. Превью оригинала (`ReplyPreviewView`: акцентная полоса + имя автора + первая строка текста или emoji-сводка вложения + кнопка ×) появляется над `MessageInputView`. Пользователь набирает свой текст, и при отправке через `sendMessage` / `sendMessageWithAttachments` `pendingReply` снапшотится, превью очищается, в pending-сообщение добавляется placeholder через `makeForwardedPlaceholder`, а на сервер уходит `forwardedMessageID = pendingReply.id` вместе с текстом и `fileIDs`. Серверный ответ заменяет pending. Esc и кнопка × очищают `pendingReply`. При входе в edit-режим reply очищается, и наоборот.
 - **Переслать** — `MessageBubbleView` в callback `onForward` отдаёт `message.forwardSourceID` (computed extension в BFCore: если у сообщения уже есть вложение `FORWARDED_MESSAGE` с положительным `originalMessageID` — возвращает его, иначе свой id). Это исключает «вложенные» пересылки. `ConversationView` ставит `coordinator.presentedSheet = .forwardMessage(messageID:, sourceChatID:)`, sheet монтируется в `MainSplitView` через `.sheet(item:)`. `ForwardChatPickerViewModel` (мультивыбор) держит `selectedChatIDs: Set<String>`, `commentText: String`, `forwardToSelected()` шлёт сообщения параллельно через `withTaskGroup`. `ForwardChatPickerView` отрисовывает только аватары + имена с круглым checkmark, без last-message-превью; внизу — capsule-`TextField` для опционального комментария + круглая кнопка отправки рядом. На успехе хотя бы одной отправки модалка закрывается.
 
 Контракт с сервером (см. [[Backend/Messages]]):
 - Клиент шлёт только `OutgoingMessage.forwardedMessageID` — backend сам формирует attachment типа `FORWARDED_MESSAGE` со снимком автора/текста/вложений оригинала.
 - Доменная модель в BFCore — `MessageAttachment.forwarded: ForwardedMessagePayload?`. Отрисовка: `ForwardedMessageView` (вертикальная цветная полоса слева, имя автора, текст, мини-список вложений) + `ReplyPreviewView` (компактная версия для превью над инпутом).
+
+## Медиа-действия из контекстного меню (MediaActions)
+
+`Conversation/Helpers/MediaActions.swift` (`@MainActor enum`):
+- `copyImageToPasteboard(_:container:)` — `mediaCacheManager.resolveURL(for:type:.image)` → `NSImage(contentsOf:)` → `NSPasteboard.general.writeObjects([img])` (вставляется в Pages/Mail/Preview/Telegram).
+- `saveImages(_:container:)` / `saveDocuments(_:container:)` — копируют файлы из локального кеша в `~/Downloads/BarkFluff/`. Папка создаётся автоматически (`FileManager.urls(for: .downloadsDirectory)` + `appendingPathComponent("BarkFluff", isDirectory: true)`). Конфликт имён разруливается суффиксами ` (2)`, ` (3)`. По завершении — `NSWorkspace.activateFileViewerSelecting(...)` (один файл — выделяет файл, несколько — открывает папку).
+
+Sandbox: добавлен entitlement `com.apple.security.files.downloads.read-write` (рядом с `files.user-selected.read-write`) — даёт прямой доступ к `~/Downloads` без NSSavePanel.
 
 Регенерация proto: `make generate` в `Packages/BFProto/` (источник — `Mac/Barkfluff/Protos/`, синхронизируется с `Shared/BarkFluff.Proto/`).
 
@@ -201,7 +265,7 @@ Logout строится по «server-first, fail-loud» схеме: если с
 
 | Категория       | View                          | ViewModel                          |
 |-----------------|-------------------------------|------------------------------------|
-| General         | `GeneralSettingsView`         | через `SettingsViewModel`          |
+| General         | `GeneralSettingsView`         | `AppearanceSettings` (UserDefaults) |
 | Notifications   | `NotificationsSettingsView`   | —                                  |
 | Personalization | `PersonalizationSettingsView` + `PosterPreviewCard`/`BubblePreviewView`/`BackgroundsGrid` | `PersonalizationSettingsViewModel` |
 | Cache           | `CacheSettingsView` + `CacheStackedBarView` | `CacheSettingsViewModel` |
@@ -213,6 +277,14 @@ Logout строится по «server-first, fail-loud» схеме: если с
 | About Server    | `AboutServerSettingsView`     | `AboutServerSettingsViewModel`     |
 
 `SettingsCategoryView` — общий компонент-обёртка раздела (заголовок, отступы, glass-стиль). `SettingsPlaceholderView` — для пустых/в разработке разделов.
+
+### Тема приложения (General → Внешний вид)
+
+`AppearanceSettings` (`App/Settings/AppearanceSettings.swift`) — `@MainActor @Observable` поверх `UserDefaults` (ключ `appearance.theme`). Enum `AppTheme`: `.system` / `.light` / `.dark`; `nsAppearance` мапит в `NSAppearance?` (`.aqua` / `.darkAqua` / `nil` для системной).
+
+`GeneralSettingsView` — `Picker` поверх `AppTheme.allCases`, биндится к `container.appearanceSettings.theme` через `@Bindable`.
+
+**Применение темы — через `NSApplication.shared.appearance`**, а не SwiftUI-модификатор `.preferredColorScheme()`. На macOS `.preferredColorScheme(nil)` некорректно «отпускает» форсированную тему на части AppKit-бэкэнда (NSWindow chrome, sidebar, `NSVisualEffectView`), из-за чего после dark → system половина UI остаётся тёмной. Прямое присвоение `NSApp.appearance` каскадно прокидывается во все окна процесса, а `nil` корректно возвращает «следовать системе». `apply()` вызывается из `init` (старт приложения) и из `didSet` свойства `theme` (мгновенное переключение). Семантические цвета (`Color.primary/.secondary/.accentColor`, `Color(nsColor: .windowBackgroundColor)`) и Liquid Glass подхватывают новую тему автоматически.
 
 ## Системные уведомления
 

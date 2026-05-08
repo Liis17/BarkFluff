@@ -46,10 +46,38 @@ public enum Barkfluff_Updates_UpdatesApi: Sendable {
                 type: .serverStreaming
             )
         }
+        /// Namespace for "SubscribeMessagesEdited" metadata.
+        public enum SubscribeMessagesEdited: Sendable {
+            /// Request type for "SubscribeMessagesEdited".
+            public typealias Input = Barkfluff_Updates_SubscribeMessagesEditedRequest
+            /// Response type for "SubscribeMessagesEdited".
+            public typealias Output = Barkfluff_Updates_MessageEditedEvent
+            /// Descriptor for "SubscribeMessagesEdited".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.updates.UpdatesApi"),
+                method: "SubscribeMessagesEdited",
+                type: .serverStreaming
+            )
+        }
+        /// Namespace for "SubscribeMessagesDeleted" metadata.
+        public enum SubscribeMessagesDeleted: Sendable {
+            /// Request type for "SubscribeMessagesDeleted".
+            public typealias Input = Barkfluff_Updates_SubscribeMessagesDeletedRequest
+            /// Response type for "SubscribeMessagesDeleted".
+            public typealias Output = Barkfluff_Updates_MessageDeletedEvent
+            /// Descriptor for "SubscribeMessagesDeleted".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "barkfluff.updates.UpdatesApi"),
+                method: "SubscribeMessagesDeleted",
+                type: .serverStreaming
+            )
+        }
         /// Descriptors for all methods in the "barkfluff.updates.UpdatesApi" service.
         public static let descriptors: [GRPCCore.MethodDescriptor] = [
             SubscribeNewMessages.descriptor,
-            SubscribeMessagesRead.descriptor
+            SubscribeMessagesRead.descriptor,
+            SubscribeMessagesEdited.descriptor,
+            SubscribeMessagesDeleted.descriptor
         ]
     }
 }
@@ -109,6 +137,52 @@ extension Barkfluff_Updates_UpdatesApi {
             deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Updates_MessageReadEvent>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Barkfluff_Updates_MessageReadEvent>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "SubscribeMessagesEdited" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Подписаться на события редактирования сообщений
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Updates_SubscribeMessagesEditedRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Updates_SubscribeMessagesEditedRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Updates_MessageEditedEvent` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func subscribeMessagesEdited<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Updates_SubscribeMessagesEditedRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Updates_SubscribeMessagesEditedRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Updates_MessageEditedEvent>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Barkfluff_Updates_MessageEditedEvent>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "SubscribeMessagesDeleted" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Подписаться на события удаления сообщений
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Updates_SubscribeMessagesDeletedRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Updates_SubscribeMessagesDeletedRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Updates_MessageDeletedEvent` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func subscribeMessagesDeleted<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Updates_SubscribeMessagesDeletedRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Updates_SubscribeMessagesDeletedRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Updates_MessageDeletedEvent>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Barkfluff_Updates_MessageDeletedEvent>) async throws -> Result
         ) async throws -> Result where Result: Sendable
     }
 
@@ -187,6 +261,70 @@ extension Barkfluff_Updates_UpdatesApi {
                 onResponse: handleResponse
             )
         }
+
+        /// Call the "SubscribeMessagesEdited" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Подписаться на события редактирования сообщений
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Updates_SubscribeMessagesEditedRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Updates_SubscribeMessagesEditedRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Updates_MessageEditedEvent` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func subscribeMessagesEdited<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Updates_SubscribeMessagesEditedRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Updates_SubscribeMessagesEditedRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Updates_MessageEditedEvent>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Barkfluff_Updates_MessageEditedEvent>) async throws -> Result
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.serverStreaming(
+                request: request,
+                descriptor: Barkfluff_Updates_UpdatesApi.Method.SubscribeMessagesEdited.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "SubscribeMessagesDeleted" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Подписаться на события удаления сообщений
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Barkfluff_Updates_SubscribeMessagesDeletedRequest` message.
+        ///   - serializer: A serializer for `Barkfluff_Updates_SubscribeMessagesDeletedRequest` messages.
+        ///   - deserializer: A deserializer for `Barkfluff_Updates_MessageDeletedEvent` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func subscribeMessagesDeleted<Result>(
+            request: GRPCCore.ClientRequest<Barkfluff_Updates_SubscribeMessagesDeletedRequest>,
+            serializer: some GRPCCore.MessageSerializer<Barkfluff_Updates_SubscribeMessagesDeletedRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Barkfluff_Updates_MessageDeletedEvent>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Barkfluff_Updates_MessageDeletedEvent>) async throws -> Result
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.serverStreaming(
+                request: request,
+                descriptor: Barkfluff_Updates_UpdatesApi.Method.SubscribeMessagesDeleted.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
     }
 }
 
@@ -238,6 +376,60 @@ extension Barkfluff_Updates_UpdatesApi.ClientProtocol {
             request: request,
             serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Updates_SubscribeMessagesReadRequest>(),
             deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Updates_MessageReadEvent>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SubscribeMessagesEdited" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Подписаться на события редактирования сообщений
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Updates_SubscribeMessagesEditedRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func subscribeMessagesEdited<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Updates_SubscribeMessagesEditedRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Barkfluff_Updates_MessageEditedEvent>) async throws -> Result
+    ) async throws -> Result where Result: Sendable {
+        try await self.subscribeMessagesEdited(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Updates_SubscribeMessagesEditedRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Updates_MessageEditedEvent>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SubscribeMessagesDeleted" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Подписаться на события удаления сообщений
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Barkfluff_Updates_SubscribeMessagesDeletedRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func subscribeMessagesDeleted<Result>(
+        request: GRPCCore.ClientRequest<Barkfluff_Updates_SubscribeMessagesDeletedRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Barkfluff_Updates_MessageDeletedEvent>) async throws -> Result
+    ) async throws -> Result where Result: Sendable {
+        try await self.subscribeMessagesDeleted(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Barkfluff_Updates_SubscribeMessagesDeletedRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Barkfluff_Updates_MessageDeletedEvent>(),
             options: options,
             onResponse: handleResponse
         )
@@ -299,6 +491,68 @@ extension Barkfluff_Updates_UpdatesApi.ClientProtocol {
             metadata: metadata
         )
         return try await self.subscribeMessagesRead(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SubscribeMessagesEdited" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Подписаться на события редактирования сообщений
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func subscribeMessagesEdited<Result>(
+        _ message: Barkfluff_Updates_SubscribeMessagesEditedRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Barkfluff_Updates_MessageEditedEvent>) async throws -> Result
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Updates_SubscribeMessagesEditedRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.subscribeMessagesEdited(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SubscribeMessagesDeleted" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Подписаться на события удаления сообщений
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func subscribeMessagesDeleted<Result>(
+        _ message: Barkfluff_Updates_SubscribeMessagesDeletedRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Barkfluff_Updates_MessageDeletedEvent>) async throws -> Result
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Barkfluff_Updates_SubscribeMessagesDeletedRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.subscribeMessagesDeleted(
             request: request,
             options: options,
             onResponse: handleResponse

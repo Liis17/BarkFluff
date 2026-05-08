@@ -17,11 +17,17 @@ public actor UpdatesService: UpdatesServiceProtocol {
     private var newMessagesSubscribers: [UUID: AsyncStream<NewMessageEvent>.Continuation] = [:]
     /// Подписчики на события прочтения
     private var readEventsSubscribers: [UUID: AsyncStream<MessageReadEvent>.Continuation] = [:]
+    /// Подписчики на события редактирования
+    private var editedMessagesSubscribers: [UUID: AsyncStream<MessageEditedEvent>.Continuation] = [:]
+    /// Подписчики на события удаления
+    private var deletedMessagesSubscribers: [UUID: AsyncStream<MessageDeletedEvent>.Continuation] = [:]
     /// Подписчики на события подключения
     private var connectionSubscribers: [UUID: AsyncStream<UpdatesConnectionEvent>.Continuation] = [:]
 
     private var forwardNewMessagesTask: Task<Void, Never>?
     private var forwardReadEventsTask: Task<Void, Never>?
+    private var forwardEditedMessagesTask: Task<Void, Never>?
+    private var forwardDeletedMessagesTask: Task<Void, Never>?
     private var forwardConnectionTask: Task<Void, Never>?
 
     private var isActiveValue = false
@@ -49,6 +55,28 @@ public actor UpdatesService: UpdatesServiceProtocol {
             self.readEventsSubscribers[id] = continuation
             continuation.onTermination = { @Sendable _ in
                 Task { await self.removeReadEventsSubscriber(id) }
+            }
+        }
+        return stream
+    }
+
+    public func getEditedMessagesStream() async -> AsyncStream<MessageEditedEvent> {
+        let id = UUID()
+        let stream = AsyncStream<MessageEditedEvent> { continuation in
+            self.editedMessagesSubscribers[id] = continuation
+            continuation.onTermination = { @Sendable _ in
+                Task { await self.removeEditedMessagesSubscriber(id) }
+            }
+        }
+        return stream
+    }
+
+    public func getDeletedMessagesStream() async -> AsyncStream<MessageDeletedEvent> {
+        let id = UUID()
+        let stream = AsyncStream<MessageDeletedEvent> { continuation in
+            self.deletedMessagesSubscribers[id] = continuation
+            continuation.onTermination = { @Sendable _ in
+                Task { await self.removeDeletedMessagesSubscriber(id) }
             }
         }
         return stream
@@ -103,6 +131,24 @@ public actor UpdatesService: UpdatesServiceProtocol {
             }
         }
 
+        let managerEdited = await streamManager.messagesEdited
+        forwardEditedMessagesTask = Task { [weak self] in
+            for await event in managerEdited {
+                guard let self else { return }
+                let domain = await self.toDomainEditedEvent(event)
+                await self.broadcastEditedMessage(domain)
+            }
+        }
+
+        let managerDeleted = await streamManager.messagesDeleted
+        forwardDeletedMessagesTask = Task { [weak self] in
+            for await event in managerDeleted {
+                guard let self else { return }
+                let domain = MessageDeletedEvent(chatID: event.chatID, messageID: event.messageID)
+                await self.broadcastDeletedMessage(domain)
+            }
+        }
+
         let managerConnectionEvents = await streamManager.connectionEvents
         forwardConnectionTask = Task { [weak self] in
             for await event in managerConnectionEvents {
@@ -121,9 +167,13 @@ public actor UpdatesService: UpdatesServiceProtocol {
         isActiveValue = false
         forwardNewMessagesTask?.cancel()
         forwardReadEventsTask?.cancel()
+        forwardEditedMessagesTask?.cancel()
+        forwardDeletedMessagesTask?.cancel()
         forwardConnectionTask?.cancel()
         forwardNewMessagesTask = nil
         forwardReadEventsTask = nil
+        forwardEditedMessagesTask = nil
+        forwardDeletedMessagesTask = nil
         forwardConnectionTask = nil
         await streamManager.stop()
 
@@ -132,6 +182,12 @@ public actor UpdatesService: UpdatesServiceProtocol {
 
         for (_, continuation) in readEventsSubscribers { continuation.finish() }
         readEventsSubscribers.removeAll()
+
+        for (_, continuation) in editedMessagesSubscribers { continuation.finish() }
+        editedMessagesSubscribers.removeAll()
+
+        for (_, continuation) in deletedMessagesSubscribers { continuation.finish() }
+        deletedMessagesSubscribers.removeAll()
 
         for (_, continuation) in connectionSubscribers { continuation.finish() }
         connectionSubscribers.removeAll()
@@ -157,6 +213,18 @@ public actor UpdatesService: UpdatesServiceProtocol {
         }
     }
 
+    private func broadcastEditedMessage(_ event: MessageEditedEvent) {
+        for (_, continuation) in editedMessagesSubscribers {
+            continuation.yield(event)
+        }
+    }
+
+    private func broadcastDeletedMessage(_ event: MessageDeletedEvent) {
+        for (_, continuation) in deletedMessagesSubscribers {
+            continuation.yield(event)
+        }
+    }
+
     // MARK: - Subscriber Cleanup
 
     private func removeNewMessagesSubscriber(_ id: UUID) {
@@ -165,6 +233,14 @@ public actor UpdatesService: UpdatesServiceProtocol {
 
     private func removeReadEventsSubscriber(_ id: UUID) {
         readEventsSubscribers.removeValue(forKey: id)
+    }
+
+    private func removeEditedMessagesSubscriber(_ id: UUID) {
+        editedMessagesSubscribers.removeValue(forKey: id)
+    }
+
+    private func removeDeletedMessagesSubscriber(_ id: UUID) {
+        deletedMessagesSubscribers.removeValue(forKey: id)
     }
 
     private func removeConnectionSubscriber(_ id: UUID) {
@@ -180,6 +256,27 @@ public actor UpdatesService: UpdatesServiceProtocol {
         )
     }
 
+    private func toDomainEditedEvent(_ event: BFNetworking.MessageEditedEventDTO) -> MessageEditedEvent {
+        // Подменяем chatID, т.к. info из event.message может его не содержать.
+        let raw = toDomainMessage(event.message)
+        let domain = Message(
+            id: raw.id,
+            chatID: event.chatID,
+            senderID: raw.senderID,
+            senderName: raw.senderName,
+            content: raw.content,
+            sentAt: raw.sentAt,
+            readBy: raw.readBy,
+            isSystem: raw.isSystem,
+            sendingState: raw.sendingState,
+            localID: raw.localID,
+            uploadProgress: raw.uploadProgress,
+            isEdited: raw.isEdited,
+            editedAt: raw.editedAt
+        )
+        return MessageEditedEvent(chatID: event.chatID, message: domain)
+    }
+
     private func toDomainMessage(_ info: MessageInfo) -> Message {
         Message(
             id: info.id,
@@ -192,7 +289,9 @@ public actor UpdatesService: UpdatesServiceProtocol {
             ),
             sentAt: info.sentAt,
             readBy: info.readBy,
-            isSystem: info.isSystem
+            isSystem: info.isSystem,
+            isEdited: info.isEdited,
+            editedAt: info.editedAt
         )
     }
 

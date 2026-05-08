@@ -23,12 +23,33 @@ struct MessageBubbleView: View {
     var onReply: ((Message) -> Void)?
     /// Callback на «Переслать» (открыть выбор чата) — передаётся id сообщения
     var onForward: ((Int64) -> Void)?
+    /// Callback на «Изменить» — переводит ConversationView в режим редактирования
+    var onEdit: ((Message) -> Void)?
+    /// Callback на «Удалить» — открывает confirmationDialog в ConversationView
+    var onDelete: ((Int64) -> Void)?
+    /// Callback на «Копировать текст»
+    var onCopyText: ((String) -> Void)?
+    /// Callback на «Сохранить изображение(я)»
+    var onSaveImages: (([MessageAttachment]) -> Void)?
+    /// Callback на «Скопировать изображение» (только для одного изображения)
+    var onCopyImage: ((MessageAttachment) -> Void)?
+    /// Callback на «Сохранить в загрузки» — для документов и аудио
+    var onSaveDocuments: (([MessageAttachment]) -> Void)?
 
     @Environment(DependencyContainer.self) private var container
 
     /// Радиус скругления по умолчанию — используется в превью без DI и
     /// как fallback. Реальный радиус берётся из PersonalizationSettings.
     static let defaultBubbleCornerRadius: CGFloat = 18
+
+    /// Непрозрачный серый для входящих пузырей. Адаптируется к теме —
+    /// близко к iMessage (светло-серый в light, тёмно-серый в dark).
+    static let incomingBubbleColor: NSColor = NSColor(name: nil) { appearance in
+        let isDark = appearance.bestMatch(from: [.darkAqua, .vibrantDark]) != nil
+        return isDark
+            ? NSColor(red: 44/255, green: 44/255, blue: 46/255, alpha: 1.0)
+            : NSColor(red: 229/255, green: 229/255, blue: 234/255, alpha: 1.0)
+    }
 
     /// Текущий радиус из настроек (точка чтения для всего пузырька и его медиа).
     private var bubbleCornerRadius: CGFloat {
@@ -126,6 +147,22 @@ struct MessageBubbleView: View {
                 Button("Повторить отправку") { onRetry?(localID) }
                 Button("Удалить сообщение", role: .destructive) { onDeleteFailed?(localID) }
             } else if !message.isSystem && message.id > 0 {
+                let attachments = message.content.attachments
+                let imageAttachments = attachments.filter { $0.type == .image }
+                let documentAttachments = attachments.filter {
+                    $0.type == .document || $0.type == .audio || $0.type == .voice
+                }
+                let nonForwardedAttachments = attachments.filter { $0.type != .forwardedMessage }
+                let canEdit = isOwn && (message.content.hasText || !nonForwardedAttachments.isEmpty)
+
+                if canEdit {
+                    Button {
+                        onEdit?(message)
+                    } label: {
+                        Label("Изменить", systemImage: "pencil")
+                    }
+                }
+
                 Button {
                     onReply?(message)
                 } label: {
@@ -136,6 +173,48 @@ struct MessageBubbleView: View {
                     onForward?(message.forwardSourceID)
                 } label: {
                     Label("Переслать", systemImage: "arrowshape.turn.up.right")
+                }
+
+                if !message.content.text.isEmpty {
+                    Button {
+                        onCopyText?(message.content.text)
+                    } label: {
+                        Label("Копировать текст", systemImage: "doc.on.doc")
+                    }
+                }
+
+                if imageAttachments.count == 1, let one = imageAttachments.first {
+                    Button {
+                        onCopyImage?(one)
+                    } label: {
+                        Label("Скопировать изображение", systemImage: "photo.on.rectangle")
+                    }
+                }
+
+                if !imageAttachments.isEmpty {
+                    let title = imageAttachments.count == 1 ? "Сохранить изображение" : "Сохранить изображения"
+                    Button {
+                        onSaveImages?(imageAttachments)
+                    } label: {
+                        Label(title, systemImage: "square.and.arrow.down")
+                    }
+                }
+
+                if !documentAttachments.isEmpty {
+                    Button {
+                        onSaveDocuments?(documentAttachments)
+                    } label: {
+                        Label("Сохранить в загрузки", systemImage: "arrow.down.doc")
+                    }
+                }
+
+                if isOwn {
+                    Divider()
+                    Button(role: .destructive) {
+                        onDelete?(message.id)
+                    } label: {
+                        Label("Удалить", systemImage: "trash")
+                    }
                 }
             }
         }
@@ -204,7 +283,7 @@ struct MessageBubbleView: View {
             .padding(.vertical, verticalPadding)
             .background(
                 MessageBubbleShape(tailSide: .left, showTail: showTail, cornerRadius: bubbleCornerRadius)
-                    .fill(Color(nsColor: .secondarySystemFill))
+                    .fill(Color(nsColor: Self.incomingBubbleColor))
             )
             .clipShape(MessageBubbleShape(tailSide: .left, showTail: showTail, cornerRadius: bubbleCornerRadius))
             .padding(.leading, showTail ? 6 : 0)

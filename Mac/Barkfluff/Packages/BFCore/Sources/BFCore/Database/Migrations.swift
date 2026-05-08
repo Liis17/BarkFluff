@@ -57,6 +57,13 @@ enum Migrations {
             }
         }
 
+        migrator.registerMigration("v3_message_edited_fields") { db in
+            try db.alter(table: "cached_message") { t in
+                t.add(column: "is_edited", .integer).notNull().defaults(to: 0)
+                t.add(column: "edited_at", .integer)
+            }
+        }
+
         return migrator
     }
 }
