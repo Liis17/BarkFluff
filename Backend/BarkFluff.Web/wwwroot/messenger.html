@@ -1921,6 +1921,63 @@
             color: var(--text-main);
         }
 
+        /* Edit preview bar (inside #inputBar above textarea) */
+        .edit-preview-bar {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            border-radius: 10px;
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-left: 3px solid var(--primary);
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .edit-preview-bar.visible { display: flex; }
+        .edit-preview-bar .rpb-content { flex: 1; min-width: 0; }
+        .edit-preview-bar .rpb-author {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .edit-preview-bar .rpb-text {
+            font-size: 13px;
+            color: var(--text-sub);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .edit-preview-bar .rpb-close {
+            background: none;
+            border: none;
+            color: var(--text-sub);
+            cursor: pointer;
+            font-size: 20px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+        .edit-preview-bar .rpb-close:hover {
+            background: rgba(0, 0, 0, 0.06);
+            color: var(--text-main);
+        }
+
+        /* "Edited" marker in message meta */
+        .msg-meta .msg-edited {
+            font-size: 11px;
+            color: var(--text-sub);
+            margin-right: 4px;
+            opacity: 0.75;
+            font-style: italic;
+        }
+
         /* Context menu on message */
         .msg-context-menu {
             display: none;
@@ -2269,6 +2326,13 @@
                     </div>
                     <button class="rpb-close" id="rpbClose" title="Отменить ответ">&times;</button>
                 </div>
+                <div class="edit-preview-bar" id="editPreviewBar">
+                    <div class="rpb-content">
+                        <div class="rpb-author">Редактирование</div>
+                        <div class="rpb-text" id="epbText"></div>
+                    </div>
+                    <button class="rpb-close" id="epbClose" title="Отменить редактирование">&times;</button>
+                </div>
                 <div class="input-bar-inner">
                     <div class="sticker-picker" id="stickerPicker">
                         <div class="sticker-packs-bar" id="stickerPacksBar"></div>
@@ -2293,6 +2357,18 @@
                 <button class="sd-close" id="sdClose">&times;</button>
             </div>
             <div class="sd-body" id="sdBody"></div>
+        </div>
+    </div>
+
+    <!-- Delete message confirmation dialog -->
+    <div class="confirm-overlay" id="deleteMsgConfirmOverlay">
+        <div class="confirm-dialog">
+            <h3>Удалить сообщение?</h3>
+            <p>Сообщение будет удалено у всех участников чата.</p>
+            <div class="confirm-actions">
+                <button class="btn-confirm-cancel" id="deleteMsgCancel">Отмена</button>
+                <button class="btn-confirm-ok" id="deleteMsgOk">Удалить</button>
+            </div>
         </div>
     </div>
 

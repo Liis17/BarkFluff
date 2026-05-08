@@ -64,6 +64,8 @@
             sentAt: tsToMs(m.getSentAt()),
             type: enumName(m.getType()),
             forwardedMessageId: m.getForwardedMessageId ? m.getForwardedMessageId() : 0,
+            isEdited: m.getIsEdited ? m.getIsEdited() : false,
+            editedAt: m.getEditedAt ? tsToMs(m.getEditedAt()) : null,
             content: {
                 text: content ? content.getText() : '',
                 attachments: content ? content.getAttachmentsList().map(mapAttachment) : []
@@ -200,6 +202,23 @@
         var req = new (msgPb().MarkAsReadRequest)();
         req.setMessageIdsList(messageIds);
         return c().authCall(messages().markAsRead.bind(messages()), req);
+    }
+
+    function editMessage(messageId, text, fileIds) {
+        var req = new (msgPb().EditMessageRequest)();
+        req.setMessageId(messageId);
+        req.setText(text || '');
+        if (fileIds && fileIds.length > 0) req.setFilesIdsList(fileIds);
+        return c().authCall(messages().editMessage.bind(messages()), req).then(function (resp) {
+            var m = resp.getMessage();
+            return { message: m ? mapMessage(m) : null };
+        });
+    }
+
+    function deleteMessage(messageId) {
+        var req = new (msgPb().DeleteMessageRequest)();
+        req.setMessageId(messageId);
+        return c().authCall(messages().deleteMessage.bind(messages()), req);
     }
 
     function listChatAttachments(chatId, type, offset, size) {
@@ -445,6 +464,8 @@
         listMessages: listMessages,
         sendMessage: sendMessage,
         markAsRead: markAsRead,
+        editMessage: editMessage,
+        deleteMessage: deleteMessage,
         listChatAttachments: listChatAttachments,
         searchUsers: searchUsers,
         getUser: getUser,

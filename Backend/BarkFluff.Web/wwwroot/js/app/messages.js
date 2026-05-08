@@ -372,6 +372,12 @@
             if (!isSticker) {
                 var meta = document.createElement('div');
                 meta.className = 'msg-meta';
+                if (msg.isEdited) {
+                    var editedEl = document.createElement('span');
+                    editedEl.className = 'msg-edited';
+                    editedEl.textContent = 'изм.';
+                    meta.appendChild(editedEl);
+                }
                 var timeEl = document.createElement('span');
                 timeEl.className = 'msg-time';
                 timeEl.textContent = u().formatTime(msg.sentAt);

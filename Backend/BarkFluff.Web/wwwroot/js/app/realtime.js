@@ -20,11 +20,15 @@
 
     var updatesStream = null;
     var readStream = null;
+    var editedStream = null;
+    var deletedStream = null;
     var onlineStream = null;
     var keepAliveTimer = null;
 
     var updatesBackoff = 2000;
     var readBackoff = 2000;
+    var editedBackoff = 2000;
+    var deletedBackoff = 2000;
     var onlineBackoff = 2000;
 
     var INITIAL_BACKOFF = 2000;
@@ -35,10 +39,14 @@
 
     var updatesAgeTimer = null;
     var readAgeTimer    = null;
+    var editedAgeTimer  = null;
+    var deletedAgeTimer = null;
     var onlineAgeTimer  = null;
 
     var updatesOpenedAt = 0;
     var readOpenedAt    = 0;
+    var editedOpenedAt  = 0;
+    var deletedOpenedAt = 0;
     var onlineOpenedAt  = 0;
 
     // Currently subscribed online user IDs (for reconnection)
@@ -47,6 +55,8 @@
     // Connection status: true when at least one core stream is alive
     var updatesConnected = false;
     var readConnected = false;
+    var editedConnected = false;
+    var deletedConnected = false;
     var _lastEmittedStatus = null;
 
     // Whether startAll() was called (used for visibility-based reconnection)
@@ -73,7 +83,7 @@
     // --- Connection status helper ---
 
     function emitConnectionStatus() {
-        var connected = updatesConnected || readConnected;
+        var connected = updatesConnected || readConnected || editedConnected || deletedConnected;
         if (connected !== _lastEmittedStatus) {
             _lastEmittedStatus = connected;
             emit('connection_status', { connected: connected });
@@ -194,6 +204,117 @@
         });
     }
 
+    // --- Updates: message edited ---
+
+    function subscribeMessagesEdited() {
+        BF.clients.getValidToken().then(function (token) {
+            if (!token) return;
+            var meta = BF.metadata.build(token);
+            var proto = window.proto.barkfluff.updates;
+            var req = new proto.SubscribeMessagesEditedRequest();
+
+            if (editedStream) { try { editedStream.cancel(); } catch (e) {} }
+            editedStream = BF.clients.updates.subscribeMessagesEdited(req, meta);
+            editedOpenedAt = Date.now();
+            if (editedAgeTimer) clearTimeout(editedAgeTimer);
+            editedAgeTimer = setTimeout(function () {
+                if (_started) subscribeMessagesEdited();
+            }, STREAM_MAX_AGE);
+
+            editedStream.on('data', function (evt) {
+                editedBackoff = INITIAL_BACKOFF;
+                if (!editedConnected) { editedConnected = true; emitConnectionStatus(); }
+                var msg = evt.getMessage();
+                if (msg) {
+                    emit('message_edited', {
+                        chatId: evt.getChatId(),
+                        message: BF.api._mapMessage(msg)
+                    });
+                }
+            });
+
+            editedStream.on('status', function (status) {
+                if (status && status.code === 0) {
+                    editedBackoff = INITIAL_BACKOFF;
+                    if (!editedConnected) { editedConnected = true; emitConnectionStatus(); }
+                }
+            });
+
+            editedStream.on('error', function () {
+                editedConnected = false;
+                emitConnectionStatus();
+                if (_started) setTimeout(subscribeMessagesEdited, editedBackoff);
+                editedBackoff = Math.min(editedBackoff * 2, MAX_BACKOFF);
+            });
+
+            editedStream.on('end', function () {
+                editedConnected = false;
+                emitConnectionStatus();
+                if (Date.now() - editedOpenedAt > STABLE_STREAM_THRESHOLD) {
+                    editedBackoff = INITIAL_BACKOFF;
+                }
+                if (_started) setTimeout(subscribeMessagesEdited, editedBackoff);
+            });
+
+            editedConnected = true;
+            emitConnectionStatus();
+        });
+    }
+
+    // --- Updates: message deleted ---
+
+    function subscribeMessagesDeleted() {
+        BF.clients.getValidToken().then(function (token) {
+            if (!token) return;
+            var meta = BF.metadata.build(token);
+            var proto = window.proto.barkfluff.updates;
+            var req = new proto.SubscribeMessagesDeletedRequest();
+
+            if (deletedStream) { try { deletedStream.cancel(); } catch (e) {} }
+            deletedStream = BF.clients.updates.subscribeMessagesDeleted(req, meta);
+            deletedOpenedAt = Date.now();
+            if (deletedAgeTimer) clearTimeout(deletedAgeTimer);
+            deletedAgeTimer = setTimeout(function () {
+                if (_started) subscribeMessagesDeleted();
+            }, STREAM_MAX_AGE);
+
+            deletedStream.on('data', function (evt) {
+                deletedBackoff = INITIAL_BACKOFF;
+                if (!deletedConnected) { deletedConnected = true; emitConnectionStatus(); }
+                emit('message_deleted', {
+                    chatId: evt.getChatId(),
+                    messageId: evt.getMessageId()
+                });
+            });
+
+            deletedStream.on('status', function (status) {
+                if (status && status.code === 0) {
+                    deletedBackoff = INITIAL_BACKOFF;
+                    if (!deletedConnected) { deletedConnected = true; emitConnectionStatus(); }
+                }
+            });
+
+            deletedStream.on('error', function () {
+                deletedConnected = false;
+                emitConnectionStatus();
+                if (_started) setTimeout(subscribeMessagesDeleted, deletedBackoff);
+                deletedBackoff = Math.min(deletedBackoff * 2, MAX_BACKOFF);
+            });
+
+            deletedStream.on('end', function () {
+                deletedConnected = false;
+                emitConnectionStatus();
+                if (Date.now() - deletedOpenedAt > STABLE_STREAM_THRESHOLD) {
+                    deletedBackoff = INITIAL_BACKOFF;
+                }
+                if (_started) setTimeout(subscribeMessagesDeleted, deletedBackoff);
+            });
+
+            deletedConnected = true;
+            emitConnectionStatus();
+        });
+    }
+
     // --- Online status ---
 
     function subscribeOnline(userIds) {
@@ -298,6 +419,8 @@
                 if (!token) return;
                 if (!updatesConnected) subscribeNewMessages();
                 if (!readConnected) subscribeMessagesRead();
+                if (!editedConnected) subscribeMessagesEdited();
+                if (!deletedConnected) subscribeMessagesDeleted();
                 if (currentOnlineUserIds.length > 0 && !onlineStream) subscribeOnline(currentOnlineUserIds);
             });
             // Send keep-alive immediately
@@ -314,8 +437,12 @@
         _started = true;
         updatesBackoff = INITIAL_BACKOFF;
         readBackoff = INITIAL_BACKOFF;
+        editedBackoff = INITIAL_BACKOFF;
+        deletedBackoff = INITIAL_BACKOFF;
         subscribeNewMessages();
         subscribeMessagesRead();
+        subscribeMessagesEdited();
+        subscribeMessagesDeleted();
         startKeepAlive();
     }
 
@@ -323,12 +450,18 @@
         _started = false;
         if (updatesStream) { try { updatesStream.cancel(); } catch (e) {} updatesStream = null; }
         if (readStream) { try { readStream.cancel(); } catch (e) {} readStream = null; }
+        if (editedStream) { try { editedStream.cancel(); } catch (e) {} editedStream = null; }
+        if (deletedStream) { try { deletedStream.cancel(); } catch (e) {} deletedStream = null; }
         if (onlineStream) { try { onlineStream.cancel(); } catch (e) {} onlineStream = null; }
         if (updatesAgeTimer) { clearTimeout(updatesAgeTimer); updatesAgeTimer = null; }
         if (readAgeTimer)    { clearTimeout(readAgeTimer);    readAgeTimer    = null; }
+        if (editedAgeTimer)  { clearTimeout(editedAgeTimer);  editedAgeTimer  = null; }
+        if (deletedAgeTimer) { clearTimeout(deletedAgeTimer); deletedAgeTimer = null; }
         if (onlineAgeTimer)  { clearTimeout(onlineAgeTimer);  onlineAgeTimer  = null; }
         updatesConnected = false;
         readConnected = false;
+        editedConnected = false;
+        deletedConnected = false;
         _lastEmittedStatus = null;
         currentOnlineUserIds = [];
         stopKeepAlive();
@@ -339,14 +472,18 @@
     function reconnect() {
         updatesBackoff = INITIAL_BACKOFF;
         readBackoff = INITIAL_BACKOFF;
+        editedBackoff = INITIAL_BACKOFF;
+        deletedBackoff = INITIAL_BACKOFF;
         onlineBackoff = INITIAL_BACKOFF;
         subscribeNewMessages();
         subscribeMessagesRead();
+        subscribeMessagesEdited();
+        subscribeMessagesDeleted();
         if (currentOnlineUserIds.length > 0) subscribeOnline(currentOnlineUserIds);
     }
 
     function isConnected() {
-        return updatesConnected || readConnected;
+        return updatesConnected || readConnected || editedConnected || deletedConnected;
     }
 
     window.BF.realtime = {
